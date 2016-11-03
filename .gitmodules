@@ -4,3 +4,6 @@
 [submodule "vendor/github.com/ogier/pflag"]
 	path = vendor/github.com/ogier/pflag
 	url = https://github.com/ogier/pflag.git
+[submodule "vendor/github.com/texttheater/golang-levenshtein"]
+	path = vendor/github.com/texttheater/golang-levenshtein
+	url = https://github.com/texttheater/golang-levenshtein.git
