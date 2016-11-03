@@ -2,15 +2,25 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/pkg/errors"
+
+	"google.golang.org/grpc/grpclog"
 
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
 )
+
+func init() {
+	// Squelch gRPC, because it thinks it owns standard error and vomits out
+	// every internal diagnostic message.
+	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+}
 
 // usage provides help information for the main Mutagen entry point.
 var usage = `usage: mutagen [-V|--version] [-h|--help] [-l|--legal] <command> [<args>]
