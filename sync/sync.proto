@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package sync;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+import "google/protobuf/timestamp.proto";
+
+message CacheEntry {
+    uint64 size = 1;
+    uint32 mode = 2;
+    google.protobuf.Timestamp modificationTime = 3 [(gogoproto.stdtime) = true];
+    bytes digest = 4;
+}
+
+message Cache {
+    map<string, CacheEntry> entries = 1;
+}
+
+enum EntryKind {
+    Directory = 0;
+    File = 1;
+}
+
+message Entry {
+    option (gogoproto.stable_marshaler) = true;
+    EntryKind kind = 1;
+    bool executable = 2;
+    bytes digest = 3;
+    map<string, Entry> contents = 4;
+}
