@@ -35,7 +35,7 @@ func DialTimeout(timeout time.Duration) (net.Conn, error) {
 	pipeName := string(pipeNameBytes)
 
 	// Attempt to connect.
-	return npipe.DialTimeout(pipeName)
+	return npipe.DialTimeout(pipeName, timeout)
 }
 
 type daemonListener struct {
