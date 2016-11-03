@@ -25,3 +25,6 @@
 [submodule "vendor/github.com/satori/go.uuid"]
 	path = vendor/github.com/satori/go.uuid
 	url = https://github.com/satori/go.uuid.git
+[submodule "vendor/gopkg.in/natefinch/npipe.v2"]
+	path = vendor/gopkg.in/natefinch/npipe.v2
+	url = https://github.com/natefinch/npipe.git
