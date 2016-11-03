@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package daemon;
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}
+
+service Deamon {
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+}
