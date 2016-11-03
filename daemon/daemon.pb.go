@@ -65,64 +65,64 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion3
 
-// Client API for Deamon service
+// Client API for Daemon service
 
-type DeamonClient interface {
+type DaemonClient interface {
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
-type deamonClient struct {
+type daemonClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewDeamonClient(cc *grpc.ClientConn) DeamonClient {
-	return &deamonClient{cc}
+func NewDaemonClient(cc *grpc.ClientConn) DaemonClient {
+	return &daemonClient{cc}
 }
 
-func (c *deamonClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
+func (c *daemonClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
 	out := new(ShutdownResponse)
-	err := grpc.Invoke(ctx, "/daemon.Deamon/Shutdown", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/daemon.Daemon/Shutdown", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Deamon service
+// Server API for Daemon service
 
-type DeamonServer interface {
+type DaemonServer interface {
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 }
 
-func RegisterDeamonServer(s *grpc.Server, srv DeamonServer) {
-	s.RegisterService(&_Deamon_serviceDesc, srv)
+func RegisterDaemonServer(s *grpc.Server, srv DaemonServer) {
+	s.RegisterService(&_Daemon_serviceDesc, srv)
 }
 
-func _Deamon_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Daemon_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ShutdownRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeamonServer).Shutdown(ctx, in)
+		return srv.(DaemonServer).Shutdown(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/daemon.Deamon/Shutdown",
+		FullMethod: "/daemon.Daemon/Shutdown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeamonServer).Shutdown(ctx, req.(*ShutdownRequest))
+		return srv.(DaemonServer).Shutdown(ctx, req.(*ShutdownRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Deamon_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "daemon.Deamon",
-	HandlerType: (*DeamonServer)(nil),
+var _Daemon_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "daemon.Daemon",
+	HandlerType: (*DaemonServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Shutdown",
-			Handler:    _Deamon_Shutdown_Handler,
+			Handler:    _Daemon_Shutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -425,13 +425,13 @@ var (
 func init() { proto.RegisterFile("daemon.proto", fileDescriptorDaemon) }
 
 var fileDescriptorDaemon = []byte{
-	// 128 bytes of a gzipped FileDescriptorProto
+	// 125 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x49, 0x4c, 0xcd,
 	0xcd, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x04, 0xb9, 0xf8,
 	0x83, 0x33, 0x4a, 0x4b, 0x52, 0xf2, 0xcb, 0xf3, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x94,
 	0x84, 0xb8, 0x04, 0x10, 0x42, 0xc5, 0x05, 0xf9, 0x79, 0xc5, 0xa9, 0x46, 0x9e, 0x5c, 0x6c, 0x2e,
-	0xa9, 0x89, 0xb9, 0xf9, 0x79, 0x42, 0xf6, 0x5c, 0x1c, 0x30, 0x59, 0x21, 0x71, 0x3d, 0xa8, 0x99,
-	0x68, 0x46, 0x48, 0x49, 0x60, 0x4a, 0x40, 0x0c, 0x52, 0x62, 0x70, 0x12, 0x38, 0xf1, 0x48, 0x8e,
-	0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x67, 0x3c, 0x96, 0x63, 0x48, 0x62, 0x03,
-	0x3b, 0xc9, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x9e, 0xa2, 0xca, 0xa6, 0xa2, 0x00, 0x00, 0x00,
+	0x60, 0x0d, 0x42, 0xf6, 0x5c, 0x1c, 0x30, 0x59, 0x21, 0x71, 0x3d, 0xa8, 0x99, 0x68, 0x46, 0x48,
+	0x49, 0x60, 0x4a, 0x40, 0x0c, 0x52, 0x62, 0x70, 0x12, 0x38, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23,
+	0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x67, 0x3c, 0x96, 0x63, 0x48, 0x62, 0x03, 0x3b, 0xc9, 0x18,
+	0x10, 0x00, 0x00, 0xff, 0xff, 0xe5, 0x99, 0xcb, 0x2e, 0xa2, 0x00, 0x00, 0x00,
 }

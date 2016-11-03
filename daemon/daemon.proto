@@ -6,6 +6,6 @@ message ShutdownRequest {}
 
 message ShutdownResponse {}
 
-service Deamon {
+service Daemon {
     rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
 }
