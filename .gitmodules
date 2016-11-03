@@ -22,3 +22,6 @@
 [submodule "vendor/github.com/kardianos/osext"]
 	path = vendor/github.com/kardianos/osext
 	url = https://github.com/kardianos/osext.git
+[submodule "vendor/github.com/satori/go.uuid"]
+	path = vendor/github.com/satori/go.uuid
+	url = https://github.com/satori/go.uuid.git
