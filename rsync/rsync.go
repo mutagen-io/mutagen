@@ -11,19 +11,19 @@ import (
 type OperationTransmitter func(*Operation) error
 type OperationReceiver func() (*Operation, error)
 
-type Rsyncer struct {
-	rsyncer *rsync.RSync
+type Rsync struct {
+	rsync *rsync.RSync
 }
 
-func NewRsyncer() *Rsyncer {
-	return &Rsyncer{
-		rsyncer: &rsync.RSync{
+func New() *Rsync {
+	return &Rsync{
+		rsync: &rsync.RSync{
 			UniqueHasher: sha1.New(),
 		},
 	}
 }
 
-func (r *Rsyncer) Signature(base io.Reader) ([]*BlockHash, error) {
+func (r *Rsync) Signature(base io.Reader) ([]*BlockHash, error) {
 	// Create the result.
 	var result []*BlockHash
 
@@ -38,7 +38,7 @@ func (r *Rsyncer) Signature(base io.Reader) ([]*BlockHash, error) {
 	}
 
 	// Perform signature generation.
-	if err := r.rsyncer.CreateSignature(base, write); err != nil {
+	if err := r.rsync.CreateSignature(base, write); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +46,7 @@ func (r *Rsyncer) Signature(base io.Reader) ([]*BlockHash, error) {
 	return result, nil
 }
 
-func (r *Rsyncer) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit OperationTransmitter) error {
+func (r *Rsync) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit OperationTransmitter) error {
 	// Convert the base signature.
 	baseSignatureRsync := make([]rsync.BlockHash, len(baseSignature))
 	for i, b := range baseSignature {
@@ -72,10 +72,10 @@ func (r *Rsyncer) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit
 	}
 
 	// Perform delta generation.
-	return r.rsyncer.CreateDelta(target, baseSignatureRsync, write, nil)
+	return r.rsync.CreateDelta(target, baseSignatureRsync, write, nil)
 }
 
-func (r *Rsyncer) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver, digest hash.Hash) error {
+func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver, digest hash.Hash) error {
 	// Create channels to communicate with the ApplyDelta Goroutine.
 	operations := make(chan rsync.Operation)
 	applyErrors := make(chan error, 1)
@@ -83,7 +83,7 @@ func (r *Rsyncer) Patch(destination io.Writer, base io.ReadSeeker, receive Opera
 	// Start the ApplyDelta operation in a separate Goroutine, recording the
 	// hash of the received contents.
 	go func() {
-		applyErrors <- r.rsyncer.ApplyDelta(destination, base, operations, digest)
+		applyErrors <- r.rsync.ApplyDelta(destination, base, operations, digest)
 	}()
 
 	// Receive and feed operations into the Goroutine, watching for errors.
