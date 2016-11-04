@@ -57,6 +57,9 @@ func main() {
 	}
 	mutagenSource := filepath.Dir(filepath.Dir(file))
 
+	// Compute the vendoring path.
+	vendor := filepath.Join(mutagenSource, "vendor")
+
 	// Compute the GOPATH src directory.
 	gopathSrc := filepath.Dir(filepath.Dir(filepath.Dir(mutagenSource)))
 
@@ -77,6 +80,7 @@ func main() {
 		// message telling you how "stupid" it is.
 		arguments := make([]string, 0, len(s.files)+1)
 		arguments = append(arguments, "-I.")
+		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
 		arguments = append(arguments, "--gofast_out=plugins=grpc:.")
 		arguments = append(arguments, s.files...)
