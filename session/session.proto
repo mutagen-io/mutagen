@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package session;
+
+import "google/protobuf/timestamp.proto";
+
+message Session {
+    string identifier = 1;
+    google.protobuf.Timestamp creationTime = 2;
+    uint32 creatingVersionMajor = 3;
+    uint32 creatingVersionMinor = 4;
+    uint32 creatingVersionPatch = 5;
+    string alpha = 6;
+    string beta = 7;
+    bool paused = 8;
+    string error = 9;
+}
+
+enum ControllerState {
+    Halted = 0;
+    Watching = 1;
+    SnapshottingAlpha = 2;
+    SnapshottingBeta = 3;
+    Reconciling = 4;
+    StagingAlphaToBeta = 5;
+    StagingBetaToAlpha = 6;
+    ApplyingAlpha = 7;
+    ApplyingBeta = 8;
+    Saving = 9;
+}
+
+message SessionState {
+    Session session = 1;
+    ControllerState controllerState = 2;
+    string controllerMessage = 3;
+}
+
+message PromptRequest {
+    string prompt = 1;
+    string context = 2;
+}
+
+message PromptResponse {
+    string response = 1;
+}
+
+message StartRequest {
+    string alpha = 1;
+    string beta = 2;
+    PromptResponse response = 3;
+}
+
+message StartResponse {
+    PromptRequest prompt = 1;
+}
+
+message ListRequest {
+    bool streaming = 1;
+}
+
+message ListResponse {
+    repeated SessionState sessions = 1;
+}
+
+message PauseRequest {
+    string session = 1;
+}
+
+message PauseResponse {}
+
+// TODO: Add ResolveRequest and ResolveResponse once sync data structures exist.
+
+message ResumeRequest {
+    string session = 1;
+    PromptResponse response = 2;
+}
+
+message ResumeResponse {
+    PromptRequest prompt = 1;
+}
+
+message StopRequest {
+    string session = 1;
+}
+
+message StopResponse {}
+
+service SessionManagement {
+    rpc Start(stream StartRequest) returns (stream StartResponse) {}
+    rpc List(ListRequest) returns (stream ListResponse) {}
+    rpc Pause(PauseRequest) returns (PauseResponse) {}
+    // TODO: Add Resolve.
+    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Stop(StopRequest) returns (StopResponse) {}
+}
