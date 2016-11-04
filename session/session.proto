@@ -6,6 +6,8 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "google/protobuf/timestamp.proto";
 
+import "github.com/havoc-io/mutagen/rsync/rsync.proto";
+
 message Session {
     string identifier = 1;
     google.protobuf.Timestamp creationTime = 2 [(gogoproto.stdtime) = true];
@@ -94,4 +96,45 @@ service Manager {
     // TODO: Add Resolve.
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
+}
+
+message WatchRequest {}
+
+message WatchResponse {}
+
+message StageRequest {
+    string path = 1;
+    rsync.Operation operation = 2;
+}
+
+message StageResponse {
+    repeated rsync.BlockHash baseSignature = 1;
+    bytes digest = 2;
+}
+
+message TransmitRequest {
+    string path = 1;
+    repeated rsync.BlockHash baseSignature = 2;
+}
+
+message TransmitResponse {
+    rsync.Operation operation = 1;
+}
+
+message SnapshotRequest {
+    repeated rsync.BlockHash baseSignature = 1;
+}
+
+message SnapshotResponse {
+    repeated rsync.Operation operations = 1;
+}
+
+// TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
+
+service Endpoint {
+    rpc Watch(WatchRequest) returns (stream WatchResponse) {}
+    rpc Stage(stream StageRequest) returns (stream StageResponse) {}
+    rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
+    rpc Snapshot(SnapshotRequest) returns (SnapshotResponse) {}
+    // TODO: Add Apply.
 }
