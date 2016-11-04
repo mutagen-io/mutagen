@@ -28,3 +28,6 @@
 [submodule "vendor/gopkg.in/natefinch/npipe.v2"]
 	path = vendor/gopkg.in/natefinch/npipe.v2
 	url = https://github.com/natefinch/npipe.git
+[submodule "vendor/bitbucket.org/kardianos/rsync"]
+	path = vendor/bitbucket.org/kardianos/rsync
+	url = https://github.com/havoc-io/rsync.git
