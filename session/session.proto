@@ -2,11 +2,13 @@ syntax = "proto3";
 
 package session;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
 import "google/protobuf/timestamp.proto";
 
 message Session {
     string identifier = 1;
-    google.protobuf.Timestamp creationTime = 2;
+    google.protobuf.Timestamp creationTime = 2 [(gogoproto.stdtime) = true];
     uint32 creatingVersionMajor = 3;
     uint32 creatingVersionMinor = 4;
     uint32 creatingVersionPatch = 5;
