@@ -20,7 +20,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) Shutdown(_ context.Context, _ *ShutdownRequest) (*ShutdownResponse, error) {
+func (s *Server) Terminate(_ context.Context, _ *TerminateRequest) (*TerminateResponse, error) {
 	// Send the termination request in a non-blocking manner. If there is
 	// already a termination request in the pipeline, this method is a no-op.
 	select {
@@ -29,5 +29,5 @@ func (s *Server) Shutdown(_ context.Context, _ *ShutdownRequest) (*ShutdownRespo
 	}
 
 	// Done.
-	return &ShutdownResponse{}, nil
+	return &TerminateResponse{}, nil
 }

@@ -62,7 +62,7 @@ func daemonMain(arguments []string) {
 
 		// Attempt to invoke termination. We don't check for errors, because the
 		// daemon may terminate before it can send a response.
-		client.Shutdown(context.Background(), &daemon.ShutdownRequest{})
+		client.Terminate(context.Background(), &daemon.TerminateRequest{})
 
 		// All done.
 		cmd.Die(false)

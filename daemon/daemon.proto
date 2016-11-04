@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package daemon;
 
-message ShutdownRequest {}
+message TerminateRequest {}
 
-message ShutdownResponse {}
+message TerminateResponse {}
 
 service Daemon {
-    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
 }

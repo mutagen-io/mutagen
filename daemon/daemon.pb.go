@@ -9,8 +9,8 @@ It is generated from these files:
 	daemon.proto
 
 It has these top-level messages:
-	ShutdownRequest
-	ShutdownResponse
+	TerminateRequest
+	TerminateResponse
 */
 package daemon
 
@@ -36,25 +36,25 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type ShutdownRequest struct {
+type TerminateRequest struct {
 }
 
-func (m *ShutdownRequest) Reset()                    { *m = ShutdownRequest{} }
-func (m *ShutdownRequest) String() string            { return proto.CompactTextString(m) }
-func (*ShutdownRequest) ProtoMessage()               {}
-func (*ShutdownRequest) Descriptor() ([]byte, []int) { return fileDescriptorDaemon, []int{0} }
+func (m *TerminateRequest) Reset()                    { *m = TerminateRequest{} }
+func (m *TerminateRequest) String() string            { return proto.CompactTextString(m) }
+func (*TerminateRequest) ProtoMessage()               {}
+func (*TerminateRequest) Descriptor() ([]byte, []int) { return fileDescriptorDaemon, []int{0} }
 
-type ShutdownResponse struct {
+type TerminateResponse struct {
 }
 
-func (m *ShutdownResponse) Reset()                    { *m = ShutdownResponse{} }
-func (m *ShutdownResponse) String() string            { return proto.CompactTextString(m) }
-func (*ShutdownResponse) ProtoMessage()               {}
-func (*ShutdownResponse) Descriptor() ([]byte, []int) { return fileDescriptorDaemon, []int{1} }
+func (m *TerminateResponse) Reset()                    { *m = TerminateResponse{} }
+func (m *TerminateResponse) String() string            { return proto.CompactTextString(m) }
+func (*TerminateResponse) ProtoMessage()               {}
+func (*TerminateResponse) Descriptor() ([]byte, []int) { return fileDescriptorDaemon, []int{1} }
 
 func init() {
-	proto.RegisterType((*ShutdownRequest)(nil), "daemon.ShutdownRequest")
-	proto.RegisterType((*ShutdownResponse)(nil), "daemon.ShutdownResponse")
+	proto.RegisterType((*TerminateRequest)(nil), "daemon.TerminateRequest")
+	proto.RegisterType((*TerminateResponse)(nil), "daemon.TerminateResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -68,7 +68,7 @@ const _ = grpc.SupportPackageIsVersion3
 // Client API for Daemon service
 
 type DaemonClient interface {
-	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
+	Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error)
 }
 
 type daemonClient struct {
@@ -79,9 +79,9 @@ func NewDaemonClient(cc *grpc.ClientConn) DaemonClient {
 	return &daemonClient{cc}
 }
 
-func (c *daemonClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
-	out := new(ShutdownResponse)
-	err := grpc.Invoke(ctx, "/daemon.Daemon/Shutdown", in, out, c.cc, opts...)
+func (c *daemonClient) Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error) {
+	out := new(TerminateResponse)
+	err := grpc.Invoke(ctx, "/daemon.Daemon/Terminate", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -91,27 +91,27 @@ func (c *daemonClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts .
 // Server API for Daemon service
 
 type DaemonServer interface {
-	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	Terminate(context.Context, *TerminateRequest) (*TerminateResponse, error)
 }
 
 func RegisterDaemonServer(s *grpc.Server, srv DaemonServer) {
 	s.RegisterService(&_Daemon_serviceDesc, srv)
 }
 
-func _Daemon_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShutdownRequest)
+func _Daemon_Terminate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TerminateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DaemonServer).Shutdown(ctx, in)
+		return srv.(DaemonServer).Terminate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/daemon.Daemon/Shutdown",
+		FullMethod: "/daemon.Daemon/Terminate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Shutdown(ctx, req.(*ShutdownRequest))
+		return srv.(DaemonServer).Terminate(ctx, req.(*TerminateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -121,15 +121,15 @@ var _Daemon_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*DaemonServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Shutdown",
-			Handler:    _Daemon_Shutdown_Handler,
+			MethodName: "Terminate",
+			Handler:    _Daemon_Terminate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: fileDescriptorDaemon,
 }
 
-func (m *ShutdownRequest) Marshal() (dAtA []byte, err error) {
+func (m *TerminateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -139,7 +139,7 @@ func (m *ShutdownRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ShutdownRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *TerminateRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -147,7 +147,7 @@ func (m *ShutdownRequest) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ShutdownResponse) Marshal() (dAtA []byte, err error) {
+func (m *TerminateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -157,7 +157,7 @@ func (m *ShutdownResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *ShutdownResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *TerminateResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -192,13 +192,13 @@ func encodeVarintDaemon(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
-func (m *ShutdownRequest) Size() (n int) {
+func (m *TerminateRequest) Size() (n int) {
 	var l int
 	_ = l
 	return n
 }
 
-func (m *ShutdownResponse) Size() (n int) {
+func (m *TerminateResponse) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -217,7 +217,7 @@ func sovDaemon(x uint64) (n int) {
 func sozDaemon(x uint64) (n int) {
 	return sovDaemon(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *ShutdownRequest) Unmarshal(dAtA []byte) error {
+func (m *TerminateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -240,10 +240,10 @@ func (m *ShutdownRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ShutdownRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: TerminateRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ShutdownRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TerminateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -267,7 +267,7 @@ func (m *ShutdownRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *ShutdownResponse) Unmarshal(dAtA []byte) error {
+func (m *TerminateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -290,10 +290,10 @@ func (m *ShutdownResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ShutdownResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: TerminateResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ShutdownResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: TerminateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -425,13 +425,13 @@ var (
 func init() { proto.RegisterFile("daemon.proto", fileDescriptorDaemon) }
 
 var fileDescriptorDaemon = []byte{
-	// 125 bytes of a gzipped FileDescriptorProto
+	// 127 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x49, 0x4c, 0xcd,
-	0xcd, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x04, 0xb9, 0xf8,
-	0x83, 0x33, 0x4a, 0x4b, 0x52, 0xf2, 0xcb, 0xf3, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x94,
-	0x84, 0xb8, 0x04, 0x10, 0x42, 0xc5, 0x05, 0xf9, 0x79, 0xc5, 0xa9, 0x46, 0x9e, 0x5c, 0x6c, 0x2e,
-	0x60, 0x0d, 0x42, 0xf6, 0x5c, 0x1c, 0x30, 0x59, 0x21, 0x71, 0x3d, 0xa8, 0x99, 0x68, 0x46, 0x48,
-	0x49, 0x60, 0x4a, 0x40, 0x0c, 0x52, 0x62, 0x70, 0x12, 0x38, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23,
-	0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x67, 0x3c, 0x96, 0x63, 0x48, 0x62, 0x03, 0x3b, 0xc9, 0x18,
-	0x10, 0x00, 0x00, 0xff, 0xff, 0xe5, 0x99, 0xcb, 0x2e, 0xa2, 0x00, 0x00, 0x00,
+	0xcd, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0xf0, 0x94, 0x84, 0xb8, 0x04,
+	0x42, 0x52, 0x8b, 0x72, 0x33, 0xf3, 0x12, 0x4b, 0x52, 0x83, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b,
+	0x94, 0x84, 0xb9, 0x04, 0x91, 0xc4, 0x8a, 0x0b, 0xf2, 0xf3, 0x8a, 0x53, 0x8d, 0x7c, 0xb8, 0xd8,
+	0x5c, 0xc0, 0x5a, 0x84, 0x9c, 0xb8, 0x38, 0xe1, 0xd2, 0x42, 0x12, 0x7a, 0x50, 0x63, 0xd1, 0x4d,
+	0x91, 0x92, 0xc4, 0x22, 0x03, 0x31, 0x4b, 0x89, 0xc1, 0x49, 0xe0, 0xc4, 0x23, 0x39, 0xc6, 0x0b,
+	0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf1, 0x58, 0x8e, 0x21, 0x89, 0x0d, 0xec, 0x2e,
+	0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x7e, 0x21, 0xf7, 0xf6, 0xa7, 0x00, 0x00, 0x00,
 }
