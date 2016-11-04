@@ -85,7 +85,7 @@ message StopRequest {
 
 message StopResponse {}
 
-service SessionManagement {
+service Manager {
     rpc Start(stream StartRequest) returns (stream StartResponse) {}
     rpc List(ListRequest) returns (stream ListResponse) {}
     rpc Pause(PauseRequest) returns (PauseResponse) {}
