@@ -98,6 +98,13 @@ service Manager {
     rpc Stop(StopRequest) returns (StopResponse) {}
 }
 
+message ProbeRequest {}
+
+message ProbeResponse {
+    bool decomposesUnicode = 1;
+    bool preservesExecutability = 2;
+}
+
 message WatchRequest {}
 
 message WatchResponse {}
@@ -132,6 +139,7 @@ message SnapshotResponse {
 // TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
 
 service Endpoint {
+    rpc Probe(ProbeRequest) returns (ProbeResponse) {}
     rpc Watch(WatchRequest) returns (stream WatchResponse) {}
     rpc Stage(stream StageRequest) returns (stream StageResponse) {}
     rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
