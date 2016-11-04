@@ -65,4 +65,25 @@ func main() {
 		"Original/deserialized snapshots equivalent?",
 		deserialized.Equal(snapshot),
 	)
+
+	// Serialize the cache.
+	start = time.Now()
+	serializedCache, err := cache.Marshal()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to serialize cache"))
+	}
+	stop = time.Now()
+	fmt.Println("Cache serialization took", stop.Sub(start))
+
+	// Deserialize the cache.
+	start = time.Now()
+	deserializedCache := &sync.Cache{}
+	if err = deserializedCache.Unmarshal(serializedCache); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to deserialize cache"))
+	}
+	stop = time.Now()
+	fmt.Println("Cache deserialization took", stop.Sub(start))
+
+	// Print other information.
+	fmt.Println("Serialized cache size was", len(serializedCache), "bytes")
 }
