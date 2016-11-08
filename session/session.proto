@@ -8,16 +8,22 @@ import "google/protobuf/timestamp.proto";
 
 import "github.com/havoc-io/mutagen/rsync/rsync.proto";
 
+enum SessionVersion {
+    Unknown = 0;
+    Version1 = 1;
+}
+
 message Session {
     string identifier = 1;
-    google.protobuf.Timestamp creationTime = 2 [(gogoproto.stdtime) = true];
-    uint32 creatingVersionMajor = 3;
-    uint32 creatingVersionMinor = 4;
-    uint32 creatingVersionPatch = 5;
-    string alpha = 6;
-    string beta = 7;
-    bool paused = 8;
-    string error = 9;
+    SessionVersion version = 2;
+    google.protobuf.Timestamp creationTime = 3 [(gogoproto.stdtime) = true];
+    uint32 creatingVersionMajor = 4;
+    uint32 creatingVersionMinor = 5;
+    uint32 creatingVersionPatch = 6;
+    string alpha = 7;
+    string beta = 8;
+    bool paused = 9;
+    string error = 10;
 }
 
 enum ControllerState {
@@ -111,12 +117,14 @@ message WatchResponse {}
 
 message StageRequest {
     string path = 1;
-    rsync.Operation operation = 2;
+    bool executable = 2;
+    bytes digest = 3;
+    rsync.Operation operation = 4;
 }
 
 message StageResponse {
-    repeated rsync.BlockHash baseSignature = 1;
-    bytes digest = 2;
+    bool alreadyStaged = 1;
+    repeated rsync.BlockHash baseSignature = 2;
 }
 
 message TransmitRequest {
