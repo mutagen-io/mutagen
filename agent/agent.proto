@@ -4,8 +4,8 @@ package agent;
 
 message PromptRequest {
     string prompter = 1;
-    string prompt = 2;
-    string context = 3;
+    string context = 2;
+    string prompt = 3;
 }
 
 message PromptResponse {

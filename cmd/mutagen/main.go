@@ -13,7 +13,9 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/havoc-io/mutagen"
+	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/environment"
 )
 
 func init() {
@@ -53,8 +55,6 @@ var handlers = map[string]func([]string){
 const maximumCommandDistance = 4
 
 func main() {
-	// TODO: Add prompting environment detection and handle accordingly.
-
 	// We have to do some manual argument parsing in here for command dispatch,
 	// because none of the CLI parsing libraries provide a decent mechanism for
 	// ensuring positional arguments appear before flags.
@@ -62,6 +62,13 @@ func main() {
 	// Extract arguments, sans program name
 	arguments := os.Args[1:]
 	nArguments := len(arguments)
+
+	// Check if a prompting environment is set. If so, treat this as a prompt
+	// request.
+	if _, ok := environment.Current[agent.PrompterEnvironmentVariable]; ok {
+		promptMain(arguments)
+		cmd.Die(false)
+	}
 
 	// Verify that there are arguments, otherwise print help and exit
 	if nArguments == 0 {
