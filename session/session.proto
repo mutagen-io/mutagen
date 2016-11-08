@@ -6,7 +6,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/havoc-io/mutagen/rsync/rsync.proto";
+import "github.com/havoc-io/mutagen/agent/agent.proto";
 
 enum SessionVersion {
     Unknown = 0;
@@ -27,7 +27,7 @@ message Session {
 }
 
 enum SynchronizationAction {
-    Halted = 0;
+    Connecting = 0;
     ProbingAlpha = 1;
     ProbingBeta = 2;
     Watching = 3;
@@ -51,23 +51,14 @@ message SessionState {
     SynchronizationState synchronizationState = 2;
 }
 
-message PromptRequest {
-    string prompt = 1;
-    string context = 2;
-}
-
-message PromptResponse {
-    string response = 1;
-}
-
 message StartRequest {
     string alpha = 1;
     string beta = 2;
-    PromptResponse response = 3;
+    agent.PromptResponse response = 3;
 }
 
 message StartResponse {
-    PromptRequest prompt = 1;
+    agent.PromptRequest prompt = 1;
 }
 
 message ListRequest {
@@ -88,11 +79,11 @@ message PauseResponse {}
 
 message ResumeRequest {
     string session = 1;
-    PromptResponse response = 2;
+    agent.PromptResponse response = 2;
 }
 
 message ResumeResponse {
-    PromptRequest prompt = 1;
+    agent.PromptRequest prompt = 1;
 }
 
 message StopRequest {
@@ -108,55 +99,4 @@ service Manager {
     // TODO: Add Resolve.
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
-}
-
-message ProbeRequest {}
-
-message ProbeResponse {
-    bool decomposesUnicode = 1;
-    bool preservesExecutability = 2;
-}
-
-message WatchRequest {}
-
-message WatchResponse {}
-
-message StageRequest {
-    string path = 1;
-    bool executable = 2;
-    bytes digest = 3;
-    rsync.Operation operation = 4;
-}
-
-message StageResponse {
-    bool alreadyStaged = 1;
-    repeated rsync.BlockHash baseSignature = 2;
-}
-
-message TransmitRequest {
-    string path = 1;
-    repeated rsync.BlockHash baseSignature = 2;
-}
-
-message TransmitResponse {
-    rsync.Operation operation = 1;
-}
-
-message SnapshotRequest {
-    repeated rsync.BlockHash baseSignature = 1;
-}
-
-message SnapshotResponse {
-    repeated rsync.Operation operations = 1;
-}
-
-// TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
-
-service Endpoint {
-    rpc Probe(ProbeRequest) returns (ProbeResponse) {}
-    rpc Watch(WatchRequest) returns (stream WatchResponse) {}
-    rpc Stage(stream StageRequest) returns (stream StageResponse) {}
-    rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
-    rpc Snapshot(SnapshotRequest) returns (SnapshotResponse) {}
-    // TODO: Add Apply.
 }

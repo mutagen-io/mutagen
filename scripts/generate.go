@@ -43,6 +43,7 @@ var subdirectories = []struct {
 	basename string
 	files    []string
 }{
+	{"agent", []string{"agent.proto"}},
 	{"daemon", []string{"daemon.proto"}},
 	{"rsync", []string{"rsync.proto"}},
 	{"session", []string{"session.proto"}},
