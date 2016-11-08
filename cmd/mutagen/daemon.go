@@ -62,7 +62,11 @@ func daemonMain(arguments []string) {
 
 		// Attempt to invoke termination. We don't check for errors, because the
 		// daemon may terminate before it can send a response.
-		client.Terminate(context.Background(), &daemon.TerminateRequest{})
+		client.Terminate(
+			context.Background(),
+			&daemon.TerminateRequest{},
+			grpc.FailFast(true),
+		)
 
 		// All done.
 		cmd.Die(false)
