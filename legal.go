@@ -29,7 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Mutagen makes use of the following third-party software:
 
 
-Go, the Go standard library, and the Go net subrepository (https://golang.org/)
+Go, the Go standard library, and the Go net and crypto subrepositories
+(https://golang.org/)
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
