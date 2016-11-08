@@ -41,14 +41,14 @@ enum ControllerAction {
     Saving = 11;
 }
 
-message ControllerState {
+message SynchronizationState {
     ControllerAction action = 1;
     string message = 2;
 }
 
 message SessionState {
     Session session = 1;
-    ControllerState controllerState = 2;
+    SynchronizationState synchronizationState = 2;
 }
 
 message PromptRequest {
