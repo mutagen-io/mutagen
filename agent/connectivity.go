@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"io"
 	"net"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/pkg/errors"
@@ -101,4 +103,49 @@ func (l *stdioListener) Close() error {
 
 func (l *stdioListener) Addr() net.Addr {
 	return &stdioAddr{}
+}
+
+type agentConn struct {
+	process *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  io.Reader
+}
+
+func (c *agentConn) Read(p []byte) (int, error) {
+	return c.stdout.Read(p)
+}
+
+func (c *agentConn) Write(p []byte) (int, error) {
+	return c.stdin.Write(p)
+}
+
+func (c *agentConn) Close() error {
+	// Close the process' standard input.
+	if err := c.stdin.Close(); err != nil {
+		c.process.Wait()
+		return err
+	}
+
+	// Wait for the process to terminate.
+	return c.process.Wait()
+}
+
+func (c *agentConn) LocalAddr() net.Addr {
+	return &stdioAddr{}
+}
+
+func (c *agentConn) RemoteAddr() net.Addr {
+	return &stdioAddr{}
+}
+
+func (c *agentConn) SetDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
+}
+
+func (c *agentConn) SetReadDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
+}
+
+func (c *agentConn) SetWriteDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
 }
