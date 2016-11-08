@@ -37,3 +37,6 @@
 [submodule "vendor/github.com/howeyc/gopass"]
 	path = vendor/github.com/howeyc/gopass
 	url = https://github.com/havoc-io/gopass.git
+[submodule "vendor/golang.org/x/crypto"]
+	path = vendor/golang.org/x/crypto
+	url = https://github.com/golang/crypto.git
