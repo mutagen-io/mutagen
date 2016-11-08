@@ -73,7 +73,7 @@ func NewEndpoint(session string, version SessionVersion, root string, alpha bool
 	}, nil
 }
 
-func (e *Endpoint) Probe(ctx context.Context, request *ProbeRequest) (*ProbeResponse, error) {
+func (e *Endpoint) Probe(_ context.Context, request *ProbeRequest) (*ProbeResponse, error) {
 	// Check if the root decomposes Unicode.
 	decomposesUnicode, err := filesystem.DecomposesUnicode(e.root)
 	if err != nil {
@@ -274,7 +274,7 @@ func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_Transmi
 	return rsyncer.Deltafy(target, request.BaseSignature, writer)
 }
 
-func (e *Endpoint) Snapshot(ctx context.Context, request *SnapshotRequest) (*SnapshotResponse, error) {
+func (e *Endpoint) Snapshot(_ context.Context, request *SnapshotRequest) (*SnapshotResponse, error) {
 	// Load the cache. If it fails, just create an empty cache.
 	cache := &sync.Cache{}
 	if encoding.LoadAndUnmarshalProtobuf(e.cachePath, cache) != nil {
