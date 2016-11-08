@@ -13,9 +13,19 @@ import (
 )
 
 const (
+	agentBundleName     = "mutagen-agents.tar.gz"
 	agentsDirectoryName = "agents"
 	agentBaseName       = "mutagen-agent"
 )
+
+var bundlePath string
+
+func init() {
+	bundlePath = filepath.Join(
+		process.Current.ExecutableParentPath,
+		agentBundleName,
+	)
+}
 
 func localPath() (string, error) {
 	// Compute (and create) the path to the agent parent directory.
