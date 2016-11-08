@@ -464,7 +464,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for Manager service
 
@@ -753,7 +753,7 @@ var _Manager_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptorSession,
+	Metadata: "session.proto",
 }
 
 // Client API for Endpoint service
@@ -1036,7 +1036,7 @@ var _Endpoint_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptorSession,
+	Metadata: "session.proto",
 }
 
 func (m *Session) Marshal() (dAtA []byte, err error) {
