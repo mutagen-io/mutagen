@@ -111,12 +111,12 @@ type agentConn struct {
 	stdout  io.Reader
 }
 
-func (c *agentConn) Read(p []byte) (int, error) {
-	return c.stdout.Read(p)
+func (c *agentConn) Read(b []byte) (int, error) {
+	return c.stdout.Read(b)
 }
 
-func (c *agentConn) Write(p []byte) (int, error) {
-	return c.stdin.Write(p)
+func (c *agentConn) Write(b []byte) (int, error) {
+	return c.stdin.Write(b)
 }
 
 func (c *agentConn) Close() error {
