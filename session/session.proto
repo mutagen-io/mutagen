@@ -7,6 +7,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 
 import "github.com/havoc-io/mutagen/agent/agent.proto";
+import "github.com/havoc-io/mutagen/rsync/rsync.proto";
 
 enum SessionVersion {
     Unknown = 0;
@@ -99,4 +100,55 @@ service Manager {
     // TODO: Add Resolve.
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
+}
+
+message ProbeRequest {}
+
+message ProbeResponse {
+    bool decomposesUnicode = 1;
+    bool preservesExecutability = 2;
+}
+
+message WatchRequest {}
+
+message WatchResponse {}
+
+message StageRequest {
+    string path = 1;
+    bool executable = 2;
+    bytes digest = 3;
+    rsync.Operation operation = 4;
+}
+
+message StageResponse {
+    bool alreadyStaged = 1;
+    repeated rsync.BlockHash baseSignature = 2;
+}
+
+message TransmitRequest {
+    string path = 1;
+    repeated rsync.BlockHash baseSignature = 2;
+}
+
+message TransmitResponse {
+    rsync.Operation operation = 1;
+}
+
+message SnapshotRequest {
+    repeated rsync.BlockHash baseSignature = 1;
+}
+
+message SnapshotResponse {
+    repeated rsync.Operation operations = 1;
+}
+
+// TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
+
+service Endpoint {
+    rpc Probe(ProbeRequest) returns (ProbeResponse) {}
+    rpc Watch(WatchRequest) returns (stream WatchResponse) {}
+    rpc Stage(stream StageRequest) returns (stream StageResponse) {}
+    rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
+    rpc Snapshot(SnapshotRequest) returns (SnapshotResponse) {}
+    // TODO: Add Apply.
 }

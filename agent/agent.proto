@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package agent;
 
-import "github.com/havoc-io/mutagen/rsync/rsync.proto";
-
 message PromptRequest {
     string prompter = 1;
     string prompt = 2;
@@ -16,55 +14,4 @@ message PromptResponse {
 
 service Prompt {
     rpc Prompt(PromptRequest) returns (PromptResponse) {}
-}
-
-message ProbeRequest {}
-
-message ProbeResponse {
-    bool decomposesUnicode = 1;
-    bool preservesExecutability = 2;
-}
-
-message WatchRequest {}
-
-message WatchResponse {}
-
-message StageRequest {
-    string path = 1;
-    bool executable = 2;
-    bytes digest = 3;
-    rsync.Operation operation = 4;
-}
-
-message StageResponse {
-    bool alreadyStaged = 1;
-    repeated rsync.BlockHash baseSignature = 2;
-}
-
-message TransmitRequest {
-    string path = 1;
-    repeated rsync.BlockHash baseSignature = 2;
-}
-
-message TransmitResponse {
-    rsync.Operation operation = 1;
-}
-
-message SnapshotRequest {
-    repeated rsync.BlockHash baseSignature = 1;
-}
-
-message SnapshotResponse {
-    repeated rsync.Operation operations = 1;
-}
-
-// TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
-
-service Endpoint {
-    rpc Probe(ProbeRequest) returns (ProbeResponse) {}
-    rpc Watch(WatchRequest) returns (stream WatchResponse) {}
-    rpc Stage(stream StageRequest) returns (stream StageResponse) {}
-    rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
-    rpc Snapshot(SnapshotRequest) returns (SnapshotResponse) {}
-    // TODO: Add Apply.
 }
