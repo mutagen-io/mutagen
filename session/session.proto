@@ -28,15 +28,17 @@ message Session {
 
 enum ControllerState {
     Halted = 0;
-    Watching = 1;
-    SnapshottingAlpha = 2;
-    SnapshottingBeta = 3;
-    Reconciling = 4;
-    StagingAlphaToBeta = 5;
-    StagingBetaToAlpha = 6;
-    ApplyingAlpha = 7;
-    ApplyingBeta = 8;
-    Saving = 9;
+    ProbingAlpha = 1;
+    ProbingBeta = 2;
+    Watching = 3;
+    SnapshottingAlpha = 4;
+    SnapshottingBeta = 5;
+    Reconciling = 6;
+    StagingAlphaToBeta = 7;
+    StagingBetaToAlpha = 8;
+    ApplyingAlpha = 9;
+    ApplyingBeta = 10;
+    Saving = 11;
 }
 
 message SessionState {
