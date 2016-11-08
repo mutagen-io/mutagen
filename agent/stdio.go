@@ -28,11 +28,17 @@ func (_ *stdioConn) Write(b []byte) (int, error) {
 	return os.Stdout.Write(b)
 }
 
+// Close does NOT implement the net.Conn.Close method. This is unfortunately not
+// possible with standard input/output because calling Close on those files
+// might block if they are being read to or written from. This can very easily
+// lead to a deadlock if no more input is coming or no more output is going to
+// be processed. Unfortunately there is no way to implement net.Conn.Close
+// semantics (which are supposed to unblock Read/Write operations) with standard
+// input/output. For this connection, which is effectively a singleton and will
+// only be used once and for the lifetime of the process, it's best to just
+// "close" it by simply exiting the process.
 func (_ *stdioConn) Close() error {
-	if err := os.Stdin.Close(); err != nil {
-		return err
-	}
-	return os.Stdout.Close()
+	panic("standard input/output connections don't support closing")
 }
 
 func (_ *stdioConn) LocalAddr() net.Addr {
