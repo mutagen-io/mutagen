@@ -34,3 +34,6 @@
 [submodule "vendor/github.com/rjeczalik/notify"]
 	path = vendor/github.com/rjeczalik/notify
 	url = https://github.com/rjeczalik/notify.git
+[submodule "vendor/github.com/howeyc/gopass"]
+	path = vendor/github.com/howeyc/gopass
+	url = https://github.com/havoc-io/gopass.git
