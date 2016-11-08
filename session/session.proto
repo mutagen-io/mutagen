@@ -26,7 +26,7 @@ message Session {
     string error = 10;
 }
 
-enum ControllerState {
+enum ControllerAction {
     Halted = 0;
     ProbingAlpha = 1;
     ProbingBeta = 2;
@@ -41,10 +41,14 @@ enum ControllerState {
     Saving = 11;
 }
 
+message ControllerState {
+    ControllerAction action = 1;
+    string message = 2;
+}
+
 message SessionState {
     Session session = 1;
     ControllerState controllerState = 2;
-    string controllerMessage = 3;
 }
 
 message PromptRequest {
