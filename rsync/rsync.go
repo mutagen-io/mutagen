@@ -5,6 +5,8 @@ import (
 	"hash"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"bitbucket.org/kardianos/rsync"
 )
 
@@ -46,6 +48,9 @@ func (r *Rsync) Signature(base io.Reader) ([]*BlockHash, error) {
 	return result, nil
 }
 
+// TODO: Add a very important warning to this function that the operation (and
+// its underlying data buffer) that are passed to the transmitter are re-used,
+// so they need to be copied if retained.
 func (r *Rsync) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit OperationTransmitter) error {
 	// Convert the base signature.
 	baseSignatureRsync := make([]rsync.BlockHash, len(baseSignature))
@@ -132,9 +137,9 @@ func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive Operati
 
 	// Check for errors.
 	if receiveError != nil {
-		return receiveError
+		return errors.Wrap(receiveError, "unable to receive operation")
 	} else if applyError != nil {
-		return applyError
+		return errors.Wrap(applyError, "unable to apply operation")
 	}
 
 	// Success.
