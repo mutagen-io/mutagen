@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"google.golang.org/grpc"
 )
 
 type addr struct {
@@ -156,22 +158,28 @@ func (e *oneShotDialerError) Temporary() bool {
 	return false
 }
 
-type oneShotDialer struct {
-	conn net.Conn
-}
-
-func (d *oneShotDialer) dial(_ string, _ time.Duration) (net.Conn, error) {
-	// If a connection is present, nil out the record of it and return it.
-	if d.conn != nil {
-		conn := d.conn
-		d.conn = nil
-		return conn, nil
+func clientWithConn(conn net.Conn) *grpc.ClientConn {
+	// Create a one-shot dialer to use in client creation. This dialer will
+	// return an error if invoked more than once, and gRPC will recognize that
+	// error as non-temporary, thereby aborting any redials.
+	// TODO: This behavior relies on the following PR being merged:
+	// https://github.com/grpc/grpc-go/pull/974
+	conns := make(chan net.Conn, 1)
+	conns <- conn
+	close(conns)
+	dialer := func(_ string, _ time.Duration) (net.Conn, error) {
+		if c, ok := <-conns; ok {
+			return c, nil
+		}
+		return nil, &oneShotDialerError{}
 	}
 
-	// If there are no connections, we're done. We return an error that has a
-	// Temporary method so that the gRPC ClientConn won't continue trying to
-	// re-dial on failure.
-	// TODO: This behavior relies on https://github.com/grpc/grpc-go/pull/974
-	// being merged.
-	return nil, &oneShotDialerError{}
+	// Perform a dial, enforcing that this work the first time through.
+	client, err := grpc.Dial("", grpc.WithBlock(), grpc.WithDialer(dialer), grpc.WithInsecure())
+	if err != nil {
+		panic(errors.Wrap(err, "in-memory dial failed"))
+	}
+
+	// Success.
+	return client
 }

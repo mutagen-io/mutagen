@@ -43,22 +43,11 @@ func (s *Service) ConnectLocal() (*grpc.ClientConn, error) {
 	listener := NewOneShotListener(serverConn)
 	server.Serve(listener)
 
-	// Create a one-shot dialer.
-	dialer := &oneShotDialer{clientConn}
-
-	// Attempt to create the gRPC client. If we fail, ensure that the server
-	// Goroutine terminates by closing the server connection.
-	client, err := grpc.Dial("", grpc.WithBlock(), grpc.WithDialer(dialer.dial), grpc.WithInsecure())
-	if err != nil {
-		serverConn.Close()
-		return nil, errors.Wrap(err, "unable to connect to in-memory agent")
-	}
-
-	// Success.
-	return client, nil
+	// Create a gRPC client using this connection.
+	return clientWithConn(clientConn), nil
 }
 
-func (s *Service) ConnectSSH(url *url.SSHURL, prompter Prompter) (grpc.ClientConn, error) {
+func (s *Service) ConnectSSH(remote *url.SSHURL, prompter Prompter) (*grpc.ClientConn, error) {
 	// If a prompter has been provided, create a unique identifier for it and
 	// register it. Ensure that it's removed by the time we return from this
 	// function.
@@ -75,8 +64,25 @@ func (s *Service) ConnectSSH(url *url.SSHURL, prompter Prompter) (grpc.ClientCon
 		}()
 	}
 
-	// TODO: Implement.
-	panic("not implemented")
+	// Attempt a connection. If this fails, but it's a failure that justfies
+	// attempting an install, then continue, otherwise fail.
+	if conn, install, err := connectSSH(prompterId, remote); err == nil {
+		return clientWithConn(conn), nil
+	} else if !install {
+		return nil, errors.Wrap(err, "unable to connect to agent")
+	}
+
+	// Attempt to install.
+	if err := installSSH(prompterId, remote); err != nil {
+		return nil, errors.Wrap(err, "unable to install agent")
+	}
+
+	// Re-attempt connectivity.
+	if conn, _, err := connectSSH(prompterId, remote); err != nil {
+		return nil, errors.Wrap(err, "unable to connect to agent")
+	} else {
+		return clientWithConn(conn), nil
+	}
 }
 
 func (s *Service) Prompt(_ context.Context, request *PromptRequest) (*PromptResponse, error) {
