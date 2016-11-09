@@ -48,7 +48,7 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 	// SSH servers.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
 		code, codeErr := processpkg.ExitCodeForError(process.Wait())
-		if codeErr != nil && code == errorCodeCommandNotFound {
+		if codeErr == nil && code == errorCodeCommandNotFound {
 			return nil, true, errors.New("command not found")
 		} else {
 			return nil, false, errors.Wrap(err, "unable to handshake with SSH process")
