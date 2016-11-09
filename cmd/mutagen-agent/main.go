@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
 	"github.com/havoc-io/mutagen"
@@ -32,12 +31,8 @@ func main() {
 		cmd.Fatal(errors.Wrap(err, "unable to write version"))
 	}
 
-	// Create a gRPC server.
-	server := grpc.NewServer()
-
-	// TODO: Register filesystem service.
-
-	// TODO: Register endpoint service.
+	// Create a gRPC server with the necessary services.
+	server := agent.NewServer()
 
 	// Create a faux connection on standard input/output.
 	// HACK: We don't register either stream as a closer, because a Close call

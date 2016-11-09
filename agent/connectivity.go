@@ -145,3 +145,33 @@ func (l *oneShotListener) Close() error {
 func (l *oneShotListener) Addr() net.Addr {
 	return &addr{"memory"}
 }
+
+type oneShotDialerError struct{}
+
+func (e *oneShotDialerError) Error() string {
+	return "dialer is one-shot"
+}
+
+func (e *oneShotDialerError) Temporary() bool {
+	return false
+}
+
+type oneShotDialer struct {
+	conn net.Conn
+}
+
+func (d *oneShotDialer) dial(_ string, _ time.Duration) (net.Conn, error) {
+	// If a connection is present, nil out the record of it and return it.
+	if d.conn != nil {
+		conn := d.conn
+		d.conn = nil
+		return conn, nil
+	}
+
+	// If there are no connections, we're done. We return an error that has a
+	// Temporary method so that the gRPC ClientConn won't continue trying to
+	// re-dial on failure.
+	// TODO: This behavior relies on https://github.com/grpc/grpc-go/pull/974
+	// being merged.
+	return nil, &oneShotDialerError{}
+}
