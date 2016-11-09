@@ -100,7 +100,10 @@ func daemonMain(arguments []string) {
 	defer lock.Unlock()
 
 	// Create a gRPC server with the necessary services.
-	server, daemonTermination := daemon.NewServer()
+	server, daemonTermination, err := daemon.NewServer()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon server"))
+	}
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()

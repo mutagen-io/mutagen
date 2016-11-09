@@ -51,7 +51,7 @@ func (s *Service) ConnectLocal() (*grpc.ClientConn, error) {
 	client, err := grpc.Dial("", grpc.WithBlock(), grpc.WithDialer(dialer.dial), grpc.WithInsecure())
 	if err != nil {
 		serverConn.Close()
-		return nil, errors.Wrap(err, "unable to create ")
+		return nil, errors.Wrap(err, "unable to connect to in-memory agent")
 	}
 
 	// Success.

@@ -4,7 +4,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-type service struct {
+type Service struct {
 	// termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
 	// ignore temination requests originating from clients. The channel is
@@ -14,15 +14,15 @@ type service struct {
 	termination chan struct{}
 }
 
-func newService() (*service, chan struct{}) {
+func NewService() (*Service, chan struct{}) {
 	// Create a termination channel.
 	termination := make(chan struct{}, 1)
 
 	// Create the service.
-	return &service{termination}, termination
+	return &Service{termination}, termination
 }
 
-func (s *service) Terminate(_ context.Context, _ *TerminateRequest) (*TerminateResponse, error) {
+func (s *Service) Terminate(_ context.Context, _ *TerminateRequest) (*TerminateResponse, error) {
 	// Send the termination request in a non-blocking manner. If there is
 	// already a termination request in the pipeline, this method is a no-op.
 	select {
