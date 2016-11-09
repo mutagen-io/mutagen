@@ -29,7 +29,7 @@ func AcquireLock() (*Lock, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create daemon locker")
 	} else if err = locker.Lock(false); err != nil {
-		return nil, errors.Wrap(err, "unable to acquire daemon lock")
+		return nil, err
 	}
 
 	// Create the lock.
