@@ -19,26 +19,16 @@ const (
 )
 
 var bundlePath string
+var agentSSHCommand string
 
 func init() {
+	// Compute the path to the agent bundle.
 	bundlePath = filepath.Join(
 		process.Current.ExecutableParentPath,
 		agentBundleName,
 	)
-}
 
-func installPath() (string, error) {
-	// Compute (and create) the path to the agent parent directory.
-	parent, err := filesystem.Mutagen(agentsDirectoryName, mutagen.Version())
-	if err != nil {
-		return "", errors.Wrap(err, "unable to compute parent directory")
-	}
-
-	// Compute the agent path.
-	return filepath.Join(parent, process.ExecutableName(agentBaseName, runtime.GOOS)), nil
-}
-
-func remoteCommand() string {
+	// Compute the agent SSH command.
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. We have to do this because we
 	// don't have a portable mechanism to invoke the command relative to the
@@ -53,10 +43,21 @@ func remoteCommand() string {
 	// HACK: When invoking on Windows systems, we can use forward slashes for
 	// the path and leave the "exe" suffix off the target name. This saves us a
 	// target check.
-	return path.Join(
+	agentSSHCommand = path.Join(
 		filesystem.MutagenDirectoryName,
 		agentsDirectoryName,
 		mutagen.Version(),
 		agentBaseName,
 	)
+}
+
+func installPath() (string, error) {
+	// Compute (and create) the path to the agent parent directory.
+	parent, err := filesystem.Mutagen(agentsDirectoryName, mutagen.Version())
+	if err != nil {
+		return "", errors.Wrap(err, "unable to compute parent directory")
+	}
+
+	// Compute the agent path.
+	return filepath.Join(parent, process.ExecutableName(agentBaseName, runtime.GOOS)), nil
 }
