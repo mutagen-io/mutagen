@@ -21,8 +21,22 @@ func init() {
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
 }
 
+var agentUsage = `usage: mutagen-agent [-h|--help] [-i|--install]
+`
+
 func main() {
-	// TODO: Check if the agent is being invoked in install mode.
+	// Parse flags.
+	flagSet := cmd.NewFlagSet("mutagen-agent", agentUsage, nil)
+	install := flagSet.BoolP("install", "i", false, "install the agent")
+	flagSet.ParseOrDie(os.Args[1:])
+
+	// If requested, perform installation and exit.
+	if *install {
+		if err := agent.InstallSelf(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to install"))
+		}
+		return
+	}
 
 	// Write our version to standard out to indicate the agent has started. This
 	// is necessary when invoking over SSH to indicate that the process has
