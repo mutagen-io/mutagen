@@ -67,13 +67,13 @@ func main() {
 	// request.
 	if _, ok := environment.Current[agent.PrompterEnvironmentVariable]; ok {
 		promptMain(arguments)
-		cmd.Die(false)
+		return
 	}
 
 	// Verify that there are arguments, otherwise print help and exit
 	if nArguments == 0 {
 		fmt.Fprint(os.Stderr, usage)
-		cmd.Die(true)
+		os.Exit(1)
 	}
 
 	// Split up the arguments. We treat the first argument that doesn't start
@@ -97,10 +97,10 @@ func main() {
 	flagSet.ParseOrDie(arguments)
 	if *version {
 		fmt.Println(mutagen.Version())
-		cmd.Die(false)
+		return
 	} else if *legal {
 		fmt.Print(mutagen.LegalNotice)
-		cmd.Die(false)
+		return
 	}
 
 	// If we haven't exited, then attempt to dispatch the command. The handler
@@ -111,7 +111,7 @@ func main() {
 	// were incorrect) or exited (because that's what all of them do)).
 	if handler, ok := handlers[command]; ok {
 		handler(commandArguments)
-		cmd.Die(false)
+		return
 	}
 
 	// If we couldn't dispatch, the command name is invalid.
@@ -139,5 +139,5 @@ func main() {
 	}
 
 	// Bail.
-	cmd.Die(true)
+	os.Exit(1)
 }

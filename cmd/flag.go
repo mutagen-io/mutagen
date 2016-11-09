@@ -37,11 +37,11 @@ func (f *FlagSet) ParseOrDie(arguments []string) []string {
 	if err := f.FlagSet.Parse(arguments); err != nil {
 		if err == flag.ErrHelp {
 			fmt.Fprint(os.Stdout, f.usage)
-			Die(false)
+			os.Exit(0)
 		} else {
 			Error(err)
 			fmt.Fprint(os.Stderr, f.usage)
-			Die(true)
+			os.Exit(1)
 		}
 	}
 
@@ -61,7 +61,7 @@ func (f *FlagSet) ParseOrDie(arguments []string) []string {
 	if !correctNArg {
 		Error(errors.New("invalid number of positional arguments"))
 		fmt.Fprint(os.Stderr, f.usage)
-		Die(true)
+		os.Exit(1)
 	}
 
 	// Return positional arguments.

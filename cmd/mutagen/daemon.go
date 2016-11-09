@@ -51,13 +51,14 @@ func daemonMain(arguments []string) {
 
 	// If stopping is requested, try to send a termination request.
 	if *stop {
-		// Connect to the daemon.
+		// Create a daemon client and defer its closure.
 		conn, err := dialDaemon()
 		if err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 		}
+		defer conn.Close()
 
-		// Create a daemon server client.
+		// Create a daemon service client.
 		client := daemon.NewDaemonClient(conn)
 
 		// Attempt to invoke termination. We don't check for errors, because the
@@ -68,8 +69,8 @@ func daemonMain(arguments []string) {
 			grpc.FailFast(true),
 		)
 
-		// All done.
-		cmd.Die(false)
+		// Done.
+		return
 	}
 
 	// Unless running (non-backgrounding) is requested, then we need to restart
@@ -85,8 +86,8 @@ func daemonMain(arguments []string) {
 			cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
 		}
 
-		// All done.
-		cmd.Die(false)
+		// Done.
+		return
 	}
 
 	// Attempt to acquire the daemon lock and defer its release. If there is a
