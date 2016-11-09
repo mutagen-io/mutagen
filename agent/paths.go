@@ -27,7 +27,7 @@ func init() {
 	)
 }
 
-func localPath() (string, error) {
+func installPath() (string, error) {
 	// Compute (and create) the path to the agent parent directory.
 	parent, err := filesystem.Mutagen(agentsDirectoryName, mutagen.Version())
 	if err != nil {
@@ -38,7 +38,7 @@ func localPath() (string, error) {
 	return filepath.Join(parent, process.ExecutableName(agentBaseName, runtime.GOOS)), nil
 }
 
-func remotePath() string {
+func remoteCommand() string {
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. We have to do this because we
 	// don't have a portable mechanism to invoke the command relative to the

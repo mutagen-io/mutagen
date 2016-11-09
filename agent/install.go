@@ -23,7 +23,7 @@ func InstallSelf() error {
 	agentPath := process.Current.ExecutablePath
 
 	// Compute the destination.
-	destination, err := localPath()
+	destination, err := installPath()
 	if err != nil {
 		return errors.Wrap(err, "unable to compute agent destination")
 	}
