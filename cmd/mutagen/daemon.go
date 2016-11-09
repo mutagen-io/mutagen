@@ -99,14 +99,8 @@ func daemonMain(arguments []string) {
 	}
 	defer lock.Unlock()
 
-	// Create the gRPC server.
-	server := grpc.NewServer()
-
-	// Create the daemon server and register it.
-	daemonServer := daemon.NewServer()
-	daemon.RegisterDaemonServer(server, daemonServer)
-
-	// TODO: Create and register other services.
+	// Create a gRPC server with the necessary services.
+	server, daemonTermination := daemon.NewServer()
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
@@ -127,7 +121,7 @@ func daemonMain(arguments []string) {
 	signal.Notify(termination, cmd.TerminationSignals...)
 	select {
 	case <-termination:
+	case <-daemonTermination:
 	case <-servingTermination:
-	case <-daemonServer.Termination:
 	}
 }

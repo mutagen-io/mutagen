@@ -1,33 +1,21 @@
 package daemon
 
 import (
-	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
-type Server struct {
-	// Termination is populated with requests from clients invoking the shutdown
-	// method over RPC. It can be ignored by daemon host processes wishing to
-	// ignore temination requests originating from clients. The channel is
-	// buffered and non-blocking, so it doesn't need to be serviced by the
-	// daemon host-process at all - additional incoming shutdown requests will
-	// just bounce off once the channel is populated.
-	Termination chan struct{}
-}
+func NewServer() (*grpc.Server, chan struct{}) {
+	// Create an empty server.
+	server := grpc.NewServer()
 
-func NewServer() *Server {
-	return &Server{
-		Termination: make(chan struct{}, 1),
-	}
-}
+	// Create and register the daemon service.
+	daemonService, termination := newService()
+	RegisterDaemonServer(server, daemonService)
 
-func (s *Server) Terminate(_ context.Context, _ *TerminateRequest) (*TerminateResponse, error) {
-	// Send the termination request in a non-blocking manner. If there is
-	// already a termination request in the pipeline, this method is a no-op.
-	select {
-	case s.Termination <- struct{}{}:
-	default:
-	}
+	// TODO: Create and register the agent service.
 
-	// Done.
-	return &TerminateResponse{}, nil
+	// TODO: Create and register the session service.
+
+	// Success.
+	return server, termination
 }
