@@ -3,8 +3,8 @@ package url
 type Type uint8
 
 const (
-	TypeSSH Type = iota
-	TypePath
+	TypePath Type = iota
+	TypeSSH
 )
 
 func Classify(raw string) Type {
