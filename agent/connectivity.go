@@ -3,149 +3,145 @@ package agent
 import (
 	"io"
 	"net"
-	"os"
-	"os/exec"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
-type stdioAddr struct{}
-
-func (_ *stdioAddr) Network() string {
-	return "stdio"
+type addr struct {
+	name string
 }
 
-func (_ *stdioAddr) String() string {
-	return "stdio"
+func (a *addr) Network() string {
+	return a.name
 }
 
-type stdioConn struct{}
-
-func (_ *stdioConn) Read(b []byte) (int, error) {
-	return os.Stdin.Read(b)
+func (a *addr) String() string {
+	return a.name
 }
 
-func (_ *stdioConn) Write(b []byte) (int, error) {
-	return os.Stdout.Write(b)
+type ioConn struct {
+	input             io.Reader
+	output            io.Writer
+	closers           []io.Closer
+	terminationMarked bool
+	termination       chan<- struct{}
 }
 
-// Close does NOT implement the net.Conn.Close method. This is unfortunately not
-// possible with standard input/output because calling Close on those files
-// might block if they are being read to or written from. This can very easily
-// lead to a deadlock if no more input is coming or no more output is going to
-// be processed. Unfortunately there is no way to implement net.Conn.Close
-// semantics (which are supposed to unblock Read/Write operations) with standard
-// input/output. For this connection, which is effectively a singleton and will
-// only be used once and for the lifetime of the process, it's best to just
-// "close" it by simply exiting the process.
-func (_ *stdioConn) Close() error {
-	panic("standard input/output connections don't support closing")
+func NewIOConn(input io.Reader, output io.Writer, closers ...io.Closer) (net.Conn, <-chan struct{}) {
+	// Create the termination channel.
+	termination := make(chan struct{})
+
+	// Create the connection.
+	return &ioConn{
+		input:       input,
+		output:      output,
+		closers:     closers,
+		termination: termination,
+	}, termination
 }
 
-func (_ *stdioConn) LocalAddr() net.Addr {
-	return &stdioAddr{}
-}
-
-func (_ *stdioConn) RemoteAddr() net.Addr {
-	return &stdioAddr{}
-}
-
-func (_ *stdioConn) SetDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
-}
-
-func (_ *stdioConn) SetReadDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
-}
-
-func (_ *stdioConn) SetWriteDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
-}
-
-type stdioListener struct {
-	conns chan net.Conn
-}
-
-func NewStdioListener() net.Listener {
-	// Create a connections channel, with enough space for our lone connection.
-	conns := make(chan net.Conn, 1)
-
-	// Populate the connections.
-	conns <- &stdioConn{}
-
-	// Create the listener.
-	return &stdioListener{
-		conns: conns,
-	}
-}
-
-func (l *stdioListener) Accept() (net.Conn, error) {
-	// Grab the next connection.
-	conn, ok := <-l.conns
-
-	// If it was already consumed, we've probably been triggered due to close.
-	if !ok {
-		return nil, errors.New("listener closed")
+func (c *ioConn) markTermination() {
+	// If we've already marked termination by closing the channel, don't do it
+	// again.
+	if c.terminationMarked {
+		return
 	}
 
-	// Success.
-	return conn, nil
+	// Mark termination recorded and signal by closing the channel.
+	c.terminationMarked = true
+	close(c.termination)
 }
 
-func (l *stdioListener) Close() error {
-	// Close the connections channel, terminating any Accept calls.
-	close(l.conns)
+func (c *ioConn) Read(b []byte) (int, error) {
+	// Forward the read.
+	n, err := c.input.Read(b)
 
-	// Success.
+	// If any error occurred, mark termination.
+	if err != nil {
+		c.markTermination()
+	}
+
+	// Done.
+	return n, err
+}
+
+func (c *ioConn) Write(b []byte) (int, error) {
+	// Forward the write to standard output.
+	n, err := c.output.Write(b)
+
+	// If any error occurred, mark termination.
+	if err != nil {
+		c.markTermination()
+	}
+
+	// Done.
+	return n, err
+}
+
+// Close attempts to implement the net.Conn.Close method, though it may not
+// share the exact same semantics because the underlying streams may not support
+// unblocking Read/Write calls on Close. In this case, you have to be very
+// careful to avoid relying on this preemption behavior, otherwise the calling
+// Goroutines might deadlock.
+func (c *ioConn) Close() error {
+	// Close all closers, marking the first error.
+	var err error
+	for _, closer := range c.closers {
+		if closeErr := closer.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+
+	// Done.
+	return err
+}
+
+func (c *ioConn) LocalAddr() net.Addr {
+	return &addr{"io"}
+}
+
+func (c *ioConn) RemoteAddr() net.Addr {
+	return &addr{"io"}
+}
+
+func (c *ioConn) SetDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
+}
+
+func (c *ioConn) SetReadDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
+}
+
+func (c *ioConn) SetWriteDeadline(_ time.Time) error {
+	return errors.New("deadlines not supported")
+}
+
+type oneShotListener struct {
+	conn net.Conn
+}
+
+func NewOneShotListener(conn net.Conn) net.Listener {
+	return &oneShotListener{conn}
+}
+
+func (l *oneShotListener) Accept() (net.Conn, error) {
+	// If a connection is present, nil out the record of it and return it.
+	if l.conn != nil {
+		conn := l.conn
+		l.conn = nil
+		return conn, nil
+	}
+
+	// If there are no connections, we're done.
+	return nil, errors.New("no more connections")
+}
+
+func (l *oneShotListener) Close() error {
+	// No accept calls ever block, so we don't need to do anything.
 	return nil
 }
 
-func (l *stdioListener) Addr() net.Addr {
-	return &stdioAddr{}
-}
-
-type agentConn struct {
-	process *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.Reader
-}
-
-func (c *agentConn) Read(b []byte) (int, error) {
-	return c.stdout.Read(b)
-}
-
-func (c *agentConn) Write(b []byte) (int, error) {
-	return c.stdin.Write(b)
-}
-
-func (c *agentConn) Close() error {
-	// Close the process' standard input.
-	if err := c.stdin.Close(); err != nil {
-		c.process.Wait()
-		return err
-	}
-
-	// Wait for the process to terminate.
-	return c.process.Wait()
-}
-
-func (c *agentConn) LocalAddr() net.Addr {
-	return &stdioAddr{}
-}
-
-func (c *agentConn) RemoteAddr() net.Addr {
-	return &stdioAddr{}
-}
-
-func (c *agentConn) SetDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
-}
-
-func (c *agentConn) SetReadDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
-}
-
-func (c *agentConn) SetWriteDeadline(_ time.Time) error {
-	return errors.New("deadlines not supported")
+func (l *oneShotListener) Addr() net.Addr {
+	return &addr{"memory"}
 }
