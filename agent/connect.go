@@ -44,6 +44,8 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 
 	// Confirm that the process started correctly by performing a version
 	// handshake.
+	// TODO: Figure out how to identify "command not found" errors for Windows
+	// SSH servers.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
 		code, codeErr := processpkg.ExitCodeForError(process.Wait())
 		if codeErr != nil && code == errorCodeCommandNotFound {
