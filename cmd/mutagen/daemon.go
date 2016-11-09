@@ -38,7 +38,7 @@ idempotent - a daemon instance is only created if one doesn't already exist.
 `
 
 func daemonMain(arguments []string) {
-	// Parse and handle flags.
+	// Parse flags.
 	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
 	run := flagSet.BoolP("run", "r", false, "run the daemon server")
 	stop := flagSet.BoolP("stop", "s", false, "stop any running daemon server")
