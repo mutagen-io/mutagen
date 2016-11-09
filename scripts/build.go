@@ -275,7 +275,9 @@ func buildAgentForTargetInDevelopment(target Target) bool {
 		target.GOOS == "darwin" ||
 		target.GOOS == "windows" ||
 		(target.GOOS == "linux" &&
-			(target.GOARCH == "amd64" || target.GOARCH == "arm"))
+			(target.GOARCH == "amd64" ||
+			target.GOARCH == "386" ||
+			target.GOARCH == "arm"))
 }
 
 var buildUsage = `usage: build [-h|--help] [-r|--release]
