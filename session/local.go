@@ -1,4 +1,4 @@
-package agent
+package session
 
 import (
 	"net"
@@ -9,9 +9,12 @@ import (
 	"github.com/havoc-io/mutagen/grpcutil"
 )
 
-func DialLocal() *grpc.ClientConn {
-	// Create a gRPC server with the necessary services.
-	server := NewServer()
+func dialLocal() *grpc.ClientConn {
+	// Create a gRPC server.
+	server := grpc.NewServer()
+
+	// Register an endpoint service.
+	RegisterEndpointServer(server, NewEndpoint())
 
 	// Create an in-memory pipe.
 	clientConnection, serverConnection := net.Pipe()

@@ -41,7 +41,7 @@ func clientConnectionAndPathForURL(raw string, prompter string) (*grpc.ClientCon
 	// Handle based on URL type.
 	if urlType := url.Classify(raw); urlType == url.TypePath {
 		// Create an in-memory agent and connection.
-		return agent.DialLocal(), raw, nil
+		return dialLocal(), raw, nil
 	} else if urlType == url.TypeSSH {
 		// Parse the SSH URL.
 		remote, err := url.ParseSSH(raw)
