@@ -27,6 +27,7 @@ const (
 )
 
 type Endpoint struct {
+	syncpkg.RWMutex
 	version         SessionVersion
 	root            string
 	caseInsensitive bool
@@ -34,48 +35,54 @@ type Endpoint struct {
 	stagingPath     string
 }
 
-func NewEndpoint(session string, version SessionVersion, root string, alpha bool) (*Endpoint, error) {
-	// Ensure that we support this session version.
-	if !version.supported() {
+func NewEndpoint() *Endpoint {
+	return &Endpoint{}
+}
+
+func (e *Endpoint) Initialize(_ context.Context, request *InitializeRequest) (*InitializeResponse, error) {
+	// Lock the endpoint and ensure its release.
+	e.Lock()
+	defer e.Unlock()
+
+	// If we're already initialized, we can't do it again.
+	if e.version != SessionVersion_Unknown {
+		return nil, errors.New("endpoint already initialized")
+	}
+
+	// Validate the request.
+	if request.Session == "" {
+		return nil, errors.New("empty session identifier")
+	} else if !request.Version.supported() {
 		return nil, errors.New("unsupported session version")
+	} else if request.Root == "" {
+		return nil, errors.New("empty root path")
 	}
 
 	// Determine whether or not the root is case-sensitive. This will also
 	// ensure that the endpoint has write access to this path.
-	caseInsensitive, err := filesystem.CaseInsensitive(root)
+	caseInsensitive, err := filesystem.CaseInsensitive(request.Root)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to determine case-sensitivity")
 	}
 
 	// Compute the cache path.
 	cacheName := alphaCacheName
-	if !alpha {
+	if !request.Alpha {
 		cacheName = betaCacheName
 	}
-	cachePath, err := subpath(session, cacheName)
+	cachePath, err := subpath(request.Session, cacheName)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute cache path")
 	}
 
 	// Compute (and create) the staging path.
-	stagingPath, err := stagingPath(session)
+	stagingPath, err := stagingPath(request.Session)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute staging path")
 	}
 
-	// Create the endpoint.
-	return &Endpoint{
-		version:         version,
-		root:            root,
-		caseInsensitive: caseInsensitive,
-		cachePath:       cachePath,
-		stagingPath:     stagingPath,
-	}, nil
-}
-
-func (e *Endpoint) Probe(_ context.Context, request *ProbeRequest) (*ProbeResponse, error) {
 	// Check if the root decomposes Unicode.
-	decomposesUnicode, err := filesystem.DecomposesUnicode(e.root)
+	decomposesUnicode, err := filesystem.DecomposesUnicode(request.Root)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to determine Unicode decomposition behavior")
 	}
@@ -85,8 +92,15 @@ func (e *Endpoint) Probe(_ context.Context, request *ProbeRequest) (*ProbeRespon
 	// the filesystem and it falls on OS boundaries anyway. We just use a
 	// hard-coded constant.
 
+	// Store parameters, thereby marking the endpoint as initialized.
+	e.version = request.Version
+	e.root = request.Root
+	e.caseInsensitive = caseInsensitive
+	e.cachePath = cachePath
+	e.stagingPath = stagingPath
+
 	// Success.
-	return &ProbeResponse{
+	return &InitializeResponse{
 		DecomposesUnicode:      decomposesUnicode,
 		PreservesExecutability: preservesExecutability,
 	}, nil
@@ -97,6 +111,15 @@ const (
 )
 
 func (e *Endpoint) Watch(request *WatchRequest, responses Endpoint_WatchServer) error {
+	// Read-lock the endpoint and ensure its release.
+	e.RLock()
+	defer e.RUnlock()
+
+	// If we're not initialized, we can't do anything.
+	if e.version == SessionVersion_Unknown {
+		return nil, errors.New("endpoint not initialized")
+	}
+
 	// Create a channel to receive watch events. It needs to be buffered because
 	// the watcher sends events in a non-blocking fashion and we might not be
 	// able to transmit notifications quite as fast as they can be generated.
@@ -129,6 +152,15 @@ func (e *Endpoint) Watch(request *WatchRequest, responses Endpoint_WatchServer) 
 }
 
 func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
+	// Read-lock the endpoint and ensure its release.
+	e.RLock()
+	defer e.RUnlock()
+
+	// If we're not initialized, we can't do anything.
+	if e.version == SessionVersion_Unknown {
+		return nil, errors.New("endpoint not initialized")
+	}
+
 	// Grab the initial request.
 	request, err := stream.Recv()
 	if err != nil {
@@ -253,6 +285,15 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 }
 
 func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_TransmitServer) error {
+	// Read-lock the endpoint and ensure its release.
+	e.RLock()
+	defer e.RUnlock()
+
+	// If we're not initialized, we can't do anything.
+	if e.version == SessionVersion_Unknown {
+		return nil, errors.New("endpoint not initialized")
+	}
+
 	// Create an rsyncer.
 	rsyncer := rsync.New()
 
@@ -275,6 +316,15 @@ func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_Transmi
 }
 
 func (e *Endpoint) Snapshot(_ context.Context, request *SnapshotRequest) (*SnapshotResponse, error) {
+	// Read-lock the endpoint and ensure its release.
+	e.RLock()
+	defer e.RUnlock()
+
+	// If we're not initialized, we can't do anything.
+	if e.version == SessionVersion_Unknown {
+		return nil, errors.New("endpoint not initialized")
+	}
+
 	// Load the cache. If it fails, just create an empty cache.
 	cache := &sync.Cache{}
 	if encoding.LoadAndUnmarshalProtobuf(e.cachePath, cache) != nil {

@@ -97,9 +97,14 @@ service Sessions {
     rpc Stop(StopRequest) returns (StopResponse) {}
 }
 
-message ProbeRequest {}
+message InitializeRequest {
+    string session = 1;
+    SessionVersion version = 2;
+    string root = 3;
+    bool alpha = 4;
+}
 
-message ProbeResponse {
+message InitializeResponse {
     bool decomposesUnicode = 1;
     bool preservesExecutability = 2;
 }
@@ -140,7 +145,7 @@ message SnapshotResponse {
 // TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
 
 service Endpoint {
-    rpc Probe(ProbeRequest) returns (ProbeResponse) {}
+    rpc Initialize(InitializeRequest) returns (InitializeResponse) {}
     rpc Watch(WatchRequest) returns (stream WatchResponse) {}
     rpc Stage(stream StageRequest) returns (stream StageResponse) {}
     rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
