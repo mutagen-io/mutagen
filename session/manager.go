@@ -8,10 +8,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"google.golang.org/grpc"
+
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/agent"
+	"github.com/havoc-io/mutagen/url"
 )
 
 type Manager struct {
@@ -36,11 +39,59 @@ func NewManager(agentService *agent.Service) (*Manager, error) {
 	}, nil
 }
 
+func (m *Manager) clientAndPathForURL(raw string, prompter agent.Prompter) (*grpc.ClientConn, string, error) {
+	// Handle based on URL type.
+	if urlType := url.Classify(raw); urlType == url.TypePath {
+		client, err := m.agentService.ConnectLocal()
+		if err != nil {
+			return nil, "", errors.Wrap(err, "unable to create local agent")
+		}
+		return client, raw, nil
+	} else if urlType == url.TypeSSH {
+		remote, err := url.ParseSSH(raw)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "unable to parse SSH URL")
+		}
+		client, err := m.agentService.ConnectSSH(remote, prompter)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "unable to create SSH agent connection")
+		}
+		return client, remote.Path, nil
+	}
+
+	// Handle invalid URLs.
+	return nil, "", errors.New("invalid URL")
+}
+
 func (m *Manager) Start(stream Manager_StartServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()
 	if err != nil {
 		return errors.Wrap(err, "unable to receive start request")
+	}
+
+	// Create a prompter wrapper around the stream.
+	prompter := func(prompt *agent.PromptRequest) (*agent.PromptResponse, error) {
+		if err := stream.Send(&StartResponse{Prompt: prompt}); err != nil {
+			return nil, errors.Wrap(err, "unable to send prompt request")
+		} else if response, err := stream.Recv(); err != nil {
+			return nil, errors.Wrap(err, "unable to receive prompt response")
+		} else {
+			return response.Response, err
+		}
+	}
+
+	// Connect to alpha.
+	alpha, alphaPath, err := m.clientAndPathForURL(request.Alpha, prompter)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to alpha")
+	}
+
+	// Connect to beta.
+	beta, betaPath, err := m.clientAndPathForURL(request.Beta, prompter)
+	if err != nil {
+		alpha.Close()
+		return errors.Wrap(err, "unable to connect to beta")
 	}
 
 	// Create a session.
@@ -58,12 +109,16 @@ func (m *Manager) Start(stream Manager_StartServer) error {
 
 	// Create the session state.
 	sessionState := &SessionState{
-		Session:             session,
+		Session:              session,
 		SynchronizationState: &SynchronizationState{},
 	}
 
 	// TODO: Implement.
 	_ = sessionState
+	_ = alpha
+	_ = alphaPath
+	_ = beta
+	_ = betaPath
 	panic("not implemented")
 }
 

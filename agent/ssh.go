@@ -18,6 +18,8 @@ import (
 const (
 	PrompterEnvironmentVariable              = "MUTAGEN_PROMPTER"
 	PrompterContextBase64EnvironmentVariable = "MUTAGEN_PROMPTER_CONTEXT_BASE64"
+
+	sshConnectTimeoutSeconds = 5
 )
 
 type PromptClass uint8
@@ -115,6 +117,7 @@ func scp(prompter, context, local string, remote *url.SSHURL) error {
 
 	// Set up arguments.
 	var scpArguments []string
+	scpArguments = append(scpArguments, fmt.Sprintf("-oConnectTimeout=%d", sshConnectTimeoutSeconds))
 	if remote.Port != 0 {
 		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", remote.Port))
 	}
@@ -158,6 +161,7 @@ func ssh(prompter, context string, remote *url.SSHURL, command string) (*exec.Cm
 
 	// Set up arguments.
 	var sshArguments []string
+	sshArguments = append(sshArguments, fmt.Sprintf("-oConnectTimeout=%d", sshConnectTimeoutSeconds))
 	if remote.Port != 0 {
 		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", remote.Port))
 	}
