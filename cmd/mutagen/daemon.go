@@ -9,9 +9,13 @@ import (
 
 	"golang.org/x/net/context"
 
+	"google.golang.org/grpc"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/process"
+	"github.com/havoc-io/mutagen/session"
+	"github.com/havoc-io/mutagen/ssh"
 )
 
 var daemonUsage = `usage: mutagen daemon [-h|--help] [-s|--stop]
@@ -84,11 +88,23 @@ func daemonMain(arguments []string) {
 	}
 	defer lock.Unlock()
 
-	// Create a gRPC server with the necessary services.
-	server, daemonTermination, err := daemon.NewServer()
+	// Create a gRPC server.
+	server := grpc.NewServer()
+
+	// Create and register the daemon service.
+	daemonService, daemonTermination := daemon.NewService()
+	daemon.RegisterDaemonServer(server, daemonService)
+
+	// Create and register the SSH service.
+	sshService := ssh.NewService()
+	ssh.RegisterPromptServer(server, sshService)
+
+	// Create and register the session service.
+	sessionService, err := session.NewService()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon server"))
+		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
 	}
+	session.RegisterSessionsServer(server, sessionService)
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
