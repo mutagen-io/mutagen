@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package agent;
+package ssh;
 
 message PromptRequest {
     string prompter = 1;
@@ -13,5 +13,6 @@ message PromptResponse {
 }
 
 service Prompt {
-    rpc Prompt(PromptRequest) returns (PromptResponse) {}
+    rpc Request(PromptRequest) returns (PromptResponse) {}
+    rpc Respond(stream PromptResponse) returns (stream PromptRequest) {}
 }

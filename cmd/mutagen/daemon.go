@@ -1,15 +1,11 @@
 package main
 
 import (
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
-	"time"
 
 	"github.com/pkg/errors"
-
-	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
 
@@ -17,18 +13,6 @@ import (
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/process"
 )
-
-func dialDaemon() (*grpc.ClientConn, error) {
-	return grpc.Dial(
-		"",
-		grpc.WithBlock(),
-		grpc.WithDialer(func(_ string, timeout time.Duration) (net.Conn, error) {
-			return daemon.DialTimeout(timeout)
-		}),
-		grpc.WithInsecure(),
-		grpc.WithTimeout(1*time.Second),
-	)
-}
 
 var daemonUsage = `usage: mutagen daemon [-h|--help] [-s|--stop]
 
@@ -51,22 +35,22 @@ func daemonMain(arguments []string) {
 
 	// If stopping is requested, try to send a termination request.
 	if *stop {
-		// Create a daemon client and defer its closure.
-		conn, err := dialDaemon()
+		// Create a daemon client connection and defer its closure.
+		daemonClientConnection, err := newDaemonClientConnection()
 		if err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 		}
-		defer conn.Close()
+		defer daemonClientConnection.Close()
 
 		// Create a daemon service client.
-		client := daemon.NewDaemonClient(conn)
+		daemonClient := daemon.NewDaemonClient(daemonClientConnection)
 
 		// Attempt to invoke termination. We don't check for errors, because the
 		// daemon may terminate before it can send a response.
-		client.Terminate(
+		daemonClient.Terminate(
 			context.Background(),
 			&daemon.TerminateRequest{},
-			grpc.FailFast(true),
+			grpcCallFlags...,
 		)
 
 		// Done.

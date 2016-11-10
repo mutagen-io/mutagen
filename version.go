@@ -15,8 +15,10 @@ const (
 	VersionPatch = 0
 )
 
-func Version() string {
-	return fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
+var Version string
+
+func init() {
+	Version = fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
 }
 
 type versionBytes [12]byte

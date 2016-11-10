@@ -6,7 +6,6 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/havoc-io/mutagen/agent/agent.proto";
 import "github.com/havoc-io/mutagen/rsync/rsync.proto";
 
 enum SessionVersion {
@@ -55,12 +54,10 @@ message SessionState {
 message StartRequest {
     string alpha = 1;
     string beta = 2;
-    agent.PromptResponse response = 3;
+    string prompter = 3;
 }
 
-message StartResponse {
-    agent.PromptRequest prompt = 1;
-}
+message StartResponse {}
 
 message ListRequest {
     bool streaming = 1;
@@ -71,7 +68,7 @@ message ListResponse {
 }
 
 message PauseRequest {
-    string session = 1;
+    string sessionIdentifier = 1;
 }
 
 message PauseResponse {}
@@ -79,26 +76,24 @@ message PauseResponse {}
 // TODO: Add ResolveRequest and ResolveResponse once sync data structures exist.
 
 message ResumeRequest {
-    string session = 1;
-    agent.PromptResponse response = 2;
+    string sessionIdentifier = 1;
+    string prompter = 2;
 }
 
-message ResumeResponse {
-    agent.PromptRequest prompt = 1;
-}
+message ResumeResponse {}
 
 message StopRequest {
-    string session = 1;
+    string sessionIdentifier = 1;
 }
 
 message StopResponse {}
 
-service Manager {
-    rpc Start(stream StartRequest) returns (stream StartResponse) {}
+service Sessions {
+    rpc Start(StartRequest) returns (StartResponse) {}
     rpc List(ListRequest) returns (stream ListResponse) {}
     rpc Pause(PauseRequest) returns (PauseResponse) {}
     // TODO: Add Resolve.
-    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Resume(ResumeRequest) returns (ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
 }
 

@@ -2,26 +2,23 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/pkg/errors"
 
-	"google.golang.org/grpc/grpclog"
-
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/havoc-io/mutagen"
-	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
+	"github.com/havoc-io/mutagen/grpcutil"
+	"github.com/havoc-io/mutagen/ssh"
 )
 
 func init() {
 	// Squelch gRPC, because it thinks it owns standard error and vomits out
 	// every internal diagnostic message.
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	grpcutil.Squelch()
 }
 
 // usage provides help information for the main Mutagen entry point.
@@ -65,7 +62,7 @@ func main() {
 
 	// Check if a prompting environment is set. If so, treat this as a prompt
 	// request.
-	if _, ok := environment.Current[agent.PrompterEnvironmentVariable]; ok {
+	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
 		promptMain(arguments)
 		return
 	}
@@ -96,7 +93,7 @@ func main() {
 	legal := flagSet.BoolP("legal", "l", false, "")
 	flagSet.ParseOrDie(arguments)
 	if *version {
-		fmt.Println(mutagen.Version())
+		fmt.Println(mutagen.Version)
 		return
 	} else if *legal {
 		fmt.Print(mutagen.LegalNotice)

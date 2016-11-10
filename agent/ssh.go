@@ -1,203 +1,274 @@
 package agent
 
 import (
-	"encoding/base64"
 	"fmt"
+	"net"
+	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/pkg/errors"
 
-	"github.com/howeyc/gopass"
+	"google.golang.org/grpc"
 
+	uuid "github.com/satori/go.uuid"
+
+	"github.com/havoc-io/mutagen"
+	"github.com/havoc-io/mutagen/connectivity"
 	"github.com/havoc-io/mutagen/environment"
-	"github.com/havoc-io/mutagen/process"
+	"github.com/havoc-io/mutagen/filesystem"
+	"github.com/havoc-io/mutagen/grpcutil"
+	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/url"
 )
 
-const (
-	PrompterEnvironmentVariable              = "MUTAGEN_PROMPTER"
-	PrompterContextBase64EnvironmentVariable = "MUTAGEN_PROMPTER_CONTEXT_BASE64"
+var sshCommand string
 
-	sshConnectTimeoutSeconds = 5
-)
-
-type PromptClass uint8
-
-const (
-	PromptClassSecret PromptClass = iota
-	PromptClassDisplay
-	PromptClassBinary
-)
-
-func ClassifyPrompt(prompt string) PromptClass {
-	// TODO: Implement using white-listing regexes based on known OpenSSH
-	// prompts.
-	return PromptClassSecret
+func init() {
+	// Compute the agent SSH command.
+	// HACK: This assumes that the SSH user's home directory is used as the
+	// default working directory for SSH commands. We have to do this because we
+	// don't have a portable mechanism to invoke the command relative to the
+	// user's home directory (tilde doesn't work on Windows) and we don't want
+	// to do a probe of the remote system before invoking the endpoint. This
+	// assumption should be fine for 99.9% of cases, but if it becomes a major
+	// issue, the only other options I see are probing before invoking (slow) or
+	// using the Go SSH library to do this (painful to faithfully emulate
+	// OpenSSH's behavior). Perhaps probing could be hidden behind an option?
+	// HACK: We're assuming that none of these path components have spaces in
+	// them, but since we control all of them, this is probably okay.
+	// HACK: When invoking on Windows systems, we can use forward slashes for
+	// the path and leave the "exe" suffix off the target name. This saves us a
+	// target check.
+	sshCommand = path.Join(
+		filesystem.MutagenDirectoryName,
+		agentsDirectoryName,
+		mutagen.Version,
+		agentBaseName,
+	)
 }
 
-func PromptCommandLine(context, prompt string) (string, error) {
-	// Classify the prompt.
-	class := ClassifyPrompt(prompt)
-
-	// Figure out which getter to use.
-	var getter func() ([]byte, error)
-	if class == PromptClassDisplay || class == PromptClassBinary {
-		getter = gopass.GetPasswdEchoed
-	} else {
-		getter = gopass.GetPasswd
-	}
-
-	// Print the context (if any) and the prompt.
-	if context != "" {
-		fmt.Println(context)
-	}
-	fmt.Print(prompt)
-
-	// Get the result.
-	result, err := getter()
+func probeSSHPOSIX(prompter string, remote *url.SSHURL) (string, string, error) {
+	// Try to invoke uname and print kernel and machine name.
+	unameSMBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "uname -s -m")
 	if err != nil {
-		return "", errors.Wrap(err, "unable to read response")
+		return "", "", errors.Wrap(err, "unable to invoke uname")
+	}
+
+	// Parse uname output.
+	unameSM := strings.Split(strings.TrimSpace(string(unameSMBytes)), " ")
+	if len(unameSM) != 2 {
+		return "", "", errors.New("invalid uname output")
+	}
+	unameS := unameSM[0]
+	unameM := unameSM[1]
+
+	// Translate GOOS.
+	var goos string
+	if unameSIsWindowsPosix(unameS) {
+		goos = "windows"
+	} else if g, ok := unameSToGOOS[unameS]; ok {
+		goos = g
+	} else {
+		return "", "", errors.New("unknown platform")
+	}
+
+	// Translate GOARCH.
+	goarch, ok := unameMToGOARCH[unameM]
+	if !ok {
+		return "", "", errors.New("unknown architecture")
 	}
 
 	// Success.
-	return string(result), nil
+	return goos, goarch, nil
 }
 
-func prompterEnvironment(prompter, context string) []string {
-	// If there is no prompter, return nil to just use the current environment.
-	if prompter == "" {
-		return nil
-	}
-
-	// Convert context to base64 encoding so that we can pass it through the
-	// environment safely.
-	contextBase64 := base64.StdEncoding.EncodeToString([]byte(context))
-
-	// Create a copy of the current environment.
-	result := make(map[string]string, len(environment.Current))
-	for k, v := range environment.Current {
-		result[k] = v
-	}
-
-	// Insert necessary environment variables.
-	result["SSH_ASKPASS"] = process.Current.ExecutablePath
-	result["DISPLAY"] = "mutagen"
-	result[PrompterEnvironmentVariable] = prompter
-	result[PrompterContextBase64EnvironmentVariable] = contextBase64
-
-	// Convert into the desired format.
-	return environment.Format(result)
-}
-
-// TODO: Document that the local path must be absolute.
-func scp(prompter, context, local string, remote *url.SSHURL) error {
-	// Locate the SCP command.
-	scp, err := scpCommand()
+func probeSSHWindows(prompter string, remote *url.SSHURL) (string, string, error) {
+	// Try to print the remote environment.
+	envBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "cmd /c set")
 	if err != nil {
-		return errors.Wrap(err, "unable to identify SCP executable")
+		return "", "", errors.Wrap(err, "unable to invoke set")
 	}
 
-	// HACK: On Windows, we attempt to use SCP executables that might not
-	// understand Windows paths because they're designed to run inside a POSIX-
-	// style environment (e.g. MSYS or Cygwin). To work around this, we run them
-	// in the same directory as the source and just pass them the source base
-	// name. This works fine on other systems as well. Unfortunately this means
-	// that we need to use absolute paths, but we do that anyway.
-	if !filepath.IsAbs(local) {
-		return errors.New("scp source path must be absolute")
-	}
-	workingDirectory, sourceBase := filepath.Split(local)
-
-	// Compute the destination URL.
-	destinationURL := fmt.Sprintf("%s:%s", remote.Hostname, remote.Path)
-	if remote.Username != "" {
-		destinationURL = fmt.Sprintf("%s@%s", remote.Username, destinationURL)
+	// Parse set output.
+	env, err := environment.ParseBlock(string(envBytes))
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to parse environment")
 	}
 
-	// Set up arguments.
-	var scpArguments []string
-	scpArguments = append(scpArguments, fmt.Sprintf("-oConnectTimeout=%d", sshConnectTimeoutSeconds))
-	if remote.Port != 0 {
-		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", remote.Port))
+	// Translate GOOS.
+	goos, ok := osEnvToGOOS[env["OS"]]
+	if !ok {
+		return "", "", errors.New("unknown platform")
 	}
-	scpArguments = append(scpArguments, sourceBase, destinationURL)
 
-	// Create the process.
-	scpProcess := exec.Command(scp, scpArguments...)
+	// Translate GOARCH.
+	goarch, ok := processorArchitectureEnvToGOARCH[env["PROCESSOR_ARCHITECTURE"]]
+	if !ok {
+		return "", "", errors.New("unknown architecture")
+	}
 
-	// Set the working directory.
-	scpProcess.Dir = workingDirectory
+	// Success.
+	return goos, goarch, nil
+}
 
-	// Force it to run detached.
-	scpProcess.SysProcAttr = processAttributes()
+// probeSSHPlatform attempts to identify the properties of the target platform,
+// namely GOOS, GOARCH, and whether or not it's a POSIX environment (which it
+// might be even on Windows).
+func probeSSHPlatform(prompter string, remote *url.SSHURL) (string, string, bool, error) {
+	// Attempt to probe for a POSIX platform. This might apply to certain
+	// Windows environments as well.
+	if goos, goarch, err := probeSSHPOSIX(prompter, remote); err == nil {
+		return goos, goarch, true, nil
+	}
 
-	// Set the environment necessary for prompting.
-	scpProcess.Env = prompterEnvironment(prompter, context)
+	// If that fails, attempt a Windows fallback.
+	if goos, goarch, err := probeSSHWindows(prompter, remote); err == nil {
+		return goos, goarch, false, nil
+	}
 
-	// Run the operation.
-	if err = scpProcess.Run(); err != nil {
-		return errors.Wrap(err, "unable to run SCP process")
+	// Failure.
+	return "", "", false, errors.New("exhausted probing methods")
+}
+
+func installSSH(prompter string, remote *url.SSHURL) error {
+	// Detect the target platform.
+	goos, goarch, posix, err := probeSSHPlatform(prompter, remote)
+	if err != nil {
+		return errors.Wrap(err, "unable to probe remote platform")
+	}
+
+	// Find the appropriate agent binary. Ensure that it's cleaned up when we're
+	// done with it.
+	agent, err := executableForPlatform(goos, goarch)
+	if err != nil {
+		return errors.Wrap(err, "unable to get agent for platform")
+	}
+	defer os.Remove(agent)
+
+	// Copy the agent to the remote. We use a unique identifier for the
+	// temporary destination. For Windows remotes, we add a ".exe" suffix, which
+	// will automatically make the file executable on the remote (POSIX systems
+	// are handled separately below). For POSIX systems, we add a dot prefix to
+	// hide the executable a bit.
+	// HACK: This assumes that the SSH user's home directory is used as the
+	// default destination directory for SCP copies. That should be true in
+	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
+	// probe information to handle this more carefully.
+	destination := agentBaseName + uuid.NewV4().String()
+	if goos == "windows" {
+		destination += ".exe"
+	}
+	if posix {
+		destination = "." + destination
+	}
+	destinationURL := &url.SSHURL{
+		Username: remote.Username,
+		Hostname: remote.Hostname,
+		Port:     remote.Port,
+		Path:     destination,
+	}
+	if err := ssh.Copy(prompter, "Copying agent", agent, destinationURL); err != nil {
+		return errors.Wrap(err, "unable to copy agent binary")
+	}
+
+	// Invoke the remote installation. For POSIX remotes, we have to incorporate
+	// a "chmod +x" in order for the remote to execute the installer. The POSIX
+	// solution is necessary (as opposed to simply chmod'ing the file before
+	// copy) because if an installer is sent from a Windows to a POSIX system
+	// using SCP, there's no way to preserve the executability bit (since
+	// Windows doesn't have one). This will also be applied to Windows POSIX
+	// environments, but a "chmod +x" there will have no effect.
+	// HACK: This assumes that the SSH user's home directory is used as the
+	// default working directory for SSH commands. We have to do this because we
+	// don't have a portable mechanism to invoke the command relative to the
+	// user's home directory and we don't want to do a probe of the remote
+	// system before invoking the endpoint. This assumption should be fine for
+	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
+	// probe information to handle this more carefully.
+	var installCommand string
+	if posix {
+		installCommand = fmt.Sprintf("chmod +x %s && ./%s --install", destination, destination)
+	} else {
+		installCommand = fmt.Sprintf("%s --install", destination)
+	}
+	if err := ssh.Run(prompter, "Installing agent", remote, installCommand); err != nil {
+		return errors.Wrap(err, "unable to invoke installation")
 	}
 
 	// Success.
 	return nil
 }
 
-// TODO: Document that the URL path is NOT used as a working directory, it is
-// simply ignored.
-func ssh(prompter, context string, remote *url.SSHURL, command string) (*exec.Cmd, error) {
-	// Locate the SSH command.
-	ssh, err := sshCommand()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to identify SSH executable")
-	}
-
-	// Compute the target.
-	target := remote.Hostname
-	if remote.Username != "" {
-		target = fmt.Sprintf("%s@%s", remote.Username, remote.Hostname)
-	}
-
-	// Set up arguments.
-	var sshArguments []string
-	sshArguments = append(sshArguments, fmt.Sprintf("-oConnectTimeout=%d", sshConnectTimeoutSeconds))
-	if remote.Port != 0 {
-		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", remote.Port))
-	}
-	sshArguments = append(sshArguments, target, command)
-
-	// Create the process.
-	sshProcess := exec.Command(ssh, sshArguments...)
-
-	// Force it to run detached.
-	sshProcess.SysProcAttr = processAttributes()
-
-	// Set the environment necessary for prompting.
-	sshProcess.Env = prompterEnvironment(prompter, context)
-
-	// Done.
-	return sshProcess, nil
+type sshConnection struct {
+	net.Conn
+	process *exec.Cmd
 }
 
-func sshRun(prompter, context string, remote *url.SSHURL, command string) error {
-	// Create the process.
-	process, err := ssh(prompter, context, remote, command)
+func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
+	// Create an SSH process.
+	process, err := ssh.Command(prompter, "Connecting to agent", remote, sshCommand)
 	if err != nil {
-		return errors.Wrap(err, "unable to create command")
+		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
 
-	// Run the process.
-	return process.Run()
+	// Create pipes to the process.
+	stdin, err := process.StdinPipe()
+	if err != nil {
+		return nil, false, errors.Wrap(err, "unable to redirect SSH input")
+	}
+	stdout, err := process.StdoutPipe()
+	if err != nil {
+		return nil, false, errors.Wrap(err, "unable to redirect SSH output")
+	}
+
+	// Start the process.
+	if err = process.Start(); err != nil {
+		return nil, false, errors.Wrap(err, "unable to start SSH process")
+	}
+
+	// Confirm that the process started correctly by performing a version
+	// handshake.
+	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
+		if ssh.IsCommandNotFound(process.Wait()) {
+			return nil, true, errors.New("command not found")
+		} else {
+			return nil, false, errors.Wrap(err, "unable to handshake with SSH process")
+		}
+	} else if !versionMatch {
+		return nil, true, errors.New("version mismatch")
+	}
+
+	// Create a connection.
+	// HACK: We don't register the standard output pipe as a closer, even though
+	// we could, because it might have undesirable blocking behavior. In any
+	// case, there's no NEED to close it, because it happens automatically when
+	// the process dies, and closing standard input will be sufficient to
+	// indicate to the child process that it should exit (and the blocking
+	// behavior of standard input won't conflict with closing in our use cases).
+	connection, _ := connectivity.NewIOConnection(stdout, stdin, stdin)
+	return &sshConnection{connection, process}, false, nil
 }
 
-func sshOutput(prompter, context string, remote *url.SSHURL, command string) ([]byte, error) {
-	// Create the process.
-	process, err := ssh(prompter, context, remote, command)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create command")
+func DialSSH(prompter string, remote *url.SSHURL) (*grpc.ClientConn, error) {
+	// Attempt a connection. If this fails, but it's a failure that justfies
+	// attempting an install, then continue, otherwise fail.
+	if connection, install, err := connectSSH(prompter, remote); err == nil {
+		return grpcutil.NewNonRedialingClientConnection(connection), nil
+	} else if !install {
+		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
 
-	// Run the process.
-	return process.Output()
+	// Attempt to install.
+	if err := installSSH(prompter, remote); err != nil {
+		return nil, errors.Wrap(err, "unable to install agent")
+	}
+
+	// Re-attempt connectivity.
+	if connection, _, err := connectSSH(prompter, remote); err != nil {
+		return nil, errors.Wrap(err, "unable to connect to agent")
+	} else {
+		return grpcutil.NewNonRedialingClientConnection(connection), nil
+	}
 }

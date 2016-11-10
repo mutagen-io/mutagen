@@ -6,13 +6,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"google.golang.org/grpc"
-
 	contextpkg "golang.org/x/net/context"
 
-	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
+	"github.com/havoc-io/mutagen/ssh"
 )
 
 var promptUsage = `usage: mutagen <prompt>
@@ -24,11 +22,11 @@ func promptMain(arguments []string) {
 	prompt := flagSet.ParseOrDie(arguments)[0]
 
 	// Extract environment parameters.
-	prompter := environment.Current[agent.PrompterEnvironmentVariable]
+	prompter := environment.Current[ssh.PrompterEnvironmentVariable]
 	if prompter == "" {
 		cmd.Fatal(errors.New("no prompter specified"))
 	}
-	contextBase64 := environment.Current[agent.PrompterContextBase64EnvironmentVariable]
+	contextBase64 := environment.Current[ssh.PrompterContextBase64EnvironmentVariable]
 	if contextBase64 == "" {
 		cmd.Fatal(errors.New("no context specified"))
 	}
@@ -38,24 +36,25 @@ func promptMain(arguments []string) {
 	}
 	context := string(contextBytes)
 
-	// Connect to the daemon.
-	conn, err := dialDaemon()
+	// Create a daemon client connection and defer its closure.
+	daemonClientConnection, err := newDaemonClientConnection()
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
+	defer daemonClientConnection.Close()
 
 	// Create a prompt service client.
-	promptClient := agent.NewPromptClient(conn)
+	promptClient := ssh.NewPromptClient(daemonClientConnection)
 
 	// Issue the prompt request.
-	response, err := promptClient.Prompt(
+	response, err := promptClient.Request(
 		contextpkg.Background(),
-		&agent.PromptRequest{
+		&ssh.PromptRequest{
 			Prompter: prompter,
 			Context:  context,
 			Prompt:   prompt,
 		},
-		grpc.FailFast(true),
+		grpcCallFlags...,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to complete prompt request"))

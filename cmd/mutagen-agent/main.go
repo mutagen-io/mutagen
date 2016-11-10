@@ -1,24 +1,22 @@
 package main
 
 import (
-	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 
 	"github.com/pkg/errors"
 
-	"google.golang.org/grpc/grpclog"
-
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/connectivity"
+	"github.com/havoc-io/mutagen/grpcutil"
 )
 
 func init() {
 	// Squelch gRPC, because it thinks it owns standard error and vomits out
 	// every internal diagnostic message.
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	grpcutil.Squelch()
 }
 
 var agentUsage = `usage: mutagen-agent [-h|--help] [-i|--install]
@@ -32,7 +30,7 @@ func main() {
 
 	// If requested, perform installation and exit.
 	if *install {
-		if err := agent.InstallSelf(); err != nil {
+		if err := agent.Install(); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to install"))
 		}
 		return
@@ -57,13 +55,13 @@ func main() {
 	// If we did try to Close though (either directly or by invoking
 	// server.Stop), and gRPC was blocking in a Read or Write, the Close would
 	// block, potentially indefinitely.
-	stdio, stdioTermination := agent.NewIOConn(os.Stdin, os.Stdout)
+	stdio, stdioTermination := connectivity.NewIOConnection(os.Stdin, os.Stdout)
 
 	// Create a one-shot listener and start serving on that listener. This
 	// listener will error out after the first accept, but by that time the lone
 	// standard input/output connection will have been accepted and its
 	// processing will have started in a separate Goroutine.
-	stdioListener := agent.NewOneShotListener(stdio)
+	stdioListener := connectivity.NewOneShotListener(stdio)
 	server.Serve(stdioListener)
 
 	// Wait for termination from a signal or the server.

@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/session"
+	"github.com/havoc-io/mutagen/ssh"
 )
 
 func NewServer() (*grpc.Server, chan struct{}, error) {
@@ -17,16 +17,16 @@ func NewServer() (*grpc.Server, chan struct{}, error) {
 	daemonService, termination := NewService()
 	RegisterDaemonServer(server, daemonService)
 
-	// Create and register the agent service.
-	agentService := agent.NewService()
-	agent.RegisterPromptServer(server, agentService)
+	// Create and register the SSH service.
+	sshService := ssh.NewService()
+	ssh.RegisterPromptServer(server, sshService)
 
 	// Create and register the session service.
-	sessionManager, err := session.NewManager(agentService)
+	sessionService, err := session.NewService()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to creation session manager")
+		return nil, nil, errors.Wrap(err, "unable to create session service")
 	}
-	session.RegisterManagerServer(server, sessionManager)
+	session.RegisterSessionsServer(server, sessionService)
 
 	// Success.
 	return server, termination, nil
