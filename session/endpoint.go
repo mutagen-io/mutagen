@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	syncpkg "sync"
 
 	"golang.org/x/net/context"
 
@@ -117,7 +118,7 @@ func (e *Endpoint) Watch(request *WatchRequest, responses Endpoint_WatchServer) 
 
 	// If we're not initialized, we can't do anything.
 	if e.version == SessionVersion_Unknown {
-		return nil, errors.New("endpoint not initialized")
+		return errors.New("endpoint not initialized")
 	}
 
 	// Create a channel to receive watch events. It needs to be buffered because
@@ -158,7 +159,7 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 
 	// If we're not initialized, we can't do anything.
 	if e.version == SessionVersion_Unknown {
-		return nil, errors.New("endpoint not initialized")
+		return errors.New("endpoint not initialized")
 	}
 
 	// Grab the initial request.
@@ -291,7 +292,7 @@ func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_Transmi
 
 	// If we're not initialized, we can't do anything.
 	if e.version == SessionVersion_Unknown {
-		return nil, errors.New("endpoint not initialized")
+		return errors.New("endpoint not initialized")
 	}
 
 	// Create an rsyncer.
