@@ -43,3 +43,42 @@ func (e *Entry) Equal(other *Entry) bool {
 	// Success.
 	return true
 }
+
+func (e *Entry) copyShallow() *Entry {
+	// If the entry is nil, the copy is nil.
+	if e == nil {
+		return nil
+	}
+
+	// Create the copy.
+	return &Entry{
+		Kind:       e.Kind,
+		Executable: e.Executable,
+		Digest:     e.Digest,
+	}
+}
+
+func (e *Entry) copy() *Entry {
+	// If the entry is nil, the copy is nil.
+	if e == nil {
+		return nil
+	}
+
+	// Create the result.
+	result := &Entry{
+		Kind:       e.Kind,
+		Executable: e.Executable,
+		Digest:     e.Digest,
+	}
+
+	// Copy contents, if any.
+	if len(e.Contents) > 0 {
+		result.Contents = make(map[string]*Entry, len(e.Contents))
+		for n, c := range e.Contents {
+			result.Contents[n] = c
+		}
+	}
+
+	// Done.
+	return result
+}
