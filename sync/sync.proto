@@ -29,3 +29,20 @@ message Entry {
     bytes digest = 3;
     map<string, Entry> contents = 4;
 }
+
+message Change {
+    string path = 1;
+    Entry old = 2;
+    Entry new = 3;
+}
+
+message Conflict {
+    string path = 1;
+    repeated Change alphaChanges = 2;
+    repeated Change betaChanges = 3;
+}
+
+enum ConflictResolution {
+    UseAlpha = 0;
+    UseBeta = 1;
+}
