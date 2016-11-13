@@ -23,11 +23,6 @@ func (e *oneShotDialerError) Temporary() bool {
 // connection and won't attempt redialing of any sort (or rather, will fail
 // permanently when it does). It will specify the WithInsecure dial option, so
 // the connection should already be authenticated and secured.
-// TODO: Correct behavior of the dialer used in this method relies on the
-// following pull request being merged: https://github.com/grpc/grpc-go/pull/974
-// Once this pull-request is merged, we'll need to update our vendored versions
-// of gRPC to enable this behavior. At the moment, the generated client will
-// still try to dial indefinitely and will always fail.
 func NewNonRedialingClientConnection(connection net.Conn) *grpc.ClientConn {
 	// Create a one-shot dialer to use in client creation. This dialer will
 	// return an error if invoked more than once, and gRPC will recognize that
