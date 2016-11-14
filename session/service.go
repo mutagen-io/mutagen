@@ -3,10 +3,9 @@ package session
 import (
 	"sync"
 	"time"
+	"github.com/pkg/errors"
 
 	"golang.org/x/net/context"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/grpc"
 
