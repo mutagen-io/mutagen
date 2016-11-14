@@ -4,7 +4,7 @@ import (
 	pathpkg "path"
 )
 
-func filterNonDeletion(changes []*Change) []*Change {
+func nonDeletionChangesOnly(changes []*Change) []*Change {
 	var result []*Change
 	for _, c := range changes {
 		if c.New != nil {
@@ -19,7 +19,6 @@ type reconciler struct {
 	alphaChanges    []*Change
 	betaChanges     []*Change
 	conflicts       []*Conflict
-	resolutions     map[string]ConflictResolution
 }
 
 func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
@@ -35,7 +34,11 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		if !alpha.equalShallow(ancestor) {
 			r.ancestorChanges = append(
 				r.ancestorChanges,
-				&Change{path, nil, alpha.copyShallow()},
+				&Change{
+					Path: path,
+					Old:  nil,
+					New:  alpha.copyShallow(),
+				},
 			)
 			ancestorContents = nil
 		}
@@ -54,53 +57,106 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		return
 	}
 
-	// Alpha and beta weren't equal, so at least one of them must differ from
-	// ancestor at this node, and the other may differ at this node or below or
-	// not at all. We first check (recursively) if either side is unmodified,
-	// and in that case simply propagate the other (which must be the one that
-	// differs). If both sides are modified, we check if one side contains only
-	// deletions, and if so propagate the other side. This step is an heuristic,
-	// and not strictly necessary, but it can solve conflicts automatically
-	// without data loss. It must, however, be done AFTER checking for the full
-	// delta list, otherwise we wouldn't detect one-sided deletions with the
-	// other side unmodified. If both sides contain changes that could be lost,
-	// then it's a conflict, so we check for a resolution and if there isn't one
-	// we simply record the conflict. When recording a conflict, we only use the
-	// non-deletion changes, since this will be displayed to the user and
-	// deletion changes don't really matter for conflict resolution.
+	// Alpha and beta weren't equal at this node. Thus, at least one of them
+	// must differ from ancestor *at this node*. The other may also differ from
+	// the ancestor at this node, a subnode, or not at all. Start by computing
+	// the diff from ancestor to alpha and ancestor to beta. If one side is
+	// unmodified, then we can simply propagate changes from the other side.
 	alphaDelta := Diff(ancestor, alpha)
 	betaDelta := Diff(ancestor, beta)
-	alphaDeltaNonDeletion := filterNonDeletion(alphaDelta)
-	betaDeltaNonDeletion := filterNonDeletion(betaDelta)
 	if len(alphaDelta) == 0 {
-		r.alphaChanges = append(r.alphaChanges, &Change{path, ancestor, beta})
-	} else if len(betaDelta) == 0 {
-		r.betaChanges = append(r.betaChanges, &Change{path, ancestor, alpha})
-	} else if len(alphaDeltaNonDeletion) == 0 {
-		r.alphaChanges = append(r.alphaChanges, &Change{path, alpha, beta})
-	} else if len(betaDeltaNonDeletion) == 0 {
-		r.betaChanges = append(r.betaChanges, &Change{path, beta, alpha})
-	} else if resolution, ok := r.resolutions[path]; ok {
-		if resolution == ConflictResolution_UseAlpha {
-			r.betaChanges = append(r.betaChanges, &Change{path, beta, alpha})
-		} else {
-			r.alphaChanges = append(r.alphaChanges, &Change{path, alpha, beta})
-		}
-	} else {
-		r.conflicts = append(r.conflicts, &Conflict{
-			path,
-			alphaDeltaNonDeletion,
-			betaDeltaNonDeletion,
+		r.alphaChanges = append(r.alphaChanges, &Change{
+			Path: path,
+			Old:  ancestor,
+			New:  beta,
 		})
+		return
+	} else if len(betaDelta) == 0 {
+		r.betaChanges = append(r.betaChanges, &Change{
+			Path: path,
+			Old:  ancestor,
+			New:  alpha,
+		})
+		return
 	}
+
+	// It appears that both sides have been modified. Before we mark a conflict,
+	// check if one side has only deletion changes. If so, we can propagate the
+	// changes from the other side without fear of losing any information. This
+	// is essentially the only form of automated conflict resolution that we can
+	// do. In some sense, it is a heuristic designed to avoid conflicts in very
+	// common cases, but more importantly, it is necessary to enable our form of
+	// manual conflict resolution: having the user delete the side they don't
+	// want to keep.
+	//
+	// Now, you're probably asking yourself a few questions here:
+	//
+	// Why didn't we simply make this check first? Why do we need to check the
+	// full diffs above? Well, imagine that one side had deleted and the other
+	// was unmodified. If we only looked at non-deletion changes, we might not
+	// detect this because both sides would have no changes or deletion-only
+	// changes, and both lists below would be empty, and the winning side would
+	// be determined simply by the ordering of the conditional statement below
+	// (essentially beta would always win out as it is currently structured).
+	//
+	// What if both sides have completely deleted this node? Well, that would
+	// have passed the equality check at the start of the function and would
+	// have been treated as a both-deleted scenario. This, we know at least one
+	// side has content at this node.
+	//
+	// What if both sides are directories and have deleted some subset of the
+	// tree below here? Well, that would ALSO have passed the equality check
+	// above since nothing has changed at this node, and the function would have
+	// simply recursed.
+	//
+	// Note that, when recording these changes, we use the side we're going to
+	// overrule as the "old" value in the change, because that's what it should
+	// expext to see on disk, not the ancestor. And since that "old" must be a
+	// subtree of ancestor (it contains only deletion changes), it still
+	// represents a valid value to return from a transition in the case that the
+	// transition fails (no information about previous deletions is lost).
+	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
+	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
+	if len(alphaDeltaNonDeletion) == 0 {
+		r.alphaChanges = append(r.alphaChanges, &Change{
+			Path: path,
+			Old:  alpha,
+			New:  beta,
+		})
+		return
+	} else if len(betaDeltaNonDeletion) == 0 {
+		r.betaChanges = append(r.betaChanges, &Change{
+			Path: path,
+			Old:  beta,
+			New:  alpha,
+		})
+		return
+	}
+
+	// At this point, both sides have made changes that would cause information
+	// to be lost if we were to propgate changes from one side to the other, so
+	// we need to record a conflict. We only record non-deletion changes because
+	// those are the only ones that create conflict.
+	// TODO: We need to come up with more concise conflict representations so
+	// that they can be effeciently transmitted to be presented to the user. At
+	// the moment they can contain subtrees of effectively unlimited size (that
+	// might occur if, e.g., alpha creates a file and beta creates a massive
+	// directory hierarchy). I'm thinking we should switch to an enumeration of
+	// conflict types that can be paired with the path in question. Even trying
+	// to do something like flattening wouldn't help becaues we'd have a path
+	// per entry and it'd probably take up more space due to expanding the whole
+	// thing out. Also, it's not clear how to efficiently represent these things
+	// visually.
+	r.conflicts = append(r.conflicts, &Conflict{
+		Path:         path,
+		AlphaChanges: alphaDeltaNonDeletion,
+		BetaChanges:  betaDeltaNonDeletion,
+	})
 }
 
-func Reconcile(
-	ancestor, alpha, beta *Entry,
-	resolutions map[string]ConflictResolution,
-) ([]*Change, []*Change, []*Change, []*Conflict) {
+func Reconcile(ancestor, alpha, beta *Entry) ([]*Change, []*Change, []*Change, []*Conflict) {
 	// Create the reconciler.
-	r := &reconciler{resolutions: resolutions}
+	r := &reconciler{}
 
 	// Perform reconciliation.
 	r.reconcile("", ancestor, alpha, beta)

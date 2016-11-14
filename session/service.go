@@ -3,6 +3,7 @@ package session
 import (
 	"sync"
 	"time"
+
 	"github.com/pkg/errors"
 
 	"golang.org/x/net/context"
@@ -113,8 +114,6 @@ func (m *Service) Pause(_ context.Context, request *PauseRequest) (*PauseRespons
 	// TODO: Implement.
 	return nil, errors.New("not implemented")
 }
-
-// TODO: Add Resolve.
 
 func (m *Service) Resume(_ context.Context, request *ResumeRequest) (*ResumeResponse, error) {
 	// TODO: Implement.

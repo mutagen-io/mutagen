@@ -472,7 +472,6 @@ type SessionsClient interface {
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (Sessions_ListClient, error)
 	Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error)
-	// TODO: Add Resolve.
 	Resume(ctx context.Context, in *ResumeRequest, opts ...grpc.CallOption) (*ResumeResponse, error)
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 }
@@ -559,7 +558,6 @@ type SessionsServer interface {
 	Start(context.Context, *StartRequest) (*StartResponse, error)
 	List(*ListRequest, Sessions_ListServer) error
 	Pause(context.Context, *PauseRequest) (*PauseResponse, error)
-	// TODO: Add Resolve.
 	Resume(context.Context, *ResumeRequest) (*ResumeResponse, error)
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 }

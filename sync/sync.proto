@@ -41,8 +41,3 @@ message Conflict {
     repeated Change alphaChanges = 2;
     repeated Change betaChanges = 3;
 }
-
-enum ConflictResolution {
-    UseAlpha = 0;
-    UseBeta = 1;
-}

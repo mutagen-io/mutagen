@@ -73,8 +73,6 @@ message PauseRequest {
 
 message PauseResponse {}
 
-// TODO: Add ResolveRequest and ResolveResponse once sync data structures exist.
-
 message ResumeRequest {
     string sessionIdentifier = 1;
     string prompter = 2;
@@ -92,7 +90,6 @@ service Sessions {
     rpc Start(StartRequest) returns (StartResponse) {}
     rpc List(ListRequest) returns (stream ListResponse) {}
     rpc Pause(PauseRequest) returns (PauseResponse) {}
-    // TODO: Add Resolve.
     rpc Resume(ResumeRequest) returns (ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
 }

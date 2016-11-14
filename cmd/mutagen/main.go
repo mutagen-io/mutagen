@@ -30,7 +30,6 @@ Supported commands include:
     list            List current synchronization sessions
     pause           Pause a synchronization session
     resume          Resume a synchronization session
-    resolve         Resolve synchronization conflicts
     stop            Stop and remove a synchronization session
     daemon          Control the synchronization daemon lifecycle
 
