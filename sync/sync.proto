@@ -41,3 +41,15 @@ message Conflict {
     repeated Change alphaChanges = 2;
     repeated Change betaChanges = 3;
 }
+
+enum ProblemKind {
+    Unknown = 0;
+    CaseConflict = 1;
+    ConcurrentModification = 2;
+    StagingFailure = 3;
+}
+
+message Problem {
+    string path = 1;
+    ProblemKind kind = 2;
+}
