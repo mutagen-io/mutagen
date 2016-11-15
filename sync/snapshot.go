@@ -29,45 +29,59 @@ type snapshotter struct {
 
 func (s *snapshotter) file(target string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
-	// TODO: Figure out how we want to handle permissions and executability.
-	size := uint64(info.Size())
-	modificationTime := info.ModTime()
 	mode := info.Mode()
+	modificationTime := info.ModTime()
+	size := uint64(info.Size())
+
+	// Compute executability.
 	executable := (mode&0111 != 0)
 
-	// Perform a cache lookup and see if we can find a cached digest. If we find
-	// a match, propagate the cache entry and re-use the digest.
+	// Try to find a cached digest. We only enforce that type, modification
+	// time, and size haven't changed in order to re-use digests.
+	var digest []byte
 	cached, hit := s.cache.Entries[target]
+	// TODO: We should add another condition to match that enforces modification
+	// time is before the timestamp of the cache on disk. This is the same
+	// solution that Git uses to solve its index race condition. Update the
+	// comment above once this is done.
 	match := hit &&
-		cached.Size_ == size &&
+		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
 		cached.ModificationTime != nil &&
 		cached.ModificationTime.Equal(modificationTime) &&
-		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType)
+		cached.Size_ == size
 	if match {
-		s.newCache.Entries[target] = cached
-		return &Entry{EntryKind_File, executable, cached.Digest, nil}, nil
+		digest = cached.Digest
 	}
 
-	// If we couldn't find a cached digest, compute a full one.
-	file, err := os.Open(filepath.Join(s.root, target))
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to open file")
+	// If we weren't able to pull a digest from the cache, compute one manually.
+	if digest == nil {
+		// Open the file and ensure its closure.
+		file, err := os.Open(filepath.Join(s.root, target))
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to open file")
+		}
+		defer file.Close()
+
+		// Reset the hash state.
+		s.hasher.Reset()
+
+		// Copy data into the hash and very that we copied as much as expected.
+		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
+			return nil, errors.Wrap(err, "unable to hash file contents")
+		} else if uint64(copied) != size {
+			return nil, errors.New("hashed size mismatch")
+		}
+
+		// Compute the digest.
+		digest = s.hasher.Sum(nil)
 	}
-	defer file.Close()
-	s.hasher.Reset()
-	if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
-		return nil, errors.Wrap(err, "unable to hash file contents")
-	} else if uint64(copied) != size {
-		return nil, errors.New("hashed size mismatch")
-	}
-	digest := s.hasher.Sum(nil)
 
 	// Add a cache entry.
 	s.newCache.Entries[target] = &CacheEntry{
-		size,
-		uint32(mode),
-		&modificationTime,
-		digest,
+		Mode:             uint32(mode),
+		ModificationTime: &modificationTime,
+		Size_:            size,
+		Digest:           digest,
 	}
 
 	// Success.

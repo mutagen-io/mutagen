@@ -7,9 +7,9 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 
 message CacheEntry {
-    uint64 size = 1;
-    uint32 mode = 2;
-    google.protobuf.Timestamp modificationTime = 3 [(gogoproto.stdtime) = true];
+    uint32 mode = 1;
+    google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true];
+    uint64 size = 3;
     bytes digest = 4;
 }
 
