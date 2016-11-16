@@ -8,7 +8,7 @@ import (
 
 // TODO: Document that this function ignores the Old value for changes.
 func Apply(base *Entry, changes []*Change) (*Entry, error) {
-	// Make a copy of base.
+	// Create a mutable copy of base.
 	result := base.copy()
 
 	// Apply changes.
