@@ -44,7 +44,7 @@ func performPrompts(client ssh.Prompt_RespondClient) error {
 		}
 
 		// Perform the prompt.
-		response, err := ssh.PromptCommandLine(request.Context, request.Prompt)
+		response, err := ssh.PromptCommandLine(request.Message, request.Prompt)
 		if err != nil {
 			return errors.Wrap(err, "unable to perform prompting")
 		}

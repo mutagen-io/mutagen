@@ -14,7 +14,7 @@ import (
 
 const (
 	PrompterEnvironmentVariable              = "MUTAGEN_PROMPTER"
-	PrompterContextBase64EnvironmentVariable = "MUTAGEN_PROMPTER_CONTEXT_BASE64"
+	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_PROMPTER_MESSAGE_BASE64"
 )
 
 type PromptClass uint8
@@ -31,7 +31,7 @@ func ClassifyPrompt(prompt string) PromptClass {
 	return PromptClassSecret
 }
 
-func PromptCommandLine(context, prompt string) (string, error) {
+func PromptCommandLine(message, prompt string) (string, error) {
 	// Classify the prompt.
 	class := ClassifyPrompt(prompt)
 
@@ -43,9 +43,9 @@ func PromptCommandLine(context, prompt string) (string, error) {
 		getter = gopass.GetPasswd
 	}
 
-	// Print the context (if any) and the prompt.
-	if context != "" {
-		fmt.Println(context)
+	// Print the message (if any) and the prompt.
+	if message != "" {
+		fmt.Println(message)
 	}
 	fmt.Print(prompt)
 
@@ -59,15 +59,15 @@ func PromptCommandLine(context, prompt string) (string, error) {
 	return string(result), nil
 }
 
-func prompterEnvironment(prompter, context string) []string {
+func prompterEnvironment(prompter, message string) []string {
 	// If there is no prompter, return nil to just use the current environment.
 	if prompter == "" {
 		return nil
 	}
 
-	// Convert context to base64 encoding so that we can pass it through the
+	// Convert message to base64 encoding so that we can pass it through the
 	// environment safely.
-	contextBase64 := base64.StdEncoding.EncodeToString([]byte(context))
+	messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
 
 	// Create a copy of the current environment.
 	result := make(map[string]string, len(environment.Current))
@@ -79,7 +79,7 @@ func prompterEnvironment(prompter, context string) []string {
 	result["SSH_ASKPASS"] = process.Current.ExecutablePath
 	result["DISPLAY"] = "mutagen"
 	result[PrompterEnvironmentVariable] = prompter
-	result[PrompterContextBase64EnvironmentVariable] = contextBase64
+	result[PrompterMessageBase64EnvironmentVariable] = messageBase64
 
 	// Convert into the desired format.
 	return environment.Format(result)

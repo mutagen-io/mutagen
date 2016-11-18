@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	contextpkg "golang.org/x/net/context"
+	"golang.org/x/net/context"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
@@ -26,15 +26,15 @@ func promptMain(arguments []string) {
 	if prompter == "" {
 		cmd.Fatal(errors.New("no prompter specified"))
 	}
-	contextBase64 := environment.Current[ssh.PrompterContextBase64EnvironmentVariable]
-	if contextBase64 == "" {
-		cmd.Fatal(errors.New("no context specified"))
+	messageBase64 := environment.Current[ssh.PrompterMessageBase64EnvironmentVariable]
+	if messageBase64 == "" {
+		cmd.Fatal(errors.New("no message specified"))
 	}
-	contextBytes, err := base64.StdEncoding.DecodeString(contextBase64)
+	messageBytes, err := base64.StdEncoding.DecodeString(messageBase64)
 	if err != nil {
-		cmd.Fatal(errors.New("unable to decode context"))
+		cmd.Fatal(errors.New("unable to decode message"))
 	}
-	context := string(contextBytes)
+	message := string(messageBytes)
 
 	// Create a daemon client connection and defer its closure.
 	daemonClientConnection, err := newDaemonClientConnection()
@@ -48,7 +48,7 @@ func promptMain(arguments []string) {
 
 	// Issue the prompt request.
 	response, err := promptClient.Request(
-		contextpkg.Background(),
+		context.Background(),
 		&ssh.PromptRequest{
 			Prompter: prompter,
 			Context:  context,

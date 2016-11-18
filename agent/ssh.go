@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"golang.org/x/net/context"
+
 	"google.golang.org/grpc"
 
 	uuid "github.com/satori/go.uuid"
@@ -49,9 +51,9 @@ func init() {
 	)
 }
 
-func probeSSHPOSIX(prompter string, remote *url.SSHURL) (string, string, error) {
+func probeSSHPOSIX(ctx context.Context, prompter string, remote *url.SSHURL) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
-	unameSMBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "uname -s -m")
+	unameSMBytes, err := ssh.Output(ctx, prompter, "Probing endpoint", remote, "uname -s -m")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke uname")
 	}
@@ -84,9 +86,9 @@ func probeSSHPOSIX(prompter string, remote *url.SSHURL) (string, string, error) 
 	return goos, goarch, nil
 }
 
-func probeSSHWindows(prompter string, remote *url.SSHURL) (string, string, error) {
+func probeSSHWindows(ctx context.Context, prompter string, remote *url.SSHURL) (string, string, error) {
 	// Try to print the remote environment.
-	envBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "cmd /c set")
+	envBytes, err := ssh.Output(ctx, prompter, "Probing endpoint", remote, "cmd /c set")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke set")
 	}
@@ -116,15 +118,15 @@ func probeSSHWindows(prompter string, remote *url.SSHURL) (string, string, error
 // probeSSHPlatform attempts to identify the properties of the target platform,
 // namely GOOS, GOARCH, and whether or not it's a POSIX environment (which it
 // might be even on Windows).
-func probeSSHPlatform(prompter string, remote *url.SSHURL) (string, string, bool, error) {
+func probeSSHPlatform(ctx context.Context, prompter string, remote *url.SSHURL) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
-	if goos, goarch, err := probeSSHPOSIX(prompter, remote); err == nil {
+	if goos, goarch, err := probeSSHPOSIX(ctx, prompter, remote); err == nil {
 		return goos, goarch, true, nil
 	}
 
 	// If that fails, attempt a Windows fallback.
-	if goos, goarch, err := probeSSHWindows(prompter, remote); err == nil {
+	if goos, goarch, err := probeSSHWindows(ctx, prompter, remote); err == nil {
 		return goos, goarch, false, nil
 	}
 
@@ -132,9 +134,9 @@ func probeSSHPlatform(prompter string, remote *url.SSHURL) (string, string, bool
 	return "", "", false, errors.New("exhausted probing methods")
 }
 
-func installSSH(prompter string, remote *url.SSHURL) error {
+func installSSH(ctx context.Context, prompter string, remote *url.SSHURL) error {
 	// Detect the target platform.
-	goos, goarch, posix, err := probeSSHPlatform(prompter, remote)
+	goos, goarch, posix, err := probeSSHPlatform(ctx, prompter, remote)
 	if err != nil {
 		return errors.Wrap(err, "unable to probe remote platform")
 	}
@@ -169,7 +171,7 @@ func installSSH(prompter string, remote *url.SSHURL) error {
 		Port:     remote.Port,
 		Path:     destination,
 	}
-	if err := ssh.Copy(prompter, "Copying agent", agent, destinationURL); err != nil {
+	if err := ssh.Copy(ctx, prompter, "Copying agent", agent, destinationURL); err != nil {
 		return errors.Wrap(err, "unable to copy agent binary")
 	}
 
@@ -193,7 +195,7 @@ func installSSH(prompter string, remote *url.SSHURL) error {
 	} else {
 		installCommand = fmt.Sprintf("%s --install", destination)
 	}
-	if err := ssh.Run(prompter, "Installing agent", remote, installCommand); err != nil {
+	if err := ssh.Run(ctx, prompter, "Installing agent", remote, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke installation")
 	}
 
@@ -206,9 +208,9 @@ type sshConnection struct {
 	process *exec.Cmd
 }
 
-func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
+func connectSSH(ctx context.Context, prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 	// Create an SSH process.
-	process, err := ssh.Command(prompter, "Connecting to agent", remote, sshCommand)
+	process, err := ssh.Command(ctx, prompter, "Connecting to agent", remote, sshCommand)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
@@ -251,22 +253,22 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 	return &sshConnection{connection, process}, false, nil
 }
 
-func DialSSH(prompter string, remote *url.SSHURL) (*grpc.ClientConn, error) {
+func DialSSH(ctx context.Context, prompter string, remote *url.SSHURL) (*grpc.ClientConn, error) {
 	// Attempt a connection. If this fails, but it's a failure that justfies
 	// attempting an install, then continue, otherwise fail.
-	if connection, install, err := connectSSH(prompter, remote); err == nil {
+	if connection, install, err := connectSSH(ctx, prompter, remote); err == nil {
 		return grpcutil.NewNonRedialingClientConnection(connection), nil
 	} else if !install {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
 
 	// Attempt to install.
-	if err := installSSH(prompter, remote); err != nil {
+	if err := installSSH(ctx, prompter, remote); err != nil {
 		return nil, errors.Wrap(err, "unable to install agent")
 	}
 
 	// Re-attempt connectivity.
-	if connection, _, err := connectSSH(prompter, remote); err != nil {
+	if connection, _, err := connectSSH(ctx, prompter, remote); err != nil {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	} else {
 		return grpcutil.NewNonRedialingClientConnection(connection), nil

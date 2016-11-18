@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"golang.org/x/net/context"
+
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -23,9 +25,9 @@ func timeoutArgument() string {
 }
 
 // Copy copies a local file (which MUST be an absolute path) to a remote
-// destination. If a prompter and context are provided, this method will attempt
+// destination. If a prompter and message are provided, this method will attempt
 // to use them for authentication if necessary.
-func Copy(prompter, context, local string, remote *url.SSHURL) error {
+func Copy(ctx context.Context, prompter, message, local string, remote *url.SSHURL) error {
 	// Locate the SCP command.
 	scp, err := scpCommand()
 	if err != nil {
@@ -58,7 +60,7 @@ func Copy(prompter, context, local string, remote *url.SSHURL) error {
 	scpArguments = append(scpArguments, sourceBase, destinationURL)
 
 	// Create the process.
-	scpProcess := exec.Command(scp, scpArguments...)
+	scpProcess := exec.CommandContext(ctx, scp, scpArguments...)
 
 	// Set the working directory.
 	scpProcess.Dir = workingDirectory
@@ -67,7 +69,7 @@ func Copy(prompter, context, local string, remote *url.SSHURL) error {
 	scpProcess.SysProcAttr = processAttributes()
 
 	// Set the environment necessary for prompting.
-	scpProcess.Env = prompterEnvironment(prompter, context)
+	scpProcess.Env = prompterEnvironment(prompter, message)
 
 	// Run the operation.
 	if err = scpProcess.Run(); err != nil {
@@ -80,13 +82,13 @@ func Copy(prompter, context, local string, remote *url.SSHURL) error {
 
 // Command create an SSH process set to connect to the specified remote and
 // invoke the specified command. This function does not start the process. If a
-// prompter and context are provided, the process will be directed to use them
+// prompter and message are provided, the process will be directed to use them
 // on startup if necessary. The command string is interpreted as literal input
 // to the remote shell, so its contents are more flexible than just an
 // executable name or path. The path component of the remote URL is NOT used as
 // a working directory and is simply ignored - the command will execute in
 // whatever default directory the server chooses.
-func Command(prompter, context string, remote *url.SSHURL, command string) (*exec.Cmd, error) {
+func Command(ctx context.Context, prompter, message string, remote *url.SSHURL, command string) (*exec.Cmd, error) {
 	// Locate the SSH command.
 	ssh, err := sshCommand()
 	if err != nil {
@@ -108,13 +110,13 @@ func Command(prompter, context string, remote *url.SSHURL, command string) (*exe
 	sshArguments = append(sshArguments, target, command)
 
 	// Create the process.
-	sshProcess := exec.Command(ssh, sshArguments...)
+	sshProcess := exec.CommandContext(ctx, ssh, sshArguments...)
 
 	// Force it to run detached.
 	sshProcess.SysProcAttr = processAttributes()
 
 	// Set the environment necessary for prompting.
-	sshProcess.Env = prompterEnvironment(prompter, context)
+	sshProcess.Env = prompterEnvironment(prompter, message)
 
 	// Done.
 	return sshProcess, nil
@@ -124,9 +126,9 @@ func Command(prompter, context string, remote *url.SSHURL, command string) (*exe
 // returning the result of its Run method. If there is an error creating the
 // command, it will be returned, but otherwise the result of the Run method will
 // be returned un-wrapped, so it can be treated as an os/exec.ExitError.
-func Run(prompter, context string, remote *url.SSHURL, command string) error {
+func Run(ctx context.Context, prompter, message string, remote *url.SSHURL, command string) error {
 	// Create the process.
-	process, err := Command(prompter, context, remote, command)
+	process, err := Command(ctx, prompter, message, remote, command)
 	if err != nil {
 		return errors.Wrap(err, "unable to create command")
 	}
@@ -139,9 +141,9 @@ func Run(prompter, context string, remote *url.SSHURL, command string) error {
 // returning the results of its Output method. If there is an error creating the
 // command, it will be returned, but otherwise the result of the Run method will
 // be returned un-wrapped, so it can be treated as an os/exec.ExitError.
-func Output(prompter, context string, remote *url.SSHURL, command string) ([]byte, error) {
+func Output(ctx context.Context, prompter, message string, remote *url.SSHURL, command string) ([]byte, error) {
 	// Create the process.
-	process, err := Command(prompter, context, remote, command)
+	process, err := Command(ctx, prompter, message, remote, command)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create command")
 	}
