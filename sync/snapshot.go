@@ -160,7 +160,7 @@ func Snapshot(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, erro
 	// Create the snapshot.
 	if info, err := os.Stat(root); err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, nil
+			return nil, newCache, nil
 		} else {
 			return nil, nil, errors.Wrap(err, "unable to probe snapshot root")
 		}
