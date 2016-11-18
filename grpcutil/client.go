@@ -19,10 +19,10 @@ func (e *oneShotDialerError) Temporary() bool {
 	return false
 }
 
-// NewNonRedialingClientConnection creates a new grpc.ClientConn that uses the specified
-// connection and won't attempt redialing of any sort (or rather, will fail
-// permanently when it does). It will specify the WithInsecure dial option, so
-// the connection should already be authenticated and secured.
+// NewNonRedialingClientConnection creates a new grpc.ClientConn that uses the
+// specified connection and won't attempt redialing of any sort (or rather, will
+// fail permanently when it does). It will specify the WithInsecure dial option,
+// so the connection should already be authenticated and secured.
 func NewNonRedialingClientConnection(connection net.Conn) *grpc.ClientConn {
 	// Create a one-shot dialer to use in client creation. This dialer will
 	// return an error if invoked more than once, and gRPC will recognize that
