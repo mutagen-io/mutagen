@@ -33,6 +33,8 @@ func main() {
 	snapshot, cache, err := sync.Snapshot(path, sha1.New(), nil)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+	} else if snapshot == nil {
+		cmd.Fatal(errors.New("target doesn't exist"))
 	}
 	stop := time.Now()
 	fmt.Println("Cold snapshot took", stop.Sub(start))
@@ -42,6 +44,8 @@ func main() {
 	snapshot, _, err = sync.Snapshot(path, sha1.New(), cache)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+	} else if snapshot == nil {
+		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
 	fmt.Println("Warm snapshot took", stop.Sub(start))
