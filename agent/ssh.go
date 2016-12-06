@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 
@@ -23,7 +22,7 @@ import (
 	"github.com/havoc-io/mutagen/url"
 )
 
-var sshCommand string
+var sshAgentPath string
 
 func init() {
 	// Compute the agent SSH command.
@@ -41,7 +40,7 @@ func init() {
 	// HACK: When invoking on Windows systems, we can use forward slashes for
 	// the path and leave the "exe" suffix off the target name. This saves us a
 	// target check.
-	sshCommand = path.Join(
+	sshAgentPath = path.Join(
 		filesystem.MutagenDirectoryName,
 		agentsDirectoryName,
 		mutagen.Version,
@@ -49,7 +48,7 @@ func init() {
 	)
 }
 
-func probeSSHPOSIX(prompter string, remote *url.SSHURL) (string, string, error) {
+func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
 	unameSMBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "uname -s -m")
 	if err != nil {
@@ -84,7 +83,7 @@ func probeSSHPOSIX(prompter string, remote *url.SSHURL) (string, string, error) 
 	return goos, goarch, nil
 }
 
-func probeSSHWindows(prompter string, remote *url.SSHURL) (string, string, error) {
+func probeSSHWindows(remote *url.URL, prompter string) (string, string, error) {
 	// Try to print the remote environment.
 	envBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "cmd /c set")
 	if err != nil {
@@ -116,15 +115,15 @@ func probeSSHWindows(prompter string, remote *url.SSHURL) (string, string, error
 // probeSSHPlatform attempts to identify the properties of the target platform,
 // namely GOOS, GOARCH, and whether or not it's a POSIX environment (which it
 // might be even on Windows).
-func probeSSHPlatform(prompter string, remote *url.SSHURL) (string, string, bool, error) {
+func probeSSHPlatform(remote *url.URL, prompter string) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
-	if goos, goarch, err := probeSSHPOSIX(prompter, remote); err == nil {
+	if goos, goarch, err := probeSSHPOSIX(remote, prompter); err == nil {
 		return goos, goarch, true, nil
 	}
 
 	// If that fails, attempt a Windows fallback.
-	if goos, goarch, err := probeSSHWindows(prompter, remote); err == nil {
+	if goos, goarch, err := probeSSHWindows(remote, prompter); err == nil {
 		return goos, goarch, false, nil
 	}
 
@@ -132,9 +131,9 @@ func probeSSHPlatform(prompter string, remote *url.SSHURL) (string, string, bool
 	return "", "", false, errors.New("exhausted probing methods")
 }
 
-func installSSH(prompter string, remote *url.SSHURL) error {
+func installSSH(remote *url.URL, prompter string) error {
 	// Detect the target platform.
-	goos, goarch, posix, err := probeSSHPlatform(prompter, remote)
+	goos, goarch, posix, err := probeSSHPlatform(remote, prompter)
 	if err != nil {
 		return errors.Wrap(err, "unable to probe remote platform")
 	}
@@ -163,7 +162,7 @@ func installSSH(prompter string, remote *url.SSHURL) error {
 	if posix {
 		destination = "." + destination
 	}
-	destinationURL := &url.SSHURL{
+	destinationURL := &url.URL{
 		Username: remote.Username,
 		Hostname: remote.Hostname,
 		Port:     remote.Port,
@@ -175,11 +174,11 @@ func installSSH(prompter string, remote *url.SSHURL) error {
 
 	// Invoke the remote installation. For POSIX remotes, we have to incorporate
 	// a "chmod +x" in order for the remote to execute the installer. The POSIX
-	// solution is necessary (as opposed to simply chmod'ing the file before
-	// copy) because if an installer is sent from a Windows to a POSIX system
-	// using SCP, there's no way to preserve the executability bit (since
-	// Windows doesn't have one). This will also be applied to Windows POSIX
-	// environments, but a "chmod +x" there will have no effect.
+	// solution is necessary in the event that an installer is sent from a
+	// Windows to a POSIX system using SCP, since there's no way to preserve the
+	// executability bit (Windows doesn't have one). This will also be applied
+	// to Windows POSIX environments, but a "chmod +x" there will have no
+	// effect.
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. We have to do this because we
 	// don't have a portable mechanism to invoke the command relative to the
@@ -194,21 +193,16 @@ func installSSH(prompter string, remote *url.SSHURL) error {
 		installCommand = fmt.Sprintf("%s --install", destination)
 	}
 	if err := ssh.Run(prompter, "Installing agent", remote, installCommand); err != nil {
-		return errors.Wrap(err, "unable to invoke installation")
+		return errors.Wrap(err, "unable to invoke agent installation")
 	}
 
 	// Success.
 	return nil
 }
 
-type sshConnection struct {
-	net.Conn
-	process *exec.Cmd
-}
-
-func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
+func connectSSH(remote *url.URL, prompter string) (net.Conn, bool, error) {
 	// Create an SSH process.
-	process, err := ssh.Command(prompter, "Connecting to agent", remote, sshCommand)
+	process, err := ssh.Command(prompter, "Connecting to agent", remote, sshAgentPath)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
@@ -216,16 +210,16 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 	// Create pipes to the process.
 	stdin, err := process.StdinPipe()
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to redirect SSH input")
+		return nil, false, errors.Wrap(err, "unable to redirect SSH agent input")
 	}
 	stdout, err := process.StdoutPipe()
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to redirect SSH output")
+		return nil, false, errors.Wrap(err, "unable to redirect SSH agent output")
 	}
 
 	// Start the process.
 	if err = process.Start(); err != nil {
-		return nil, false, errors.Wrap(err, "unable to start SSH process")
+		return nil, false, errors.Wrap(err, "unable to start SSH agent process")
 	}
 
 	// Confirm that the process started correctly by performing a version
@@ -234,7 +228,7 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 		if ssh.IsCommandNotFound(process.Wait()) {
 			return nil, true, errors.New("command not found")
 		} else {
-			return nil, false, errors.Wrap(err, "unable to handshake with SSH process")
+			return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 		}
 	} else if !versionMatch {
 		return nil, true, errors.New("version mismatch")
@@ -248,25 +242,25 @@ func connectSSH(prompter string, remote *url.SSHURL) (net.Conn, bool, error) {
 	// indicate to the child process that it should exit (and the blocking
 	// behavior of standard input won't conflict with closing in our use cases).
 	connection, _ := connectivity.NewIOConnection(stdout, stdin, stdin)
-	return &sshConnection{connection, process}, false, nil
+	return &processConnection{connection, process}, false, nil
 }
 
-func DialSSH(prompter string, remote *url.SSHURL) (*grpc.ClientConn, error) {
+func dialSSH(remote *url.URL, prompter string) (*grpc.ClientConn, error) {
 	// Attempt a connection. If this fails, but it's a failure that justfies
 	// attempting an install, then continue, otherwise fail.
-	if connection, install, err := connectSSH(prompter, remote); err == nil {
+	if connection, install, err := connectSSH(remote, prompter); err == nil {
 		return grpcutil.NewNonRedialingClientConnection(connection), nil
 	} else if !install {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
 
 	// Attempt to install.
-	if err := installSSH(prompter, remote); err != nil {
+	if err := installSSH(remote, prompter); err != nil {
 		return nil, errors.Wrap(err, "unable to install agent")
 	}
 
 	// Re-attempt connectivity.
-	if connection, _, err := connectSSH(prompter, remote); err != nil {
+	if connection, _, err := connectSSH(remote, prompter); err != nil {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	} else {
 		return grpcutil.NewNonRedialingClientConnection(connection), nil

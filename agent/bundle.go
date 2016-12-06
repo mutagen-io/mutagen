@@ -62,8 +62,11 @@ func executableForPlatform(goos, goarch string) (string, error) {
 		return "", errors.New("unsupported platform")
 	}
 
+	// Compute the base name for the output file.
+	targetBaseName := process.ExecutableName(agentBaseName, goos)
+
 	// Create a temporary file in which to receive the agent on disk.
-	file, err := ioutil.TempFile("", agentBaseName)
+	file, err := ioutil.TempFile("", targetBaseName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to create temporary file")
 	}
@@ -73,6 +76,13 @@ func executableForPlatform(goos, goarch string) (string, error) {
 		file.Close()
 		os.Remove(file.Name())
 		return "", errors.Wrap(err, "unable to copy agent data")
+	}
+
+	// Mark the file as executable.
+	if err := file.Chmod(0700); err != nil {
+		file.Close()
+		os.Remove(file.Name())
+		return "", errors.Wrap(err, "unable to mark agent as executable")
 	}
 
 	// Close the file.

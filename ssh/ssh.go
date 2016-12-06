@@ -25,7 +25,12 @@ func timeoutArgument() string {
 // Copy copies a local file (which MUST be an absolute path) to a remote
 // destination. If a prompter and message are provided, this method will attempt
 // to use them for authentication if necessary.
-func Copy(prompter, message, local string, remote *url.SSHURL) error {
+func Copy(prompter, message, local string, remote *url.URL) error {
+	// Validate the URL protocol.
+	if remote.Protocol != url.ProtocolSSH {
+		return errors.New("non-SSH URL provided")
+	}
+
 	// Locate the SCP command.
 	scp, err := scpCommand()
 	if err != nil {
@@ -86,7 +91,12 @@ func Copy(prompter, message, local string, remote *url.SSHURL) error {
 // executable name or path. The path component of the remote URL is NOT used as
 // a working directory and is simply ignored - the command will execute in
 // whatever default directory the server chooses.
-func Command(prompter, message string, remote *url.SSHURL, command string) (*exec.Cmd, error) {
+func Command(prompter, message string, remote *url.URL, command string) (*exec.Cmd, error) {
+	// Validate the URL protocol.
+	if remote.Protocol != url.ProtocolSSH {
+		return nil, errors.New("non-SSH URL provided")
+	}
+
 	// Locate the SSH command.
 	ssh, err := sshCommand()
 	if err != nil {
@@ -124,7 +134,7 @@ func Command(prompter, message string, remote *url.SSHURL, command string) (*exe
 // returning the result of its Run method. If there is an error creating the
 // command, it will be returned, but otherwise the result of the Run method will
 // be returned un-wrapped, so it can be treated as an os/exec.ExitError.
-func Run(prompter, message string, remote *url.SSHURL, command string) error {
+func Run(prompter, message string, remote *url.URL, command string) error {
 	// Create the process.
 	process, err := Command(prompter, message, remote, command)
 	if err != nil {
@@ -139,7 +149,7 @@ func Run(prompter, message string, remote *url.SSHURL, command string) error {
 // returning the results of its Output method. If there is an error creating the
 // command, it will be returned, but otherwise the result of the Run method will
 // be returned un-wrapped, so it can be treated as an os/exec.ExitError.
-func Output(prompter, message string, remote *url.SSHURL, command string) ([]byte, error) {
+func Output(prompter, message string, remote *url.URL, command string) ([]byte, error) {
 	// Create the process.
 	process, err := Command(prompter, message, remote, command)
 	if err != nil {
