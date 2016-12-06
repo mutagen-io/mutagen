@@ -1,13 +1,13 @@
 package url
 
-type Type uint8
+type Protocol uint8
 
 const (
-	TypePath Type = iota
-	TypeSSH
+	ProtocolLocal Protocol = iota
+	ProtocolSSH
 )
 
-func Classify(raw string) Type {
+func classify(raw string) Protocol {
 	// On Windows, paths beginning with x:\ or x:/ (where x is a-z or A-Z) are
 	// almost certainly referring to local paths, but will trigger the SCP URL
 	// detection, so we have to check those first. This is, of course, something
@@ -17,19 +17,19 @@ func Classify(raw string) Type {
 	// they should just use some other addressing scheme for it (e.g. an IP
 	// address or alternate hostname).
 	if isWindowsPath(raw) {
-		return TypePath
+		return ProtocolLocal
 	}
 
 	// Check if this is an SCP-style URL. A URL is classified as such if it
 	// contains a colon with no forward slashes before it.
 	for _, c := range raw {
 		if c == ':' {
-			return TypeSSH
+			return ProtocolSSH
 		} else if c == '/' {
 			break
 		}
 	}
 
 	// Otherwise, assume this is a raw path.
-	return TypePath
+	return ProtocolLocal
 }

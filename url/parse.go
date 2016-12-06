@@ -6,14 +6,29 @@ import (
 	"github.com/pkg/errors"
 )
 
-type SSHURL struct {
+type URL struct {
+	Protocol Protocol
 	Username string
 	Hostname string
 	Port     uint16
 	Path     string
 }
 
-func ParseSSH(raw string) (*SSHURL, error) {
+func Parse(raw string) (*URL, error) {
+	switch classify(raw) {
+	case ProtocolLocal:
+		return &URL{
+			Protocol: ProtocolLocal,
+			Path:     raw,
+		}, nil
+	case ProtocolSSH:
+		return parseSSH(raw)
+	default:
+		panic("unhandled URL protocol")
+	}
+}
+
+func parseSSH(raw string) (*URL, error) {
 	// Parse off the username.
 	var username string
 	for i, r := range raw {
@@ -68,7 +83,8 @@ func ParseSSH(raw string) (*SSHURL, error) {
 	}
 
 	// Create the URL, using what remains as the path.
-	return &SSHURL{
+	return &URL{
+		Protocol: ProtocolSSH,
 		Username: username,
 		Hostname: hostname,
 		Port:     port,
