@@ -4,22 +4,24 @@ import (
 	"sync"
 )
 
+type StateIndex uint64
+
 type State struct {
-	index  uint64
+	index  StateIndex
 	change *sync.Cond
 	parent *State
 }
 
 func NewState() *State {
 	return &State{
-		index:  1,
+		index:  StateIndex(1),
 		change: sync.NewCond(&sync.Mutex{}),
 	}
 }
 
 func (s *State) Substate() *State {
 	return &State{
-		index:  1,
+		index:  StateIndex(1),
 		change: sync.NewCond(s.change.L),
 		parent: s,
 	}
@@ -63,7 +65,7 @@ func (s *State) NotifyOfChangesAndUnlock() {
 
 // TODO: Document that callers should pass 0 if they have no previous state
 // index.
-func (s *State) WaitForChangeAndLock(previousIndex uint64) uint64 {
+func (s *State) WaitForChangeAndLock(previousIndex StateIndex) StateIndex {
 	// Acquire the lock for the entire state hierarchy (they all share a lock).
 	s.change.L.Lock()
 
