@@ -21,23 +21,29 @@ func startMain(arguments []string) {
 	flagSet := cmd.NewFlagSet("start", startUsage, []int{2})
 	urls := flagSet.ParseOrDie(arguments)
 
-	// Extract URLs.
-	alpha := urls[0]
-	beta := urls[1]
+	// Extract and parse URLs.
+	alpha, err := url.Parse(urls[0])
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to parse alpha URL"))
+	}
+	beta, err := url.Parse(urls[1])
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to parse beta URL"))
+	}
 
 	// If either URL is a relative path, convert it to an absolute path.
-	if url.Classify(alpha) == url.TypePath {
-		if alphaAbs, err := filepath.Abs(alpha); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to make first path absolute"))
+	if alpha.Protocol == url.Protocol_Local {
+		if alphaPath, err := filepath.Abs(alpha.Path); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to make alpha path absolute"))
 		} else {
-			alpha = alphaAbs
+			alpha.Path = alphaPath
 		}
 	}
-	if url.Classify(beta) == url.TypePath {
-		if betaAbs, err := filepath.Abs(beta); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to make second path absolute"))
+	if beta.Protocol == url.Protocol_Local {
+		if betaPath, err := filepath.Abs(beta.Path); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to make beta path absolute"))
 		} else {
-			beta = betaAbs
+			beta.Path = betaPath
 		}
 	}
 

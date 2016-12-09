@@ -2,8 +2,6 @@ package session
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,26 +12,20 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/rjeczalik/notify"
-
 	"github.com/havoc-io/mutagen/encoding"
-	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/sync"
 )
 
-const (
-	alphaCacheName = "alpha_cache"
-	betaCacheName  = "beta_cache"
-)
-
 type Endpoint struct {
 	syncpkg.RWMutex
-	version         SessionVersion
-	root            string
-	caseInsensitive bool
-	cachePath       string
-	stagingPath     string
+	version              SessionVersion
+	root                 string
+	replicaPath          string
+	replica              *Archive
+	cachePath            string
+	cache                *sync.Cache
+	stagingDirectoryPath string
 }
 
 func NewEndpoint() *Endpoint {
@@ -41,7 +33,7 @@ func NewEndpoint() *Endpoint {
 }
 
 func (e *Endpoint) Initialize(_ context.Context, request *InitializeRequest) (*InitializeResponse, error) {
-	// Lock the endpoint and ensure its release.
+	// Lock the endpoint for modification and ensure its release.
 	e.Lock()
 	defer e.Unlock()
 
@@ -50,7 +42,8 @@ func (e *Endpoint) Initialize(_ context.Context, request *InitializeRequest) (*I
 		return nil, errors.New("endpoint already initialized")
 	}
 
-	// Validate the request.
+	// Validate the request. Other parameters, such as the archive checksum and
+	// archive, will be validated below.
 	if request.Session == "" {
 		return nil, errors.New("empty session identifier")
 	} else if !request.Version.supported() {
@@ -59,101 +52,166 @@ func (e *Endpoint) Initialize(_ context.Context, request *InitializeRequest) (*I
 		return nil, errors.New("empty root path")
 	}
 
-	// Determine whether or not the root is case-sensitive. This will also
-	// ensure that the endpoint has write access to this path.
-	caseInsensitive, err := filesystem.CaseInsensitive(request.Root)
+	// TODO: Perform tilde-expansion and resolution on the root path.
+	root := request.Root
+
+	// Compute the replica path.
+	replicaPath, err := pathForReplica(request.Session, request.Alpha)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to determine case-sensitivity")
+		return nil, errors.Wrap(err, "unable to compute replica path")
+	}
+
+	// If an archive has been provided, use that as our replica.
+	replica := request.Archive
+
+	// If no archive was provided, load ours from disk. If this fails, just
+	// create an empty one.
+	if replica == nil {
+		replica = &Archive{}
+		if encoding.LoadAndUnmarshalProtobuf(replicaPath, replica) != nil {
+			*replica = Archive{}
+		}
+	}
+
+	// Verify that the replica checksum matches what's expected. We only really
+	// need to do this when loading from disk, but it doesn't cost much to
+	// verify in every case. If there's a mismatch, report it in a way that the
+	// controller can detect (don't just throw an error, because we can't really
+	// send sentinel errors across gRPC boundaries).
+	if replicaChecksum, err := checksum(replica.Root); err != nil {
+		return nil, errors.Wrap(err, "unable to compute replica checksum")
+	} else if !bytes.Equal(replicaChecksum, request.ArchiveChecksum) {
+		return &InitializeResponse{ReplicaChecksumMismatch: true}, nil
 	}
 
 	// Compute the cache path.
-	cacheName := alphaCacheName
-	if !request.Alpha {
-		cacheName = betaCacheName
-	}
-	cachePath, err := subpath(request.Session, cacheName)
+	cachePath, err := pathForCache(request.Session, request.Alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute cache path")
 	}
 
+	// Load the cache. If it fails, just create an empty cache.
+	cache := &sync.Cache{}
+	if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
+		*cache = sync.Cache{}
+	}
+
 	// Compute (and create) the staging path.
-	stagingPath, err := stagingPath(request.Session)
+	stagingDirectoryPath, err := pathForStaging(request.Session, request.Alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute staging path")
 	}
 
-	// Check if the root decomposes Unicode.
-	decomposesUnicode, err := filesystem.DecomposesUnicode(request.Root)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to determine Unicode decomposition behavior")
-	}
-
-	// At the moment, we don't do any filesystem checks for executability
-	// preservation, because there's not really a meaningful way to test this on
-	// the filesystem and it falls on OS boundaries anyway. We just use a
-	// hard-coded constant.
-
 	// Store parameters, thereby marking the endpoint as initialized.
 	e.version = request.Version
-	e.root = request.Root
-	e.caseInsensitive = caseInsensitive
+	e.root = root
+	e.replicaPath = replicaPath
+	e.replica = replica
 	e.cachePath = cachePath
-	e.stagingPath = stagingPath
+	e.cache = cache
+	e.stagingDirectoryPath = stagingDirectoryPath
 
 	// Success.
-	return &InitializeResponse{
-		DecomposesUnicode:      decomposesUnicode,
-		PreservesExecutability: preservesExecutability,
-	}, nil
+	return &InitializeResponse{}, nil
 }
 
 const (
-	watchBufferSize = 10
+	scanEventBufferSize = 10
 )
 
-func (e *Endpoint) Watch(request *WatchRequest, responses Endpoint_WatchServer) error {
-	// Read-lock the endpoint and ensure its release.
-	e.RLock()
-	defer e.RUnlock()
+func (e *Endpoint) Scan(ctx context.Context, request *ScanRequest) (*ScanResponse, error) {
+	// Lock the endpoint for modification and ensure its release.
+	e.Lock()
+	defer e.Unlock()
 
 	// If we're not initialized, we can't do anything.
 	if e.version == SessionVersion_Unknown {
-		return errors.New("endpoint not initialized")
+		return nil, errors.New("endpoint not initialized")
 	}
 
-	// Create a channel to receive watch events. It needs to be buffered because
-	// the watcher sends events in a non-blocking fashion and we might not be
-	// able to transmit notifications quite as fast as they can be generated.
-	events := make(chan notify.EventInfo, watchBufferSize)
-
-	// Set up the watcher and make sure it shuts down when this handler
-	// terminates
-	if err := notify.Watch(e.root+"/...", events, notify.All); err != nil {
-		return errors.Wrap(err, "unable to create watch")
+	// Verify that the replica checksum matches what's expected. If we trust our
+	// entry algebra, then we only really need to do this when loading from disk
+	// during initialization (because the endpoint could have terminated while
+	// saving the replica), but it doesn't cost much to verify in every case and
+	// gives us a sanity check that our algebra works correctly. If there's a
+	// mismatch in here, then there's a problem with the code and we should
+	// abort.
+	if replicaChecksum, err := checksum(e.replica.Root); err != nil {
+		return nil, errors.Wrap(err, "unable to compute replica checksum")
+	} else if !bytes.Equal(replicaChecksum, request.ArchiveChecksum) {
+		return nil, errors.New("replica checksum mismatch")
 	}
-	defer notify.Stop(events)
 
-	// Grab the cancellation channel.
-	done := responses.Context().Done()
+	// Create a hasher.
+	hasher, err := e.version.hasher()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create hasher")
+	}
 
-	// Create a response we can re-use.
-	response := &WatchResponse{}
+	// Create a watch context and ensure that it is cancelled by the time we
+	// leave this handler.
+	watchCtx, watchCancel := context.WithCancel(ctx)
+	defer watchCancel()
 
-	// Wait for events or termination.
+	// Create a watch events channel. We create it buffered because the watch
+	// routines send events in a non-blocking fashion. We're probably
+	// over-buffering this a bit, because for native watching we're coallescing
+	// events and almost sure to see only mutating events (thus exiting the loop
+	// after the first event) and for polling watching we have a watch period
+	// that'll be much larger than the time it takes to create a snapshot. In
+	// any case, this over-buffering isn't expensive and keeps us safe. If we
+	// happen to under-buffer, we'll just catch the next timer-based event.
+	watchEvents := make(chan struct{}, scanEventBufferSize)
+
+	// Start watching, monitoring for errors.
+	watchErrors := make(chan error, 1)
+	go func() {
+		watchErrors <- watch(watchCtx, e.root, watchEvents)
+	}()
+
+	// Create snapshots until we find one that differs from expected, using the
+	// watcher to regulate our snapshotting.
 	for {
-		select {
-		case <-events:
-			if err := responses.Send(response); err != nil {
-				return errors.Wrap(err, "unable to transmit notification")
+		// Perform a snapshot.
+		snapshot, cache, err := sync.Scan(e.root, hasher, e.cache)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create snapshot")
+		}
+
+		// Compute the snapshot checksum.
+		snapshotChecksum, err := checksum(snapshot)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to compute snapshot checksum")
+		}
+
+		// If it differs from expected, we're done.
+		if !bytes.Equal(snapshotChecksum, request.ExpectedSnapshotChecksum) {
+			// Save and record the cache.
+			if err := encoding.MarshalAndSaveProtobuf(e.cachePath, cache); err != nil {
+				return nil, errors.Wrap(err, "unable to save cache")
 			}
-		case <-done:
-			break
+			e.cache = cache
+
+			// Return a delta.
+			return &ScanResponse{
+				Delta: sync.Diff(e.replica.Root, snapshot),
+			}, nil
+		}
+
+		// Otherwise, wait until something changes.
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("scan cancelled")
+		case err := <-watchErrors:
+			return nil, errors.Wrap(err, "watch error")
+		case <-watchEvents:
 		}
 	}
 }
 
 func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
-	// Read-lock the endpoint and ensure its release.
+	// Lock the endpoint for reading (since we'll probably have concurrent
+	// staging operations) and ensure its release.
 	e.RLock()
 	defer e.RUnlock()
 
@@ -168,14 +226,9 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Compute the path where this file will be staged. We base this on target
-	// path, executability, and the expected digest (which we verify before
-	// staging). This format doesn't need to be stable, because the staging
-	// directory is wiped during application anyway.
-	stagingPath := filepath.Join(e.stagingPath, fmt.Sprintf(
-		"%x-%t-%x",
-		sha1.Sum([]byte(request.Path)),
-		request.Executable,
+	// Compute the path where this file will be staged.
+	stagingPath := filepath.Join(e.stagingDirectoryPath, nameForStaging(
+		request.Path,
 		request.Digest,
 	))
 
@@ -217,7 +270,7 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 
 	// Open a temporary staging file and compute its name. We don't defer its
 	// closure because we need to rename it.
-	output, err := ioutil.TempFile(e.stagingPath, "incoming")
+	output, err := ioutil.TempFile(e.stagingDirectoryPath, "incoming")
 	if err != nil {
 		return errors.Wrap(err, "unable to create output")
 	}
@@ -264,13 +317,8 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 		return errors.New("patched digest did not match expected")
 	}
 
-	// Set the target file mode.
-	if request.Executable {
-		err = os.Chmod(outputName, 0700)
-	} else {
-		err = os.Chmod(outputName, 0600)
-	}
-	if err != nil {
+	// TODO: Set the target file mode.
+	if true {
 		os.Remove(outputName)
 		return errors.Wrap(err, "unable to set file mode")
 	}
@@ -286,7 +334,8 @@ func (e *Endpoint) Stage(stream Endpoint_StageServer) error {
 }
 
 func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_TransmitServer) error {
-	// Read-lock the endpoint and ensure its release.
+	// Lock the endpoint for reading (since we'll probably have concurrent
+	// transmission operations) and ensure its release.
 	e.RLock()
 	defer e.RUnlock()
 
@@ -316,73 +365,32 @@ func (e *Endpoint) Transmit(request *TransmitRequest, responses Endpoint_Transmi
 	return rsyncer.Deltafy(target, request.BaseSignature, writer)
 }
 
-func (e *Endpoint) Snapshot(_ context.Context, request *SnapshotRequest) (*SnapshotResponse, error) {
-	// Read-lock the endpoint and ensure its release.
-	e.RLock()
-	defer e.RUnlock()
+func (e *Endpoint) Apply(_ context.Context, request *ApplyRequest) (*ApplyResponse, error) {
+	// Lock the endpoint for modification and ensure its release.
+	e.Lock()
+	defer e.Unlock()
 
-	// If we're not initialized, we can't do anything.
-	if e.version == SessionVersion_Unknown {
-		return nil, errors.New("endpoint not initialized")
-	}
+	// TODO: Implement.
+	return nil, errors.New("not implemented")
+}
 
-	// Load the cache. If it fails, just create an empty cache.
-	cache := &sync.Cache{}
-	if encoding.LoadAndUnmarshalProtobuf(e.cachePath, cache) != nil {
-		*cache = sync.Cache{}
-	}
+func (e *Endpoint) Update(_ context.Context, request *UpdateRequest) (*UpdateResponse, error) {
+	// Lock the endpoint for modification and ensure its release.
+	e.Lock()
+	defer e.Unlock()
 
-	// Create a hasher.
-	hasher, err := e.version.hasher()
+	// Apply the changes to the replica.
+	newRoot, err := sync.Apply(e.replica.Root, request.Changes)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create hasher")
+		return nil, errors.Wrap(err, "unable to apply changes to replica")
 	}
+	e.replica.Root = newRoot
 
-	// Perform the snapshot.
-	snapshot, cache, err := sync.Snapshot(e.root, hasher, cache)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create snapshot")
-	}
-
-	// Attempt to save the new cache. Technically we can ignore errors here, but
-	// they are probably indicative of something else, so we should try not to
-	// ignore them.
-	if err := encoding.MarshalAndSaveProtobuf(e.cachePath, cache); err != nil {
-		return nil, errors.Wrap(err, "unable to save cache")
-	}
-
-	// Serialize the snapshot and make it an io.Reader.
-	serialized, err := snapshot.Marshal()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to serialize snapshot")
-	}
-	reader := bytes.NewReader(serialized)
-
-	// Create a container for delta operations and a writer to fill it. It's
-	// very important to note that the Deltafy method re-uses operations and
-	// their data buffers, so we have to make a copy when retaining them in this
-	// slice.
-	var operations []*rsync.Operation
-	writer := func(o *rsync.Operation) error {
-		data := make([]byte, len(o.Data))
-		copy(data, o.Data)
-		operations = append(operations, &rsync.Operation{
-			Type:          o.Type,
-			BlockIndex:    o.BlockIndex,
-			BlockIndexEnd: o.BlockIndexEnd,
-			Data:          data,
-		})
-		return nil
-	}
-
-	// Create an rsyncer and perform deltafication.
-	rsyncer := rsync.New()
-	if err := rsyncer.Deltafy(reader, request.BaseSignature, writer); err != nil {
-		return nil, errors.Wrap(err, "unable to perform deltafication")
+	// Save the replica.
+	if err := encoding.MarshalAndSaveProtobuf(e.replicaPath, e.replica); err != nil {
+		return nil, errors.Wrap(err, "unable to save replica")
 	}
 
 	// Success.
-	return &SnapshotResponse{Operations: operations}, nil
+	return &UpdateResponse{}, nil
 }
-
-// TODO: Add Apply.

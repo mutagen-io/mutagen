@@ -51,7 +51,7 @@ func promptMain(arguments []string) {
 		context.Background(),
 		&ssh.PromptRequest{
 			Prompter: prompter,
-			Context:  context,
+			Message:  message,
 			Prompt:   prompt,
 		},
 		grpcCallFlags...,

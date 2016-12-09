@@ -7,6 +7,8 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 
 import "github.com/havoc-io/mutagen/rsync/rsync.proto";
+import "github.com/havoc-io/mutagen/sync/sync.proto";
+import "github.com/havoc-io/mutagen/url/url.proto";
 
 enum SessionVersion {
     Unknown = 0;
@@ -20,75 +22,79 @@ message Session {
     uint32 creatingVersionMajor = 4;
     uint32 creatingVersionMinor = 5;
     uint32 creatingVersionPatch = 6;
-    string alpha = 7;
-    string beta = 8;
+    url.URL alpha = 7;
+    url.URL beta = 8;
     bool paused = 9;
-    string error = 10;
 }
 
-enum SynchronizationAction {
-    Connecting = 0;
-    ProbingAlpha = 1;
-    ProbingBeta = 2;
-    Watching = 3;
-    SnapshottingAlpha = 4;
-    SnapshottingBeta = 5;
-    Reconciling = 6;
-    StagingAlphaToBeta = 7;
-    StagingBetaToAlpha = 8;
-    ApplyingAlpha = 9;
-    ApplyingBeta = 10;
-    Saving = 11;
+message Archive {
+    sync.Entry root = 1;
 }
 
-message SynchronizationState {
-    SynchronizationAction action = 1;
-    string message = 2;
-}
-
-message SessionState {
-    Session session = 1;
-    SynchronizationState synchronizationState = 2;
+enum SynchronizationStatus {
+    Idle = 0;
+    InitializingAlpha = 1;
+    InitializingBeta = 2;
+    Scanning = 3;
+    Reconciling = 4;
+    StagingAlphaToBeta = 5;
+    StagingBetaToAlpha = 6;
+    ApplyingAlpha = 7;
+    ApplyingBeta = 8;
+    Saving = 9;
+    UpdatingAlpha = 10;
+    UpdatingBeta = 11;
 }
 
 message StartRequest {
-    string alpha = 1;
-    string beta = 2;
+    url.URL alpha = 1;
+    url.URL beta = 2;
     string prompter = 3;
 }
 
 message StartResponse {}
 
 message ListRequest {
-    bool streaming = 1;
+    uint64 previousStateIndex = 1;
+}
+
+message SessionState {
+    Session session = 1;
+    bool alphaConnected = 2;
+    bool betaConnected = 3;
+    SynchronizationStatus status = 4;
+    string message = 5;
+    repeated sync.Conflict conflicts = 6;
+    repeated sync.Problem problems = 7;
 }
 
 message ListResponse {
-    repeated SessionState sessions = 1;
+    uint64 stateIndex = 1;
+    repeated SessionState sessions = 2;
 }
 
 message PauseRequest {
-    string sessionIdentifier = 1;
+    string session = 1;
 }
 
 message PauseResponse {}
 
 message ResumeRequest {
-    string sessionIdentifier = 1;
+    string session = 1;
     string prompter = 2;
 }
 
 message ResumeResponse {}
 
 message StopRequest {
-    string sessionIdentifier = 1;
+    string session = 1;
 }
 
 message StopResponse {}
 
 service Sessions {
     rpc Start(StartRequest) returns (StartResponse) {}
-    rpc List(ListRequest) returns (stream ListResponse) {}
+    rpc List(ListRequest) returns (ListResponse) {}
     rpc Pause(PauseRequest) returns (PauseResponse) {}
     rpc Resume(ResumeRequest) returns (ResumeResponse) {}
     rpc Stop(StopRequest) returns (StopResponse) {}
@@ -99,22 +105,27 @@ message InitializeRequest {
     SessionVersion version = 2;
     string root = 3;
     bool alpha = 4;
+    bytes archiveChecksum = 5;
+    Archive archive = 6;
 }
 
 message InitializeResponse {
-    bool decomposesUnicode = 1;
-    bool preservesExecutability = 2;
+    bool replicaChecksumMismatch = 1;
 }
 
-message WatchRequest {}
+message ScanRequest {
+    bytes archiveChecksum = 1;
+    bytes expectedSnapshotChecksum = 2;
+}
 
-message WatchResponse {}
+message ScanResponse {
+    repeated sync.Change delta = 1;
+}
 
 message StageRequest {
     string path = 1;
-    bool executable = 2;
-    bytes digest = 3;
-    rsync.Operation operation = 4;
+    bytes digest = 2;
+    rsync.Operation operation = 3;
 }
 
 message StageResponse {
@@ -131,21 +142,26 @@ message TransmitResponse {
     rsync.Operation operation = 1;
 }
 
-message SnapshotRequest {
-    repeated rsync.BlockHash baseSignature = 1;
+message ApplyRequest {
+    repeated sync.Change transitions = 1;
 }
 
-message SnapshotResponse {
-    repeated rsync.Operation operations = 1;
+message ApplyResponse {
+    repeated sync.Change results = 1;
+    repeated sync.Problem problems = 2;
 }
 
-// TODO: Add ApplyRequest and ApplyResponse once sync data structures exist.
+message UpdateRequest {
+    repeated sync.Change changes = 1;
+}
+
+message UpdateResponse {}
 
 service Endpoint {
     rpc Initialize(InitializeRequest) returns (InitializeResponse) {}
-    rpc Watch(WatchRequest) returns (stream WatchResponse) {}
+    rpc Scan(ScanRequest) returns (ScanResponse) {}
     rpc Stage(stream StageRequest) returns (stream StageResponse) {}
     rpc Transmit(TransmitRequest) returns (stream TransmitResponse) {}
-    rpc Snapshot(SnapshotRequest) returns (SnapshotResponse) {}
-    // TODO: Add Apply.
+    rpc Apply(ApplyRequest) returns (ApplyResponse) {}
+    rpc Update(UpdateRequest) returns (UpdateResponse) {}
 }

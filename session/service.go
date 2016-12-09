@@ -1,126 +1,204 @@
 package session
 
 import (
-	"sync"
-	"time"
+	"sort"
 
 	"github.com/pkg/errors"
 
 	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
-
-	uuid "github.com/satori/go.uuid"
-
-	"github.com/havoc-io/mutagen"
-	"github.com/havoc-io/mutagen/agent"
-	"github.com/havoc-io/mutagen/url"
+	"github.com/havoc-io/mutagen/filesystem"
 )
 
 type Service struct {
-	stateChange *sync.Cond
-	sessions    map[string]*SessionState
+	// stateTracker locks and tracks state changes made to the session map and
+	// the individual sessions it contains.
+	stateTracker *stateTracker
+	// sessions maps session identifiers to their controllers.
+	sessions map[string]*controller
 }
 
 func NewService() (*Service, error) {
-	// Create the state change condition variable.
-	stateChange := sync.NewCond(&sync.Mutex{})
+	// Create the state tracker.
+	stateTracker := newStateTracker()
 
-	// TODO: Load existing sessions and start their synchronization loops if
-	// they aren't paused.
-	sessions := make(map[string]*SessionState)
+	// Create the sessions map.
+	sessions := make(map[string]*controller)
+
+	// Load existing session identifiers.
+	// HACK: We use some internal knowledge of pathForSession here (namely that
+	// an empty identifier returns the session directory itself and the
+	// semantics of its error values), and we assume anything in that directory
+	// is a session.
+	// TODO: Should we integrate this logic with controller? I think I'd rather
+	// have the controller in charge of path logic honestly.
+	sessionsDirectory, err := pathForSession("")
+	if err != nil {
+		return nil, err
+	}
+	identifiers, err := filesystem.DirectoryContents(sessionsDirectory)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to read sessions directory")
+	}
+
+	// Load and register sessions. We don't need to hold the lock at this point
+	// since nobody can access the registry yet. If a session fails to load,
+	// then just ignore it.
+	for _, identifier := range identifiers {
+		if controller, err := loadSession(stateTracker, identifier); err != nil {
+			continue
+		} else {
+			sessions[identifier] = controller
+		}
+	}
 
 	// Success.
 	return &Service{
-		stateChange: stateChange,
-		sessions:    sessions,
+		stateTracker: stateTracker,
+		sessions:     sessions,
 	}, nil
 }
 
-func clientConnectionAndPathForURL(raw string, prompter string) (*grpc.ClientConn, string, error) {
-	// Handle based on URL type.
-	if urlType := url.Classify(raw); urlType == url.TypePath {
-		// Create an in-memory agent and connection.
-		return dialLocal(), raw, nil
-	} else if urlType == url.TypeSSH {
-		// Parse the SSH URL.
-		remote, err := url.ParseSSH(raw)
-		if err != nil {
-			return nil, "", errors.Wrap(err, "unable to parse SSH URL")
-		}
-
-		// Create the SSH client connection.
-		client, err := agent.DialSSH(prompter, remote)
-		if err != nil {
-			return nil, "", errors.Wrap(err, "unable to create SSH agent connection")
-		}
-
-		// Success.
-		return client, remote.Path, nil
-	}
-
-	// Handle invalid URLs.
-	return nil, "", errors.New("invalid URL")
-}
-
-func (m *Service) Start(_ context.Context, request *StartRequest) (*StartResponse, error) {
-	// Connect to alpha.
-	alpha, alphaPath, err := clientConnectionAndPathForURL(request.Alpha, request.Prompter)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to connect to alpha")
-	}
-
-	// Connect to beta.
-	beta, betaPath, err := clientConnectionAndPathForURL(request.Beta, request.Prompter)
-	if err != nil {
-		alpha.Close()
-		return nil, errors.Wrap(err, "unable to connect to beta")
-	}
-
-	// Create a session.
-	now := time.Now()
-	session := &Session{
-		Identifier:           uuid.NewV4().String(),
-		Version:              SessionVersion_Version1,
-		CreationTime:         &now,
-		CreatingVersionMajor: mutagen.VersionMajor,
-		CreatingVersionMinor: mutagen.VersionMinor,
-		CreatingVersionPatch: mutagen.VersionPatch,
-		Alpha:                request.Alpha,
-		Beta:                 request.Beta,
-	}
-
-	// Create the session state.
-	sessionState := &SessionState{
-		Session:              session,
-		SynchronizationState: &SynchronizationState{},
-	}
-
-	// TODO: Implement.
-	_ = sessionState
-	_ = alphaPath
-	_ = betaPath
-	alpha.Close()
-	beta.Close()
-	return nil, errors.New("not implemented")
-}
-
-func (m *Service) List(request *ListRequest, responses Sessions_ListServer) error {
+func (s *Service) shutdown() error {
 	// TODO: Implement.
 	return errors.New("not implemented")
 }
 
-func (m *Service) Pause(_ context.Context, request *PauseRequest) (*PauseResponse, error) {
-	// TODO: Implement.
-	return nil, errors.New("not implemented")
+func (s *Service) Start(context context.Context, request *StartRequest) (*StartResponse, error) {
+	// Validate URLs. All we really need to do at this point is ensure their
+	// paths are non-empty, because that's the only thing the session package
+	// really knows enough to validate. Any other parameters can be validated at
+	// dial-time.
+	if request.Alpha.Path == "" {
+		return nil, errors.New("alpha URL has empty path")
+	} else if request.Beta.Path == "" {
+		return nil, errors.New("beta URL has empty path")
+	}
+
+	// Attempt to create the session.
+	controller, err := newSession(
+		s.stateTracker,
+		context,
+		request.Alpha, request.Beta,
+		request.Prompter,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create session")
+	}
+
+	// Register the session.
+	s.stateTracker.lock()
+	s.sessions[controller.session.Identifier] = controller
+	s.stateTracker.notifyOfChangesAndUnlock()
+
+	// Success.
+	return &StartResponse{}, nil
 }
 
-func (m *Service) Resume(_ context.Context, request *ResumeRequest) (*ResumeResponse, error) {
-	// TODO: Implement.
-	return nil, errors.New("not implemented")
+// byCreationDate implements the sort interface for SessionState, sorting
+// sessions by creation date. It is used by the List handler.
+type byCreationDate []*SessionState
+
+func (d byCreationDate) Len() int {
+	return len(d)
 }
 
-func (m *Service) Stop(_ context.Context, request *StopRequest) (*StopResponse, error) {
-	// TODO: Implement.
-	return nil, errors.New("not implemented")
+func (d byCreationDate) Swap(i, j int) {
+	d[i], d[j] = d[j], d[i]
+}
+
+func (d byCreationDate) Less(i, j int) bool {
+	return d[i].Session.CreationTime.Before(*d[j].Session.CreationTime)
+}
+
+func (s *Service) List(_ context.Context, request *ListRequest) (*ListResponse, error) {
+	// Wait until there is a change from the previous state and lock the state.
+	newStateIndex := s.stateTracker.waitForChangeAndLock(request.PreviousStateIndex)
+
+	// Create the initial response.
+	response := &ListResponse{
+		StateIndex: newStateIndex,
+	}
+
+	// Iterate through the session map and record the public state components.
+	for _, controller := range s.sessions {
+		response.Sessions = append(response.Sessions, controller.state())
+	}
+
+	// Unlock the state.
+	s.stateTracker.unlock()
+
+	// Sort the sessions by creation date.
+	sort.Sort(byCreationDate(response.Sessions))
+
+	// Success.
+	return response, nil
+}
+
+func (s *Service) Pause(_ context.Context, request *PauseRequest) (*PauseResponse, error) {
+	// Grab the relevant controller.
+	s.stateTracker.lock()
+	controller := s.sessions[request.Session]
+	s.stateTracker.unlock()
+
+	// Ensure that the controller is valid.
+	if controller == nil {
+		return nil, errors.New("session not found")
+	}
+
+	// Attempt to pause.
+	err := controller.pause()
+	if err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return &PauseResponse{}, nil
+}
+
+func (s *Service) Resume(context context.Context, request *ResumeRequest) (*ResumeResponse, error) {
+	// Grab the relevant controller.
+	s.stateTracker.lock()
+	controller := s.sessions[request.Session]
+	s.stateTracker.unlock()
+
+	// Ensure that the controller is valid.
+	if controller == nil {
+		return nil, errors.New("session not found")
+	}
+
+	// Attempt to resume.
+	err := controller.resume(context, request.Prompter)
+	if err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return &ResumeResponse{}, nil
+}
+
+func (s *Service) Stop(_ context.Context, request *StopRequest) (*StopResponse, error) {
+	// Grab the relevant controller.
+	s.stateTracker.lock()
+	controller := s.sessions[request.Session]
+	s.stateTracker.unlock()
+
+	// Ensure that the controller is valid.
+	if controller == nil {
+		return nil, errors.New("session not found")
+	}
+
+	// Attempt to stop.
+	err := controller.stop(true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deregister the session.
+	s.stateTracker.lock()
+	delete(s.sessions, request.Session)
+	s.stateTracker.notifyOfChangesAndUnlock()
+
+	// Success.
+	return &StopResponse{}, nil
 }
