@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package url;
+
+enum Protocol {
+    Local = 0;
+    SSH = 1;
+}
+
+message URL {
+    Protocol protocol = 1;
+    string username = 2;
+    string hostname = 3;
+    uint32 port = 4;
+    string path = 5;
+}

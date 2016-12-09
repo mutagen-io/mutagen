@@ -48,6 +48,7 @@ var subdirectories = []struct {
 	{"session", []string{"session.proto"}},
 	{"ssh", []string{"ssh.proto"}},
 	{"sync", []string{"sync.proto"}},
+	{"url", []string{"url.proto"}},
 }
 
 func main() {

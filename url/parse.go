@@ -6,26 +6,37 @@ import (
 	"github.com/pkg/errors"
 )
 
-type URL struct {
-	Protocol Protocol
-	Username string
-	Hostname string
-	Port     uint16
-	Path     string
-}
-
 func Parse(raw string) (*URL, error) {
-	switch classify(raw) {
-	case ProtocolLocal:
-		return &URL{
-			Protocol: ProtocolLocal,
-			Path:     raw,
-		}, nil
-	case ProtocolSSH:
-		return parseSSH(raw)
-	default:
-		panic("unhandled URL protocol")
+	// Don't allow empty raw URLs.
+	if raw == "" {
+		return nil, errors.New("empty raw URL")
 	}
+
+	// Check if this is an SCP-style URL. A URL is classified as such if it
+	// contains a colon with no forward slashes before it. On Windows, paths
+	// beginning with x:\ or x:/ (where x is a-z or A-Z) are almost certainly
+	// referring to local paths, but will trigger the SCP URL detection, so we
+	// have to check those first. This is, of course, something of a heuristic,
+	// but we're unlikely to encounter 1-character hostnames and very likely to
+	// encounter Windows paths (except on POSIX, where this check always returns
+	// false). If Windows users do have a 1-character hostname, they should just
+	// use some other addressing scheme for it (e.g. an IP address or alternate
+	// hostname).
+	if !isWindowsPath(raw) {
+		for _, c := range raw {
+			if c == ':' {
+				return parseSSH(raw)
+			} else if c == '/' {
+				break
+			}
+		}
+	}
+
+	// Otherwise, just treat this as a raw path.
+	return &URL{
+		Protocol: Protocol_Local,
+		Path:     raw,
+	}, nil
 }
 
 func parseSSH(raw string) (*URL, error) {
@@ -58,7 +69,7 @@ func parseSSH(raw string) (*URL, error) {
 	// and if there is one and all characters before it are 0-9, we try to parse
 	// them as a port. We only accept non-empty strings, because technically a
 	// file could start with ':' on some systems.
-	var port uint16
+	var port uint32
 	for i, r := range raw {
 		// If we're in a string of characters, keep going.
 		if '0' <= r && r <= '9' {
@@ -73,7 +84,7 @@ func parseSSH(raw string) (*URL, error) {
 				// attempting to specify a port.
 				break
 			} else {
-				port = uint16(port64)
+				port = uint32(port64)
 				raw = raw[i+1:]
 			}
 		}
@@ -84,7 +95,7 @@ func parseSSH(raw string) (*URL, error) {
 
 	// Create the URL, using what remains as the path.
 	return &URL{
-		Protocol: ProtocolSSH,
+		Protocol: Protocol_SSH,
 		Username: username,
 		Hostname: hostname,
 		Port:     port,
