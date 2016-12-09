@@ -27,7 +27,7 @@ func timeoutArgument() string {
 // to use them for authentication if necessary.
 func Copy(prompter, message, local string, remote *url.URL) error {
 	// Validate the URL protocol.
-	if remote.Protocol != url.ProtocolSSH {
+	if remote.Protocol != url.Protocol_SSH {
 		return errors.New("non-SSH URL provided")
 	}
 
@@ -93,7 +93,7 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 // whatever default directory the server chooses.
 func Command(prompter, message string, remote *url.URL, command string) (*exec.Cmd, error) {
 	// Validate the URL protocol.
-	if remote.Protocol != url.ProtocolSSH {
+	if remote.Protocol != url.Protocol_SSH {
 		return nil, errors.New("non-SSH URL provided")
 	}
 

@@ -23,9 +23,9 @@ func Dial(ctx context.Context, remote *url.URL, prompter string) (*grpc.ClientCo
 		// Handle connection based on the protocol.
 		var client *grpc.ClientConn
 		var err error
-		if remote.Protocol == url.ProtocolLocal {
+		if remote.Protocol == url.Protocol_Local {
 			client, err = dialLocal()
-		} else if remote.Protocol == url.ProtocolSSH {
+		} else if remote.Protocol == url.Protocol_SSH {
 			client, err = dialSSH(remote, prompter)
 		} else {
 			err = errors.New("unsupported protocol")
