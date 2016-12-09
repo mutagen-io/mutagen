@@ -225,11 +225,15 @@ func connectSSH(remote *url.URL, prompter string) (net.Conn, bool, error) {
 	// Confirm that the process started correctly by performing a version
 	// handshake.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
+		// If there's an error, check if SSH exits with a command not found
+		// error. For local connections, we check this above at the start call,
+		// but for SSH connections, we're invoking the SSH command, so that will
+		// start just fine - it isn't until we try to interact with the process
+		// that we'll see it misbehaves and exits with this code.
 		if ssh.IsCommandNotFound(process.Wait()) {
 			return nil, true, errors.New("command not found")
-		} else {
-			return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 		}
+		return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 	} else if !versionMatch {
 		return nil, true, errors.New("version mismatch")
 	}

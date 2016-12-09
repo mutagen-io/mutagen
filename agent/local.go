@@ -54,17 +54,16 @@ func connectLocal() (net.Conn, bool, error) {
 
 	// Start the process.
 	if err = process.Start(); err != nil {
+		if os.IsNotExist(err) {
+			return nil, true, errors.New("command not found")
+		}
 		return nil, false, errors.Wrap(err, "unable to start agent process")
 	}
 
 	// Confirm that the process started correctly by performing a version
 	// handshake.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
-		if os.IsNotExist(process.Wait()) {
-			return nil, true, errors.New("command not found")
-		} else {
-			return nil, false, errors.Wrap(err, "unable to handshake with agent process")
-		}
+		return nil, false, errors.Wrap(err, "unable to handshake with agent process")
 	} else if !versionMatch {
 		return nil, true, errors.New("version mismatch")
 	}
