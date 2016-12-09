@@ -13,9 +13,9 @@ import (
 // TODO: Figure out if we should set this on a per-machine basis. This value is
 // taken from Go's io.Copy method, which defaults to allocating a 32k buffer if
 // none is provided.
-const snapshotterCopyBufferSize = 32 * 1024
+const scannerCopyBufferSize = 32 * 1024
 
-type snapshotter struct {
+type scanner struct {
 	root     string
 	hasher   hash.Hash
 	cache    *Cache
@@ -27,7 +27,7 @@ type snapshotter struct {
 	// one supports base paths, though I don't know if we need or want that.
 }
 
-func (s *snapshotter) file(target string, info os.FileInfo) (*Entry, error) {
+func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
 	mode := info.Mode()
 	modificationTime := info.ModTime()
@@ -88,7 +88,7 @@ func (s *snapshotter) file(target string, info os.FileInfo) (*Entry, error) {
 	return &Entry{EntryKind_File, executable, digest, nil}, nil
 }
 
-func (s *snapshotter) directory(target string) (*Entry, error) {
+func (s *scanner) directory(target string) (*Entry, error) {
 	// Read directory contents.
 	directoryContents, err := ioutil.ReadDir(filepath.Join(s.root, target))
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *snapshotter) directory(target string) (*Entry, error) {
 	return &Entry{EntryKind_Directory, false, nil, contents}, nil
 }
 
-func Snapshot(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, error) {
 	// If the cache is nil, create an empty one.
 	if cache == nil {
 		cache = &Cache{}
@@ -148,16 +148,17 @@ func Snapshot(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, erro
 	// Create a new cache to populate.
 	newCache := &Cache{make(map[string]*CacheEntry)}
 
-	// Create a snapshotter.
-	s := &snapshotter{
+	// Create a scanner.
+	s := &scanner{
 		root:     root,
 		hasher:   hasher,
 		cache:    cache,
 		newCache: newCache,
-		buffer:   make([]byte, snapshotterCopyBufferSize),
+		buffer:   make([]byte, scannerCopyBufferSize),
 	}
 
-	// Create the snapshot.
+	// Create the snapshot. We use os.Stat, as opposed to os.Lstat, because we
+	// DO want to follow symbolic links at the root.
 	if info, err := os.Stat(root); err != nil {
 		if os.IsNotExist(err) {
 			return nil, newCache, nil
@@ -165,18 +166,18 @@ func Snapshot(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, erro
 			return nil, nil, errors.Wrap(err, "unable to probe snapshot root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
-		if snapshot, err := s.directory(""); err != nil {
+		if rootEntry, err := s.directory(""); err != nil {
 			return nil, nil, err
 		} else {
-			return snapshot, newCache, nil
+			return rootEntry, newCache, nil
 		}
 	} else if mode&os.ModeType != 0 {
 		return nil, nil, errors.New("invalid snapshot root type")
 	} else {
-		if snapshot, err := s.file("", info); err != nil {
+		if rootEntry, err := s.file("", info); err != nil {
 			return nil, nil, err
 		} else {
-			return snapshot, newCache, nil
+			return rootEntry, newCache, nil
 		}
 	}
 }

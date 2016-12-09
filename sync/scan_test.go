@@ -18,7 +18,7 @@ var gorootCache *Cache
 
 func init() {
 	// Create the GOROOT snapshot and cache.
-	if snapshot, cache, err := Snapshot(runtime.GOROOT(), sha1.New(), nil); err != nil {
+	if snapshot, cache, err := Scan(runtime.GOROOT(), sha1.New(), nil); err != nil {
 		panic("couldn't create GOROOT snapshot: " + err.Error())
 	} else if snapshot.Kind != EntryKind_Directory {
 		panic("GOROOT snapshot is not a directory")
@@ -47,7 +47,7 @@ func (p *gorootRebuildHashProxy) Sum(b []byte) []byte {
 // ensuring that no re-hashing occurs and that results are consistent.
 func TestEfficientRebuild(t *testing.T) {
 	hasher := &gorootRebuildHashProxy{sha1.New(), t}
-	if snapshot, _, err := Snapshot(runtime.GOROOT(), hasher, gorootCache); err != nil {
+	if snapshot, _, err := Scan(runtime.GOROOT(), hasher, gorootCache); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
 	} else if !snapshot.Equal(gorootSnapshot) {
 		t.Error("re-snapshotting produced a non-equivalent snapshot")
@@ -55,7 +55,7 @@ func TestEfficientRebuild(t *testing.T) {
 }
 
 func TestConsistentSerialization(t *testing.T) {
-	if snapshot, _, err := Snapshot(runtime.GOROOT(), sha1.New(), gorootCache); err != nil {
+	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
 	} else if gorootSnapshotBytes, err := gorootSnapshot.Marshal(); err != nil {
 		t.Fatal("couldn't serialize GOROOT snapshot:", err)
@@ -66,20 +66,20 @@ func TestConsistentSerialization(t *testing.T) {
 	}
 }
 
-// TestBuilderNonExistent verifies that snapshotter returns nil for paths that
+// TestBuilderNonExistent verifies that Scan returns a nil root for paths that
 // don't exist.
 func TestBuilderNonExistent(t *testing.T) {
 	// Create the snapshotter.
-	snapshot, cache, err := Snapshot("THIS/DOES/NOT/EXIST", sha1.New(), nil)
+	snapshot, cache, err := Scan("THIS/DOES/NOT/EXIST", sha1.New(), nil)
 
-	// Ensure that the snapshot is nil.
+	// Ensure that the snapshot root is nil.
 	if snapshot != nil {
 		t.Error("snapshot of non-existent path should be nil")
 	}
 
-	// Ensure that the cache is nil.
-	if cache != nil {
-		t.Error("snapshot cache of non-existent path should be nil")
+	// Ensure that the cache is non-nil.
+	if cache == nil {
+		t.Error("snapshot cache of non-existent path should be non-nil")
 	}
 
 	// Ensure that the error is nil.
