@@ -171,8 +171,16 @@ var targets = []Target{
 	{"openbsd", "386"},
 	{"openbsd", "amd64"},
 	{"openbsd", "arm"},
-	{"plan9", "386"},
-	{"plan9", "amd64"},
+	// We completely disable Plan 9 because it is just missing too many
+	// facilities for Mutagen to build easily, even just the agent component.
+	// TODO: We might be able to get Plan 9 functioning as an agent, but it's
+	// going to take some serious playing around with source file layouts and
+	// build tags. To get started looking into this, look for the !plan9 build
+	// tag and see where the gaps are. Most of the problems revolve around the
+	// syscall package, but none of that is necessary for the agent, so it can
+	// probably be built.
+	// {"plan9", "386"},
+	// {"plan9", "amd64"},
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
@@ -270,31 +278,36 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 	return nil
 }
 
-func buildAgentForTargetInDevelopment(target Target) bool {
+func buildAgentForTargetInTesting(target Target) bool {
 	return !target.Cross() ||
 		target.GOOS == "darwin" ||
 		target.GOOS == "windows" ||
 		(target.GOOS == "linux" &&
 			(target.GOARCH == "amd64" ||
-			target.GOARCH == "386" ||
-			target.GOARCH == "arm"))
+				target.GOARCH == "386" ||
+				target.GOARCH == "arm"))
 }
 
-var buildUsage = `usage: build [-h|--help] [-r|--release]
+var buildUsage = `usage: build [-h|--help] [-m|--mode=<mode>]
 
-If invoked in release mode, this script creates an agent bundle supporting all
-platforms and creates release bundles containing CLI components and the agent
-bundle for all platforms. Otherwise the same procedure is performed with a
-limited set of agents (including the current platform) and the CLI components
-are only compiled for the current platform and left inside the $GOPATH/bin
-directory along with the agent bundle.
+The mode flag takes three values: 'slim', 'testing', and 'release'. 'slim' will
+build binaries only for the current platform. 'testing' will build the CLI
+binary for only the current platform and agents for a small subset of platforms.
+Both 'slim' and 'testing' will place their build output (CLI binary and agent
+bundle) in the '$GOPATH/bin' directory. 'release' will build CLI and agent
+binaries for all platforms and package them in the 'build' subdirectory of the
+Mutagen source tree. The default mode is 'slim'.
 `
 
 func main() {
 	// Parse and handle flags.
 	flagSet := cmd.NewFlagSet("build", buildUsage, nil)
-	release := flagSet.BoolP("release", "r", false, "build a full release")
+	var mode string
+	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
 	flagSet.ParseOrDie(os.Args[1:])
+	if mode != "slim" && mode != "testing" && mode != "release" {
+		cmd.Fatal(errors.New("invalid build mode"))
+	}
 
 	// The only platform really suited to cross-compiling for every other
 	// platform at the moment is macOS. This is because its DNS resolution
@@ -303,9 +316,9 @@ func main() {
 	// that is a C-based API, not accessible purely via system calls. All of the
 	// other platforms can survive with pure Go compilation.
 	if runtime.GOOS != "darwin" {
-		if *release {
+		if mode == "release" {
 			cmd.Fatal(errors.New("macOS required for release builds"))
-		} else {
+		} else if mode == "testing" {
 			cmd.Warning("macOS agents will be built without cgo support")
 		}
 	}
@@ -338,7 +351,7 @@ func main() {
 	// Compute the release build path and ensure it exists if we're in release
 	// mode.
 	var releasePath string
-	if *release {
+	if mode == "release" {
 		releasePath = filepath.Join(sourcePath, "build")
 		if err := os.MkdirAll(releasePath, 0700); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to create release directory"))
@@ -354,9 +367,10 @@ func main() {
 
 	// Build and add agent binaries.
 	for _, target := range targets {
-		// If we're not in release mode, skip agents that aren't explicitly
-		// whitelisted.
-		if !*release && !buildAgentForTargetInDevelopment(target) {
+		// Skip agent targets that aren't appropriate for this build mode.
+		if mode == "slim" && target.Cross() {
+			continue
+		} else if mode == "testing" && !buildAgentForTargetInTesting(target) {
 			continue
 		}
 
@@ -386,13 +400,7 @@ func main() {
 	// Build CLI binaries.
 	for _, target := range targets {
 		// If we're not in release mode, we don't do any cross-compilation.
-		if !*release && target.Cross() {
-			continue
-		}
-
-		// HACK: At the moment, Plan 9 has deficiencies that prevents
-		// compilation of the CLI components.
-		if target.GOOS == "plan9" {
+		if mode != "release" && target.Cross() {
 			continue
 		}
 
@@ -405,7 +413,7 @@ func main() {
 		}
 
 		// If we're in release mode, create the release bundle.
-		if *release {
+		if mode == "release" {
 			// Print information.
 			fmt.Println("Building release bundle for", target)
 
