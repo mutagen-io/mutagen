@@ -1,3 +1,7 @@
+// +build !plan9
+
+// TODO: Figure out what to do for Plan 9. It doesn't have syscall.WaitStatus.
+
 package process
 
 import (
