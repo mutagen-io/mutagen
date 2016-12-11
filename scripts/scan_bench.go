@@ -30,7 +30,7 @@ func main() {
 
 	// Create a snapshot without any cache.
 	start := time.Now()
-	snapshot, cache, err := sync.Snapshot(path, sha1.New(), nil)
+	snapshot, cache, err := sync.Scan(path, sha1.New(), nil)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -41,7 +41,7 @@ func main() {
 
 	// Create a snapshot with a cache.
 	start = time.Now()
-	snapshot, _, err = sync.Snapshot(path, sha1.New(), cache)
+	snapshot, _, err = sync.Scan(path, sha1.New(), cache)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
