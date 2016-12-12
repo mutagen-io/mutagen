@@ -14,15 +14,16 @@ import (
 )
 
 const (
+	snapshotFile = "snapshot_test"
 	cacheFile = "cache_test"
 )
 
-var usage = `snapshot_bench [-h|--help] <path>
+var usage = `scan_bench [-h|--help] <path>
 `
 
 func main() {
 	// Parse arguments.
-	flagSet := cmd.NewFlagSet("snapshot_bench", usage, []int{1})
+	flagSet := cmd.NewFlagSet("scan_bench", usage, []int{1})
 	path := flagSet.ParseOrDie(os.Args[1:])[0]
 
 	// Print information.
@@ -37,7 +38,7 @@ func main() {
 		cmd.Fatal(errors.New("target doesn't exist"))
 	}
 	stop := time.Now()
-	fmt.Println("Cold snapshot took", stop.Sub(start))
+	fmt.Println("Cold scan took", stop.Sub(start))
 
 	// Create a snapshot with a cache.
 	start = time.Now()
@@ -48,7 +49,7 @@ func main() {
 		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
-	fmt.Println("Warm snapshot took", stop.Sub(start))
+	fmt.Println("Warm scan took", stop.Sub(start))
 
 	// Serialize it.
 	start = time.Now()
@@ -67,6 +68,27 @@ func main() {
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot deserialization took", stop.Sub(start))
+
+	// Write the serialized snapshot to disk.
+	start = time.Now()
+	if err = ioutil.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to write snapshot"))
+	}
+	stop = time.Now()
+	fmt.Println("Snapshot write took", stop.Sub(start))
+
+	// Read the serialized snapshot from disk.
+	start = time.Now()
+	if _, err = ioutil.ReadFile(snapshotFile); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to read snapshot"))
+	}
+	stop = time.Now()
+	fmt.Println("Snapshot read took", stop.Sub(start))
+
+	// Wipe the temporary file.
+	if err = os.Remove(snapshotFile); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to remove snapshot"))
+	}
 
 	// Print other information.
 	fmt.Println("Serialized snapshot size is", len(serializedSnapshot), "bytes")
@@ -104,7 +126,7 @@ func main() {
 	// Read the serialized cache from disk.
 	start = time.Now()
 	if _, err = ioutil.ReadFile(cacheFile); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to write cache"))
+		cmd.Fatal(errors.Wrap(err, "unable to read cache"))
 	}
 	stop = time.Now()
 	fmt.Println("Cache read took", stop.Sub(start))
