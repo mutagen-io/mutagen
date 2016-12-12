@@ -37,7 +37,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 				&Change{
 					Path: path,
 					Old:  nil,
-					New:  alpha.copyShallow(),
+					New:  alpha.copyShallow(false),
 				},
 			)
 			ancestorContents = nil

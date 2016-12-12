@@ -44,10 +44,17 @@ func (e *Entry) Equal(other *Entry) bool {
 	return true
 }
 
-func (e *Entry) copyShallow() *Entry {
+func (e *Entry) copyShallow(makeContentMap bool) *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
 		return nil
+	}
+
+	// Create an initialized content map if requested. We don't populate it, but
+	// it's nicer to have its creation encapsulated in here.
+	var contents map[string]*Entry
+	if makeContentMap {
+		contents = make(map[string]*Entry)
 	}
 
 	// Create the copy.
@@ -55,6 +62,7 @@ func (e *Entry) copyShallow() *Entry {
 		Kind:       e.Kind,
 		Executable: e.Executable,
 		Digest:     e.Digest,
+		Contents:   contents,
 	}
 }
 
