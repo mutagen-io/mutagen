@@ -10,7 +10,7 @@ import (
 )
 
 func loadAndUnmarshal(path string, unmarshal func([]byte) error) error {
-	// Grab the file contents, making sure they are non-empty.
+	// Grab the file contents.
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		// If this is a non-existence error, then return it without wrapping so
@@ -21,8 +21,6 @@ func loadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 
 		// Otherwise wrap it up.
 		return errors.Wrap(err, "unable to load file")
-	} else if len(data) == 0 {
-		return errors.New("empty file")
 	}
 
 	// Perform the unmarshaling.
