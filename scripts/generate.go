@@ -82,7 +82,7 @@ func main() {
 		arguments = append(arguments, "-I.")
 		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		arguments = append(arguments, "--gofast_out=plugins=grpc:.")
+		arguments = append(arguments, "--gofast_out=.")
 		arguments = append(arguments, s.files...)
 		protoc := exec.Command("protoc", arguments...)
 		protoc.Dir = subdirectory
