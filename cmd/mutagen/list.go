@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/net/context"
-
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/daemon"
+	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/session"
 )
 
@@ -39,20 +39,23 @@ func listMain(arguments []string) {
 		filteredSession = sessionArguments[0]
 	}
 
-	// Create a daemon client connection and defer its closure.
-	daemonClientConnection, err := newDaemonClientConnection()
+	// Create a daemon client.
+	daemonClient := rpc.NewClient(daemon.NewOpener())
+
+	// Invoke the session list method and ensure the resulting stream is closed
+	// when we're done.
+	stream, err := daemonClient.Invoke(sessionMethodList)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session enumeration"))
 	}
-	defer daemonClientConnection.Close()
+	defer stream.Close()
 
-	// Create a session manager client.
-	sessionsClient := session.NewSessionsClient(daemonClientConnection)
-
-	// Perform a list request.
-	response, err := sessionsClient.List(context.Background(), &session.ListRequest{})
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to list sessions"))
+	// Send the list request and receive the response.
+	var response session.ListResponse
+	if err := stream.Encode(session.ListRequest{}); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to send enumeration request"))
+	} else if err = stream.Decode(&response); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to receive session list"))
 	}
 
 	// Print sessions. If there's a filter, only print that session, but print

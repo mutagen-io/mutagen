@@ -6,10 +6,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/net/context"
-
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/environment"
+	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/ssh"
 )
 
@@ -36,28 +36,27 @@ func promptMain(arguments []string) {
 	}
 	message := string(messageBytes)
 
-	// Create a daemon client connection and defer its closure.
-	daemonClientConnection, err := newDaemonClientConnection()
+	// Create a daemon client.
+	daemonClient := rpc.NewClient(daemon.NewOpener())
+
+	// Invoke the SSH prompt method and ensure the resulting stream is closed
+	// when we're done.
+	stream, err := daemonClient.Invoke(sshMethodPrompt)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		cmd.Fatal(errors.Wrap(err, "unable to invoke SSH prompting"))
 	}
-	defer daemonClientConnection.Close()
+	defer stream.Close()
 
-	// Create a prompt service client.
-	promptClient := ssh.NewPromptClient(daemonClientConnection)
-
-	// Issue the prompt request.
-	response, err := promptClient.Request(
-		context.Background(),
-		&ssh.PromptRequest{
-			Prompter: prompter,
-			Message:  message,
-			Prompt:   prompt,
-		},
-		grpcCallFlags...,
-	)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to complete prompt request"))
+	// Send the prompt request and receive the response.
+	var response ssh.PromptResponse
+	if err := stream.Encode(ssh.PromptRequest{
+		Prompter: prompter,
+		Message:  message,
+		Prompt:   prompt,
+	}); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to send prompt request"))
+	} else if err := stream.Decode(&response); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to receive prompt response"))
 	}
 
 	// Print the response.

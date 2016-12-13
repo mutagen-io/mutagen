@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/net/context"
-
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/daemon"
+	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/url"
@@ -47,61 +47,57 @@ func startMain(arguments []string) {
 		}
 	}
 
-	// Create a daemon client connection and defer its closure.
-	daemonClientConnection, err := newDaemonClientConnection()
+	// Create a daemon client.
+	daemonClient := rpc.NewClient(daemon.NewOpener())
+
+	// Invoke the session start method and ensure the resulting stream is closed
+	// when we're done.
+	stream, err := daemonClient.Invoke(sessionMethodStart)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session creation"))
 	}
-	defer daemonClientConnection.Close()
+	defer stream.Close()
 
-	// Create a prompt service client.
-	promptClient := ssh.NewPromptClient(daemonClientConnection)
-
-	// Start responding to prompts.
-	prompts, err := promptClient.Respond(context.Background(), grpcCallFlags...)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to register as prompter"))
-	}
-
-	// Receive prompter identifier.
-	var prompter string
-	if response, err := prompts.Recv(); err != nil || response.Prompter == "" {
-		cmd.Fatal(errors.Wrap(err, "unable to receive prompter identifier"))
-	} else {
-		prompter = response.Prompter
+	// Send the initial request.
+	if err := stream.Encode(session.StartRequest{
+		Alpha: alpha,
+		Beta:  beta,
+	}); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to send creation request"))
 	}
 
-	// Handle prompts in a separate Goroutine and watch for errors.
-	promptErrors := make(chan error, 1)
-	go func() {
-		promptErrors <- performPrompts(prompts)
-	}()
-
-	// Create a session manager client.
-	sessionsClient := session.NewSessionsClient(daemonClientConnection)
-
-	// Invoke start and watch for completion.
-	startErrors := make(chan error, 1)
-	go func() {
-		// Create the request.
-		startRequest := &session.StartRequest{
-			Alpha:    alpha,
-			Beta:     beta,
-			Prompter: prompter,
+	// Handle any prompts and watch for errors.
+	for {
+		// Grab the next response.
+		var response session.StartResponse
+		if err := stream.Decode(response); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to receive creation response"))
 		}
 
-		// Invoke start.
-		_, err := sessionsClient.Start(context.Background(), startRequest, grpcCallFlags...)
-		startErrors <- err
-	}()
-
-	// Wait for the start method to return or prompting to fail.
-	select {
-	case promptErr := <-promptErrors:
-		cmd.Fatal(errors.Wrap(promptErr, "prompting failed"))
-	case startErr := <-startErrors:
-		if startErr != nil {
-			cmd.Fatal(errors.Wrap(startErr, "unable to start session"))
+		// If there is a challenge, handle it and wait for the next one.
+		if response.Challenge != nil {
+			if r, err := ssh.PromptCommandLine(
+				response.Challenge.Message,
+				response.Challenge.Prompt,
+			); err != nil {
+				cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+			} else if err = stream.Encode(session.StartRequest{
+				Response: &session.PromptResponse{r},
+			}); err != nil {
+				cmd.Fatal(errors.Wrap(err, "unable to send challenge response"))
+			}
+			continue
 		}
+
+		// Check if there is an error.
+		if response.Error != "" {
+			cmd.Fatal(errors.Wrap(
+				errors.New(response.Error),
+				"unable to create session",
+			))
+		}
+
+		// Otherwise we're done.
+		break
 	}
 }

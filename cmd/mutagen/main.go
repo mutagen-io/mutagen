@@ -11,15 +11,8 @@ import (
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
-	"github.com/havoc-io/mutagen/grpcutil"
 	"github.com/havoc-io/mutagen/ssh"
 )
-
-func init() {
-	// Squelch gRPC, because it thinks it owns standard error and vomits out
-	// every internal diagnostic message.
-	grpcutil.Squelch()
-}
 
 // usage provides help information for the main Mutagen entry point.
 var usage = `usage: mutagen [-V|--version] [-h|--help] [-l|--legal] <command> [<args>]

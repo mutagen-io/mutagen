@@ -5,91 +5,109 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/net/context"
-
 	uuid "github.com/satori/go.uuid"
+
+	"github.com/havoc-io/mutagen/rpc"
 )
 
+type Prompter interface {
+	Prompt(string, string) (string, error)
+}
+
 type Service struct {
-	sync.Mutex
-	prompterPassers map[string]chan Prompt_RespondServer
+	holdersLock sync.Mutex
+	holders     map[string]chan Prompter
 }
 
 func NewService() *Service {
 	return &Service{
-		prompterPassers: make(map[string]chan Prompt_RespondServer),
+		holders: make(map[string]chan Prompter),
 	}
 }
 
-func (s *Service) Request(_ context.Context, request *PromptRequest) (*PromptResponse, error) {
-	// Grab the passer for the specified prompter.
-	s.Lock()
-	passer, ok := s.prompterPassers[request.Prompter]
-	s.Unlock()
+func (s *Service) RegisterPrompter(prompter Prompter) string {
+	// Generate a unique identifier for this prompter.
+	identifier := uuid.NewV4().String()
 
-	// If there was no passer registered, abort.
-	if !ok {
-		return nil, errors.New("prompter not found")
-	}
+	// Create and populate a channel for passing the prompter around.
+	holder := make(chan Prompter, 1)
+	holder <- prompter
 
-	// Wait for the prompter. If we don't receive one, it could be that it
-	// disconnected before we could receive it. If we get the prompter, ensure
-	// that we return it when we're done.
-	prompter, ok := <-passer
-	if !ok {
-		return nil, errors.New("unable to acquire prompter")
-	}
-	defer func() {
-		passer <- prompter
-	}()
+	// Register the holder.
+	s.holdersLock.Lock()
+	s.holders[identifier] = holder
+	s.holdersLock.Unlock()
 
-	// Forward the request.
-	if err := prompter.Send(request); err != nil {
-		return nil, errors.Wrap(err, "unable to send prompt")
-	}
-
-	// Get the prompt response.
-	return prompter.Recv()
+	// Done.
+	return identifier
 }
 
-func (s *Service) Respond(stream Prompt_RespondServer) error {
-	// Generate a unique id for this prompter.
-	prompter := uuid.NewV4().String()
+func (s *Service) UnregisterPrompter(identifier string) {
+	// Grab the holder and deregister it. If it isn't currently registed, this
+	// must be a logic error.
+	s.holdersLock.Lock()
+	holder, ok := s.holders[identifier]
+	if !ok {
+		panic("deregistration requested for unregistered prompter")
+	}
+	delete(s.holders, identifier)
+	s.holdersLock.Unlock()
 
-	// Send the prompter its identifier.
-	if err := stream.Send(&PromptRequest{Prompter: prompter}); err != nil {
-		return errors.Wrap(err, "unable to send prompter identifier")
+	// Get the prompter back and close the holder to let anyone else who has it
+	// know that they won't be getting the prompter from it.
+	<-holder
+	close(holder)
+}
+
+type PromptRequest struct {
+	Prompter string
+	Message  string
+	Prompt   string
+}
+
+type PromptResponse struct {
+	Response string
+	Error    string
+}
+
+func (s *Service) Prompt(stream *rpc.HandlerStream) {
+	// Read the request.
+	var request PromptRequest
+	if stream.Decode(&request) != nil {
+		return
 	}
 
-	// Grab the context for the stream. The client can use this to signal when
-	// it's complete, but it will also be triggered if the client just
-	// disconnects, in which case we can abort.
-	context := stream.Context()
+	// Grab the holder for the specified prompter. If this fails, inform the
+	// client.
+	s.holdersLock.Lock()
+	holder, ok := s.holders[request.Prompter]
+	s.holdersLock.Unlock()
+	if !ok {
+		stream.Encode(PromptResponse{Error: "prompter not found"})
+		return
+	}
 
-	// Create the channel that we'll use to pass the prompter around.
-	passer := make(chan Prompt_RespondServer, 1)
-	passer <- stream
+	// Acquire the prompter.
+	prompter, ok := <-holder
+	if !ok {
+		stream.Encode(PromptResponse{Error: "unable to acquire prompter"})
+		return
+	}
 
-	// Register the passer.
-	s.Lock()
-	s.prompterPassers[prompter] = passer
-	s.Unlock()
+	// Prompt.
+	response, err := prompter.Prompt(request.Message, request.Prompt)
 
-	// Wait until the client aborts or disconnects.
-	<-context.Done()
+	// Return the prompter.
+	holder <- prompter
 
-	// Get the prompter back.
-	<-passer
-
-	// Close the passer to let anyone who currently has it know that they won't
-	// be getting the prompter.
-	close(passer)
-
-	// Deregister the passer.
-	s.Lock()
-	delete(s.prompterPassers, prompter)
-	s.Unlock()
+	// Handle prompting errors.
+	if err != nil {
+		stream.Encode(PromptResponse{
+			Error: errors.Wrap(err, "unable to prompt").Error(),
+		})
+		return
+	}
 
 	// Success.
-	return nil
+	stream.Encode(PromptResponse{Response: response})
 }

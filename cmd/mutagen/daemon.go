@@ -7,13 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
-
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/process"
+	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/ssh"
 )
@@ -24,6 +21,16 @@ Controls the lifecycle of the Mutagen daemon. The default behavior of this
 command is to start the Mutagen daemon in the background. The command is
 idempotent - a daemon instance is only created if one doesn't already exist.
 `
+
+const (
+	daemonMethodTerminate = "daemon.Terminate"
+	sshMethodPrompt       = "ssh.Prompt"
+	sessionMethodStart    = "session.Start"
+	sessionMethodList     = "session.List"
+	sessionMethodPause    = "session.Pause"
+	sessionMethodResume   = "session.Resume"
+	sessionMethodStop     = "session.Stop"
+)
 
 func daemonMain(arguments []string) {
 	// Parse flags.
@@ -39,32 +46,18 @@ func daemonMain(arguments []string) {
 
 	// If stopping is requested, try to send a termination request.
 	if *stop {
-		// Create a daemon client connection and defer its closure.
-		daemonClientConnection, err := newDaemonClientConnection()
+		daemonClient := rpc.NewClient(daemon.NewOpener())
+		stream, err := daemonClient.Invoke(daemonMethodTerminate)
 		if err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+			cmd.Fatal(errors.Wrap(err, "unable to invoke daemon termination"))
 		}
-		defer daemonClientConnection.Close()
-
-		// Create a daemon service client.
-		daemonClient := daemon.NewDaemonClient(daemonClientConnection)
-
-		// Attempt to invoke termination. We don't check for errors, because the
-		// daemon may terminate before it can send a response.
-		daemonClient.Terminate(
-			context.Background(),
-			&daemon.TerminateRequest{},
-			grpcCallFlags...,
-		)
-
-		// Done.
+		stream.Close()
 		return
 	}
 
 	// Unless running (non-backgrounding) is requested, then we need to restart
 	// in the background.
 	if !*run {
-		// Attempt to fork/execute the daemon.
 		daemonProcess := &exec.Cmd{
 			Path:        process.Current.ExecutablePath,
 			Args:        []string{"mutagen", "daemon", "--run"},
@@ -73,8 +66,6 @@ func daemonMain(arguments []string) {
 		if err := daemonProcess.Start(); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
 		}
-
-		// Done.
 		return
 	}
 
@@ -88,23 +79,31 @@ func daemonMain(arguments []string) {
 	}
 	defer lock.Unlock()
 
-	// Create a gRPC server.
-	server := grpc.NewServer()
-
-	// Create and register the daemon service.
+	// Create the daemon service.
 	daemonService, daemonTermination := daemon.NewService()
-	daemon.RegisterDaemonServer(server, daemonService)
 
-	// Create and register the SSH service.
+	// Create the SSH service.
 	sshService := ssh.NewService()
-	ssh.RegisterPromptServer(server, sshService)
 
-	// Create and register the session service.
-	sessionService, err := session.NewService()
+	// Create the session service and defer its shutdown. We want to do a clean
+	// shutdown because we don't want to information generated during a
+	// synchronization cycle.
+	sessionService, err := session.NewService(sshService)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
 	}
-	session.RegisterSessionsServer(server, sessionService)
+	defer sessionService.Shutdown()
+
+	// Create the RPC server.
+	server := rpc.NewServer(map[string]rpc.Handler{
+		daemonMethodTerminate: daemonService.Terminate,
+		sshMethodPrompt:       sshService.Prompt,
+		sessionMethodStart:    sessionService.Start,
+		sessionMethodList:     sessionService.List,
+		sessionMethodPause:    sessionService.Pause,
+		sessionMethodResume:   sessionService.Resume,
+		sessionMethodStop:     sessionService.Stop,
+	})
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
@@ -114,18 +113,18 @@ func daemonMain(arguments []string) {
 	defer listener.Close()
 
 	// Serve incoming connections in a separate Goroutine, watching for serving
-	// failure (likely due to failure in the underlying listener).
-	servingTermination := make(chan error, 1)
+	// failure (which will be due to the underlying listener).
+	listenerTermination := make(chan error, 1)
 	go func() {
-		servingTermination <- server.Serve(listener)
+		listenerTermination <- server.Serve(listener)
 	}()
 
 	// Wait for termination from a signal, the server, or the daemon server.
-	termination := make(chan os.Signal, 1)
-	signal.Notify(termination, cmd.TerminationSignals...)
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
-	case <-termination:
+	case <-signalTermination:
 	case <-daemonTermination:
-	case <-servingTermination:
+	case <-listenerTermination:
 	}
 }

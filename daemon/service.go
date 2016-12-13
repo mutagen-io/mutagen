@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"golang.org/x/net/context"
+	"github.com/havoc-io/mutagen/rpc"
 )
 
 type Service struct {
@@ -10,7 +10,8 @@ type Service struct {
 	// ignore temination requests originating from clients. The channel is
 	// buffered and non-blocking, so it doesn't need to be serviced by the
 	// daemon host-process at all - additional incoming shutdown requests will
-	// just bounce off once the channel is populated.
+	// just bounce off once the channel is populated. We do this, instead of
+	// closing the channel, because we can't close the channel multiple times.
 	termination chan struct{}
 }
 
@@ -22,14 +23,10 @@ func NewService() (*Service, chan struct{}) {
 	return &Service{termination}, termination
 }
 
-func (s *Service) Terminate(_ context.Context, _ *TerminateRequest) (*TerminateResponse, error) {
-	// Send the termination request in a non-blocking manner. If there is
-	// already a termination request in the pipeline, this method is a no-op.
+func (s *Service) Terminate(_ *rpc.HandlerStream) {
+	// Send the termination request in a non-blocking manner.
 	select {
 	case s.termination <- struct{}{}:
 	default:
 	}
-
-	// Done.
-	return &TerminateResponse{}, nil
 }

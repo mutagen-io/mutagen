@@ -20,7 +20,7 @@ const (
 	pipeNameRecordName = "daemon.pipe"
 )
 
-func DialTimeout(timeout time.Duration) (net.Conn, error) {
+func dialTimeout(timeout time.Duration) (net.Conn, error) {
 	// Compute the path to the pipe name record.
 	pipeNameRecordPath, err := subpath(pipeNameRecordName)
 	if err != nil {

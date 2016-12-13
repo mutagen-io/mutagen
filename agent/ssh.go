@@ -2,22 +2,18 @@ package agent
 
 import (
 	"fmt"
-	"net"
+	"io"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/pkg/errors"
 
-	"google.golang.org/grpc"
-
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/havoc-io/mutagen"
-	"github.com/havoc-io/mutagen/connectivity"
 	"github.com/havoc-io/mutagen/environment"
 	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/grpcutil"
 	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/url"
 )
@@ -188,9 +184,9 @@ func installSSH(remote *url.URL, prompter string) error {
 	// probe information to handle this more carefully.
 	var installCommand string
 	if posix {
-		installCommand = fmt.Sprintf("chmod +x %s && ./%s --install", destination, destination)
+		installCommand = fmt.Sprintf("chmod +x %s && ./%s install", destination, destination)
 	} else {
-		installCommand = fmt.Sprintf("%s --install", destination)
+		installCommand = fmt.Sprintf("%s install", destination)
 	}
 	if err := ssh.Run(prompter, "Installing agent", remote, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke agent installation")
@@ -200,9 +196,14 @@ func installSSH(remote *url.URL, prompter string) error {
 	return nil
 }
 
-func connectSSH(remote *url.URL, prompter string) (net.Conn, bool, error) {
+func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, bool, error) {
+	// Compute the command to invoke.
+	// HACK: We rely on sshAgentPath not having any spaces in it. If we do
+	// eventually need to add any, we'll need to fix this up for the shell.
+	command := fmt.Sprintf("%s %s", sshAgentPath, mode)
+
 	// Create an SSH process.
-	process, err := ssh.Command(prompter, "Connecting to agent", remote, sshAgentPath)
+	process, err := ssh.Command(prompter, "Connecting to agent", remote, command)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
@@ -226,10 +227,10 @@ func connectSSH(remote *url.URL, prompter string) (net.Conn, bool, error) {
 	// handshake.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
 		// If there's an error, check if SSH exits with a command not found
-		// error. For local connections, we check this above at the start call,
-		// but for SSH connections, we're invoking the SSH command, so that will
-		// start just fine - it isn't until we try to interact with the process
-		// that we'll see it misbehaves and exits with this code.
+		// error. We can't really check this until we try to interact with the
+		// process and see that it misbehaves. We wouldn't be able to see this
+		// returned as an error from the Start method because it just starts the
+		// SSH client itself, not the remote command.
 		if ssh.IsCommandNotFound(process.Wait()) {
 			return nil, true, errors.New("command not found")
 		}
@@ -239,21 +240,14 @@ func connectSSH(remote *url.URL, prompter string) (net.Conn, bool, error) {
 	}
 
 	// Create a connection.
-	// HACK: We don't register the standard output pipe as a closer, even though
-	// we could, because it might have undesirable blocking behavior. In any
-	// case, there's no NEED to close it, because it happens automatically when
-	// the process dies, and closing standard input will be sufficient to
-	// indicate to the child process that it should exit (and the blocking
-	// behavior of standard input won't conflict with closing in our use cases).
-	connection, _ := connectivity.NewIOConnection(stdout, stdin, stdin)
-	return &processConnection{connection, process}, false, nil
+	return &processStream{process, stdin, stdout}, false, nil
 }
 
-func dialSSH(remote *url.URL, prompter string) (*grpc.ClientConn, error) {
+func DialSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, error) {
 	// Attempt a connection. If this fails, but it's a failure that justfies
 	// attempting an install, then continue, otherwise fail.
-	if connection, install, err := connectSSH(remote, prompter); err == nil {
-		return grpcutil.NewNonRedialingClientConnection(connection), nil
+	if connection, install, err := connectSSH(remote, prompter, mode); err == nil {
+		return connection, nil
 	} else if !install {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
@@ -264,9 +258,9 @@ func dialSSH(remote *url.URL, prompter string) (*grpc.ClientConn, error) {
 	}
 
 	// Re-attempt connectivity.
-	if connection, _, err := connectSSH(remote, prompter); err != nil {
+	if connection, _, err := connectSSH(remote, prompter, mode); err != nil {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	} else {
-		return grpcutil.NewNonRedialingClientConnection(connection), nil
+		return connection, nil
 	}
 }
