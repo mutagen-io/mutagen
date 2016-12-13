@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/sync"
 )
@@ -53,7 +55,7 @@ func main() {
 
 	// Serialize it.
 	start = time.Now()
-	serializedSnapshot, err := snapshot.Marshal()
+	serializedSnapshot, err := proto.Marshal(snapshot)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
@@ -63,7 +65,7 @@ func main() {
 	// Deserialize it.
 	start = time.Now()
 	deserializedSnapshot := &sync.Entry{}
-	if err = deserializedSnapshot.Unmarshal(serializedSnapshot); err != nil {
+	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
 	}
 	stop = time.Now()
@@ -99,7 +101,7 @@ func main() {
 
 	// Serialize the cache.
 	start = time.Now()
-	serializedCache, err := cache.Marshal()
+	serializedCache, err := proto.Marshal(cache)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize cache"))
 	}
@@ -109,7 +111,7 @@ func main() {
 	// Deserialize the cache.
 	start = time.Now()
 	deserializedCache := &sync.Cache{}
-	if err = deserializedCache.Unmarshal(serializedCache); err != nil {
+	if err = proto.Unmarshal(serializedCache, deserializedCache); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize cache"))
 	}
 	stop = time.Now()

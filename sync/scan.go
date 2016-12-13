@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/golang/protobuf/ptypes"
 )
 
 // TODO: Figure out if we should set this on a per-machine basis. This value is
@@ -30,7 +32,10 @@ type scanner struct {
 func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
 	mode := info.Mode()
-	modificationTime := info.ModTime()
+	modificationTime, err := ptypes.TimestampProto(info.ModTime())
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to convert modification timestamp")
+	}
 	size := uint64(info.Size())
 
 	// Compute executability.
@@ -46,9 +51,8 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// comment above once this is done.
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
-		cached.ModificationTime != nil &&
-		cached.ModificationTime.Equal(modificationTime) &&
-		cached.Size_ == size
+		timestampsEqual(cached.ModificationTime, modificationTime) &&
+		cached.Size == size
 	if match {
 		digest = cached.Digest
 	}
@@ -79,8 +83,8 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// Add a cache entry.
 	s.newCache.Entries[target] = &CacheEntry{
 		Mode:             uint32(mode),
-		ModificationTime: &modificationTime,
-		Size_:            size,
+		ModificationTime: modificationTime,
+		Size:             size,
 		Digest:           digest,
 	}
 

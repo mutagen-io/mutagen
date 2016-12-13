@@ -2,13 +2,11 @@ syntax = "proto3";
 
 package sync;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
 import "google/protobuf/timestamp.proto";
 
 message CacheEntry {
     uint32 mode = 1;
-    google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true];
+    google.protobuf.Timestamp modificationTime = 2;
     uint64 size = 3;
     bytes digest = 4;
 }
@@ -23,7 +21,6 @@ enum EntryKind {
 }
 
 message Entry {
-    option (gogoproto.stable_marshaler) = true;
     EntryKind kind = 1;
     bool executable = 2;
     bytes digest = 3;

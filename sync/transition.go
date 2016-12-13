@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/havoc-io/mutagen/filesystem"
 )
 
@@ -70,19 +72,24 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 	}
 
 	// Grab stat information for this path.
-	stat, err := os.Lstat(fullPath)
+	info, err := os.Lstat(fullPath)
 	if err != nil {
 		return errors.Wrap(err, "unable to grab file statistics")
+	}
+
+	// Convert the modification time to Protocol Buffers format.
+	modificationTime, err := ptypes.TimestampProto(info.ModTime())
+	if err != nil {
+		return errors.Wrap(err, "unable to convert modification timestamp")
 	}
 
 	// If stat information doesn't match, don't bother re-hashing, just abort.
 	// Note that we don't really have to check executability here, we just need
 	// to check that it hasn't changed, and that is accomplished as part of the
 	// mode check.
-	match := os.FileMode(cacheEntry.Mode) == stat.Mode() &&
-		cacheEntry.ModificationTime != nil &&
-		cacheEntry.ModificationTime.Equal(stat.ModTime()) &&
-		cacheEntry.Size_ == uint64(stat.Size()) &&
+	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
+		timestampsEqual(cacheEntry.ModificationTime, modificationTime) &&
+		cacheEntry.Size == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, target.Digest)
 	if !match {
 		return errors.New("modification detected")

@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package session;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
 import "google/protobuf/timestamp.proto";
 
 import "github.com/havoc-io/mutagen/sync/sync.proto";
@@ -17,7 +15,7 @@ enum SessionVersion {
 message Session {
     string identifier = 1;
     SessionVersion version = 2;
-    google.protobuf.Timestamp creationTime = 3 [(gogoproto.stdtime) = true];
+    google.protobuf.Timestamp creationTime = 3;
     uint32 creatingVersionMajor = 4;
     uint32 creatingVersionMinor = 5;
     uint32 creatingVersionPatch = 6;
