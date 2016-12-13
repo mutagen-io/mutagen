@@ -34,3 +34,6 @@
 [submodule "vendor/golang.org/x/text"]
 	path = vendor/golang.org/x/text
 	url = https://github.com/golang/text.git
+[submodule "vendor/github.com/inconshreveable/muxado"]
+	path = vendor/github.com/inconshreveable/muxado
+	url = https://github.com/inconshreveable/muxado.git
