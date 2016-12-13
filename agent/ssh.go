@@ -208,14 +208,10 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
 
-	// Create pipes to the process.
-	stdin, err := process.StdinPipe()
+	// Create a stream that wrap's the process' standard input/output.
+	stream, err := newProcessStream(process)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to redirect SSH agent input")
-	}
-	stdout, err := process.StdoutPipe()
-	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to redirect SSH agent output")
+		return nil, false, errors.Wrap(err, "unable to create SSH process stream")
 	}
 
 	// Start the process.
@@ -225,7 +221,7 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 
 	// Confirm that the process started correctly by performing a version
 	// handshake.
-	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdout); err != nil {
+	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stream); err != nil {
 		// If there's an error, check if SSH exits with a command not found
 		// error. We can't really check this until we try to interact with the
 		// process and see that it misbehaves. We wouldn't be able to see this
@@ -240,7 +236,7 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 	}
 
 	// Create a connection.
-	return &processStream{process, stdin, stdout}, false, nil
+	return stream, false, nil
 }
 
 func DialSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, error) {

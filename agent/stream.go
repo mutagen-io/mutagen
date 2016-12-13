@@ -3,27 +3,35 @@ package agent
 import (
 	"io"
 	"os/exec"
+
+	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/stream"
 )
 
 // processStream implements io.ReadWriteCloser around the standard input/output
 // of a process.
 type processStream struct {
-	process        *exec.Cmd
-	standardInput  io.WriteCloser
-	standardOutput io.Reader
+	process *exec.Cmd
+	io.ReadWriteCloser
 }
 
-func (s *processStream) Read(p []byte) (int, error) {
-	return s.standardOutput.Read(p)
-}
+func newProcessStream(process *exec.Cmd) (io.ReadWriteCloser, error) {
+	// Redirect the process' standard input.
+	standardInput, err := process.StdinPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to redirect input")
+	}
 
-func (s *processStream) Write(p []byte) (int, error) {
-	return s.standardInput.Write(p)
-}
+	// Redirect the process' standard output.
+	standardOutput, err := process.StdoutPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to redirect output")
+	}
 
-func (s *processStream) Close() error {
-	// We don't wait for the process to exit because it will exit anyway once
-	// standard input is closed (and won't exit if standard input can't be
-	// closed, which would be rare but block indefinitely in a wait).
-	return s.standardInput.Close()
+	// Create the result.
+	return &processStream{
+		process,
+		stream.NewStream(standardOutput, standardInput, standardInput),
+	}, nil
 }
