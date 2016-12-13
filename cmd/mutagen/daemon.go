@@ -32,7 +32,7 @@ const (
 	sessionMethodStop     = "session.Stop"
 )
 
-func daemonMain(arguments []string) {
+func daemonMain(arguments []string) error {
 	// Parse flags.
 	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
 	run := flagSet.BoolP("run", "r", false, "run the daemon server")
@@ -41,18 +41,18 @@ func daemonMain(arguments []string) {
 
 	// Check that options are sane.
 	if *run && *stop {
-		cmd.Fatal(errors.New("-r/--run with -s/--stop doesn't make sense"))
+		return errors.New("-r/--run with -s/--stop doesn't make sense")
 	}
 
 	// If stopping is requested, try to send a termination request.
 	if *stop {
 		daemonClient := rpc.NewClient(daemon.NewOpener())
 		stream, err := daemonClient.Invoke(daemonMethodTerminate)
-		if err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to invoke daemon termination"))
-		}
 		stream.Close()
-		return
+		if err != nil {
+			return errors.Wrap(err, "unable to invoke daemon termination")
+		}
+		return nil
 	}
 
 	// Unless running (non-backgrounding) is requested, then we need to restart
@@ -64,9 +64,9 @@ func daemonMain(arguments []string) {
 			SysProcAttr: daemonProcessAttributes,
 		}
 		if err := daemonProcess.Start(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
+			return errors.Wrap(err, "unable to fork daemon")
 		}
-		return
+		return nil
 	}
 
 	// Attempt to acquire the daemon lock and defer its release. If there is a
@@ -75,7 +75,7 @@ func daemonMain(arguments []string) {
 	// does seem to be basically instant).
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to acquire daemon lock"))
+		return errors.Wrap(err, "unable to acquire daemon lock")
 	}
 	defer lock.Unlock()
 
@@ -90,7 +90,7 @@ func daemonMain(arguments []string) {
 	// synchronization cycle.
 	sessionService, err := session.NewService(sshService)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
+		return errors.Wrap(err, "unable to create session service")
 	}
 	defer sessionService.Shutdown()
 
@@ -108,7 +108,7 @@ func daemonMain(arguments []string) {
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon listener"))
+		return errors.Wrap(err, "unable to create daemon listener")
 	}
 	defer listener.Close()
 
@@ -119,12 +119,17 @@ func daemonMain(arguments []string) {
 		listenerTermination <- server.Serve(listener)
 	}()
 
-	// Wait for termination from a signal, the server, or the daemon server.
+	// Wait for termination from a signal, the server, or the daemon server. We
+	// only treat listener termination as an error.
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
 	case <-signalTermination:
 	case <-daemonTermination:
-	case <-listenerTermination:
+	case err = <-listenerTermination:
+		return errors.Wrap(err, "premature listener termination")
 	}
+
+	// Success.
+	return nil
 }

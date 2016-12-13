@@ -16,7 +16,7 @@ import (
 var promptUsage = `usage: mutagen <prompt>
 `
 
-func promptMain(arguments []string) {
+func promptMain(arguments []string) error {
 	// Parse command line arguments.
 	flagSet := cmd.NewFlagSet("prompt", promptUsage, []int{1})
 	prompt := flagSet.ParseOrDie(arguments)[0]
@@ -24,15 +24,15 @@ func promptMain(arguments []string) {
 	// Extract environment parameters.
 	prompter := environment.Current[ssh.PrompterEnvironmentVariable]
 	if prompter == "" {
-		cmd.Fatal(errors.New("no prompter specified"))
+		return errors.New("no prompter specified")
 	}
 	messageBase64 := environment.Current[ssh.PrompterMessageBase64EnvironmentVariable]
 	if messageBase64 == "" {
-		cmd.Fatal(errors.New("no message specified"))
+		return errors.New("no message specified")
 	}
 	messageBytes, err := base64.StdEncoding.DecodeString(messageBase64)
 	if err != nil {
-		cmd.Fatal(errors.New("unable to decode message"))
+		return errors.New("unable to decode message")
 	}
 	message := string(messageBytes)
 
@@ -43,7 +43,7 @@ func promptMain(arguments []string) {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sshMethodPrompt)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke SSH prompting"))
+		return errors.Wrap(err, "unable to invoke SSH prompting")
 	}
 	defer stream.Close()
 
@@ -54,11 +54,14 @@ func promptMain(arguments []string) {
 		Message:  message,
 		Prompt:   prompt,
 	}); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send prompt request"))
+		return errors.Wrap(err, "unable to send prompt request")
 	} else if err := stream.Decode(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive prompt response"))
+		return errors.Wrap(err, "unable to receive prompt response")
 	}
 
 	// Print the response.
 	fmt.Println(response.Response)
+
+	// Success.
+	return nil
 }

@@ -30,7 +30,7 @@ To see help for a particular command, use 'mutagen <command> --help'.
 `
 
 // handlers maps command names to their handlers.
-var handlers = map[string]func([]string){
+var handlers = map[string]func([]string) error{
 	"list":   listMain,
 	"start":  startMain,
 	"pause":  pauseMain,
@@ -55,7 +55,9 @@ func main() {
 	// Check if a prompting environment is set. If so, treat this as a prompt
 	// request.
 	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
-		promptMain(arguments)
+		if err := promptMain(arguments); err != nil {
+			cmd.Fatal(err)
+		}
 		return
 	}
 
@@ -92,14 +94,17 @@ func main() {
 		return
 	}
 
-	// If we haven't exited, then attempt to dispatch the command. The handler
-	// may exit the program, but in case it doesn't we'll assume a successful
-	// exit. We know that command will be non-empty at this point because there
-	// were a non-0 number of arguments and there were no flags specified (if
-	// there were flags specified, they would either have errored (because they
-	// were incorrect) or exited (because that's what all of them do)).
+	// If we haven't exited, then attempt to dispatch the command. We know that
+	// command will be non-empty at this point because there were a non-0 number
+	// of arguments and there were no flags specified (if there were flags
+	// specified, they would either have errored (because they were incorrect)
+	// or exited (because that's what all of them do)). Handlers may also exit
+	// on their own, but by allowing them to return their errors, we make it
+	// easier for them to defer cleanup.
 	if handler, ok := handlers[command]; ok {
-		handler(commandArguments)
+		if err := handler(commandArguments); err != nil {
+			cmd.Fatal(err)
+		}
 		return
 	}
 

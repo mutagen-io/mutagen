@@ -16,7 +16,7 @@ import (
 var startUsage = `usage: mutagen start [-h|--help] <alpha> <beta>
 `
 
-func startMain(arguments []string) {
+func startMain(arguments []string) error {
 	// Parse and handle flags.
 	flagSet := cmd.NewFlagSet("start", startUsage, []int{2})
 	urls := flagSet.ParseOrDie(arguments)
@@ -24,24 +24,24 @@ func startMain(arguments []string) {
 	// Extract and parse URLs.
 	alpha, err := url.Parse(urls[0])
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to parse alpha URL"))
+		return errors.Wrap(err, "unable to parse alpha URL")
 	}
 	beta, err := url.Parse(urls[1])
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to parse beta URL"))
+		return errors.Wrap(err, "unable to parse beta URL")
 	}
 
 	// If either URL is a relative path, convert it to an absolute path.
 	if alpha.Protocol == url.Protocol_Local {
 		if alphaPath, err := filepath.Abs(alpha.Path); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to make alpha path absolute"))
+			return errors.Wrap(err, "unable to make alpha path absolute")
 		} else {
 			alpha.Path = alphaPath
 		}
 	}
 	if beta.Protocol == url.Protocol_Local {
 		if betaPath, err := filepath.Abs(beta.Path); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to make beta path absolute"))
+			return errors.Wrap(err, "unable to make beta path absolute")
 		} else {
 			beta.Path = betaPath
 		}
@@ -54,7 +54,7 @@ func startMain(arguments []string) {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sessionMethodStart)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session creation"))
+		return errors.Wrap(err, "unable to invoke session creation")
 	}
 	defer stream.Close()
 
@@ -63,7 +63,7 @@ func startMain(arguments []string) {
 		Alpha: alpha,
 		Beta:  beta,
 	}); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send creation request"))
+		return errors.Wrap(err, "unable to send creation request")
 	}
 
 	// Handle any prompts and watch for errors.
@@ -71,7 +71,7 @@ func startMain(arguments []string) {
 		// Grab the next response.
 		var response session.StartResponse
 		if err := stream.Decode(response); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to receive creation response"))
+			return errors.Wrap(err, "unable to receive creation response")
 		}
 
 		// If there is a challenge, handle it and wait for the next one.
@@ -80,24 +80,27 @@ func startMain(arguments []string) {
 				response.Challenge.Message,
 				response.Challenge.Prompt,
 			); err != nil {
-				cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Encode(session.StartRequest{
 				Response: &session.PromptResponse{r},
 			}); err != nil {
-				cmd.Fatal(errors.Wrap(err, "unable to send challenge response"))
+				return errors.Wrap(err, "unable to send challenge response")
 			}
 			continue
 		}
 
 		// Check if there is an error.
 		if response.Error != "" {
-			cmd.Fatal(errors.Wrap(
+			return errors.Wrap(
 				errors.New(response.Error),
 				"unable to create session",
-			))
+			)
 		}
 
 		// Otherwise we're done.
 		break
 	}
+
+	// Success.
+	return nil
 }

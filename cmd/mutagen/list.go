@@ -30,7 +30,7 @@ func printSessionState(state *session.SessionState, long bool) {
 	fmt.Println()
 }
 
-func listMain(arguments []string) {
+func listMain(arguments []string) error {
 	// Parse flags.
 	flagSet := cmd.NewFlagSet("list", listUsage, []int{0, 1})
 	sessionArguments := flagSet.ParseOrDie(arguments)
@@ -46,16 +46,16 @@ func listMain(arguments []string) {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sessionMethodList)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session enumeration"))
+		return errors.Wrap(err, "unable to invoke session enumeration")
 	}
 	defer stream.Close()
 
 	// Send the list request and receive the response.
 	var response session.ListResponse
 	if err := stream.Encode(session.ListRequest{}); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send enumeration request"))
+		return errors.Wrap(err, "unable to send enumeration request")
 	} else if err = stream.Decode(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive session list"))
+		return errors.Wrap(err, "unable to receive session list")
 	}
 
 	// Print sessions. If there's a filter, only print that session, but print
@@ -74,6 +74,9 @@ func listMain(arguments []string) {
 		}
 	}
 	if filteredSession != "" && !matchFound {
-		cmd.Fatal(errors.New("unable to find specified session"))
+		return errors.New("unable to find specified session")
 	}
+
+	// Success.
+	return nil
 }
