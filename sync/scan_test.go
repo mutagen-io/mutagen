@@ -54,6 +54,14 @@ func TestEfficientRebuild(t *testing.T) {
 	}
 }
 
+func TestConsistentChecksum(t *testing.T) {
+	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache); err != nil {
+		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
+	} else if !bytes.Equal(snapshot.Checksum(), gorootSnapshot.Checksum()) {
+		t.Error("GOROOT snapshot checksums differ")
+	}
+}
+
 // TestBuilderNonExistent verifies that Scan returns a nil root for paths that
 // don't exist.
 func TestBuilderNonExistent(t *testing.T) {

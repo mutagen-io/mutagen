@@ -53,6 +53,12 @@ func main() {
 	stop = time.Now()
 	fmt.Println("Warm scan took", stop.Sub(start))
 
+	// Checksum it.
+	start = time.Now()
+	snapshot.Checksum()
+	stop = time.Now()
+	fmt.Println("Snapshot checksum took", stop.Sub(start))
+
 	// Serialize it.
 	start = time.Now()
 	serializedSnapshot, err := proto.Marshal(snapshot)
