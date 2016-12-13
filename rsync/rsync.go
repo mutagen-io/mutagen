@@ -10,6 +10,28 @@ import (
 	"bitbucket.org/kardianos/rsync"
 )
 
+type OpType uint8
+
+const (
+	OpBlock OpType = iota
+	OpData
+	OpHash
+	OpBlockRange
+)
+
+type Operation struct {
+	Type          OpType
+	BlockIndex    uint64
+	BlockIndexEnd uint64
+	Data          []byte
+}
+
+type BlockHash struct {
+	Index      uint64
+	StrongHash []byte
+	WeakHash   uint32
+}
+
 type OperationTransmitter func(*Operation) error
 type OperationReceiver func() (*Operation, error)
 
