@@ -30,7 +30,7 @@ func (s *Service) Shutdown() error {
 	return errors.New("not implemented")
 }
 
-func (s *Service) Start(stream *rpc.HandlerStream) {
+func (s *Service) Create(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
@@ -62,6 +62,6 @@ func (s *Service) Resume(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
-func (s *Service) Stop(stream *rpc.HandlerStream) {
+func (s *Service) Terminate(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }

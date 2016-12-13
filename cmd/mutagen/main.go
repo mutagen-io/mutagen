@@ -19,11 +19,11 @@ var usage = `usage: mutagen [-V|--version] [-h|--help] [-l|--legal] <command> [<
 
 Supported commands include:
 
-    start           Start a new synchronization session
+    create          Start a new synchronization session
     list            List current synchronization sessions
     pause           Pause a synchronization session
     resume          Resume a synchronization session
-    stop            Stop and remove a synchronization session
+    terminate       Stop and remove a synchronization session
     daemon          Control the synchronization daemon lifecycle
 
 To see help for a particular command, use 'mutagen <command> --help'.
@@ -31,12 +31,12 @@ To see help for a particular command, use 'mutagen <command> --help'.
 
 // handlers maps command names to their handlers.
 var handlers = map[string]func([]string) error{
-	"list":   listMain,
-	"start":  startMain,
-	"pause":  pauseMain,
-	"resume": resumeMain,
-	"stop":   stopMain,
-	"daemon": daemonMain,
+	"list":      listMain,
+	"create":    createMain,
+	"pause":     pauseMain,
+	"resume":    resumeMain,
+	"terminate": terminateMain,
+	"daemon":    daemonMain,
 }
 
 // maximumCommandDistance specifies the maximum Levenshtein distance allowed for

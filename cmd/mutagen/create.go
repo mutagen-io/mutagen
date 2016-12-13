@@ -13,12 +13,12 @@ import (
 	"github.com/havoc-io/mutagen/url"
 )
 
-var startUsage = `usage: mutagen start [-h|--help] <alpha> <beta>
+var createUsage = `usage: mutagen create [-h|--help] <alpha> <beta>
 `
 
-func startMain(arguments []string) error {
+func createMain(arguments []string) error {
 	// Parse and handle flags.
-	flagSet := cmd.NewFlagSet("start", startUsage, []int{2})
+	flagSet := cmd.NewFlagSet("create", createUsage, []int{2})
 	urls := flagSet.ParseOrDie(arguments)
 
 	// Extract and parse URLs.
@@ -50,16 +50,16 @@ func startMain(arguments []string) error {
 	// Create a daemon client.
 	daemonClient := rpc.NewClient(daemon.NewOpener())
 
-	// Invoke the session start method and ensure the resulting stream is closed
-	// when we're done.
-	stream, err := daemonClient.Invoke(sessionMethodStart)
+	// Invoke the session creation method and ensure the resulting stream is
+	// closed when we're done.
+	stream, err := daemonClient.Invoke(sessionMethodCreate)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke session creation")
 	}
 	defer stream.Close()
 
 	// Send the initial request.
-	if err := stream.Encode(session.StartRequest{
+	if err := stream.Encode(session.CreateRequest{
 		Alpha: alpha,
 		Beta:  beta,
 	}); err != nil {
@@ -69,7 +69,7 @@ func startMain(arguments []string) error {
 	// Handle any prompts and watch for errors.
 	for {
 		// Grab the next response.
-		var response session.StartResponse
+		var response session.CreateResponse
 		if err := stream.Decode(response); err != nil {
 			return errors.Wrap(err, "unable to receive creation response")
 		}
@@ -81,7 +81,7 @@ func startMain(arguments []string) error {
 				response.Challenge.Prompt,
 			); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Encode(session.StartRequest{
+			} else if err = stream.Encode(session.CreateRequest{
 				Response: &session.PromptResponse{r},
 			}); err != nil {
 				return errors.Wrap(err, "unable to send challenge response")

@@ -14,13 +14,13 @@ type PromptResponse struct {
 	Response string
 }
 
-type StartRequest struct {
+type CreateRequest struct {
 	Alpha    *url.URL
 	Beta     *url.URL
 	Response *PromptResponse
 }
 
-type StartResponse struct {
+type CreateResponse struct {
 	Challenge *PromptRequest
 	Error     string
 }
@@ -80,10 +80,10 @@ type ResumeResponse struct {
 	Error     string
 }
 
-type StopRequest struct {
+type TerminateRequest struct {
 	Session string
 }
 
-type StopResponse struct {
+type TerminateResponse struct {
 	Error string
 }

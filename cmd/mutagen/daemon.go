@@ -23,13 +23,13 @@ idempotent - a daemon instance is only created if one doesn't already exist.
 `
 
 const (
-	daemonMethodTerminate = "daemon.Terminate"
-	sshMethodPrompt       = "ssh.Prompt"
-	sessionMethodStart    = "session.Start"
-	sessionMethodList     = "session.List"
-	sessionMethodPause    = "session.Pause"
-	sessionMethodResume   = "session.Resume"
-	sessionMethodStop     = "session.Stop"
+	daemonMethodTerminate  = "daemon.Terminate"
+	sshMethodPrompt        = "ssh.Prompt"
+	sessionMethodCreate    = "session.Create"
+	sessionMethodList      = "session.List"
+	sessionMethodPause     = "session.Pause"
+	sessionMethodResume    = "session.Resume"
+	sessionMethodTerminate = "session.Terminate"
 )
 
 func daemonMain(arguments []string) error {
@@ -96,13 +96,13 @@ func daemonMain(arguments []string) error {
 
 	// Create the RPC server.
 	server := rpc.NewServer(map[string]rpc.Handler{
-		daemonMethodTerminate: daemonService.Terminate,
-		sshMethodPrompt:       sshService.Prompt,
-		sessionMethodStart:    sessionService.Start,
-		sessionMethodList:     sessionService.List,
-		sessionMethodPause:    sessionService.Pause,
-		sessionMethodResume:   sessionService.Resume,
-		sessionMethodStop:     sessionService.Stop,
+		daemonMethodTerminate:  daemonService.Terminate,
+		sshMethodPrompt:        sshService.Prompt,
+		sessionMethodCreate:    sessionService.Create,
+		sessionMethodList:      sessionService.List,
+		sessionMethodPause:     sessionService.Pause,
+		sessionMethodResume:    sessionService.Resume,
+		sessionMethodTerminate: sessionService.Terminate,
 	})
 
 	// Create the daemon listener and defer its closure.
