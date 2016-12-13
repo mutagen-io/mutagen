@@ -71,7 +71,7 @@ func startMain(arguments []string) {
 		prompter = response.Prompter
 	}
 
-	// Handle prompts and watch for errors.
+	// Handle prompts in a separate Goroutine and watch for errors.
 	promptErrors := make(chan error, 1)
 	go func() {
 		promptErrors <- performPrompts(prompts)
