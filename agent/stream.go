@@ -32,6 +32,6 @@ func newProcessStream(process *exec.Cmd) (io.ReadWriteCloser, error) {
 	// Create the result.
 	return &processStream{
 		process,
-		stream.NewStream(standardOutput, standardInput, standardInput),
+		stream.New(standardOutput, standardInput, standardInput),
 	}, nil
 }

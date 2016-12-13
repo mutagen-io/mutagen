@@ -47,7 +47,13 @@ func (d byCreationDate) Swap(i, j int) {
 }
 
 func (d byCreationDate) Less(i, j int) bool {
-	return d[i].Session.CreationTime.Before(*d[j].Session.CreationTime)
+	// This comparison relies on the fact that Nanos can't be negative (at least
+	// not according to the Protocol Buffers definition of its value). If Nanos
+	// could be negative, we'd have to consider cases where seconds were equal
+	// or within 1 of each other.
+	return d[i].Session.CreationTime.Seconds < d[j].Session.CreationTime.Seconds ||
+		(d[i].Session.CreationTime.Seconds == d[j].Session.CreationTime.Seconds &&
+			d[i].Session.CreationTime.Nanos < d[j].Session.CreationTime.Nanos)
 }
 
 func (s *Service) List(stream *rpc.HandlerStream) {

@@ -113,23 +113,22 @@ func daemonMain(arguments []string) error {
 	defer listener.Close()
 
 	// Serve incoming connections in a separate Goroutine, watching for serving
-	// failure (which will be due to the underlying listener).
-	listenerTermination := make(chan error, 1)
+	// failure.
+	serverTermination := make(chan error, 1)
 	go func() {
-		listenerTermination <- server.Serve(listener)
+		serverTermination <- server.Serve(listener)
 	}()
 
 	// Wait for termination from a signal, the server, or the daemon server. We
-	// only treat listener termination as an error.
+	// treat daemon termination as a non-error.
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
-	case <-signalTermination:
+	case sig := <-signalTermination:
+		return errors.Errorf("terminated by signal: %s", sig)
 	case <-daemonTermination:
-	case err = <-listenerTermination:
-		return errors.Wrap(err, "premature listener termination")
+		return nil
+	case err = <-serverTermination:
+		return errors.Wrap(err, "premature server termination")
 	}
-
-	// Success.
-	return nil
 }

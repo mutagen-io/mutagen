@@ -10,7 +10,7 @@ type stream struct {
 	closers []io.Closer
 }
 
-func NewStream(reader io.Reader, writer io.Writer, closers ...io.Closer) io.ReadWriteCloser {
+func New(reader io.Reader, writer io.Writer, closers ...io.Closer) io.ReadWriteCloser {
 	return &stream{reader, writer, closers}
 }
 
