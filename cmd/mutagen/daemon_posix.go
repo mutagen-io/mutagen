@@ -8,8 +8,6 @@ import (
 	"syscall"
 )
 
-func daemonProcessAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
-		Setsid: true,
-	}
+var daemonProcessAttributes = &syscall.SysProcAttr{
+	Setsid: true,
 }

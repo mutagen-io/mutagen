@@ -61,7 +61,7 @@ func daemonMain(arguments []string) {
 		daemonProcess := &exec.Cmd{
 			Path:        process.Current.ExecutablePath,
 			Args:        []string{"mutagen", "daemon", "--run"},
-			SysProcAttr: daemonProcessAttributes(),
+			SysProcAttr: daemonProcessAttributes,
 		}
 		if err := daemonProcess.Start(); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
