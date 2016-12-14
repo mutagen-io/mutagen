@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/stream"
 )
 
 type ClientStream struct {
@@ -20,16 +22,12 @@ type HandlerStream struct {
 	*gob.Decoder
 }
 
-type Opener interface {
-	Open() (net.Conn, error)
-}
-
 type Client struct {
 	openerLock sync.Mutex
-	opener     Opener
+	opener     stream.Opener
 }
 
-func NewClient(opener Opener) *Client {
+func NewClient(opener stream.Opener) *Client {
 	return &Client{opener: opener}
 }
 

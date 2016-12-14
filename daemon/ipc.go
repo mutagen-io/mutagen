@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/havoc-io/mutagen/rpc"
+	"github.com/havoc-io/mutagen/stream"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 
 type opener struct{}
 
-func NewOpener() rpc.Opener {
+func NewOpener() stream.Opener {
 	return &opener{}
 }
 
