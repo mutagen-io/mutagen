@@ -62,6 +62,41 @@ func (m *URL) String() string            { return proto.CompactTextString(m) }
 func (*URL) ProtoMessage()               {}
 func (*URL) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *URL) GetProtocol() Protocol {
+	if m != nil {
+		return m.Protocol
+	}
+	return Protocol_Local
+}
+
+func (m *URL) GetUsername() string {
+	if m != nil {
+		return m.Username
+	}
+	return ""
+}
+
+func (m *URL) GetHostname() string {
+	if m != nil {
+		return m.Hostname
+	}
+	return ""
+}
+
+func (m *URL) GetPort() uint32 {
+	if m != nil {
+		return m.Port
+	}
+	return 0
+}
+
+func (m *URL) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*URL)(nil), "url.URL")
 	proto.RegisterEnum("url.Protocol", Protocol_name, Protocol_value)

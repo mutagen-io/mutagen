@@ -70,11 +70,46 @@ func (m *Session) String() string            { return proto.CompactTextString(m)
 func (*Session) ProtoMessage()               {}
 func (*Session) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *Session) GetIdentifier() string {
+	if m != nil {
+		return m.Identifier
+	}
+	return ""
+}
+
+func (m *Session) GetVersion() SessionVersion {
+	if m != nil {
+		return m.Version
+	}
+	return SessionVersion_Unknown
+}
+
 func (m *Session) GetCreationTime() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.CreationTime
 	}
 	return nil
+}
+
+func (m *Session) GetCreatingVersionMajor() uint32 {
+	if m != nil {
+		return m.CreatingVersionMajor
+	}
+	return 0
+}
+
+func (m *Session) GetCreatingVersionMinor() uint32 {
+	if m != nil {
+		return m.CreatingVersionMinor
+	}
+	return 0
+}
+
+func (m *Session) GetCreatingVersionPatch() uint32 {
+	if m != nil {
+		return m.CreatingVersionPatch
+	}
+	return 0
 }
 
 func (m *Session) GetAlpha() *url.URL {
@@ -89,6 +124,13 @@ func (m *Session) GetBeta() *url.URL {
 		return m.Beta
 	}
 	return nil
+}
+
+func (m *Session) GetPaused() bool {
+	if m != nil {
+		return m.Paused
+	}
+	return false
 }
 
 type Archive struct {

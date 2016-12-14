@@ -67,9 +67,30 @@ func (m *CacheEntry) String() string            { return proto.CompactTextString
 func (*CacheEntry) ProtoMessage()               {}
 func (*CacheEntry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+func (m *CacheEntry) GetMode() uint32 {
+	if m != nil {
+		return m.Mode
+	}
+	return 0
+}
+
 func (m *CacheEntry) GetModificationTime() *google_protobuf.Timestamp {
 	if m != nil {
 		return m.ModificationTime
+	}
+	return nil
+}
+
+func (m *CacheEntry) GetSize() uint64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
+}
+
+func (m *CacheEntry) GetDigest() []byte {
+	if m != nil {
+		return m.Digest
 	}
 	return nil
 }
@@ -102,6 +123,27 @@ func (m *Entry) String() string            { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()               {}
 func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
+func (m *Entry) GetKind() EntryKind {
+	if m != nil {
+		return m.Kind
+	}
+	return EntryKind_Directory
+}
+
+func (m *Entry) GetExecutable() bool {
+	if m != nil {
+		return m.Executable
+	}
+	return false
+}
+
+func (m *Entry) GetDigest() []byte {
+	if m != nil {
+		return m.Digest
+	}
+	return nil
+}
+
 func (m *Entry) GetContents() map[string]*Entry {
 	if m != nil {
 		return m.Contents
@@ -119,6 +161,13 @@ func (m *Change) Reset()                    { *m = Change{} }
 func (m *Change) String() string            { return proto.CompactTextString(m) }
 func (*Change) ProtoMessage()               {}
 func (*Change) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *Change) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
 
 func (m *Change) GetOld() *Entry {
 	if m != nil {
@@ -145,6 +194,13 @@ func (m *Conflict) String() string            { return proto.CompactTextString(m
 func (*Conflict) ProtoMessage()               {}
 func (*Conflict) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
+func (m *Conflict) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
 func (m *Conflict) GetAlphaChanges() []*Change {
 	if m != nil {
 		return m.AlphaChanges
@@ -170,6 +226,20 @@ func (m *Problem) Reset()                    { *m = Problem{} }
 func (m *Problem) String() string            { return proto.CompactTextString(m) }
 func (*Problem) ProtoMessage()               {}
 func (*Problem) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *Problem) GetPath() string {
+	if m != nil {
+		return m.Path
+	}
+	return ""
+}
+
+func (m *Problem) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
 
 func init() {
 	proto.RegisterType((*CacheEntry)(nil), "sync.CacheEntry")
