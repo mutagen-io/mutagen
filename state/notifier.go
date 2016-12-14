@@ -31,9 +31,17 @@ func (n *Notifier) WaitForChange(previousIndex uint64) uint64 {
 	n.change.L.Lock()
 	defer n.change.L.Unlock()
 
-	// Wait for the state index to change and return the new index.
+	// Wait for the state index to change and record the new index. I'm not sure
+	// we really need to be recording the index in a separate variable, but it's
+	// not clear if the defer statements will be executed before or after return
+	// values are copied to their destination, so I think we should copy the
+	// value first and then return it.
+	// TODO: Investigate this, maybe we can just return n.index.
 	for n.index == previousIndex {
 		n.change.Wait()
 	}
-	return n.index
+	index := n.index
+
+	// Done.
+	return index
 }
