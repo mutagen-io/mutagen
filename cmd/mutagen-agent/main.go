@@ -21,12 +21,12 @@ func main() {
 	mode := flagSet.ParseOrDie(os.Args[1:])[0]
 
 	// Handle based on mode.
-	if mode == "install" {
+	if mode == agent.ModeInstall {
 		// Invoke installation.
 		if err := agent.Install(); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to install"))
 		}
-	} else if mode == "endpoint" {
+	} else if mode == agent.ModeEndpoint {
 		// Serve an endpoint on standard input/output and monitor for its
 		// termination.
 		endpointTermination := make(chan error, 1)
