@@ -6,6 +6,8 @@ import (
 	"hash"
 	"runtime"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // gorootSnapshot is a snapshot of GOROOT. It is shared between multiple tests.
@@ -18,7 +20,7 @@ var gorootCache *Cache
 
 func init() {
 	// Create the GOROOT snapshot and cache.
-	if snapshot, cache, err := Scan(runtime.GOROOT(), sha1.New(), nil); err != nil {
+	if snapshot, cache, err := Scan(runtime.GOROOT(), sha1.New(), nil, nil); err != nil {
 		panic("couldn't create GOROOT snapshot: " + err.Error())
 	} else if snapshot.Kind != EntryKind_Directory {
 		panic("GOROOT snapshot is not a directory")
@@ -47,18 +49,22 @@ func (p *gorootRebuildHashProxy) Sum(b []byte) []byte {
 // ensuring that no re-hashing occurs and that results are consistent.
 func TestEfficientRebuild(t *testing.T) {
 	hasher := &gorootRebuildHashProxy{sha1.New(), t}
-	if snapshot, _, err := Scan(runtime.GOROOT(), hasher, gorootCache); err != nil {
+	if snapshot, _, err := Scan(runtime.GOROOT(), hasher, gorootCache, nil); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
 	} else if !snapshot.Equal(gorootSnapshot) {
 		t.Error("re-snapshotting produced a non-equivalent snapshot")
 	}
 }
 
-func TestConsistentChecksum(t *testing.T) {
-	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache); err != nil {
+func TestConsistentSerialization(t *testing.T) {
+	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache, nil); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
-	} else if !bytes.Equal(snapshot.Checksum(), gorootSnapshot.Checksum()) {
-		t.Error("GOROOT snapshot checksums differ")
+	} else if snapshotBytes, err := proto.Marshal(snapshot); err != nil {
+		t.Fatal("couldn't marshal GOROOT snapshot copy:", err)
+	} else if gorootSnapshotBytes, err := proto.Marshal(gorootSnapshot); err != nil {
+		t.Fatal("couldn't marshal GOROOT snapshot:", err)
+	} else if !bytes.Equal(snapshotBytes, gorootSnapshotBytes) {
+		t.Error("GOROOT snapshot serializations differ")
 	}
 }
 
@@ -66,7 +72,7 @@ func TestConsistentChecksum(t *testing.T) {
 // don't exist.
 func TestBuilderNonExistent(t *testing.T) {
 	// Create the snapshotter.
-	snapshot, cache, err := Scan("THIS/DOES/NOT/EXIST", sha1.New(), nil)
+	snapshot, cache, err := Scan("THIS/DOES/NOT/EXIST", sha1.New(), nil, nil)
 
 	// Ensure that the snapshot root is nil.
 	if snapshot != nil {
@@ -87,3 +93,5 @@ func TestBuilderNonExistent(t *testing.T) {
 // TODO: Add verification of change detection.
 
 // TODO: Add verification of reference entries in GOROOT, including files.
+
+// TODO: Add ignore tests.

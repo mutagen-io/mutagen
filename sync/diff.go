@@ -9,21 +9,22 @@ type differ struct {
 }
 
 func (d *differ) diff(path string, base, target *Entry) {
-	// Handle nil cases.
-	if base == nil && target == nil {
-		return
-	}
-
 	// If the nodes at this path aren't equal, then do a complete replacement.
 	if !target.equalShallow(base) {
-		d.changes = append(d.changes, &Change{Path: path, Old: base, New: target})
+		d.changes = append(d.changes, &Change{
+			Path: path,
+			Old:  base,
+			New:  target,
+		})
 		return
 	}
 
 	// Otherwise check contents for differences.
-	for n, _ := range iterate(base.Contents, target.Contents) {
-		d.diff(pathpkg.Join(path, n), base.Contents[n], target.Contents[n])
-	}
+	iterate2(base.GetContents(), target.GetContents(),
+		func(name string, b, t *Entry) {
+			d.diff(pathpkg.Join(path, name), b, t)
+		},
+	)
 }
 
 func Diff(base, target *Entry) []*Change {

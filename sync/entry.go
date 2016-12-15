@@ -3,78 +3,88 @@ package sync
 import (
 	"bytes"
 	"crypto/sha1"
-	"encoding/binary"
-	"hash"
 	"sort"
+
+	"github.com/pkg/errors"
+
+	"github.com/golang/protobuf/proto"
 )
 
-func (e *Entry) digestInto(hasher hash.Hash) {
-	// If the entry is nil, there is nothing to digest.
-	if e == nil {
-		return
-	}
-
-	// Digest the kind.
-	var kindBytes [4]byte
-	binary.BigEndian.PutUint32(kindBytes[:], uint32(e.Kind))
-	hasher.Write(kindBytes[:])
-
-	// Digest executability.
-	var executabilityBytes [1]byte
-	if e.Executable {
-		executabilityBytes[0] = 1
-	} else {
-		executabilityBytes[0] = 0
-	}
-	hasher.Write(executabilityBytes[:])
-
-	// Digest the digest (dawg).
-	var digestLengthBytes [2]byte
-	binary.BigEndian.PutUint16(digestLengthBytes[:], uint16(len(e.Digest)))
-	hasher.Write(digestLengthBytes[:])
-	if len(e.Digest) > 0 {
-		hasher.Write(e.Digest)
-	}
-
-	// Digest contents count.
-	var contentsCountBytes [8]byte
-	binary.BigEndian.PutUint64(contentsCountBytes[:], uint64(len(e.Contents)))
-	hasher.Write(contentsCountBytes[:])
-
-	// If there aren't any contents, return to save an allocation.
-	if len(e.Contents) == 0 {
-		return
-	}
-
-	// Digest contents, sorting names for consistent iteration.
-	names := make([]string, 0, len(e.Contents))
-	for name, _ := range e.Contents {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		// Digest the name.
-		var nameLengthBytes [8]byte
-		binary.BigEndian.PutUint64(nameLengthBytes[:], uint64(len(name)))
-		hasher.Write(nameLengthBytes[:])
-		if len(name) > 0 {
-			hasher.Write([]byte(name))
-		}
-
-		// Digest the content recursively.
-		e.Contents[name].digestInto(hasher)
-	}
-}
-
-func (e *Entry) Checksum() []byte {
+func (e *Entry) Checksum() ([]byte, error) {
 	// Create a SHA-1 hasher.
 	hasher := sha1.New()
 
-	// Digest recursively.
-	e.digestInto(hasher)
+	// If the entry is non-nil, serialize it and compute its digest.
+	if e != nil {
+		if serialized, err := proto.Marshal(e); err != nil {
+			return nil, errors.Wrap(err, "unable to serialize entry")
+		} else {
+			hasher.Write(serialized[:])
+		}
+	}
 
 	// Compute the digest.
-	return hasher.Sum(nil)
+	return hasher.Sum(nil), nil
+}
+
+func (e *Entry) Find(name string) (*Entry, bool) {
+	// Nil entries have no contents.
+	if e == nil {
+		return nil, false
+	}
+
+	// Use a binary search to find the location of the name in the contents.
+	index := sort.Search(len(e.Contents), func(i int) bool {
+		return e.Contents[i].Name >= name
+	})
+
+	// Check if it's a match.
+	if index < len(e.Contents) && e.Contents[index].Name == name {
+		return e.Contents[index].Entry, true
+	}
+
+	// No match found.
+	return nil, false
+}
+
+func (e *Entry) Insert(name string, entry *Entry) {
+	// Watch for nil entries.
+	if e == nil {
+		panic("unable to insert content into nil entry")
+	}
+
+	// Use a binary search to find the insertion index.
+	insertion := sort.Search(len(e.Contents), func(i int) bool {
+		return e.Contents[i].Name >= name
+	})
+
+	// Replace any existing entry with this name, otherwise insert a new one.
+	if insertion < len(e.Contents) && e.Contents[insertion].Name == name {
+		e.Contents[insertion].Entry = entry
+	} else {
+		e.Contents = append(e.Contents, nil)
+		copy(e.Contents[insertion+1:], e.Contents[insertion:])
+		e.Contents[insertion] = &NamedEntry{name, entry}
+	}
+}
+
+func (e *Entry) Remove(name string) bool {
+	// Nil entries have no contents.
+	if e == nil {
+		return false
+	}
+
+	// Use a binary search to find the deletion index.
+	deletion := sort.Search(len(e.Contents), func(i int) bool {
+		return e.Contents[i].Name >= name
+	})
+
+	// If it's a match, cut it out. Otherwise the remove operation has failed.
+	if deletion < len(e.Contents) && e.Contents[deletion].Name == name {
+		e.Contents = append(e.Contents[:deletion], e.Contents[deletion+1:]...)
+		return true
+	}
+	return false
 }
 
 // equalShallow returns true if and only if the existence, kind, executability,
@@ -107,8 +117,9 @@ func (e *Entry) Equal(other *Entry) bool {
 	if len(e.Contents) != len(other.Contents) {
 		return false
 	}
-	for n, c := range e.Contents {
-		if !c.Equal(other.Contents[n]) {
+	for i, ec := range e.Contents {
+		oc := other.Contents[i]
+		if ec.Name != oc.Name || !ec.Entry.Equal(oc.Entry) {
 			return false
 		}
 	}
@@ -117,25 +128,17 @@ func (e *Entry) Equal(other *Entry) bool {
 	return true
 }
 
-func (e *Entry) copyShallow(makeContentMap bool) *Entry {
+func (e *Entry) copyShallow() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
 		return nil
 	}
 
-	// Create an initialized content map if requested. We don't populate it, but
-	// it's nicer to have its creation encapsulated in here.
-	var contents map[string]*Entry
-	if makeContentMap {
-		contents = make(map[string]*Entry)
-	}
-
-	// Create the copy.
+	// Create the shallow copy.
 	return &Entry{
 		Kind:       e.Kind,
 		Executable: e.Executable,
 		Digest:     e.Digest,
-		Contents:   contents,
 	}
 }
 
@@ -153,11 +156,8 @@ func (e *Entry) copy() *Entry {
 	}
 
 	// Copy contents, if any.
-	if len(e.Contents) > 0 {
-		result.Contents = make(map[string]*Entry, len(e.Contents))
-		for n, c := range e.Contents {
-			result.Contents[n] = c
-		}
+	for _, c := range e.Contents {
+		result.Contents = append(result.Contents, c)
 	}
 
 	// Done.

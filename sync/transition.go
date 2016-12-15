@@ -152,11 +152,9 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 	// so the chance of deleting something we shouldn't is very small.
 	for _, c := range contentNames {
 		// Grab the corresponding entry.
-		entry, ok := target.Contents[c]
+		entry, ok := target.Find(c)
 		if !ok {
 			return errors.Wrap(err, "unknown directory content encountered")
-		} else if entry == nil {
-			return errors.New("nil entry found in removal target")
 		}
 
 		// Compute its full path.
@@ -176,8 +174,10 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 			return err
 		}
 
-		// Otherwise, remove this entry from the target.
-		delete(target.Contents, c)
+		// Otherwise, remove this entry from the target. This must succeed.
+		if !target.Remove(c) {
+			panic("failed to remove path that was previously found")
+		}
 	}
 
 	// Remove this directory.
@@ -278,20 +278,20 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 
 	// Create a shallow copy of the target that we'll populate as we create its
 	// contents.
-	created := target.copyShallow(true)
+	created := target.copyShallow()
 
 	// Attempt to create the target contents.
 	var err error
-	for name, content := range target.Contents {
+	for _, content := range target.Contents {
 		// Handle content creation based on type.
 		var createdContent *Entry
-		if content.Kind == EntryKind_Directory {
+		if content.Entry.Kind == EntryKind_Directory {
 			createdContent, err = createDirectory(
-				root, pathpkg.Join(path, name), content, provider,
+				root, pathpkg.Join(path, content.Name), content.Entry, provider,
 			)
-		} else if content.Kind == EntryKind_File {
+		} else if content.Entry.Kind == EntryKind_File {
 			createdContent, err = createFile(
-				root, pathpkg.Join(path, name), content, provider,
+				root, pathpkg.Join(path, content.Name), content.Entry, provider,
 			)
 		} else {
 			err = errors.New("unknown entry type found in creation target")
@@ -300,7 +300,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 		// If the created content is non-nil, then at least some portion of it
 		// was created successfully, so record that.
 		if createdContent != nil {
-			created.Contents[name] = createdContent
+			created.Insert(content.Name, createdContent)
 		}
 
 		// If there was an error, abort.

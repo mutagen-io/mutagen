@@ -37,21 +37,18 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 				&Change{
 					Path: path,
 					Old:  nil,
-					New:  alpha.copyShallow(false),
+					New:  alpha.copyShallow(),
 				},
 			)
 			ancestorContents = nil
 		}
 
 		// Recursively handle contents.
-		for n, _ := range iterate(ancestorContents, alphaContents, betaContents) {
-			r.reconcile(
-				pathpkg.Join(path, n),
-				ancestorContents[n],
-				alphaContents[n],
-				betaContents[n],
-			)
-		}
+		iterate3(ancestorContents, alphaContents, betaContents,
+			func(name string, a, α, β *Entry) {
+				r.reconcile(pathpkg.Join(path, name), a, α, β)
+			},
+		)
 
 		// Done.
 		return

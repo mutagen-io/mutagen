@@ -24,7 +24,12 @@ message Entry {
     EntryKind kind = 1;
     bool executable = 2;
     bytes digest = 3;
-    map<string, Entry> contents = 4;
+    repeated NamedEntry contents = 4;
+}
+
+message NamedEntry {
+    string name = 1;
+    Entry entry = 2;
 }
 
 message Change {

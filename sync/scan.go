@@ -3,13 +3,15 @@ package sync
 import (
 	"hash"
 	"io"
-	"io/ioutil"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 
 	"github.com/golang/protobuf/ptypes"
+
+	"github.com/havoc-io/mutagen/filesystem"
 )
 
 // TODO: Figure out if we should set this on a per-machine basis. This value is
@@ -21,15 +23,12 @@ type scanner struct {
 	root     string
 	hasher   hash.Hash
 	cache    *Cache
+	ignores  []string
 	newCache *Cache
 	buffer   []byte
-	// TODO: Add ignore stack. Probably best to use something like
-	// https://github.com/sabhiram/go-git-ignore for the implementation. Also
-	// have a look at the forks for that repository, some are a bit cleaner and
-	// one supports base paths, though I don't know if we need or want that.
 }
 
-func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
+func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
 	mode := info.Mode()
 	modificationTime, err := ptypes.TimestampProto(info.ModTime())
@@ -44,7 +43,7 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// Try to find a cached digest. We only enforce that type, modification
 	// time, and size haven't changed in order to re-use digests.
 	var digest []byte
-	cached, hit := s.cache.Entries[target]
+	cached, hit := s.cache.Entries[path]
 	// TODO: We should add another condition to match that enforces modification
 	// time is before the timestamp of the cache on disk. This is the same
 	// solution that Git uses to solve its index race condition. Update the
@@ -60,7 +59,7 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	// If we weren't able to pull a digest from the cache, compute one manually.
 	if digest == nil {
 		// Open the file and ensure its closure.
-		file, err := os.Open(filepath.Join(s.root, target))
+		file, err := os.Open(filepath.Join(s.root, path))
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to open file")
 		}
@@ -81,7 +80,7 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	}
 
 	// Add a cache entry.
-	s.newCache.Entries[target] = &CacheEntry{
+	s.newCache.Entries[path] = &CacheEntry{
 		Mode:             uint32(mode),
 		ModificationTime: modificationTime,
 		Size:             size,
@@ -92,18 +91,29 @@ func (s *scanner) file(target string, info os.FileInfo) (*Entry, error) {
 	return &Entry{EntryKind_File, executable, digest, nil}, nil
 }
 
-func (s *scanner) directory(target string) (*Entry, error) {
+func (s *scanner) directory(path string) (*Entry, error) {
 	// Read directory contents.
-	directoryContents, err := ioutil.ReadDir(filepath.Join(s.root, target))
+	directoryContents, err := filesystem.DirectoryContents(filepath.Join(s.root, path))
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read directory")
+		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
 
-	// TODO: Look for a .mutagenignore and push onto ignore stack.
-
 	// Compute entries.
-	contents := make(map[string]*Entry, len(directoryContents))
-	for _, info := range directoryContents {
+	var contents []*NamedEntry
+	for _, name := range directoryContents {
+		// Compute the content path.
+		contentPath := pathpkg.Join(path, name)
+
+		// Grab stat information for this path. If the path has disappeared
+		// between list time and stat time, just ignore it.
+		info, err := os.Lstat(filepath.Join(s.root, contentPath))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, errors.Wrap(err, "unable to stat directory content")
+		}
+
 		// Compute the kind for this content, skipping if unsupported.
 		kind := EntryKind_File
 		if mode := info.Mode(); mode&os.ModeDir != 0 {
@@ -112,18 +122,14 @@ func (s *scanner) directory(target string) (*Entry, error) {
 			continue
 		}
 
-		// Compute the base name and relative path for this content.
-		contentName := info.Name()
-		contentTarget := filepath.Join(target, contentName)
-
 		// TODO: Check if this entry is ignored and skip if so.
 
 		// Handle based on kind.
 		var entry *Entry
 		if kind == EntryKind_File {
-			entry, err = s.file(contentTarget, info)
+			entry, err = s.file(contentPath, info)
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentTarget)
+			entry, err = s.directory(contentPath)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -134,16 +140,14 @@ func (s *scanner) directory(target string) (*Entry, error) {
 		}
 
 		// Add the content.
-		contents[contentName] = entry
+		contents = append(contents, &NamedEntry{name, entry})
 	}
-
-	// TODO: Pop ignore stack.
 
 	// Success.
 	return &Entry{EntryKind_Directory, false, nil, contents}, nil
 }
 
-func Scan(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry, *Cache, error) {
 	// If the cache is nil, create an empty one.
 	if cache == nil {
 		cache = &Cache{}
@@ -157,6 +161,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache) (*Entry, *Cache, error) {
 		root:     root,
 		hasher:   hasher,
 		cache:    cache,
+		ignores:  ignores,
 		newCache: newCache,
 		buffer:   make([]byte, scannerCopyBufferSize),
 	}
