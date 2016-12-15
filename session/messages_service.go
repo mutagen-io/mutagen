@@ -1,7 +1,6 @@
 package session
 
 import (
-	"github.com/havoc-io/mutagen/sync"
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -29,32 +28,9 @@ type ListRequest struct {
 	PreviousStateIndex uint64
 }
 
-type SynchronizationStatus uint8
-
-const (
-	SynchronizationStatusIdle = iota
-	SynchronizationStatusInitializingAlpha
-	SynchronizationStatusInitializingBeta
-	SynchronizationStatusScanning
-	SynchronizationStatusReconciling
-	SynchronizationStatusStagingAlphaToBeta
-	SynchronizationStatusStagingBetaToAlpha
-	SynchronizationStatusApplyingAlpha
-	SynchronizationStatusApplyingBeta
-	SynchronizationStatusSaving
-	SynchronizationStatusUpdatingAlpha
-	SynchronizationStatusUpdatingBeta
-)
-
 type SessionState struct {
 	Session *Session
-	// TODO: Do we want these?
-	AlphaConnected bool
-	BetaConnected  bool
-	Status         SynchronizationStatus
-	Message        string
-	Conflicts      []*sync.Conflict
-	Problems       []*sync.Problem
+	State   *SynchronizationState
 }
 
 type ListResponse struct {

@@ -5,8 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/inconshreveable/muxado"
-
 	"github.com/havoc-io/mutagen/rpc"
 )
 
@@ -14,17 +12,15 @@ const (
 	endpointAcceptBacklog = 100
 
 	endpointMethodScan     = "endpoint.Scan"
+	endpointMethodStage    = "endpoint.Stage"
 	endpointMethodTransmit = "endpoint.Transmit"
 	endpointMethodApply    = "endpoint.Apply"
 	endpointMethodUpdate   = "endpoint.Update"
 )
 
 func ServeEndpoint(stream io.ReadWriteCloser) error {
-	// Create a multiplexer. It will be symmetric, but create the endpoint as
-	// the "server" end.
-	multiplexer := muxado.Server(stream, &muxado.Config{
-		AcceptBacklog: endpointAcceptBacklog,
-	})
+	// Create a multiplexer.
+	multiplexer := multiplex(stream, true)
 
 	// Create an RPC client to connect to the other endpoint.
 	client := rpc.NewClient(multiplexer)
@@ -35,6 +31,7 @@ func ServeEndpoint(stream io.ReadWriteCloser) error {
 	// Create an RPC server.
 	server := rpc.NewServer(map[string]rpc.Handler{
 		endpointMethodScan:     endpoint.scan,
+		endpointMethodStage:    endpoint.stage,
 		endpointMethodTransmit: endpoint.transmit,
 		endpointMethodApply:    endpoint.apply,
 		endpointMethodUpdate:   endpoint.update,
@@ -57,6 +54,10 @@ func newEndpoint(client *rpc.Client) *endpoint {
 }
 
 func (e *endpoint) scan(stream *rpc.HandlerStream) {
+	// TODO: Implement.
+}
+
+func (e *endpoint) stage(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 

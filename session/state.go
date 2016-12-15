@@ -1,41 +1,37 @@
 package session
 
 import (
-	"sync"
+	"github.com/havoc-io/mutagen/sync"
 )
 
-type stateTracker struct {
-	change *sync.Cond
-	index  uint64
+type SynchronizationStatus uint8
+
+const (
+	SynchronizationStatusIdle = iota
+	SynchronizationStatusConnecting
+	SynchronizationStatusInitializing
+	SynchronizationStatusScanning
+	SynchronizationStatusReconciling
+	SynchronizationStatusStaging
+	SynchronizationStatusApplying
+	SynchronizationStatusSaving
+	SynchronizationStatusUpdating
+)
+
+type StagingStatus struct {
+	Path  string
+	Index uint64
+	Total uint64
 }
 
-func newStateTracker() *stateTracker {
-	return &stateTracker{
-		change: sync.NewCond(&sync.Mutex{}),
-		index:  1,
-	}
-}
-
-func (s *stateTracker) lock() {
-	s.change.L.Lock()
-}
-
-// TODO: Document that callers should pass 0 if they have no previous state
-// index.
-func (s *stateTracker) waitForChangeAndLock(previousIndex uint64) uint64 {
-	s.change.L.Lock()
-	for s.index == previousIndex {
-		s.change.Wait()
-	}
-	return s.index
-}
-
-func (s *stateTracker) unlock() {
-	s.change.L.Unlock()
-}
-
-func (s *stateTracker) notifyOfChangesAndUnlock() {
-	s.index += 1
-	s.change.Broadcast()
-	s.change.L.Unlock()
+// SynchronizationState represents the current state of a synchronization loop.
+type SynchronizationState struct {
+	Status         SynchronizationStatus
+	AlphaConnected bool
+	BetaConnected  bool
+	Error          string
+	AlphaStaging   StagingStatus
+	BetaStaging    StagingStatus
+	Conflicts      []*sync.Conflict
+	Problems       []*sync.Problem
 }

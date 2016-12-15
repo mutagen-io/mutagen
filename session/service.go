@@ -1,27 +1,37 @@
 package session
 
 import (
+	"sync"
+
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/ssh"
+	"github.com/havoc-io/mutagen/state"
 )
 
 type Service struct {
 	// sshService performs registration and deregistration of prompters.
 	sshService *ssh.Service
-	// TODO: Add notifier.
+	// notifier tracks changes to session states.
+	notifier *state.Notifier
+	// sessionLock locks the sessions registry.
+	sessionsLock sync.Mutex
 	// TODO: Add session registry.
 }
 
 func NewService(sshService *ssh.Service) (*Service, error) {
-	// TODO: Create the notifier.
+	// Create a notifier to track state changes.
+	notifier := state.NewNotifier()
 
-	// TODO: Create the session registry and load sessions.
+	// TODO: Create the session registry.
+
+	// TODO: Load existing sessions.
 
 	// Success.
 	return &Service{
 		sshService: sshService,
+		notifier:   notifier,
 	}, nil
 }
 

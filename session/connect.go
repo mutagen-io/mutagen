@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"io"
 	"net"
 
@@ -33,5 +34,42 @@ func connect(remote *url.URL, prompter string) (io.ReadWriteCloser, error) {
 	} else {
 		// Handle unknown protocols.
 		return nil, errors.Errorf("unknown protocol: %s", remote.Protocol)
+	}
+}
+
+type connectResult struct {
+	connection io.ReadWriteCloser
+	error      error
+}
+
+// reconnect is a version of connect that accepts a context for cancellation. It
+// is only designed for auto-reconnection purposes, so it does not accept a
+// prompter. If it fails due to context cancellation, it returns
+// context.Canceled.
+func reconnect(ctx context.Context, remote *url.URL) (io.ReadWriteCloser, error) {
+	// Create a channel to deliver the connection result.
+	results := make(chan connectResult)
+
+	// Start a connection operation in the background.
+	go func() {
+		// Perform the connection.
+		connection, err := connect(remote, "")
+
+		// If we can't transmit the connection, close it.
+		select {
+		case <-ctx.Done():
+			if connection != nil {
+				connection.Close()
+			}
+		case results <- connectResult{connection, err}:
+		}
+	}()
+
+	// Wait for context cancellation or results.
+	select {
+	case <-ctx.Done():
+		return nil, context.Canceled
+	case result := <-results:
+		return result.connection, result.error
 	}
 }
