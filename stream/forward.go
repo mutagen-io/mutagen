@@ -2,12 +2,11 @@ package stream
 
 import (
 	"io"
-	"net"
 
 	"github.com/pkg/errors"
 )
 
-func Forward(incoming net.Listener, outgoing Opener) error {
+func Forward(incoming Acceptor, outgoing Opener) error {
 	// Forward streams until there is an error.
 	for {
 		// Accept the next stream.

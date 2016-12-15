@@ -89,7 +89,7 @@ func (s *Server) serveConnection(connection net.Conn) {
 	}
 }
 
-func (s *Server) Serve(listener net.Listener) error {
+func (s *Server) Serve(listener stream.Acceptor) error {
 	// Accept and serve connections until there is an error with the listener.
 	for {
 		connection, err := listener.Accept()
