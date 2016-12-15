@@ -4,7 +4,7 @@ package session;
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/havoc-io/mutagen/sync/sync.proto";
+import "github.com/havoc-io/mutagen/sync/entry.proto";
 import "github.com/havoc-io/mutagen/url/url.proto";
 
 enum SessionVersion {

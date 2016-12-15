@@ -36,7 +36,7 @@ var subdirectories = []struct {
 	files    []string
 }{
 	{"session", []string{"session.proto"}},
-	{"sync", []string{"sync.proto"}},
+	{"sync", []string{"cache.proto", "entry.proto"}},
 	{"url", []string{"url.proto"}},
 }
 

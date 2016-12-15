@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package sync;
+
+enum EntryKind {
+    Directory = 0;
+    File = 1;
+}
+
+message Entry {
+    EntryKind kind = 1;
+    bool executable = 2;
+    bytes digest = 3;
+    repeated NamedEntry contents = 4;
+}
+
+message NamedEntry {
+    string name = 1;
+    Entry entry = 2;
+}

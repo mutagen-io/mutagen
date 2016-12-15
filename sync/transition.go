@@ -341,10 +341,10 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, error)
 	return nil, errors.New("creation requested for unknown entry type")
 }
 
-func Transition(root string, transitions []*Change, cache *Cache, provider Provider) ([]*Change, []*Problem) {
+func Transition(root string, transitions []Change, cache *Cache, provider Provider) ([]Change, []Problem) {
 	// Set up results.
-	var results []*Change
-	var problems []*Problem
+	var results []Change
+	var problems []Problem
 
 	// Iterate through transitions.
 	for _, t := range transitions {
@@ -364,10 +364,10 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 			t.New.Kind == EntryKind_File
 		if fileToFile {
 			if err := swap(root, t.Path, t.Old, t.New, cache, provider); err != nil {
-				results = append(results, &Change{Path: t.Path, New: t.Old})
-				problems = append(problems, &Problem{Path: t.Path, Error: err.Error()})
+				results = append(results, Change{Path: t.Path, New: t.Old})
+				problems = append(problems, Problem{Path: t.Path, Error: err.Error()})
 			} else {
-				results = append(results, &Change{Path: t.Path, New: t.New})
+				results = append(results, Change{Path: t.Path, New: t.New})
 			}
 			continue
 		}
@@ -377,8 +377,8 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 		// deletion.
 		if t.Old != nil {
 			if reduced, err := remove(root, t.Path, t.Old, cache); err != nil {
-				results = append(results, &Change{Path: t.Path, New: reduced})
-				problems = append(problems, &Problem{Path: t.Path, Error: err.Error()})
+				results = append(results, Change{Path: t.Path, New: reduced})
+				problems = append(problems, Problem{Path: t.Path, Error: err.Error()})
 				continue
 			}
 		}
@@ -387,9 +387,9 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 		// new entry is. Record whatever portion of the target we can created,
 		// and any error preventing full creation.
 		created, err := create(root, t.Path, t.New, provider)
-		results = append(results, &Change{Path: t.Path, New: created})
+		results = append(results, Change{Path: t.Path, New: created})
 		if err != nil {
-			problems = append(problems, &Problem{Path: t.Path, Error: err.Error()})
+			problems = append(problems, Problem{Path: t.Path, Error: err.Error()})
 		}
 	}
 
