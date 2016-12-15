@@ -23,9 +23,22 @@ const (
 var usage = `scan_bench [-h|--help] <path>
 `
 
+type ignorePatterns []string
+
+func (p *ignorePatterns) String() string {
+	return "ignore patterns"
+}
+
+func (p *ignorePatterns) Set(value string) error {
+	*p = append(*p, value)
+	return nil
+}
+
 func main() {
 	// Parse arguments.
+	var ignores ignorePatterns
 	flagSet := cmd.NewFlagSet("scan_bench", usage, []int{1})
+	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
 	path := flagSet.ParseOrDie(os.Args[1:])[0]
 
 	// Print information.
@@ -33,7 +46,7 @@ func main() {
 
 	// Create a snapshot without any cache.
 	start := time.Now()
-	snapshot, cache, err := sync.Scan(path, sha1.New(), nil, nil)
+	snapshot, cache, err := sync.Scan(path, sha1.New(), nil, []string(ignores))
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -44,7 +57,7 @@ func main() {
 
 	// Create a snapshot with a cache.
 	start = time.Now()
-	snapshot, _, err = sync.Scan(path, sha1.New(), cache, nil)
+	snapshot, _, err = sync.Scan(path, sha1.New(), cache, []string(ignores))
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {

@@ -23,9 +23,28 @@ type scanner struct {
 	root     string
 	hasher   hash.Hash
 	cache    *Cache
-	ignores  []string
+	ignorers []ignorer
 	newCache *Cache
 	buffer   []byte
+}
+
+func (s *scanner) ignored(path string) bool {
+	// Run through the ignorers, keeping track of the ignored state as we reach
+	// more specific ignore rules.
+	ignored := false
+	for _, rule := range s.ignorers {
+		// If there's no match, then this rule has no bearing on this path.
+		if !rule.matches(path) {
+			continue
+		}
+
+		// If we have a match, then change the ignored state based on whether or
+		// not the pattern is negated.
+		ignored = !rule.negated
+	}
+
+	// Done.
+	return ignored
 }
 
 func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
@@ -46,8 +65,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	cached, hit := s.cache.Entries[path]
 	// TODO: We should add another condition to match that enforces modification
 	// time is before the timestamp of the cache on disk. This is the same
-	// solution that Git uses to solve its index race condition. Update the
-	// comment above once this is done.
+	// solution that Git uses to solve its index race condition.
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
 		timestampsEqual(cached.ModificationTime, modificationTime) &&
@@ -104,6 +122,11 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 
+		// If this path is ignored, then skip it.
+		if s.ignored(contentPath) {
+			continue
+		}
+
 		// Grab stat information for this path. If the path has disappeared
 		// between list time and stat time, just ignore it.
 		info, err := os.Lstat(filepath.Join(s.root, contentPath))
@@ -121,8 +144,6 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		} else if mode&os.ModeType != 0 {
 			continue
 		}
-
-		// TODO: Check if this entry is ignored and skip if so.
 
 		// Handle based on kind.
 		var entry *Entry
@@ -153,6 +174,16 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		cache = &Cache{}
 	}
 
+	// Parse ignores.
+	var ignorers []ignorer
+	for _, pattern := range ignores {
+		rule, err := newIgnorer(pattern)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "unable to parse ignore pattern")
+		}
+		ignorers = append(ignorers, rule)
+	}
+
 	// Create a new cache to populate.
 	newCache := &Cache{make(map[string]*CacheEntry)}
 
@@ -161,7 +192,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		root:     root,
 		hasher:   hasher,
 		cache:    cache,
-		ignores:  ignores,
+		ignorers: ignorers,
 		newCache: newCache,
 		buffer:   make([]byte, scannerCopyBufferSize),
 	}
