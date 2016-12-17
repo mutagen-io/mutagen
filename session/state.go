@@ -32,6 +32,6 @@ type SynchronizationState struct {
 	Error          string
 	AlphaStaging   StagingStatus
 	BetaStaging    StagingStatus
-	Conflicts      []*sync.Conflict
-	Problems       []*sync.Problem
+	Conflicts      []sync.Conflict
+	Problems       []sync.Problem
 }

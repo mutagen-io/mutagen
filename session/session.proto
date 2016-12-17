@@ -7,14 +7,14 @@ import "google/protobuf/timestamp.proto";
 import "github.com/havoc-io/mutagen/sync/entry.proto";
 import "github.com/havoc-io/mutagen/url/url.proto";
 
-enum SessionVersion {
+enum Version {
     Unknown = 0;
     Version1 = 1;
 }
 
 message Session {
     string identifier = 1;
-    SessionVersion version = 2;
+    Version version = 2;
     google.protobuf.Timestamp creationTime = 3;
     uint32 creatingVersionMajor = 4;
     uint32 creatingVersionMinor = 5;
@@ -22,8 +22,5 @@ message Session {
     url.URL alpha = 7;
     url.URL beta = 8;
     bool paused = 9;
-}
-
-message Archive {
-    sync.Entry root = 1;
+    sync.Entry ancestor = 10;
 }
