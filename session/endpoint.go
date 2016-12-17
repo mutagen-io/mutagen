@@ -255,7 +255,7 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 			}
 
 			// Done.
-			stream.Encode(scanResponse{Delta: delta})
+			stream.Encode(scanResponse{SnapshotDelta: delta})
 			return
 		}
 

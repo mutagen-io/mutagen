@@ -18,7 +18,10 @@ func snapshotSignature(baseSnapshotBytes []byte) ([]rsync.BlockHash, error) {
 	return rsyncer.Signature(base)
 }
 
-func deltafySnapshot(snapshotBytes []byte, baseSnapshotSignature []rsync.BlockHash) ([]rsync.Operation, error) {
+func deltafySnapshot(
+	snapshotBytes []byte,
+	baseSnapshotSignature []rsync.BlockHash,
+) ([]rsync.Operation, error) {
 	// Create an empty result.
 	var delta []rsync.Operation
 
