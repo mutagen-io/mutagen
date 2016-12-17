@@ -245,15 +245,8 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 			return
 		}
 
-		// Create a lazy function to evaluate checksum mismatch. This saves us
-		// an unnecessary hash if we're forced.
-		checksumDiffers := func() bool {
-			checksum := sha1.Sum(snapshotBytes)
-			return !bytes.Equal(checksum[:], request.ExpectedChecksum)
-		}
-
 		// If we've been forced or the checksum differs, send the snapshot.
-		if forced || checksumDiffers() {
+		if forced || !checksumMatch(snapshotBytes, request.ExpectedChecksum) {
 			// Create an rsyncer.
 			rsyncer := rsync.New()
 
