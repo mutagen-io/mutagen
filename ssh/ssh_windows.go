@@ -34,8 +34,8 @@ func commandNamed(name string) (string, error) {
 	for _, path := range commandSearchPaths {
 		target := filepath.Join(path, fmt.Sprintf("%s.exe", name))
 		// TODO: Should we inspect the information used by stat to ensure this
-		// file exists? No real need to check executability, anything with an
-		// exe extension on Windows shows up as executable.
+		// is a file? No real need to check executability, anything with an exe
+		// extension on Windows shows up as executable.
 		if _, err := os.Stat(target); err != nil {
 			return target, nil
 		}
