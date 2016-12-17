@@ -219,11 +219,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, error) {
 	return nil, err
 }
 
-type Provider interface {
-	Provide(path string, entry *Entry) string
-}
-
-func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider Provider) error {
+func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider StagingProvider) error {
 	// Compute the full path to this file.
 	fullPath := filepath.Join(root, path)
 
@@ -240,7 +236,10 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider P
 	}
 
 	// Compute the path to the staged file.
-	stagedPath := provider.Provide(path, newEntry)
+	stagedPath, err := provider.Provide(path, newEntry)
+	if err != nil {
+		return errors.Wrap(err, "unable to locate staged file")
+	}
 
 	// Rename the staged file.
 	if err := os.Rename(stagedPath, fullPath); err != nil {
@@ -251,12 +250,15 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider P
 	return nil
 }
 
-func createFile(root, path string, target *Entry, provider Provider) (*Entry, error) {
+func createFile(root, path string, target *Entry, provider StagingProvider) (*Entry, error) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
 	// Compute the path to the staged file.
-	stagedPath := provider.Provide(path, target)
+	stagedPath, err := provider.Provide(path, target)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to locate staged file")
+	}
 
 	// Rename the staged file.
 	if err := os.Rename(stagedPath, fullPath); err != nil {
@@ -267,7 +269,7 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 	return target, nil
 }
 
-func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, error) {
+func createDirectory(root, path string, target *Entry, provider StagingProvider) (*Entry, error) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
@@ -313,7 +315,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	return created, err
 }
 
-func create(root, path string, target *Entry, provider Provider) (*Entry, error) {
+func create(root, path string, target *Entry, provider StagingProvider) (*Entry, error) {
 	// If the target is nil, we're done.
 	if target == nil {
 		return nil, nil
@@ -341,7 +343,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, error)
 	return nil, errors.New("creation requested for unknown entry type")
 }
 
-func Transition(root string, transitions []Change, cache *Cache, provider Provider) ([]Change, []Problem) {
+func Transition(root string, transitions []Change, cache *Cache, provider StagingProvider) ([]Change, []Problem) {
 	// Set up results.
 	var results []Change
 	var problems []Problem
