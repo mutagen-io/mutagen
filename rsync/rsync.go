@@ -32,8 +32,11 @@ type BlockHash struct {
 	WeakHash   uint32
 }
 
-type OperationTransmitter func(*Operation) error
-type OperationReceiver func() (*Operation, error)
+type OperationTransmitter func(Operation) error
+
+// OperationReceiver retrieves and returns the next operation in an operation
+// stream. When there are no more operations, it should return an io.EOF error.
+type OperationReceiver func() (Operation, error)
 
 type Rsync struct {
 	rsync *rsync.RSync
@@ -47,13 +50,13 @@ func New() *Rsync {
 	}
 }
 
-func (r *Rsync) Signature(base io.Reader) ([]*BlockHash, error) {
+func (r *Rsync) Signature(base io.Reader) ([]BlockHash, error) {
 	// Create the result.
-	var result []*BlockHash
+	var result []BlockHash
 
 	// Create a signature writer.
 	write := func(b rsync.BlockHash) error {
-		result = append(result, &BlockHash{
+		result = append(result, BlockHash{
 			Index:      b.Index,
 			StrongHash: b.StrongHash,
 			WeakHash:   b.WeakHash,
@@ -73,7 +76,7 @@ func (r *Rsync) Signature(base io.Reader) ([]*BlockHash, error) {
 // TODO: Add a very important warning to this function that the operation (and
 // its underlying data buffer) that are passed to the transmitter are re-used,
 // so they need to be copied if retained.
-func (r *Rsync) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit OperationTransmitter) error {
+func (r *Rsync) Deltafy(target io.Reader, baseSignature []BlockHash, transmit OperationTransmitter) error {
 	// Convert the base signature.
 	baseSignatureRsync := make([]rsync.BlockHash, len(baseSignature))
 	for i, b := range baseSignature {
@@ -84,18 +87,14 @@ func (r *Rsync) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit O
 		}
 	}
 
-	// Create a wrapper operation writer. Re-use the Operation instance to save
-	// on allocations. Rsync already re-uses the underlying data buffer, so
-	// we're not making things any more dangerous.
-	operation := &Operation{}
+	// Create a wrapper operation writer.
 	write := func(o rsync.Operation) error {
-		*operation = Operation{
+		return transmit(Operation{
 			Type:          OpType(o.Type),
 			BlockIndex:    o.BlockIndex,
 			BlockIndexEnd: o.BlockIndexEnd,
 			Data:          o.Data,
-		}
-		return transmit(operation)
+		})
 	}
 
 	// Perform delta generation.
@@ -117,15 +116,14 @@ func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive Operati
 	var applyError, receiveError error
 	applyExited := false
 	for {
-		// Grab the next operation.
+		// Grab the next operation. We stop on any error, but io.EOF is an
+		// acceptable error because it represents the end of the operation
+		// stream.
 		operation, err := receive()
 		if err != nil {
-			receiveError = err
-			break
-		}
-
-		// Check if the operation stream is done.
-		if operation == nil {
+			if err != io.EOF {
+				receiveError = err
+			}
 			break
 		}
 
