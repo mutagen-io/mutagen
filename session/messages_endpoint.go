@@ -19,8 +19,8 @@ type initializeResponse struct {
 }
 
 type scanRequest struct {
-	BaseSignature    []rsync.BlockHash
-	ExpectedChecksum []byte
+	BaseSnapshotSignature    []rsync.BlockHash
+	ExpectedSnapshotChecksum []byte
 }
 
 type scanResponse struct {

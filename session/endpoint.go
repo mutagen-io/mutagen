@@ -246,30 +246,10 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		}
 
 		// If we've been forced or the checksum differs, send the snapshot.
-		if forced || !checksumMatch(snapshotBytes, request.ExpectedChecksum) {
-			// Create an rsyncer.
-			rsyncer := rsync.New()
-
-			// Wrap up the snapshot bytes in reader.
-			snapshotReader := bytes.NewReader(snapshotBytes)
-
-			// Create an operation writer for the delta. It needs to copy data
-			// buffers because the rsync package re-uses them.
-			var delta []rsync.Operation
-			deltaWriter := func(o rsync.Operation) error {
-				if len(o.Data) > 0 {
-					dataCopy := make([]byte, len(o.Data))
-					copy(dataCopy, o.Data)
-					o.Data = dataCopy
-				}
-				delta = append(delta, o)
-				return nil
-			}
-
-			// Compute the snapshot delta.
-			if err := rsyncer.Deltafy(
-				snapshotReader, request.BaseSignature, deltaWriter,
-			); err != nil {
+		if forced || !checksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
+			// Compute the delta.
+			delta, err := deltafySnapshot(snapshotBytes, request.BaseSnapshotSignature)
+			if err != nil {
 				sendError(errors.Wrap(err, "unable to deltafy snapshot"))
 				return
 			}
