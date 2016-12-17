@@ -2,30 +2,8 @@ package sync
 
 import (
 	"bytes"
-	"crypto/sha1"
 	"sort"
-
-	"github.com/pkg/errors"
-
-	"github.com/golang/protobuf/proto"
 )
-
-func (e *Entry) Checksum() ([]byte, error) {
-	// Create a SHA-1 hasher.
-	hasher := sha1.New()
-
-	// If the entry is non-nil, serialize it and compute its digest.
-	if e != nil {
-		if serialized, err := proto.Marshal(e); err != nil {
-			return nil, errors.Wrap(err, "unable to serialize entry")
-		} else {
-			hasher.Write(serialized[:])
-		}
-	}
-
-	// Compute the digest.
-	return hasher.Sum(nil), nil
-}
 
 func (e *Entry) Find(name string) (*Entry, bool) {
 	// Nil entries have no contents.
