@@ -44,7 +44,7 @@ func listMain(arguments []string) error {
 
 	// Invoke the session list method and ensure the resulting stream is closed
 	// when we're done.
-	stream, err := daemonClient.Invoke(sessionMethodList)
+	stream, err := daemonClient.Invoke(session.MethodList)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke session enumeration")
 	}

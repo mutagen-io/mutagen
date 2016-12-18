@@ -52,7 +52,7 @@ func createMain(arguments []string) error {
 
 	// Invoke the session creation method and ensure the resulting stream is
 	// closed when we're done.
-	stream, err := daemonClient.Invoke(sessionMethodCreate)
+	stream, err := daemonClient.Invoke(session.MethodCreate)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke session creation")
 	}

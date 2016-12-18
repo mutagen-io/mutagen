@@ -4,6 +4,10 @@ import (
 	"github.com/havoc-io/mutagen/rpc"
 )
 
+const (
+	MethodTerminate = "daemon.Terminate"
+)
+
 type Service struct {
 	// termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
@@ -21,6 +25,12 @@ func NewService() (*Service, chan struct{}) {
 
 	// Create the service.
 	return &Service{termination}, termination
+}
+
+func (s *Service) Methods() map[string]rpc.Handler {
+	return map[string]rpc.Handler{
+		MethodTerminate: s.Terminate,
+	}
 }
 
 func (s *Service) Terminate(_ *rpc.HandlerStream) {

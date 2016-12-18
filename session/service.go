@@ -10,6 +10,14 @@ import (
 	"github.com/havoc-io/mutagen/state"
 )
 
+const (
+	MethodCreate    = "session.Create"
+	MethodList      = "session.List"
+	MethodPause     = "session.Pause"
+	MethodResume    = "session.Resume"
+	MethodTerminate = "session.Terminate"
+)
+
 type Service struct {
 	// sshService performs registration and deregistration of prompters.
 	sshService *ssh.Service
@@ -35,12 +43,22 @@ func NewService(sshService *ssh.Service) (*Service, error) {
 	}, nil
 }
 
+func (s *Service) Methods() map[string]rpc.Handler {
+	return map[string]rpc.Handler{
+		MethodCreate:    s.create,
+		MethodList:      s.list,
+		MethodPause:     s.pause,
+		MethodResume:    s.resume,
+		MethodTerminate: s.terminate,
+	}
+}
+
 func (s *Service) Shutdown() error {
 	// TODO: Implement.
 	return errors.New("not implemented")
 }
 
-func (s *Service) Create(stream *rpc.HandlerStream) {
+func (s *Service) create(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
@@ -66,18 +84,18 @@ func (d byCreationDate) Less(i, j int) bool {
 			d[i].Session.CreationTime.Nanos < d[j].Session.CreationTime.Nanos)
 }
 
-func (s *Service) List(stream *rpc.HandlerStream) {
+func (s *Service) list(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
-func (s *Service) Pause(stream *rpc.HandlerStream) {
+func (s *Service) pause(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
-func (s *Service) Resume(stream *rpc.HandlerStream) {
+func (s *Service) resume(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }
 
-func (s *Service) Terminate(stream *rpc.HandlerStream) {
+func (s *Service) terminate(stream *rpc.HandlerStream) {
 	// TODO: Implement.
 }

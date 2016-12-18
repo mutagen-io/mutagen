@@ -22,16 +22,6 @@ command is to start the Mutagen daemon in the background. The command is
 idempotent - a daemon instance is only created if one doesn't already exist.
 `
 
-const (
-	daemonMethodTerminate  = "daemon.Terminate"
-	sshMethodPrompt        = "ssh.Prompt"
-	sessionMethodCreate    = "session.Create"
-	sessionMethodList      = "session.List"
-	sessionMethodPause     = "session.Pause"
-	sessionMethodResume    = "session.Resume"
-	sessionMethodTerminate = "session.Terminate"
-)
-
 func daemonMain(arguments []string) error {
 	// Parse flags.
 	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
@@ -47,7 +37,7 @@ func daemonMain(arguments []string) error {
 	// If stopping is requested, try to send a termination request.
 	if *stop {
 		daemonClient := rpc.NewClient(daemon.NewOpener())
-		stream, err := daemonClient.Invoke(daemonMethodTerminate)
+		stream, err := daemonClient.Invoke(daemon.MethodTerminate)
 		stream.Close()
 		if err != nil {
 			return errors.Wrap(err, "unable to invoke daemon termination")
@@ -79,31 +69,26 @@ func daemonMain(arguments []string) error {
 	}
 	defer lock.Unlock()
 
-	// Create the daemon service.
+	// Create the RPC server.
+	server := rpc.NewServer()
+
+	// Create and register the daemon service.
 	daemonService, daemonTermination := daemon.NewService()
+	server.Register(daemonService)
 
-	// Create the SSH service.
+	// Create and regsiter the SSH service.
 	sshService := ssh.NewService()
+	server.Register(sshService)
 
-	// Create the session service and defer its shutdown. We want to do a clean
-	// shutdown because we don't want to information generated during a
-	// synchronization cycle.
+	// Create the and register the session service and defer its shutdown. We
+	// want to do a clean shutdown because we don't want to information
+	// generated during a synchronization cycle.
 	sessionService, err := session.NewService(sshService)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session service")
 	}
+	server.Register(sessionService)
 	defer sessionService.Shutdown()
-
-	// Create the RPC server.
-	server := rpc.NewServer(map[string]rpc.Handler{
-		daemonMethodTerminate:  daemonService.Terminate,
-		sshMethodPrompt:        sshService.Prompt,
-		sessionMethodCreate:    sessionService.Create,
-		sessionMethodList:      sessionService.List,
-		sessionMethodPause:     sessionService.Pause,
-		sessionMethodResume:    sessionService.Resume,
-		sessionMethodTerminate: sessionService.Terminate,
-	})
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()

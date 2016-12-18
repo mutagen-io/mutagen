@@ -10,6 +10,10 @@ import (
 	"github.com/havoc-io/mutagen/rpc"
 )
 
+const (
+	MethodPrompt = "ssh.Prompt"
+)
+
 type Prompter interface {
 	Prompt(string, string) (string, error)
 }
@@ -22,6 +26,12 @@ type Service struct {
 func NewService() *Service {
 	return &Service{
 		holders: make(map[string]chan Prompter),
+	}
+}
+
+func (s *Service) Methods() map[string]rpc.Handler {
+	return map[string]rpc.Handler{
+		MethodPrompt: s.prompt,
 	}
 }
 
@@ -70,7 +80,7 @@ type PromptResponse struct {
 	Error    string
 }
 
-func (s *Service) Prompt(stream *rpc.HandlerStream) {
+func (s *Service) prompt(stream *rpc.HandlerStream) {
 	// Read the request.
 	var request PromptRequest
 	if stream.Decode(&request) != nil {

@@ -41,7 +41,7 @@ func promptMain(arguments []string) error {
 
 	// Invoke the SSH prompt method and ensure the resulting stream is closed
 	// when we're done.
-	stream, err := daemonClient.Invoke(sshMethodPrompt)
+	stream, err := daemonClient.Invoke(ssh.MethodPrompt)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke SSH prompting")
 	}
