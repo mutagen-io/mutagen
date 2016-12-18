@@ -2,10 +2,20 @@ package session
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"io"
 
 	"github.com/havoc-io/mutagen/rsync"
 )
+
+func snapshotChecksum(snapshotBytes []byte) []byte {
+	result := sha1.Sum(snapshotBytes)
+	return result[:]
+}
+
+func snapshotChecksumMatch(snapshotBytes, expectedSnapshotChecksum []byte) bool {
+	return bytes.Equal(snapshotChecksum(snapshotBytes), expectedSnapshotChecksum)
+}
 
 func snapshotSignature(baseSnapshotBytes []byte) ([]rsync.BlockHash, error) {
 	// Create an rsyncer.

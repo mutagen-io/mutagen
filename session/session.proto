@@ -21,6 +21,7 @@ message Session {
     uint32 creatingVersionPatch = 6;
     url.URL alpha = 7;
     url.URL beta = 8;
-    bool paused = 9;
+    repeated string ignores = 9;
     sync.Entry ancestor = 10;
+    bool paused = 11;
 }

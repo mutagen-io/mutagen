@@ -14,8 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/proto"
-
 	"github.com/havoc-io/mutagen/encoding"
 	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rpc"
@@ -24,8 +22,6 @@ import (
 )
 
 const (
-	endpointAcceptBacklog = 100
-
 	endpointMethodInitialize = "endpoint.Initialize"
 	endpointMethodScan       = "endpoint.Scan"
 	endpointMethodTransmit   = "endpoint.Transmit"
@@ -46,16 +42,12 @@ func ServeEndpoint(stream io.ReadWriteCloser) error {
 	// Create an RPC client to connect to the other endpoint.
 	client := rpc.NewClient(multiplexer)
 
-	// Create the endpoint.
-	endpoint := newEndpoint(client)
-
 	// Create an RPC server.
-	server := rpc.NewServer(map[string]rpc.Handler{
-		endpointMethodInitialize: endpoint.initialize,
-		endpointMethodScan:       endpoint.scan,
-		endpointMethodTransmit:   endpoint.transmit,
-		endpointMethodApply:      endpoint.apply,
-	})
+	server := rpc.NewServer()
+
+	// Create and register the endpoint.
+	endpoint := newEndpoint(client)
+	server.Register(endpoint)
 
 	// Serve RPC requests until there is an error accepting new streams.
 	return errors.Wrap(server.Serve(multiplexer), "error serving RPC requests")
@@ -75,6 +67,15 @@ type endpoint struct {
 func newEndpoint(client *rpc.Client) *endpoint {
 	return &endpoint{
 		client: client,
+	}
+}
+
+func (e *endpoint) Methods() map[string]rpc.Handler {
+	return map[string]rpc.Handler{
+		endpointMethodInitialize: e.initialize,
+		endpointMethodScan:       e.scan,
+		endpointMethodTransmit:   e.transmit,
+		endpointMethodApply:      e.apply,
 	}
 }
 
@@ -121,30 +122,32 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 	}
 
 	// Compute the endpoint name.
-	name := alphaName
+	endpointName := alphaName
 	if !request.Alpha {
-		name = betaName
+		endpointName = betaName
 	}
 
 	// Compute the cache path.
 	cachesDirectory, err := filesystem.Mutagen(cachesDirectoryName)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute caches path"))
+		sendError(errors.Wrap(err, "unable to compute/create caches path"))
 		return
 	}
-	cacheName := fmt.Sprintf("%s_%s", request.Session, name)
+	cacheName := fmt.Sprintf("%s_%s", request.Session, endpointName)
 	cachePath := filepath.Join(cachesDirectory, cacheName)
 
-	// Load any existing cache. If it fails, just replace it with any empty one.
+	// Load any existing cache. If it fails, just replace it with an empty one.
 	cache := &sync.Cache{}
 	if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
 		cache = &sync.Cache{}
 	}
 
 	// Compute and create the staging path.
-	stagingPath, err := filesystem.Mutagen(stagingDirectoryName, request.Session, name)
+	stagingPath, err := filesystem.Mutagen(
+		stagingDirectoryName, request.Session, endpointName,
+	)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute staging path"))
+		sendError(errors.Wrap(err, "unable to compute/create staging path"))
 		return
 	}
 
@@ -174,13 +177,20 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Lock the endpoint for reading and defer its release.
-	e.RLock()
-	defer e.RUnlock()
+	// Lock the endpoint and defer its release.
+	e.Lock()
+	defer e.Unlock()
 
 	// If we're not initialized, we can't do anything.
 	if e.version != Version_Unknown {
 		sendError(errors.New("endpoint not initialized"))
+		return
+	}
+
+	// Create a hasher.
+	hasher, err := e.version.hasher()
+	if err != nil {
+		sendError(errors.Wrap(err, "unable to create hasher"))
 		return
 	}
 
@@ -214,13 +224,6 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		}
 	}()
 
-	// Create a hasher.
-	hasher, err := e.version.hasher()
-	if err != nil {
-		sendError(errors.Wrap(err, "unable to create hasher"))
-		return
-	}
-
 	// Loop until we're done.
 	forced := false
 	for {
@@ -239,14 +242,14 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		e.cache = cache
 
 		// Marshal the snapshot.
-		snapshotBytes, err := proto.Marshal(snapshot)
+		snapshotBytes, err := snapshot.Encode()
 		if err != nil {
 			sendError(errors.Wrap(err, "unable to marshal snapshot"))
 			return
 		}
 
 		// If we've been forced or the checksum differs, send the snapshot.
-		if forced || !checksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
+		if forced || !snapshotChecksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
 			// Compute the delta.
 			delta, err := deltafySnapshot(snapshotBytes, request.BaseSnapshotSignature)
 			if err != nil {
@@ -254,7 +257,8 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 				return
 			}
 
-			// Done.
+			// Done. There's no point in checking for transmission failure
+			// because we won't be able to transmit any error.
 			stream.Encode(scanResponse{SnapshotDelta: delta})
 			return
 		}
@@ -333,9 +337,9 @@ func (e *endpoint) apply(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Lock the endpoint for reading and defer its release.
-	e.RLock()
-	defer e.RUnlock()
+	// Lock the endpoint and defer its release.
+	e.Lock()
+	defer e.Unlock()
 
 	// If we're not initialized, we can't do anything.
 	if e.version != Version_Unknown {
