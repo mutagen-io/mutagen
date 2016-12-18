@@ -66,12 +66,6 @@ func main() {
 	stop = time.Now()
 	fmt.Println("Warm scan took", stop.Sub(start))
 
-	// Checksum it.
-	start = time.Now()
-	snapshot.Checksum()
-	stop = time.Now()
-	fmt.Println("Snapshot checksum took", stop.Sub(start))
-
 	// Serialize it.
 	start = time.Now()
 	serializedSnapshot, err := proto.Marshal(snapshot)
@@ -117,6 +111,16 @@ func main() {
 		"Original/deserialized snapshots equivalent?",
 		deserializedSnapshot.Equal(snapshot),
 	)
+
+	// Checksum it.
+	start = time.Now()
+	sha1.Sum(serializedSnapshot)
+	stop = time.Now()
+	fmt.Println("SHA-1 snapshot digest took", stop.Sub(start))
+
+	// TODO: I'd like to add a copy benchmark since copying is used in a lot of
+	// our transformation functions, but I also don't want to expose this
+	// function publicly.
 
 	// Serialize the cache.
 	start = time.Now()
