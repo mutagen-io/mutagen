@@ -68,7 +68,7 @@ func main() {
 
 	// Serialize it.
 	start = time.Now()
-	serializedSnapshot, err := proto.Marshal(snapshot)
+	serializedSnapshot, err := snapshot.Encode()
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
@@ -77,8 +77,8 @@ func main() {
 
 	// Deserialize it.
 	start = time.Now()
-	deserializedSnapshot := &sync.Entry{}
-	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
+	deserializedSnapshot, err := sync.DecodeEntry(serializedSnapshot)
+	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
 	}
 	stop = time.Now()

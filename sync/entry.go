@@ -3,6 +3,8 @@ package sync
 import (
 	"bytes"
 	"sort"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func (e *Entry) Find(name string) (*Entry, bool) {
@@ -143,4 +145,32 @@ func (e *Entry) copy() *Entry {
 
 	// Done.
 	return result
+}
+
+func (e *Entry) Encode() ([]byte, error) {
+	// We treat nil entries as marshalling to an empty byte slice. Protocol
+	// Buffers won't like this.
+	if e == nil {
+		return nil, nil
+	}
+
+	// Attempt to marshal.
+	return proto.Marshal(e)
+}
+
+func DecodeEntry(encoded []byte) (*Entry, error) {
+	// We treat an empty byte slice as indicating a nil entry, but Protocol
+	// Buffers won't like this.
+	if len(encoded) == 0 {
+		return nil, nil
+	}
+
+	// Attempt to unmarshal.
+	result := &Entry{}
+	if err := proto.Unmarshal(encoded, result); err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return result, nil
 }
