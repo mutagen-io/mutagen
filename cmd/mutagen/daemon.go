@@ -59,6 +59,16 @@ func daemonMain(arguments []string) error {
 		return nil
 	}
 
+	// TODO: Do we eventually want to encapsulate the construction of the daemon
+	// RPC server into the daemon package, much like we do with endpoints? It
+	// becomes a bit difficult to do cleanly. Also, I want the ability to have
+	// different processes host the daemon (e.g. a GUI). In those cases, we may
+	// want to add additional services that wouldn't be present in the CLI
+	// daemon. So I'll leave things the way they are for now, but I'd like to
+	// keep thinking about this for the future. One easy thing we could do is
+	// move the daemon lock into the daemon service (and add a corresponding
+	// shutdown method to the daemon service).
+
 	// Attempt to acquire the daemon lock and defer its release. If there is a
 	// crash, the lock will be released by the OS automatically, but on Windows
 	// this may only happen after some unspecified period of time (though it
