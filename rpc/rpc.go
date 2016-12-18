@@ -11,12 +11,18 @@ import (
 	"github.com/havoc-io/mutagen/stream"
 )
 
+// ClientStream provides object streaming facilities (using gob encoding) for
+// use with RPC clients. Its Close method follows the semantics of net.Conn's
+// Close method. Specifically, it will unblock any Encode/Decode calls that are
+// in-progress.
 type ClientStream struct {
 	*gob.Encoder
 	*gob.Decoder
 	io.Closer
 }
 
+// HandlerStream provides object streaming facilities (using gob encoding) for
+// use with RPC handlers.
 type HandlerStream struct {
 	*gob.Encoder
 	*gob.Decoder
