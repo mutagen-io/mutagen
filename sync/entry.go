@@ -135,7 +135,10 @@ func (e *Entry) copy() *Entry {
 
 	// Copy contents, if any.
 	for _, c := range e.Contents {
-		result.Contents = append(result.Contents, c)
+		result.Contents = append(result.Contents, &NamedEntry{
+			Name: c.Name,
+			Entry: c.Entry.copy(),
+		})
 	}
 
 	// Done.
