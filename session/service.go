@@ -21,16 +21,16 @@ const (
 type Service struct {
 	// sshService performs registration and deregistration of prompters.
 	sshService *ssh.Service
-	// notifier tracks changes to session states.
-	notifier *state.Notifier
+	// tracker tracks changes to session states.
+	tracker *state.Tracker
 	// sessionLock locks the sessions registry.
 	sessionsLock sync.Mutex
 	// TODO: Add session registry.
 }
 
 func NewService(sshService *ssh.Service) (*Service, error) {
-	// Create a notifier to track state changes.
-	notifier := state.NewNotifier()
+	// Create a tracker to watch for state changes.
+	tracker := state.NewTracker()
 
 	// TODO: Create the session registry.
 
@@ -39,7 +39,7 @@ func NewService(sshService *ssh.Service) (*Service, error) {
 	// Success.
 	return &Service{
 		sshService: sshService,
-		notifier:   notifier,
+		tracker:    tracker,
 	}, nil
 }
 

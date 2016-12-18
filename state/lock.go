@@ -4,26 +4,26 @@ import (
 	"sync"
 )
 
-type NotifyingLock struct {
-	lock sync.Mutex
-	notifier *Notifier
+type TrackingLock struct {
+	lock    sync.Mutex
+	tracker *Tracker
 }
 
-func NewNotifyingLock(notifier *Notifier) *NotifyingLock {
-	return &NotifyingLock{
-		notifier: notifier,
+func NewTrackingLock(tracker *Tracker) *TrackingLock {
+	return &TrackingLock{
+		tracker: tracker,
 	}
 }
 
-func (n *NotifyingLock) Lock() {
-	n.lock.Lock()
+func (l *TrackingLock) Lock() {
+	l.lock.Lock()
 }
 
-func (n *NotifyingLock) Unlock() {
-	n.lock.Unlock()
-	n.notifier.Notify()
+func (l *TrackingLock) Unlock() {
+	l.lock.Unlock()
+	l.tracker.NotifyOfChange()
 }
 
-func (n *NotifyingLock) UnlockWithoutNotify() {
-	n.lock.Unlock()
+func (l *TrackingLock) UnlockWithoutNotify() {
+	l.lock.Unlock()
 }
