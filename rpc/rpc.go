@@ -58,12 +58,34 @@ func (c *Client) Invoke(method string) (*ClientStream, error) {
 
 type Handler func(*HandlerStream)
 
+type Service interface {
+	Methods() map[string]Handler
+}
+
 type Server struct {
 	handlers map[string]Handler
 }
 
-func NewServer(handlers map[string]Handler) *Server {
-	return &Server{handlers: handlers}
+func NewServer() *Server {
+	return &Server{handlers: make(map[string]Handler)}
+}
+
+func (s *Server) Register(service Service) {
+	// Grab the service's methods.
+	methods := service.Methods()
+
+	// Register each of them in the master handlers map. If two services try to
+	// register the same method, this is a logic error.
+	for name, method := range methods {
+		// Make sure there is no existing method with this name. If two services
+		// try to register the same method, this is a logic error.
+		if _, ok := s.handlers[name]; ok {
+			panic("two methods registered with the same name")
+		}
+
+		// Register the method.
+		s.handlers[name] = method
+	}
 }
 
 func (s *Server) serveConnection(connection net.Conn) {
