@@ -59,8 +59,8 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// the ancestor at this node, a subnode, or not at all. Start by computing
 	// the diff from ancestor to alpha and ancestor to beta. If one side is
 	// unmodified, then we can simply propagate changes from the other side.
-	alphaDelta := Diff(ancestor, alpha)
-	betaDelta := Diff(ancestor, beta)
+	alphaDelta := diff(path, ancestor, alpha)
+	betaDelta := diff(path, ancestor, beta)
 	if len(alphaDelta) == 0 {
 		r.alphaChanges = append(r.alphaChanges, Change{
 			Path: path,
@@ -134,18 +134,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// to be lost if we were to propgate changes from one side to the other, so
 	// we need to record a conflict. We only record non-deletion changes because
 	// those are the only ones that create conflict.
-	// TODO: We need to come up with more concise conflict representations so
-	// that they can be effeciently transmitted to be presented to the user. At
-	// the moment they can contain subtrees of effectively unlimited size (that
-	// might occur if, e.g., alpha creates a file and beta creates a massive
-	// directory hierarchy). I'm thinking we should switch to an enumeration of
-	// conflict types that can be paired with the path in question. Even trying
-	// to do something like flattening wouldn't help becaues we'd have a path
-	// per entry and it'd probably take up more space due to expanding the whole
-	// thing out. Also, it's not clear how to efficiently represent these things
-	// visually.
 	r.conflicts = append(r.conflicts, Conflict{
-		Path:         path,
 		AlphaChanges: alphaDeltaNonDeletion,
 		BetaChanges:  betaDeltaNonDeletion,
 	})

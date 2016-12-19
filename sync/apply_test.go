@@ -19,7 +19,7 @@ func TestApplyRootSwap(t *testing.T) {
 }
 
 func TestDiffApply(t *testing.T) {
-	changes := Diff(gorootSnapshot.get("doc"), gorootSnapshot.get("src"))
+	changes := diff("", gorootSnapshot.get("doc"), gorootSnapshot.get("src"))
 	if result, err := Apply(gorootSnapshot.get("doc"), changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
 	} else if !result.Equal(gorootSnapshot.get("src")) {

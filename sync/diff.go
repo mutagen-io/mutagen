@@ -27,12 +27,12 @@ func (d *differ) diff(path string, base, target *Entry) {
 	)
 }
 
-func Diff(base, target *Entry) []Change {
+func diff(path string, base, target *Entry) []Change {
 	// Create the differ.
 	d := &differ{}
 
 	// Populate changes.
-	d.diff("", base, target)
+	d.diff(path, base, target)
 
 	// Done.
 	return d.changes

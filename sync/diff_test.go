@@ -5,7 +5,7 @@ import (
 )
 
 func TestCreationIdentity(t *testing.T) {
-	if changes := Diff(nil, gorootSnapshot); len(changes) != 1 {
+	if changes := diff("", nil, gorootSnapshot); len(changes) != 1 {
 		t.Fatal("unexpected number of changes")
 	} else if changes[0].Path != "" {
 		t.Error("unexpected change path")
@@ -17,7 +17,7 @@ func TestCreationIdentity(t *testing.T) {
 }
 
 func TestDeletionIdentity(t *testing.T) {
-	if changes := Diff(gorootSnapshot, nil); len(changes) != 1 {
+	if changes := diff("", gorootSnapshot, nil); len(changes) != 1 {
 		t.Fatal("unexpected number of changes")
 	} else if changes[0].Path != "" {
 		t.Error("unexpected change path")
