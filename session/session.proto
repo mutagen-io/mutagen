@@ -22,6 +22,9 @@ message Session {
     url.URL alpha = 7;
     url.URL beta = 8;
     repeated string ignores = 9;
-    sync.Entry ancestor = 10;
-    bool paused = 11;
+    bool paused = 10;
+}
+
+message Archive {
+    sync.Entry root = 1;
 }
