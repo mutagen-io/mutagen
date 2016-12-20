@@ -35,3 +35,8 @@ type SynchronizationState struct {
 	AlphaProblems  []sync.Problem
 	BetaProblems   []sync.Problem
 }
+
+type SessionState struct {
+	Session *Session
+	State   SynchronizationState
+}

@@ -28,11 +28,6 @@ type ListRequest struct {
 	PreviousStateIndex uint64
 }
 
-type SessionState struct {
-	Session *Session
-	State   SynchronizationState
-}
-
 type ListResponse struct {
 	StateIndex uint64
 	Sessions   []SessionState

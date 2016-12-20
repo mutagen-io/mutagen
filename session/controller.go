@@ -9,6 +9,11 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/ptypes"
+
+	uuid "github.com/satori/go.uuid"
+
+	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/encoding"
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/state"
@@ -26,8 +31,11 @@ type controller struct {
 	sessionPath string
 	// archivePath is the path to the serialized archive.
 	archivePath string
-	// stateLock guards and tracks changes to the session and state members. It
-	// also guards the on-disk session serialization.
+	// stateLock guards and tracks changes to the session member's Paused field
+	// and the state member. You can access static members of the session
+	// without holding this lock, but any reads or writes to the Paused field
+	// (including as part of a read of the whole session) should be guarded by
+	// this lock.
 	stateLock *state.TrackingLock
 	// session is the current session state. It should be saved to disk any time
 	// it is modified.
@@ -55,23 +63,210 @@ func newSession(
 	ignores []string,
 	prompter string,
 ) (*controller, error) {
-	// TODO: Implement.
-	return nil, errors.New("not implemented")
+	// Attempt to connect. Session creation is only allowed after if successful.
+	alphaConnection, err := connect(alpha, prompter)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to connect to alpha")
+	}
+	betaConnection, err := connect(beta, prompter)
+	if err != nil {
+		alphaConnection.Close()
+		return nil, errors.Wrap(err, "unable to connect to beta")
+	}
+
+	// Create the session and archive.
+	creationTime, err := ptypes.TimestampProto(time.Now())
+	if err != nil {
+		alphaConnection.Close()
+		betaConnection.Close()
+		return nil, errors.Wrap(err, "unable to compute session creation time")
+	}
+	session := &Session{
+		Identifier:           uuid.NewV4().String(),
+		Version:              Version_Version1,
+		CreationTime:         creationTime,
+		CreatingVersionMajor: mutagen.VersionMajor,
+		CreatingVersionMinor: mutagen.VersionMinor,
+		CreatingVersionPatch: mutagen.VersionPatch,
+		Alpha:                alpha,
+		Beta:                 beta,
+	}
+	archive := &Archive{}
+
+	// Compute session and archive paths.
+	sessionPath, err := pathForSession(session.Identifier)
+	if err != nil {
+		alphaConnection.Close()
+		betaConnection.Close()
+		return nil, errors.Wrap(err, "unable to compute session path")
+	}
+	archivePath, err := pathForArchive(session.Identifier)
+	if err != nil {
+		alphaConnection.Close()
+		betaConnection.Close()
+		return nil, errors.Wrap(err, "unable to compute archive path")
+	}
+
+	// Save components to disk.
+	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
+		alphaConnection.Close()
+		betaConnection.Close()
+		return nil, errors.Wrap(err, "unable to save session")
+	}
+	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
+		os.Remove(sessionPath)
+		alphaConnection.Close()
+		betaConnection.Close()
+		return nil, errors.Wrap(err, "unable to save archive")
+	}
+
+	// Create the controller.
+	controller := &controller{
+		sessionPath: sessionPath,
+		archivePath: archivePath,
+		stateLock:   state.NewTrackingLock(tracker),
+		session:     session,
+	}
+
+	// Start a synchronization loop.
+	context, cancel := contextpkg.WithCancel(contextpkg.Background())
+	controller.cancel = cancel
+	controller.done = make(chan struct{})
+	go controller.run(context, alphaConnection, betaConnection)
+
+	// Success.
+	return controller, nil
 }
 
 func loadSession(tracker *state.Tracker, identifier string) (*controller, error) {
-	// TODO: Implement.
-	return nil, errors.New("not implemented")
-}
+	// Compute session and archive paths.
+	sessionPath, err := pathForSession(identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to compute session path")
+	}
+	archivePath, err := pathForArchive(identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to compute archive path")
+	}
 
-func (c *controller) resume(prompter string) error {
-	// TODO: Implement.
-	return errors.New("not implemented")
+	// Load the session.
+	session := &Session{}
+	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
+		return nil, errors.Wrap(err, "unable to load session configuration")
+	}
+
+	// Create the controller.
+	controller := &controller{
+		sessionPath: sessionPath,
+		archivePath: archivePath,
+		stateLock:   state.NewTrackingLock(tracker),
+		session:     session,
+	}
+
+	// If the session isn't marked as paused, start a synchronization loop.
+	if !session.Paused {
+		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		controller.cancel = cancel
+		controller.done = make(chan struct{})
+		go controller.run(context, nil, nil)
+	}
+
+	// Success.
+	return controller, nil
 }
 
 func (c *controller) currentState() SessionState {
-	// TODO: Implement.
-	return SessionState{}
+	// Lock the session state and defer its release. It's very important that we
+	// unlock without a notification here, otherwise we'd trigger an infinite
+	// cycle of list/notify.
+	c.stateLock.Lock()
+	defer c.stateLock.UnlockWithoutNotify()
+
+	// Create the result. We make shallow copies of both state components. The
+	// session technically has fields which contain mutable values, but these
+	// values are treated as immutable so it is okay.
+	result := SessionState{
+		Session: &Session{},
+		State:   c.state,
+	}
+	*result.Session = *c.session
+
+	// Done.
+	return result
+}
+
+func (c *controller) resume(prompter string) error {
+	// Lock the controller and defer its release.
+	c.lifecycleLock.Lock()
+	defer c.lifecycleLock.Unlock()
+
+	// Don't allow any resume operations if the controller is disabled.
+	if c.disabled {
+		return errors.New("controller disabled")
+	}
+
+	// Check if there's an existing synchronization loop.
+	if c.cancel != nil {
+		// If there is an existing synchronization loop, check if it's alredy
+		// connected.
+		c.stateLock.Lock()
+		connected := c.state.Status > SynchronizationStatusConnecting
+		c.stateLock.UnlockWithoutNotify()
+
+		// If we're already connect, then there's nothing we need to do. We
+		// don't even need to mark the session as unpaused because it can't be
+		// marked as paused if an existing synchronization loop is running (we
+		// enforce this invariant as part of this type's logic).
+		if connected {
+			return nil
+		}
+
+		// Otherwise, cancel the existing synchronization loop and wait for it
+		// to finish.
+		//
+		// There's something of an efficiency race condition here, because the
+		// existing loop might succeed in connecting between the time we check
+		// and the time we cancel it. That could happen if an auto-reconnect
+		// succeeds or even if the loop was already passed connections and it's
+		// just hasn't updated its status yet. But the only danger here is
+		// basically wasting those connections, and the window is very small.
+		c.cancel()
+		<-c.done
+
+		// Nil out any lifecycle state.
+		c.cancel = nil
+		c.done = nil
+	}
+
+	// Mark the session as unpaused and save it to disk.
+	c.stateLock.Lock()
+	c.session.Paused = false
+	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+	c.stateLock.Unlock()
+
+	// Attempt to connect.
+	alphaConnection, alphaConnectErr := connect(c.session.Alpha, prompter)
+	betaConnection, betaConnectErr := connect(c.session.Beta, prompter)
+
+	// Start the synchronization loop with what we have.
+	context, cancel := contextpkg.WithCancel(contextpkg.Background())
+	c.cancel = cancel
+	c.done = make(chan struct{})
+	go c.run(context, alphaConnection, betaConnection)
+
+	// Report any errors. Since we always want to start a synchronization loop,
+	// even on partial or complete failure (since it might be able to
+	// auto-reconnect on its own), we wait to report errors until the end.
+	if saveErr != nil {
+		return errors.Wrap(saveErr, "unable to save session configuration")
+	} else if alphaConnectErr != nil {
+		return errors.Wrap(alphaConnectErr, "unable to connect to alpha")
+	} else if betaConnectErr != nil {
+		return errors.Wrap(betaConnectErr, "unable to connect to beta")
+	}
+
+	// Success.
+	return nil
 }
 
 type haltMode uint8
@@ -123,10 +318,8 @@ func (c *controller) halt(mode haltMode) error {
 		c.disabled = true
 
 		// Wipe the session information from disk.
-		c.stateLock.Lock()
 		sessionRemoveErr := os.Remove(c.sessionPath)
 		archiveRemoveErr := os.Remove(c.archivePath)
-		c.stateLock.UnlockWithoutNotify()
 		if sessionRemoveErr != nil {
 			return errors.Wrap(sessionRemoveErr, "unable to remove session from disk")
 		} else if archiveRemoveErr != nil {

@@ -10,6 +10,7 @@ import (
 
 const (
 	sessionsDirectoryName = "sessions"
+	archivesDirectoryName = "archives"
 )
 
 // TODO: Note that an empty session identifier will return the sessions
@@ -21,6 +22,17 @@ func pathForSession(sessionIdentifier string) (string, error) {
 		return "", errors.Wrap(err, "unable to compute/create sessions directory")
 	}
 
-	// Compute the combined path.
+	// Success.
 	return filepath.Join(sessionsDirectoryPath, sessionIdentifier), nil
+}
+
+func pathForArchive(session string) (string, error) {
+	// Compute/create the archives directory.
+	archivesDirectoryPath, err := filesystem.Mutagen(archivesDirectoryName)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to compute/create archives directory")
+	}
+
+	// Success.
+	return filepath.Join(archivesDirectoryPath, session), nil
 }
