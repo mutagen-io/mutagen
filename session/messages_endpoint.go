@@ -9,8 +9,8 @@ type initializeRequest struct {
 	Session string
 	Version Version
 	Root    string
-	Alpha   bool
 	Ignores []string
+	Alpha   bool
 }
 
 type initializeResponse struct {
@@ -38,13 +38,21 @@ type transmitResponse struct {
 	Error     string
 }
 
+type stageRequest struct {
+	Transitions []sync.Change
+}
+
+type stageResponse struct {
+	Status StagingStatus
+	Done   bool
+	Error  string
+}
+
 type applyRequest struct {
 	Transitions []sync.Change
 }
 
 type applyResponse struct {
-	Status   StagingStatus
-	Done     bool
 	Changes  []sync.Change
 	Problems []sync.Problem
 	Error    string

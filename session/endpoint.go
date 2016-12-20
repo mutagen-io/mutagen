@@ -25,6 +25,7 @@ const (
 	endpointMethodInitialize = "endpoint.Initialize"
 	endpointMethodScan       = "endpoint.Scan"
 	endpointMethodTransmit   = "endpoint.Transmit"
+	endpointMethodStage      = "endpoint.Stage"
 	endpointMethodApply      = "endpoint.Apply"
 
 	cachesDirectoryName  = "caches"
@@ -36,8 +37,9 @@ const (
 )
 
 func ServeEndpoint(stream io.ReadWriteCloser) error {
-	// Create a multiplexer.
+	// Create a multiplexer. Ensure that it's closed when we're done serving.
 	multiplexer := multiplex(stream, true)
+	defer multiplexer.Close()
 
 	// Create an RPC client to connect to the other endpoint.
 	client := rpc.NewClient(multiplexer)
@@ -75,6 +77,7 @@ func (e *endpoint) Methods() map[string]rpc.Handler {
 		endpointMethodInitialize: e.initialize,
 		endpointMethodScan:       e.scan,
 		endpointMethodTransmit:   e.transmit,
+		endpointMethodStage:      e.stage,
 		endpointMethodApply:      e.apply,
 	}
 }
@@ -182,7 +185,7 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 	defer e.Unlock()
 
 	// If we're not initialized, we can't do anything.
-	if e.version != Version_Unknown {
+	if e.version == Version_Unknown {
 		sendError(errors.New("endpoint not initialized"))
 		return
 	}
@@ -295,7 +298,7 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 	defer e.RUnlock()
 
 	// If we're not initialized, we can't do anything.
-	if e.version != Version_Unknown {
+	if e.version == Version_Unknown {
 		sendError(errors.New("endpoint not initialized"))
 		return
 	}
@@ -324,56 +327,31 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 	}
 }
 
-func (e *endpoint) apply(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(applyResponse{Error: err.Error()})
-	}
-
-	// Receive the request.
-	var request applyRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
-	}
-
-	// Lock the endpoint and defer its release.
-	e.Lock()
-	defer e.Unlock()
-
-	// If we're not initialized, we can't do anything.
-	if e.version != Version_Unknown {
-		sendError(errors.New("endpoint not initialized"))
-		return
-	}
-
-	// Compute the staging operations that we'll need to perform.
-	operations, err := sync.StagingOperationsForChanges(request.Transitions)
+func (e *endpoint) wipeStaging() error {
+	// List the contents in the staging directory.
+	contents, err := filesystem.DirectoryContents(e.stagingPath)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute staging operations"))
-		return
+		return errors.Wrap(err, "unable to list staging directory contents")
 	}
 
-	// Create a function to transmit staging status updates.
-	updater := func(s StagingStatus) error {
-		return stream.Encode(applyResponse{Status: s})
+	// Remove each of them. Abort if there's a failure.
+	for _, name := range contents {
+		if err := os.Remove(filepath.Join(e.stagingPath, name)); err != nil {
+			return errors.Wrap(err, "unable to remove file")
+		}
 	}
 
-	// Perform staging operations.
-	if err = e.stage(operations, updater); err != nil {
-		sendError(errors.Wrap(err, "unable to perform staging"))
-		return
-	}
+	// Success.
+	return nil
+}
 
-	// Perform application.
-	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e)
-
-	// Send the final response.
-	stream.Encode(applyResponse{
-		Done:     true,
-		Changes:  changes,
-		Problems: problems,
-	})
+func (e *endpoint) Provide(path string, entry *sync.Entry) (string, error) {
+	// Compute the expected staging name. This doesn't need to be stable, we can
+	// change it in the future, it only needs to be stable across a single
+	// synchronization cycle.
+	return filepath.Join(e.stagingPath, fmt.Sprintf("%x_%t_%x",
+		sha1.Sum([]byte(path)), entry.Executable, entry.Digest,
+	)), nil
 }
 
 type readSeekCloser interface {
@@ -583,25 +561,56 @@ func (e *endpoint) receive(
 	}
 }
 
-func (e *endpoint) stage(
-	operations []sync.StagingOperation,
-	updater func(StagingStatus) error,
-) error {
-	// Queue up the operations.
+func (e *endpoint) stage(stream *rpc.HandlerStream) {
+	// Create an error transmitter.
+	sendError := func(err error) {
+		stream.Encode(stageResponse{Error: err.Error()})
+	}
+
+	// Receive the request.
+	var request stageRequest
+	if err := stream.Decode(&request); err != nil {
+		sendError(errors.Wrap(err, "unable to receive request"))
+		return
+	}
+
+	// Lock the endpoint and defer its release.
+	e.RLock()
+	defer e.RUnlock()
+
+	// If we're not initialized, we can't do anything.
+	if e.version == Version_Unknown {
+		sendError(errors.New("endpoint not initialized"))
+		return
+	}
+
+	// Compute the staging operations that we'll need to perform.
+	operations, err := sync.StagingOperationsForChanges(request.Transitions)
+	if err != nil {
+		sendError(errors.Wrap(err, "unable to compute staging operations"))
+		return
+	}
+
+	// Create private wrappers for these operations and queue them up.
 	queued := make(chan stagingOperation, len(operations))
 	for _, o := range operations {
 		queued <- stagingOperation{o, nil, nil}
 	}
 	close(queued)
 
-	// Create the dispatched queue.
-	dispatched := make(chan stagingOperation, maxOutstandingStagingRequests)
-
 	// Create a cancellable context in which our dispatch/receive operations
 	// will execute.
 	context, cancel := context.WithCancel(context.Background())
 
-	// Start our pipeline.
+	// Create a queue of dispatched operations awaiting response.
+	dispatched := make(chan stagingOperation, maxOutstandingStagingRequests)
+
+	// Create a function to transmit staging status updates.
+	updater := func(s StagingStatus) error {
+		return stream.Encode(stageResponse{Status: s})
+	}
+
+	// Start our dispatching/receiving pipeline.
 	dispatchErrors := make(chan error, 1)
 	receiveErrors := make(chan error, 1)
 	go func() {
@@ -645,36 +654,48 @@ func (e *endpoint) stage(
 			o.base.Close()
 			o.transmission.Close()
 		}
-		return pipelineError
+		sendError(pipelineError)
+		return
 	}
 
 	// Success.
-	return nil
+	stream.Encode(stageResponse{Done: true})
 }
 
-func (e *endpoint) wipeStaging() error {
-	// List the contents in the staging directory.
-	contents, err := filesystem.DirectoryContents(e.stagingPath)
-	if err != nil {
-		return errors.Wrap(err, "unable to list staging directory contents")
+func (e *endpoint) apply(stream *rpc.HandlerStream) {
+	// Create an error transmitter.
+	sendError := func(err error) {
+		stream.Encode(applyResponse{Error: err.Error()})
 	}
 
-	// Remove each of them. Abort if there's a failure.
-	for _, name := range contents {
-		if err := os.Remove(filepath.Join(e.stagingPath, name)); err != nil {
-			return errors.Wrap(err, "unable to remove file")
-		}
+	// Receive the request.
+	var request applyRequest
+	if err := stream.Decode(&request); err != nil {
+		sendError(errors.Wrap(err, "unable to receive request"))
+		return
 	}
 
-	// Success.
-	return nil
-}
+	// Lock the endpoint and defer its release.
+	e.Lock()
+	defer e.Unlock()
 
-func (e *endpoint) Provide(path string, entry *sync.Entry) (string, error) {
-	// Compute the expected staging name. This doesn't need to be stable, we can
-	// change it in the future, it only needs to be stable across a single
-	// synchronization cycle.
-	return filepath.Join(e.stagingPath, fmt.Sprintf("%x_%t_%x",
-		sha1.Sum([]byte(path)), entry.Executable, entry.Digest,
-	)), nil
+	// If we're not initialized, we can't do anything.
+	if e.version == Version_Unknown {
+		sendError(errors.New("endpoint not initialized"))
+		return
+	}
+
+	// Perform application.
+	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e)
+
+	// Wipe the staging directory. We ignores any errors here because we need to
+	// send back our transition results at this point. If there's some sort of
+	// disk error, it'll be caught by the next round of staging.
+	e.wipeStaging()
+
+	// Send the final response.
+	stream.Encode(applyResponse{
+		Changes:  changes,
+		Problems: problems,
+	})
 }

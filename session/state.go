@@ -15,7 +15,6 @@ const (
 	SynchronizationStatusStaging
 	SynchronizationStatusApplying
 	SynchronizationStatusSaving
-	SynchronizationStatusUpdating
 )
 
 type StagingStatus struct {
@@ -33,5 +32,6 @@ type SynchronizationState struct {
 	AlphaStaging   StagingStatus
 	BetaStaging    StagingStatus
 	Conflicts      []sync.Conflict
-	Problems       []sync.Problem
+	AlphaProblems  []sync.Problem
+	BetaProblems   []sync.Problem
 }

@@ -44,8 +44,7 @@ type connectResult struct {
 
 // reconnect is a version of connect that accepts a context for cancellation. It
 // is only designed for auto-reconnection purposes, so it does not accept a
-// prompter. If it fails due to context cancellation, it returns
-// context.Canceled.
+// prompter.
 func reconnect(ctx context.Context, remote *url.URL) (io.ReadWriteCloser, error) {
 	// Create a channel to deliver the connection result.
 	results := make(chan connectResult)
@@ -68,7 +67,7 @@ func reconnect(ctx context.Context, remote *url.URL) (io.ReadWriteCloser, error)
 	// Wait for context cancellation or results.
 	select {
 	case <-ctx.Done():
-		return nil, context.Canceled
+		return nil, errors.New("reconnect cancelled")
 	case result := <-results:
 		return result.connection, result.error
 	}

@@ -30,12 +30,12 @@ type ListRequest struct {
 
 type SessionState struct {
 	Session *Session
-	State   *SynchronizationState
+	State   SynchronizationState
 }
 
 type ListResponse struct {
 	StateIndex uint64
-	Sessions   []*SessionState
+	Sessions   []SessionState
 }
 
 type PauseRequest struct {
