@@ -63,6 +63,13 @@ func newSession(
 	ignores []string,
 	prompter string,
 ) (*controller, error) {
+	// Verify that the ignores are valid.
+	for _, ignore := range ignores {
+		if !sync.ValidIgnore(ignore) {
+			return nil, errors.Errorf("invalid ignore specified: %s", ignore)
+		}
+	}
+
 	// Attempt to connect. Session creation is only allowed after if successful.
 	alphaConnection, err := connect(alpha, prompter)
 	if err != nil {
@@ -337,10 +344,10 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 	// Register cleanup.
 	defer func() {
 		// Close any open connections.
-		if alpha == nil {
+		if alpha != nil {
 			alpha.Close()
 		}
-		if beta == nil {
+		if beta != nil {
 			beta.Close()
 		}
 

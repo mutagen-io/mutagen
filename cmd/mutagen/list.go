@@ -14,7 +14,7 @@ import (
 var listUsage = `usage: mutagen list [-h|--help] [<session>]
 `
 
-func printSessionState(state *session.SessionState, long bool) {
+func printSessionState(state session.SessionState, long bool) {
 	// Print the session identifier.
 	fmt.Println(state.Session.Identifier)
 

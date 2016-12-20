@@ -70,7 +70,7 @@ func createMain(arguments []string) error {
 	for {
 		// Grab the next response.
 		var response session.CreateResponse
-		if err := stream.Decode(response); err != nil {
+		if err := stream.Decode(&response); err != nil {
 			return errors.Wrap(err, "unable to receive creation response")
 		}
 

@@ -16,6 +16,7 @@ type PromptResponse struct {
 type CreateRequest struct {
 	Alpha    *url.URL
 	Beta     *url.URL
+	Ignores  []string
 	Response *PromptResponse
 }
 
@@ -31,6 +32,7 @@ type ListRequest struct {
 type ListResponse struct {
 	StateIndex uint64
 	Sessions   []SessionState
+	Error      string
 }
 
 type PauseRequest struct {
