@@ -50,7 +50,7 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 		}
 
 		// Update the parent.
-		parent = filepath.Join(root, components[0])
+		parent = filepath.Join(parent, components[0])
 
 		// Reduce the component list.
 		components = components[1:]
