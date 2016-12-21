@@ -44,12 +44,8 @@ func Normalize(path string) (string, error) {
 		return "", errors.Wrap(err, "unable to compute absolute path")
 	}
 
-	// Evaluate any symlinks. Note that this function also performs a clean on
-	// the result.
-	path, err = filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to evaluate symlinks")
-	}
+	// Clean the path.
+	path = filepath.Clean(path)
 
 	// Success.
 	return path, nil
