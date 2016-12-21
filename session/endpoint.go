@@ -159,6 +159,7 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 	e.root = root
 	e.ignores = request.Ignores
 	e.cachePath = cachePath
+	e.cache = cache
 	e.stagingPath = stagingPath
 
 	// Send the initialization response.
@@ -206,17 +207,17 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 	// handler exits. We don't monitor for watch failure, because it might fail
 	// in perfectly reasonable circumstances (e.g. the path not existing). In
 	// that case we have to fall back to polling.
-	context, cancel := context.WithCancel(context.Background())
+	watchContext, watchCancel := context.WithCancel(context.Background())
 	watchEvents := make(chan struct{}, watchEventsBufferSize)
-	go watch(context, e.root, watchEvents)
-	defer cancel()
+	go watch(watchContext, e.root, watchEvents)
+	defer watchCancel()
 
 	// Create a Goroutine that'll monitor for force requests. It will die once
 	// the stream is closed, which will happen automatically once the handler
 	// returns. If it fails before receiving a force request, it closes the
-	// forces channel (in which case the loop should abort because something is
-	// wrong with the stream), otherwise it sends an empty value (in which case
-	// the loop should force the response).
+	// forces channel (in which case the loop should abort if it's still running
+	// because something is wrong with the stream), otherwise it sends an empty
+	// value (in which case the loop should force the response).
 	forces := make(chan struct{}, 1)
 	go func() {
 		var forceRequest scanRequest
@@ -293,7 +294,8 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Lock the endpoint for reading and defer its release.
+	// Lock the endpoint for reading (to allow for concurrent transmissions) and
+	// defer its release.
 	e.RLock()
 	defer e.RUnlock()
 
@@ -319,12 +321,14 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 		return stream.Encode(transmitResponse{Operation: operation})
 	}
 
-	// Transmit the delta. We signal the end of the stream by closing it, and
-	// returning from the handler will do that by default.
+	// Transmit the delta.
 	if err := rsyncer.Deltafy(file, request.BaseSignature, transmit); err != nil {
 		sendError(errors.Wrap(err, "unable to transmit delta"))
 		return
 	}
+
+	// Done. We signal the end of the stream by closing it (which sends an
+	// io.EOF), and returning from the handler will do that by default.
 }
 
 func (e *endpoint) wipeStaging() error {
@@ -528,10 +532,20 @@ func (e *endpoint) receive(
 		// Close the transmission stream.
 		transmission.Close()
 
-		// If there was a receiving error, remove the file. We don't abort the
+		// If there was a patching error, remove the file. We don't abort the
 		// staging pipeline in this case, because it's possible that the base
-		// was being concurrently modified and that future receives won't fail.
+		// was being concurrently modified or that the remote file had some
+		// error (perhaps also due to concurrent modification) and that future
+		// receives won't fail.
 		if err != nil {
+			os.Remove(temporaryPath)
+			continue
+		}
+
+		// Verify that the file contents match the expected digest. We don't
+		// abort the pipeline on mismatch because it could be due to concurrent
+		// modification.
+		if !bytes.Equal(hasher.Sum(nil), entry.Digest) {
 			os.Remove(temporaryPath)
 			continue
 		}
@@ -574,7 +588,8 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Lock the endpoint and defer its release.
+	// Lock the endpoint reading (because we want to allow for concurrent
+	// transmission operations) and defer its release.
 	e.RLock()
 	defer e.RUnlock()
 

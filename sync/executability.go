@@ -11,11 +11,9 @@ func propagateExecutability(ancestor, snapshot *Entry) {
 	if snapshot.Kind == EntryKind_File {
 		snapshot.Executable = ancestor.Executable
 	} else if snapshot.Kind == EntryKind_Directory {
-		for _, sc := range snapshot.Contents {
-			if a, ok := ancestor.Find(sc.Name); ok {
-				propagateExecutability(a, sc.Entry)
-			}
-		}
+		iterate2(ancestor.GetContents(), snapshot.GetContents(), func(_ string, a, s *Entry) {
+			propagateExecutability(a, s)
+		})
 	} else {
 		panic("unhandled entry kind")
 	}

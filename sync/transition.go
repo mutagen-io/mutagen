@@ -84,9 +84,11 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 	}
 
 	// If stat information doesn't match, don't bother re-hashing, just abort.
-	// Note that we don't really have to check executability here, we just need
-	// to check that it hasn't changed, and that is accomplished as part of the
-	// mode check.
+	// Note that we don't really have to check executability here (and we
+	// shouldn't since it's not preserved on all systems) - we just need to
+	// check that it hasn't changed from the perspective of the filesystem, and
+	// that is accomplished as part of the mode check. This is why we don't
+	// restrict the mode comparison to the type bits.
 	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
 		timestampsEqual(cacheEntry.ModificationTime, modificationTime) &&
 		cacheEntry.Size == uint64(info.Size()) &&
@@ -103,13 +105,16 @@ func ensureNotExists(fullPath string) error {
 	// Attempt to grab stat information for the path.
 	_, err := os.Lstat(fullPath)
 
-	// Ensure that it didn't exist.
-	if !os.IsNotExist(err) {
-		return errors.New("path exists")
+	// Handle error cases (which may indicate success).
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(err, "unable to determine path existence")
 	}
 
-	// Success.
-	return nil
+	// Failure.
+	return errors.New("path exists")
 }
 
 func removeFile(root, path string, target *Entry, cache *Cache) error {
@@ -136,13 +141,6 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 		return errors.Wrap(err, "unable to read directory contents")
 	}
 
-	// If the number of entries in the directory is greater than the number
-	// we're expecting to remove, we can just fail now. This is a sign that new
-	// content has been added to the directory.
-	if len(contentNames) > len(target.Contents) {
-		return errors.Wrap(err, "directory has additional content")
-	}
-
 	// Loop through contents and remove them. We do this to ensure that what
 	// we're removing has the proper case. If we were to just pass the OS what
 	// exists in our content map and it were case insensitive, we could delete
@@ -150,6 +148,10 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 	// condition here between the time we grab the directory contents and the
 	// time we remove, but it is very small and we also compare file contents,
 	// so the chance of deleting something we shouldn't is very small.
+	//
+	// Note that we don't need to check that we've removed all entries listed in
+	// the target. If they aren't in the directory contents, then they must have
+	// already been deleted.
 	for _, c := range contentNames {
 		// Grab the corresponding entry.
 		entry, ok := target.Find(c)
@@ -157,7 +159,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 			return errors.Wrap(err, "unknown directory content encountered")
 		}
 
-		// Compute its full path.
+		// Compute its path.
 		entryPath := pathpkg.Join(path, c)
 
 		// Handle its removal accordingly.
@@ -180,7 +182,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 		}
 	}
 
-	// Remove this directory.
+	// Remove the directory.
 	return os.Remove(fullPath)
 }
 
@@ -216,7 +218,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, error) {
 	}
 
 	// Success.
-	return nil, err
+	return nil, nil
 }
 
 func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider StagingProvider) error {
@@ -311,7 +313,7 @@ func createDirectory(root, path string, target *Entry, provider StagingProvider)
 		}
 	}
 
-	// Return the created target. This should be equal to target.
+	// Return the created target and any error that occurred.
 	return created, err
 }
 

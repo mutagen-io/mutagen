@@ -18,6 +18,8 @@ func timestampsEqual(first, second *timestamp.Timestamp) bool {
 		return false
 	}
 
-	// Otherwise compare fields.
+	// Otherwise compare fields. Protocol Buffers timestamps don't allow
+	// negative values for nanoseconds, so any time that has a representation
+	// has a unique representation.
 	return first.Seconds == second.Seconds && first.Nanos == second.Nanos
 }

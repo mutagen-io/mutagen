@@ -31,7 +31,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 
 		// See if the ancestor also agrees. If it disagrees, record the change
 		// for this node and ignore ancestor contents.
-		if !alpha.equalShallow(ancestor) {
+		if !ancestor.equalShallow(alpha) {
 			r.ancestorChanges = append(
 				r.ancestorChanges,
 				Change{
@@ -90,7 +90,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	//
 	// Why didn't we simply make this check first? Why do we need to check the
 	// full diffs above? Well, imagine that one side had deleted and the other
-	// was unmodified. If we only looked at non-deletion changes, we might not
+	// was unmodified. If we only looked at non-deletion changes, we would not
 	// detect this because both sides would have no changes or deletion-only
 	// changes, and both lists below would be empty, and the winning side would
 	// be determined simply by the ordering of the conditional statement below
@@ -98,20 +98,21 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	//
 	// What if both sides have completely deleted this node? Well, that would
 	// have passed the equality check at the start of the function and would
-	// have been treated as a both-deleted scenario. This, we know at least one
+	// have been treated as a both-deleted scenario. Thus, we know at least one
 	// side has content at this node.
 	//
-	// What if both sides are directories and have deleted some subset of the
-	// tree below here? Well, that would ALSO have passed the equality check
+	// What if both sides are directories and have only deleted some subset of
+	// the tree below here? Well, that would ALSO have passed the equality check
 	// above since nothing has changed at this node, and the function would have
 	// simply recursed.
 	//
 	// Note that, when recording these changes, we use the side we're going to
 	// overrule as the "old" value in the change, because that's what it should
-	// expext to see on disk, not the ancestor. And since that "old" must be a
+	// expect to see on disk, not the ancestor. And since that "old" must be a
 	// subtree of ancestor (it contains only deletion changes), it still
 	// represents a valid value to return from a transition in the case that the
-	// transition fails (no information about previous deletions is lost).
+	// transition fails, and, as a nice side-effect in that case, no information
+	// about the deletions that have happened on that side is lost.
 	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
 	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
 	if len(alphaDeltaNonDeletion) == 0 {

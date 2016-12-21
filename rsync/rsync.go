@@ -135,8 +135,7 @@ func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive Operati
 			Data:          operation.Data,
 		}
 
-		// Forward the operation. If there is an error, burn the remaining
-		// operations in this stream.
+		// Forward the operation while watching for errors.
 		select {
 		case operations <- operationRsync:
 		case applyError = <-applyErrors:

@@ -79,7 +79,7 @@ func patchSnapshot(baseSnapshotBytes []byte, delta []rsync.Operation) ([]byte, e
 
 	// Create an operation receiver that will return delta operations.
 	receive := func() (rsync.Operation, error) {
-		// If there are operations remaining, return the next one.
+		// If there are operations remaining, return the next one and reduce.
 		if len(delta) > 0 {
 			result := delta[0]
 			delta = delta[1:]

@@ -10,14 +10,14 @@ import (
 
 func tildeExpand(path string) (string, error) {
 	// Only process relevant paths.
-	if len(path) < 3 || path[0] != '~' {
+	if path == "" || path[0] != '~' {
 		return path, nil
 	}
 
 	// If the second character isn't a path separator, then someone is probably
 	// trying to do a ~username expansion, but we can't support that without CGO
 	// to support user.Lookup.
-	if !os.IsPathSeparator(path[1]) {
+	if len(path) > 1 && !os.IsPathSeparator(path[1]) {
 		return "", errors.New("unable to perform user lookup")
 	}
 
@@ -28,7 +28,7 @@ func tildeExpand(path string) (string, error) {
 	}
 
 	// Compute the path.
-	return filepath.Join(self.HomeDir, path[2:]), nil
+	return filepath.Join(self.HomeDir, path[1:]), nil
 }
 
 func Normalize(path string) (string, error) {

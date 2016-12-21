@@ -32,7 +32,7 @@ type controller struct {
 	// archivePath is the path to the serialized archive.
 	archivePath string
 	// stateLock guards and tracks changes to the session member's Paused field
-	// and the state member. You can access static members of the session
+	// and the state member. Code may access static members of the session
 	// without holding this lock, but any reads or writes to the Paused field
 	// (including as part of a read of the whole session) should be guarded by
 	// this lock.
@@ -63,6 +63,9 @@ func newSession(
 	ignores []string,
 	prompter string,
 ) (*controller, error) {
+	// TODO: Should we perform URL validation in here? They should be validated
+	// by the respective dialers.
+
 	// Verify that the ignores are valid.
 	for _, ignore := range ignores {
 		if !sync.ValidIgnore(ignore) {
@@ -97,6 +100,7 @@ func newSession(
 		CreatingVersionPatch: mutagen.VersionPatch,
 		Alpha:                alpha,
 		Beta:                 beta,
+		Ignores:              ignores,
 	}
 	archive := &Archive{}
 
@@ -189,9 +193,9 @@ func (c *controller) currentState() SessionState {
 	c.stateLock.Lock()
 	defer c.stateLock.UnlockWithoutNotify()
 
-	// Create the result. We make shallow copies of both state components. The
-	// session technically has fields which contain mutable values, but these
-	// values are treated as immutable so it is okay.
+	// Create the result. We make shallow copies of both state components. Both
+	// technically have fields that contain mutable values, but these values are
+	// treated as immutable so it is okay.
 	result := SessionState{
 		Session: &Session{},
 		State:   c.state,
@@ -203,7 +207,7 @@ func (c *controller) currentState() SessionState {
 }
 
 func (c *controller) resume(prompter string) error {
-	// Lock the controller and defer its release.
+	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
 	defer c.lifecycleLock.Unlock()
 
@@ -263,7 +267,7 @@ func (c *controller) resume(prompter string) error {
 
 	// Report any errors. Since we always want to start a synchronization loop,
 	// even on partial or complete failure (since it might be able to
-	// auto-reconnect on its own), we wait to report errors until the end.
+	// auto-reconnect on its own), we wait until the end to report errors.
 	if saveErr != nil {
 		return errors.Wrap(saveErr, "unable to save session configuration")
 	} else if alphaConnectErr != nil {
@@ -285,13 +289,13 @@ const (
 )
 
 func (c *controller) halt(mode haltMode) error {
-	// Lock the controller and defer its release.
+	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
 	defer c.lifecycleLock.Unlock()
 
 	// Don't allow any additional halt operations if the controller is disabled,
 	// because either this session is being terminated or the service is
-	// shutting down.
+	// shutting down, and in either case there is no point in halting.
 	if c.disabled {
 		return errors.New("controller disabled")
 	}
@@ -360,12 +364,6 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		close(c.done)
 	}()
 
-	// Grab URLs.
-	c.stateLock.Lock()
-	alphaURL := c.session.Alpha
-	betaURL := c.session.Beta
-	c.stateLock.UnlockWithoutNotify()
-
 	// Loop until cancelled.
 	for {
 		// Loop until we're connected to both endpoints. We do a non-blocking
@@ -378,7 +376,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		for {
 			// Ensure that alpha is connected.
 			if alpha == nil {
-				if α, err := reconnect(context, alphaURL); err != nil {
+				if α, err := reconnect(context, c.session.Alpha); err != nil {
 					select {
 					case <-context.Done():
 						return
@@ -394,7 +392,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 			// Ensure that beta is connected.
 			if beta == nil {
-				if β, err := reconnect(context, betaURL); err == nil {
+				if β, err := reconnect(context, c.session.Beta); err == nil {
 					select {
 					case <-context.Done():
 						return
@@ -451,7 +449,8 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		alphaClient := rpc.NewClient(alphaMultiplexer)
 		betaClient := rpc.NewClient(betaMultiplexer)
 
-		// Create a cancellable sub-context for synchronization.
+		// Create a cancellable sub-context for synchronization. We need this so
+		// that we can stop synchronization in the event of forwarding errors.
 		syncContext, syncCancel := contextpkg.WithCancel(context)
 
 		// Synchronize with these endpoints in a separate Goroutine.
@@ -539,7 +538,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 	for {
 		// Set status to scanning.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusInitializing
+		c.state.Status = SynchronizationStatusScanning
 		c.stateLock.Unlock()
 
 		// Create a context that will allow us to force a scan to complete.
@@ -628,8 +627,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			return errors.Wrap(betaStagingError, "beta staging error")
 		}
 
-		// Perform application. We don't abort immediately on error, because we
-		// want to propagate any changes that we make.
+		// Perform application. We don't allow this to be cancelled by the
+		// synchroniztion context because we might lose information on changes
+		// that we've made. This is fine, because this method won't block
+		// indefinitely and should be relatively fast. We don't abort
+		// immediately on error, because we want to propagate any changes that
+		// we make.
 		alphaChanges, alphaProblems, alphaApplyErr := c.apply(alpha, alphaTransitions)
 		betaChanges, betaProblems, betaApplyErr := c.apply(beta, betaTransitions)
 
@@ -680,7 +683,6 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 	defer contextCancel()
 
 	// Create the initialize request.
-	c.stateLock.Lock()
 	root := c.session.Alpha.Path
 	if !alpha {
 		root = c.session.Beta.Path
@@ -692,7 +694,6 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 		Ignores: c.session.Ignores,
 		Alpha:   alpha,
 	}
-	c.stateLock.UnlockWithoutNotify()
 
 	// Send the request.
 	if err := stream.Encode(request); err != nil {

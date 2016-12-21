@@ -32,10 +32,11 @@ func watch(context context.Context, root string, events chan struct{}) error {
 	}
 
 	// Compute the parent directory of root. We watch this because (a) we may
-	// have a file root, (b) the root may not exist yet, and (c) if you delete
-	// the watch root it isn't seen on all platforms. Of course, if the parent
-	// of root is deleted, we won't see that either here, but we'll eventually
-	// see it in polling.
+	// have a file root and many systems don't support watching a file directly
+	// (only a directory), (b) the root may not exist yet, and (c) deletion of
+	// the watch root isn't seen on all platforms. Of course, if the parent of
+	// root is deleted, we won't see that either here, but we'll eventually see
+	// it in polling.
 	parent := filepath.Dir(root)
 
 	// Create a recursive watch. Ensure that it's cancelled when we're done.
@@ -51,7 +52,8 @@ func watch(context context.Context, root string, events chan struct{}) error {
 		case notification := <-notifications:
 			// Only process notifications that match our target. This test might
 			// be a bit fragile, but it should be okay since we normalize our
-			// root path. If we receive a match, reset the coalescing timer.
+			// root path and notification paths are supposed to be absolute and
+			// real. If we receive a match, reset the coalescing timer.
 			if strings.HasPrefix(notification.Path(), root) {
 				if !timer.Stop() {
 					<-timer.C

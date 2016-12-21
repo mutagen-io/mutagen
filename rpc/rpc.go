@@ -55,6 +55,7 @@ func (c *Client) Invoke(method string) (*ClientStream, error) {
 
 	// Send the invocation request.
 	if err := stream.Encode(method); err != nil {
+		stream.Close()
 		return nil, errors.Wrap(err, "unable to send invocation request")
 	}
 
@@ -69,27 +70,27 @@ type Service interface {
 }
 
 type Server struct {
-	handlers map[string]Handler
+	handlersLock sync.RWMutex
+	handlers     map[string]Handler
 }
 
 func NewServer() *Server {
-	return &Server{handlers: make(map[string]Handler)}
+	return &Server{
+		handlers: make(map[string]Handler),
+	}
 }
 
 func (s *Server) Register(service Service) {
-	// Grab the service's methods.
-	methods := service.Methods()
+	// Lock the handlers registry for writing and defer its release.
+	s.handlersLock.Lock()
+	defer s.handlersLock.Unlock()
 
-	// Register each of them in the master handlers map. If two services try to
-	// register the same method, this is a logic error.
-	for name, method := range methods {
-		// Make sure there is no existing method with this name. If two services
-		// try to register the same method, this is a logic error.
+	// Register each of the service's methods handlers map. If two services try
+	// to register the same method, this is a logic error.
+	for name, method := range service.Methods() {
 		if _, ok := s.handlers[name]; ok {
 			panic("two methods registered with the same name")
 		}
-
-		// Register the method.
 		s.handlers[name] = method
 	}
 }
@@ -104,23 +105,25 @@ func (s *Server) serveConnection(connection net.Conn) {
 		gob.NewDecoder(connection),
 	}
 
-	// Receive the invocation header.
+	// Receive the invocation request.
 	var method string
 	if stream.Decode(&method) != nil {
 		return
 	}
 
 	// Find and invoke the handler.
+	s.handlersLock.RLock()
 	handler := s.handlers[method]
+	s.handlersLock.RUnlock()
 	if handler != nil {
 		handler(stream)
 	}
 }
 
-func (s *Server) Serve(listener stream.Acceptor) error {
-	// Accept and serve connections until there is an error with the listener.
+func (s *Server) Serve(acceptor stream.Acceptor) error {
+	// Accept and serve connections until there is an error with the acceptor.
 	for {
-		connection, err := listener.Accept()
+		connection, err := acceptor.Accept()
 		if err != nil {
 			return errors.Wrap(err, "error accepting connection")
 		}

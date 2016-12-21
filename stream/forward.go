@@ -22,8 +22,22 @@ func Forward(incoming Acceptor, outgoing Opener) error {
 			return errors.Wrap(err, "unable to open outgoing stream")
 		}
 
-		// Start forwarding in separate Goroutines.
-		go io.Copy(opened, accepted)
-		go io.Copy(accepted, opened)
+		// Start forwarding in separate Goroutines. Close both streams once
+		// forwarding fails in either direction. This is okay to do since we're
+		// using net.Conn objects which will unblock reads/writes on close.
+		go func() {
+			errors := make(chan error, 2)
+			go func() {
+				_, err := io.Copy(opened, accepted)
+				errors <- err
+			}()
+			go func() {
+				_, err := io.Copy(accepted, opened)
+				errors <- err
+			}()
+			<-errors
+			accepted.Close()
+			opened.Close()
+		}()
 	}
 }

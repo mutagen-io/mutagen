@@ -21,7 +21,7 @@ func iterate3(first, second, third []*NamedEntry, action func(string, *Entry, *E
 			name = third[0].Name
 		}
 
-		// Extract entries.
+		// Extract entries and reduce lists.
 		var f, s, t *Entry
 		if len(first) > 0 && first[0].Name == name {
 			f = first[0].Entry

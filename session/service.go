@@ -80,7 +80,7 @@ func (s *Service) Shutdown() {
 	s.sessionsLock.UnlockWithoutNotify()
 
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
-	// log any that fail.
+	// log any that fail to halt.
 	for _, controller := range s.sessions {
 		if err := controller.halt(haltModeShutdown); err != nil {
 			// TODO: Log this halt failure.
@@ -121,7 +121,7 @@ func (p *createPrompter) Prompt(message, prompt string) (string, error) {
 func (s *Service) create(stream *rpc.HandlerStream) {
 	// Create an error transmitter.
 	sendError := func(err error) {
-		stream.Encode(ListResponse{Error: err.Error()})
+		stream.Encode(CreateResponse{Error: err.Error()})
 	}
 
 	// Receive the request.
@@ -193,18 +193,14 @@ func (s *Service) list(stream *rpc.HandlerStream) {
 	// Wait until the state has changed.
 	stateIndex := s.tracker.WaitForChange(request.PreviousStateIndex)
 
-	// Lock the session registry.
+	// Lock the session registry, grab session states, and then unlock the
+	// registry. It's very important that we unlock without a notification here,
+	// otherwise we'd trigger an infinite cycle of list/notify.
 	s.sessionsLock.Lock()
-
-	// Grab session states.
 	var sessions []SessionState
 	for _, controller := range s.sessions {
 		sessions = append(sessions, controller.currentState())
 	}
-
-	// Unlock the session registry. It's very important that we unlock without a
-	// notification here, otherwise we'd trigger an infinite cycle of
-	// list/notify.
 	s.sessionsLock.UnlockWithoutNotify()
 
 	// Sort sessions by creation time.

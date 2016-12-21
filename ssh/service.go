@@ -84,6 +84,7 @@ func (s *Service) prompt(stream *rpc.HandlerStream) {
 	// Read the request.
 	var request PromptRequest
 	if stream.Decode(&request) != nil {
+		stream.Encode(PromptResponse{Error: "unable to receive request"})
 		return
 	}
 
