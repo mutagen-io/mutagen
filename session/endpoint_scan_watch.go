@@ -17,19 +17,11 @@ import (
 const (
 	scanPollInterval      = 30 * time.Second
 	watchEventsBufferSize = 10
-	coalescingWindow      = 250 * time.Millisecond
 )
 
 func watch(context context.Context, root string, events chan struct{}) error {
 	// Create a watch notifications channel.
 	notifications := make(chan notify.EventInfo, watchEventsBufferSize)
-
-	// Create a timer that we can use to coalesce events. It will be created
-	// running, so make sure to stop it and consume its first event, if any.
-	timer := time.NewTimer(coalescingWindow)
-	if !timer.Stop() {
-		<-timer.C
-	}
 
 	// Compute the parent directory of root. We watch this because (a) we may
 	// have a file root and many systems don't support watching a file directly
@@ -53,21 +45,16 @@ func watch(context context.Context, root string, events chan struct{}) error {
 			// Only process notifications that match our target. This test might
 			// be a bit fragile, but it should be okay since we normalize our
 			// root path and notification paths are supposed to be absolute and
-			// real. If we receive a match, reset the coalescing timer.
+			// real. If we receive a match, forward the event in a non-blocking
+			// manner.
 			if strings.HasPrefix(notification.Path(), root) {
-				if !timer.Stop() {
-					<-timer.C
+				select {
+				case events <- struct{}{}:
+				default:
 				}
-				timer.Reset(coalescingWindow)
-			}
-		case <-timer.C:
-			// Forward a coalesced event in a non-blocking manner.
-			select {
-			case events <- struct{}{}:
-			default:
 			}
 		case <-context.Done():
-			return errors.New("cancelled")
+			return errors.New("watch cancelled")
 		}
 	}
 }
