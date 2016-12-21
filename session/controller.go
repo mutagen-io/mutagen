@@ -392,7 +392,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 			// Ensure that beta is connected.
 			if beta == nil {
-				if β, err := reconnect(context, c.session.Beta); err == nil {
+				if β, err := reconnect(context, c.session.Beta); err != nil {
 					select {
 					case <-context.Done():
 						return
