@@ -20,11 +20,11 @@ func (d *differ) diff(path string, base, target *Entry) {
 	}
 
 	// Otherwise check contents for differences.
-	iterate2(base.GetContents(), target.GetContents(),
-		func(name string, b, t *Entry) {
-			d.diff(pathpkg.Join(path, name), b, t)
-		},
-	)
+	baseContents := base.GetContents()
+	targetContents := target.GetContents()
+	for name, _ := range nameUnion(baseContents, targetContents) {
+		d.diff(pathpkg.Join(path, name), baseContents[name], targetContents[name])
+	}
 }
 
 func diff(path string, base, target *Entry) []Change {

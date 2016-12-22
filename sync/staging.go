@@ -29,8 +29,8 @@ func (f *stagingOperationFinder) find(path string, entry *Entry) error {
 	if entry.Kind == EntryKind_File {
 		f.operations = append(f.operations, StagingOperation{path, entry})
 	} else if entry.Kind == EntryKind_Directory {
-		for _, c := range entry.Contents {
-			if err := f.find(pathpkg.Join(path, c.Name), c.Entry); err != nil {
+		for name, entry := range entry.Contents {
+			if err := f.find(pathpkg.Join(path, name), entry); err != nil {
 				return err
 			}
 		}

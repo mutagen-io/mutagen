@@ -117,7 +117,7 @@ func (s *scanner) directory(path string) (*Entry, error) {
 	}
 
 	// Compute entries.
-	var contents []*NamedEntry
+	contents := make(map[string]*Entry, len(directoryContents))
 	for _, name := range directoryContents {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
@@ -161,7 +161,7 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		}
 
 		// Add the content.
-		contents = append(contents, &NamedEntry{name, entry})
+		contents[name] = entry
 	}
 
 	// Success.

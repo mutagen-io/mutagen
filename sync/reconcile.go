@@ -44,11 +44,14 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		}
 
 		// Recursively handle contents.
-		iterate3(ancestorContents, alphaContents, betaContents,
-			func(name string, a, α, β *Entry) {
-				r.reconcile(pathpkg.Join(path, name), a, α, β)
-			},
-		)
+		for name, _ := range nameUnion(ancestorContents, alphaContents, betaContents) {
+			r.reconcile(
+				pathpkg.Join(path, name),
+				ancestorContents[name],
+				alphaContents[name],
+				betaContents[name],
+			)
+		}
 
 		// Done.
 		return

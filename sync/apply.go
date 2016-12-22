@@ -24,7 +24,7 @@ func Apply(base *Entry, changes []Change) (*Entry, error) {
 		parent := result
 		components := strings.Split(c.Path, "/")
 		for len(components) > 1 {
-			child, ok := parent.Find(components[0])
+			child, ok := parent.Contents[components[0]]
 			if !ok {
 				return nil, errors.New("unable to resolve parent path")
 			}
@@ -34,11 +34,12 @@ func Apply(base *Entry, changes []Change) (*Entry, error) {
 
 		// Depending on the new value, either set or remove the entry.
 		if c.New == nil {
-			if !parent.Remove(components[0]) {
-				return nil, errors.New("unable to resolve path for deletion")
-			}
+			delete(parent.Contents, components[0])
 		} else {
-			parent.Insert(components[0], c.New)
+			if parent.Contents == nil {
+				parent.Contents = make(map[string]*Entry)
+			}
+			parent.Contents[components[0]] = c.New
 		}
 	}
 

@@ -13,7 +13,8 @@ It has these top-level messages:
 	CacheEntry
 	Cache
 	Entry
-	NamedEntry
+	OrderedEntry
+	OrderedEntryContent
 */
 package sync
 

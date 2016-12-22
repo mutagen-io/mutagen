@@ -11,10 +11,17 @@ message Entry {
     EntryKind kind = 1;
     bool executable = 2;
     bytes digest = 3;
-    repeated NamedEntry contents = 4;
+    map<string, Entry> contents = 4;
 }
 
-message NamedEntry {
+message OrderedEntry {
+    EntryKind kind = 1;
+    bool executable = 2;
+    bytes digest = 3;
+    repeated OrderedEntryContent contents = 4;
+}
+
+message OrderedEntryContent {
     string name = 1;
-    Entry entry = 2;
+    OrderedEntry entry = 2;
 }

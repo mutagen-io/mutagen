@@ -152,15 +152,15 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 	// Note that we don't need to check that we've removed all entries listed in
 	// the target. If they aren't in the directory contents, then they must have
 	// already been deleted.
-	for _, c := range contentNames {
+	for _, name := range contentNames {
 		// Grab the corresponding entry.
-		entry, ok := target.Find(c)
+		entry, ok := target.Contents[name]
 		if !ok {
 			return errors.Wrap(err, "unknown directory content encountered")
 		}
 
 		// Compute its path.
-		entryPath := pathpkg.Join(path, c)
+		entryPath := pathpkg.Join(path, name)
 
 		// Handle its removal accordingly.
 		if entry.Kind == EntryKind_Directory {
@@ -176,10 +176,8 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 			return err
 		}
 
-		// Otherwise, remove this entry from the target. This must succeed.
-		if !target.Remove(c) {
-			panic("failed to remove path that was previously found")
-		}
+		// Otherwise, remove this entry from the target.
+		delete(target.Contents, name)
 	}
 
 	// Remove the directory.
@@ -284,18 +282,24 @@ func createDirectory(root, path string, target *Entry, provider StagingProvider)
 	// contents.
 	created := target.copyShallow()
 
+	// If there are contents in the target, allocate a map for created, because
+	// we'll need to populate it.
+	if len(target.Contents) > 0 {
+		created.Contents = make(map[string]*Entry)
+	}
+
 	// Attempt to create the target contents.
 	var err error
-	for _, content := range target.Contents {
+	for name, entry := range target.Contents {
 		// Handle content creation based on type.
 		var createdContent *Entry
-		if content.Entry.Kind == EntryKind_Directory {
+		if entry.Kind == EntryKind_Directory {
 			createdContent, err = createDirectory(
-				root, pathpkg.Join(path, content.Name), content.Entry, provider,
+				root, pathpkg.Join(path, name), entry, provider,
 			)
-		} else if content.Entry.Kind == EntryKind_File {
+		} else if entry.Kind == EntryKind_File {
 			createdContent, err = createFile(
-				root, pathpkg.Join(path, content.Name), content.Entry, provider,
+				root, pathpkg.Join(path, name), entry, provider,
 			)
 		} else {
 			err = errors.New("unknown entry type found in creation target")
@@ -304,7 +308,7 @@ func createDirectory(root, path string, target *Entry, provider StagingProvider)
 		// If the created content is non-nil, then at least some portion of it
 		// was created successfully, so record that.
 		if createdContent != nil {
-			created.Insert(content.Name, createdContent)
+			created.Contents[name] = createdContent
 		}
 
 		// If there was an error, abort.

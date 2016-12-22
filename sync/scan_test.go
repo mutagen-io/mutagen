@@ -6,8 +6,6 @@ import (
 	"hash"
 	"runtime"
 	"testing"
-
-	"github.com/golang/protobuf/proto"
 )
 
 // gorootSnapshot is a snapshot of GOROOT. It is shared between multiple tests.
@@ -59,9 +57,9 @@ func TestEfficientRebuild(t *testing.T) {
 func TestConsistentSerialization(t *testing.T) {
 	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache, nil); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
-	} else if snapshotBytes, err := proto.Marshal(snapshot); err != nil {
+	} else if snapshotBytes, err := snapshot.Encode(); err != nil {
 		t.Fatal("couldn't marshal GOROOT snapshot copy:", err)
-	} else if gorootSnapshotBytes, err := proto.Marshal(gorootSnapshot); err != nil {
+	} else if gorootSnapshotBytes, err := gorootSnapshot.Encode(); err != nil {
 		t.Fatal("couldn't marshal GOROOT snapshot:", err)
 	} else if !bytes.Equal(snapshotBytes, gorootSnapshotBytes) {
 		t.Error("GOROOT snapshot serializations differ")
