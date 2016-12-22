@@ -12,6 +12,6 @@ const (
 	watchEventsBufferSize = 10
 )
 
-func watch(_ context.context, _ string, _ chan struct{}) error {
+func watch(_ context.Context, _ string, _ chan struct{}) error {
 	return nil
 }
