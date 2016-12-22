@@ -159,6 +159,7 @@ func installSSH(remote *url.URL, prompter string) error {
 		destination = "." + destination
 	}
 	destinationURL := &url.URL{
+		Protocol: remote.Protocol,
 		Username: remote.Username,
 		Hostname: remote.Hostname,
 		Port:     remote.Port,
