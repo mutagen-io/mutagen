@@ -651,6 +651,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
 		}
 
+		// Validate the new ancestor before saving it to ensure that our
+		// reconciliation logic doesn't have any flaws.
+		if err := ancestor.EnsureValid(); err != nil {
+			return errors.Wrap(err, "new ancestor is invalid")
+		}
+
 		// Save the ancestor.
 		archive.Root = ancestor
 		if err = encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
