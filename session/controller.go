@@ -751,8 +751,8 @@ func (c *controller) scan(
 		expected = sync.StripExecutability(expected)
 	}
 
-	// Marshal the expected snapshot.
-	expectedBytes, err := expected.Encode()
+	// Marshal the expected snapshot into a stable format.
+	expectedBytes, err := stableMarshal(expected)
 	if err != nil {
 		sendError(errors.Wrap(err, "unable to marshal expected snapshot"))
 		return
@@ -828,7 +828,7 @@ func (c *controller) scan(
 	}
 
 	// Unmarshal the snapshot.
-	snapshot, err := sync.DecodeEntry(snapshotBytes)
+	snapshot, err := stableUnmarshal(snapshotBytes)
 	if err != nil {
 		sendError(errors.Wrap(err, "unable to unmarshal snapshot"))
 		return

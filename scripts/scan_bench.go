@@ -68,7 +68,7 @@ func main() {
 
 	// Serialize it.
 	start = time.Now()
-	serializedSnapshot, err := snapshot.Encode()
+	serializedSnapshot, err := proto.Marshal(snapshot)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
@@ -77,8 +77,8 @@ func main() {
 
 	// Deserialize it.
 	start = time.Now()
-	deserializedSnapshot, err := sync.DecodeEntry(serializedSnapshot)
-	if err != nil {
+	deserializedSnapshot := &sync.Entry{}
+	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
 	}
 	stop = time.Now()
@@ -104,6 +104,10 @@ func main() {
 	if err = os.Remove(snapshotFile); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to remove snapshot"))
 	}
+
+	// TODO: I'd like to add a stable serialization benchmark since that's what
+	// we really care about (especially since it has to copy the entire entry
+	// tree), but I also don't want to expose that machinery publicly.
 
 	// Print other information.
 	fmt.Println("Serialized snapshot size is", len(serializedSnapshot), "bytes")

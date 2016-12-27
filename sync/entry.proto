@@ -13,15 +13,3 @@ message Entry {
     bytes digest = 3;
     map<string, Entry> contents = 4;
 }
-
-message OrderedEntry {
-    EntryKind kind = 1;
-    bool executable = 2;
-    bytes digest = 3;
-    repeated OrderedEntryContent contents = 4;
-}
-
-message OrderedEntryContent {
-    string name = 1;
-    OrderedEntry entry = 2;
-}

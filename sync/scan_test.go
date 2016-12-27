@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"hash"
 	"runtime"
@@ -51,18 +50,6 @@ func TestEfficientRebuild(t *testing.T) {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
 	} else if !snapshot.Equal(gorootSnapshot) {
 		t.Error("re-snapshotting produced a non-equivalent snapshot")
-	}
-}
-
-func TestConsistentSerialization(t *testing.T) {
-	if snapshot, _, err := Scan(runtime.GOROOT(), sha1.New(), gorootCache, nil); err != nil {
-		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
-	} else if snapshotBytes, err := snapshot.Encode(); err != nil {
-		t.Fatal("couldn't marshal GOROOT snapshot copy:", err)
-	} else if gorootSnapshotBytes, err := gorootSnapshot.Encode(); err != nil {
-		t.Fatal("couldn't marshal GOROOT snapshot:", err)
-	} else if !bytes.Equal(snapshotBytes, gorootSnapshotBytes) {
-		t.Error("GOROOT snapshot serializations differ")
 	}
 }
 

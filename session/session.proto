@@ -28,3 +28,19 @@ message Session {
 message Archive {
     sync.Entry root = 1;
 }
+
+message StableEntry {
+    sync.EntryKind kind = 1;
+    bool executable = 2;
+    bytes digest = 3;
+    repeated StableEntryContent contents = 4;
+}
+
+message StableEntryContent {
+    string name = 1;
+    StableEntry entry = 2;
+}
+
+message StableArchive {
+    StableEntry root = 1;
+}
