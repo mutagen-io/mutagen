@@ -1,5 +1,3 @@
-// +build windows darwin,cgo
-
 package session
 
 import (
@@ -24,11 +22,11 @@ func watch(context context.Context, root string, events chan struct{}) error {
 	notifications := make(chan notify.EventInfo, watchEventsBufferSize)
 
 	// Compute the parent directory of root. We watch this because (a) we may
-	// have a file root and many systems don't support watching a file directly
+	// have a file root and Windows doesn't support watching a file directly
 	// (only a directory), (b) the root may not exist yet, and (c) deletion of
-	// the watch root isn't seen on all platforms. Of course, if the parent of
-	// root is deleted, we won't see that either here, but we'll eventually see
-	// it in polling.
+	// the watch root isn't seen on Windows. Of course, if the parent of root is
+	// deleted, we won't see that either here, but we'll eventually see it in
+	// polling.
 	parent := filepath.Dir(root)
 
 	// Create a recursive watch. Ensure that it's cancelled when we're done.
@@ -38,7 +36,7 @@ func watch(context context.Context, root string, events chan struct{}) error {
 	}
 	defer notify.Stop(notifications)
 
-	// Poll for the next notification, coalescing, or cancellation.
+	// Poll for the next notification or cancellation.
 	for {
 		select {
 		case notification := <-notifications:
