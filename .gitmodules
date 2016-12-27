@@ -40,3 +40,6 @@
 [submodule "vendor/github.com/bmatcuk/doublestar"]
 	path = vendor/github.com/bmatcuk/doublestar
 	url = https://github.com/bmatcuk/doublestar.git
+[submodule "vendor/github.com/fsnotify/fsevents"]
+	path = vendor/github.com/fsnotify/fsevents
+	url = https://github.com/fsnotify/fsevents.git
