@@ -159,22 +159,22 @@ func (s *Service) create(stream *rpc.HandlerStream) {
 // sessions by creation time.
 type byCreationTime []SessionState
 
-func (d byCreationTime) Len() int {
-	return len(d)
+func (s byCreationTime) Len() int {
+	return len(s)
 }
 
-func (d byCreationTime) Swap(i, j int) {
-	d[i], d[j] = d[j], d[i]
+func (s byCreationTime) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
-func (d byCreationTime) Less(i, j int) bool {
+func (s byCreationTime) Less(i, j int) bool {
 	// This comparison relies on the fact that Nanos can't be negative (at least
 	// not according to the Protocol Buffers definition of its value). If Nanos
 	// could be negative, we'd have to consider cases where seconds were equal
 	// or within 1 of each other.
-	return d[i].Session.CreationTime.Seconds < d[j].Session.CreationTime.Seconds ||
-		(d[i].Session.CreationTime.Seconds == d[j].Session.CreationTime.Seconds &&
-			d[i].Session.CreationTime.Nanos < d[j].Session.CreationTime.Nanos)
+	return s[i].Session.CreationTime.Seconds < s[j].Session.CreationTime.Seconds ||
+		(s[i].Session.CreationTime.Seconds == s[j].Session.CreationTime.Seconds &&
+			s[i].Session.CreationTime.Nanos < s[j].Session.CreationTime.Nanos)
 }
 
 func (s *Service) list(stream *rpc.HandlerStream) {
