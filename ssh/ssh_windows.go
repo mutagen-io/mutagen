@@ -20,23 +20,23 @@ var commandSearchPaths = []string{
 	`C:\msys32\usr\bin`,
 	`C:\msys64\usr\bin`,
 	// TODO: Add Cygwin binary paths.
+	// TODO: Add the PowerShell OpenSSH paths once there's a stable release.
 }
 
 func commandNamed(name string) (string, error) {
-	// First, try to use the standard LookPath mechanism in case the user has
-	// the binaries in their path already.
-	if result, err := exec.LookPath(name); err == nil {
-		return result, nil
-	}
+	// TODO: When the OpenSSH landscape on Windows eventually stablizes (i.e.
+	// once the PowerShell team releases a stable OpenSSH version), we might try
+	// to do an exec.LookPath call to let any binary in the user's path be
+	// picked up first. We'd still need the well-known paths though, since they
+	// might not be in the user's path.
 
-	// If there was nothing in the path, then scan other well-known directories
-	// where we might find a viable binary.
+	// Scan well-known directories where we might find a viable binary.
 	for _, path := range commandSearchPaths {
 		target := filepath.Join(path, fmt.Sprintf("%s.exe", name))
 		// TODO: Should we inspect the information used by stat to ensure this
 		// is a file? No real need to check executability, anything with an exe
 		// extension on Windows shows up as executable.
-		if _, err := os.Stat(target); err != nil {
+		if _, err := os.Stat(target); err == nil {
 			return target, nil
 		}
 	}
