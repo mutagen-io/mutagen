@@ -38,10 +38,10 @@ func daemonMain(arguments []string) error {
 	if *stop {
 		daemonClient := rpc.NewClient(daemon.NewOpener())
 		stream, err := daemonClient.Invoke(daemon.MethodTerminate)
-		stream.Close()
 		if err != nil {
 			return errors.Wrap(err, "unable to invoke daemon termination")
 		}
+		stream.Close()
 		return nil
 	}
 
