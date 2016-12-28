@@ -1,4 +1,4 @@
-// +build cgo
+// +build darwin,cgo
 
 package session
 
