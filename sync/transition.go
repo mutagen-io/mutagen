@@ -236,7 +236,7 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider S
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, newEntry)
+	stagedPath, err := provider(path, newEntry)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
 	}
@@ -255,7 +255,7 @@ func createFile(root, path string, target *Entry, provider StagingProvider) (*En
 	fullPath := filepath.Join(root, path)
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, target)
+	stagedPath, err := provider(path, target)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to locate staged file")
 	}

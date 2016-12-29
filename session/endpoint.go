@@ -3,8 +3,6 @@ package session
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,11 +25,6 @@ const (
 	endpointMethodTransmit   = "endpoint.Transmit"
 	endpointMethodStage      = "endpoint.Stage"
 	endpointMethodTransition = "endpoint.Transition"
-
-	cachesDirectoryName  = "caches"
-	stagingDirectoryName = "staging"
-	alphaName            = "alpha"
-	betaName             = "beta"
 
 	maxOutstandingStagingRequests = 4
 )
@@ -58,12 +51,13 @@ func ServeEndpoint(stream io.ReadWriteCloser) error {
 type endpoint struct {
 	client *rpc.Client
 	syncpkg.RWMutex
-	version     Version
-	root        string
-	ignores     []string
-	cachePath   string
-	cache       *sync.Cache
-	stagingPath string
+	version         Version
+	root            string
+	ignores         []string
+	cachePath       string
+	cache           *sync.Cache
+	stagingRoot     string
+	stagingProvider sync.StagingProvider
 }
 
 func newEndpoint(client *rpc.Client) *endpoint {
@@ -124,20 +118,12 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Compute the endpoint name.
-	endpointName := alphaName
-	if !request.Alpha {
-		endpointName = betaName
-	}
-
 	// Compute the cache path.
-	cachesDirectory, err := filesystem.Mutagen(cachesDirectoryName)
+	cachePath, err := pathForCache(request.Session, request.Alpha)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute/create caches path"))
+		sendError(errors.Wrap(err, "unable to compute/create cache path"))
 		return
 	}
-	cacheName := fmt.Sprintf("%s_%s", request.Session, endpointName)
-	cachePath := filepath.Join(cachesDirectory, cacheName)
 
 	// Load any existing cache. If it fails, just replace it with an empty one.
 	cache := &sync.Cache{}
@@ -145,13 +131,14 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 		cache = &sync.Cache{}
 	}
 
-	// Compute and create the staging path.
-	stagingPath, err := filesystem.Mutagen(
-		stagingDirectoryName, request.Session, endpointName,
-	)
+	// Compute the staging root and create a staging provider.
+	stagingRoot, err := pathForStagingRoot(request.Session, request.Alpha)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute/create staging path"))
+		sendError(errors.Wrap(err, "unable to compute/create staging root"))
 		return
+	}
+	stagingProvider := func(path string, entry *sync.Entry) (string, error) {
+		return pathForStaging(request.Session, request.Alpha, path, entry)
 	}
 
 	// Record initialization.
@@ -160,7 +147,8 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 	e.ignores = request.Ignores
 	e.cachePath = cachePath
 	e.cache = cache
-	e.stagingPath = stagingPath
+	e.stagingRoot = stagingRoot
+	e.stagingProvider = stagingProvider
 
 	// Send the initialization response.
 	stream.Encode(initializeResponse{
@@ -334,33 +322,6 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 	// io.EOF), and returning from the handler will do that by default.
 }
 
-func (e *endpoint) wipeStaging() error {
-	// List the contents in the staging directory.
-	contents, err := filesystem.DirectoryContents(e.stagingPath)
-	if err != nil {
-		return errors.Wrap(err, "unable to list staging directory contents")
-	}
-
-	// Remove each of them. Abort if there's a failure.
-	for _, name := range contents {
-		if err := os.Remove(filepath.Join(e.stagingPath, name)); err != nil {
-			return errors.Wrap(err, "unable to remove file")
-		}
-	}
-
-	// Success.
-	return nil
-}
-
-func (e *endpoint) Provide(path string, entry *sync.Entry) (string, error) {
-	// Compute the expected staging name. This doesn't need to be stable, we can
-	// change it in the future, it only needs to be stable across a single
-	// synchronization cycle.
-	return filepath.Join(e.stagingPath, fmt.Sprintf("%x_%t_%x",
-		sha1.Sum([]byte(path)), entry.Executable, entry.Digest,
-	)), nil
-}
-
 type readSeekCloser interface {
 	io.Reader
 	io.Seeker
@@ -493,7 +454,7 @@ func (e *endpoint) receive(
 
 		// Create a temporary file in the staging directory and compute its
 		// name.
-		temporary, err := ioutil.TempFile(e.stagingPath, "staging")
+		temporary, err := ioutil.TempFile(e.stagingRoot, "staging")
 		if err != nil {
 			base.Close()
 			transmission.Close()
@@ -564,7 +525,7 @@ func (e *endpoint) receive(
 		}
 
 		// Compute the staging path for the file.
-		stagingPath, err := e.Provide(path, entry)
+		stagingPath, err := e.stagingProvider(path, entry)
 		if err != nil {
 			os.Remove(temporaryPath)
 			return errors.Wrap(err, "unable to compute staging destination")
@@ -599,6 +560,19 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
 		sendError(errors.New("endpoint not initialized"))
+		return
+	}
+
+	// Ensure that the staging root exists.
+	// HACK: I don't want to have to invoke pathForStagingRoot again here. And
+	// we wouldn't have to if we didn't wipe the staging directory at the end of
+	// transition. This is a little janky though because we have to specify
+	// directory permissions, which I don't really like. The other option would
+	// be to compute the path here every time, but then we need to save the
+	// session name and endpoint type, it's just complicated. This is okayish,
+	// but honestly there's no good way to do it.
+	if err := os.MkdirAll(e.stagingRoot, 0700); err != nil {
+		sendError(errors.Wrap(err, "unable to create staging root"))
 		return
 	}
 
@@ -704,12 +678,10 @@ func (e *endpoint) transition(stream *rpc.HandlerStream) {
 	}
 
 	// Perform transitions.
-	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e)
+	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e.stagingProvider)
 
-	// Wipe the staging directory. We ignores any errors here because we need to
-	// send back our transition results at this point. If there's some sort of
-	// disk error, it'll be caught by the next round of staging.
-	e.wipeStaging()
+	// Wipe the staging directory.
+	os.RemoveAll(e.stagingRoot)
 
 	// Send the final response.
 	stream.Encode(transitionResponse{

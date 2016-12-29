@@ -6,9 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type StagingProvider interface {
-	Provide(path string, entry *Entry) (string, error)
-}
+type StagingProvider func(string, *Entry) (string, error)
 
 type StagingOperation struct {
 	Path  string
