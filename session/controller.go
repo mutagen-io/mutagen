@@ -61,7 +61,7 @@ type controller struct {
 func newSession(
 	tracker *state.Tracker,
 	alpha, beta *url.URL,
-	ignores []string,
+	defaultIgnores bool, ignores []string,
 	prompter string,
 ) (*controller, error) {
 	// TODO: Should we perform URL validation in here? They should be validated
@@ -101,6 +101,7 @@ func newSession(
 		CreatingVersionPatch: mutagen.VersionPatch,
 		Alpha:                alpha,
 		Beta:                 beta,
+		DefaultIgnores:       defaultIgnores,
 		Ignores:              ignores,
 	}
 	archive := &Archive{}
@@ -711,11 +712,12 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 		root = c.session.Beta.Path
 	}
 	request := initializeRequest{
-		Session: c.session.Identifier,
-		Version: c.session.Version,
-		Root:    root,
-		Ignores: c.session.Ignores,
-		Alpha:   alpha,
+		Session:        c.session.Identifier,
+		Version:        c.session.Version,
+		Root:           root,
+		DefaultIgnores: c.session.DefaultIgnores,
+		Ignores:        c.session.Ignores,
+		Alpha:          alpha,
 	}
 
 	// Send the request.

@@ -17,10 +17,10 @@ import (
 
 const (
 	snapshotFile = "snapshot_test"
-	cacheFile = "cache_test"
+	cacheFile    = "cache_test"
 )
 
-var usage = `scan_bench [-h|--help] <path>
+var usage = `scan_bench [-h|--help] [-i|--ignore=<pattern>] <path>
 `
 
 type ignorePatterns []string

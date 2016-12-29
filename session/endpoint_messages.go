@@ -6,11 +6,12 @@ import (
 )
 
 type initializeRequest struct {
-	Session string
-	Version Version
-	Root    string
-	Ignores []string
-	Alpha   bool
+	Session        string
+	Version        Version
+	Root           string
+	DefaultIgnores bool
+	Ignores        []string
+	Alpha          bool
 }
 
 type initializeResponse struct {

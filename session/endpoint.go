@@ -107,6 +107,13 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to normalize root path")
 	}
 
+	// Compute ignores.
+	var ignores []string
+	if request.DefaultIgnores {
+		ignores = append(ignores, request.Version.defaultIgnores()...)
+	}
+	ignores = append(ignores, request.Ignores...)
+
 	// Compute the cache path.
 	cachePath, err := pathForCache(request.Session, request.Alpha)
 	if err != nil {
@@ -123,7 +130,7 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 	e.session = request.Session
 	e.version = request.Version
 	e.root = root
-	e.ignores = request.Ignores
+	e.ignores = ignores
 	e.alpha = request.Alpha
 	e.cachePath = cachePath
 	e.cache = cache
@@ -151,10 +158,7 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 	}
 
 	// Create a hasher.
-	hasher, err := e.version.hasher()
-	if err != nil {
-		return errors.Wrap(err, "unable to create hasher")
-	}
+	hasher := e.version.hasher()
 
 	// Create a ticker to trigger polling at regular intervals. Ensure that it's
 	// cancelled when we're done.
@@ -433,12 +437,7 @@ func (e *endpoint) receive(
 		}
 
 		// Create a verification hasher.
-		hasher, err := e.version.hasher()
-		if err != nil {
-			base.Close()
-			transmission.Close()
-			return errors.Wrap(err, "unable to create hasher")
-		}
+		hasher := e.version.hasher()
 
 		// Apply patch operations.
 		err = rsyncer.Patch(temporary, base, receive, hasher)

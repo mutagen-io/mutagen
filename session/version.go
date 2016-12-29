@@ -3,8 +3,6 @@ package session
 import (
 	"crypto/sha1"
 	"hash"
-
-	"github.com/pkg/errors"
 )
 
 func (v Version) supported() bool {
@@ -16,11 +14,25 @@ func (v Version) supported() bool {
 	}
 }
 
-func (v Version) hasher() (hash.Hash, error) {
+func (v Version) hasher() hash.Hash {
 	switch v {
 	case Version_Version1:
-		return sha1.New(), nil
+		return sha1.New()
 	default:
-		return nil, errors.New("unknown session version")
+		panic("unknown session version")
+	}
+}
+
+func (v Version) defaultIgnores() []string {
+	switch v {
+	case Version_Version1:
+		return []string{
+			"**/.DS_Store",
+			"**/.git",
+			"**/.svn",
+			"**/.hg",
+		}
+	default:
+		panic("unsupported session version")
 	}
 }

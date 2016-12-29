@@ -125,7 +125,12 @@ func (s *Service) create(stream rpc.HandlerStream) error {
 	prompter := s.sshService.RegisterPrompter(&streamPrompter{stream})
 
 	// Attempt to create a session.
-	controller, err := newSession(s.tracker, request.Alpha, request.Beta, request.Ignores, prompter)
+	controller, err := newSession(
+		s.tracker,
+		request.Alpha, request.Beta,
+		request.DefaultIgnores, request.Ignores,
+		prompter,
+	)
 
 	// Unregister the prompter.
 	s.sshService.UnregisterPrompter(prompter)
