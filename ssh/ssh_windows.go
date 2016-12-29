@@ -3,7 +3,6 @@ package ssh
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"syscall"
 
