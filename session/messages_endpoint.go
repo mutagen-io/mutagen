@@ -48,11 +48,11 @@ type stageResponse struct {
 	Error  string
 }
 
-type applyRequest struct {
+type transitionRequest struct {
 	Transitions []sync.Change
 }
 
-type applyResponse struct {
+type transitionResponse struct {
 	Changes  []sync.Change
 	Problems []sync.Problem
 	Error    string

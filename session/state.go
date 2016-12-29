@@ -13,7 +13,7 @@ const (
 	SynchronizationStatusScanning
 	SynchronizationStatusReconciling
 	SynchronizationStatusStaging
-	SynchronizationStatusApplying
+	SynchronizationStatusTransitioning
 	SynchronizationStatusSaving
 )
 

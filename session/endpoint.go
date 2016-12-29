@@ -26,7 +26,7 @@ const (
 	endpointMethodScan       = "endpoint.Scan"
 	endpointMethodTransmit   = "endpoint.Transmit"
 	endpointMethodStage      = "endpoint.Stage"
-	endpointMethodApply      = "endpoint.Apply"
+	endpointMethodTransition = "endpoint.Transition"
 
 	cachesDirectoryName  = "caches"
 	stagingDirectoryName = "staging"
@@ -78,7 +78,7 @@ func (e *endpoint) Methods() map[string]rpc.Handler {
 		endpointMethodScan:       e.scan,
 		endpointMethodTransmit:   e.transmit,
 		endpointMethodStage:      e.stage,
-		endpointMethodApply:      e.apply,
+		endpointMethodTransition: e.transition,
 	}
 }
 
@@ -680,14 +680,14 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 	stream.Encode(stageResponse{Done: true})
 }
 
-func (e *endpoint) apply(stream *rpc.HandlerStream) {
+func (e *endpoint) transition(stream *rpc.HandlerStream) {
 	// Create an error transmitter.
 	sendError := func(err error) {
-		stream.Encode(applyResponse{Error: err.Error()})
+		stream.Encode(transitionResponse{Error: err.Error()})
 	}
 
 	// Receive the request.
-	var request applyRequest
+	var request transitionRequest
 	if err := stream.Decode(&request); err != nil {
 		sendError(errors.Wrap(err, "unable to receive request"))
 		return
@@ -703,7 +703,7 @@ func (e *endpoint) apply(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Perform application.
+	// Perform transitions.
 	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e)
 
 	// Wipe the staging directory. We ignores any errors here because we need to
@@ -712,7 +712,7 @@ func (e *endpoint) apply(stream *rpc.HandlerStream) {
 	e.wipeStaging()
 
 	// Send the final response.
-	stream.Encode(applyResponse{
+	stream.Encode(transitionResponse{
 		Changes:  changes,
 		Problems: problems,
 	})

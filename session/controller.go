@@ -628,14 +628,19 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			return errors.Wrap(betaStagingError, "beta staging error")
 		}
 
-		// Perform application. We don't allow this to be cancelled by the
+		// Update status to transitioning.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusTransitioning
+		c.stateLock.Unlock()
+
+		// Perform transitions. We don't allow this to be cancelled by the
 		// synchroniztion context because we might lose information on changes
 		// that we've made. This is fine, because this method won't block
 		// indefinitely and should be relatively fast. We don't abort
 		// immediately on error, because we want to propagate any changes that
 		// we make.
-		alphaChanges, alphaProblems, alphaApplyErr := c.apply(alpha, alphaTransitions)
-		betaChanges, betaProblems, betaApplyErr := c.apply(beta, betaTransitions)
+		alphaChanges, alphaProblems, alphaTransitionErr := c.transition(alpha, alphaTransitions)
+		betaChanges, betaProblems, betaTransitionErr := c.transition(beta, betaTransitions)
 
 		// Record problems.
 		c.stateLock.Lock()
@@ -643,8 +648,13 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 		c.state.BetaProblems = betaProblems
 		c.stateLock.Unlock()
 
+		// Update status to transitioning.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusSaving
+		c.stateLock.Unlock()
+
 		// Combine changes and propagate them to the ancestor. Even if there
-		// were apply errors, this code is still valid.
+		// were transition errors, this code is still valid.
 		ancestorChanges = append(ancestorChanges, alphaChanges...)
 		ancestorChanges = append(ancestorChanges, betaChanges...)
 		ancestor, err = sync.Apply(ancestor, ancestorChanges)
@@ -664,10 +674,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			return errors.Wrap(err, "unable to save ancestor")
 		}
 
-		// Now check for apply errors.
-		if alphaApplyErr != nil {
+		// Now check for transition errors.
+		if alphaTransitionErr != nil {
 			return errors.Wrap(err, "unable to apply changes to alpha")
-		} else if betaApplyErr != nil {
+		} else if betaTransitionErr != nil {
 			return errors.Wrap(err, "unable to apply changes to beta")
 		}
 
@@ -908,29 +918,29 @@ func (c *controller) stage(
 	}
 }
 
-func (c *controller) apply(endpoint *rpc.Client, transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
+func (c *controller) transition(endpoint *rpc.Client, transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
 	// Invoke the method. Ensure that the stream is closed when we're done. We
-	// don't allow apply to be interrupted by a context.
-	stream, err := endpoint.Invoke(endpointMethodApply)
+	// don't allow transition to be interrupted by a context.
+	stream, err := endpoint.Invoke(endpointMethodTransition)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to invoke application")
+		return nil, nil, errors.Wrap(err, "unable to invoke transition")
 	}
 	defer stream.Close()
 
 	// Send the request.
-	if err := stream.Encode(&applyRequest{Transitions: transitions}); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to send apply request")
+	if err := stream.Encode(&transitionRequest{Transitions: transitions}); err != nil {
+		return nil, nil, errors.Wrap(err, "unable to send transition request")
 	}
 
 	// Receive the response.
-	var response applyResponse
+	var response transitionResponse
 	if err := stream.Decode(&response); err != nil {
 		return nil, nil, errors.Wrap(err, "unable to decode response")
 	}
 
-	// Check for apply errors on the remote.
+	// Check for transition errors on the remote.
 	if response.Error != "" {
-		return nil, nil, errors.Wrap(errors.New(response.Error), "remote apply error")
+		return nil, nil, errors.Wrap(errors.New(response.Error), "remote transition error")
 	}
 
 	// Success.
