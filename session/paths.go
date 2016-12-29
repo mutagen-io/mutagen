@@ -74,8 +74,11 @@ func pathForStagingRoot(session string, alpha bool) (string, error) {
 		endpointName = betaName
 	}
 
+	// Compute the staging root name.
+	stagingRootName := fmt.Sprintf("%s_%s", session, endpointName)
+
 	// Compute/create the staging root.
-	return filesystem.Mutagen(stagingDirectoryName, session, endpointName)
+	return filesystem.Mutagen(stagingDirectoryName, stagingRootName)
 }
 
 func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) (string, error) {
@@ -85,6 +88,9 @@ func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) 
 		endpointName = betaName
 	}
 
+	// Compute the staging root name.
+	stagingRootName := fmt.Sprintf("%s_%s", session, endpointName)
+
 	// Compute the prefix for the entry.
 	if len(entry.Digest) < (stagingPrefixLength + 1) {
 		return "", errors.New("entry digest too short")
@@ -93,7 +99,7 @@ func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) 
 	prefix := fmt.Sprintf("%x", prefixBytes)
 
 	// Compute/create the staging prefix directory.
-	prefixDirectoryPath, err := filesystem.Mutagen(stagingDirectoryName, session, endpointName, prefix)
+	prefixDirectoryPath, err := filesystem.Mutagen(stagingDirectoryName, stagingRootName, prefix)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create staging prefix directory")
 	}

@@ -51,13 +51,13 @@ func ServeEndpoint(stream io.ReadWriteCloser) error {
 type endpoint struct {
 	client *rpc.Client
 	syncpkg.RWMutex
-	version         Version
-	root            string
-	ignores         []string
-	cachePath       string
-	cache           *sync.Cache
-	stagingRoot     string
-	stagingProvider sync.StagingProvider
+	session   string
+	version   Version
+	root      string
+	ignores   []string
+	alpha     bool
+	cachePath string
+	cache     *sync.Cache
 }
 
 func newEndpoint(client *rpc.Client) *endpoint {
@@ -131,24 +131,14 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 		cache = &sync.Cache{}
 	}
 
-	// Compute the staging root and create a staging provider.
-	stagingRoot, err := pathForStagingRoot(request.Session, request.Alpha)
-	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute/create staging root"))
-		return
-	}
-	stagingProvider := func(path string, entry *sync.Entry) (string, error) {
-		return pathForStaging(request.Session, request.Alpha, path, entry)
-	}
-
 	// Record initialization.
+	e.session = request.Session
 	e.version = request.Version
 	e.root = root
 	e.ignores = request.Ignores
+	e.alpha = request.Alpha
 	e.cachePath = cachePath
 	e.cache = cache
-	e.stagingRoot = stagingRoot
-	e.stagingProvider = stagingProvider
 
 	// Send the initialization response.
 	stream.Encode(initializeResponse{
@@ -417,6 +407,12 @@ func (e *endpoint) receive(
 	updater func(StagingStatus) error,
 	total uint64,
 ) error {
+	// Compute the staging root. We'll use this as our temporary directory.
+	stagingRoot, err := pathForStagingRoot(e.session, e.alpha)
+	if err != nil {
+		return errors.Wrap(err, "unable to compute staging root")
+	}
+
 	// Create an rsyncer.
 	rsyncer := rsync.New()
 
@@ -454,7 +450,7 @@ func (e *endpoint) receive(
 
 		// Create a temporary file in the staging directory and compute its
 		// name.
-		temporary, err := ioutil.TempFile(e.stagingRoot, "staging")
+		temporary, err := ioutil.TempFile(stagingRoot, "staging")
 		if err != nil {
 			base.Close()
 			transmission.Close()
@@ -525,7 +521,7 @@ func (e *endpoint) receive(
 		}
 
 		// Compute the staging path for the file.
-		stagingPath, err := e.stagingProvider(path, entry)
+		stagingPath, err := pathForStaging(e.session, e.alpha, path, entry)
 		if err != nil {
 			os.Remove(temporaryPath)
 			return errors.Wrap(err, "unable to compute staging destination")
@@ -560,19 +556,6 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
 		sendError(errors.New("endpoint not initialized"))
-		return
-	}
-
-	// Ensure that the staging root exists.
-	// HACK: I don't want to have to invoke pathForStagingRoot again here. And
-	// we wouldn't have to if we didn't wipe the staging directory at the end of
-	// transition. This is a little janky though because we have to specify
-	// directory permissions, which I don't really like. The other option would
-	// be to compute the path here every time, but then we need to save the
-	// session name and endpoint type, it's just complicated. This is okayish,
-	// but honestly there's no good way to do it.
-	if err := os.MkdirAll(e.stagingRoot, 0700); err != nil {
-		sendError(errors.Wrap(err, "unable to create staging root"))
 		return
 	}
 
@@ -677,11 +660,20 @@ func (e *endpoint) transition(stream *rpc.HandlerStream) {
 		return
 	}
 
-	// Perform transitions.
-	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, e.stagingProvider)
+	// Create a staging provider.
+	provider := func(path string, entry *sync.Entry) (string, error) {
+		return pathForStaging(e.session, e.alpha, path, entry)
+	}
 
-	// Wipe the staging directory.
-	os.RemoveAll(e.stagingRoot)
+	// Perform transitions.
+	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, provider)
+
+	// Wipe the staging directory. Ignore any errors that occur, because we need
+	// to return the transition results. If errors are occuring, they'll be
+	// detected during the next round of staging.
+	if stagingRoot, err := pathForStagingRoot(e.session, e.alpha); err == nil {
+		os.RemoveAll(stagingRoot)
+	}
 
 	// Send the final response.
 	stream.Encode(transitionResponse{
