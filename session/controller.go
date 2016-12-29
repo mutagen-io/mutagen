@@ -726,7 +726,7 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 	// Receive the response.
 	var response initializeResponse
 	if err := stream.Decode(&response); err != nil {
-		return false, errors.Wrap(err, "unable to decode response")
+		return false, errors.Wrap(err, "unable to receive response")
 	}
 
 	// Check for initialization errors on the remote.
@@ -819,7 +819,7 @@ func (c *controller) scan(
 	// we're done. We don't watch for errors in sending the force request
 	// because they will only be transport errors, either due to the stream
 	// being closed (in which case we're done) or an actual error (in which case
-	// we'll see it when trying to decode the response below).
+	// we'll see it when trying to receive the response below).
 	cancellableUnforced, force := contextpkg.WithCancel(unforced)
 	go func() {
 		<-cancellableUnforced.Done()
@@ -935,7 +935,7 @@ func (c *controller) transition(endpoint *rpc.Client, transitions []sync.Change)
 	// Receive the response.
 	var response transitionResponse
 	if err := stream.Decode(&response); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to decode response")
+		return nil, nil, errors.Wrap(err, "unable to receive response")
 	}
 
 	// Check for transition errors on the remote.

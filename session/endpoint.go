@@ -177,7 +177,7 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 	// Receive the request.
 	var request scanRequest
 	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to decode request"))
+		sendError(errors.Wrap(err, "unable to receive request"))
 		return
 	}
 
@@ -293,7 +293,7 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 	// Receive the request.
 	var request transmitRequest
 	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to decode request"))
+		sendError(errors.Wrap(err, "unable to receive request"))
 		return
 	}
 
