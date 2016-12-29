@@ -37,7 +37,7 @@ var GOPATH, GOBIN string
 func init() {
 	// Compute the GOPATH.
 	if gopath, ok := environment.Current["GOPATH"]; !ok {
-		panic(errors.New("unable to determine GOPATH"))
+		panic("unable to determine GOPATH")
 	} else {
 		GOPATH = gopath
 	}
