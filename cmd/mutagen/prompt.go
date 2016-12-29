@@ -30,6 +30,7 @@ func promptMain(arguments []string) error {
 	if messageBase64 == "" {
 		return errors.New("no message specified")
 	}
+	// TODO: In Go 1.8, switch to using the Strict variant of this encoding.
 	messageBytes, err := base64.StdEncoding.DecodeString(messageBase64)
 	if err != nil {
 		return errors.New("unable to decode message")

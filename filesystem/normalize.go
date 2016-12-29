@@ -45,6 +45,7 @@ func Normalize(path string) (string, error) {
 	}
 
 	// Clean the path.
+	// TODO: In Go 1.8, filepath.Abs will call clean, so remove this.
 	path = filepath.Clean(path)
 
 	// Success.

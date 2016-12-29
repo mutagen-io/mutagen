@@ -67,6 +67,7 @@ func prompterEnvironment(prompter, message string) []string {
 
 	// Convert message to base64 encoding so that we can pass it through the
 	// environment safely.
+	// TODO: In Go 1.8, switch to using the Strict variant of this encoding.
 	messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
 
 	// Create a copy of the current environment.
