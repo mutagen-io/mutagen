@@ -719,19 +719,14 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 	}
 
 	// Send the request.
-	if err := stream.Encode(request); err != nil {
+	if err := stream.Send(request); err != nil {
 		return false, errors.Wrap(err, "unable to send initialize request")
 	}
 
 	// Receive the response.
 	var response initializeResponse
-	if err := stream.Decode(&response); err != nil {
-		return false, errors.Wrap(err, "unable to receive response")
-	}
-
-	// Check for initialization errors on the remote.
-	if response.Error != "" {
-		return false, errors.Wrap(errors.New(response.Error), "remote initialize error")
+	if err := stream.Receive(&response); err != nil {
+		return false, errors.Wrap(err, "unable to receive initialize response")
 	}
 
 	// Success.
@@ -779,11 +774,7 @@ func (c *controller) scan(
 	rsyncer := rsync.New()
 
 	// Compute the expected snapshot signature.
-	expectedSignature, err := rsyncer.BytesSignature(expectedBytes)
-	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute expected snapshot signature"))
-		return
-	}
+	expectedSignature := rsyncer.BytesSignature(expectedBytes)
 
 	// Compute the expected snapshot checksum.
 	expectedChecksum := snapshotChecksum(expectedBytes)
@@ -805,7 +796,7 @@ func (c *controller) scan(
 	defer contextCancel()
 
 	// Send the request.
-	if err := stream.Encode(scanRequest{
+	if err := stream.Send(scanRequest{
 		BaseSnapshotSignature:    expectedSignature,
 		ExpectedSnapshotChecksum: expectedChecksum,
 	}); err != nil {
@@ -823,20 +814,14 @@ func (c *controller) scan(
 	cancellableUnforced, force := contextpkg.WithCancel(unforced)
 	go func() {
 		<-cancellableUnforced.Done()
-		stream.Encode(scanRequest{})
+		stream.Send(scanRequest{})
 	}()
 	defer force()
 
 	// Read the response.
 	var response scanResponse
-	if err := stream.Decode(&response); err != nil {
+	if err := stream.Receive(&response); err != nil {
 		sendError(errors.Wrap(err, "unable to receive scan response"))
-		return
-	}
-
-	// Check for scan errors on the remote.
-	if response.Error != "" {
-		sendError(errors.Wrap(errors.New(response.Error), "remote scan error"))
 		return
 	}
 
@@ -886,18 +871,14 @@ func (c *controller) stage(
 	defer contextCancel()
 
 	// Send the request.
-	if err := stream.Encode(stageRequest{Transitions: transitions}); err != nil {
+	if err := stream.Send(stageRequest{Transitions: transitions}); err != nil {
 		return errors.Wrap(err, "unable to send staging request")
 	}
 
 	// Receive responses and update state until there's an error or completion.
 	for {
 		var response stageResponse
-		if err := stream.Decode(&response); err != nil {
-			return errors.Wrap(err, "unable to receive staging response")
-		} else if response.Error != "" {
-			return errors.Wrap(errors.New(response.Error), "remote staging error")
-		} else if response.Done {
+		if err := stream.Receive(&response); err == io.EOF {
 			c.stateLock.Lock()
 			if alpha {
 				c.state.AlphaStaging = StagingStatus{}
@@ -906,6 +887,10 @@ func (c *controller) stage(
 			}
 			c.stateLock.Unlock()
 			return nil
+		} else if err != nil {
+			// We don't clear the state if there's an error, because it's going
+			// to be reset when the synchronization loop exits anyway.
+			return errors.Wrap(err, "unable to receive staging response")
 		} else {
 			c.stateLock.Lock()
 			if alpha {
@@ -928,19 +913,14 @@ func (c *controller) transition(endpoint *rpc.Client, transitions []sync.Change)
 	defer stream.Close()
 
 	// Send the request.
-	if err := stream.Encode(&transitionRequest{Transitions: transitions}); err != nil {
+	if err := stream.Send(&transitionRequest{Transitions: transitions}); err != nil {
 		return nil, nil, errors.Wrap(err, "unable to send transition request")
 	}
 
 	// Receive the response.
 	var response transitionResponse
-	if err := stream.Decode(&response); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to receive response")
-	}
-
-	// Check for transition errors on the remote.
-	if response.Error != "" {
-		return nil, nil, errors.Wrap(errors.New(response.Error), "remote transition error")
+	if err := stream.Receive(&response); err != nil {
+		return nil, nil, errors.Wrap(err, "unable to receive initialize response")
 	}
 
 	// Success.

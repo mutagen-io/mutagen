@@ -77,15 +77,13 @@ type PromptRequest struct {
 
 type PromptResponse struct {
 	Response string
-	Error    string
 }
 
-func (s *Service) prompt(stream *rpc.HandlerStream) {
+func (s *Service) prompt(stream rpc.HandlerStream) error {
 	// Read the request.
 	var request PromptRequest
-	if stream.Decode(&request) != nil {
-		stream.Encode(PromptResponse{Error: "unable to receive request"})
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Grab the holder for the specified prompter. If this fails, inform the
@@ -94,15 +92,13 @@ func (s *Service) prompt(stream *rpc.HandlerStream) {
 	holder, ok := s.holders[request.Prompter]
 	s.holdersLock.Unlock()
 	if !ok {
-		stream.Encode(PromptResponse{Error: "prompter not found"})
-		return
+		return errors.New("prompter not found")
 	}
 
 	// Acquire the prompter.
 	prompter, ok := <-holder
 	if !ok {
-		stream.Encode(PromptResponse{Error: "unable to acquire prompter"})
-		return
+		return errors.New("unable to acquire prompter")
 	}
 
 	// Prompt.
@@ -113,12 +109,9 @@ func (s *Service) prompt(stream *rpc.HandlerStream) {
 
 	// Handle prompting errors.
 	if err != nil {
-		stream.Encode(PromptResponse{
-			Error: errors.Wrap(err, "unable to prompt").Error(),
-		})
-		return
+		return errors.Wrap(err, "unable to prompt")
 	}
 
 	// Success.
-	stream.Encode(PromptResponse{Response: response})
+	return stream.Send(PromptResponse{Response: response})
 }

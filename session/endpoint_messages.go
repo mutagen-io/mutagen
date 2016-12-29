@@ -15,7 +15,6 @@ type initializeRequest struct {
 
 type initializeResponse struct {
 	PreservesExecutability bool
-	Error                  string
 }
 
 type scanRequest struct {
@@ -25,7 +24,6 @@ type scanRequest struct {
 
 type scanResponse struct {
 	SnapshotDelta []rsync.Operation
-	Error         string
 }
 
 type transmitRequest struct {
@@ -35,7 +33,6 @@ type transmitRequest struct {
 
 type transmitResponse struct {
 	Operation rsync.Operation
-	Error     string
 }
 
 type stageRequest struct {
@@ -44,8 +41,6 @@ type stageRequest struct {
 
 type stageResponse struct {
 	Status StagingStatus
-	Done   bool
-	Error  string
 }
 
 type transitionRequest struct {
@@ -55,5 +50,4 @@ type transitionRequest struct {
 type transitionResponse struct {
 	Changes  []sync.Change
 	Problems []sync.Problem
-	Error    string
 }

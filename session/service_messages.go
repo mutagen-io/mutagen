@@ -14,15 +14,9 @@ type PromptResponse struct {
 }
 
 type CreateRequest struct {
-	Alpha    *url.URL
-	Beta     *url.URL
-	Ignores  []string
-	Response *PromptResponse
-}
-
-type CreateResponse struct {
-	Challenge *PromptRequest
-	Error     string
+	Alpha   *url.URL
+	Beta    *url.URL
+	Ignores []string
 }
 
 type ListRequest struct {
@@ -32,31 +26,20 @@ type ListRequest struct {
 type ListResponse struct {
 	StateIndex uint64
 	Sessions   []SessionState
-	Error      string
 }
 
 type PauseRequest struct {
 	Session string
 }
 
-type PauseResponse struct {
-	Error string
-}
+type PauseResponse struct{}
 
 type ResumeRequest struct {
-	Session  string
-	Response *PromptResponse
-}
-
-type ResumeResponse struct {
-	Challenge *PromptRequest
-	Error     string
+	Session string
 }
 
 type TerminateRequest struct {
 	Session string
 }
 
-type TerminateResponse struct {
-	Error string
-}
+type TerminateResponse struct{}

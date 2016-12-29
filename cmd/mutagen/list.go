@@ -52,9 +52,9 @@ func listMain(arguments []string) error {
 
 	// Send the list request and receive the response.
 	var response session.ListResponse
-	if err := stream.Encode(session.ListRequest{}); err != nil {
+	if err := stream.Send(session.ListRequest{}); err != nil {
 		return errors.Wrap(err, "unable to send enumeration request")
-	} else if err = stream.Decode(&response); err != nil {
+	} else if err = stream.Receive(&response); err != nil {
 		return errors.Wrap(err, "unable to receive session list")
 	}
 

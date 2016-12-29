@@ -50,13 +50,13 @@ func promptMain(arguments []string) error {
 
 	// Send the prompt request and receive the response.
 	var response ssh.PromptResponse
-	if err := stream.Encode(ssh.PromptRequest{
+	if err := stream.Send(ssh.PromptRequest{
 		Prompter: prompter,
 		Message:  message,
 		Prompt:   prompt,
 	}); err != nil {
 		return errors.Wrap(err, "unable to send prompt request")
-	} else if err := stream.Decode(&response); err != nil {
+	} else if err := stream.Receive(&response); err != nil {
 		return errors.Wrap(err, "unable to receive prompt response")
 	}
 

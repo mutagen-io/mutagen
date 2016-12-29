@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -59,7 +60,7 @@ func createMain(arguments []string) error {
 	defer stream.Close()
 
 	// Send the initial request.
-	if err := stream.Encode(session.CreateRequest{
+	if err := stream.Send(session.CreateRequest{
 		Alpha: alpha,
 		Beta:  beta,
 	}); err != nil {
@@ -68,39 +69,26 @@ func createMain(arguments []string) error {
 
 	// Handle any prompts and watch for errors.
 	for {
-		// Grab the next response.
-		var response session.CreateResponse
-		if err := stream.Decode(&response); err != nil {
-			return errors.Wrap(err, "unable to receive creation response")
+		// Grab the next challenge, checking for completion or errors.
+		var challenge session.PromptRequest
+		if err := stream.Receive(&challenge); err == io.EOF {
+			return nil
+		} else if err != nil {
+			return errors.Wrap(err, "unable to receive authentication challenge")
 		}
 
-		// If there is a challenge, handle it and wait for the next one.
-		if response.Challenge != nil {
-			if r, err := ssh.PromptCommandLine(
-				response.Challenge.Message,
-				response.Challenge.Prompt,
-			); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Encode(session.CreateRequest{
-				Response: &session.PromptResponse{r},
-			}); err != nil {
-				return errors.Wrap(err, "unable to send challenge response")
-			}
-			continue
+		// Perform prompting.
+		response, err := ssh.PromptCommandLine(
+			challenge.Message,
+			challenge.Prompt,
+		)
+		if err != nil {
+			return errors.Wrap(err, "unable to perform prompting")
 		}
 
-		// Check if there is an error.
-		if response.Error != "" {
-			return errors.Wrap(
-				errors.New(response.Error),
-				"unable to create session",
-			)
+		// Send the response.
+		if err = stream.Send(session.PromptResponse{Response: response}); err != nil {
+			return errors.Wrap(err, "unable to send challenge response")
 		}
-
-		// Otherwise we're done.
-		break
 	}
-
-	// Success.
-	return nil
 }

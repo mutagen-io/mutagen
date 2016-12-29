@@ -74,8 +74,16 @@ func (r *Rsync) Signature(base io.Reader) ([]BlockHash, error) {
 	return result, nil
 }
 
-func (r *Rsync) BytesSignature(base []byte) ([]BlockHash, error) {
-	return r.Signature(bytes.NewReader(base))
+func (r *Rsync) BytesSignature(base []byte) []BlockHash {
+	// Perform the signature and watch for errors (which shouldn't be able to
+	// occur in-memory).
+	result, err := r.Signature(bytes.NewReader(base))
+	if err != nil {
+		panic(errors.Wrap(err, "in-memory signature failure"))
+	}
+
+	// Success.
+	return result
 }
 
 // TODO: Add a very important warning to this function that the operation (and
@@ -106,7 +114,7 @@ func (r *Rsync) Deltafy(target io.Reader, baseSignature []BlockHash, transmit Op
 	return r.rsync.CreateDelta(target, baseSignatureRsync, write, nil)
 }
 
-func (r *Rsync) DeltafyBytes(target []byte, baseSignature []BlockHash) ([]Operation, error) {
+func (r *Rsync) DeltafyBytes(target []byte, baseSignature []BlockHash) []Operation {
 	// Create an empty result.
 	var delta []Operation
 
@@ -130,13 +138,14 @@ func (r *Rsync) DeltafyBytes(target []byte, baseSignature []BlockHash) ([]Operat
 	// Wrap up the bytes in a reader.
 	reader := bytes.NewReader(target)
 
-	// Compute the delta.
+	// Compute the delta and watch for errors (which shouldn't occur for for
+	// in-memory data).
 	if err := r.Deltafy(reader, baseSignature, transmit); err != nil {
-		return nil, err
+		panic(errors.Wrap(err, "in-memory deltafication failure"))
 	}
 
 	// Success.
-	return delta, nil
+	return delta
 }
 
 func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver, digest hash.Hash) error {

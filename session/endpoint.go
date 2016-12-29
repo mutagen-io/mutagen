@@ -76,17 +76,11 @@ func (e *endpoint) Methods() map[string]rpc.Handler {
 	}
 }
 
-func (e *endpoint) initialize(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(initializeResponse{Error: err.Error()})
-	}
-
+func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request initializeRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the endpoint and defer its release.
@@ -95,34 +89,28 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 
 	// If we're already initialized, we can't do it again.
 	if e.version != Version_Unknown {
-		sendError(errors.New("endpoint already initialized"))
-		return
+		return errors.New("endpoint already initialized")
 	}
 
 	// Validate the request.
 	if request.Session == "" {
-		sendError(errors.New("empty session identifier"))
-		return
+		return errors.New("empty session identifier")
 	} else if !request.Version.supported() {
-		sendError(errors.New("unsupported session version"))
-		return
+		return errors.New("unsupported session version")
 	} else if request.Root == "" {
-		sendError(errors.New("empty root path"))
-		return
+		return errors.New("empty root path")
 	}
 
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(request.Root)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to normalize root path"))
-		return
+		return errors.Wrap(err, "unable to normalize root path")
 	}
 
 	// Compute the cache path.
 	cachePath, err := pathForCache(request.Session, request.Alpha)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute/create cache path"))
-		return
+		return errors.Wrap(err, "unable to compute/create cache path")
 	}
 
 	// Load any existing cache. If it fails, just replace it with an empty one.
@@ -141,22 +129,16 @@ func (e *endpoint) initialize(stream *rpc.HandlerStream) {
 	e.cache = cache
 
 	// Send the initialization response.
-	stream.Encode(initializeResponse{
+	return stream.Send(initializeResponse{
 		PreservesExecutability: filesystem.PreservesExecutability,
 	})
 }
 
-func (e *endpoint) scan(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(scanResponse{Error: err.Error()})
-	}
-
+func (e *endpoint) scan(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request scanRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the endpoint and defer its release.
@@ -165,15 +147,13 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
-		sendError(errors.New("endpoint not initialized"))
-		return
+		return errors.New("endpoint not initialized")
 	}
 
 	// Create a hasher.
 	hasher, err := e.version.hasher()
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to create hasher"))
-		return
+		return errors.Wrap(err, "unable to create hasher")
 	}
 
 	// Create a ticker to trigger polling at regular intervals. Ensure that it's
@@ -199,7 +179,7 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 	forces := make(chan struct{}, 1)
 	go func() {
 		var forceRequest scanRequest
-		if stream.Decode(&forceRequest) != nil {
+		if stream.Receive(&forceRequest) != nil {
 			close(forces)
 		} else {
 			forces <- struct{}{}
@@ -212,22 +192,19 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		// Create a snapshot.
 		snapshot, cache, err := sync.Scan(e.root, hasher, e.cache, e.ignores)
 		if err != nil {
-			sendError(errors.Wrap(err, "unable to create snapshot"))
-			return
+			return errors.Wrap(err, "unable to create snapshot")
 		}
 
 		// Store the cache.
 		if err := encoding.MarshalAndSaveProtobuf(e.cachePath, cache); err != nil {
-			sendError(errors.Wrap(err, "unable to save cache"))
-			return
+			return errors.Wrap(err, "unable to save cache")
 		}
 		e.cache = cache
 
 		// Marshal the snapshot.
 		snapshotBytes, err := stableMarshal(snapshot)
 		if err != nil {
-			sendError(errors.Wrap(err, "unable to marshal snapshot"))
-			return
+			return errors.Wrap(err, "unable to marshal snapshot")
 		}
 
 		// Create an rsyncer.
@@ -235,17 +212,12 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 
 		// If we've been forced or the checksum differs, send the snapshot.
 		if forced || !snapshotChecksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
-			// Compute the delta.
-			delta, err := rsyncer.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature)
-			if err != nil {
-				sendError(errors.Wrap(err, "unable to deltafy snapshot"))
-				return
-			}
-
-			// Done. There's no point in checking for transmission failure
-			// because we won't be able to transmit any error.
-			stream.Encode(scanResponse{SnapshotDelta: delta})
-			return
+			return stream.Send(scanResponse{
+				SnapshotDelta: rsyncer.DeltafyBytes(
+					snapshotBytes,
+					request.BaseSnapshotSignature,
+				),
+			})
 		}
 
 		// Otherwise, wait until an event occurs that makes us re-scan.
@@ -254,25 +226,18 @@ func (e *endpoint) scan(stream *rpc.HandlerStream) {
 		case <-watchEvents:
 		case _, ok := <-forces:
 			if !ok {
-				sendError(errors.New("error waiting for force request"))
-				return
+				return errors.New("error waiting for force request")
 			}
 			forced = true
 		}
 	}
 }
 
-func (e *endpoint) transmit(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(transmitResponse{Error: err.Error()})
-	}
-
+func (e *endpoint) transmit(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request transmitRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the endpoint for reading (to allow for concurrent transmissions) and
@@ -282,15 +247,13 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
-		sendError(errors.New("endpoint not initialized"))
-		return
+		return errors.New("endpoint not initialized")
 	}
 
 	// Open the file and ensure it's closed when we're done.
 	file, err := os.Open(filepath.Join(e.root, request.Path))
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to open source file"))
-		return
+		return errors.Wrap(err, "unable to open source file")
 	}
 	defer file.Close()
 
@@ -299,17 +262,17 @@ func (e *endpoint) transmit(stream *rpc.HandlerStream) {
 
 	// Create an operation transmitter.
 	transmit := func(operation rsync.Operation) error {
-		return stream.Encode(transmitResponse{Operation: operation})
+		return stream.Send(transmitResponse{Operation: operation})
 	}
 
 	// Transmit the delta.
 	if err := rsyncer.Deltafy(file, request.BaseSignature, transmit); err != nil {
-		sendError(errors.Wrap(err, "unable to transmit delta"))
-		return
+		return errors.Wrap(err, "unable to transmit delta")
 	}
 
-	// Done. We signal the end of the stream by closing it (which sends an
+	// Success. We signal the end of the stream by closing it (which sends an
 	// io.EOF), and returning from the handler will do that by default.
+	return nil
 }
 
 type readSeekCloser interface {
@@ -333,7 +296,7 @@ func (e *emptyReadSeekCloser) Close() error {
 type stagingOperation struct {
 	sync.StagingOperation
 	base         readSeekCloser
-	transmission *rpc.ClientStream
+	transmission rpc.ClientStream
 }
 
 func (e *endpoint) dispatch(
@@ -377,7 +340,7 @@ func (e *endpoint) dispatch(
 			Path:          operation.Path,
 			BaseSignature: baseSignature,
 		}
-		if err := transmission.Encode(request); err != nil {
+		if err := transmission.Send(request); err != nil {
 			operation.base.Close()
 			operation.transmission.Close()
 			return errors.Wrap(err, "unable to send transmission request")
@@ -425,7 +388,7 @@ func (e *endpoint) receive(
 		var path string
 		var entry *sync.Entry
 		var base readSeekCloser
-		var transmission *rpc.ClientStream
+		var transmission rpc.ClientStream
 		select {
 		case operation, ok := <-dispatched:
 			if ok {
@@ -463,13 +426,8 @@ func (e *endpoint) receive(
 		// that operations are complete, so we don't want to wrap this error.
 		receive := func() (rsync.Operation, error) {
 			var response transmitResponse
-			if err := transmission.Decode(&response); err != nil {
+			if err := transmission.Receive(&response); err != nil {
 				return rsync.Operation{}, err
-			} else if response.Error != "" {
-				return rsync.Operation{}, errors.Wrap(
-					errors.New(response.Error),
-					"transmission error",
-				)
 			}
 			return response.Operation, nil
 		}
@@ -535,17 +493,11 @@ func (e *endpoint) receive(
 	}
 }
 
-func (e *endpoint) stage(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(stageResponse{Error: err.Error()})
-	}
-
+func (e *endpoint) stage(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request stageRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the endpoint reading (because we want to allow for concurrent
@@ -555,15 +507,13 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
-		sendError(errors.New("endpoint not initialized"))
-		return
+		return errors.New("endpoint not initialized")
 	}
 
 	// Compute the staging operations that we'll need to perform.
 	operations, err := sync.StagingOperationsForChanges(request.Transitions)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to compute staging operations"))
-		return
+		return errors.Wrap(err, "unable to compute staging operations")
 	}
 
 	// Create private wrappers for these operations and queue them up.
@@ -582,7 +532,7 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 
 	// Create a function to transmit staging status updates.
 	updater := func(s StagingStatus) error {
-		return stream.Encode(stageResponse{Status: s})
+		return stream.Send(stageResponse{Status: s})
 	}
 
 	// Start our dispatching/receiving pipeline.
@@ -629,25 +579,19 @@ func (e *endpoint) stage(stream *rpc.HandlerStream) {
 			o.base.Close()
 			o.transmission.Close()
 		}
-		sendError(pipelineError)
-		return
+		return pipelineError
 	}
 
-	// Success.
-	stream.Encode(stageResponse{Done: true})
+	// Success. We signal the end of the stream by closing it (which sends an
+	// io.EOF), and returning from the handler will do that by default.
+	return nil
 }
 
-func (e *endpoint) transition(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(transitionResponse{Error: err.Error()})
-	}
-
+func (e *endpoint) transition(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request transitionRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the endpoint and defer its release.
@@ -656,8 +600,7 @@ func (e *endpoint) transition(stream *rpc.HandlerStream) {
 
 	// If we're not initialized, we can't do anything.
 	if e.version == Version_Unknown {
-		sendError(errors.New("endpoint not initialized"))
-		return
+		return errors.New("endpoint not initialized")
 	}
 
 	// Create a staging provider.
@@ -675,8 +618,8 @@ func (e *endpoint) transition(stream *rpc.HandlerStream) {
 		os.RemoveAll(stagingRoot)
 	}
 
-	// Send the final response.
-	stream.Encode(transitionResponse{
+	// Done.
+	return stream.Send(transitionResponse{
 		Changes:  changes,
 		Problems: problems,
 	})

@@ -33,10 +33,13 @@ func (s *Service) Methods() map[string]rpc.Handler {
 	}
 }
 
-func (s *Service) Terminate(_ *rpc.HandlerStream) {
+func (s *Service) Terminate(_ rpc.HandlerStream) error {
 	// Send the termination request in a non-blocking manner.
 	select {
 	case s.termination <- struct{}{}:
 	default:
 	}
+
+	// Done.
+	return nil
 }

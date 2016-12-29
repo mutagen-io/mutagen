@@ -88,51 +88,41 @@ func (s *Service) Shutdown() {
 	}
 }
 
-type createPrompter struct {
-	stream *rpc.HandlerStream
+type streamPrompter struct {
+	stream rpc.HandlerStream
 }
 
-func (p *createPrompter) Prompt(message, prompt string) (string, error) {
+func (p *streamPrompter) Prompt(message, prompt string) (string, error) {
 	// Create the request.
-	request := CreateResponse{
-		Challenge: &PromptRequest{
-			Message: message,
-			Prompt:  prompt,
-		},
+	request := PromptRequest{
+		Message: message,
+		Prompt:  prompt,
 	}
 
 	// Send the request.
-	if err := p.stream.Encode(request); err != nil {
-		return "", errors.Wrap(err, "unable to send prompt request")
+	if err := p.stream.Send(request); err != nil {
+		return "", errors.Wrap(err, "unable to send challenge")
 	}
 
 	// Receive the response.
-	var response CreateRequest
-	if err := p.stream.Decode(&response); err != nil {
-		return "", errors.Wrap(err, "unable to receive prompt response")
-	} else if response.Response == nil {
-		return "", errors.New("invalid prompt response")
+	var response PromptResponse
+	if err := p.stream.Receive(&response); err != nil {
+		return "", errors.Wrap(err, "unable to receive response")
 	}
 
 	// Success.
-	return response.Response.Response, nil
+	return response.Response, nil
 }
 
-func (s *Service) create(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(CreateResponse{Error: err.Error()})
-	}
-
+func (s *Service) create(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request CreateRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	//  Wrap the stream in a prompter and register it with the SSH service.
-	prompter := s.sshService.RegisterPrompter(&createPrompter{stream})
+	prompter := s.sshService.RegisterPrompter(&streamPrompter{stream})
 
 	// Attempt to create a session.
 	controller, err := newSession(s.tracker, request.Alpha, request.Beta, request.Ignores, prompter)
@@ -142,8 +132,7 @@ func (s *Service) create(stream *rpc.HandlerStream) {
 
 	// Handle any creation error.
 	if err != nil {
-		sendError(err)
-		return
+		return err
 	}
 
 	// Register the controller.
@@ -151,8 +140,9 @@ func (s *Service) create(stream *rpc.HandlerStream) {
 	s.sessions[controller.session.Identifier] = controller
 	s.sessionsLock.Unlock()
 
-	// Success.
-	stream.Encode(CreateResponse{})
+	// Success. We signal the end of the stream by closing it (which sends an
+	// io.EOF), and returning from the handler will do that by default.
+	return nil
 }
 
 // byCreationTime implements the sort interface for SessionState, sorting
@@ -177,17 +167,11 @@ func (s byCreationTime) Less(i, j int) bool {
 			s[i].Session.CreationTime.Nanos < s[j].Session.CreationTime.Nanos)
 }
 
-func (s *Service) list(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(ListResponse{Error: err.Error()})
-	}
-
+func (s *Service) list(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request ListRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Wait until the state has changed.
@@ -207,23 +191,17 @@ func (s *Service) list(stream *rpc.HandlerStream) {
 	sort.Sort(byCreationTime(sessions))
 
 	// Done.
-	stream.Encode(ListResponse{
+	return stream.Send(ListResponse{
 		StateIndex: stateIndex,
 		Sessions:   sessions,
 	})
 }
 
-func (s *Service) pause(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(PauseResponse{Error: err.Error()})
-	}
-
+func (s *Service) pause(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request PauseRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the session registry and try to find the specified controller.
@@ -233,61 +211,23 @@ func (s *Service) pause(stream *rpc.HandlerStream) {
 
 	// If we couldn't find the controller, abort.
 	if !ok {
-		sendError(errors.New("unable to find session"))
-		return
+		return errors.New("unable to find session")
 	}
 
 	// Attempt to pause the session.
 	if err := controller.halt(haltModePause); err != nil {
-		sendError(errors.Wrap(err, "unable to pause session"))
-		return
+		return errors.Wrap(err, "unable to pause session")
 	}
 
 	// Success.
-	stream.Encode(PauseResponse{})
+	return stream.Send(PauseResponse{})
 }
 
-type resumePrompter struct {
-	stream *rpc.HandlerStream
-}
-
-func (p *resumePrompter) Prompt(message, prompt string) (string, error) {
-	// Create the request.
-	request := ResumeResponse{
-		Challenge: &PromptRequest{
-			Message: message,
-			Prompt:  prompt,
-		},
-	}
-
-	// Send the request.
-	if err := p.stream.Encode(request); err != nil {
-		return "", errors.Wrap(err, "unable to send prompt request")
-	}
-
-	// Receive the response.
-	var response ResumeRequest
-	if err := p.stream.Decode(&response); err != nil {
-		return "", errors.Wrap(err, "unable to receive prompt response")
-	} else if response.Response == nil {
-		return "", errors.New("invalid prompt response")
-	}
-
-	// Success.
-	return response.Response.Response, nil
-}
-
-func (s *Service) resume(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(ResumeResponse{Error: err.Error()})
-	}
-
+func (s *Service) resume(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request ResumeRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the session registry and try to find the specified controller.
@@ -297,12 +237,11 @@ func (s *Service) resume(stream *rpc.HandlerStream) {
 
 	// If we couldn't find the controller, abort.
 	if !ok {
-		sendError(errors.New("unable to find session"))
-		return
+		return errors.New("unable to find session")
 	}
 
 	//  Wrap the stream in a prompter and register it with the SSH service.
-	prompter := s.sshService.RegisterPrompter(&resumePrompter{stream})
+	prompter := s.sshService.RegisterPrompter(&streamPrompter{stream})
 
 	// Attempt to resume.
 	err := controller.resume(prompter)
@@ -312,25 +251,19 @@ func (s *Service) resume(stream *rpc.HandlerStream) {
 
 	// Handle any resume error.
 	if err != nil {
-		sendError(err)
-		return
+		return err
 	}
 
-	// Success.
-	stream.Encode(ResumeResponse{})
+	// Success. We signal the end of the stream by closing it (which sends an
+	// io.EOF), and returning from the handler will do that by default.
+	return nil
 }
 
-func (s *Service) terminate(stream *rpc.HandlerStream) {
-	// Create an error transmitter.
-	sendError := func(err error) {
-		stream.Encode(TerminateResponse{Error: err.Error()})
-	}
-
+func (s *Service) terminate(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request TerminateRequest
-	if err := stream.Decode(&request); err != nil {
-		sendError(errors.Wrap(err, "unable to receive request"))
-		return
+	if err := stream.Receive(&request); err != nil {
+		return errors.Wrap(err, "unable to receive request")
 	}
 
 	// Lock the session registry and try to find the specified controller.
@@ -340,14 +273,12 @@ func (s *Service) terminate(stream *rpc.HandlerStream) {
 
 	// If we couldn't find the controller, abort.
 	if !ok {
-		sendError(errors.New("unable to find session"))
-		return
+		return errors.New("unable to find session")
 	}
 
 	// Attempt to terminate the session.
 	if err := controller.halt(haltModeTerminate); err != nil {
-		sendError(errors.Wrap(err, "unable to terminate session"))
-		return
+		return errors.Wrap(err, "unable to terminate session")
 	}
 
 	// Since we termianted the session, we're responsible for unregistering it.
@@ -355,6 +286,6 @@ func (s *Service) terminate(stream *rpc.HandlerStream) {
 	delete(s.sessions, request.Session)
 	s.sessionsLock.Unlock()
 
-	// Success.
-	stream.Encode(TerminateResponse{})
+	// Done.
+	return stream.Send(TerminateResponse{})
 }
