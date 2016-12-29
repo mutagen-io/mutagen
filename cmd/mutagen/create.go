@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -10,7 +9,6 @@ import (
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -85,28 +83,6 @@ func createMain(arguments []string) error {
 		return errors.Wrap(err, "unable to send creation request")
 	}
 
-	// Handle any prompts and watch for errors.
-	for {
-		// Grab the next challenge, checking for completion or errors.
-		var challenge session.PromptRequest
-		if err := stream.Receive(&challenge); err == io.EOF {
-			return nil
-		} else if err != nil {
-			return errors.Wrap(err, "unable to receive authentication challenge")
-		}
-
-		// Perform prompting.
-		response, err := ssh.PromptCommandLine(
-			challenge.Message,
-			challenge.Prompt,
-		)
-		if err != nil {
-			return errors.Wrap(err, "unable to perform prompting")
-		}
-
-		// Send the response.
-		if err = stream.Send(session.PromptResponse{Response: response}); err != nil {
-			return errors.Wrap(err, "unable to send challenge response")
-		}
-	}
+	// Handle authentication challenges.
+	return handleChallengePrompts(stream)
 }
