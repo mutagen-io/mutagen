@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MarkHidden(path string) error {
+func markHidden(path string) error {
 	// Convert the path to UTF-16 encoding for the system call.
 	path16, err := syscall.UTF16PtrFromString(path)
 	if err != nil {

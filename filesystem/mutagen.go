@@ -46,7 +46,7 @@ func Mutagen(subpath ...string) (string, error) {
 	// Mark the Mutagen root directory as hidden.
 	// TODO: Should we only do this when we create the root? If users are
 	// intentionally having this shown, then we might not want to override that.
-	if err := MarkHidden(root); err != nil {
+	if err := markHidden(root); err != nil {
 		return "", errors.Wrap(err, "unable to hide Mutagen directory")
 	}
 
