@@ -28,7 +28,7 @@ type SynchronizationState struct {
 	Status         SynchronizationStatus
 	AlphaConnected bool
 	BetaConnected  bool
-	Error          string
+	LastError      string
 	AlphaStaging   StagingStatus
 	BetaStaging    StagingStatus
 	Conflicts      []sync.Conflict

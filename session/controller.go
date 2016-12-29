@@ -490,7 +490,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		// failure.
 		c.stateLock.Lock()
 		c.state = SynchronizationState{
-			Error: synchronizeErr.Error(),
+			LastError: synchronizeErr.Error(),
 		}
 		c.stateLock.Unlock()
 
@@ -669,6 +669,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 		} else if betaApplyErr != nil {
 			return errors.Wrap(err, "unable to apply changes to beta")
 		}
+
+		// After a successful synchronization cycle, clear any synchronization
+		// error.
+		c.stateLock.Lock()
+		c.state.LastError = ""
+		c.stateLock.Unlock()
 	}
 }
 
