@@ -16,6 +16,7 @@ import (
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/encoding"
 	"github.com/havoc-io/mutagen/rpc"
+	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/state"
 	"github.com/havoc-io/mutagen/stream"
 	"github.com/havoc-io/mutagen/sync"
@@ -764,8 +765,11 @@ func (c *controller) scan(
 		return
 	}
 
+	// Create an rsyncer.
+	rsyncer := rsync.New()
+
 	// Compute the expected snapshot signature.
-	expectedSignature, err := snapshotSignature(expectedBytes)
+	expectedSignature, err := rsyncer.BytesSignature(expectedBytes)
 	if err != nil {
 		sendError(errors.Wrap(err, "unable to compute expected snapshot signature"))
 		return
@@ -827,7 +831,7 @@ func (c *controller) scan(
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := patchSnapshot(expectedBytes, response.SnapshotDelta)
+	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
 		sendError(errors.Wrap(err, "unable to patch base snapshot"))
 		return

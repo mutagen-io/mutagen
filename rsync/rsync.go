@@ -1,6 +1,7 @@
 package rsync
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"hash"
 	"io"
@@ -73,6 +74,10 @@ func (r *Rsync) Signature(base io.Reader) ([]BlockHash, error) {
 	return result, nil
 }
 
+func (r *Rsync) BytesSignature(base []byte) ([]BlockHash, error) {
+	return r.Signature(bytes.NewReader(base))
+}
+
 // TODO: Add a very important warning to this function that the operation (and
 // its underlying data buffer) that are passed to the transmitter are re-used,
 // so they need to be copied if retained.
@@ -99,6 +104,39 @@ func (r *Rsync) Deltafy(target io.Reader, baseSignature []BlockHash, transmit Op
 
 	// Perform delta generation.
 	return r.rsync.CreateDelta(target, baseSignatureRsync, write, nil)
+}
+
+func (r *Rsync) DeltafyBytes(target []byte, baseSignature []BlockHash) ([]Operation, error) {
+	// Create an empty result.
+	var delta []Operation
+
+	// Create an operation transmitter to populate the result. Note that we copy
+	// any operation data buffers because they are re-used.
+	transmit := func(operation Operation) error {
+		// Copy the operation's data buffer if necessary.
+		if len(operation.Data) > 0 {
+			dataCopy := make([]byte, len(operation.Data))
+			copy(dataCopy, operation.Data)
+			operation.Data = dataCopy
+		}
+
+		// Record the operation.
+		delta = append(delta, operation)
+
+		// Success.
+		return nil
+	}
+
+	// Wrap up the bytes in a reader.
+	reader := bytes.NewReader(target)
+
+	// Compute the delta.
+	if err := r.Deltafy(reader, baseSignature, transmit); err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return delta, nil
 }
 
 func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver, digest hash.Hash) error {
@@ -163,4 +201,33 @@ func (r *Rsync) Patch(destination io.Writer, base io.ReadSeeker, receive Operati
 
 	// Success.
 	return nil
+}
+
+func (r *Rsync) PatchBytes(base []byte, delta []Operation, digest hash.Hash) ([]byte, error) {
+	// Wrap up the base bytes in a reader.
+	baseReader := bytes.NewReader(base)
+
+	// Create an output buffer.
+	output := bytes.NewBuffer(nil)
+
+	// Create an operation receiver that will return delta operations.
+	receive := func() (Operation, error) {
+		// If there are operations remaining, return the next one and reduce.
+		if len(delta) > 0 {
+			result := delta[0]
+			delta = delta[1:]
+			return result, nil
+		}
+
+		// Otherwise we're done.
+		return Operation{}, io.EOF
+	}
+
+	// Perform application.
+	if err := r.Patch(output, baseReader, receive, digest); err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return output.Bytes(), nil
 }
