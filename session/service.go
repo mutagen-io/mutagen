@@ -179,27 +179,58 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Wait until the state has changed.
-	stateIndex := s.tracker.WaitForChange(request.PreviousStateIndex)
+	// Loop indefinitely and track state changes. We'll bail after a single
+	// response if monitoring wasn't requested.
+	previousStateIndex := uint64(0)
+	for {
+		// Wait for a state change.
+		// TODO: If the client disconnects while this handler is polling for
+		// changes, this Goroutine will wait here until there's another change,
+		// and will then exit when it tries (and fails) to send a response. This
+		// will be fine in practice, but it's not elegant.
+		previousStateIndex = s.tracker.WaitForChange(previousStateIndex)
 
-	// Lock the session registry, grab session states, and then unlock the
-	// registry. It's very important that we unlock without a notification here,
-	// otherwise we'd trigger an infinite cycle of list/notify.
-	s.sessionsLock.Lock()
-	var sessions []SessionState
-	for _, controller := range s.sessions {
-		sessions = append(sessions, controller.currentState())
+		// Lock the session registry.
+		s.sessionsLock.Lock()
+
+		// Create a snapshot of the necessary session states.
+		var sessions []SessionState
+		var err error
+		if request.Session != "" {
+			if controller, ok := s.sessions[request.Session]; ok {
+				sessions = append(sessions, controller.currentState())
+			} else {
+				err = errors.New("unable to find requested session")
+			}
+		} else {
+			for _, controller := range s.sessions {
+				sessions = append(sessions, controller.currentState())
+			}
+		}
+
+		// Unlock the session registry. It's very important that we unlock
+		// without a notification here, otherwise we'll trigger an infinite
+		// cycle of state changes.
+		s.sessionsLock.UnlockWithoutNotify()
+
+		// Handle errors.
+		if err != nil {
+			return err
+		}
+
+		// Sort sessions by creation time.
+		sort.Sort(byCreationTime(sessions))
+
+		// Send this response.
+		if err := stream.Send(ListResponse{Sessions: sessions}); err != nil {
+			return errors.Wrap(err, "unable to send list response")
+		}
+
+		// If monitoring wasn't requested, then we're done.
+		if !request.Monitor {
+			return nil
+		}
 	}
-	s.sessionsLock.UnlockWithoutNotify()
-
-	// Sort sessions by creation time.
-	sort.Sort(byCreationTime(sessions))
-
-	// Done.
-	return stream.Send(ListResponse{
-		StateIndex: stateIndex,
-		Sessions:   sessions,
-	})
 }
 
 func (s *Service) pause(stream rpc.HandlerStream) error {

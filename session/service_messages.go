@@ -21,12 +21,12 @@ type CreateRequest struct {
 }
 
 type ListRequest struct {
-	PreviousStateIndex uint64
+	Session string
+	Monitor bool
 }
 
 type ListResponse struct {
-	StateIndex uint64
-	Sessions   []SessionState
+	Sessions []SessionState
 }
 
 type PauseRequest struct {

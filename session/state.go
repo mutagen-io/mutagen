@@ -7,7 +7,7 @@ import (
 type SynchronizationStatus uint8
 
 const (
-	SynchronizationStatusIdle = iota
+	SynchronizationStatusDisconnected = iota
 	SynchronizationStatusConnecting
 	SynchronizationStatusInitializing
 	SynchronizationStatusScanning
@@ -16,6 +16,29 @@ const (
 	SynchronizationStatusTransitioning
 	SynchronizationStatusSaving
 )
+
+func (s SynchronizationStatus) String() string {
+	switch s {
+	case SynchronizationStatusDisconnected:
+		return "Disconnected"
+	case SynchronizationStatusConnecting:
+		return "Connecting to endpoints"
+	case SynchronizationStatusInitializing:
+		return "Initializing endpoints"
+	case SynchronizationStatusScanning:
+		return "Watching for changes"
+	case SynchronizationStatusReconciling:
+		return "Reconciling changes"
+	case SynchronizationStatusStaging:
+		return "Staging changes"
+	case SynchronizationStatusTransitioning:
+		return "Applying changes"
+	case SynchronizationStatusSaving:
+		return "Saving archive"
+	default:
+		return "Unknown"
+	}
+}
 
 type StagingStatus struct {
 	Path  string
