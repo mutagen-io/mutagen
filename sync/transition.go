@@ -156,7 +156,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) error {
 		// Grab the corresponding entry.
 		entry, ok := target.Contents[name]
 		if !ok {
-			return errors.Wrap(err, "unknown directory content encountered")
+			return errors.New("unknown directory content encountered")
 		}
 
 		// Compute its path.
