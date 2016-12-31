@@ -547,12 +547,22 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 		unforced, force := contextpkg.WithCancel(contextpkg.Background())
 
 		// Create scan result channels.
+		type scanResult struct {
+			snapshot *sync.Entry
+			error    error
+		}
 		alphaScanResults := make(chan scanResult, 1)
 		betaScanResults := make(chan scanResult, 1)
 
 		// Start scanning in separate Goroutines.
-		go c.scan(context, alpha, unforced, alphaPreservesExecutability, ancestor, alphaExpected, alphaScanResults)
-		go c.scan(context, beta, unforced, betaPreservesExecutability, ancestor, betaExpected, betaScanResults)
+		go func() {
+			result, err := c.scan(context, alpha, unforced, alphaPreservesExecutability, ancestor, alphaExpected)
+			alphaScanResults <- scanResult{result, err}
+		}()
+		go func() {
+			result, err := c.scan(context, beta, unforced, betaPreservesExecutability, ancestor, betaExpected)
+			betaScanResults <- scanResult{result, err}
+		}()
 
 		// Wait for the first scan to complete. When that happens, regardless of
 		// whether or not it was successful, force the other scan to complete
@@ -735,30 +745,13 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 	return response.PreservesExecutability, nil
 }
 
-type scanResult struct {
-	snapshot *sync.Entry
-	error    error
-}
-
 func (c *controller) scan(
 	context contextpkg.Context,
 	endpoint *rpc.Client,
 	unforced contextpkg.Context,
 	preservesExecutability bool,
 	ancestor, expected *sync.Entry,
-	results chan scanResult,
-) {
-	// If the capacity of the results channel is less than one, this is a logic
-	// error.
-	if cap(results) < 1 {
-		panic("scan provided with non-buffered channel")
-	}
-
-	// Create a function that can send an error result.
-	sendError := func(err error) {
-		results <- scanResult{error: err}
-	}
-
+) (*sync.Entry, error) {
 	// If the endpoint doesn't preserve executability, then strip executability
 	// bits from the expected snapshot since the incoming value won't have them.
 	if !preservesExecutability {
@@ -768,8 +761,7 @@ func (c *controller) scan(
 	// Marshal the expected snapshot into a stable format.
 	expectedBytes, err := stableMarshal(expected)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to marshal expected snapshot"))
-		return
+		return nil, errors.Wrap(err, "unable to marshal expected snapshot")
 	}
 
 	// Compute the expected snapshot signature.
@@ -781,8 +773,7 @@ func (c *controller) scan(
 	// Invoke the scan.
 	stream, err := endpoint.Invoke(endpointMethodScan)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to invoke scan"))
-		return
+		return nil, errors.Wrap(err, "unable to invoke scan")
 	}
 
 	// Ensure that the stream is closed either on context cancellation or when
@@ -799,8 +790,7 @@ func (c *controller) scan(
 		BaseSnapshotSignature:    expectedSignature,
 		ExpectedSnapshotChecksum: expectedChecksum,
 	}); err != nil {
-		sendError(errors.Wrap(err, "unable to send scan request"))
-		return
+		return nil, errors.Wrap(err, "unable to send scan request")
 	}
 
 	// Start a Goroutine that will send a force request if the unforced context
@@ -820,22 +810,19 @@ func (c *controller) scan(
 	// Read the response.
 	var response scanResponse
 	if err := stream.Receive(&response); err != nil {
-		sendError(errors.Wrap(err, "unable to receive scan response"))
-		return
+		return nil, errors.Wrap(err, "unable to receive scan response")
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
 	snapshotBytes, err := rsync.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to patch base snapshot"))
-		return
+		return nil, errors.Wrap(err, "unable to patch base snapshot")
 	}
 
 	// Unmarshal the snapshot.
 	snapshot, err := stableUnmarshal(snapshotBytes)
 	if err != nil {
-		sendError(errors.Wrap(err, "unable to unmarshal snapshot"))
-		return
+		return nil, errors.Wrap(err, "unable to unmarshal snapshot")
 	}
 
 	// If the endpoint doesn't preserve executability, then propagate
@@ -845,7 +832,7 @@ func (c *controller) scan(
 	}
 
 	// Success.
-	results <- scanResult{snapshot: snapshot}
+	return snapshot, nil
 }
 
 func (c *controller) stage(
