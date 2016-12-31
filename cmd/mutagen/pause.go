@@ -36,7 +36,7 @@ func pauseMain(arguments []string) error {
 		return errors.Wrap(err, "unable to send pause request")
 	}
 
-	// Wait for the response.
+	// Receive the pause response.
 	var response sessionpkg.PauseResponse
 	if err := stream.Receive(&response); err != nil {
 		return errors.Wrap(err, "unable to receive pause response")

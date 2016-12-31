@@ -36,7 +36,7 @@ func terminateMain(arguments []string) error {
 		return errors.Wrap(err, "unable to send terminate request")
 	}
 
-	// Wait for the response.
+	// Receive the terminate response.
 	var response sessionpkg.TerminateResponse
 	if err := stream.Receive(&response); err != nil {
 		return errors.Wrap(err, "unable to receive terminate response")
