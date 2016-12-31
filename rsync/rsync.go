@@ -107,7 +107,7 @@ func Signature(base io.Reader) ([]BlockHash, error) {
 			break
 		} else if err == io.ErrUnexpectedEOF {
 			eof = true
-		} else {
+		} else if err != nil {
 			return nil, errors.Wrap(err, "unable to read data block")
 		}
 
