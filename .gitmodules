@@ -19,9 +19,6 @@
 [submodule "vendor/gopkg.in/natefinch/npipe.v2"]
 	path = vendor/gopkg.in/natefinch/npipe.v2
 	url = https://github.com/natefinch/npipe.git
-[submodule "vendor/bitbucket.org/kardianos/rsync"]
-	path = vendor/bitbucket.org/kardianos/rsync
-	url = https://github.com/havoc-io/rsync.git
 [submodule "vendor/github.com/rjeczalik/notify"]
 	path = vendor/github.com/rjeczalik/notify
 	url = https://github.com/rjeczalik/notify.git
