@@ -16,6 +16,7 @@ import (
 	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/rsync"
+	streampkg "github.com/havoc-io/mutagen/stream"
 	"github.com/havoc-io/mutagen/sync"
 )
 
@@ -31,7 +32,7 @@ const (
 
 func ServeEndpoint(stream io.ReadWriteCloser) error {
 	// Create a multiplexer. Ensure that it's closed when we're done serving.
-	multiplexer := multiplex(stream, true)
+	multiplexer := streampkg.Multiplex(stream, true)
 	defer multiplexer.Close()
 
 	// Create an RPC client to connect to the other endpoint.

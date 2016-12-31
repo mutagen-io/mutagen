@@ -5,16 +5,14 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
-	streampkg "github.com/havoc-io/mutagen/stream"
 )
 
 type Client struct {
 	openerLock sync.Mutex
-	opener     streampkg.Opener
+	opener     Opener
 }
 
-func NewClient(opener streampkg.Opener) *Client {
+func NewClient(opener Opener) *Client {
 	return &Client{opener: opener}
 }
 
@@ -104,7 +102,7 @@ func (s *Server) serveConnection(connection net.Conn) {
 	}
 }
 
-func (s *Server) Serve(acceptor streampkg.Acceptor) error {
+func (s *Server) Serve(acceptor Acceptor) error {
 	// Accept and serve connections until there is an error with the acceptor.
 	for {
 		connection, err := acceptor.Accept()

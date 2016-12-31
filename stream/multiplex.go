@@ -1,24 +1,23 @@
-package session
+package stream
 
 import (
 	"io"
+	"net"
 
 	"github.com/inconshreveable/muxado"
-
-	"github.com/havoc-io/mutagen/stream"
 )
 
 const (
 	multiplexerAcceptBacklog = 100
 )
 
-type multiplexer interface {
-	stream.Opener
-	stream.Acceptor
-	io.Closer
+type Multiplexer interface {
+	Open() (net.Conn, error)
+	Accept() (net.Conn, error)
+	Close() error
 }
 
-func multiplex(connection io.ReadWriteCloser, server bool) multiplexer {
+func Multiplex(connection io.ReadWriteCloser, server bool) Multiplexer {
 	// Create configuration.
 	configuration := &muxado.Config{
 		AcceptBacklog: multiplexerAcceptBacklog,

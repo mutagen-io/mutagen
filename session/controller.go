@@ -427,8 +427,8 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 		// Multiplex connections to the endpoint. Also nil-out the corresponding
 		// connections since they're owned by the multiplexers now.
-		alphaMultiplexer := multiplex(alpha, false)
-		betaMultiplexer := multiplex(beta, false)
+		alphaMultiplexer := stream.Multiplex(alpha, false)
+		betaMultiplexer := stream.Multiplex(beta, false)
 		alpha, beta = nil, nil
 
 		// Forward connections between endpoints and monitor for forwarding
@@ -437,12 +437,12 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		alphaMultiplexerForwardingErrors := make(chan error, 1)
 		betaMultiplexerForwardingErrors := make(chan error, 1)
 		go func() {
-			alphaMultiplexerForwardingErrors <- errors.Wrap(stream.Forward(
+			alphaMultiplexerForwardingErrors <- errors.Wrap(rpc.Forward(
 				alphaMultiplexer, betaMultiplexer,
 			), "alpha connection forwarding failure")
 		}()
 		go func() {
-			betaMultiplexerForwardingErrors <- errors.Wrap(stream.Forward(
+			betaMultiplexerForwardingErrors <- errors.Wrap(rpc.Forward(
 				betaMultiplexer, alphaMultiplexer,
 			), "beta connection forwarding failure")
 		}()
