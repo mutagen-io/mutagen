@@ -211,13 +211,10 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 			return errors.Wrap(err, "unable to marshal snapshot")
 		}
 
-		// Create an rsyncer.
-		rsyncer := rsync.New()
-
 		// If we've been forced or the checksum differs, send the snapshot.
 		if forced || !snapshotChecksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
 			return stream.Send(scanResponse{
-				SnapshotDelta: rsyncer.DeltafyBytes(
+				SnapshotDelta: rsync.DeltafyBytes(
 					snapshotBytes,
 					request.BaseSnapshotSignature,
 				),
@@ -261,16 +258,13 @@ func (e *endpoint) transmit(stream rpc.HandlerStream) error {
 	}
 	defer file.Close()
 
-	// Create an rsyncer.
-	rsyncer := rsync.New()
-
 	// Create an operation transmitter.
 	transmit := func(operation rsync.Operation) error {
 		return stream.Send(transmitResponse{Operation: operation})
 	}
 
 	// Transmit the delta.
-	if err := rsyncer.Deltafy(file, request.BaseSignature, transmit); err != nil {
+	if err := rsync.Deltafy(file, request.BaseSignature, transmit); err != nil {
 		return errors.Wrap(err, "unable to transmit delta")
 	}
 
@@ -308,9 +302,6 @@ func (e *endpoint) dispatch(
 	queued <-chan stagingOperation,
 	dispatched chan<- stagingOperation,
 ) error {
-	// Create an rsyncer.
-	rsyncer := rsync.New()
-
 	// Loop over queued operations.
 	for operation := range queued {
 		// Attempt to open the base. If this fails (which it might if the file
@@ -324,7 +315,7 @@ func (e *endpoint) dispatch(
 		// Compute the base signature. If there is an error, just abort, because
 		// most likely the file is being modified concurrently and we'll have to
 		// stage again later. We don't treat this as terminal though.
-		baseSignature, err := rsyncer.Signature(operation.base)
+		baseSignature, err := rsync.Signature(operation.base)
 		if err != nil {
 			operation.base.Close()
 			continue
@@ -380,9 +371,6 @@ func (e *endpoint) receive(
 		return errors.Wrap(err, "unable to compute staging root")
 	}
 
-	// Create an rsyncer.
-	rsyncer := rsync.New()
-
 	// Track the progress index.
 	index := uint64(0)
 
@@ -426,7 +414,7 @@ func (e *endpoint) receive(
 		temporaryPath := temporary.Name()
 
 		// Create an rsync operation receiver. Note that this needs to pass back
-		// an io.EOF that it receives directly in order to inform the rsyncer
+		// an io.EOF that it receives directly in order to inform rsync.Patch
 		// that operations are complete, so we don't want to wrap this error.
 		receive := func() (rsync.Operation, error) {
 			var response transmitResponse
@@ -440,7 +428,7 @@ func (e *endpoint) receive(
 		hasher := e.version.hasher()
 
 		// Apply patch operations.
-		err = rsyncer.Patch(temporary, base, receive, hasher)
+		err = rsync.Patch(temporary, base, receive, hasher)
 
 		// Close files.
 		temporary.Close()

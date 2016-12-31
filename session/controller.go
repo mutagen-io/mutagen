@@ -772,11 +772,8 @@ func (c *controller) scan(
 		return
 	}
 
-	// Create an rsyncer.
-	rsyncer := rsync.New()
-
 	// Compute the expected snapshot signature.
-	expectedSignature := rsyncer.BytesSignature(expectedBytes)
+	expectedSignature := rsync.BytesSignature(expectedBytes)
 
 	// Compute the expected snapshot checksum.
 	expectedChecksum := snapshotChecksum(expectedBytes)
@@ -828,7 +825,7 @@ func (c *controller) scan(
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
+	snapshotBytes, err := rsync.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
 		sendError(errors.Wrap(err, "unable to patch base snapshot"))
 		return
