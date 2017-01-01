@@ -230,6 +230,14 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		if !request.Monitor {
 			return nil
 		}
+
+		// Otherwise wait for another (empty) request from the client as a
+		// backpressure mechanism so we don't send more messages than it can
+		// handle.
+		var readyRequest ListRequest
+		if err := stream.Receive(&readyRequest); err != nil {
+			return errors.Wrap(err, "unable to receive ready request")
+		}
 	}
 }
 

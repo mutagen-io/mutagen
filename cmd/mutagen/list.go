@@ -272,9 +272,8 @@ func listMain(arguments []string) error {
 	printSessionInformation := true
 	monitorLinePrinted := false
 	for {
-		// Receive the next response. If there's an error, and we've already
-		// printed a monitor line, print a newline before returning, that way
-		// the error is printed below the monitor line.
+		// Receive the next response. If there's an error, clear the monitor
+		// line (if any) before returning for better error legibility.
 		var response sessionpkg.ListResponse
 		if err := stream.Receive(&response); err != nil {
 			if monitorLinePrinted {
@@ -321,9 +320,8 @@ func listMain(arguments []string) error {
 			return nil
 		}
 
-		// Validate the response for monitoring. If there's an error, and we've
-		// already printed a monitor line, print a newline before returning,
-		// that way the error is printed below the monitor line.
+		// Validate the response for monitoring. If there's an error, clear the
+		// monitor line (if any) before returning for better error legibility.
 		if len(response.Sessions) != 1 {
 			err = errors.New("invalid listing response")
 		} else if response.Sessions[0].Session.Identifier != session {
@@ -339,5 +337,17 @@ func listMain(arguments []string) error {
 		// Print the monitoring line and record that we've done so.
 		printMonitorLine(response.Sessions[0])
 		monitorLinePrinted = true
+
+		// Send another (empty) request to let the daemon know that we're ready
+		// for another response. This is a backpressure mechanism to keep the
+		// daemon from sending more requests than we can handle in monitor mode.
+		// If there's an error, clear the monitor line (if any) before returning
+		// for better error legibility.
+		if err := stream.Send(sessionpkg.ListRequest{}); err != nil {
+			if monitorLinePrinted {
+				fmt.Println()
+			}
+			return errors.Wrap(err, "unable to send ready request")
+		}
 	}
 }
