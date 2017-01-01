@@ -212,9 +212,13 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 			return errors.Wrap(err, "unable to marshal snapshot")
 		}
 
+		// Compute its checksum.
+		snapshotChecksum := checksum(snapshotBytes)
+
 		// If we've been forced or the checksum differs, send the snapshot.
-		if forced || !snapshotChecksumMatch(snapshotBytes, request.ExpectedSnapshotChecksum) {
+		if forced || !bytes.Equal(snapshotChecksum, request.ExpectedSnapshotChecksum) {
 			return stream.Send(scanResponse{
+				SnapshotChecksum: snapshotChecksum,
 				SnapshotDelta: rsync.DeltafyBytes(
 					snapshotBytes,
 					request.BaseSnapshotSignature,

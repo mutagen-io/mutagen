@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	contextpkg "context"
 	"io"
 	"os"
@@ -768,7 +769,7 @@ func (c *controller) scan(
 	expectedSignature := rsync.BytesSignature(expectedBytes)
 
 	// Compute the expected snapshot checksum.
-	expectedChecksum := snapshotChecksum(expectedBytes)
+	expectedChecksum := checksum(expectedBytes)
 
 	// Invoke the scan.
 	stream, err := endpoint.Invoke(endpointMethodScan)
@@ -817,6 +818,12 @@ func (c *controller) scan(
 	snapshotBytes, err := rsync.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to patch base snapshot")
+	}
+
+	// Verify that the patched bytes match what's expected by the remote.
+	snapshotChecksum := checksum(snapshotBytes)
+	if !bytes.Equal(snapshotChecksum, response.SnapshotChecksum) {
+		return nil, errors.New("patched snapshot checksum does not match expected")
 	}
 
 	// Unmarshal the snapshot.

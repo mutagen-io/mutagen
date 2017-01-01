@@ -1,7 +1,6 @@
 package session
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"sort"
 
@@ -76,11 +75,7 @@ func stableUnmarshal(encoded []byte) (*sync.Entry, error) {
 	return archive.Root, nil
 }
 
-func snapshotChecksum(snapshotBytes []byte) []byte {
+func checksum(snapshotBytes []byte) []byte {
 	result := sha1.Sum(snapshotBytes)
 	return result[:]
-}
-
-func snapshotChecksumMatch(snapshotBytes, expectedSnapshotChecksum []byte) bool {
-	return bytes.Equal(snapshotChecksum(snapshotBytes), expectedSnapshotChecksum)
 }
