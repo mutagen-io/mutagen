@@ -3,6 +3,7 @@ package ssh
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -21,13 +22,28 @@ type PromptClass uint8
 
 const (
 	PromptClassSecret PromptClass = iota
-	PromptClassDisplay
+	PromptClassEcho
 	PromptClassBinary
 )
 
+var binaryPromptSuffixes = []string{
+	"(yes/no)? ",
+	"(yes/no): ",
+}
+
 func ClassifyPrompt(prompt string) PromptClass {
-	// TODO: Implement using white-listing regexes based on known OpenSSH
-	// prompts.
+	// Check if this is a yes/no prompt.
+	for _, suffix := range binaryPromptSuffixes {
+		if strings.HasSuffix(prompt, suffix) {
+			return PromptClassBinary
+		}
+	}
+
+	// TODO: Are there any non-binary prompts from OpenSSH with responses that
+	// should be echoed? If so, we need to create a white-listed registry of
+	// regular expressions to match them.
+
+	// Otherwise assume this is a secret prompt.
 	return PromptClassSecret
 }
 
@@ -37,7 +53,7 @@ func PromptCommandLine(message, prompt string) (string, error) {
 
 	// Figure out which getter to use.
 	var getter func() ([]byte, error)
-	if class == PromptClassDisplay || class == PromptClassBinary {
+	if class == PromptClassEcho || class == PromptClassBinary {
 		getter = gopass.GetPasswdEchoed
 	} else {
 		getter = gopass.GetPasswd
