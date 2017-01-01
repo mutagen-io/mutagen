@@ -22,17 +22,3 @@ func (v Version) hasher() hash.Hash {
 		panic("unknown session version")
 	}
 }
-
-func (v Version) defaultIgnores() []string {
-	switch v {
-	case Version_Version1:
-		return []string{
-			"**/.DS_Store",
-			"**/.git",
-			"**/.svn",
-			"**/.hg",
-		}
-	default:
-		panic("unsupported session version")
-	}
-}

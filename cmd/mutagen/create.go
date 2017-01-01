@@ -12,7 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/url"
 )
 
-var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>] [--no-default-ignores]
+var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>]
                       <alpha> <beta>
 `
 
@@ -30,10 +30,8 @@ func (p *ignorePatterns) Set(value string) error {
 func createMain(arguments []string) error {
 	// Parse and handle flags.
 	var ignores ignorePatterns
-	var noDefaultIngores bool
 	flagSet := cmd.NewFlagSet("create", createUsage, []int{2})
 	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
-	flagSet.BoolVar(&noDefaultIngores, "no-default-ignores", false, "disable default ignores")
 	urls := flagSet.ParseOrDie(arguments)
 
 	// Extract and parse URLs.
@@ -75,10 +73,9 @@ func createMain(arguments []string) error {
 
 	// Send the initial request.
 	if err := stream.Send(session.CreateRequest{
-		Alpha:          alpha,
-		Beta:           beta,
-		DefaultIgnores: !noDefaultIngores,
-		Ignores:        []string(ignores),
+		Alpha:   alpha,
+		Beta:    beta,
+		Ignores: []string(ignores),
 	}); err != nil {
 		return errors.Wrap(err, "unable to send creation request")
 	}

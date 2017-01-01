@@ -128,7 +128,7 @@ func (s *Service) create(stream rpc.HandlerStream) error {
 	controller, err := newSession(
 		s.tracker,
 		request.Alpha, request.Beta,
-		request.DefaultIgnores, request.Ignores,
+		request.Ignores,
 		prompter,
 	)
 

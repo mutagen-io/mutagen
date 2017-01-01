@@ -108,13 +108,6 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to normalize root path")
 	}
 
-	// Compute ignores.
-	var ignores []string
-	if request.DefaultIgnores {
-		ignores = append(ignores, request.Version.defaultIgnores()...)
-	}
-	ignores = append(ignores, request.Ignores...)
-
 	// Compute the cache path.
 	cachePath, err := pathForCache(request.Session, request.Alpha)
 	if err != nil {
@@ -131,7 +124,7 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 	e.session = request.Session
 	e.version = request.Version
 	e.root = root
-	e.ignores = ignores
+	e.ignores = request.Ignores
 	e.alpha = request.Alpha
 	e.cachePath = cachePath
 	e.cache = cache

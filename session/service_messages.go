@@ -14,10 +14,9 @@ type PromptResponse struct {
 }
 
 type CreateRequest struct {
-	Alpha          *url.URL
-	Beta           *url.URL
-	DefaultIgnores bool
-	Ignores        []string
+	Alpha   *url.URL
+	Beta    *url.URL
+	Ignores []string
 }
 
 type ListRequest struct {

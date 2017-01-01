@@ -21,9 +21,8 @@ message Session {
     uint32 creatingVersionPatch = 6;
     url.URL alpha = 7;
     url.URL beta = 8;
-    bool defaultIgnores = 9;
-    repeated string ignores = 10;
-    bool paused = 11;
+    repeated string ignores = 9;
+    bool paused = 10;
 }
 
 message Archive {
