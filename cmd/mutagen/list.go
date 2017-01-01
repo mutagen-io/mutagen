@@ -16,6 +16,120 @@ import (
 var listUsage = `usage: mutagen list [-h|--help] [-m|--monitor] [<session>]
 `
 
+func printSession(monitor bool, state sessionpkg.SessionState) {
+	// Print the session identifier.
+	fmt.Println("Session:", state.Session.Identifier)
+
+	// If we're in monitor mode, that's all the information we print.
+	if monitor {
+		return
+	}
+
+	// Print status.
+	statusString := state.State.Status.String()
+	if state.Session.Paused {
+		statusString = "Paused"
+	}
+	fmt.Println("Status:", statusString)
+
+	// Print the last error, if any.
+	if state.State.LastError != "" {
+		fmt.Println("Last error:", state.State.LastError)
+	}
+}
+
+func formatConnectionStatus(connected bool) string {
+	if connected {
+		return "Connected"
+	}
+	return "Disconnected"
+}
+
+func printEndpoint(monitor, alpha bool, state sessionpkg.SessionState) {
+	// Print the header and URL. We combine them in monitoring mode.
+	header := "Alpha:"
+	url := state.Session.Alpha
+	if !alpha {
+		header = "Beta:"
+		url = state.Session.Beta
+	}
+	if monitor {
+		fmt.Println(header, url.Format())
+	} else {
+		fmt.Println(header)
+		fmt.Println("\tURL:", url.Format())
+	}
+
+	// If we're in mointor mode, that's all the information we print.
+	if monitor {
+		return
+	}
+
+	// Print status.
+	connected := state.State.AlphaConnected
+	if !alpha {
+		connected = state.State.BetaConnected
+	}
+	fmt.Println("\tStatus:", formatConnectionStatus(connected))
+
+	// Print problems, if any.
+	problems := state.State.AlphaProblems
+	if !alpha {
+		problems = state.State.BetaProblems
+	}
+	if len(problems) > 0 {
+		fmt.Println("\tProblems:")
+		for _, p := range problems {
+			fmt.Printf("\t\t%s: %v\n", p.Path, p.Error)
+		}
+	}
+}
+
+func formatEntryKind(entry *sync.Entry) string {
+	if entry == nil {
+		return "<non-existent>"
+	} else if entry.Kind == sync.EntryKind_Directory {
+		return "Directory"
+	} else if entry.Kind == sync.EntryKind_File {
+		return "File"
+	} else {
+		return "<unknown>"
+	}
+}
+
+func printConflicts(conflicts []sync.Conflict) {
+	// Print the header.
+	fmt.Println("Conflicts:")
+
+	// Print conflicts.
+	for i, c := range conflicts {
+		// Print the alpha changes.
+		for _, a := range c.AlphaChanges {
+			fmt.Printf(
+				"\t(α) %s (%s -> %s)\n",
+				a.Path,
+				formatEntryKind(a.Old),
+				formatEntryKind(a.New),
+			)
+		}
+
+		// Print the beta changes.
+		for _, b := range c.BetaChanges {
+			fmt.Printf(
+				"\t(β) %s (%s -> %s)\n",
+				b.Path,
+				formatEntryKind(b.Old),
+				formatEntryKind(b.New),
+			)
+		}
+
+		// If we're not on the last conflict, print a newline.
+		if i < len(conflicts)-1 {
+			fmt.Println()
+		}
+	}
+}
+
 type connectionState struct {
 	alphaConnected bool
 	betaConnected  bool
@@ -118,42 +232,6 @@ func printMonitorLine(state sessionpkg.SessionState) {
 	)
 }
 
-func connectionFormat(connected bool) string {
-	if connected {
-		return "connected"
-	}
-	return "disconnected"
-}
-
-func printSessionState(state sessionpkg.SessionState) {
-	// Print the session identifier.
-	fmt.Println(state.Session.Identifier)
-
-	// Print status.
-	fmt.Printf("Status: %s", state.State.Status)
-	if state.Session.Paused {
-		fmt.Print(" (Paused)")
-	}
-	fmt.Println()
-
-	// Print last error if present.
-	if state.State.LastError != "" {
-		fmt.Println("Last synchronization error: %s", state.State.LastError)
-	}
-
-	// Print alpha information.
-	// TODO: Add staging status.
-	fmt.Printf("Alpha: %s (%s)\n", state.Session.Alpha.Format(), connectionFormat(state.State.AlphaConnected))
-
-	// Print beta information.
-	// TODO: Add staging status.
-	fmt.Printf("Beta: %s (%s)\n", state.Session.Beta.Format(), connectionFormat(state.State.BetaConnected))
-
-	// TODO: Print conflicts.
-
-	// TODO: Print problems.
-}
-
 func listMain(arguments []string) error {
 	// Parse flags.
 	var session string
@@ -191,6 +269,7 @@ func listMain(arguments []string) error {
 
 	// Loop indefinitely. We'll bail after a single response if monitoring
 	// wasn't requested.
+	printSessionInformation := true
 	for {
 		// Receive the next response.
 		var response sessionpkg.ListResponse
@@ -198,23 +277,51 @@ func listMain(arguments []string) error {
 			return errors.Wrap(err, "unable to receive listing response")
 		}
 
-		// Validate and print accordingly.
-		if monitor {
-			if len(response.Sessions) != 1 {
-				return errors.New("invalid listing response")
-			} else if state := response.Sessions[0]; state.Session.Identifier != session {
-				return errors.New("listing response returned invalid session")
-			} else {
-				printMonitorLine(response.Sessions[0])
-			}
-		} else {
+		// The first time through the loop (which will be the only time if not
+		// monitoring), we print the session state.
+		if printSessionInformation {
 			// Loop through and print sessions.
-			for _, state := range response.Sessions {
-				printSessionState(state)
+			for i, s := range response.Sessions {
+				// Print the session information.
+				printSession(monitor, s)
+
+				// Print alpha information.
+				printEndpoint(monitor, true, s)
+
+				// Print beta information.
+				printEndpoint(monitor, false, s)
+
+				// Print conflicts (if any) if we're not in monitor mode.
+				if !monitor && len(s.State.Conflicts) > 0 {
+					printConflicts(s.State.Conflicts)
+				}
+
+				// If we're not in monitor mode and this isn't the last session,
+				// print a newline. We don't really need the monitor check since
+				// there should only be one session in monitor mode, but it is
+				// safer in case the daemon has sent something weird back.
+				if !monitor && i < len(response.Sessions)-1 {
+					fmt.Println()
+				}
 			}
 
-			// Done.
+			// Mark the session information as printed.
+			printSessionInformation = false
+		}
+
+		// If we're not monitoring, we're done, otherwise print the monitoring
+		// line.
+		if !monitor {
 			return nil
+		}
+
+		// Validate and print monitoring information.
+		if len(response.Sessions) != 1 {
+			return errors.New("invalid listing response")
+		} else if response.Sessions[0].Session.Identifier != session {
+			return errors.New("listing response returned invalid session")
+		} else {
+			printMonitorLine(response.Sessions[0])
 		}
 	}
 }
