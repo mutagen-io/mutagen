@@ -270,10 +270,16 @@ func listMain(arguments []string) error {
 	// Loop indefinitely. We'll bail after a single response if monitoring
 	// wasn't requested.
 	printSessionInformation := true
+	monitorLinePrinted := false
 	for {
-		// Receive the next response.
+		// Receive the next response. If there's an error, and we've already
+		// printed a monitor line, print a newline before returning, that way
+		// the error is printed below the monitor line.
 		var response sessionpkg.ListResponse
 		if err := stream.Receive(&response); err != nil {
+			if monitorLinePrinted {
+				fmt.Println()
+			}
 			return errors.Wrap(err, "unable to receive listing response")
 		}
 
@@ -315,13 +321,23 @@ func listMain(arguments []string) error {
 			return nil
 		}
 
-		// Validate and print monitoring information.
+		// Validate the response for monitoring. If there's an error, and we've
+		// already printed a monitor line, print a newline before returning,
+		// that way the error is printed below the monitor line.
 		if len(response.Sessions) != 1 {
-			return errors.New("invalid listing response")
+			err = errors.New("invalid listing response")
 		} else if response.Sessions[0].Session.Identifier != session {
-			return errors.New("listing response returned invalid session")
-		} else {
-			printMonitorLine(response.Sessions[0])
+			err = errors.New("listing response returned invalid session")
 		}
+		if err != nil {
+			if monitorLinePrinted {
+				fmt.Println()
+			}
+			return err
+		}
+
+		// Print the monitoring line and record that we've done so.
+		printMonitorLine(response.Sessions[0])
+		monitorLinePrinted = true
 	}
 }
