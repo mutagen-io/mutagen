@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -215,6 +216,24 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 		return nil, false, errors.Wrap(err, "unable to create SSH process stream")
 	}
 
+	// Redirect the process' standard error output to a buffer so that we can
+	// give better feedback in errors. This might be a bit dangerous since this
+	// buffer will be attached for the lifetime of the process and we don't know
+	// exactly how much output will be received (and thus we could buffer a
+	// large amount of it in memory), but generally speaking SSH doens't spit
+	// out much error output (unless in debug mode, which we won't be), and the
+	// agent doesn't spit out any.
+	// TODO: If we do start seeing large allocations in these buffers, a simple
+	// size-limited buffer might suffice, at least to get some of the error
+	// message.
+	// TODO: If we decide we want these errors available outside the agent
+	// package, it might be worth moving this buffer into the processStream
+	// type, exporting that type, and allowing type assertions that would give
+	// access to that buffer. But for now we're mostly just concerned with
+	// connection issues.
+	errorBuffer := bytes.NewBuffer(nil)
+	process.Stderr = errorBuffer
+
 	// Start the process.
 	if err = process.Start(); err != nil {
 		return nil, false, errors.Wrap(err, "unable to start SSH agent process")
@@ -231,6 +250,18 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 		if ssh.IsCommandNotFound(process.Wait()) {
 			return nil, true, errors.New("command not found")
 		}
+
+		// Otherwise, check if there is any error output that might illuminate
+		// what happened. We let this overrule any err value here since that
+		// value will probably just be an EOF.
+		if errorBuffer.Len() > 0 {
+			return nil, false, errors.Errorf(
+				"SSH process failed with error output:\n%s",
+				strings.TrimSpace(errorBuffer.String()),
+			)
+		}
+
+		// Otherwise just wrap up whatever error we have.
 		return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 	} else if !versionMatch {
 		return nil, true, errors.New("version mismatch")
