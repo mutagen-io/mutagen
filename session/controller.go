@@ -10,8 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/ptypes"
-
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/havoc-io/mutagen"
@@ -21,6 +19,7 @@ import (
 	"github.com/havoc-io/mutagen/state"
 	"github.com/havoc-io/mutagen/stream"
 	"github.com/havoc-io/mutagen/sync"
+	"github.com/havoc-io/mutagen/timestamp"
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -87,7 +86,7 @@ func newSession(
 	}
 
 	// Create the session and archive.
-	creationTime, err := ptypes.TimestampProto(time.Now())
+	creationTime, err := timestamp.Convert(time.Now())
 	if err != nil {
 		alphaConnection.Close()
 		betaConnection.Close()
