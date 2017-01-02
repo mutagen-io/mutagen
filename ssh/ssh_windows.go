@@ -18,7 +18,8 @@ var commandSearchPaths = []string{
 	`C:\Program Files (x86)\Git\usr\bin`,
 	`C:\msys32\usr\bin`,
 	`C:\msys64\usr\bin`,
-	// TODO: Add Cygwin binary paths.
+	`C:\cygwin\bin`,
+	`C:\cygwin64\bin`,
 	// TODO: Add the PowerShell OpenSSH paths once there's a stable release.
 }
 
