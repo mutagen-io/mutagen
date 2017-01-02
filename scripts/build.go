@@ -185,10 +185,8 @@ var targets = []Target{
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
-	// TODO: When Go 1.8 is released, check the status of the linux/s390x port,
-	// which was experimental in 1.7, as well as any other new ports that are
-	// released. Support should be available for 32-bit MIPS architectures (both
-	// little- and big-endian).
+	// TODO: Add builds for 32-bit MIPS architectures (both little-endian and
+	// big-endian) once the ports are released with Go 1.8.
 }
 
 // TODO: Figure out if we should set this on a per-machine basis. This value is

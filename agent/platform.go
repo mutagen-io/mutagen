@@ -40,6 +40,9 @@ var unameMToGOARCH = map[string]string{
 	"armv7l":  "arm",
 	"armv8l":  "arm64",
 	"aarch64": "arm64",
+	// TODO: Add support for 32-bit MIPS architectures (both little-endian and
+	// big-endian) once the ports are released with Go 1.8 and we add the
+	// corresponding agent builds.
 	"mips64":  "mips64",
 	// TODO: Verify that mips64el is the correct Linux uname -m output for
 	// little-endian MIPS64. Note that there is a difference between "el" and
