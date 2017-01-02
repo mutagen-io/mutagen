@@ -165,6 +165,7 @@ var targets = []Target{
 	{"linux", "ppc64le"},
 	{"linux", "mips64"},
 	{"linux", "mips64le"},
+	{"linux", "s390x"},
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
 	{"netbsd", "arm"},

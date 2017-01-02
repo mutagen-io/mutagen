@@ -48,6 +48,7 @@ var unameMToGOARCH = map[string]string{
 	"mips64el": "mips64le",
 	"ppc64":    "ppc64",
 	"ppc64le":  "ppc64le",
+	"s390x":    "s390x",
 	// TODO: Add any more obscure uname -m variations that we might encounter.
 }
 
