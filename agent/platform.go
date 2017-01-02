@@ -18,6 +18,8 @@ var unameSToGOOS = map[string]string{
 	"DragonFly": "dragonfly",
 	"SunOS":     "solaris",
 	"Plan9":     "plan9",
+	// TODO: Add more obscure uname -s values as necessary, e.g.
+	// debian/kFreeBSD, which returns "GNU/kFreeBSD".
 }
 
 func unameSIsWindowsPosix(unameS string) bool {
@@ -27,18 +29,26 @@ func unameSIsWindowsPosix(unameS string) bool {
 }
 
 var unameMToGOARCH = map[string]string{
-	"i386":   "386",
-	"i486":   "386",
-	"i586":   "386",
-	"i686":   "386",
-	"x86_64": "amd64",
-	"amd64":  "amd64",
-	"armv5l": "arm",
-	"armv6l": "arm",
-	"armv7l": "arm",
-	// TODO: Add armv8l (is that the uname -m for it?).
-	// TODO: Add MIPS (need to figure out uname -m for each variation).
-	// TODO: Add PowerPC (need to figure out uname -m for each variation).
+	"i386":    "386",
+	"i486":    "386",
+	"i586":    "386",
+	"i686":    "386",
+	"x86_64":  "amd64",
+	"amd64":   "amd64",
+	"armv5l":  "arm",
+	"armv6l":  "arm",
+	"armv7l":  "arm",
+	"armv8l":  "arm64",
+	"aarch64": "arm64",
+	"mips64":  "mips64",
+	// TODO: Verify that mips64el is the correct Linux uname -m output for
+	// little-endian MIPS64. Note that there is a difference between "el" and
+	// "le", and that Linux returns "ppc64le" for 64-bit little-endian PowerPC
+	// machines, so it's a weird inconsistency.
+	"mips64el": "mips64le",
+	"ppc64":    "ppc64",
+	"ppc64le":  "ppc64le",
+	// TODO: Add any more obscure uname -m variations that we might encounter.
 }
 
 // osEnvToGOOS maps the value of the "OS" environment variable on Windows to the
