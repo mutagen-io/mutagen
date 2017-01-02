@@ -9,6 +9,7 @@ import (
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/state"
+	"github.com/havoc-io/mutagen/timestamp"
 )
 
 const (
@@ -163,13 +164,7 @@ func (s byCreationTime) Swap(i, j int) {
 }
 
 func (s byCreationTime) Less(i, j int) bool {
-	// This comparison relies on the fact that Nanos can't be negative (at least
-	// not according to the Protocol Buffers definition of its value). If Nanos
-	// could be negative, we'd have to consider cases where seconds were equal
-	// or within 1 of each other.
-	return s[i].Session.CreationTime.Seconds < s[j].Session.CreationTime.Seconds ||
-		(s[i].Session.CreationTime.Seconds == s[j].Session.CreationTime.Seconds &&
-			s[i].Session.CreationTime.Nanos < s[j].Session.CreationTime.Nanos)
+	return timestamp.Less(s[i].Session.CreationTime, s[j].Session.CreationTime)
 }
 
 func (s *Service) list(stream rpc.HandlerStream) error {
