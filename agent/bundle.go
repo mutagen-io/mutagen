@@ -25,6 +25,7 @@ func init() {
 	bundlePath = filepath.Join(process.Current.ExecutableParentPath, agentBundleName)
 }
 
+// TODO: Note that this file will not mark the resultant file as executable.
 func executableForPlatform(goos, goarch string) (string, error) {
 	// Open the bundle path and ensure its closure.
 	bundle, err := os.Open(bundlePath)
@@ -76,13 +77,6 @@ func executableForPlatform(goos, goarch string) (string, error) {
 		file.Close()
 		os.Remove(file.Name())
 		return "", errors.Wrap(err, "unable to copy agent data")
-	}
-
-	// Mark the file as executable.
-	if err := file.Chmod(0700); err != nil {
-		file.Close()
-		os.Remove(file.Name())
-		return "", errors.Wrap(err, "unable to mark agent as executable")
 	}
 
 	// Close the file.
