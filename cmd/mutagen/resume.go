@@ -10,6 +10,10 @@ import (
 )
 
 var resumeUsage = `usage: mutagen resume [-h|--help] <session>
+
+Resumes a synchronization session. This command is used to resume paused
+sessions as well as provide authentication information to sessions that can't
+automatically reconnect without it.
 `
 
 func resumeMain(arguments []string) error {

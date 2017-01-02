@@ -14,6 +14,8 @@ import (
 
 var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>]
                       <alpha> <beta>
+
+Creates and starts a new synchronization session.
 `
 
 type ignorePatterns []string

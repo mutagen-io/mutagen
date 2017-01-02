@@ -14,7 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/ssh"
 )
 
-// usage provides help information for the main Mutagen entry point.
+// usage provides help information for the main entry point.
 var usage = `usage: mutagen [-V|--version] [-h|--help] [-l|--legal] <command> [<args>]
 
 Supported commands include:
@@ -111,7 +111,7 @@ func main() {
 	// If we couldn't dispatch, the command name is invalid.
 	cmd.Error(errors.Errorf("unknown command: %s", command))
 
-	// Try to find similar subcommands in case the user made a typo.
+	// Try to find similar commands in case the user made a typo.
 	var matches []string
 	for name := range handlers {
 		editDistance := levenshtein.DistanceForStrings(
@@ -124,7 +124,7 @@ func main() {
 		}
 	}
 
-	// Print similar subcommands, if any.
+	// Print similar commands, if any.
 	if len(matches) > 0 {
 		fmt.Fprintln(os.Stderr, "\nSimilar commands:")
 		for _, match := range matches {

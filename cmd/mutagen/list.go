@@ -14,6 +14,11 @@ import (
 )
 
 var listUsage = `usage: mutagen list [-h|--help] [-m|--monitor] [<session>]
+
+Lists existing synchronization sessions and their statuses. A specific session
+identifier can be specified to show information for only that session. If
+coupled with the -m/--monitor flag, the list command will show a dynamic display
+of synchronization status for the specified session.
 `
 
 func printSession(monitor bool, state sessionpkg.SessionState) {

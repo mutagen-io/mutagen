@@ -17,9 +17,9 @@ import (
 
 var daemonUsage = `usage: mutagen daemon [-h|--help] [-s|--stop]
 
-Controls the lifecycle of the Mutagen daemon. The default behavior of this
-command is to start the Mutagen daemon in the background. The command is
-idempotent - a daemon instance is only created if one doesn't already exist.
+Controls the lifecycle of the daemon. The default behavior of this command is to
+start the daemon in the background. The command is idempotent - a daemon
+instance is only created if one doesn't already exist.
 `
 
 func daemonMain(arguments []string) error {

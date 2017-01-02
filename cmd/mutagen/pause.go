@@ -10,6 +10,8 @@ import (
 )
 
 var pauseUsage = `usage: mutagen pause [-h|--help] <session>
+
+Pauses a synchronization session.
 `
 
 func pauseMain(arguments []string) error {

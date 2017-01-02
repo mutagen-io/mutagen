@@ -10,6 +10,9 @@ import (
 )
 
 var terminateUsage = `usage: mutagen terminate [-h|--help] <session>
+
+Terminates a synchronization session. To temporarily halt session
+synchronization, use the pause command.
 `
 
 func terminateMain(arguments []string) error {
