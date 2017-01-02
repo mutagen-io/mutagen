@@ -14,6 +14,11 @@ import (
 )
 
 const (
+	sshAskpassEnvironmentVariable = "SSH_ASKPASS"
+	sshDisplayEnvironmentVariable = "DISPLAY"
+
+	mutagenDisplay = "mutagen"
+
 	PrompterEnvironmentVariable              = "MUTAGEN_PROMPTER"
 	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_PROMPTER_MESSAGE_BASE64"
 )
@@ -76,27 +81,32 @@ func PromptCommandLine(message, prompt string) (string, error) {
 }
 
 func prompterEnvironment(prompter, message string) []string {
-	// If there is no prompter, return nil to just use the current environment.
-	if prompter == "" {
-		return nil
-	}
-
-	// Convert message to base64 encoding so that we can pass it through the
-	// environment safely.
-	// TODO: In Go 1.8, switch to using the Strict variant of this encoding.
-	messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
-
 	// Create a copy of the current environment.
 	result := make(map[string]string, len(environment.Current))
 	for k, v := range environment.Current {
 		result[k] = v
 	}
 
-	// Insert necessary environment variables.
-	result["SSH_ASKPASS"] = process.Current.ExecutablePath
-	result["DISPLAY"] = "mutagen"
-	result[PrompterEnvironmentVariable] = prompter
-	result[PrompterMessageBase64EnvironmentVariable] = messageBase64
+	// Handle based on whether or not there's a prompter.
+	if prompter == "" {
+		// If there is no prompter, then enforce that the relevant environment
+		// variables are not set, because some systems (e.g. systems with a
+		// Cygwin SSH binary) will include default SSH_ASKPASS values that throw
+		// up GUIs without any message or context and we don't want that.
+		delete(result, sshAskpassEnvironmentVariable)
+		delete(result, sshDisplayEnvironmentVariable)
+	} else {
+		// Convert message to base64 encoding so that we can pass it through the
+		// environment safely.
+		// TODO: In Go 1.8, switch to using the Strict variant of this encoding.
+		messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
+
+		// Insert necessary environment variables.
+		result[sshAskpassEnvironmentVariable] = process.Current.ExecutablePath
+		result[sshDisplayEnvironmentVariable] = mutagenDisplay
+		result[PrompterEnvironmentVariable] = prompter
+		result[PrompterMessageBase64EnvironmentVariable] = messageBase64
+	}
 
 	// Convert into the desired format.
 	return environment.Format(result)
