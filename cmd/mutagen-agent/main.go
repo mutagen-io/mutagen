@@ -29,6 +29,9 @@ func main() {
 		return
 	}
 
+	// Perform housekeeping.
+	agent.Housekeep()
+
 	// Create a stream on standard input/output.
 	stdio := stream.New(os.Stdin, os.Stdout, os.Stdout)
 

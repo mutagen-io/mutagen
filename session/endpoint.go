@@ -31,6 +31,9 @@ const (
 )
 
 func ServeEndpoint(stream io.ReadWriteCloser) error {
+	// Perform housekeeping.
+	housekeep()
+
 	// Create a multiplexer. Ensure that it's closed when we're done serving.
 	multiplexer := streampkg.Multiplex(stream, true)
 	defer multiplexer.Close()
