@@ -187,7 +187,15 @@ func monitorProblemSummary(problems []sync.Problem) string {
 	return "-"
 }
 
-const monitorStatusBarInnerWidth = 31
+// TODO: If this has a value of 31, then the monitor line will have a width of
+// exactly 80 columns. But on cmd.exe consoles, the line needs to be narrower
+// than the console (which is 80 columns by default) in order to process '\r'
+// properly, otherwise it'll just move to the next line when it receives '\r'.
+// So for now, we've set it to 30, giving the monitor line a width of 78
+// columns, but in the future we might just be better off switching to some
+// curses-like interface to dynamically set the monitor line width based on the
+// console width.
+const monitorStatusBarInnerWidth = 30
 
 func monitorStatusBar(status sessionpkg.StagingStatus) string {
 	// If there is no staging going on, then return empty spaces.
