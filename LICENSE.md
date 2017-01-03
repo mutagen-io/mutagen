@@ -1,6 +1,6 @@
 # Mutagen
 
-Copyright (c) 2016 Jacob Howard
+Copyright (c) 2016 - 2017 Jacob Howard
 
 All rights reserved.
 
