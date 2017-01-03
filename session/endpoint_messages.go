@@ -25,6 +25,7 @@ type scanRequest struct {
 type scanResponse struct {
 	SnapshotChecksum []byte
 	SnapshotDelta    []rsync.Operation
+	TryAgain         bool
 }
 
 type transmitRequest struct {

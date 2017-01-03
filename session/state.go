@@ -11,6 +11,7 @@ const (
 	SynchronizationStatusConnecting
 	SynchronizationStatusInitializing
 	SynchronizationStatusScanning
+	SynchronizationStatusWaitingForRescan
 	SynchronizationStatusReconciling
 	SynchronizationStatusStaging
 	SynchronizationStatusTransitioning
@@ -27,6 +28,8 @@ func (s SynchronizationStatus) String() string {
 		return "Initializing endpoints"
 	case SynchronizationStatusScanning:
 		return "Watching for changes"
+	case SynchronizationStatusWaitingForRescan:
+		return "Waiting for rescan"
 	case SynchronizationStatusReconciling:
 		return "Reconciling changes"
 	case SynchronizationStatusStaging:

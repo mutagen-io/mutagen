@@ -138,11 +138,6 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 	})
 }
 
-const (
-	maxScanTries      = 3
-	scanRetryInterval = 1 * time.Second
-)
-
 func (e *endpoint) scan(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request scanRequest
@@ -196,28 +191,16 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 	forced := false
 	for {
 		// Create a snapshot.
-		// HACK: Because concurrent modifications can cause a scan to fail, we
-		// allow scan retries up to a certain number of times, separated by some
-		// interval. This is better than sending an error, which will cause full
-		// reconnection by the controller. Most concurrent file operations will
-		// complete relatively quickly, so we're unlikely to perform many
-		// retries, and any more persistent errors will be caught after we reach
-		// the maximum number of retries.
-		var snapshot *sync.Entry
-		var cache *sync.Cache
-		var err error
-		scanTryCount := 1
-		for {
-			snapshot, cache, err = sync.Scan(e.root, hasher, e.cache, e.ignores)
-			if err != nil {
-				if scanTryCount < maxScanTries {
-					scanTryCount++
-					time.Sleep(scanRetryInterval)
-					continue
-				}
-				return errors.Wrap(err, "unable to create snapshot")
-			}
-			break
+		// HACK: Concurrent modifications can cause scans to fail. That's simply
+		// a fact of life and there's nothing we can do within the sync.Scan
+		// function to deal with this. So if we receive an error from scan,
+		// don't error out of the handler (which would cause the controller to
+		// assume something very bad had happened and reconnect), but instead
+		// tell the controller that everything is okay and that it should simply
+		// wait and try to scan again.
+		snapshot, cache, err := sync.Scan(e.root, hasher, e.cache, e.ignores)
+		if err != nil {
+			return stream.Send(scanResponse{TryAgain: true})
 		}
 
 		// Store the cache.

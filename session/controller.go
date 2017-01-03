@@ -25,6 +25,7 @@ import (
 
 const (
 	autoReconnectInterval = 30 * time.Second
+	rescanWaitDuration    = 5 * time.Second
 )
 
 type controller struct {
@@ -548,6 +549,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 		// Create scan result channels.
 		type scanResult struct {
 			snapshot *sync.Entry
+			tryAgain bool
 			error    error
 		}
 		alphaScanResults := make(chan scanResult, 1)
@@ -555,12 +557,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 
 		// Start scanning in separate Goroutines.
 		go func() {
-			result, err := c.scan(context, alpha, unforced, alphaPreservesExecutability, ancestor, alphaExpected)
-			alphaScanResults <- scanResult{result, err}
+			result, tryAgain, err := c.scan(context, alpha, unforced, alphaPreservesExecutability, ancestor, alphaExpected)
+			alphaScanResults <- scanResult{result, tryAgain, err}
 		}()
 		go func() {
-			result, err := c.scan(context, beta, unforced, betaPreservesExecutability, ancestor, betaExpected)
-			betaScanResults <- scanResult{result, err}
+			result, tryAgain, err := c.scan(context, beta, unforced, betaPreservesExecutability, ancestor, betaExpected)
+			betaScanResults <- scanResult{result, tryAgain, err}
 		}()
 
 		// Wait for the first scan to complete. When that happens, regardless of
@@ -580,11 +582,26 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			alphaResult = <-alphaScanResults
 		}
 
-		// Check for errors.
+		// Check for errors (scans that need to be retried won't return an
+		// error, so we can do this before checking for retry).
 		if alphaResult.error != nil {
 			return errors.Wrap(alphaResult.error, "alpha scan failed")
 		} else if betaResult.error != nil {
 			return errors.Wrap(betaResult.error, "beta scan failed")
+		}
+
+		// Check if we need to retry scans.
+		if alphaResult.tryAgain || betaResult.tryAgain {
+			// Set status to waiting.
+			c.stateLock.Lock()
+			c.state.Status = SynchronizationStatusWaitingForRescan
+			c.stateLock.Unlock()
+
+			// Wait a little while.
+			time.Sleep(rescanWaitDuration)
+
+			// Try to scan again.
+			continue
 		}
 
 		// Extract results.
@@ -749,7 +766,7 @@ func (c *controller) scan(
 	unforced contextpkg.Context,
 	preservesExecutability bool,
 	ancestor, expected *sync.Entry,
-) (*sync.Entry, error) {
+) (*sync.Entry, bool, error) {
 	// If the endpoint doesn't preserve executability, then strip executability
 	// bits from the expected snapshot since the incoming value won't have them.
 	if !preservesExecutability {
@@ -759,7 +776,9 @@ func (c *controller) scan(
 	// Marshal the expected snapshot into a stable format.
 	expectedBytes, err := stableMarshal(expected)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal expected snapshot")
+		// TODO: This seems like it should be a fairly terminal error, but I'm
+		// not sure how to signal that to the run loop.
+		return nil, false, errors.Wrap(err, "unable to marshal expected snapshot")
 	}
 
 	// Compute the expected snapshot signature.
@@ -771,7 +790,7 @@ func (c *controller) scan(
 	// Invoke the scan.
 	stream, err := endpoint.Invoke(endpointMethodScan)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to invoke scan")
+		return nil, false, errors.Wrap(err, "unable to invoke scan")
 	}
 
 	// Ensure that the stream is closed either on context cancellation or when
@@ -788,7 +807,7 @@ func (c *controller) scan(
 		BaseSnapshotSignature:    expectedSignature,
 		ExpectedSnapshotChecksum: expectedChecksum,
 	}); err != nil {
-		return nil, errors.Wrap(err, "unable to send scan request")
+		return nil, false, errors.Wrap(err, "unable to send scan request")
 	}
 
 	// Start a Goroutine that will send a force request if the unforced context
@@ -808,25 +827,30 @@ func (c *controller) scan(
 	// Read the response.
 	var response scanResponse
 	if err := stream.Receive(&response); err != nil {
-		return nil, errors.Wrap(err, "unable to receive scan response")
+		return nil, false, errors.Wrap(err, "unable to receive scan response")
+	}
+
+	// Check if the endpoint says we should try again.
+	if response.TryAgain {
+		return nil, true, nil
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
 	snapshotBytes, err := rsync.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to patch base snapshot")
+		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}
 
 	// Verify that the patched bytes match what's expected by the remote.
 	snapshotChecksum := checksum(snapshotBytes)
 	if !bytes.Equal(snapshotChecksum, response.SnapshotChecksum) {
-		return nil, errors.New("patched snapshot checksum does not match expected")
+		return nil, false, errors.New("patched snapshot checksum does not match expected")
 	}
 
 	// Unmarshal the snapshot.
 	snapshot, err := stableUnmarshal(snapshotBytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal snapshot")
+		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
 	}
 
 	// If the endpoint doesn't preserve executability, then propagate
@@ -836,7 +860,7 @@ func (c *controller) scan(
 	}
 
 	// Success.
-	return snapshot, nil
+	return snapshot, false, nil
 }
 
 func (c *controller) stage(

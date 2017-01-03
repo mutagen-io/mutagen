@@ -160,6 +160,8 @@ func monitorPrefix(state sessionpkg.SessionState) string {
 		return "**"
 	case sessionpkg.SynchronizationStatusScanning:
 		return "--"
+	case sessionpkg.SynchronizationStatusWaitingForRescan:
+		return ".."
 	case sessionpkg.SynchronizationStatusReconciling:
 		return "~~"
 	case sessionpkg.SynchronizationStatusStaging:
