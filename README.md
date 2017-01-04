@@ -1,6 +1,6 @@
 # Mutagen
 
-Mutagen is a cross-platform, continuous, bi-directional file synchronization
+Mutagen is a cross-platform, continuous, bidirectional file synchronization
 utility designed to be simple, robust, and performant. It can operate locally or
 over SSH.
 
