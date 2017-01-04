@@ -1,0 +1,43 @@
+# Set the language.
+language: go
+
+# Set test platforms.
+os:
+  - osx
+  - linux
+
+# Set Go versions.  We have to do this because Travis CI defaults to an older Go
+# version and because we want broader test coverage.
+go:
+  - 1.7.4
+  - tip
+
+# Allow failure on Go tip, we just want to be able to track behavior there.
+matrix:
+  allow_failures:
+    - go: tip
+
+# Install third-party dependencies.
+before_install:
+  - git submodule init
+  - git submodule update
+
+# Run tests.
+# TODO: Figure out how to run the go test command with a pattern like "./..."
+# without it descending into vendored packages, that way we don't need to
+# manually specify packages.
+script:
+  - go version
+  - go test -v -race -cover github.com/havoc-io/mutagen/sync
+  - go run scripts/build.go --mode
+
+# TODO: Once the go test command supports coverage profiles spanning multiple
+# packages, use goveralls to upload a coverage report to coveralls.io. The
+# relevant issue is here: https://github.com/golang/go/issues/6909.
+
+# TODO: Add upload of build artifacts from macOS builders on tagged releases.
+
+# Send notifications.
+notifications:
+  email:
+    - jacob@havoc.io
