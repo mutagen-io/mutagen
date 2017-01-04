@@ -22,6 +22,11 @@ before_install:
   - git submodule init
   - git submodule update
 
+# Disable the default install step, which will try to do "go get -t -v ./..."
+# only to find that it doesn't work for vendored dependencies.
+install:
+  - echo "Skipping the default go get..."
+
 # Run tests.
 # TODO: Figure out how to run the go test command with a pattern like "./..."
 # without it descending into vendored packages, that way we don't need to
