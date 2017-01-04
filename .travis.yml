@@ -34,7 +34,8 @@ install:
 script:
   - go version
   - go test -v -race -cover github.com/havoc-io/mutagen/sync
-  - go run scripts/build.go --mode
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing; fi
 
 # TODO: Once the go test command supports coverage profiles spanning multiple
 # packages, use goveralls to upload a coverage report to coveralls.io. The
