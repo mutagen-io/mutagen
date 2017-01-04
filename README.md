@@ -14,7 +14,8 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 ## Usage
 
-For usage information, please see the [documentation site](http://mutagen.io).
+For usage information, please see the
+[documentation site](https://havoc-io.github.io/mutagen).
 
 
 ## FAQs
@@ -68,9 +69,20 @@ getting.
   design, since Mutagen's raison d'être is remote code editing and mirroring.
   Nothing in the current Mutagen design precludes adding permission propagation
   in the future.
-- Mutagen attempts to handle quirks by default, e.g. dealing with HFS's
-  pseudo-NFD Unicode normalization, systems that don't support executability
-  bits, or file names that might create NTFS alternate data streams.
+- Mutagen attempts to handle quirks by default, e.g. dealing with
+  case-(in)sensitivity, HFS's pseudo-NFD Unicode normalization, systems that
+  don't support executability bits, or file names that might create NTFS
+  alternate data streams.
+
+You might have surmised that Mutagen's closest cousin is the
+[Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
+This tool has existed for ages, and while it is *very* good at what it does, it
+didn't quite fit my needs. In particular, it has a *lot* of knobs to turn, puts
+a lot of focus on transferring permissions (which can cause even more headache),
+and requires installation on both ends of the connection. I wanted something
+simpler, a bit more performant, and just a bit more modern (the fact that Unison
+is writen in rather terse OCaml also makes it a bit difficult to extend or
+support on more obscure platforms and architectures).
 
 
 ## Building
