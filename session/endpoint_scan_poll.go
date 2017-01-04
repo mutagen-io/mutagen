@@ -1,4 +1,4 @@
-// +build !windows,!darwin darwin,!cgo
+// +build !darwin darwin,!cgo
 
 package session
 
