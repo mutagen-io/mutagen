@@ -1,7 +1,8 @@
 # Mutagen
 
 Mutagen is a cross-platform, continuous, bi-directional file synchronization
-utility designed to be simple, robust, and performant.
+utility designed to be simple, robust, and performant. It can operate locally or
+over SSH.
 
 **Warning:** Mutagen is a very powerful tool that is still in early beta. It has
 [known issues](https://github.com/havoc-io/mutagen/issues) and will almost
