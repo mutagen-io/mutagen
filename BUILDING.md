@@ -5,10 +5,16 @@ for remote platforms. In general, users should download the release builds from
 the [releases page](https://github.com/havoc-io/mutagen/releases/latest).
 
 Mutagen can, however, be built locally for testing and development. Mutagen
-needs to be checked out into the `$GOROOT` to build, which you can do with
+needs to be checked out into your `$GOPATH` to build, which you can do with
 `go get` (or a Git checkout):
 
     go get -d github.com/havoc-io/mutagen
+
+Mutagen uses Git submodules for vendoring, so if doing a Git checkout, you'll
+want to run the following inside the Mutagen source tree:
+
+    git submodule init
+    git submodule update
 
 To build a Mutagen release, use the build script:
 
@@ -26,7 +32,7 @@ your local platform only, do:
     go run scripts/build.go
 
 To build for your local platform and an assortment of common test platforms
-(including macOS without CGO support), do:
+(including macOS, potentially without CGO support), do:
 
     go run scripts/build.go --mode=testing
 

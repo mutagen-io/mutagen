@@ -28,12 +28,12 @@ open an issue.
   possible to unignore a child path of a directory that has been matched by a
   previous ignore, because the filesystem scanner will not even descend into
   ignored directories. Also, all ignore paths are treated as relative to the
-  synchronization root, they are not evaulated within each directory. If you
+  synchronization root - they are not evaulated within each directory. If you
   want to evaluate an ignore within each directory, prefix it with a doublestar,
-  e.g. `mutagen create --ignore="**/.git" ...` will ignore any directories named
-  ".git". Ignored paths will not be deleted by Mutagen if their parents are
-  deleted on the remote side - you'll have to manually delete them. This is by
-  design.
+  e.g. `mutagen create --ignore="**/.git" ...` will ignore any paths named
+  ".git" at any level in a directory hierarchy. Ignored paths will not be
+  deleted by Mutagen if their parents are deleted on the remote side - you'll
+  have to manually delete them. This is by design.
 - **Does it support symlinks?** Only for synchronization roots and even then
   with some caveats. If a symlink is used as a synchronization root, it will
   work (e.g. a symlink to a directory), but if the root is replaced or removed
@@ -93,7 +93,7 @@ open an issue.
 
 ## Design
 
-- **Why do you only support OpenSSH? Why not use the Git SSH library?** OpenSSH
+- **Why do you only support OpenSSH? Why not use the Go SSH library?** OpenSSH
   is really the defacto SSH implementation - everything aims to be compatible
   with it. By relying on it, we get a robust, well-tested transport. It is also
   one of the only SSH clients that allows for passwords to be provided securely

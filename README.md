@@ -81,7 +81,7 @@ didn't quite fit my needs. In particular, it has a *lot* of knobs to turn, puts
 a lot of focus on transferring permissions (which can cause even more headache),
 and requires installation on both ends of the connection. I wanted something
 simpler, a bit more performant, and just a bit more modern (the fact that Unison
-is writen in rather terse OCaml also makes it a bit difficult to extend or
+is written in rather terse OCaml also makes it a bit difficult to extend or
 support on more obscure platforms and architectures).
 
 
