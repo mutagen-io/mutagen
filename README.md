@@ -10,7 +10,7 @@ mission-critical systems. Use on *any* system is at your own risk (please see
 the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 
-# Status
+## Status
 
 | Windows                           | OS X/Linux                             |
 | :-------------------------------: | :------------------------------------: |
