@@ -9,21 +9,6 @@ import (
 	"github.com/havoc-io/mutagen/sync"
 )
 
-// byName provides the sort interface for StableEntryContent, sorting by name.
-type byName []*StableEntryContent
-
-func (n byName) Len() int {
-	return len(n)
-}
-
-func (n byName) Swap(i, j int) {
-	n[i], n[j] = n[j], n[i]
-}
-
-func (n byName) Less(i, j int) bool {
-	return n[i].Name < n[j].Name
-}
-
 func stableCopy(entry *sync.Entry) *StableEntry {
 	// If the entry is nil, then the copy is nil.
 	if entry == nil {
@@ -46,7 +31,9 @@ func stableCopy(entry *sync.Entry) *StableEntry {
 	}
 
 	// Sort contents by name.
-	sort.Sort(byName(result.Contents))
+	sort.Slice(result.Contents, func(i, j int) bool {
+		return result.Contents[i].Name < result.Contents[j].Name
+	})
 
 	// Done.
 	return result
