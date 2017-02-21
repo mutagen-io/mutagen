@@ -17,7 +17,7 @@ init:
 # Disable AppVeyor's default Visual Studio build system.
 build: off
 
-# Install third-party dependencies.
+# Fetch vendored third-party dependencies.
 before_test:
   - git submodule init
   - git submodule update

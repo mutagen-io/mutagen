@@ -18,7 +18,7 @@ matrix:
   allow_failures:
     - go: tip
 
-# Install third-party dependencies.
+# Fetch vendored third-party dependencies.
 before_install:
   - git submodule init
   - git submodule update
