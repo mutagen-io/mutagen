@@ -1,3 +1,5 @@
+// +build go1.8
+
 package mutagen
 
 import (
@@ -5,12 +7,6 @@ import (
 	"fmt"
 	"io"
 )
-
-// TODO: When Go 1.8 is released, add a build constraint requiring it to this
-// file. In addition to features we'll use in 1.8, there's also an important fix
-// to the compiler in Go 1.7.3 (https://github.com/golang/go/issues/17318) that
-// we require for the rsync package. Unfortunately build constraints aren't
-// available for minor releases.
 
 const (
 	// VersionMajor represents the current major version of Mutagen.
