@@ -29,25 +29,20 @@ func unameSIsWindowsPosix(unameS string) bool {
 }
 
 var unameMToGOARCH = map[string]string{
-	"i386":    "386",
-	"i486":    "386",
-	"i586":    "386",
-	"i686":    "386",
-	"x86_64":  "amd64",
-	"amd64":   "amd64",
-	"armv5l":  "arm",
-	"armv6l":  "arm",
-	"armv7l":  "arm",
-	"armv8l":  "arm64",
-	"aarch64": "arm64",
-	// TODO: Add support for 32-bit MIPS architectures (both little-endian and
-	// big-endian) once the ports are released with Go 1.8 and we add the
-	// corresponding agent builds.
-	"mips64":  "mips64",
-	// TODO: Verify that mips64el is the correct Linux uname -m output for
-	// little-endian MIPS64. Note that there is a difference between "el" and
-	// "le", and that Linux returns "ppc64le" for 64-bit little-endian PowerPC
-	// machines, so it's a weird inconsistency.
+	"i386":     "386",
+	"i486":     "386",
+	"i586":     "386",
+	"i686":     "386",
+	"x86_64":   "amd64",
+	"amd64":    "amd64",
+	"armv5l":   "arm",
+	"armv6l":   "arm",
+	"armv7l":   "arm",
+	"armv8l":   "arm64",
+	"aarch64":  "arm64",
+	"mips":     "mips",
+	"mipsel":   "mipsle",
+	"mips64":   "mips64",
 	"mips64el": "mips64le",
 	"ppc64":    "ppc64",
 	"ppc64le":  "ppc64le",

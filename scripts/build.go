@@ -163,8 +163,12 @@ var targets = []Target{
 	{"linux", "arm64"},
 	{"linux", "ppc64"},
 	{"linux", "ppc64le"},
+	{"linux", "mips"},
+	{"linux", "mipsle"},
 	{"linux", "mips64"},
 	{"linux", "mips64le"},
+	// TODO: This combination is valid but not listed on the "Installing Go from
+	// source" page. Perhaps we should open a pull request to change that?
 	{"linux", "s390x"},
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
@@ -185,8 +189,6 @@ var targets = []Target{
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
-	// TODO: Add builds for 32-bit MIPS architectures (both little-endian and
-	// big-endian) once the ports are released with Go 1.8.
 }
 
 // TODO: Figure out if we should set this on a per-machine basis. This value is
