@@ -689,6 +689,11 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
 		}
 
+		// TODO: We could save ourselves a snapshot cycle by applying
+		// alphaChanges and betaChanges to alphaExpected and betaExpected,
+		// respectively. We wouldn't necessarily need to ensure validity (since
+		// they are only used as rsync bases), but it might not be a bad idea.
+
 		// Validate the new ancestor before saving it to ensure that our
 		// reconciliation logic doesn't have any flaws.
 		if err := ancestor.EnsureValid(); err != nil {
