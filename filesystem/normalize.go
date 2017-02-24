@@ -38,15 +38,11 @@ func Normalize(path string) (string, error) {
 		return "", errors.Wrap(err, "unable to perform tilde expansion")
 	}
 
-	// Convert to an absolute path.
+	// Convert to an absolute path. This will also invoke filepath.Clean.
 	path, err = filepath.Abs(path)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute absolute path")
 	}
-
-	// Clean the path.
-	// TODO: In Go 1.8, filepath.Abs will call clean, so remove this.
-	path = filepath.Clean(path)
 
 	// Success.
 	return path, nil

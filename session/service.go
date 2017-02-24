@@ -151,22 +151,6 @@ func (s *Service) create(stream rpc.HandlerStream) error {
 	return nil
 }
 
-// byCreationTime implements the sort interface for SessionState, sorting
-// sessions by creation time.
-type byCreationTime []SessionState
-
-func (s byCreationTime) Len() int {
-	return len(s)
-}
-
-func (s byCreationTime) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s byCreationTime) Less(i, j int) bool {
-	return timestamp.Less(s[i].Session.CreationTime, s[j].Session.CreationTime)
-}
-
 func (s *Service) list(stream rpc.HandlerStream) error {
 	// Receive the request.
 	var request ListRequest
@@ -214,7 +198,12 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		}
 
 		// Sort sessions by creation time.
-		sort.Sort(byCreationTime(sessions))
+		sort.Slice(sessions, func(i, j int) bool {
+			return timestamp.Less(
+				sessions[i].Session.CreationTime,
+				sessions[j].Session.CreationTime,
+			)
+		})
 
 		// Send this response.
 		if err := stream.Send(ListResponse{Sessions: sessions}); err != nil {
