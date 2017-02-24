@@ -280,7 +280,7 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider S
 	}
 
 	// Rename the staged file.
-	if err := os.Rename(stagedPath, fullPath); err != nil {
+	if err := filesystem.RenameFileAtomic(stagedPath, fullPath); err != nil {
 		return errors.Wrap(err, "unable to relocate staged file")
 	}
 
@@ -299,7 +299,7 @@ func createFile(root, path string, target *Entry, provider StagingProvider) (*En
 	}
 
 	// Rename the staged file.
-	if err := os.Rename(stagedPath, fullPath); err != nil {
+	if err := filesystem.RenameFileAtomic(stagedPath, fullPath); err != nil {
 		return nil, errors.Wrap(err, "unable to relocate staged file")
 	}
 
