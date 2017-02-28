@@ -97,9 +97,11 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to rename temporary file")
 	}
 
-	// The file is in place. Remove the source file and return. We don't check
-	// for errors on this removal since there's not much point in trying to do
+	// The file is in place, so remove the source file. We don't check for
+	// errors on this removal since there's not much point in trying to do
 	// anything about them.
 	os.Remove(oldPath)
+
+	// Success.
 	return nil
 }
