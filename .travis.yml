@@ -67,8 +67,10 @@ deploy:
     - build/mutagen_linux_amd64.tar.gz
     - build/mutagen_linux_arm.tar.gz
     - build/mutagen_linux_arm64.tar.gz
+    - build/mutagen_linux_mips.tar.gz
     - build/mutagen_linux_mips64.tar.gz
     - build/mutagen_linux_mips64le.tar.gz
+    - build/mutagen_linux_mipsle.tar.gz
     - build/mutagen_linux_ppc64.tar.gz
     - build/mutagen_linux_ppc64le.tar.gz
     - build/mutagen_linux_s390x.tar.gz
