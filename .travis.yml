@@ -84,7 +84,7 @@ deploy:
   on:
     repo: havoc-io/mutagen
     condition: $TRAVIS_OS_NAME = osx
-    condition: $TRAVIS_GO_VERSION =~ ^1\.8\.[0-9]+$
+    condition: $TRAVIS_GO_VERSION =~ ^1\.8(\.[0-9]+)?$
     tags: true
 
 # Send notifications.
