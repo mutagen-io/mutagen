@@ -43,3 +43,6 @@
 [submodule "vendor/github.com/shibukawa/extstat"]
 	path = vendor/github.com/shibukawa/extstat
 	url = https://github.com/shibukawa/extstat.git
+[submodule "vendor/golang.org/x/sys"]
+	path = vendor/golang.org/x/sys
+	url = https://github.com/golang/sys.git
