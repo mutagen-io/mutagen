@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-type testCase struct {
+type parseTestCase struct {
 	raw      string
 	fail     bool
 	expected *URL
 }
 
-func (c *testCase) run(t *testing.T) {
+func (c *parseTestCase) run(t *testing.T) {
 	// Attempt to parse.
 	url, err := Parse(c.raw)
 	if err != nil {
@@ -49,7 +49,7 @@ func (c *testCase) run(t *testing.T) {
 }
 
 func TestParseEmptyInvalid(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "",
 		fail: true,
 		expected: &URL{
@@ -64,7 +64,7 @@ func TestParseEmptyInvalid(t *testing.T) {
 }
 
 func TestParseEmptyHostnameAndPathInvalid(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  ":",
 		fail: true,
 		expected: &URL{
@@ -79,7 +79,7 @@ func TestParseEmptyHostnameAndPathInvalid(t *testing.T) {
 }
 
 func TestParseEmptyHostnameInvalid(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  ":path",
 		fail: true,
 		expected: &URL{
@@ -94,7 +94,7 @@ func TestParseEmptyHostnameInvalid(t *testing.T) {
 }
 
 func TestParseUsernameEmptyHostnameInvalid(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@:path",
 		fail: true,
 		expected: &URL{
@@ -109,7 +109,7 @@ func TestParseUsernameEmptyHostnameInvalid(t *testing.T) {
 }
 
 func TestParsePath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "/this/is/a:path",
 		fail: false,
 		expected: &URL{
@@ -124,7 +124,7 @@ func TestParsePath(t *testing.T) {
 }
 
 func TestParseUsernameHostnameIsLocal(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host",
 		fail: false,
 		expected: &URL{
@@ -139,7 +139,7 @@ func TestParseUsernameHostnameIsLocal(t *testing.T) {
 }
 
 func TestParseHostnameEmptyPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "host:",
 		fail: false,
 		expected: &URL{
@@ -154,7 +154,7 @@ func TestParseHostnameEmptyPath(t *testing.T) {
 }
 
 func TestParseHostnamePath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "host:path",
 		fail: false,
 		expected: &URL{
@@ -169,7 +169,7 @@ func TestParseHostnamePath(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:path",
 		fail: false,
 		expected: &URL{
@@ -184,7 +184,7 @@ func TestParseUsernameHostnamePath(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePathWithColonAtStart(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host::path",
 		fail: false,
 		expected: &URL{
@@ -199,7 +199,7 @@ func TestParseUsernameHostnamePathWithColonAtStart(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePathWithColonInMiddle(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:pa:th",
 		fail: false,
 		expected: &URL{
@@ -214,7 +214,7 @@ func TestParseUsernameHostnamePathWithColonInMiddle(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePathWithColonAtEnd(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:path:",
 		fail: false,
 		expected: &URL{
@@ -229,7 +229,7 @@ func TestParseUsernameHostnamePathWithColonAtEnd(t *testing.T) {
 }
 
 func TestParseUsernameHostnameWithAtPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@ho@st:path",
 		fail: false,
 		expected: &URL{
@@ -244,7 +244,7 @@ func TestParseUsernameHostnameWithAtPath(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePathWithAt(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:pa@th",
 		fail: false,
 		expected: &URL{
@@ -259,7 +259,7 @@ func TestParseUsernameHostnamePathWithAt(t *testing.T) {
 }
 
 func TestParseUsernameHostnamePortPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:65535:path",
 		fail: false,
 		expected: &URL{
@@ -274,7 +274,7 @@ func TestParseUsernameHostnamePortPath(t *testing.T) {
 }
 
 func TestParseUsernameHostnameZeroPortPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:0:path",
 		fail: false,
 		expected: &URL{
@@ -289,7 +289,7 @@ func TestParseUsernameHostnameZeroPortPath(t *testing.T) {
 }
 
 func TestParseUsernameHostnameDoubleZeroPortPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:00:path",
 		fail: false,
 		expected: &URL{
@@ -304,7 +304,7 @@ func TestParseUsernameHostnameDoubleZeroPortPath(t *testing.T) {
 }
 
 func TestParseUsernameHostnameNumericPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:65536:path",
 		fail: false,
 		expected: &URL{
@@ -319,7 +319,7 @@ func TestParseUsernameHostnameNumericPath(t *testing.T) {
 }
 
 func TestParseUsernameHostnameHexNumericPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "user@host:aaa:path",
 		fail: false,
 		expected: &URL{
@@ -334,7 +334,7 @@ func TestParseUsernameHostnameHexNumericPath(t *testing.T) {
 }
 
 func TestParseUnicodeUsernameHostnamePath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "üsér@høst:пат",
 		fail: false,
 		expected: &URL{
@@ -349,7 +349,7 @@ func TestParseUnicodeUsernameHostnamePath(t *testing.T) {
 }
 
 func TestParseUnicodeUsernameHostnamePortPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "üsér@høst:23:пат",
 		fail: false,
 		expected: &URL{

@@ -5,7 +5,7 @@ import (
 )
 
 func TestParseWindowsPath(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  `C:\something`,
 		fail: false,
 		expected: &URL{
@@ -20,7 +20,7 @@ func TestParseWindowsPath(t *testing.T) {
 }
 
 func TestParseWindowsPathForward(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  "C:/something",
 		fail: false,
 		expected: &URL{
@@ -35,7 +35,7 @@ func TestParseWindowsPathForward(t *testing.T) {
 }
 
 func TestParseWindowsPathSmall(t *testing.T) {
-	test := testCase{
+	test := parseTestCase{
 		raw:  `c:\something`,
 		fail: false,
 		expected: &URL{
