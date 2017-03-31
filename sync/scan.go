@@ -197,9 +197,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 	}
 
 	// Create the snapshot. We use os.Stat, as opposed to os.Lstat, because we
-	// DO want to follow symbolic links at the root. If the root disappears
-	// between stat time and scan time, we will see an error, but it's fine
-	// because we'll just recover on the next scan.
+	// DO want to follow symbolic links at the root.
 	if info, err := os.Stat(root); err != nil {
 		if os.IsNotExist(err) {
 			return nil, newCache, nil

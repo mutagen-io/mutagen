@@ -30,7 +30,8 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		betaContents := beta.GetContents()
 
 		// See if the ancestor also agrees. If it disagrees, record the change
-		// for this node and ignore ancestor contents.
+		// for this node and ignore ancestor contents. We ignore the contents so
+		// that we don't add deletion changes for old subnodes.
 		if !ancestor.equalShallow(alpha) {
 			r.ancestorChanges = append(
 				r.ancestorChanges,
