@@ -2,6 +2,6 @@
 
 package filesystem
 
-func normalizeDirectoryNames(_ string, names []string) error {
+func normalizeDirectoryNames(_ string, _ []string) error {
 	return nil
 }
