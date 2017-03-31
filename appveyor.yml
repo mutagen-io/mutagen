@@ -23,17 +23,21 @@ before_test:
   - git submodule update
 
 # Run tests.
-# TODO: Figure out how to run the go test command with a pattern like "./..."
-# without it descending into vendored packages, that way we don't need to
-# manually specify packages.
+# TODO: Go 1.9 will include a fix so that "..." patterns don't descend into
+# vendor directories (https://go-review.googlesource.com/c/38745). Once 1.9 is
+# out, we can consolidate these package-specific test commands into:
+#   go test -v %RACEFLAG% -cover ./...
 test_script:
   - go version
   - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/sync
+  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/url
   - go run scripts/build.go --mode=testing
 
-# TODO: Once the go test command supports coverage profiles spanning multiple
-# packages, use goveralls to upload a coverage report to coveralls.io. The
-# relevant issue is here: https://github.com/golang/go/issues/6909.
+# TODO: Once Go 1.9 lands, we'll be able to consolidate our tests and therefore
+# generate a single cover profile. The current hacks to consolidate cover
+# profiles are a pain (https://github.com/golang/go/issues/6909) and don't work
+# very well. Once we have a single cover profile, start uploading it to
+# coveralls.io.
 
 # Send notifications.
 notifications:
