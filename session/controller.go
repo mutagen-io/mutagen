@@ -70,7 +70,7 @@ func newSession(
 
 	// Verify that the ignores are valid.
 	for _, ignore := range ignores {
-		if !sync.ValidIgnore(ignore) {
+		if !sync.ValidIgnorePattern(ignore) {
 			return nil, errors.Errorf("invalid ignore specified: %s", ignore)
 		}
 	}

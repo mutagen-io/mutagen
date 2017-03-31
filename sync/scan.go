@@ -22,28 +22,9 @@ type scanner struct {
 	root     string
 	hasher   hash.Hash
 	cache    *Cache
-	ignorers []ignorer
+	ignorer  *ignorer
 	newCache *Cache
 	buffer   []byte
-}
-
-func (s *scanner) ignored(path string) bool {
-	// Run through the ignorers, keeping track of the ignored state as we reach
-	// more specific ignore rules.
-	ignored := false
-	for _, rule := range s.ignorers {
-		// If there's no match, then this rule has no bearing on this path.
-		if !rule.matches(path) {
-			continue
-		}
-
-		// If we have a match, then change the ignored state based on whether or
-		// not the pattern is negated.
-		ignored = !rule.negated
-	}
-
-	// Done.
-	return ignored
 }
 
 func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
@@ -122,7 +103,7 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		contentPath := pathpkg.Join(path, name)
 
 		// If this path is ignored, then skip it.
-		if s.ignored(contentPath) {
+		if s.ignorer.ignored(contentPath) {
 			continue
 		}
 
@@ -173,14 +154,10 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		cache = &Cache{}
 	}
 
-	// Parse ignores.
-	var ignorers []ignorer
-	for _, pattern := range ignores {
-		rule, err := newIgnorer(pattern)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to parse ignore pattern")
-		}
-		ignorers = append(ignorers, rule)
+	// Create the ignorer.
+	ignorer, err := newIgnorer(ignores)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
 	// Create a new cache to populate.
@@ -191,7 +168,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		root:     root,
 		hasher:   hasher,
 		cache:    cache,
-		ignorers: ignorers,
+		ignorer:  ignorer,
 		newCache: newCache,
 		buffer:   make([]byte, scannerCopyBufferSize),
 	}
