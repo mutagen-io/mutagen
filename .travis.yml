@@ -36,7 +36,6 @@ install:
 script:
   - go version
   - go test -v -race -cover github.com/havoc-io/mutagen/sync
-  - go test -v -race -cover github.com/havoc-io/mutagen/timestamp
   - go test -v -race -cover github.com/havoc-io/mutagen/url
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi

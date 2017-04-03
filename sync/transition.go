@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/timestamp"
 )
 
 func ensureRouteWithProperCase(root, path string, skipLast bool) error {
@@ -76,11 +75,8 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 		return errors.Wrap(err, "unable to grab file statistics")
 	}
 
-	// Convert the modification time to Protocol Buffers format.
-	modificationTime, err := timestamp.Convert(info.ModTime())
-	if err != nil {
-		return errors.Wrap(err, "unable to convert modification timestamp")
-	}
+	// Grab the modification time.
+	modificationTime := info.ModTime()
 
 	// If stat information doesn't match, don't bother re-hashing, just abort.
 	// Note that we don't really have to check executability here (and we
@@ -89,7 +85,8 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 	// that is accomplished as part of the mode check. This is why we don't
 	// restrict the mode comparison to the type bits.
 	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
-		timestamp.Equal(cacheEntry.ModificationTime, modificationTime) &&
+		cacheEntry.ModificationTime != nil &&
+		modificationTime.Equal(*cacheEntry.ModificationTime) &&
 		cacheEntry.Size_ == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, target.Digest)
 	if !match {

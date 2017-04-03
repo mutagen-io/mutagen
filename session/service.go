@@ -9,7 +9,6 @@ import (
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/ssh"
 	"github.com/havoc-io/mutagen/state"
-	"github.com/havoc-io/mutagen/timestamp"
 )
 
 const (
@@ -197,12 +196,21 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			return err
 		}
 
-		// Sort sessions by creation time.
+		// Sort sessions by creation time. All sessions should have non-nil
+		// timestamps, but in case they don't, we treat nil timestamps as less
+		// than any other timestamps.
 		sort.Slice(sessions, func(i, j int) bool {
-			return timestamp.Less(
-				sessions[i].Session.CreationTime,
-				sessions[j].Session.CreationTime,
-			)
+			first := sessions[i].Session.CreationTime
+			second := sessions[j].Session.CreationTime
+			if first == nil && second == nil {
+				return false
+			} else if first == nil {
+				return true
+			} else if second == nil {
+				return false
+			} else {
+				return first.Before(*second)
+			}
 		})
 
 		// Send this response.

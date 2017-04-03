@@ -19,7 +19,6 @@ import (
 	"github.com/havoc-io/mutagen/state"
 	"github.com/havoc-io/mutagen/stream"
 	"github.com/havoc-io/mutagen/sync"
-	"github.com/havoc-io/mutagen/timestamp"
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -87,16 +86,11 @@ func newSession(
 	}
 
 	// Create the session and archive.
-	creationTime, err := timestamp.Convert(time.Now())
-	if err != nil {
-		alphaConnection.Close()
-		betaConnection.Close()
-		return nil, errors.Wrap(err, "unable to compute session creation time")
-	}
+	creationTime := time.Now()
 	session := &Session{
 		Identifier:           uuid.NewV4().String(),
 		Version:              Version_Version1,
-		CreationTime:         creationTime,
+		CreationTime:         &creationTime,
 		CreatingVersionMajor: mutagen.VersionMajor,
 		CreatingVersionMinor: mutagen.VersionMinor,
 		CreatingVersionPatch: mutagen.VersionPatch,

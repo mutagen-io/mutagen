@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/timestamp"
 )
 
 // TODO: Figure out if we should set this on a per-machine basis. This value is
@@ -30,10 +29,7 @@ type scanner struct {
 func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
 	mode := info.Mode()
-	modificationTime, err := timestamp.Convert(info.ModTime())
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to convert modification timestamp")
-	}
+	modificationTime := info.ModTime()
 	size := uint64(info.Size())
 
 	// Compute executability.
@@ -48,7 +44,8 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// solution that Git uses to solve its index race condition.
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
-		timestamp.Equal(cached.ModificationTime, modificationTime) &&
+		cached.ModificationTime != nil &&
+		modificationTime.Equal(*cached.ModificationTime) &&
 		cached.Size_ == size
 	if match {
 		digest = cached.Digest
@@ -80,7 +77,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Add a cache entry.
 	s.newCache.Entries[path] = &CacheEntry{
 		Mode:             uint32(mode),
-		ModificationTime: modificationTime,
+		ModificationTime: &modificationTime,
 		Size_:            size,
 		Digest:           digest,
 	}
