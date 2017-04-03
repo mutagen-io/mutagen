@@ -160,8 +160,9 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		return nil, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
-	// Create a new cache to populate.
-	newCache := &Cache{make(map[string]*CacheEntry)}
+	// Create a new cache to populate. Estimate its capacity based on the
+	// existing cache length.
+	newCache := &Cache{make(map[string]*CacheEntry, len(cache.GetEntries()))}
 
 	// Create a scanner.
 	s := &scanner{
