@@ -1,7 +1,7 @@
 package main
 
 // This script generates Go code from Protocol Buffers specifications. It uses
-// the standard Go code generator (https://github.com/golang/protobuf). The
+// the "gogo" Go code generator (https://github.com/gogo/protobuf). The
 // generated Go code depends only on pure Go libraries, so it doesn't need the
 // standard C++-based Protocol Buffers installation available to compile. Thus,
 // since we check-in the generated code, users can build transparently without
@@ -10,14 +10,16 @@ package main
 //
 // If you do want to run this script (say after modifying a .proto file), you'll
 // need Protocol Buffers 3+ installed (the C++ version which includes protoc -
-// https://github.com/google/protobuf) and the "protoc-gen-go" generator binary
-// installed (see the Go code generator link for installation instructions). You
-// will need to ensure that you have a version of the code generator installed
-// that corresponds to the vendored runtime package, otherwise the generated
-// code may be incompatible. It's probably best to just compile this executable
-// straight from the vendor directory, but unfortunately this script can't do
-// that and put the resultant binary in your path automatically (and you
-// probably wouldn't want it to).
+// https://github.com/google/protobuf) and the "protoc-gen-gogo" generator
+// binary installed (see the "gogo" Go code generator link for installation
+// instructions). You will need to ensure that you have a version of the code
+// generator installed that corresponds to the vendored runtime package,
+// otherwise the generated code may be incompatible.
+//
+// TODO: Can this script compile the protoc-gen-gogo binary directly from the
+// vendor directory (into a temporary directory) and add it to the path of the
+// protoc executable? That would remove the need for manually keeping the
+// generator installation in sync with the runtime that's vendored.
 
 import (
 	"fmt"
@@ -62,7 +64,7 @@ func main() {
 		// Print directory information.
 		fmt.Println("Processing", subdirectory)
 
-		// Execute the Protocol Buffers compiler using the gofast generator.
+		// Execute the Protocol Buffers compiler using the gogo generator.
 		// HACK: We specify include paths so that we can reference definitions
 		// between packages, but this means that we also end up needing to
 		// specify -I., because for some reason the Protocol Buffers compiler is
@@ -73,7 +75,7 @@ func main() {
 		arguments = append(arguments, "-I.")
 		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		arguments = append(arguments, "--go_out=.")
+		arguments = append(arguments, "--gogo_out=.")
 		arguments = append(arguments, s.files...)
 		protoc := exec.Command("protoc", arguments...)
 		protoc.Dir = subdirectory

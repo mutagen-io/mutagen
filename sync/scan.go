@@ -49,7 +49,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
 		timestamp.Equal(cached.ModificationTime, modificationTime) &&
-		cached.Size == size
+		cached.Size_ == size
 	if match {
 		digest = cached.Digest
 	}
@@ -81,7 +81,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	s.newCache.Entries[path] = &CacheEntry{
 		Mode:             uint32(mode),
 		ModificationTime: modificationTime,
-		Size:             size,
+		Size_:            size,
 		Digest:           digest,
 	}
 
