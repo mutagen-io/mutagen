@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/profile"
 	"github.com/havoc-io/mutagen/sync"
 )
 
@@ -37,14 +38,24 @@ func (p *ignorePatterns) Set(value string) error {
 func main() {
 	// Parse arguments.
 	var ignores ignorePatterns
+	var enableProfile bool
 	flagSet := cmd.NewFlagSet("scan_bench", usage, []int{1})
 	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
+	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
 	path := flagSet.ParseOrDie(os.Args[1:])[0]
 
 	// Print information.
 	fmt.Println("Analyzing", path)
 
-	// Create a snapshot without any cache.
+	// Create a snapshot without any cache. If requested, enable CPU and memory
+	// profiling.
+	var profiler *profile.Profile
+	var err error
+	if enableProfile {
+		if profiler, err = profile.New("scan_cold"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start := time.Now()
 	snapshot, cache, err := sync.Scan(path, sha1.New(), nil, []string(ignores))
 	if err != nil {
@@ -53,9 +64,21 @@ func main() {
 		cmd.Fatal(errors.New("target doesn't exist"))
 	}
 	stop := time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Cold scan took", stop.Sub(start))
 
-	// Create a snapshot with a cache.
+	// Create a snapshot with a cache. If requested, enable CPU and memory
+	// profiling.
+	if enableProfile {
+		if profiler, err = profile.New("scan_warm"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start = time.Now()
 	snapshot, _, err = sync.Scan(path, sha1.New(), cache, []string(ignores))
 	if err != nil {
@@ -64,6 +87,12 @@ func main() {
 		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Warm scan took", stop.Sub(start))
 
 	// Serialize it.
