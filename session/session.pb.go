@@ -20,7 +20,7 @@ package session
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/golang/protobuf/ptypes/timestamp"
+import _ "github.com/gogo/protobuf/types"
 import _ "github.com/gogo/protobuf/gogoproto"
 import sync "github.com/havoc-io/mutagen/sync"
 import url "github.com/havoc-io/mutagen/url"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/profile"

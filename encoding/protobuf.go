@@ -1,7 +1,7 @@
 package encoding
 
 import (
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // TODO: Now that this package no longer aims to support JSON encoding, it might

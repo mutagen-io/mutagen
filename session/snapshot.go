@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"sort"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/sync"
 )

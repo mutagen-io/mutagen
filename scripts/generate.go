@@ -71,11 +71,18 @@ func main() {
 		// too stupid to include this automatically. If you don't believe me,
 		// try removing that argument and the compiler will literally print a
 		// message telling you how "stupid" it is.
+		// HACK: We have to use a special argument to the "gogo" generator to
+		// have it point to the "gogo" timestamp implementation. The default
+		// timestamp.proto file that protoc imports sets go_package to
+		// github.com/golang/protobuf/ptypes/timestamp, so we just override
+		// that to point to the message implementation in the "gogo"
+		// repository).
 		arguments := make([]string, 0, len(s.files)+1)
 		arguments = append(arguments, "-I.")
 		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		arguments = append(arguments, "--gogo_out=.")
+		timestampRedirect := "Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types"
+		arguments = append(arguments, fmt.Sprintf("--gogo_out=%s:.", timestampRedirect))
 		arguments = append(arguments, s.files...)
 		protoc := exec.Command("protoc", arguments...)
 		protoc.Dir = subdirectory

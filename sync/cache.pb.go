@@ -19,7 +19,7 @@ package sync
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/golang/protobuf/ptypes/timestamp"
+import _ "github.com/gogo/protobuf/types"
 import _ "github.com/gogo/protobuf/gogoproto"
 
 import time "time"
