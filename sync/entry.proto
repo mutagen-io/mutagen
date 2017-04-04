@@ -14,6 +14,8 @@ enum EntryKind {
 }
 
 message Entry {
+    option (gogoproto.stable_marshaler) = true;
+
     EntryKind kind = 1;
     bool executable = 2;
     bytes digest = 3;

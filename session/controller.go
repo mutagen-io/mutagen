@@ -772,7 +772,7 @@ func (c *controller) scan(
 	}
 
 	// Marshal the expected snapshot into a stable format.
-	expectedBytes, err := stableMarshal(expected)
+	expectedBytes, err := marshalEntry(expected)
 	if err != nil {
 		// TODO: This seems like it should be a fairly terminal error, but I'm
 		// not sure how to signal that to the run loop.
@@ -846,7 +846,7 @@ func (c *controller) scan(
 	}
 
 	// Unmarshal the snapshot.
-	snapshot, err := stableUnmarshal(snapshotBytes)
+	snapshot, err := unmarshalEntry(snapshotBytes)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
 	}

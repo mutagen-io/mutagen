@@ -210,7 +210,7 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 		e.cache = cache
 
 		// Marshal the snapshot.
-		snapshotBytes, err := stableMarshal(snapshot)
+		snapshotBytes, err := marshalEntry(snapshot)
 		if err != nil {
 			return errors.Wrap(err, "unable to marshal snapshot")
 		}
