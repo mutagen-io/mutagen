@@ -12,7 +12,7 @@ option (gogoproto.sizer_all) = true;
 
 message CacheEntry {
     uint32 mode = 1;
-    google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true];
+    google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
     uint64 size = 3;
     bytes digest = 4;
 }

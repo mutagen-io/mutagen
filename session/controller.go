@@ -86,11 +86,10 @@ func newSession(
 	}
 
 	// Create the session and archive.
-	creationTime := time.Now()
 	session := &Session{
 		Identifier:           uuid.NewV4().String(),
 		Version:              Version_Version1,
-		CreationTime:         &creationTime,
+		CreationTime:         time.Now(),
 		CreatingVersionMajor: mutagen.VersionMajor,
 		CreatingVersionMinor: mutagen.VersionMinor,
 		CreatingVersionPatch: mutagen.VersionPatch,

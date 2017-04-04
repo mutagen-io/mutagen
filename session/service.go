@@ -196,21 +196,11 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			return err
 		}
 
-		// Sort sessions by creation time. All sessions should have non-nil
-		// timestamps, but in case they don't, we treat nil timestamps as less
-		// than any other timestamps.
+		// Sort sessions by creation time.
 		sort.Slice(sessions, func(i, j int) bool {
-			first := sessions[i].Session.CreationTime
-			second := sessions[j].Session.CreationTime
-			if first == nil && second == nil {
-				return false
-			} else if first == nil {
-				return true
-			} else if second == nil {
-				return false
-			} else {
-				return first.Before(*second)
-			}
+			return sessions[i].Session.CreationTime.Before(
+				sessions[j].Session.CreationTime,
+			)
 		})
 
 		// Send this response.

@@ -21,7 +21,7 @@ enum Version {
 message Session {
     string identifier = 1;
     Version version = 2;
-    google.protobuf.Timestamp creationTime = 3 [(gogoproto.stdtime) = true];
+    google.protobuf.Timestamp creationTime = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
     uint32 creatingVersionMajor = 4;
     uint32 creatingVersionMinor = 5;
     uint32 creatingVersionPatch = 6;

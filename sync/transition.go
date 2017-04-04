@@ -85,8 +85,7 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 	// that is accomplished as part of the mode check. This is why we don't
 	// restrict the mode comparison to the type bits.
 	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
-		cacheEntry.ModificationTime != nil &&
-		modificationTime.Equal(*cacheEntry.ModificationTime) &&
+		modificationTime.Equal(cacheEntry.ModificationTime) &&
 		cacheEntry.Size_ == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, target.Digest)
 	if !match {

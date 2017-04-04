@@ -44,8 +44,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// solution that Git uses to solve its index race condition.
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
-		cached.ModificationTime != nil &&
-		modificationTime.Equal(*cached.ModificationTime) &&
+		modificationTime.Equal(cached.ModificationTime) &&
 		cached.Size_ == size
 	if match {
 		digest = cached.Digest
@@ -77,7 +76,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Add a cache entry.
 	s.newCache.Entries[path] = &CacheEntry{
 		Mode:             uint32(mode),
-		ModificationTime: &modificationTime,
+		ModificationTime: modificationTime,
 		Size_:            size,
 		Digest:           digest,
 	}
