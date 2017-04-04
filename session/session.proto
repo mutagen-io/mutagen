@@ -9,6 +9,10 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/havoc-io/mutagen/sync/entry.proto";
 import "github.com/havoc-io/mutagen/url/url.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
 enum Version {
     Unknown = 0;
     Version1 = 1;

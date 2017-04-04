@@ -6,6 +6,10 @@ import "google/protobuf/timestamp.proto";
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
 message CacheEntry {
     uint32 mode = 1;
     google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true];

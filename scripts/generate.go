@@ -34,8 +34,8 @@ import (
 )
 
 var subdirectories = []struct {
-	basename string
-	files    []string
+	path  string
+	files []string
 }{
 	{"session", []string{"session.proto"}},
 	{"sync", []string{"cache.proto", "entry.proto"}},
@@ -59,7 +59,7 @@ func main() {
 	// Process subdirectories.
 	for _, s := range subdirectories {
 		// Compute the subdirectory path.
-		subdirectory := filepath.Join(mutagenSource, s.basename)
+		subdirectory := filepath.Join(mutagenSource, s.path)
 
 		// Print directory information.
 		fmt.Println("Processing", subdirectory)

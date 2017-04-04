@@ -3,19 +3,22 @@
 // DO NOT EDIT!
 
 /*
-Package url is a generated protocol buffer package.
+	Package url is a generated protocol buffer package.
 
-It is generated from these files:
-	url.proto
+	It is generated from these files:
+		url.proto
 
-It has these top-level messages:
-	URL
+	It has these top-level messages:
+		URL
 */
 package url
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import _ "github.com/gogo/protobuf/gogoproto"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -101,20 +104,412 @@ func init() {
 	proto.RegisterType((*URL)(nil), "url.URL")
 	proto.RegisterEnum("url.Protocol", Protocol_name, Protocol_value)
 }
+func (m *URL) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *URL) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Protocol != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintUrl(dAtA, i, uint64(m.Protocol))
+	}
+	if len(m.Username) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintUrl(dAtA, i, uint64(len(m.Username)))
+		i += copy(dAtA[i:], m.Username)
+	}
+	if len(m.Hostname) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintUrl(dAtA, i, uint64(len(m.Hostname)))
+		i += copy(dAtA[i:], m.Hostname)
+	}
+	if m.Port != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintUrl(dAtA, i, uint64(m.Port))
+	}
+	if len(m.Path) > 0 {
+		dAtA[i] = 0x2a
+		i++
+		i = encodeVarintUrl(dAtA, i, uint64(len(m.Path)))
+		i += copy(dAtA[i:], m.Path)
+	}
+	return i, nil
+}
+
+func encodeFixed64Url(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Url(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintUrl(dAtA []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		dAtA[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	dAtA[offset] = uint8(v)
+	return offset + 1
+}
+func (m *URL) Size() (n int) {
+	var l int
+	_ = l
+	if m.Protocol != 0 {
+		n += 1 + sovUrl(uint64(m.Protocol))
+	}
+	l = len(m.Username)
+	if l > 0 {
+		n += 1 + l + sovUrl(uint64(l))
+	}
+	l = len(m.Hostname)
+	if l > 0 {
+		n += 1 + l + sovUrl(uint64(l))
+	}
+	if m.Port != 0 {
+		n += 1 + sovUrl(uint64(m.Port))
+	}
+	l = len(m.Path)
+	if l > 0 {
+		n += 1 + l + sovUrl(uint64(l))
+	}
+	return n
+}
+
+func sovUrl(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozUrl(x uint64) (n int) {
+	return sovUrl(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *URL) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowUrl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: URL: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: URL: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Protocol", wireType)
+			}
+			m.Protocol = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Protocol |= (Protocol(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Username", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthUrl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Username = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Hostname", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthUrl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Hostname = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Port", wireType)
+			}
+			m.Port = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Port |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Path", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthUrl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Path = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipUrl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthUrl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipUrl(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowUrl
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if dAtA[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowUrl
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthUrl
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowUrl
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipUrl(dAtA[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+	}
+	panic("unreachable")
+}
+
+var (
+	ErrInvalidLengthUrl = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowUrl   = fmt.Errorf("proto: integer overflow")
+)
 
 func init() { proto.RegisterFile("url.proto", fileDescriptorUrl) }
 
 var fileDescriptorUrl = []byte{
-	// 166 bytes of a gzipped FileDescriptorProto
+	// 211 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2c, 0x2d, 0xca, 0xd1,
-	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2e, 0x2d, 0xca, 0x51, 0x9a, 0xc0, 0xc8, 0xc5, 0x1c,
-	0x1a, 0xe4, 0x23, 0xa4, 0xc9, 0xc5, 0x01, 0x16, 0x4d, 0xce, 0xcf, 0x91, 0x60, 0x54, 0x60, 0xd4,
-	0xe0, 0x33, 0xe2, 0xd5, 0x03, 0x29, 0x0d, 0x80, 0x0a, 0x06, 0xc1, 0xa5, 0x85, 0xa4, 0xb8, 0x38,
-	0x4a, 0x8b, 0x53, 0x8b, 0xf2, 0x12, 0x73, 0x53, 0x25, 0x98, 0x14, 0x18, 0x35, 0x38, 0x83, 0xe0,
-	0x7c, 0x90, 0x5c, 0x46, 0x7e, 0x71, 0x09, 0x58, 0x8e, 0x19, 0x22, 0x07, 0xe3, 0x0b, 0x09, 0x71,
-	0xb1, 0x14, 0xe4, 0x17, 0x95, 0x48, 0xb0, 0x28, 0x30, 0x6a, 0xf0, 0x06, 0x81, 0xd9, 0x60, 0xb1,
-	0xc4, 0x92, 0x0c, 0x09, 0x56, 0xb0, 0x5a, 0x30, 0x5b, 0x4b, 0x8e, 0x8b, 0x03, 0x66, 0xab, 0x10,
-	0x27, 0x17, 0xab, 0x4f, 0x7e, 0x72, 0x62, 0x8e, 0x00, 0x83, 0x10, 0x3b, 0x17, 0x73, 0x70, 0xb0,
-	0x87, 0x00, 0x63, 0x12, 0x1b, 0xd8, 0x25, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x75, 0xd2,
-	0x4f, 0x12, 0xcb, 0x00, 0x00, 0x00,
+	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2e, 0x2d, 0xca, 0x91, 0xd2, 0x4d, 0xcf, 0x2c, 0xc9,
+	0x28, 0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5, 0x4f, 0xcf, 0x4f, 0xcf, 0xd7, 0x07, 0xcb, 0x25, 0x95,
+	0xa6, 0x81, 0x79, 0x60, 0x0e, 0x98, 0x05, 0xd1, 0xa3, 0x34, 0x81, 0x91, 0x8b, 0x39, 0x34, 0xc8,
+	0x47, 0x48, 0x93, 0x8b, 0x03, 0x2c, 0x90, 0x9c, 0x9f, 0x23, 0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0x67,
+	0xc4, 0xab, 0x07, 0x32, 0x39, 0x00, 0x2a, 0x18, 0x04, 0x97, 0x16, 0x92, 0xe2, 0xe2, 0x28, 0x2d,
+	0x4e, 0x2d, 0xca, 0x4b, 0xcc, 0x4d, 0x95, 0x60, 0x52, 0x60, 0xd4, 0xe0, 0x0c, 0x82, 0xf3, 0x41,
+	0x72, 0x19, 0xf9, 0xc5, 0x25, 0x60, 0x39, 0x66, 0x88, 0x1c, 0x8c, 0x2f, 0x24, 0xc4, 0xc5, 0x52,
+	0x90, 0x5f, 0x54, 0x22, 0xc1, 0xa2, 0xc0, 0xa8, 0xc1, 0x1b, 0x04, 0x66, 0x83, 0xc5, 0x12, 0x4b,
+	0x32, 0x24, 0x58, 0xc1, 0x6a, 0xc1, 0x6c, 0x2d, 0x39, 0x2e, 0x0e, 0x98, 0xad, 0x42, 0x9c, 0x5c,
+	0xac, 0x3e, 0xf9, 0xc9, 0x89, 0x39, 0x02, 0x0c, 0x42, 0xec, 0x5c, 0xcc, 0xc1, 0xc1, 0x1e, 0x02,
+	0x8c, 0x4e, 0x3c, 0x27, 0x1e, 0xc9, 0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0, 0x91, 0x1c, 0x63,
+	0x12, 0x1b, 0xd8, 0x5d, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x7d, 0xc1, 0x9a, 0x05, 0x08,
+	0x01, 0x00, 0x00,
 }
