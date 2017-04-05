@@ -27,7 +27,7 @@ func (m *writeMultiplexer) write(channel uint8, buffer []byte) (int, error) {
 	// TODO: Ideally we'd chunk the buffer and write each block individually,
 	// but I don't think we're likely to exceed 4 GB writes at the moment, so
 	// I'll punt on that.
-	if len(buffer) > maxBlockLength {
+	if uint64(len(buffer)) > maxBlockLength {
 		return 0, errors.New("write size too big for multiplexing")
 	}
 
