@@ -10,18 +10,36 @@ import (
 	"github.com/pkg/errors"
 )
 
+type BlockHash struct {
+	// Index is the 0-based index of the block within the file. Indices
+	// represent increments of block size.
+	Index uint64
+	// Weak is the weak hash for the block.
+	Weak uint32
+	// Strong is the strong hash for the block.
+	Strong [sha1.Size]byte
+}
+
+type Operation struct {
+	// Data encodes raw data for data operations.
+	Data []byte
+	// Start encodes the 0-indexed starting block for block operations.
+	Start uint64
+	// Count encodes the number of blocks to copy in block operations.
+	Count uint64
+}
+
 // OperationTransmitter transmits an operation. Operation data buffers are
-// re-used between calls to the transmitter (though other fields and the
-// Operation itself are not re-used), so the transmitter should not return until
-// it has either transmitted the data buffer (if any) or copied it for later
-// transmission.
-type OperationTransmitter func(*Operation) error
+// re-used between calls to the transmitter, so the transmitter should not
+// return until it has either transmitted the data buffer (if any) or copied it
+// for later transmission.
+type OperationTransmitter func(Operation) error
 
 // OperationReceiver retrieves and returns the next operation in an operation
 // stream. When there are no more operations, it should return an io.EOF error.
-// Operations are processed between calls, so the receiver may re-used any and
-// all parts of an operation message on subsequent calls.
-type OperationReceiver func() (*Operation, error)
+// Operations are fully processed between calls, so the receiver may re-use data
+// buffers between operations.
+type OperationReceiver func() (Operation, error)
 
 const (
 	// defaultBlockSize is the default block size.
@@ -30,21 +48,13 @@ const (
 	defaultMaxOpSize = 5 * defaultBlockSize
 )
 
-const (
-	// m is the weak hash modulus. I think they now recommend that it be the
-	// largest prime less than 2^16, but this value is fine as well.
-	m = 1 << 16
-)
-
 // Engine provides rsync functionality without any notion of transport.
 type Engine struct {
-	// blockSize is the rsync block size.
+	// blockSize is the block size to use.
 	blockSize uint64
 	// maxOpSize is the maximum data buffer size that will be sent in an
 	// operation.
 	maxOpSize uint64
-	// hasher is the hashing algorithm that will be used for strong hashes.
-	hasher hash.Hash
 	// buffer is a re-usable buffer that will be used for reading data and
 	// setting up operations. It needs to have blockSize bytes for computing
 	// signatures, blockSize + maxOpSize bytes for computing deltas, and
@@ -53,21 +63,26 @@ type Engine struct {
 }
 
 // newEngine creates a new rsync engine with the specified parameters.
-func newEngine(blockSize uint64, maxOpSize uint64, hasher hash.Hash) *Engine {
+func newEngine(blockSize uint64, maxOpSize uint64) *Engine {
 	// TODO: If we want to make this function public, it needs to enforce that
-	// blockSize and maxOpSize are non-0, and I suppose that hasher is non-nil.
+	// blockSize and maxOpSize are non-0.
 	return &Engine{
 		blockSize: blockSize,
 		maxOpSize: maxOpSize,
-		hasher:    hasher,
 		buffer:    make([]byte, blockSize+maxOpSize),
 	}
 }
 
 // NewDefaultEngine creates a new rsync engine with sensible default parameters.
 func NewDefaultEngine() *Engine {
-	return newEngine(defaultBlockSize, defaultMaxOpSize, sha1.New())
+	return newEngine(defaultBlockSize, defaultMaxOpSize)
 }
+
+const (
+	// m is the weak hash modulus. I think they now recommend that it be the
+	// largest prime less than 2^16, but this value is fine as well.
+	m = 1 << 16
+)
 
 // weakHash computes a fast checksum that can be rolled (updated without full
 // recomputation). This particular hash is detailed on page 55 of Andrew
@@ -104,20 +119,13 @@ func (e *Engine) rollWeakHash(r1, r2 uint32, out, in byte) (uint32, uint32, uint
 	return result, r1, r2
 }
 
-func (e *Engine) strongHash(data []byte) []byte {
-	// Reset the hasher.
-	e.hasher.Reset()
-
-	// Digest the data. Writes cannot fail on hash.Hash objects.
-	e.hasher.Write(data)
-
-	// Compute the sum.
-	return e.hasher.Sum(nil)
+func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
+	return sha1.Sum(data)
 }
 
-func (e *Engine) Signature(base io.Reader) ([]*BlockHash, error) {
+func (e *Engine) Signature(base io.Reader) ([]BlockHash, error) {
 	// Create the result.
-	var result []*BlockHash
+	var result []BlockHash
 
 	// Extract a portion of our buffer with which to read blocks.
 	buffer := e.buffer[:e.blockSize]
@@ -148,7 +156,7 @@ func (e *Engine) Signature(base io.Reader) ([]*BlockHash, error) {
 		strong := e.strongHash(buffer[:n])
 
 		// Add the block hash.
-		result = append(result, &BlockHash{index, weak, strong})
+		result = append(result, BlockHash{index, weak, strong})
 
 		// Increment the block index.
 		index += 1
@@ -158,7 +166,7 @@ func (e *Engine) Signature(base io.Reader) ([]*BlockHash, error) {
 	return result, nil
 }
 
-func (e *Engine) BytesSignature(base []byte) []*BlockHash {
+func (e *Engine) BytesSignature(base []byte) []BlockHash {
 	// Perform the signature and watch for errors (which shouldn't be able to
 	// occur in-memory).
 	result, err := e.Signature(bytes.NewReader(base))
@@ -170,14 +178,14 @@ func (e *Engine) BytesSignature(base []byte) []*BlockHash {
 	return result
 }
 
-func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit OperationTransmitter) error {
+func (e *Engine) Deltafy(target io.Reader, baseSignature []BlockHash, transmit OperationTransmitter) error {
 	// Create a lookup table that maps weak hashes to all matching block hashes.
 	// In the rsync technical report
 	// (https://rsync.samba.org/tech_report/node4.html), they actually advocate
 	// a 3-tier search (i.e. an additional 16-bit hash layer before the weak
 	// hash), but I think this probably isn't necessary with modern hashing
 	// algorithms and hardware.
-	weakToBlockHashes := make(map[uint32][]*BlockHash, len(baseSignature))
+	weakToBlockHashes := make(map[uint32][]BlockHash, len(baseSignature))
 	for _, h := range baseSignature {
 		weakToBlockHashes[h.Weak] = append(weakToBlockHashes[h.Weak], h)
 	}
@@ -187,19 +195,19 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 	// data operations it will send any pending coalesced block operation and
 	// then send the data operation immediately. This function relies on a check
 	// below (just before return) to send the last pending operation, if any.
-	var pendingOperation *Operation
-	coalesce := func(operation *Operation) error {
+	var pendingOperation Operation
+	coalesce := func(operation Operation) error {
 		if len(operation.Data) > 0 {
 			// Data operations aren't coalesced, so send and clear the pending
 			// block operation, if any, and then send the data operation.
-			if pendingOperation != nil {
+			if pendingOperation.Count > 0 {
 				if err := transmit(pendingOperation); err != nil {
 					return err
 				}
 			}
-			pendingOperation = nil
+			pendingOperation = Operation{}
 			return transmit(operation)
-		} else if pendingOperation != nil {
+		} else if pendingOperation.Count > 0 {
 			// There is a pending block operation, check if we can coalesce.
 			if pendingOperation.Start+pendingOperation.Count == operation.Start {
 				// We can coalesce with the previous operation.
@@ -239,7 +247,7 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 		// The target doesn't even have a block's worth of data, so transmit its
 		// contents directly. We don't bother using the coalescer since we'll
 		// only have a single operation and it'll be a data operation.
-		if err := transmit(&Operation{Data: buffer[:n]}); err != nil {
+		if err := transmit(Operation{Data: buffer[:n]}); err != nil {
 			return errors.Wrap(err, "unable to send short target data")
 		}
 		return nil
@@ -265,7 +273,7 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 		if len(potentials) > 0 {
 			strong := e.strongHash(buffer[occupancy-e.blockSize : occupancy])
 			for _, p := range potentials {
-				if bytes.Equal(p.Strong, strong) {
+				if p.Strong == strong {
 					match = true
 					matchIndex = p.Index
 					break
@@ -278,13 +286,13 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 			// If there's any data before the block at the end of the buffer, we
 			// need to send it immediately.
 			if occupancy > e.blockSize {
-				if err := coalesce(&Operation{Data: buffer[:occupancy-e.blockSize]}); err != nil {
+				if err := coalesce(Operation{Data: buffer[:occupancy-e.blockSize]}); err != nil {
 					return errors.Wrap(err, "unable to transmit data before match")
 				}
 			}
 
 			// Transmit the operation for the block match.
-			if err := coalesce(&Operation{Start: matchIndex, Count: 1}); err != nil {
+			if err := coalesce(Operation{Start: matchIndex, Count: 1}); err != nil {
 				return errors.Wrap(err, "unable to transmit match")
 			}
 
@@ -312,7 +320,7 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 		// block will have the maximum allowed transmission size.
 		if occupancy == uint64(len(buffer)) {
 			// Send the data preceeding the block.
-			if err := coalesce(&Operation{Data: buffer[:occupancy-e.blockSize]}); err != nil {
+			if err := coalesce(Operation{Data: buffer[:occupancy-e.blockSize]}); err != nil {
 				return errors.Wrap(err, "unable to transmit data before truncation")
 			}
 
@@ -350,7 +358,7 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 		}
 
 		// Perform the send.
-		if err := coalesce(&Operation{Data: buffer[:sendSize]}); err != nil {
+		if err := coalesce(Operation{Data: buffer[:sendSize]}); err != nil {
 			return errors.Wrap(err, "unable to send remaining data")
 		}
 
@@ -363,7 +371,7 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 
 	// Check if there is a remaining block operation that wasn't coalesced, and
 	// send it if so.
-	if pendingOperation != nil {
+	if pendingOperation.Count > 0 {
 		if err := transmit(pendingOperation); err != nil {
 			return errors.Wrap(err, "unable to transmit final operation")
 		}
@@ -373,13 +381,13 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []*BlockHash, transmit 
 	return nil
 }
 
-func (e *Engine) DeltafyBytes(target []byte, baseSignature []*BlockHash) []*Operation {
+func (e *Engine) DeltafyBytes(target []byte, baseSignature []BlockHash) []Operation {
 	// Create an empty result.
-	var delta []*Operation
+	var delta []Operation
 
 	// Create an operation transmitter to populate the result. Note that we copy
 	// any operation data buffers because they are re-used.
-	transmit := func(operation *Operation) error {
+	transmit := func(operation Operation) error {
 		// Copy the operation's data buffer if necessary.
 		if len(operation.Data) > 0 {
 			dataCopy := make([]byte, len(operation.Data))
@@ -425,8 +433,6 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive Operat
 			return nil
 		} else if err != nil {
 			return errors.Wrap(err, "unable to receive operation")
-		} else if operation == nil {
-			return errors.New("nil operation received")
 		}
 
 		// Handle the operation based on type.
@@ -480,7 +486,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive Operat
 	}
 }
 
-func (e *Engine) PatchBytes(base []byte, delta []*Operation, digest hash.Hash) ([]byte, error) {
+func (e *Engine) PatchBytes(base []byte, delta []Operation, digest hash.Hash) ([]byte, error) {
 	// Wrap up the base bytes in a reader.
 	baseReader := bytes.NewReader(base)
 
@@ -488,7 +494,7 @@ func (e *Engine) PatchBytes(base []byte, delta []*Operation, digest hash.Hash) (
 	output := bytes.NewBuffer(nil)
 
 	// Create an operation receiver that will return delta operations.
-	receive := func() (*Operation, error) {
+	receive := func() (Operation, error) {
 		// If there are operations remaining, return the next one and reduce.
 		if len(delta) > 0 {
 			result := delta[0]
@@ -497,7 +503,7 @@ func (e *Engine) PatchBytes(base []byte, delta []*Operation, digest hash.Hash) (
 		}
 
 		// Otherwise we're done.
-		return nil, io.EOF
+		return Operation{}, io.EOF
 	}
 
 	// Perform application.

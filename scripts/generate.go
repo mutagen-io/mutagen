@@ -37,7 +37,6 @@ var subdirectories = []struct {
 	path  string
 	files []string
 }{
-	{"rsync", []string{"rsync.proto"}},
 	{"session", []string{"session.proto"}},
 	{"sync", []string{"cache.proto", "entry.proto"}},
 	{"url", []string{"url.proto"}},
