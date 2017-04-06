@@ -495,7 +495,7 @@ func (e *endpoint) stage(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Lock the endpoint reading (because we want to allow for concurrent
+	// Lock the endpoint for reading (because we want to allow for concurrent
 	// transmission operations) and defer its release.
 	e.RLock()
 	defer e.RUnlock()
