@@ -36,7 +36,7 @@ type OperationReceiver func() (Operation, error)
 // how our delta generation works. There may be other constraints as well.
 const (
 	blockSize       = 10 * 1024
-	maximumDataSize = 10 * blockSize
+	maximumDataSize = 5 * blockSize
 )
 
 const (
