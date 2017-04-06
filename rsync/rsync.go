@@ -10,21 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type BlockHash struct {
-	Index  uint64
-	Weak   uint32
-	Strong [sha1.Size]byte
-}
-
-type Operation struct {
-	// Data encodes raw data for data operations.
-	Data []byte
-	// Start encodes the 0-indexed starting block for block operations.
-	Start uint64
-	// Count encodes the number of blocks to copy in block operations.
-	Count uint64
-}
-
 type OperationTransmitter func(Operation) error
 
 // OperationReceiver retrieves and returns the next operation in an operation
@@ -80,8 +65,9 @@ func rollWeakHash(r1, r2 uint32, out, in byte) (uint32, uint32, uint32) {
 	return result, r1, r2
 }
 
-func strongHash(data []byte) [sha1.Size]byte {
-	return sha1.Sum(data)
+func strongHash(data []byte) []byte {
+	digest := sha1.Sum(data)
+	return digest[:]
 }
 
 func Signature(base io.Reader) ([]BlockHash, error) {
@@ -242,7 +228,7 @@ func Deltafy(target io.Reader, baseSignature []BlockHash, transmit OperationTran
 		if len(potentials) > 0 {
 			strong := strongHash(buffer[occupancy-blockSize : occupancy])
 			for _, p := range potentials {
-				if p.Strong == strong {
+				if bytes.Equal(p.Strong, strong) {
 					match = true
 					matchIndex = p.Index
 					break

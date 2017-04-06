@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package rsync;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
+message BlockHash {
+    // Index is the 0-based index of the block within the file. Indices
+    // represent increments of block size.
+    uint64 index = 1;
+    // Weak is the weak hash for the block.
+    uint32 weak = 2;
+    // Strong is the strong hash for the block.
+    // TODO: Unfortunately Protocol Buffers doesn't have a way to represent
+    // fixed-size byte arrays, only slices. If we want to save allocations, we
+    // could use a sequence of unsigned integers to represent the digest, though
+    // that'll be tricky since we'll have to handle endianness.
+    bytes strong = 3;
+}
+
+message Operation {
+    // Data encodes raw data for data operations.
+    bytes data = 1;
+    // Start encodes the 0-indexed starting block for block operations.
+    uint64 start = 2;
+    // Count encodes the number of blocks to copy in block operations.
+    uint64 count = 3;
+}
