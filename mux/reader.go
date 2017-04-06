@@ -45,8 +45,8 @@ func (r *readMultiplexer) closeAllPipesWithError(err error) {
 // true of all readers, so be careful! It is true for io.Pipe streams, net.Conn
 // implementations, and some others, but it is very much not true for OS pipes
 // on all systems (for OS pipes, the reader will unblock if the write end is
-// closed but not necessarily if the read end is closed (and even the close
-// system call can block on the read end if in a read)).
+// closed, but not necessarily if the read end is closed (and trying to close
+// the read end during a blocking read can even block the close)).
 func (r *readMultiplexer) poll(reader *bufio.Reader) {
 	// Create a copy buffer we can use for data forwarding.
 	buffer := make([]byte, readMultiplexerCopyBufferSize)
@@ -84,7 +84,14 @@ func (r *readMultiplexer) Close() error {
 }
 
 // Reader demultiplexes an io.Reader into independent byte streams. Multiplexing
-// can be accomplished using the Writer method.
+// can be accomplished using the Writer method. Demultiplexing will use an
+// additional background Goroutine to poll the underlying reader for data and
+// dispatch it appropriately. This Goroutine can only be terminated when the
+// returned io.Closer is closed (which terminates data routing) and the
+// underlying io.Reader is closed and reads on it unblock. Be careful with OS
+// pipes, because on some platforms (including macOS), reads can only be
+// unblocked by closing the write end, and closes on the read end while in a
+// blocking read can even block the close.
 func Reader(reader io.Reader, channels uint8) ([]io.Reader, io.Closer) {
 	// Create our channel pipes.
 	readers := make([]io.Reader, channels)

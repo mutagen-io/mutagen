@@ -80,7 +80,7 @@ func BenchmarkMessageSendIOPipeBuffered(b *testing.B) {
 	benchmarkMessageSend(b, bufferedReader, bufferedWriter, writer)
 }
 
-// BenchmarkMessageSendOSPipe benchmarks messaging over a raw os.Pipe.
+// BenchmarkMessageSendOSPipe benchmarks messaging over a raw OS pipe.
 func BenchmarkMessageSendOSPipe(b *testing.B) {
 	// Create our transport.
 	reader, writer, err := os.Pipe()
@@ -93,7 +93,7 @@ func BenchmarkMessageSendOSPipe(b *testing.B) {
 }
 
 // BenchmarkMessageSendOSPipeBuffered benchmarks messaging over a buffered
-// os.Pipe.
+// OS pipe.
 func BenchmarkMessageSendOSPipeBuffered(b *testing.B) {
 	// Create our transport.
 	reader, writer, err := os.Pipe()
@@ -122,7 +122,7 @@ func BenchmarkMessageSendIOPipeMuxed(b *testing.B) {
 }
 
 // BenchmarkMessageSendOSPipeMuxed benchmarks messaging over a multiplexed
-// os.Pipe.
+// OS pipe.
 func BenchmarkMessageSendOSPipeMuxed(b *testing.B) {
 	// Create an underlying transport.
 	reader, writer, err := os.Pipe()
