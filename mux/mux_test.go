@@ -18,17 +18,17 @@ const (
 	maximumBytesPerMessagePlus1  = 100
 )
 
-// message is an internal type consisting of various fields that will be
+// testMessage is an internal type consisting of various fields that will be
 // randomly populated and then send over a multiplexed stream in gob encoding as
 // well as over a channel for verification.
-type message struct {
+type testMessage struct {
 	Index   uint32
 	Values  []int
 	Bytes   []byte
 	Message string
 }
 
-func newMessage(index uint32, random *rand.Rand) message {
+func newTestMessage(index uint32, random *rand.Rand) testMessage {
 	// Create values.
 	nValues := random.Uint32() % maximumValuesPerMessagePlus1
 	values := make([]int, nValues)
@@ -42,19 +42,19 @@ func newMessage(index uint32, random *rand.Rand) message {
 	random.Read(bytes)
 
 	// Create message.
-	messageString := fmt.Sprintf("message %d", index)
+	message := fmt.Sprintf("message %d", index)
 
 	// Done.
-	return message{
+	return testMessage{
 		Index:   index,
 		Values:  values,
 		Bytes:   bytes,
-		Message: messageString,
+		Message: message,
 	}
 }
 
 // equal compares one message to another, returning true if they are equal.
-func (m message) equal(other message) bool {
+func (m testMessage) equal(other testMessage) bool {
 	// Check that the Index is the same.
 	if m.Index != other.Index {
 		return false
@@ -97,7 +97,7 @@ func sendMessages(channel uint8, stream io.Writer, errors chan error) {
 
 	// Dispatch messages.
 	for i := uint32(0); i < nMessages; i++ {
-		if err := encoder.Encode(newMessage(i, random)); err != nil {
+		if err := encoder.Encode(newTestMessage(i, random)); err != nil {
 			errors <- errorspkg.Wrap(err, "unable to encode message")
 			return
 		}
@@ -119,8 +119,8 @@ func receiveMessages(channel uint8, stream io.Reader, errors chan error) {
 
 	// Receive and verify messages.
 	for i := uint32(0); i < nMessages; i++ {
-		expected := newMessage(i, random)
-		var actual message
+		expected := newTestMessage(i, random)
+		var actual testMessage
 		if err := decoder.Decode(&actual); err != nil {
 			errors <- errorspkg.Wrap(err, "unable to decode message")
 			return
