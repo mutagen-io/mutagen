@@ -2,14 +2,9 @@ package multiplex
 
 import (
 	"io"
-)
 
-// readWriter is an internal type to join an io.Reader and io.Writer into a
-// single io.ReadWriter.
-type readWriter struct {
-	io.Reader
-	io.Writer
-}
+	streampkg "github.com/havoc-io/mutagen/stream"
+)
 
 // ReadWriter performs multiplexing of a duplex stream. The returned closer is
 // that returned by multiplexing the io.Reader portion of the interface with the
@@ -24,7 +19,7 @@ func ReadWriter(stream io.ReadWriter, channels uint8) ([]io.ReadWriter, io.Close
 	// Join streams.
 	streams := make([]io.ReadWriter, channels)
 	for c := uint8(0); c < channels; c++ {
-		streams[c] = &readWriter{readers[c], writers[c]}
+		streams[c] = streampkg.Join(readers[c], writers[c])
 	}
 
 	// Done.
