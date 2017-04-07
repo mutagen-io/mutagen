@@ -222,7 +222,7 @@ func (c *controller) resume(prompter string) error {
 		// If we're already connect, then there's nothing we need to do. We
 		// don't even need to mark the session as unpaused because it can't be
 		// marked as paused if an existing synchronization loop is running (we
-		// enforce this invariant as part of this type's logic).
+		// enforce this invariant as part of the controller's logic).
 		if connected {
 			return nil
 		}
@@ -250,7 +250,9 @@ func (c *controller) resume(prompter string) error {
 	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
 	c.stateLock.Unlock()
 
-	// Attempt to connect.
+	// Attempt to connect. This may fail for one or both of the endpoints, but
+	// in that case we'll simply leave the session unpaused and allow it to try
+	// to auto-reconnect later.
 	alphaConnection, alphaConnectErr := connect(c.session.Alpha, prompter)
 	betaConnection, betaConnectErr := connect(c.session.Beta, prompter)
 
@@ -340,9 +342,10 @@ func (c *controller) halt(mode haltMode) error {
 }
 
 func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteCloser) {
-	// Register cleanup.
+	// Defer resource and state cleanup.
 	defer func() {
-		// Close any open connections.
+		// Close any open connections. These might be open if the runloop was
+		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
 			alpha.Close()
 		}
@@ -371,31 +374,24 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		for {
 			// Ensure that alpha is connected.
 			if alpha == nil {
-				if α, err := reconnect(context, c.session.Alpha); err != nil {
-					select {
-					case <-context.Done():
-						return
-					default:
-					}
-				} else {
-					alpha = α
-				}
+				alpha, _ = reconnect(context, c.session.Alpha)
 			}
 			c.stateLock.Lock()
 			c.state.AlphaConnected = (alpha != nil)
 			c.stateLock.Unlock()
 
+			// Do a non-blocking check for cancellation to avoid a spurious
+			// connection to beta in case cancellation occurred while connecting
+			// to alpha.
+			select {
+			case <-context.Done():
+				return
+			default:
+			}
+
 			// Ensure that beta is connected.
 			if beta == nil {
-				if β, err := reconnect(context, c.session.Beta); err != nil {
-					select {
-					case <-context.Done():
-						return
-					default:
-					}
-				} else {
-					beta = β
-				}
+				beta, _ = reconnect(context, c.session.Beta)
 			}
 			c.stateLock.Lock()
 			c.state.BetaConnected = (beta != nil)

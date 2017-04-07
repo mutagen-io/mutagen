@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/signal"
 
@@ -10,11 +11,23 @@ import (
 	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/stream"
 )
 
 var agentUsage = `usage: mutagen-agent should not be manually invoked
 `
+
+type stdio struct {
+	io.Reader
+	io.Writer
+}
+
+func (s *stdio) Close() error {
+	// HACK: We can't really close standard input/output pipes because doing so
+	// won't necessarily unblock and reads/writes and might also block the
+	// close. Fortunately, we don't need to support this in the agent - the
+	// streams should have the same lifetime as the process.
+	panic("standard input/output closed in agent")
+}
 
 func main() {
 	// Parse flags.
@@ -33,7 +46,7 @@ func main() {
 	agent.Housekeep()
 
 	// Create a stream on standard input/output.
-	stdio := stream.New(os.Stdin, os.Stdout, os.Stdout)
+	stdio := &stdio{os.Stdin, os.Stdout}
 
 	// Perform a handshake.
 	if err := mutagen.SendVersion(stdio); err != nil {

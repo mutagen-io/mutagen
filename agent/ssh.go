@@ -211,7 +211,7 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.ReadWriteCloser, boo
 	}
 
 	// Create a stream that wrap's the process' standard input/output.
-	stream, err := newProcessStream(process)
+	stream, err := newAgentStream(process)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to create SSH process stream")
 	}

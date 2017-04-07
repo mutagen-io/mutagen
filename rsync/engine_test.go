@@ -1,17 +1,17 @@
 package rsync
 
 import (
+	"bytes"
 	"math/rand"
 	"testing"
-	"bytes"
 )
 
 // TODO: Add tests to cover edge cases of rsync handling, get coverage closer to
 // 100%.
 
 type testDataGenerator struct {
-	length int
-	seed int64
+	length    int
+	seed      int64
 	mutations int
 }
 
@@ -33,8 +33,8 @@ func (g testDataGenerator) generate() []byte {
 }
 
 type engineTestCase struct {
-	base testDataGenerator
-	target testDataGenerator
+	base       testDataGenerator
+	target     testDataGenerator
 	maxDataOps int
 }
 
@@ -56,7 +56,7 @@ func (c engineTestCase) run(t *testing.T) {
 	nDataOperations := 0
 	for _, o := range delta {
 		if len(o.Data) > 0 {
-			nDataOperations +=1
+			nDataOperations += 1
 		}
 	}
 	if c.maxDataOps >= 0 && nDataOperations > c.maxDataOps {
@@ -77,8 +77,8 @@ func (c engineTestCase) run(t *testing.T) {
 
 func TestBothEmpty(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{0, 0, 0},
-		target: testDataGenerator{0, 0, 0},
+		base:       testDataGenerator{0, 0, 0},
+		target:     testDataGenerator{0, 0, 0},
 		maxDataOps: 0,
 	}
 	test.run(t)
@@ -86,8 +86,8 @@ func TestBothEmpty(t *testing.T) {
 
 func TestBaseEmpty(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{0, 0, 0},
-		target: testDataGenerator{10*1024*1024, 473, 0},
+		base:       testDataGenerator{0, 0, 0},
+		target:     testDataGenerator{10 * 1024 * 1024, 473, 0},
 		maxDataOps: -1,
 	}
 	test.run(t)
@@ -95,8 +95,8 @@ func TestBaseEmpty(t *testing.T) {
 
 func TestTargetEmpty(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{10*1024*1024, 473, 0},
-		target: testDataGenerator{0, 0, 0},
+		base:       testDataGenerator{10 * 1024 * 1024, 473, 0},
+		target:     testDataGenerator{0, 0, 0},
 		maxDataOps: 0,
 	}
 	test.run(t)
@@ -104,8 +104,8 @@ func TestTargetEmpty(t *testing.T) {
 
 func TestSame(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{10*1024*1024, 473, 0},
-		target: testDataGenerator{10*1024*1024, 473, 0},
+		base:       testDataGenerator{10 * 1024 * 1024, 473, 0},
+		target:     testDataGenerator{10 * 1024 * 1024, 473, 0},
 		maxDataOps: 0,
 	}
 	test.run(t)
@@ -113,8 +113,8 @@ func TestSame(t *testing.T) {
 
 func TestSame1Mutation(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{10*1024*1024, 473, 0},
-		target: testDataGenerator{10*1024*1024, 473, 1},
+		base:       testDataGenerator{10 * 1024 * 1024, 473, 0},
+		target:     testDataGenerator{10 * 1024 * 1024, 473, 1},
 		maxDataOps: 1,
 	}
 	test.run(t)
@@ -122,8 +122,8 @@ func TestSame1Mutation(t *testing.T) {
 
 func TestSame2Mutation(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{10*1024*1024, 473, 0},
-		target: testDataGenerator{10*1024*1024, 473, 2},
+		base:       testDataGenerator{10 * 1024 * 1024, 473, 0},
+		target:     testDataGenerator{10 * 1024 * 1024, 473, 2},
 		maxDataOps: 2,
 	}
 	test.run(t)
@@ -131,8 +131,8 @@ func TestSame2Mutation(t *testing.T) {
 
 func TestSameDataShorterTarget(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{9892814, 473, 0},
-		target: testDataGenerator{5*1024*1024, 473, 0},
+		base:       testDataGenerator{9892814, 473, 0},
+		target:     testDataGenerator{5 * 1024 * 1024, 473, 0},
 		maxDataOps: 0,
 	}
 	test.run(t)
@@ -140,8 +140,8 @@ func TestSameDataShorterTarget(t *testing.T) {
 
 func TestSameDataLongerTarget(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{985498, 473, 0},
-		target: testDataGenerator{15414553, 473, 0},
+		base:       testDataGenerator{985498, 473, 0},
+		target:     testDataGenerator{15414553, 473, 0},
 		maxDataOps: -1,
 	}
 	test.run(t)
@@ -149,8 +149,8 @@ func TestSameDataLongerTarget(t *testing.T) {
 
 func TestDifferentDataSameLength(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{10*1024*1024, 473, 0},
-		target: testDataGenerator{10*1024*1024, 182, 0},
+		base:       testDataGenerator{10 * 1024 * 1024, 473, 0},
+		target:     testDataGenerator{10 * 1024 * 1024, 182, 0},
 		maxDataOps: -1,
 	}
 	test.run(t)
@@ -158,8 +158,8 @@ func TestDifferentDataSameLength(t *testing.T) {
 
 func TestDifferent(t *testing.T) {
 	test := engineTestCase{
-		base: testDataGenerator{459879, 473, 0},
-		target: testDataGenerator{21345, 182, 0},
+		base:       testDataGenerator{459879, 473, 0},
+		target:     testDataGenerator{21345, 182, 0},
 		maxDataOps: -1,
 	}
 	test.run(t)
@@ -173,8 +173,8 @@ func TestBlockLength(t *testing.T) {
 
 	// Create and run the test.
 	test := engineTestCase{
-		base: testDataGenerator{0, 0, 0},
-		target: testDataGenerator{defaultBlockSize, 421, 0},
+		base:       testDataGenerator{0, 0, 0},
+		target:     testDataGenerator{defaultBlockSize, 421, 0},
 		maxDataOps: 1,
 	}
 	test.run(t)
@@ -183,8 +183,8 @@ func TestBlockLength(t *testing.T) {
 func TestLessThanBlockLength(t *testing.T) {
 	// Create and run the test.
 	test := engineTestCase{
-		base: testDataGenerator{0, 0, 0},
-		target: testDataGenerator{defaultBlockSize-1, 421, 0},
+		base:       testDataGenerator{0, 0, 0},
+		target:     testDataGenerator{defaultBlockSize - 1, 421, 0},
 		maxDataOps: 1,
 	}
 	test.run(t)
