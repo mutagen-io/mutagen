@@ -1,4 +1,4 @@
-package mux
+package multiplex
 
 import (
 	"bufio"
@@ -107,23 +107,23 @@ func BenchmarkMessageSendOSPipeBuffered(b *testing.B) {
 	benchmarkMessageSend(b, bufferedReader, bufferedWriter, writer)
 }
 
-// BenchmarkMessageSendIOPipeMuxed benchmarks messaging over a multiplexed
+// BenchmarkMessageSendIOPipeMultiplexed benchmarks messaging over a multiplexed
 // io.Pipe.
-func BenchmarkMessageSendIOPipeMuxed(b *testing.B) {
+func BenchmarkMessageSendIOPipeMultiplexed(b *testing.B) {
 	// Create an underlying transport.
 	reader, writer := io.Pipe()
 
 	// Multiplex.
-	readers, muxCloser := Reader(reader, 1)
+	readers, readerCloser := Reader(reader, 1)
 	writers := Writer(writer, 1)
 
 	// Benchmark.
-	benchmarkMessageSend(b, readers[0], writers[0], writer, muxCloser)
+	benchmarkMessageSend(b, readers[0], writers[0], writer, readerCloser)
 }
 
-// BenchmarkMessageSendOSPipeMuxed benchmarks messaging over a multiplexed
+// BenchmarkMessageSendOSPipeMultiplexed benchmarks messaging over a multiplexed
 // OS pipe.
-func BenchmarkMessageSendOSPipeMuxed(b *testing.B) {
+func BenchmarkMessageSendOSPipeMultiplexed(b *testing.B) {
 	// Create an underlying transport.
 	reader, writer, err := os.Pipe()
 	if err != nil {
@@ -131,9 +131,9 @@ func BenchmarkMessageSendOSPipeMuxed(b *testing.B) {
 	}
 
 	// Multiplex.
-	readers, muxCloser := Reader(reader, 1)
+	readers, readerCloser := Reader(reader, 1)
 	writers := Writer(writer, 1)
 
 	// Benchmark.
-	benchmarkMessageSend(b, readers[0], writers[0], writer, muxCloser)
+	benchmarkMessageSend(b, readers[0], writers[0], writer, readerCloser)
 }

@@ -1,4 +1,4 @@
-package mux
+package multiplex
 
 import (
 	"bytes"
@@ -144,7 +144,7 @@ func receiveMessages(channel uint8, stream io.Reader, errors chan error) {
 	errors <- nil
 }
 
-func TestMux(t *testing.T) {
+func TestMultiplex(t *testing.T) {
 	// Create a transport and multiplex it.
 	reader, writer := io.Pipe()
 	readers, readersCloser := Reader(reader, nChannels)
