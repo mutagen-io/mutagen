@@ -525,6 +525,13 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 		return errors.Wrap(err, "unable to initialize beta")
 	}
 
+	// Create an rsync engine pool.
+	rsyncEngines := &syncpkg.Pool{
+		New: func() interface{} {
+			return rsync.NewDefaultEngine()
+		},
+	}
+
 	// Loop until there is a synchronization error.
 	for {
 		// Set status to scanning.
@@ -546,11 +553,23 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta *rpc.Cl
 
 		// Start scanning in separate Goroutines.
 		go func() {
-			result, tryAgain, err := c.scan(context, alpha, unforced, alphaPreservesExecutability, ancestor, alphaExpected)
+			result, tryAgain, err := c.scan(
+				context,
+				alpha, rsyncEngines,
+				unforced,
+				alphaPreservesExecutability,
+				ancestor, alphaExpected,
+			)
 			alphaScanResults <- scanResult{result, tryAgain, err}
 		}()
 		go func() {
-			result, tryAgain, err := c.scan(context, beta, unforced, betaPreservesExecutability, ancestor, betaExpected)
+			result, tryAgain, err := c.scan(
+				context,
+				beta, rsyncEngines,
+				unforced,
+				betaPreservesExecutability,
+				ancestor, betaExpected,
+			)
 			betaScanResults <- scanResult{result, tryAgain, err}
 		}()
 
@@ -757,10 +776,15 @@ func (c *controller) initialize(context contextpkg.Context, endpoint *rpc.Client
 func (c *controller) scan(
 	context contextpkg.Context,
 	endpoint *rpc.Client,
+	rsyncEngines *syncpkg.Pool,
 	unforced contextpkg.Context,
 	preservesExecutability bool,
 	ancestor, expected *sync.Entry,
 ) (*sync.Entry, bool, error) {
+	// Grab an rsync engine and return it when we're done.
+	rsyncer := rsyncEngines.Get().(*rsync.Engine)
+	defer rsyncEngines.Put(rsyncer)
+
 	// If the endpoint doesn't preserve executability, then strip executability
 	// bits from the expected snapshot since the incoming value won't have them.
 	if !preservesExecutability {
@@ -776,7 +800,7 @@ func (c *controller) scan(
 	}
 
 	// Compute the expected snapshot signature.
-	expectedSignature := rsync.BytesSignature(expectedBytes)
+	expectedSignature := rsyncer.BytesSignature(expectedBytes)
 
 	// Compute the expected snapshot checksum.
 	expectedChecksum := checksum(expectedBytes)
@@ -830,7 +854,7 @@ func (c *controller) scan(
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := rsync.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
+	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}

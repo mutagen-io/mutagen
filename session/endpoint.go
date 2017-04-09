@@ -54,6 +54,7 @@ func ServeEndpoint(stream io.ReadWriteCloser) error {
 
 type endpoint struct {
 	client *rpc.Client
+	rsyncEngines syncpkg.Pool
 	syncpkg.RWMutex
 	session   string
 	version   Version
@@ -67,6 +68,11 @@ type endpoint struct {
 func newEndpoint(client *rpc.Client) *endpoint {
 	return &endpoint{
 		client: client,
+		rsyncEngines: syncpkg.Pool{
+			New: func() interface{} {
+				return rsync.NewDefaultEngine()
+			},
+		},
 	}
 }
 
@@ -157,6 +163,10 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 	// Create a hasher.
 	hasher := e.version.hasher()
 
+	// Grab an rsync engine and return it when we're done.
+	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
+	defer e.rsyncEngines.Put(rsyncer)
+
 	// Create a ticker to trigger polling at regular intervals. Ensure that it's
 	// cancelled when we're done.
 	ticker := time.NewTicker(scanPollInterval)
@@ -222,7 +232,7 @@ func (e *endpoint) scan(stream rpc.HandlerStream) error {
 		if forced || !bytes.Equal(snapshotChecksum, request.ExpectedSnapshotChecksum) {
 			return stream.Send(scanResponse{
 				SnapshotChecksum: snapshotChecksum,
-				SnapshotDelta: rsync.DeltafyBytes(
+				SnapshotDelta: rsyncer.DeltafyBytes(
 					snapshotBytes,
 					request.BaseSnapshotSignature,
 				),
@@ -271,8 +281,12 @@ func (e *endpoint) transmit(stream rpc.HandlerStream) error {
 		return stream.Send(transmitResponse{Operation: operation})
 	}
 
+	// Grab an rsync engine and return it when we're done.
+	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
+	defer e.rsyncEngines.Put(rsyncer)
+
 	// Transmit the delta.
-	if err := rsync.Deltafy(file, request.BaseSignature, transmit); err != nil {
+	if err := rsyncer.Deltafy(file, request.BaseSignature, transmit); err != nil {
 		return errors.Wrap(err, "unable to transmit delta")
 	}
 
@@ -310,6 +324,10 @@ func (e *endpoint) dispatch(
 	queued <-chan stagingOperation,
 	dispatched chan<- stagingOperation,
 ) error {
+	// Grab an rsync engine and return it when we're done.
+	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
+	defer e.rsyncEngines.Put(rsyncer)
+
 	// Loop over queued operations.
 	for operation := range queued {
 		// Attempt to open the base. If this fails (which it might if the file
@@ -323,7 +341,7 @@ func (e *endpoint) dispatch(
 		// Compute the base signature. If there is an error, just abort, because
 		// most likely the file is being modified concurrently and we'll have to
 		// stage again later. We don't treat this as terminal though.
-		baseSignature, err := rsync.Signature(operation.base)
+		baseSignature, err := rsyncer.Signature(operation.base)
 		if err != nil {
 			operation.base.Close()
 			continue
@@ -373,6 +391,10 @@ func (e *endpoint) receive(
 	updater func(StagingStatus) error,
 	total uint64,
 ) error {
+	// Grab an rsync engine and return it when we're done.
+	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
+	defer e.rsyncEngines.Put(rsyncer)
+
 	// Compute the staging root. We'll use this as our temporary directory.
 	stagingRoot, err := pathForStagingRoot(e.session, e.alpha)
 	if err != nil {
@@ -436,7 +458,7 @@ func (e *endpoint) receive(
 		hasher := e.version.hasher()
 
 		// Apply patch operations.
-		err = rsync.Patch(temporary, base, receive, hasher)
+		err = rsyncer.Patch(temporary, base, receive, hasher)
 
 		// Close files.
 		temporary.Close()
