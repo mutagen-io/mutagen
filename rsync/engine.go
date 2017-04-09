@@ -65,7 +65,14 @@ type Engine struct {
 // newEngine creates a new rsync engine with the specified parameters.
 func newEngine(blockSize uint64, maxOpSize uint64) *Engine {
 	// TODO: If we want to make this function public, it needs to enforce that
-	// blockSize and maxOpSize are non-0.
+	// blockSize and maxOpSize are non-0. It also needs to enforce that
+	// maxOpSize >= blockSize-1 if it wants maxOpSize to be honored. The reason
+	// is that, on the first read of Deltafy, if the amount of data read is
+	// smaller than a single block, it is simply transmitted, and thus if
+	// maxOpSize were blockSize-2 and blockSize-1 bytes were read, the maxOpSize
+	// definition would be violated. It wouldn't cause any incorrect behavior
+	// though, unless the transmitter were expecting the data to fit in some
+	// window.
 	return &Engine{
 		blockSize: blockSize,
 		maxOpSize: maxOpSize,
