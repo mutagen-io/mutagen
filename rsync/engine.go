@@ -35,10 +35,14 @@ type Operation struct {
 // for later transmission.
 type OperationTransmitter func(Operation) error
 
+// EndOfOperations is a sentinel error that can be returned by an
+// OperationReceiver.
+var EndOfOperations = errors.New("end of operations")
+
 // OperationReceiver retrieves and returns the next operation in an operation
-// stream. When there are no more operations, it should return an io.EOF error.
-// Operations are fully processed between calls, so the receiver may re-use data
-// buffers between operations.
+// stream. When there are no more operations, it should return an
+// EndOfOperations error. Operations are fully processed between calls, so the
+// receiver may re-use data buffers between operations.
 type OperationReceiver func() (Operation, error)
 
 const (
@@ -436,7 +440,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive Operat
 	for {
 		// Grab the next operation, watching for completion or errors.
 		operation, err := receive()
-		if err == io.EOF {
+		if err == EndOfOperations {
 			return nil
 		} else if err != nil {
 			return errors.Wrap(err, "unable to receive operation")
@@ -510,7 +514,7 @@ func (e *Engine) PatchBytes(base []byte, delta []Operation, digest hash.Hash) ([
 		}
 
 		// Otherwise we're done.
-		return Operation{}, io.EOF
+		return Operation{}, EndOfOperations
 	}
 
 	// Perform application.

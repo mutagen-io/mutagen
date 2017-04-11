@@ -1,12 +1,11 @@
 package rsync
 
-// request encodes a stream request. It is used in the internal client/server
-// protocol.
+// request encodes a batch request.
 type request struct {
-	// Path is the path of the file relative to the root.
-	Path string
-	// Signature is the signature of the base file at this path.
-	Signature []BlockHash
+	// Paths are the requested paths.
+	Paths []string
+	// Signatures are the corresponding base signatures.
+	Signatures [][]BlockHash
 }
 
 // response encodes a stream response. It is used in the internal client/server
