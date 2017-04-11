@@ -7,10 +7,6 @@ import (
 	"github.com/inconshreveable/muxado"
 )
 
-const (
-	multiplexerAcceptBacklog = 100
-)
-
 type Multiplexer interface {
 	Open() (net.Conn, error)
 	Accept() (net.Conn, error)
@@ -18,15 +14,9 @@ type Multiplexer interface {
 }
 
 func Multiplex(connection io.ReadWriteCloser, server bool) Multiplexer {
-	// Create configuration.
-	configuration := &muxado.Config{
-		AcceptBacklog: multiplexerAcceptBacklog,
-	}
-
-	// Create the session.
 	if server {
-		return muxado.Server(connection, configuration)
+		return muxado.Server(connection, nil)
 	} else {
-		return muxado.Client(connection, configuration)
+		return muxado.Client(connection, nil)
 	}
 }

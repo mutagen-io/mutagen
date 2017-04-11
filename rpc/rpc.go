@@ -7,6 +7,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Opener opens new connections.
+type Opener interface {
+	Open() (net.Conn, error)
+}
+
+// Acceptor is a simplified version of net.Listener geared towards multiplexers.
+// It accepts new connections.
+type Acceptor interface {
+	Accept() (net.Conn, error)
+}
+
 type Client struct {
 	openerLock sync.Mutex
 	opener     Opener

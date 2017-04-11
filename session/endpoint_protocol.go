@@ -5,6 +5,17 @@ import (
 	"github.com/havoc-io/mutagen/sync"
 )
 
+const (
+	endpointChannelControl uint8 = iota
+	endpointChannelWatchEvents
+	endpointChannelRsyncUpdates
+	endpointChannelRsyncClient
+	endpointChannelRsyncServer
+	numberOfEndpointChannels
+)
+
+type watchEvent struct{}
+
 type initializeRequest struct {
 	Session string
 	Version Version
@@ -18,32 +29,19 @@ type initializeResponse struct {
 }
 
 type scanRequest struct {
-	BaseSnapshotSignature    []rsync.BlockHash
-	ExpectedSnapshotChecksum []byte
+	BaseSnapshotSignature []rsync.BlockHash
 }
 
 type scanResponse struct {
-	SnapshotChecksum []byte
-	SnapshotDelta    []rsync.Operation
-	TryAgain         bool
-}
-
-type transmitRequest struct {
-	Path          string
-	BaseSignature []rsync.BlockHash
-}
-
-type transmitResponse struct {
-	Operation rsync.Operation
+	TryAgain      bool
+	SnapshotDelta []rsync.Operation
 }
 
 type stageRequest struct {
 	Transitions []sync.Change
 }
 
-type stageResponse struct {
-	Status StagingStatus
-}
+type stageResponse struct{}
 
 type transitionRequest struct {
 	Transitions []sync.Change
@@ -52,4 +50,10 @@ type transitionRequest struct {
 type transitionResponse struct {
 	Changes  []sync.Change
 	Problems []sync.Problem
+}
+
+type endpointRequest struct {
+	Scan       *scanRequest
+	Stage      *stageRequest
+	Transition *transitionRequest
 }

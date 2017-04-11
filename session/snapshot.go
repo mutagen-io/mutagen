@@ -1,8 +1,6 @@
 package session
 
 import (
-	"crypto/sha1"
-
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/sync"
@@ -24,14 +22,4 @@ func unmarshalEntry(encoded []byte) (*sync.Entry, error) {
 		return nil, err
 	}
 	return archive.Root, nil
-}
-
-// checksum computes the checksum of a serialized entry. The checksum that's
-// used is not stable and should only be used for transfer verification within a
-// synchronization cycle between the daemon and agent. Its result should never
-// be persisted anywhere (e.g. disk) that would require compatibility in future
-// versions.
-func checksum(snapshotBytes []byte) []byte {
-	result := sha1.Sum(snapshotBytes)
-	return result[:]
 }

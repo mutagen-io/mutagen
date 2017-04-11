@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/sync"
 )
 
 const (
@@ -81,7 +80,7 @@ func pathForStagingRoot(session string, alpha bool) (string, error) {
 	return filesystem.Mutagen(stagingDirectoryName, stagingRootName)
 }
 
-func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) (string, error) {
+func pathForStaging(session string, alpha bool, path string, digest []byte) (string, error) {
 	// Compute the endpoint name.
 	endpointName := alphaName
 	if !alpha {
@@ -92,10 +91,10 @@ func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) 
 	stagingRootName := fmt.Sprintf("%s_%s", session, endpointName)
 
 	// Compute the prefix for the entry.
-	if len(entry.Digest) < (stagingPrefixLength + 1) {
+	if len(digest) < (stagingPrefixLength + 1) {
 		return "", errors.New("entry digest too short")
 	}
-	prefixBytes := entry.Digest[:stagingPrefixLength]
+	prefixBytes := digest[:stagingPrefixLength]
 	prefix := fmt.Sprintf("%x", prefixBytes)
 
 	// Compute/create the staging prefix directory.
@@ -105,9 +104,7 @@ func pathForStaging(session string, alpha bool, path string, entry *sync.Entry) 
 	}
 
 	// Compute the staging name.
-	stagingName := fmt.Sprintf("%x_%t_%x",
-		sha1.Sum([]byte(path)), entry.Executable, entry.Digest,
-	)
+	stagingName := fmt.Sprintf("%x_%x", sha1.Sum([]byte(path)), digest)
 
 	// Success.
 	return filepath.Join(prefixDirectoryPath, stagingName), nil

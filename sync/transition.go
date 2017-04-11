@@ -13,6 +13,17 @@ import (
 	"github.com/havoc-io/mutagen/filesystem"
 )
 
+// Provider defines the interface that higher-level logic can use to provide
+// files to transition algorithms.
+type Provider interface {
+	// Provide returns a filesystem path to a file containing the contents for
+	// the path given as the first argument with the properties specified by the
+	// second argument. The digest and executability properties of the entry
+	// must be guaranteed by the provider. The entry will always be a file type
+	// entry.
+	Provide(string, *Entry) (string, error)
+}
+
 func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	// If the path is empty, then there's nothing to check.
 	if path == "" {
@@ -253,7 +264,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 	return nil, nil
 }
 
-func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider StagingProvider) error {
+func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider Provider) error {
 	// Compute the full path to this file.
 	fullPath := filepath.Join(root, path)
 
@@ -270,7 +281,7 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider S
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider(path, newEntry)
+	stagedPath, err := provider.Provide(path, newEntry)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
 	}
@@ -284,12 +295,12 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider S
 	return nil
 }
 
-func createFile(root, path string, target *Entry, provider StagingProvider) (*Entry, error) {
+func createFile(root, path string, target *Entry, provider Provider) (*Entry, error) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider(path, target)
+	stagedPath, err := provider.Provide(path, target)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to locate staged file")
 	}
@@ -303,7 +314,7 @@ func createFile(root, path string, target *Entry, provider StagingProvider) (*En
 	return target, nil
 }
 
-func createDirectory(root, path string, target *Entry, provider StagingProvider) (*Entry, []Problem) {
+func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, []Problem) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
@@ -368,7 +379,7 @@ func createDirectory(root, path string, target *Entry, provider StagingProvider)
 	return created, problems
 }
 
-func create(root, path string, target *Entry, provider StagingProvider) (*Entry, []Problem) {
+func create(root, path string, target *Entry, provider Provider) (*Entry, []Problem) {
 	// If the target is nil, we're done.
 	if target == nil {
 		return nil, nil
@@ -412,7 +423,7 @@ func create(root, path string, target *Entry, provider StagingProvider) (*Entry,
 	)}
 }
 
-func Transition(root string, transitions []Change, cache *Cache, provider StagingProvider) ([]Change, []Problem) {
+func Transition(root string, transitions []Change, cache *Cache, provider Provider) ([]Change, []Problem) {
 	// Set up results.
 	var results []Change
 	var problems []Problem

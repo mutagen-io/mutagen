@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/sync"
 )
 
@@ -55,8 +56,8 @@ type SynchronizationState struct {
 	AlphaConnected bool
 	BetaConnected  bool
 	LastError      string
-	AlphaStaging   StagingStatus
-	BetaStaging    StagingStatus
+	AlphaStaging   rsync.StagingStatus
+	BetaStaging    rsync.StagingStatus
 	Conflicts      []sync.Conflict
 	AlphaProblems  []sync.Problem
 	BetaProblems   []sync.Problem

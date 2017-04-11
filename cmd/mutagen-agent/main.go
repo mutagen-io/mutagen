@@ -24,9 +24,10 @@ type stdio struct {
 func (s *stdio) Close() error {
 	// HACK: We can't really close standard input/output pipes because doing so
 	// won't necessarily unblock and reads/writes and might also block the
-	// close. Fortunately, we don't need to support this in the agent - the
-	// streams should have the same lifetime as the process.
-	panic("standard input/output closed in agent")
+	// close. Fortunately, we don't need to support this in the agent -
+	// everything will die as soon as there's a connectivity error or internal
+	// error.
+	return nil
 }
 
 func main() {

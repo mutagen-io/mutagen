@@ -9,6 +9,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/rpc"
+	"github.com/havoc-io/mutagen/rsync"
 	sessionpkg "github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/sync"
 )
@@ -199,7 +200,7 @@ func monitorProblemSummary(problems []sync.Problem) string {
 // console width.
 const monitorStatusBarInnerWidth = 30
 
-func monitorStatusBar(status sessionpkg.StagingStatus) string {
+func monitorStatusBar(status rsync.StagingStatus) string {
 	// If there is no staging going on, then return empty spaces.
 	if status.Total == 0 {
 		return fmt.Sprintf("[%s]", strings.Repeat(" ", monitorStatusBarInnerWidth))

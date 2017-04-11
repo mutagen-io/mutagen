@@ -1,4 +1,4 @@
-// +build darwin,cgo
+// +build ignore
 
 package session
 

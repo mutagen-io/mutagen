@@ -1,124 +1,95 @@
 package session
 
 import (
-	"bytes"
 	"context"
+	"hash"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	syncpkg "sync"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/encoding"
 	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/rpc"
+	"github.com/havoc-io/mutagen/message"
+	"github.com/havoc-io/mutagen/multiplex"
 	"github.com/havoc-io/mutagen/rsync"
-	streampkg "github.com/havoc-io/mutagen/stream"
 	"github.com/havoc-io/mutagen/sync"
 )
 
-const (
-	endpointMethodInitialize = "endpoint.Initialize"
-	endpointMethodScan       = "endpoint.Scan"
-	endpointMethodTransmit   = "endpoint.Transmit"
-	endpointMethodStage      = "endpoint.Stage"
-	endpointMethodTransition = "endpoint.Transition"
+// endpoint encodes and coordinates endpoint state between multiple servers. It
+// doesn't have a constructor, but is built and run inside ServeEndpoint.
+type endpoint struct {
+	// root is the synchronization root for the endpoint. It is static.
+	root string
+	// ignores is the list of ignored paths for the session. It is static.
+	ignores []string
+	// cachePath is the path at which to save the cache for the session. It is
+	// static.
+	cachePath string
+	// cache is the cache from the last successful scan on the endpoint. It is
+	// owned by the serveControl Goroutine.
+	cache *sync.Cache
+	// scanRsyncEngine is the rsync engine used to compute snapshot deltas. It
+	// is owned by the serveControl Goroutine.
+	scanEngine *rsync.Engine
+	// scanHasher is the hasher used for scans. It is owned by the serveControl
+	// Goroutine.
+	scanHasher hash.Hash
+	// stagingCoordinator is the staging coordinator. It is owned by the
+	// serveControl Goroutine.
+	stagingCoordinator *stagingCoordinator
+	// stagingClient is the rsync client for staging files. It is owned by the
+	// serveControl Goroutine.
+	stagingClient *rsync.Client
+}
 
-	maxOutstandingStagingRequests = 4
-)
-
-func ServeEndpoint(stream io.ReadWriteCloser) error {
+// TODO: Document that this function relies on the connection unblocking reads
+// and writes when closed.
+func ServeEndpoint(connection io.ReadWriteCloser) error {
 	// Perform housekeeping.
 	housekeep()
 
-	// Create a multiplexer. Ensure that it's closed when we're done serving.
-	multiplexer := streampkg.Multiplex(stream, true)
+	// Ensure that the connection is closed when we're done.
+	defer connection.Close()
+
+	// Perform multiplexing and ensure the multiplexer is shut down when we're
+	// done.
+	streams, multiplexer := multiplex.ReadWriter(connection, numberOfEndpointChannels)
 	defer multiplexer.Close()
 
-	// Create an RPC client to connect to the other endpoint.
-	client := rpc.NewClient(multiplexer)
+	// Create a cancellable context with which to terminate Goroutines that we
+	// create and ensure that it's cancelled when we're done. This only applies
+	// to Goroutines that block in channels - all other Goroutines are cancelled
+	// by closing the underlying network connection.
+	serveContext, cancelServe := context.WithCancel(context.Background())
+	defer cancelServe()
 
-	// Create an RPC server.
-	server := rpc.NewServer()
+	// Convert the control channel to a message stream.
+	control := message.NewMessageStream(streams[endpointChannelControl])
 
-	// Create and register the endpoint.
-	endpoint := newEndpoint(client)
-	server.Register(endpoint)
-
-	// Serve RPC requests until there is an error accepting new streams.
-	return errors.Wrap(server.Serve(multiplexer), "error serving RPC requests")
-}
-
-type endpoint struct {
-	client *rpc.Client
-	rsyncEngines syncpkg.Pool
-	syncpkg.RWMutex
-	session   string
-	version   Version
-	root      string
-	ignores   []string
-	alpha     bool
-	cachePath string
-	cache     *sync.Cache
-}
-
-func newEndpoint(client *rpc.Client) *endpoint {
-	return &endpoint{
-		client: client,
-		rsyncEngines: syncpkg.Pool{
-			New: func() interface{} {
-				return rsync.NewDefaultEngine()
-			},
-		},
-	}
-}
-
-func (e *endpoint) Methods() map[string]rpc.Handler {
-	return map[string]rpc.Handler{
-		endpointMethodInitialize: e.initialize,
-		endpointMethodScan:       e.scan,
-		endpointMethodTransmit:   e.transmit,
-		endpointMethodStage:      e.stage,
-		endpointMethodTransition: e.transition,
-	}
-}
-
-func (e *endpoint) initialize(stream rpc.HandlerStream) error {
-	// Receive the request.
-	var request initializeRequest
-	if err := stream.Receive(&request); err != nil {
-		return errors.Wrap(err, "unable to receive request")
+	// Receive the initialization request.
+	var init initializeRequest
+	if err := control.Decode(&init); err != nil {
+		return errors.Wrap(err, "unable to receive initialization request")
 	}
 
-	// Lock the endpoint and defer its release.
-	e.Lock()
-	defer e.Unlock()
-
-	// If we're already initialized, we can't do it again.
-	if e.version != Version_Unknown {
-		return errors.New("endpoint already initialized")
-	}
-
-	// Validate the request.
-	if request.Session == "" {
+	// Validate the initialization request.
+	if init.Session == "" {
 		return errors.New("empty session identifier")
-	} else if !request.Version.supported() {
+	} else if !init.Version.supported() {
 		return errors.New("unsupported session version")
-	} else if request.Root == "" {
+	} else if init.Root == "" {
 		return errors.New("empty root path")
 	}
 
 	// Expand and normalize the root path.
-	root, err := filesystem.Normalize(request.Root)
+	root, err := filesystem.Normalize(init.Root)
 	if err != nil {
 		return errors.Wrap(err, "unable to normalize root path")
 	}
 
 	// Compute the cache path.
-	cachePath, err := pathForCache(request.Session, request.Alpha)
+	cachePath, err := pathForCache(init.Session, init.Alpha)
 	if err != nil {
 		return errors.Wrap(err, "unable to compute/create cache path")
 	}
@@ -129,515 +100,186 @@ func (e *endpoint) initialize(stream rpc.HandlerStream) error {
 		cache = &sync.Cache{}
 	}
 
-	// Record initialization.
-	e.session = request.Session
-	e.version = request.Version
-	e.root = root
-	e.ignores = request.Ignores
-	e.alpha = request.Alpha
-	e.cachePath = cachePath
-	e.cache = cache
+	// Create a staging coordinator.
+	stagingCoordinator, err := newStagingCoordinator(init.Session, init.Version, init.Alpha)
+	if err != nil {
+		return errors.Wrap(err, "unable to create staging coordinator")
+	}
+
+	// Create the rsync client.
+	stagingUpdates := message.NewMessageStream(streams[endpointChannelRsyncUpdates])
+	stagingClient := rsync.NewClient(
+		streams[endpointChannelRsyncClient],
+		root,
+		stagingCoordinator,
+		func(status rsync.StagingStatus) error {
+			return stagingUpdates.Encode(status)
+		},
+	)
 
 	// Send the initialization response.
-	return stream.Send(initializeResponse{
+	initResponse := initializeResponse{
 		PreservesExecutability: filesystem.PreservesExecutability,
-	})
-}
-
-func (e *endpoint) scan(stream rpc.HandlerStream) error {
-	// Receive the request.
-	var request scanRequest
-	if err := stream.Receive(&request); err != nil {
-		return errors.Wrap(err, "unable to receive request")
+	}
+	if err = control.Encode(initResponse); err != nil {
+		return errors.Wrap(err, "unable to send initialization response")
 	}
 
-	// Lock the endpoint and defer its release.
-	e.Lock()
-	defer e.Unlock()
-
-	// If we're not initialized, we can't do anything.
-	if e.version == Version_Unknown {
-		return errors.New("endpoint not initialized")
+	// Create the endpoint.
+	endpoint := &endpoint{
+		root:               root,
+		ignores:            init.Ignores,
+		cachePath:          cachePath,
+		cache:              cache,
+		scanEngine:         rsync.NewDefaultEngine(),
+		scanHasher:         init.Version.hasher(),
+		stagingCoordinator: stagingCoordinator,
+		stagingClient:      stagingClient,
 	}
 
-	// Create a hasher.
-	hasher := e.version.hasher()
-
-	// Grab an rsync engine and return it when we're done.
-	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
-	defer e.rsyncEngines.Put(rsyncer)
-
-	// Create a ticker to trigger polling at regular intervals. Ensure that it's
-	// cancelled when we're done.
-	ticker := time.NewTicker(scanPollInterval)
-	defer ticker.Stop()
-
-	// Set up a cancellable watch and ensure that it's cancelled when this
-	// handler exits. We don't monitor for watch failure, because it might fail
-	// in perfectly reasonable circumstances (e.g. the path not existing). In
-	// that case we have to fall back to polling.
-	watchContext, watchCancel := context.WithCancel(context.Background())
-	watchEvents := make(chan struct{}, watchEventsBufferSize)
-	go watch(watchContext, e.root, watchEvents)
-	defer watchCancel()
-
-	// Create a Goroutine that'll monitor for force requests. It will die once
-	// the stream is closed, which will happen automatically once the handler
-	// returns. If it fails before receiving a force request, it closes the
-	// forces channel (in which case the loop should abort if it's still running
-	// because something is wrong with the stream), otherwise it sends an empty
-	// value (in which case the loop should force the response).
-	forces := make(chan struct{}, 1)
+	// Start serving rsync requests and monitor for failure.
+	serveRsyncErrors := make(chan error, 1)
 	go func() {
-		var forceRequest scanRequest
-		if stream.Receive(&forceRequest) != nil {
-			close(forces)
-		} else {
-			forces <- struct{}{}
-		}
+		serveRsyncErrors <- endpoint.serveRsync(streams[endpointChannelRsyncServer])
 	}()
 
-	// Loop until we're done.
-	forced := false
+	// Start serving watch events and monitor for failure.
+	serveWatchErrors := make(chan error, 1)
+	go func() {
+		serveWatchErrors <- endpoint.serveWatch(serveContext, streams[endpointChannelWatchEvents])
+	}()
+
+	// Start serving control requests.
+	serveControlErrors := make(chan error, 1)
+	go func() {
+		serveControlErrors <- endpoint.serveControl(control)
+	}()
+
+	// Wait for any of the serving components to fail.
+	select {
+	case err = <-serveRsyncErrors:
+		return errors.Wrap(err, "rsync server failure")
+	case err = <-serveWatchErrors:
+		return errors.Wrap(err, "watch server failure")
+	case err = <-serveControlErrors:
+		return errors.Wrap(err, "control server failure")
+	}
+}
+
+func (e *endpoint) serveRsync(connection io.ReadWriter) error {
+	return rsync.Serve(connection, e.root)
+}
+
+func (e *endpoint) serveWatch(context context.Context, connection io.ReadWriter) error {
+	// Convert the connection to a message stream.
+	stream := message.NewMessageStream(connection)
+
+	// TODO: Implement using watching or scanning. For now, we just use a timer.
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 	for {
-		// Create a snapshot.
-		// HACK: Concurrent modifications can cause scans to fail. That's simply
-		// a fact of life and there's nothing we can do within the sync.Scan
-		// function to deal with this. So if we receive an error from scan,
-		// don't error out of the handler (which would cause the controller to
-		// assume something very bad had happened and reconnect), but instead
-		// tell the controller that everything is okay and that it should simply
-		// wait and try to scan again.
-		snapshot, cache, err := sync.Scan(e.root, hasher, e.cache, e.ignores)
-		if err != nil {
-			return stream.Send(scanResponse{TryAgain: true})
-		}
-
-		// Store the cache.
-		if err := encoding.MarshalAndSaveProtobuf(e.cachePath, cache); err != nil {
-			return errors.Wrap(err, "unable to save cache")
-		}
-		e.cache = cache
-
-		// Marshal the snapshot.
-		snapshotBytes, err := marshalEntry(snapshot)
-		if err != nil {
-			return errors.Wrap(err, "unable to marshal snapshot")
-		}
-
-		// Compute its checksum.
-		snapshotChecksum := checksum(snapshotBytes)
-
-		// If we've been forced or the checksum differs, send the snapshot.
-		if forced || !bytes.Equal(snapshotChecksum, request.ExpectedSnapshotChecksum) {
-			return stream.Send(scanResponse{
-				SnapshotChecksum: snapshotChecksum,
-				SnapshotDelta: rsyncer.DeltafyBytes(
-					snapshotBytes,
-					request.BaseSnapshotSignature,
-				),
-			})
-		}
-
-		// Otherwise, wait until an event occurs that makes us re-scan.
 		select {
 		case <-ticker.C:
-		case <-watchEvents:
-		case _, ok := <-forces:
-			if !ok {
-				return errors.New("error waiting for force request")
+			if err := stream.Encode(struct{}{}); err != nil {
+				return errors.Wrap(err, "unable to send watch event")
 			}
-			forced = true
-		}
-	}
-}
-
-func (e *endpoint) transmit(stream rpc.HandlerStream) error {
-	// Receive the request.
-	var request transmitRequest
-	if err := stream.Receive(&request); err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	}
-
-	// Lock the endpoint for reading (to allow for concurrent transmissions) and
-	// defer its release.
-	e.RLock()
-	defer e.RUnlock()
-
-	// If we're not initialized, we can't do anything.
-	if e.version == Version_Unknown {
-		return errors.New("endpoint not initialized")
-	}
-
-	// Open the file and ensure it's closed when we're done.
-	file, err := os.Open(filepath.Join(e.root, request.Path))
-	if err != nil {
-		return errors.Wrap(err, "unable to open source file")
-	}
-	defer file.Close()
-
-	// Create an operation transmitter.
-	transmit := func(operation rsync.Operation) error {
-		return stream.Send(transmitResponse{Operation: operation})
-	}
-
-	// Grab an rsync engine and return it when we're done.
-	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
-	defer e.rsyncEngines.Put(rsyncer)
-
-	// Transmit the delta.
-	if err := rsyncer.Deltafy(file, request.BaseSignature, transmit); err != nil {
-		return errors.Wrap(err, "unable to transmit delta")
-	}
-
-	// Success. We signal the end of the stream by closing it (which sends an
-	// io.EOF), and returning from the handler will do that by default.
-	return nil
-}
-
-type readSeekCloser interface {
-	io.Reader
-	io.Seeker
-	io.Closer
-}
-
-type emptyReadSeekCloser struct {
-	*bytes.Reader
-}
-
-func newEmptyReadSeekCloser() readSeekCloser {
-	return &emptyReadSeekCloser{bytes.NewReader(nil)}
-}
-
-func (e *emptyReadSeekCloser) Close() error {
-	return nil
-}
-
-type stagingOperation struct {
-	sync.StagingOperation
-	base         readSeekCloser
-	transmission rpc.ClientStream
-}
-
-func (e *endpoint) dispatch(
-	context context.Context,
-	queued <-chan stagingOperation,
-	dispatched chan<- stagingOperation,
-) error {
-	// Grab an rsync engine and return it when we're done.
-	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
-	defer e.rsyncEngines.Put(rsyncer)
-
-	// Loop over queued operations.
-	for operation := range queued {
-		// Attempt to open the base. If this fails (which it might if the file
-		// doesn't exist), then simply use an empty base.
-		if file, err := os.Open(filepath.Join(e.root, operation.Path)); err != nil {
-			operation.base = newEmptyReadSeekCloser()
-		} else {
-			operation.base = file
-		}
-
-		// Compute the base signature. If there is an error, just abort, because
-		// most likely the file is being modified concurrently and we'll have to
-		// stage again later. We don't treat this as terminal though.
-		baseSignature, err := rsyncer.Signature(operation.base)
-		if err != nil {
-			operation.base.Close()
-			continue
-		}
-
-		// Invoke transmission. If this fails, something is probably wrong with
-		// the network, so abort completely.
-		transmission, err := e.client.Invoke(endpointMethodTransmit)
-		if err != nil {
-			operation.base.Close()
-			return errors.Wrap(err, "unable to invoke transmission")
-		}
-		operation.transmission = transmission
-
-		// Send the transmit request.
-		request := transmitRequest{
-			Path:          operation.Path,
-			BaseSignature: baseSignature,
-		}
-		if err := transmission.Send(request); err != nil {
-			operation.base.Close()
-			operation.transmission.Close()
-			return errors.Wrap(err, "unable to send transmission request")
-		}
-
-		// Add the operation to the dispatched queue while watching for
-		// cancellation.
-		select {
-		case dispatched <- operation:
 		case <-context.Done():
-			operation.base.Close()
-			operation.transmission.Close()
-			return errors.New("dispatch cancelled")
+			return errors.New("cancelled")
 		}
 	}
+}
 
-	// Close the dispatched channel to indicate completion to the receiver.
-	close(dispatched)
+func (e *endpoint) serveControl(stream message.MessageStream) error {
+	// Receive and process control requests until there's an error.
+	for {
+		// Grab the next request.
+		var request endpointRequest
+		if err := stream.Decode(&request); err != nil {
+			return errors.Wrap(err, "unable to decode request")
+		}
+
+		// Dispatch the request accordingly.
+		if request.Scan != nil {
+			if response, err := e.handleScan(request.Scan); err != nil {
+				return errors.Wrap(err, "unable to perform scan")
+			} else if err = stream.Encode(response); err != nil {
+				return errors.Wrap(err, "unable to send scan response")
+			}
+		} else if request.Stage != nil {
+			if response, err := e.handleStage(request.Stage); err != nil {
+				return errors.Wrap(err, "unable to perform staging")
+			} else if err = stream.Encode(response); err != nil {
+				return errors.Wrap(err, "unable to send stage response")
+			}
+		} else if request.Transition != nil {
+			if err := stream.Encode(e.handleTransition(request.Transition)); err != nil {
+				return errors.Wrap(err, "unable to send transition response")
+			}
+		} else {
+			return errors.New("invalid request")
+		}
+	}
+}
+
+func (e *endpoint) handleScan(request *scanRequest) (*scanResponse, error) {
+	// Create a snapshot. If this fails, we have to consider the possibility
+	// that it's due to concurrent modifications. In that case, we just suggest
+	// that the controller re-try later.
+	snapshot, cache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores)
+	if err != nil {
+		return &scanResponse{TryAgain: true}, nil
+	}
+
+	// Store the cache.
+	if err = encoding.MarshalAndSaveProtobuf(e.cachePath, cache); err != nil {
+		return nil, errors.Wrap(err, "unable to save cache")
+	}
+	e.cache = cache
+
+	// Marshal the snapshot.
+	snapshotBytes, err := marshalEntry(snapshot)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to marshal snapshot")
+	}
+
+	// Compute it's delta against the base.
+	delta := e.scanEngine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature)
 
 	// Success.
-	return nil
+	return &scanResponse{SnapshotDelta: delta}, nil
 }
 
-func (e *endpoint) receive(
-	context context.Context,
-	dispatched <-chan stagingOperation,
-	updater func(StagingStatus) error,
-	total uint64,
-) error {
-	// Grab an rsync engine and return it when we're done.
-	rsyncer := e.rsyncEngines.Get().(*rsync.Engine)
-	defer e.rsyncEngines.Put(rsyncer)
-
-	// Compute the staging root. We'll use this as our temporary directory.
-	stagingRoot, err := pathForStagingRoot(e.session, e.alpha)
+func (e *endpoint) handleStage(request *stageRequest) (*stageResponse, error) {
+	// Compute the paths that need to be staged.
+	paths, err := stagingPathsForChanges(request.Transitions)
 	if err != nil {
-		return errors.Wrap(err, "unable to compute staging root")
+		return nil, errors.Wrap(err, "unable to extract staging paths")
 	}
 
-	// Track the progress index.
-	index := uint64(0)
-
-	// Loop until we're out of operations or cancelled.
-	for {
-		// Grab the next operation.
-		var path string
-		var entry *sync.Entry
-		var base readSeekCloser
-		var transmission rpc.ClientStream
-		select {
-		case operation, ok := <-dispatched:
-			if ok {
-				path = operation.Path
-				entry = operation.Entry
-				base = operation.base
-				transmission = operation.transmission
-			} else {
-				return nil
-			}
-		case <-context.Done():
-			return errors.New("receive cancelled")
-		}
-
-		// Increment our progress and send an update.
-		index += 1
-		if err := updater(StagingStatus{path, index, total}); err != nil {
-			base.Close()
-			transmission.Close()
-			return errors.Wrap(err, "unable to send staging update")
-		}
-
-		// Create a temporary file in the staging directory and compute its
-		// name.
-		temporary, err := ioutil.TempFile(stagingRoot, "staging")
-		if err != nil {
-			base.Close()
-			transmission.Close()
-			return errors.Wrap(err, "unable to create temporary file")
-		}
-		temporaryPath := temporary.Name()
-
-		// Create an rsync operation receiver. Note that this needs to pass back
-		// an io.EOF that it receives directly in order to inform rsync.Patch
-		// that operations are complete, so we don't want to wrap this error.
-		receive := func() (rsync.Operation, error) {
-			var response transmitResponse
-			if err := transmission.Receive(&response); err != nil {
-				return rsync.Operation{}, err
-			}
-			return response.Operation, nil
-		}
-
-		// Create a verification hasher.
-		hasher := e.version.hasher()
-
-		// Apply patch operations.
-		err = rsyncer.Patch(temporary, base, receive, hasher)
-
-		// Close files.
-		temporary.Close()
-		base.Close()
-
-		// Close the transmission stream.
-		transmission.Close()
-
-		// If there was a patching error, remove the file. We don't abort the
-		// staging pipeline in this case, because it's possible that the base
-		// was being concurrently modified or that the remote file had some
-		// error (perhaps also due to concurrent modification) and that future
-		// receives won't fail.
-		if err != nil {
-			os.Remove(temporaryPath)
-			continue
-		}
-
-		// Verify that the file contents match the expected digest. We don't
-		// abort the pipeline on mismatch because it could be due to concurrent
-		// modification.
-		if !bytes.Equal(hasher.Sum(nil), entry.Digest) {
-			os.Remove(temporaryPath)
-			continue
-		}
-
-		// Set the file permissions.
-		permissions := os.FileMode(0600)
-		if entry.Executable {
-			permissions = os.FileMode(0700)
-		}
-		if err = os.Chmod(temporaryPath, permissions); err != nil {
-			os.Remove(temporaryPath)
-			return errors.Wrap(err, "unable to set file permissions")
-		}
-
-		// Compute the staging path for the file.
-		stagingPath, err := pathForStaging(e.session, e.alpha, path, entry)
-		if err != nil {
-			os.Remove(temporaryPath)
-			return errors.Wrap(err, "unable to compute staging destination")
-		}
-
-		// Move the file into place.
-		if err = os.Rename(temporaryPath, stagingPath); err != nil {
-			os.Remove(temporaryPath)
-			return errors.Wrap(err, "unable to relocate staging file")
-		}
+	// Perform staging.
+	if err = e.stagingClient.Stage(paths); err != nil {
+		return nil, errors.Wrap(err, "unable to stage files")
 	}
+
+	// Success.
+	return &stageResponse{}, nil
 }
 
-func (e *endpoint) stage(stream rpc.HandlerStream) error {
-	// Receive the request.
-	var request stageRequest
-	if err := stream.Receive(&request); err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	}
+func (e *endpoint) handleTransition(request *transitionRequest) *transitionResponse {
+	// Perform the transition.
+	changes, problems := sync.Transition(
+		e.root,
+		request.Transitions,
+		e.cache,
+		e.stagingCoordinator,
+	)
 
-	// Lock the endpoint for reading (because we want to allow for concurrent
-	// transmission operations) and defer its release.
-	e.RLock()
-	defer e.RUnlock()
-
-	// If we're not initialized, we can't do anything.
-	if e.version == Version_Unknown {
-		return errors.New("endpoint not initialized")
-	}
-
-	// Compute the staging operations that we'll need to perform.
-	operations, err := sync.StagingOperationsForChanges(request.Transitions)
-	if err != nil {
-		return errors.Wrap(err, "unable to compute staging operations")
-	}
-
-	// Create private wrappers for these operations and queue them up.
-	queued := make(chan stagingOperation, len(operations))
-	for _, o := range operations {
-		queued <- stagingOperation{o, nil, nil}
-	}
-	close(queued)
-
-	// Create a cancellable context in which our dispatch/receive operations
-	// will execute.
-	context, cancel := context.WithCancel(context.Background())
-
-	// Create a queue of dispatched operations awaiting response.
-	dispatched := make(chan stagingOperation, maxOutstandingStagingRequests)
-
-	// Create a function to transmit staging status updates.
-	updater := func(s StagingStatus) error {
-		return stream.Send(stageResponse{Status: s})
-	}
-
-	// Start our dispatching/receiving pipeline.
-	dispatchErrors := make(chan error, 1)
-	receiveErrors := make(chan error, 1)
-	go func() {
-		dispatchErrors <- e.dispatch(context, queued, dispatched)
-	}()
-	go func() {
-		receiveErrors <- e.receive(context, dispatched, updater, uint64(len(operations)))
-	}()
-
-	// Wait for completion from all of the Goroutines. If an error is received,
-	// cancel the pipeline and wait for completion. Only record the first error,
-	// because we don't want cancellation errors being returned.
-	var dispatchDone, receiveDone bool
-	var pipelineError error
-	for !dispatchDone || !receiveDone {
-		select {
-		case err := <-dispatchErrors:
-			dispatchDone = true
-			if err != nil {
-				if pipelineError == nil {
-					pipelineError = errors.Wrap(err, "dispatch error")
-				}
-				cancel()
-			}
-		case err := <-receiveErrors:
-			receiveDone = true
-			if err != nil {
-				if pipelineError == nil {
-					pipelineError = errors.Wrap(err, "receive error")
-				}
-				cancel()
-			}
-		}
-	}
-
-	// Handle any pipeline error. If there was a pipeline error, then there may
-	// be outstanding operations in the dispatched queue with open files, so we
-	// need to close those out.
-	if pipelineError != nil {
-		for o := range dispatched {
-			o.base.Close()
-			o.transmission.Close()
-		}
-		return pipelineError
-	}
-
-	// Success. We signal the end of the stream by closing it (which sends an
-	// io.EOF), and returning from the handler will do that by default.
-	return nil
-}
-
-func (e *endpoint) transition(stream rpc.HandlerStream) error {
-	// Receive the request.
-	var request transitionRequest
-	if err := stream.Receive(&request); err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	}
-
-	// Lock the endpoint and defer its release.
-	e.Lock()
-	defer e.Unlock()
-
-	// If we're not initialized, we can't do anything.
-	if e.version == Version_Unknown {
-		return errors.New("endpoint not initialized")
-	}
-
-	// Create a staging provider.
-	provider := func(path string, entry *sync.Entry) (string, error) {
-		return pathForStaging(e.session, e.alpha, path, entry)
-	}
-
-	// Perform transitions.
-	changes, problems := sync.Transition(e.root, request.Transitions, e.cache, provider)
-
-	// Wipe the staging directory. Ignore any errors that occur, because we need
-	// to return the transition results. If errors are occuring, they'll be
-	// detected during the next round of staging.
-	if stagingRoot, err := pathForStagingRoot(e.session, e.alpha); err == nil {
-		os.RemoveAll(stagingRoot)
-	}
+	// Wipe the staging directory. We don't monitor for errors here, because we
+	// need to return the changes and problems no matter what, but if there's
+	// something weird going on with the filesystem, we'll see it the next time
+	// we scan or stage.
+	e.stagingCoordinator.wipe()
 
 	// Done.
-	return stream.Send(transitionResponse{
-		Changes:  changes,
-		Problems: problems,
-	})
+	return &transitionResponse{changes, problems}
 }
