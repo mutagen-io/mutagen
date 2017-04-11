@@ -46,3 +46,6 @@
 [submodule "vendor/github.com/gogo/protobuf"]
 	path = vendor/github.com/gogo/protobuf
 	url = https://github.com/gogo/protobuf.git
+[submodule "vendor/github.com/golang/snappy"]
+	path = vendor/github.com/golang/snappy
+	url = https://github.com/golang/snappy.git

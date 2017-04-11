@@ -58,7 +58,7 @@ type Client struct {
 
 func NewClient(connection io.ReadWriter, root string, sinker Sinker, updater UpdateReceiver) *Client {
 	return &Client{
-		stream:  message.NewMessageStream(connection),
+		stream:  message.NewCompressedMessageStream(connection),
 		root:    root,
 		sinker:  sinker,
 		updater: updater,
