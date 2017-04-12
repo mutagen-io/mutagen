@@ -210,7 +210,7 @@ func (e *endpoint) transmitRsyncClientState(connection io.ReadWriter) error {
 			return errors.Wrap(err, "unable to poll client state")
 		}
 
-		// Transmit the next client state change.
+		// Transmit the client state.
 		if err = stream.Encode(state); err != nil {
 			return errors.Wrap(err, "unable to transmit state")
 		}
