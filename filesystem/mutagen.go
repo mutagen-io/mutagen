@@ -12,23 +12,28 @@ const (
 	MutagenDirectoryName = ".mutagen"
 )
 
-func Mutagen(subpath ...string) (string, error) {
+// userHomeDirectory is the cached path to the current user's home directory.
+var userHomeDirectory string
+
+func init() {
 	// Grab the current user's home directory. Check that it isn't empty,
 	// because when compiling without cgo the $HOME environment variable is used
-	// to computer the HomeDir field and we can't guarantee something isn't
-	// wonky with the environment.
-	var home string
+	// to compute the HomeDir field and we can't guarantee something isn't wonky
+	// with the environment. We cache this because we don't expect it to change
+	// and the underlying getuid system call is surprisingly expensive.
 	if currentUser, err := user.Current(); err != nil {
-		return "", errors.Wrap(err, "unable to lookup current user")
+		panic(errors.Wrap(err, "unable to lookup current user"))
 	} else if currentUser.HomeDir == "" {
-		return "", errors.Wrap(err, "unable to determine home directory")
+		panic(errors.Wrap(err, "unable to determine home directory"))
 	} else {
-		home = currentUser.HomeDir
+		userHomeDirectory = currentUser.HomeDir
 	}
+}
 
+func Mutagen(subpath ...string) (string, error) {
 	// Collect path components and compute the result.
 	components := make([]string, 0, 2+len(subpath))
-	components = append(components, home, MutagenDirectoryName)
+	components = append(components, userHomeDirectory, MutagenDirectoryName)
 	root := filepath.Join(components...)
 	components = append(components, subpath...)
 	result := filepath.Join(components...)
