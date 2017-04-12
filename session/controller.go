@@ -636,9 +636,6 @@ func (c *controller) synchronize(
 	alpha := message.NewMessageStream(alphaConnection)
 	beta := message.NewMessageStream(betaConnection)
 
-	// Create an rsync engine that we can use for scanning.
-	rsyncer := rsync.NewDefaultEngine()
-
 	// Load the archive and extract the ancestor.
 	archive := &Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
@@ -684,7 +681,6 @@ func (c *controller) synchronize(
 			alpha,
 			alphaPreservesExecutability,
 			ancestor,
-			rsyncer,
 		)
 		if alphaScanErr != nil {
 			return errors.Wrap(err, "alpha scan error")
@@ -696,7 +692,6 @@ func (c *controller) synchronize(
 			beta,
 			betaPreservesExecutability,
 			ancestor,
-			rsyncer,
 		)
 		if betaScanErr != nil {
 			return errors.Wrap(err, "beta scan error")
@@ -846,8 +841,10 @@ func (c *controller) scan(
 	endpoint message.MessageStream,
 	preservesExecutability bool,
 	ancestor *sync.Entry,
-	rsyncer *rsync.Engine,
 ) (*sync.Entry, bool, error) {
+	// Create an rsync engine.
+	rsyncer := rsync.NewDefaultEngine()
+
 	// Start by expecting the ancestor as a base.
 	expected := ancestor
 
