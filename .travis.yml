@@ -25,8 +25,7 @@ before_install:
 
 # Disable the default install step, which will try to do "go get -t -v ./..."
 # only to find that it doesn't work for vendored dependencies.
-install:
-  - echo "Skipping the default go get..."
+install: true
 
 # Run tests.
 # TODO: Go 1.9 will include a fix so that "..." patterns don't descend into
