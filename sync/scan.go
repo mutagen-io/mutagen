@@ -12,10 +12,20 @@ import (
 	"github.com/havoc-io/mutagen/filesystem"
 )
 
-// TODO: Figure out if we should set this on a per-machine basis. This value is
-// taken from Go's io.Copy method, which defaults to allocating a 32k buffer if
-// none is provided.
-const scannerCopyBufferSize = 32 * 1024
+const (
+	// scannerCopyBufferSize specifies the size of the internal buffer that a
+	// scanner uses to copy file data.
+	// TODO: Figure out if we should set this on a per-machine basis. This value
+	// is taken from Go's io.Copy method, which defaults to allocating a 32k
+	// buffer if none is provided.
+	scannerCopyBufferSize = 32 * 1024
+
+	// defaultInitialCacheCapacity specifies the default capacity for new caches
+	// when the existing cache is nil or empty. It is designed to save several
+	// rounds of cache capacity doubling on insert without always allocating a
+	// huge cache. Its value is somewhat arbitrary.
+	defaultInitialCacheCapacity = 1024
+)
 
 type scanner struct {
 	root     string
@@ -157,8 +167,13 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
-	// existing cache length.
-	newCache := &Cache{make(map[string]*CacheEntry, len(cache.GetEntries()))}
+	// existing cache length. If the existing cache is empty, create one with
+	// the default capacity.
+	initialCacheCapacity := defaultInitialCacheCapacity
+	if cacheLength := len(cache.GetEntries()); cacheLength != 0 {
+		initialCacheCapacity = cacheLength
+	}
+	newCache := &Cache{make(map[string]*CacheEntry, initialCacheCapacity)}
 
 	// Create a scanner.
 	s := &scanner{
