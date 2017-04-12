@@ -79,13 +79,31 @@ func newEngine(blockSize uint64, maxOpSize uint64) *Engine {
 	return &Engine{
 		blockSize: blockSize,
 		maxOpSize: maxOpSize,
-		buffer:    make([]byte, blockSize+maxOpSize),
 	}
 }
 
 // NewDefaultEngine creates a new rsync engine with sensible default parameters.
 func NewDefaultEngine() *Engine {
 	return newEngine(defaultBlockSize, defaultMaxOpSize)
+}
+
+// bufferWithSize lazily allocates the engine's internal buffer, ensuring that
+// it is the required size. The capacity of the internal buffer is retained
+// between calls to avoid allocations if possible.
+func (e *Engine) bufferWithSize(size uint64) []byte {
+	// Check if the buffer currently has the required capacity. If it does, then
+	// use that space. Note that we're checking *capacity* - you're allowed to
+	// slice a buffer up to its capacity, not just its length. Of course, if you
+	// don't own the buffer, you could run into problems with accessing data
+	// outside the slice that was given to you, but this buffer is completely
+	// internal, so that's not a concern.
+	if uint64(cap(e.buffer)) >= size {
+		return e.buffer[:size]
+	}
+
+	// If we couldn't use our existing buffer, create a new one, but store it.
+	e.buffer = make([]byte, size)
+	return e.buffer
 }
 
 const (
@@ -137,8 +155,8 @@ func (e *Engine) Signature(base io.Reader) ([]BlockHash, error) {
 	// Create the result.
 	var result []BlockHash
 
-	// Extract a portion of our buffer with which to read blocks.
-	buffer := e.buffer[:e.blockSize]
+	// Create a buffer with which to read blocks.
+	buffer := e.bufferWithSize(e.blockSize)
 
 	// Read blocks and append their hashes until we reach EOF.
 	index := uint64(0)
@@ -245,9 +263,8 @@ func (e *Engine) Deltafy(target io.Reader, baseSignature []BlockHash, transmit O
 	// single-byte reads.
 	bufferedTarget := bufio.NewReader(target)
 
-	// Extract a portion of our buffer that we can use to store data while
-	// searching for matches.
-	buffer := e.buffer[:e.maxOpSize+e.blockSize]
+	// Create a buffer that we can use to load data and search for matches.
+	buffer := e.bufferWithSize(e.maxOpSize + e.blockSize)
 
 	// Read in a block's worth of data for the initial match test.
 	if n, err := io.ReadFull(bufferedTarget, buffer[:e.blockSize]); err == io.EOF {
@@ -426,8 +443,8 @@ func (e *Engine) DeltafyBytes(target []byte, baseSignature []BlockHash) []Operat
 }
 
 func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver) error {
-	// Extract a buffer for block copying.
-	buffer := e.buffer[:e.blockSize]
+	// Create a buffer for block copying.
+	buffer := e.bufferWithSize(e.blockSize)
 
 	// Loop until the operation stream is finished or errored.
 	for {
