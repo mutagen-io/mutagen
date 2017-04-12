@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha1"
-	"hash"
 	"io"
 
 	"github.com/pkg/errors"
@@ -426,15 +425,9 @@ func (e *Engine) DeltafyBytes(target []byte, baseSignature []BlockHash) []Operat
 	return delta
 }
 
-func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver, digest hash.Hash) error {
+func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive OperationReceiver) error {
 	// Extract a buffer for block copying.
 	buffer := e.buffer[:e.blockSize]
-
-	// If a digest has been provided, fold it into the destination. Since the
-	// digest writes can't fail, there's no danger in doing this.
-	if digest != nil {
-		destination = io.MultiWriter(destination, digest)
-	}
 
 	// Loop until the operation stream is finished or errored.
 	for {
@@ -497,7 +490,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, receive Operat
 	}
 }
 
-func (e *Engine) PatchBytes(base []byte, delta []Operation, digest hash.Hash) ([]byte, error) {
+func (e *Engine) PatchBytes(base []byte, delta []Operation) ([]byte, error) {
 	// Wrap up the base bytes in a reader.
 	baseReader := bytes.NewReader(base)
 
@@ -518,7 +511,7 @@ func (e *Engine) PatchBytes(base []byte, delta []Operation, digest hash.Hash) ([
 	}
 
 	// Perform application.
-	if err := e.Patch(output, baseReader, receive, digest); err != nil {
+	if err := e.Patch(output, baseReader, receive); err != nil {
 		return nil, err
 	}
 

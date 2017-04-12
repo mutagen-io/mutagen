@@ -884,7 +884,7 @@ func (c *controller) scan(
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta, nil)
+	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}

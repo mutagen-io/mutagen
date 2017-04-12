@@ -180,7 +180,7 @@ func (c *Client) Stage(paths []string) error {
 		// TODO: We ignore patch errors that aren't due to receive errors
 		// because they could just be transient disk errors. We should record
 		// this information and return it in statistics.
-		c.engine.Patch(sink, base, c.receive, nil)
+		c.engine.Patch(sink, base, c.receive)
 
 		// Close files.
 		sink.Close()

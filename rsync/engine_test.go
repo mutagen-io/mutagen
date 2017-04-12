@@ -64,7 +64,7 @@ func (c engineTestCase) run(t *testing.T) {
 	}
 
 	// Apply the delta.
-	patched, err := engine.PatchBytes(base, delta, nil)
+	patched, err := engine.PatchBytes(base, delta)
 	if err != nil {
 		t.Fatal("unable to patch bytes:", err)
 	}
