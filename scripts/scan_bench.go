@@ -21,7 +21,7 @@ const (
 	cacheFile    = "cache_test"
 )
 
-var usage = `scan_bench [-h|--help] [-i|--ignore=<pattern>] <path>
+var usage = `scan_bench [-h|--help] [-p|--profile] [-i|--ignore=<pattern>] <path>
 `
 
 type ignorePatterns []string
