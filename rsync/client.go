@@ -54,6 +54,7 @@ type Client struct {
 	state         StagingStatus
 	response      response
 	receiveError  error
+	streamReceiveDone bool
 	previousError error
 }
 
@@ -98,6 +99,7 @@ func (c *Client) receive() (Operation, error) {
 	// TODO: Should we record response error information and return it in
 	// statistics.
 	if c.response.Done {
+		c.streamReceiveDone = true
 		return Operation{}, EndOfOperations
 	}
 
@@ -131,19 +133,13 @@ func (c *Client) Stage(paths []string) error {
 		c.state = StagingStatus{}
 	}()
 
-	// Convert paths to full paths.
-	fullPaths := make([]string, len(paths))
-	for i, p := range paths {
-		fullPaths[i] = filepath.Join(c.root, p)
-	}
-
 	// Compute signatures for the paths. If a path fails to open or we're unable
 	// to compute its signature, just give it an empty signature, but record
 	// that we shouldn't expect it to have a valid base.
 	signatures := make([][]BlockHash, len(paths))
 	failedToOpen := make([]bool, len(paths))
-	for i, p := range fullPaths {
-		if f, err := os.Open(p); err != nil {
+	for i, p := range paths {
+		if f, err := os.Open(filepath.Join(c.root, p)); err != nil {
 			failedToOpen[i] = true
 		} else {
 			if s, err := c.engine.Signature(f); err != nil {
@@ -162,15 +158,19 @@ func (c *Client) Stage(paths []string) error {
 	}
 
 	// Handle responses.
-	for i, p := range fullPaths {
+	for i, p := range paths {
 		// Record a state update.
 		c.stateLock.Lock()
 		c.state = StagingStatus{paths[i], uint64(i), uint64(len(paths))}
 		c.stateLock.Unlock()
 
+		// Reset tracking of stream completion.
+		c.streamReceiveDone = false
+
 		// Open the base. If the base previously failed to open, then just
 		// create an empty base. If it fails to open now, then we need to burn
-		// off the incoming operation stream for this file.
+		// off the incoming operation stream for this file, because it could
+		// contain non-data operations that we can't satisfy.
 		var base readSeekCloser
 		if failedToOpen[i] {
 			base = newEmptyReadSeekCloser()
@@ -179,6 +179,7 @@ func (c *Client) Stage(paths []string) error {
 				c.previousError = errors.Wrap(err, "unable to burn operation stream")
 				return c.previousError
 			}
+			continue
 		} else {
 			base = f
 		}
@@ -192,10 +193,7 @@ func (c *Client) Stage(paths []string) error {
 		}
 
 		// Receive and apply patch operations.
-		// TODO: We ignore patch errors that aren't due to receive errors
-		// because they could just be transient disk errors. We should record
-		// this information and return it in statistics.
-		c.engine.Patch(sink, base, c.receive)
+		err = c.engine.Patch(sink, base, c.receive)
 
 		// Close files.
 		sink.Close()
@@ -206,6 +204,28 @@ func (c *Client) Stage(paths []string) error {
 			c.previousError = errors.Wrap(err, "unable to receive operation")
 			return c.previousError
 		}
+
+		// If the stream didn't complete, there must have been an error internal
+		// to patch (i.e. not a receive error) (e.g. from the base or sink).
+		// This type of error isn't terminal, but we do need to burn the
+		// remaining operations in the stream.
+		if !c.streamReceiveDone {
+			// Verify that there was in fact an error. There must be if the end
+			// of the stream wasn't reached. This is actually an internal
+			// invariant of Engine.Patch, so it's safe to strictly enforce this.
+			if err == nil {
+				panic("stream underconsumed without error")
+			}
+
+			// Burn remaining operations.
+			if err = c.burnOperationStream(); err != nil {
+				c.previousError = errors.Wrap(err, "unable to burn operation stream")
+				return c.previousError
+			}
+		}
+
+		// TODO: In theory, we could do something with the error information
+		// that's returned by patch, e.g. counting it in statistics.
 	}
 
 	// Success.
