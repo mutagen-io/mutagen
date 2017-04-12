@@ -75,9 +75,12 @@ func (s *Service) Methods() map[string]rpc.Handler {
 }
 
 func (s *Service) Shutdown() {
+	// Poison state tracking to terminate monitoring.
+	s.tracker.Poison()
+
 	// Grab the registry lock and defer its release.
 	s.sessionsLock.Lock()
-	s.sessionsLock.UnlockWithoutNotify()
+	defer s.sessionsLock.UnlockWithoutNotify()
 
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
@@ -160,13 +163,17 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 	// Loop indefinitely and track state changes. We'll bail after a single
 	// response if monitoring wasn't requested.
 	previousStateIndex := uint64(0)
+	var poisoned bool
 	for {
 		// Wait for a state change.
 		// TODO: If the client disconnects while this handler is polling for
 		// changes, this Goroutine will wait here until there's another change,
 		// and will then exit when it tries (and fails) to send a response. This
 		// will be fine in practice, but it's not elegant.
-		previousStateIndex = s.tracker.WaitForChange(previousStateIndex)
+		previousStateIndex, poisoned = s.tracker.WaitForChange(previousStateIndex)
+		if poisoned {
+			return errors.New("state tracking termianted")
+		}
 
 		// Lock the session registry.
 		s.sessionsLock.Lock()

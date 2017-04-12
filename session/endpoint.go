@@ -106,16 +106,14 @@ func ServeEndpoint(connection io.ReadWriteCloser) error {
 		return errors.Wrap(err, "unable to create staging coordinator")
 	}
 
-	// Create the rsync client.
-	stagingUpdates := message.NewMessageStream(streams[endpointChannelRsyncUpdates])
+	// Create the rsync client and ensure that all polling on its state is
+	// terminated when we're done.
 	stagingClient := rsync.NewClient(
 		streams[endpointChannelRsyncClient],
 		root,
 		stagingCoordinator,
-		func(status rsync.StagingStatus) error {
-			return stagingUpdates.Encode(status)
-		},
 	)
+	defer stagingClient.CancelAllStatePollers()
 
 	// Send the initialization response.
 	initResponse := initializeResponse{
@@ -149,6 +147,12 @@ func ServeEndpoint(connection io.ReadWriteCloser) error {
 		serveWatchErrors <- endpoint.serveWatch(serveContext, streams[endpointChannelWatchEvents])
 	}()
 
+	// Start serving rsync state updates.
+	transmitRsyncClientStateErrors := make(chan error, 1)
+	go func() {
+		transmitRsyncClientStateErrors <- endpoint.transmitRsyncClientState(streams[endpointChannelRsyncUpdates])
+	}()
+
 	// Start serving control requests.
 	serveControlErrors := make(chan error, 1)
 	go func() {
@@ -161,6 +165,8 @@ func ServeEndpoint(connection io.ReadWriteCloser) error {
 		return errors.Wrap(err, "rsync server failure")
 	case err = <-serveWatchErrors:
 		return errors.Wrap(err, "watch server failure")
+	case err = <-transmitRsyncClientStateErrors:
+		return errors.Wrap(err, "rsync state transmission failure")
 	case err = <-serveControlErrors:
 		return errors.Wrap(err, "control server failure")
 	}
@@ -181,10 +187,32 @@ func (e *endpoint) serveWatch(context context.Context, connection io.ReadWriter)
 		select {
 		case <-ticker.C:
 			if err := stream.Encode(struct{}{}); err != nil {
-				return errors.Wrap(err, "unable to send watch event")
+				return errors.Wrap(err, "unable to transmit watch event")
 			}
 		case <-context.Done():
 			return errors.New("cancelled")
+		}
+	}
+}
+
+func (e *endpoint) transmitRsyncClientState(connection io.ReadWriter) error {
+	// Convert the connection to a message stream.
+	stream := message.NewMessageStream(connection)
+
+	// Loop on client state changes until there's an error.
+	var state rsync.StagingStatus
+	var stateIndex uint64
+	var err error
+	for {
+		// Poll for the next client state change.
+		state, stateIndex, err = e.stagingClient.State(stateIndex)
+		if err != nil {
+			return errors.Wrap(err, "unable to poll client state")
+		}
+
+		// Transmit the next client state change.
+		if err = stream.Encode(state); err != nil {
+			return errors.Wrap(err, "unable to transmit state")
 		}
 	}
 }

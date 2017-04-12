@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/message"
+	"github.com/havoc-io/mutagen/state"
 )
 
 type readSeekCloser interface {
@@ -43,26 +44,32 @@ type StagingStatus struct {
 	// failed requests, bandwidth, internal statistics, speedup factor, etc.
 }
 
-type UpdateReceiver func(StagingStatus) error
-
 type Client struct {
 	stream        message.MessageStream
 	root          string
 	sinker        Sinker
-	updater       UpdateReceiver
 	engine        *Engine
+	stateTracker  *state.Tracker
+	stateLock     *state.TrackingLock
+	state         StagingStatus
 	response      response
 	receiveError  error
 	previousError error
 }
 
-func NewClient(connection io.ReadWriter, root string, sinker Sinker, updater UpdateReceiver) *Client {
+func NewClient(connection io.ReadWriter, root string, sinker Sinker) *Client {
+	// Set up state tracking infrastructure.
+	stateTracker := state.NewTracker()
+	stateLock := state.NewTrackingLock(stateTracker)
+
+	// Create the client.
 	return &Client{
-		stream:  message.NewCompressedMessageStream(connection),
-		root:    root,
-		sinker:  sinker,
-		updater: updater,
-		engine:  NewDefaultEngine(),
+		stream:       message.NewCompressedMessageStream(connection),
+		root:         root,
+		sinker:       sinker,
+		engine:       NewDefaultEngine(),
+		stateTracker: stateTracker,
+		stateLock:    stateLock,
 	}
 }
 
@@ -114,6 +121,16 @@ func (c *Client) Stage(paths []string) error {
 		return errors.Wrap(c.previousError, "previous error")
 	}
 
+	// Ensure that we clear out the client state when we're done.
+	// TODO: If we add more nuanced statistics to StagingStatus, e.g. those that
+	// persist across staging cycles, we'll need to reset the state more
+	// carefully.
+	defer func() {
+		c.stateLock.Lock()
+		defer c.stateLock.Unlock()
+		c.state = StagingStatus{}
+	}()
+
 	// Convert paths to full paths.
 	fullPaths := make([]string, len(paths))
 	for i, p := range paths {
@@ -146,12 +163,10 @@ func (c *Client) Stage(paths []string) error {
 
 	// Handle responses.
 	for i, p := range fullPaths {
-		// Send a progress update.
-		status := StagingStatus{paths[i], uint64(i), uint64(len(paths))}
-		if err := c.updater(status); err != nil {
-			c.previousError = errors.Wrap(err, "unable to send staging update")
-			return c.previousError
-		}
+		// Record a state update.
+		c.stateLock.Lock()
+		c.state = StagingStatus{paths[i], uint64(i), uint64(len(paths))}
+		c.stateLock.Unlock()
 
 		// Open the base. If the base previously failed to open, then just
 		// create an empty base. If it fails to open now, then we need to burn
@@ -193,12 +208,34 @@ func (c *Client) Stage(paths []string) error {
 		}
 	}
 
-	// Send a final staging update to clear the state.
-	if err := c.updater(StagingStatus{}); err != nil {
-		c.previousError = errors.Wrap(err, "unable to send final staging update")
-		return c.previousError
-	}
-
 	// Success.
 	return nil
+}
+
+// State polls on the client state index, blocking until the state has changed
+// from the previous state index. If no previous state index is known, 0 may be
+// passed to retrieve the current state and state index. This method is safe to
+// call concurrently with Stage, itself, and CancelAllStatePollers.
+func (c *Client) State(previousIndex uint64) (StagingStatus, uint64, error) {
+	// Wait for the state to change from the previous index, but watch for
+	// poisoning.
+	newIndex, poisoned := c.stateTracker.WaitForChange(previousIndex)
+	if poisoned {
+		return StagingStatus{}, 0, errors.New("state polling cancelled")
+	}
+
+	// Grab the state lock and ensure it's released when we're done. We release
+	// without any notification to avoid an infinite state update loop.
+	c.stateLock.Lock()
+	defer c.stateLock.UnlockWithoutNotify()
+
+	// Return a copy of the state and the new index.
+	return c.state, newIndex, nil
+}
+
+// CancelAllStatePollers unblocks all calls to State and prevents any future
+// state polling. This method is safe to call concurrently with Stage, State,
+// and itself. It is idempotent.
+func (c *Client) CancelAllStatePollers() {
+	c.stateTracker.Poison()
 }
