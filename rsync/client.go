@@ -45,17 +45,17 @@ type StagingStatus struct {
 }
 
 type Client struct {
-	stream        message.MessageStream
-	root          string
-	sinker        Sinker
-	engine        *Engine
-	stateTracker  *state.Tracker
-	stateLock     *state.TrackingLock
-	state         StagingStatus
-	response      response
-	receiveError  error
+	stream            message.MessageStream
+	root              string
+	sinker            Sinker
+	engine            *Engine
+	stateTracker      *state.Tracker
+	stateLock         *state.TrackingLock
+	state             StagingStatus
+	response          response
+	receiveError      error
 	streamReceiveDone bool
-	previousError error
+	previousError     error
 }
 
 func NewClient(connection io.ReadWriter, root string, sinker Sinker) *Client {
@@ -68,7 +68,7 @@ func NewClient(connection io.ReadWriter, root string, sinker Sinker) *Client {
 		stream:       message.NewCompressedMessageStream(connection),
 		root:         root,
 		sinker:       sinker,
-		engine:       NewDefaultEngine(),
+		engine:       NewEngine(),
 		stateTracker: stateTracker,
 		stateLock:    stateLock,
 	}
@@ -136,7 +136,7 @@ func (c *Client) Stage(paths []string) error {
 	// Compute signatures for the paths. If a path fails to open or we're unable
 	// to compute its signature, just give it an empty signature, but record
 	// that we shouldn't expect it to have a valid base.
-	signatures := make([][]BlockHash, len(paths))
+	signatures := make([]Signature, len(paths))
 	failedToOpen := make([]bool, len(paths))
 	for i, p := range paths {
 		if f, err := os.Open(filepath.Join(c.root, p)); err != nil {
@@ -193,7 +193,7 @@ func (c *Client) Stage(paths []string) error {
 		}
 
 		// Receive and apply patch operations.
-		err = c.engine.Patch(sink, base, c.receive)
+		err = c.engine.Patch(sink, base, signatures[i], c.receive)
 
 		// Close files.
 		sink.Close()

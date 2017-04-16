@@ -15,26 +15,27 @@ func Serve(connection io.ReadWriter, root string) error {
 	stream := message.NewCompressedMessageStream(connection)
 
 	// Create an rsync engine.
-	engine := NewDefaultEngine()
-
-	// Create a request message that we can re-use.
-	var request request
+	engine := NewEngine()
 
 	// Server until there's an error.
 	for {
-		// Reset the request before the next receive, but leave its capacities
-		// in place to potentially avoid reallocation.
-		request.Paths = request.Paths[:0]
-		request.Signatures = request.Signatures[:0]
-
-		// Receive the next request.
+		// Receive the next request. In theory, we could re-use request objects
+		// for decoding, but in practice it'd be a pain to reset each block hash
+		// within each signature in the request (which we'd have to since gob
+		// won't transmit and set fields with zero values). We'd have to do this
+		// for each block hash in the *capacity* of each signature, which would
+		// be error prone and slow. Also, the block hash capacity for each
+		// signature is most likely going to be insufficient to avoid
+		// reallocation until many requests have been received and each
+		// signature has gained a large block hash capacity.
+		var request request
 		if err := stream.Decode(&request); err != nil {
 			return errors.Wrap(err, "unable to decode request")
 		}
 
 		// Verify that the request is sane.
-		if len(request.Paths) != len(request.Signatures) {
-			return errors.New("received invalid request")
+		if err := request.ensureValid(); err != nil {
+			return errors.Wrap(err, "received invalid request")
 		}
 
 		// Handle the requested transmissions.
