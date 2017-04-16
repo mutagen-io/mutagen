@@ -129,7 +129,7 @@ func ServeEndpoint(connection io.ReadWriteCloser) error {
 		ignores:            init.Ignores,
 		cachePath:          cachePath,
 		cache:              cache,
-		scanEngine:         rsync.NewDefaultEngine(),
+		scanEngine:         rsync.NewEngine(),
 		scanHasher:         init.Version.hasher(),
 		stagingCoordinator: stagingCoordinator,
 		stagingClient:      stagingClient,

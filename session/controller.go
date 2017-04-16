@@ -843,7 +843,7 @@ func (c *controller) scan(
 	ancestor *sync.Entry,
 ) (*sync.Entry, bool, error) {
 	// Create an rsync engine.
-	rsyncer := rsync.NewDefaultEngine()
+	rsyncer := rsync.NewEngine()
 
 	// Start by expecting the ancestor as a base.
 	expected := ancestor
@@ -881,7 +881,7 @@ func (c *controller) scan(
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, response.SnapshotDelta)
+	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, expectedSignature, response.SnapshotDelta)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}

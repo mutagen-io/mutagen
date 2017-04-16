@@ -29,7 +29,7 @@ type initializeResponse struct {
 }
 
 type scanRequest struct {
-	BaseSnapshotSignature []rsync.BlockHash
+	BaseSnapshotSignature rsync.Signature
 }
 
 type scanResponse struct {
