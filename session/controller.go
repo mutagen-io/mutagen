@@ -728,7 +728,10 @@ func (c *controller) synchronize(
 			betaStagingErrors <- c.stage(beta, betaTransitions)
 		}()
 
-		// Wait for both stagings to complete.
+		// Wait for both stagings to complete. Because staging can take a long
+		// time to complete and is safe to interrupt, we poll for cancellation
+		// here. Once we return, the underlying connection will be closed and
+		// the staging Goroutines will error out.
 		var alphaStagingError, betaStagingError error
 		var alphaStagingDone, betaStagingDone bool
 		for !alphaStagingDone || !betaStagingDone {
@@ -737,6 +740,8 @@ func (c *controller) synchronize(
 				alphaStagingDone = true
 			case betaStagingError = <-betaStagingErrors:
 				betaStagingDone = true
+			case <-context.Done():
+				return errors.New("cancelled")
 			}
 		}
 
