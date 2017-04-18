@@ -136,6 +136,18 @@ func (c *Client) Stage(paths []string) error {
 	// Compute signatures for the paths. If a path fails to open or we're unable
 	// to compute its signature, just give it an empty signature, but record
 	// that we shouldn't expect it to have a valid base.
+	// TODO: Perhaps we should add a limit to the maximum number or size of
+	// signatures that we'll store in-memory and transmit in a single request.
+	// If we do that, we can simply chunk the requested paths. This would cost
+	// us an additional round-trip latency per-chunk, but potentially save on
+	// memory usage. This optimization is only necessary if we have many bases
+	// that generate large signatures. This generally won't be the case - either
+	// we'll have many bases with empty signatures (on an initial
+	// synchronization) or we'll have a few (potentially large but probably not
+	// huge) bases that will generate larger signatures (on a subsequent
+	// synchronization). We're unlikely to have many large bases, and even if we
+	// do, signatures only take up ~0.5% of the original data size, and if it's
+	// really a problem then we can do this chunking idea.
 	signatures := make([]Signature, len(paths))
 	failedToOpen := make([]bool, len(paths))
 	for i, p := range paths {
