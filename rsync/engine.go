@@ -89,44 +89,68 @@ func (o Operation) ensureValid() error {
 }
 
 const (
-	// minimumBlockSize is the minimum block size that will be returned by
-	// optimalBlockSize. It has to be chosen so that it is at least a few orders
-	// of magnitude larger than the size of a BlockHash.
-	minimumBlockSize = 1 << 10
-	// maximumBlockSize is the maximum block size that will be returned by
-	// optimalBlockSize. It mostly just needs to be bounded by what can fit into
-	// a reasonably sized in-memory buffer, particularly if multiple rsync
-	// engines are running. maximumBlockSize also needs to be less than or equal
-	// to (2^32)-1 for the weak hash algorithm to work.
-	maximumBlockSize = 1 << 16
-	// maximumDataOperationSize is the maximum data size permitted per
-	// operation. The optimal value for this isn't at all correlated with block
-	// size - it's just what's reasonable to hold in-memory and pass over the
-	// wire in a single transmission.
-	// TODO: It's very easy if we want to make this configurable, we just need
-	// to pass it as an argument to Deltafy.
-	maximumDataOperationSize = 1 << 16
+	// minimumOptimalBlockSize is the minimum block size that will be returned
+	// by OptimalBlockSizeForBaseLength. It has to be chosen so that it is at
+	// least a few orders of magnitude larger than the size of a BlockHash.
+	minimumOptimalBlockSize = 1 << 10
+	// maximumOptimalBlockSize is the maximum block size that will be returned
+	// by OptimalBlockSizeForBaseLength. It mostly just needs to be bounded by
+	// what can fit into a reasonably sized in-memory buffer, particularly if
+	// multiple rsync engines are running. maximumBlockSize also needs to be
+	// less than or equal to (2^32)-1 for the weak hash algorithm to work.
+	maximumOptimalBlockSize = 1 << 16
+	// DefaultBlockSize is the default block size that will be used if a zero
+	// value is passed into Engine.Signature for the blockSize parameter.
+	DefaultBlockSize = 1 << 13
+	// DefaultMaximumDataOperationSize is the default maximum data size
+	// permitted per operation. The optimal value for this isn't at all
+	// correlated with block size - it's just what's reasonable to hold
+	// in-memory and pass over the wire in a single transmission. This value
+	// will be used if a zero value is passed into Engine.Deltafy for the
+	// maxDataOpSize parameter.
+	DefaultMaximumDataOperationSize = 1 << 16
 )
 
-// optimalBlockSize uses a simpler heuristic to choose a block size. It starts
-// by choosing the optimal block length using the formula given in the rsync
-// thesis. It then enforces that the block size is within a sensible range.
+// OptimalBlockSizeForBaseLength uses a simpler heuristic to choose a block
+// size based on the base length. It starts by choosing the optimal block length
+// using the formula given in the rsync thesis. It then enforces that the block
+// size is within a sensible range.
 // TODO: Should we add rounding to "nice" values, e.g. the nearest multiple of
 // 1024 bytes? Would this improve read throughput?
-func optimalBlockSize(baseLength uint64) uint64 {
+func OptimalBlockSizeForBaseLength(baseLength uint64) uint64 {
 	// Compute the optimal block length (see the rsync thesis) assuming one
 	// change per file.
 	result := uint64(math.Sqrt(24.0 * float64(baseLength)))
 
 	// Ensure it's within the allowed range.
-	if result < minimumBlockSize {
-		result = minimumBlockSize
-	} else if result > maximumBlockSize {
-		result = maximumBlockSize
+	if result < minimumOptimalBlockSize {
+		result = minimumOptimalBlockSize
+	} else if result > maximumOptimalBlockSize {
+		result = maximumOptimalBlockSize
 	}
 
 	// Done.
 	return result
+}
+
+// OptimalBlockSizeForBase is a convenience function that will determine the
+// optimal block size for a base that implements io.Seeker. It calls down to
+// OptimalBlockSizeForBaseLength. After determining the base's length, it will
+// attempt to reset the base to its original position.
+func OptimalBlockSizeForBase(base io.Seeker) (uint64, error) {
+	if currentOffset, err := base.Seek(0, io.SeekCurrent); err != nil {
+		return 0, errors.Wrap(err, "unable to determine current base offset")
+	} else if currentOffset < 0 {
+		return 0, errors.Wrap(err, "seek return negative starting location")
+	} else if length, err := base.Seek(0, io.SeekEnd); err != nil {
+		return 0, errors.Wrap(err, "unable to compute base length")
+	} else if length < 0 {
+		return 0, errors.New("seek returned negative offset")
+	} else if _, err = base.Seek(currentOffset, io.SeekStart); err != nil {
+		return 0, errors.Wrap(err, "unable to reset base")
+	} else {
+		return OptimalBlockSizeForBaseLength(uint64(length)), nil
+	}
 }
 
 // OperationTransmitter transmits an operation. Operation data buffers are
@@ -227,31 +251,15 @@ func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
 	return sha1.Sum(data)
 }
 
-func (e *Engine) Signature(base io.ReadSeeker) (Signature, error) {
-	// Compute the size of the base, the optimal block size, and the expected
-	// number of blocks. If the base is empty, then we're done.
-	var blockSize uint64
-	var blockCount uint64
-	if length, err := base.Seek(0, io.SeekEnd); err != nil {
-		return Signature{}, errors.Wrap(err, "unable to compute base length")
-	} else if length == 0 {
-		return Signature{}, nil
-	} else if length < 0 {
-		panic("seek returned negative offset")
-	} else if _, err = base.Seek(0, io.SeekStart); err != nil {
-		return Signature{}, errors.Wrap(err, "unable to reset base")
-	} else {
-		blockSize = optimalBlockSize(uint64(length))
-		blockCount = uint64(length) / blockSize
-		if uint64(length)%blockSize != 0 {
-			blockCount += 1
-		}
+func (e *Engine) Signature(base io.ReadSeeker, blockSize uint64) (Signature, error) {
+	// Ensure that the block size is sane.
+	if blockSize == 0 {
+		blockSize = DefaultBlockSize
 	}
 
 	// Create the result.
 	result := Signature{
 		BlockSize: blockSize,
-		Hashes:    make([]BlockHash, 0, blockCount),
 	}
 
 	// Create a buffer with which to read blocks.
@@ -289,14 +297,20 @@ func (e *Engine) Signature(base io.ReadSeeker) (Signature, error) {
 		result.Hashes = append(result.Hashes, BlockHash{weak, strong})
 	}
 
+	// If there are no hashes, then clear out the block sizes.
+	if len(result.Hashes) == 0 {
+		result.BlockSize = 0
+		result.LastBlockSize = 0
+	}
+
 	// Success.
 	return result, nil
 }
 
-func (e *Engine) BytesSignature(base []byte) Signature {
+func (e *Engine) BytesSignature(base []byte, blockSize uint64) Signature {
 	// Perform the signature and watch for errors (which shouldn't be able to
 	// occur in-memory).
-	result, err := e.Signature(bytes.NewReader(base))
+	result, err := e.Signature(bytes.NewReader(base), blockSize)
 	if err != nil {
 		panic(errors.Wrap(err, "in-memory signature failure"))
 	}
@@ -321,9 +335,14 @@ func min(a, b uint64) uint64 {
 	return b
 }
 
-func (e *Engine) chunkAndTransmitAll(target io.Reader, transmit OperationTransmitter) error {
+func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, transmit OperationTransmitter) error {
+	// Verify that maxDataOpSize is sane.
+	if maxDataOpSize == 0 {
+		maxDataOpSize = DefaultMaximumDataOperationSize
+	}
+
 	// Create a buffer to transmit data operations.
-	buffer := e.bufferWithSize(maximumDataOperationSize)
+	buffer := e.bufferWithSize(maxDataOpSize)
 
 	// Loop until the entire target has been transmitted as data operations.
 	for {
@@ -342,17 +361,25 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, transmit OperationTransmi
 	}
 }
 
-func (e *Engine) Deltafy(target io.Reader, base Signature, transmit OperationTransmitter) error {
+// TODO: We should document that the internal engine buffer will be resized to
+// greater than maxDataOpSize and retained for the lifetime of the engine, so a
+// reasonable value should be provided.
+func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
 	// Verify that the signature is sane. We don't control its value, and if its
 	// invariants are broken it can cause this method to behave strangely.
 	if err := base.ensureValid(); err != nil {
 		return errors.Wrap(err, "invalid signature")
 	}
 
+	// Verify that the maximum data operation size is sane.
+	if maxDataOpSize == 0 {
+		maxDataOpSize = DefaultMaximumDataOperationSize
+	}
+
 	// If the base is empty, then there's no way we'll find any matching blocks,
 	// so just send the entire file.
 	if len(base.Hashes) == 0 {
-		return e.chunkAndTransmitAll(target, transmit)
+		return e.chunkAndTransmitAll(target, maxDataOpSize, transmit)
 	}
 
 	// Create a set of block and data transmitters that efficiently coalesce
@@ -381,7 +408,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, transmit OperationTra
 			coalescedCount = 0
 		}
 		for len(data) > 0 {
-			sendSize := min(uint64(len(data)), maximumDataOperationSize)
+			sendSize := min(uint64(len(data)), maxDataOpSize)
 			if err := transmit(Operation{Data: data[:sendSize]}); err != nil {
 				return err
 			}
@@ -459,7 +486,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, transmit OperationTra
 	// sequential block matching cycles where we just continuously match blocks
 	// at the beginning of the buffer and then refill, so truncations won't be
 	// all that common.
-	buffer := e.bufferWithSize(maximumDataOperationSize + base.BlockSize)
+	buffer := e.bufferWithSize(maxDataOpSize + base.BlockSize)
 
 	// Track the occupancy of the buffer.
 	var occupancy uint64
@@ -570,7 +597,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, transmit OperationTra
 	return nil
 }
 
-func (e *Engine) DeltafyBytes(target []byte, base Signature) []Operation {
+func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint64) []Operation {
 	// Create an empty result.
 	var delta []Operation
 
@@ -596,7 +623,7 @@ func (e *Engine) DeltafyBytes(target []byte, base Signature) []Operation {
 
 	// Compute the delta and watch for errors (which shouldn't occur for for
 	// in-memory data).
-	if err := e.Deltafy(reader, base, transmit); err != nil {
+	if err := e.Deltafy(reader, base, maxDataOpSize, transmit); err != nil {
 		panic(errors.Wrap(err, "in-memory deltafication failure"))
 	}
 

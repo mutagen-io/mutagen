@@ -861,7 +861,10 @@ func (c *controller) scan(
 	}
 
 	// Compute the base snapshot signature.
-	expectedSignature := rsyncer.BytesSignature(expectedBytes)
+	expectedSignature := rsyncer.BytesSignature(
+		expectedBytes,
+		rsync.OptimalBlockSizeForBaseLength(uint64(len(expectedBytes))),
+	)
 
 	// Send the request.
 	request := endpointRequest{Scan: &scanRequest{expectedSignature}}

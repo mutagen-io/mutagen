@@ -6,19 +6,46 @@ import (
 	"testing"
 )
 
-// TestMinimumBlockSize verifies that optimalBlockSize returns a sane minimum
-// block size.
+// TestMinimumBlockSize verifies that OptimalBlockSizeForBaseLength returns a
+// sane minimum block size.
 func TestMinimumBlockSize(t *testing.T) {
-	if s := optimalBlockSize(1); s != minimumBlockSize {
-		t.Error("incorrect minimum block size:", s, "!=", minimumBlockSize)
+	if s := OptimalBlockSizeForBaseLength(1); s != minimumOptimalBlockSize {
+		t.Error("incorrect minimum block size:", s, "!=", minimumOptimalBlockSize)
 	}
 }
 
-// TestMaximumBlockSize verifies that optimalBlockSize returns a sane maximum
-// block size.
+// TestMaximumBlockSize verifies that OptimalBlockSizeForBaseLength returns a
+// sane maximum block size.
 func TestMaximumBlockSize(t *testing.T) {
-	if s := optimalBlockSize(maximumBlockSize*maximumBlockSize + 1000); s != maximumBlockSize {
-		t.Error("incorrect maximum block size:", s, "!=", maximumBlockSize)
+	if s := OptimalBlockSizeForBaseLength(maximumOptimalBlockSize * maximumOptimalBlockSize); s != maximumOptimalBlockSize {
+		t.Error("incorrect maximum block size:", s, "!=", maximumOptimalBlockSize)
+	}
+}
+
+// TestOptimalBlockSizeForBase verifies the behavior of OptimalBlockSizeForBase.
+func TestOptimalBlockSizeForBase(t *testing.T) {
+	// Create a base.
+	baseLength := uint64(1234567)
+	base := bytes.NewReader(make([]byte, baseLength))
+
+	// Compute the optimal block size using OptimalBlockSizeForBase.
+	optimalBlockSize, err := OptimalBlockSizeForBase(base)
+	if err != nil {
+		t.Fatal("unable to compute optimal block size for base")
+	}
+
+	// Compate it with what we'd expect by computing manually.
+	expectedOptimalBlockSize := OptimalBlockSizeForBaseLength(baseLength)
+	if optimalBlockSize != expectedOptimalBlockSize {
+		t.Error(
+			"mismatch between optimal block size computations:",
+			optimalBlockSize, "!=", expectedOptimalBlockSize,
+		)
+	}
+
+	// Ensure that the reader was reset to the beginning.
+	if uint64(base.Len()) != baseLength {
+		t.Error("base was not reset to beginning")
 	}
 }
 
@@ -27,7 +54,7 @@ func TestMaximumBlockSize(t *testing.T) {
 type testDataGenerator struct {
 	length    int
 	seed      int64
-	mutations int
+	mutations []int
 	prepend   []byte
 }
 
@@ -41,11 +68,12 @@ func (g testDataGenerator) generate() []byte {
 	random.Read(result)
 
 	// Mutate.
-	for i := 0; i < g.mutations; i++ {
-		result[random.Intn(g.length)] += 1
+	for _, index := range g.mutations {
+		result[index] += 1
 	}
 
-	// Prepend data if necessary.
+	// Prepend data if necessary. This isn't super-efficient, but it's fine for
+	// testing.
 	if len(g.prepend) > 0 {
 		result = append(g.prepend, result...)
 	}
@@ -59,8 +87,10 @@ func (g testDataGenerator) generate() []byte {
 type engineTestCase struct {
 	base                      testDataGenerator
 	target                    testDataGenerator
-	numberOfOperations        int
-	maximumDataOperations     int
+	blockSize                 uint64
+	maxDataOpSize             uint64
+	numberOfOperations        uint
+	numberOfDataOperations    uint
 	expectCoalescedOperations bool
 }
 
@@ -73,41 +103,69 @@ func (c engineTestCase) run(t *testing.T) {
 	// Create an engine.
 	engine := NewEngine()
 
-	// Compute the base signature.
-	signature := engine.BytesSignature(base)
+	// Compute the base signature. Verify that it's sane and that it used the
+	// correct block size.
+	signature := engine.BytesSignature(base, c.blockSize)
+	if err := signature.ensureValid(); err != nil {
+		t.Fatal("generated signature was invalid:", err)
+	} else if len(signature.Hashes) != 0 {
+		if c.blockSize == 0 && signature.BlockSize != DefaultBlockSize {
+			t.Error(
+				"generated signature did not have correct default block size:",
+				signature.BlockSize, "!=", DefaultBlockSize,
+			)
+		} else if c.blockSize != 0 && signature.BlockSize != c.blockSize {
+			t.Error(
+				"generated signature did not have correct block size:",
+				signature.BlockSize, "!=", c.blockSize,
+			)
+		}
+	}
 
 	// Compute a delta.
-	delta := engine.DeltafyBytes(target, signature)
+	delta := engine.DeltafyBytes(target, signature, c.maxDataOpSize)
+
+	// Determine what we should expect for the maximumd data operation size.
+	expectedMaxDataOpSize := c.maxDataOpSize
+	if expectedMaxDataOpSize == 0 {
+		expectedMaxDataOpSize = DefaultMaximumDataOperationSize
+	}
 
 	// Validate the delta and verify its statistics.
-	nDataOperations := 0
+	nDataOperations := uint(0)
 	haveCoalescedOperations := false
 	for _, o := range delta {
 		if err := o.ensureValid(); err != nil {
 			t.Error("invalid operation:", err)
-		} else if dataLength := len(o.Data); dataLength > 0 {
-			if dataLength > maximumDataOperationSize {
-				t.Error("data operation size greater than allowed:", dataLength)
+		} else if dataLength := uint64(len(o.Data)); dataLength > 0 {
+			if dataLength > expectedMaxDataOpSize {
+				t.Error(
+					"data operation size greater than allowed:",
+					dataLength, ">", expectedMaxDataOpSize,
+				)
 			}
 			nDataOperations += 1
 		} else if o.Count > 1 {
 			haveCoalescedOperations = true
 		}
 	}
-	if c.numberOfOperations >= 0 && len(delta) != c.numberOfOperations {
+	if uint(len(delta)) != c.numberOfOperations {
 		t.Error(
 			"observed different number of operations than expected:",
 			len(delta), "!=", c.numberOfOperations,
 		)
 	}
-	if c.maximumDataOperations >= 0 && nDataOperations > c.maximumDataOperations {
+	if nDataOperations != c.numberOfDataOperations {
 		t.Error(
-			"observed more data operations than expected:",
-			nDataOperations, ">", c.maximumDataOperations,
+			"observed different number of data operations than expected:",
+			nDataOperations, ">", c.numberOfDataOperations,
 		)
 	}
-	if c.expectCoalescedOperations && !haveCoalescedOperations {
-		t.Error("expected coalesced operations but found none")
+	if haveCoalescedOperations != c.expectCoalescedOperations {
+		t.Error(
+			"expectations about coalescing not met:",
+			haveCoalescedOperations, "!=", c.expectCoalescedOperations,
+		)
 	}
 
 	// Apply the delta.
@@ -126,22 +184,23 @@ func (c engineTestCase) run(t *testing.T) {
 // base and target are empty.
 func TestBothEmpty(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{0, 0, 0, nil},
-		target:                testDataGenerator{0, 0, 0, nil},
-		numberOfOperations:    0,
-		maximumDataOperations: 0,
+		base:   testDataGenerator{},
+		target: testDataGenerator{},
 	}
 	test.run(t)
 }
 
-// TestBaseEmptyNonMaxDataOperationMultiple verifies that data sent against an
-// empty base will just be transmitted as data operations.
+// TestBaseEmptyMaxDataOperationMultiple verifies that data sent against an
+// empty base will just be transmitted as data operations, and verifies that
+// this is done correctly in the case that the data length is a multiple of the
+// maximum data operation size.
 func TestBaseEmptyMaxDataOperationMultiple(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{0, 0, 0, nil},
-		target:                testDataGenerator{5 * maximumDataOperationSize, 473, 0, nil},
-		numberOfOperations:    5,
-		maximumDataOperations: 5,
+		base:                   testDataGenerator{},
+		target:                 testDataGenerator{10240, 473, nil, nil},
+		maxDataOpSize:          1024,
+		numberOfOperations:     10,
+		numberOfDataOperations: 10,
 	}
 	test.run(t)
 }
@@ -152,10 +211,11 @@ func TestBaseEmptyMaxDataOperationMultiple(t *testing.T) {
 // maximum data operation size.
 func TestBaseEmptyNonMaxDataOperationMultiple(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{0, 0, 0, nil},
-		target:                testDataGenerator{maximumDataOperationSize + 1, 473, 0, nil},
-		numberOfOperations:    2,
-		maximumDataOperations: 2,
+		base:                   testDataGenerator{},
+		target:                 testDataGenerator{10241, 473, nil, nil},
+		maxDataOpSize:          1024,
+		numberOfOperations:     11,
+		numberOfDataOperations: 11,
 	}
 	test.run(t)
 }
@@ -164,10 +224,8 @@ func TestBaseEmptyNonMaxDataOperationMultiple(t *testing.T) {
 // without any operations.
 func TestTargetEmpty(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{10 * 1024 * 1024, 473, 0, nil},
-		target:                testDataGenerator{0, 0, 0, nil},
-		numberOfOperations:    0,
-		maximumDataOperations: 0,
+		base:   testDataGenerator{12345, 473, nil, nil},
+		target: testDataGenerator{},
 	}
 	test.run(t)
 }
@@ -178,61 +236,58 @@ func TestTargetEmpty(t *testing.T) {
 // occur.
 func TestSame(t *testing.T) {
 	test := engineTestCase{
-		base:                      testDataGenerator{10 * 1024 * 1024, 473, 0, nil},
-		target:                    testDataGenerator{10 * 1024 * 1024, 473, 0, nil},
+		base:                      testDataGenerator{1234567, 473, nil, nil},
+		target:                    testDataGenerator{1234567, 473, nil, nil},
 		numberOfOperations:        1,
-		maximumDataOperations:     0,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
 }
 
 // TestSame1Mutation verifies that data which is identical except for a single
-// mutations will be transmitted as some number of operations that we can't know
-// (due to the randomness of the mutation location) but will be restricted to
-// (at most) one data operation (this requies that the maximum data operation
-// size be longer than the block size) and include coalesced block operations
-// (this requires that the total data length be at least four block lengths so
-// that there will be at least two consecutive unmodified blocks).
+// mutation in the second block (of ten blocks) will be transmitted as two
+// block operations (one of which is coalesced) and a single data operation. It
+// sets the maximum data operation size to ensure that the mutated block can be
+// sent in a single data operation.
 func TestSame1Mutation(t *testing.T) {
 	test := engineTestCase{
-		base:                      testDataGenerator{maximumDataOperationSize, 473, 0, nil},
-		target:                    testDataGenerator{maximumDataOperationSize, 473, 1, nil},
-		numberOfOperations:        -1,
-		maximumDataOperations:     1,
+		base:                      testDataGenerator{10240, 473, nil, nil},
+		target:                    testDataGenerator{10240, 473, []int{1300}, nil},
+		blockSize:                 1024,
+		maxDataOpSize:             1024,
+		numberOfOperations:        3,
+		numberOfDataOperations:    1,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
 }
 
-// TestSame2Mutations verifies that data which is identical except for (up to)
-// two mutations will be transmitted as some number of operations that we can't
-// know (due to the randomness of the mutation locations) but will be restricted
-// to (at most) two data operations (this requies that the maximum data
-// operation size be longer than the block size) and include coalesced block
-// operations (this requires that the total data length be at least five block
-// lengths so that there will be at least two consecutive unmodified blocks).
+// TestSame2Mutations verifies that data which is identical except for mutations
+// in the second and fourth blocks (of five blocks, the last of which is short)
+// will be transmitted as three block operations (none of which are coalesced)
+// and two data operations. It sets the maximum data operation size to ensure
+// that the mutated blocks can be sent in single data operations.
 func TestSame2Mutations(t *testing.T) {
 	test := engineTestCase{
-		base:                      testDataGenerator{maximumDataOperationSize, 473, 0, nil},
-		target:                    testDataGenerator{maximumDataOperationSize, 473, 2, nil},
-		numberOfOperations:        -1,
-		maximumDataOperations:     2,
-		expectCoalescedOperations: true,
+		base:                   testDataGenerator{10220, 473, nil, nil},
+		target:                 testDataGenerator{10220, 473, []int{2073, 7000}, nil},
+		blockSize:              2048,
+		maxDataOpSize:          2048,
+		numberOfOperations:     5,
+		numberOfDataOperations: 2,
 	}
 	test.run(t)
 }
 
 // TestTruncateOnBlockBoundary verifies that truncation on a block boundary will
 // send only a single coalesced block operation when data is truncated on the
-// block boundary. This function unfortunately requires careful coordination
-// with the definition of optimalBlockSize.
+// block boundary.
 func TestTruncateOnBlockBoundary(t *testing.T) {
 	test := engineTestCase{
-		base:                      testDataGenerator{240000, 473, 0, nil},
-		target:                    testDataGenerator{4800, 473, 0, nil},
+		base:                      testDataGenerator{999, 212, nil, nil},
+		target:                    testDataGenerator{666, 212, nil, nil},
+		blockSize:                 333,
 		numberOfOperations:        1,
-		maximumDataOperations:     0,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
@@ -241,15 +296,15 @@ func TestTruncateOnBlockBoundary(t *testing.T) {
 // TestTruncateOffBlockBoundary verifies that truncation that's not on a block
 // boundary will send only a single coalesced block operation and a single data
 // operation when data is truncated within one maximum data operation size of a
-// block boundary. This function unfortunately requires careful coordination
-// with the definition of optimalBlockSize.
+// block boundary.
 func TestTruncateOffBlockBoundary(t *testing.T) {
 	test := engineTestCase{
-		// This will yield a block size of 2400.
-		base:                      testDataGenerator{240000, 473, 0, nil},
-		target:                    testDataGenerator{4800 + maximumDataOperationSize, 473, 0, nil},
+		base:                      testDataGenerator{888, 912, nil, nil},
+		target:                    testDataGenerator{790, 912, nil, nil},
+		blockSize:                 111,
+		maxDataOpSize:             1024,
 		numberOfOperations:        2,
-		maximumDataOperations:     1,
+		numberOfDataOperations:    1,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
@@ -257,17 +312,16 @@ func TestTruncateOffBlockBoundary(t *testing.T) {
 
 // TestPrepend verifies that data which has been prepended with data shorter
 // than the maximum data operation size can be transmitted in a single data
-// operation and a single coalesced block operation. We choose a base length
-// that ensures we have a short block to match to verify that short block
-// matching works. This function unfortunately requires careful coordination
-// with the definition of optimalBlockSize. It also requires that base has a
-// length longer than two blocks so that coalescing can occur.
+// operation and a single coalesced block operation. It also tests short block
+// matching.
 func TestPrepend(t *testing.T) {
 	test := engineTestCase{
-		base:                      testDataGenerator{10 * 1024 * 1024, 473, 0, nil},
-		target:                    testDataGenerator{10 * 1024 * 1024, 473, 0, []byte{1, 2, 3}},
+		base:                      testDataGenerator{9880, 11, nil, nil},
+		target:                    testDataGenerator{9880, 11, nil, []byte{1, 2, 3}},
+		blockSize:                 1234,
+		maxDataOpSize:             5,
 		numberOfOperations:        2,
-		maximumDataOperations:     1,
+		numberOfDataOperations:    1,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
@@ -277,19 +331,15 @@ func TestPrepend(t *testing.T) {
 // the maximum data operation size can be transmitted in a single coalesced
 // block operation and a data operation. Because the rsync algorithm can't match
 // short blocks that aren't at the end of the target, we have to ensure that the
-// append happens on a full block size and that it can fit into a single data
-// operation (or, alternatively, that the short block and appended data can fit
-// into a single data operation, but this is harder, but also perhaps more
-// desirable). This function unfortunately requires careful coordination with
-// the definition of optimalBlockSize. It also requires that base has a length
-// longer than two blocks so that coalescing can occur.
+// short block and the appended data can fit into a single data operation.
 func TestAppend(t *testing.T) {
 	test := engineTestCase{
-		// This will yield a block size of 24 * minimumBlockSize.
-		base:                      testDataGenerator{24 * minimumBlockSize * minimumBlockSize, 473, 0, nil},
-		target:                    testDataGenerator{24*minimumBlockSize*minimumBlockSize + (maximumDataOperationSize / 2), 473, 0, nil},
+		base:                      testDataGenerator{45271, 473, nil, nil},
+		target:                    testDataGenerator{45271 + 876, 473, nil, nil},
+		blockSize:                 6453,
+		maxDataOpSize:             1024,
 		numberOfOperations:        2,
-		maximumDataOperations:     1,
+		numberOfDataOperations:    1,
 		expectCoalescedOperations: true,
 	}
 	test.run(t)
@@ -300,10 +350,11 @@ func TestAppend(t *testing.T) {
 // will just send the new data.
 func TestDifferentDataSameLength(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{10*maximumDataOperationSize + 1, 473, 0, nil},
-		target:                testDataGenerator{10*maximumDataOperationSize + 1, 182, 0, nil},
-		numberOfOperations:    11,
-		maximumDataOperations: 11,
+		base:                   testDataGenerator{10473, 473, nil, nil},
+		target:                 testDataGenerator{10473, 182, nil, nil},
+		maxDataOpSize:          1024,
+		numberOfOperations:     11,
+		numberOfDataOperations: 11,
 	}
 	test.run(t)
 }
@@ -312,10 +363,11 @@ func TestDifferentDataSameLength(t *testing.T) {
 // matching blocks and different total length will just send the new data.
 func TestDifferentDataDifferentLength(t *testing.T) {
 	test := engineTestCase{
-		base:                  testDataGenerator{678345, 473, 0, nil},
-		target:                testDataGenerator{10*maximumDataOperationSize + 1, 182, 0, nil},
-		numberOfOperations:    11,
-		maximumDataOperations: 11,
+		base:                   testDataGenerator{678345, 473, nil, nil},
+		target:                 testDataGenerator{473711, 182, nil, nil},
+		maxDataOpSize:          12304,
+		numberOfOperations:     39,
+		numberOfDataOperations: 39,
 	}
 	test.run(t)
 }

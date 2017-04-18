@@ -66,7 +66,7 @@ func Serve(connection io.ReadWriter, root string) error {
 			}
 
 			// Perform deltafication.
-			err = engine.Deltafy(file, request.Signatures[i], transmit)
+			err = engine.Deltafy(file, request.Signatures[i], 0, transmit)
 
 			// Close the file.
 			file.Close()

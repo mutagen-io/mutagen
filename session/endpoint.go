@@ -271,7 +271,7 @@ func (e *endpoint) handleScan(request *scanRequest) (*scanResponse, error) {
 	}
 
 	// Compute it's delta against the base.
-	delta := e.scanEngine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature)
+	delta := e.scanEngine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
 
 	// Success.
 	return &scanResponse{SnapshotDelta: delta}, nil

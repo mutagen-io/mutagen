@@ -142,10 +142,12 @@ func (c *Client) Stage(paths []string) error {
 		if f, err := os.Open(filepath.Join(c.root, p)); err != nil {
 			failedToOpen[i] = true
 		} else {
-			if s, err := c.engine.Signature(f); err != nil {
+			if blockSize, err := OptimalBlockSizeForBase(f); err != nil {
+				failedToOpen[i] = true
+			} else if signature, err := c.engine.Signature(f, blockSize); err != nil {
 				failedToOpen[i] = true
 			} else {
-				signatures[i] = s
+				signatures[i] = signature
 			}
 			f.Close()
 		}
