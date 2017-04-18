@@ -13,7 +13,8 @@ import (
 )
 
 type stagingPathFinder struct {
-	paths []string
+	paths   []string
+	entries []*sync.Entry
 }
 
 func (f *stagingPathFinder) find(path string, entry *sync.Entry) error {
@@ -25,6 +26,7 @@ func (f *stagingPathFinder) find(path string, entry *sync.Entry) error {
 	// Handle based on type.
 	if entry.Kind == sync.EntryKind_File {
 		f.paths = append(f.paths, path)
+		f.entries = append(f.entries, entry)
 	} else if entry.Kind == sync.EntryKind_Directory {
 		for name, entry := range entry.Contents {
 			if err := f.find(pathpkg.Join(path, name), entry); err != nil {
@@ -39,19 +41,21 @@ func (f *stagingPathFinder) find(path string, entry *sync.Entry) error {
 	return nil
 }
 
-func stagingPathsForChanges(changes []sync.Change) ([]string, error) {
+// TODO: Document that stagingPathsForChanges guarantees both returned slices
+// will have the same length.
+func stagingPathsForChanges(changes []sync.Change) ([]string, []*sync.Entry, error) {
 	// Create a path finder.
 	finder := &stagingPathFinder{}
 
 	// Have it find paths for all the changes.
 	for _, c := range changes {
 		if err := finder.find(c.Path, c.New); err != nil {
-			return nil, errors.Wrap(err, "unable to find staging paths")
+			return nil, nil, errors.Wrap(err, "unable to find staging paths")
 		}
 	}
 
 	// Success.
-	return finder.paths, nil
+	return finder.paths, finder.entries, nil
 }
 
 type stagingSink struct {

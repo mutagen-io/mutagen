@@ -278,13 +278,25 @@ func (e *endpoint) handleScan(request *scanRequest) (*scanResponse, error) {
 
 func (e *endpoint) handleStage(request *stageRequest) (*stageResponse, error) {
 	// Compute the paths that need to be staged.
-	paths, err := stagingPathsForChanges(request.Transitions)
+	paths, entries, err := stagingPathsForChanges(request.Transitions)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to extract staging paths")
 	}
 
+	// It's possible that a previous staging was interrupted, so look for paths
+	// that are already staged. Since the staging coordinator tries to do an
+	// os.Chmod, we can assume that no error coming out of Provide means that
+	// the file exists. A non-nil error could indicate another problem, but
+	// we'll see it later in staging or transitioning.
+	unstagedPaths := make([]string, 0, len(paths))
+	for i, p := range paths {
+		if _, err := e.stagingCoordinator.Provide(p, entries[i]); err != nil {
+			unstagedPaths = append(unstagedPaths, p)
+		}
+	}
+
 	// Perform staging.
-	if err = e.stagingClient.Stage(paths); err != nil {
+	if err = e.stagingClient.Stage(unstagedPaths); err != nil {
 		return nil, errors.Wrap(err, "unable to stage files")
 	}
 
