@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-func Mutagen(subpath ...string) (string, error) {
+func Mutagen(create bool, subpath ...string) (string, error) {
 	// Collect path components and compute the result.
 	components := make([]string, 0, 2+len(subpath))
 	components = append(components, userHomeDirectory, MutagenDirectoryName)
@@ -38,21 +38,18 @@ func Mutagen(subpath ...string) (string, error) {
 	components = append(components, subpath...)
 	result := filepath.Join(components...)
 
+	// If requested, attempt to create the Mutagen directory and the specified
+	// subpath. Also ensure that the Mutagen directory is hidden.
 	// TODO: Should we iterate through each component and ensure the user hasn't
 	// changed the directory permissions? MkdirAll won't reset them. But I
 	// suppose the user may have changed them for whatever reason (though I
 	// can't imagine any).
-
-	// Perform creation.
-	if err := os.MkdirAll(result, 0700); err != nil {
-		return "", errors.Wrap(err, "unable to create subpath")
-	}
-
-	// Mark the Mutagen root directory as hidden.
-	// TODO: Should we only do this when we create the root? If users are
-	// intentionally having this shown, then we might not want to override that.
-	if err := markHidden(root); err != nil {
-		return "", errors.Wrap(err, "unable to hide Mutagen directory")
+	if create {
+		if err := os.MkdirAll(result, 0700); err != nil {
+			return "", errors.Wrap(err, "unable to create subpath")
+		} else if err := markHidden(root); err != nil {
+			return "", errors.Wrap(err, "unable to hide Mutagen directory")
+		}
 	}
 
 	// Success.

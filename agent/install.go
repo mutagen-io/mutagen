@@ -19,7 +19,7 @@ const (
 
 func installPath() (string, error) {
 	// Compute (and create) the path to the agent parent directory.
-	parent, err := filesystem.Mutagen(agentsDirectoryName, mutagen.Version)
+	parent, err := filesystem.Mutagen(true, agentsDirectoryName, mutagen.Version)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute parent directory")
 	}

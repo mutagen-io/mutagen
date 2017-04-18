@@ -13,10 +13,13 @@ const (
 )
 
 func housekeep() {
-	// Compute the path to the caches directory. If we fail, just abort.
+	// Compute the path to the caches directory. If we fail, just abort. We
+	// don't attempt to create the directory, because if it doesn't exist, then
+	// we don't need to do anything and we'll just bail when we fail to list the
+	// caches directory below.
 	// TODO: Move this logic into paths.go? Need to keep it in sync with
 	// pathForCache.
-	cachesDirectoryPath, err := filesystem.Mutagen(cachesDirectoryName)
+	cachesDirectoryPath, err := filesystem.Mutagen(false, cachesDirectoryName)
 	if err != nil {
 		return
 	}

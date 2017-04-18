@@ -14,7 +14,7 @@ const (
 
 func subpath(name string) (string, error) {
 	// Compute the daemon root directory path and ensure it exists.
-	daemonRoot, err := filesystem.Mutagen(daemonDirectoryName)
+	daemonRoot, err := filesystem.Mutagen(true, daemonDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute daemon directory")
 	}

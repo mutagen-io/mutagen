@@ -17,8 +17,11 @@ const (
 )
 
 func Housekeep() {
-	// Compute the path to the agents directory. If we fail, just abort.
-	agentsDirectoryPath, err := filesystem.Mutagen(agentsDirectoryName)
+	// Compute the path to the agents directory. If we fail, just abort. We
+	// don't attempt to create the directory, because if it doesn't exist, then
+	// we don't need to do anything and we'll just bail when we fail to list the
+	// agent directory below.
+	agentsDirectoryPath, err := filesystem.Mutagen(false, agentsDirectoryName)
 	if err != nil {
 		return
 	}

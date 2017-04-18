@@ -90,7 +90,7 @@ func (s *stagingSink) Close() error {
 	digest := s.digester.Sum(nil)
 
 	// Compute where the file should be relocated.
-	destination, err := pathForStaging(s.session, s.alpha, s.path, digest)
+	destination, err := pathForStaging(true, s.session, s.alpha, s.path, digest)
 	if err != nil {
 		os.Remove(s.storage.Name())
 		return errors.Wrap(err, "unable to compute staging destination")
@@ -163,8 +163,10 @@ func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
 }
 
 func (c *stagingCoordinator) Provide(path string, entry *sync.Entry) (string, error) {
-	// Compute the expected location of the file.
-	expectedLocation, err := pathForStaging(c.session, c.alpha, path, entry.Digest)
+	// Compute the expected location of the file. We don't need to create the
+	// path components here because we're assuming the file already exists. If
+	// it doesn't, then things will just fail when we try to run os.Chmod below.
+	expectedLocation, err := pathForStaging(false, c.session, c.alpha, path, entry.Digest)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute staging path")
 	}
