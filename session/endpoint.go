@@ -43,14 +43,13 @@ type endpoint struct {
 	stagingClient *rsync.Client
 }
 
-// TODO: Document that this function relies on the connection unblocking reads
-// and writes when closed.
-func ServeEndpoint(connection io.ReadWriteCloser) error {
+// ServeEndpoint creates a new endpoint server and serves requests on the
+// provided connection. The server spawns a number of Goroutines and will only
+// be fully terminated when the connection is broken and all pending reads and
+// writes unblock.
+func ServeEndpoint(connection io.ReadWriter) error {
 	// Perform housekeeping.
 	housekeep()
-
-	// Ensure that the connection is closed when we're done.
-	defer connection.Close()
 
 	// Perform multiplexing and ensure the multiplexer is shut down when we're
 	// done.
