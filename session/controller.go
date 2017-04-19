@@ -557,7 +557,8 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		beta.Close()
 		beta = nil
 
-		// Wait until all Goroutines have exited before resetting state.
+		// Wait until all Goroutines have exited before resetting state. We have
+		// to do this because some Goroutines set state concurrently.
 		backgroundGoroutinesDone.Wait()
 
 		// Reset the synchronization state, but propagate the error that caused

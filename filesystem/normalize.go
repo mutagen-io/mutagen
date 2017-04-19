@@ -2,7 +2,6 @@ package filesystem
 
 import (
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -18,17 +17,11 @@ func tildeExpand(path string) (string, error) {
 	// trying to do a ~username expansion, but we can't support that without CGO
 	// to support user.Lookup.
 	if len(path) > 1 && !os.IsPathSeparator(path[1]) {
-		return "", errors.New("unable to perform user lookup")
-	}
-
-	// Grab the current user.
-	self, err := user.Current()
-	if err != nil {
-		return "", errors.Wrap(err, "unable to access user information")
+		return "", errors.New("unable to perform alternate user lookup")
 	}
 
 	// Compute the path.
-	return filepath.Join(self.HomeDir, path[1:]), nil
+	return filepath.Join(homeDirectory, path[1:]), nil
 }
 
 func Normalize(path string) (string, error) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"hash"
 	"io"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -175,21 +174,34 @@ func (e *endpoint) serveRsync(connection io.ReadWriter) error {
 	return rsync.Serve(connection, e.root)
 }
 
+const (
+	watchEventsBufferSize = 25
+)
+
 func (e *endpoint) serveWatch(context context.Context, connection io.ReadWriter) error {
 	// Convert the connection to a message stream.
 	stream := message.NewMessageStream(connection)
 
-	// TODO: Implement using watching or scanning. For now, we just use a timer.
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// Create an event channel.
+	events := make(chan struct{}, watchEventsBufferSize)
+
+	// Create a watch in a separate Goroutine that will be cancelled when the
+	// context is cancelled and monitor for its failure. This will also detect
+	// cancellation for us.
+	watchErrors := make(chan error, 1)
+	go func() {
+		watchErrors <- filesystem.Watch(context, e.root, events)
+	}()
+
+	// Loop and poll for events while watching for errors.
 	for {
 		select {
-		case <-ticker.C:
+		case <-events:
 			if err := stream.Encode(struct{}{}); err != nil {
 				return errors.Wrap(err, "unable to transmit watch event")
 			}
-		case <-context.Done():
-			return errors.New("cancelled")
+		case err := <-watchErrors:
+			return errors.Wrap(err, "watch failure")
 		}
 	}
 }
