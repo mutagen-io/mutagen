@@ -14,8 +14,8 @@ var Current struct {
 
 func init() {
 	// Compute the current executable's path.
-	// TODO: In Go 1.8, there's going to be an os.Executable function that will
-	// serve this exact same purpose, so switch to that and remove the osext
+	// TODO: In Go 1.9, os.Executable will be fixed for OpenBSD (it will do what
+	// osext does at the moment), so switch to that and remove the osext
 	// dependency, licensing, and vendored code.
 	if path, err := osext.Executable(); err != nil {
 		panic(errors.Wrap(err, "unable to compute current executable's path"))
@@ -24,8 +24,8 @@ func init() {
 	}
 
 	// Compute the current executable's parent path.
-	// TODO: In Go 1.8, switch to just taking the parent directory of what's
-	// returned by os.Executable.
+	// TODO: In Go 1.9, switch to just taking the parent directory of what's
+	// returned by os.Executable. That's exactly what osext does at the moment.
 	if path, err := osext.ExecutableFolder(); err != nil {
 		panic(errors.Wrap(err, "unable to compute current executable's parent path"))
 	} else {
