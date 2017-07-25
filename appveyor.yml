@@ -29,6 +29,7 @@ before_test:
 #   go test -v %RACEFLAG% -cover ./...
 test_script:
   - go version
+  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/message
   - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/multiplex
   - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/rsync
   - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/sync

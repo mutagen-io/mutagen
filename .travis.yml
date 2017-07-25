@@ -35,6 +35,7 @@ install:
 #   go test -v -race -cover ./...
 script:
   - go version
+  - go test -v -race -cover github.com/havoc-io/mutagen/message
   - go test -v -race -cover github.com/havoc-io/mutagen/multiplex
   - go test -v -race -cover github.com/havoc-io/mutagen/rsync
   - go test -v -race -cover github.com/havoc-io/mutagen/sync
