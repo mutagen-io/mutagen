@@ -26,9 +26,17 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 
 	// Create a walk visitor.
 	changed := false
+	rootDoesNotExist := false
 	visitor := func(path string, info os.FileInfo, err error) error {
-		// If there's an error, pass it forward.
+		// If there's an error, then halt walking by returning it. Before doing
+		// that though, determine if the error is due to the root not existing.
+		// If that's the case, then we can create a valid result (an empty map)
+		// as well as determine whether or not there's been a change.
 		if err != nil {
+			if path == root && os.IsNotExist(err) {
+				changed = len(existing) > 0
+				rootDoesNotExist = true
+			}
 			return err
 		}
 
@@ -46,8 +54,9 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 		return nil
 	}
 
-	// Perform the walk. If it fails, don't return a partial map.
-	if err := filepath.Walk(root, visitor); err != nil {
+	// Perform the walk. If it fails, and it's not due to the root not existing,
+	// then we can't return a valid result and need to abort.
+	if err := filepath.Walk(root, visitor); err != nil && !rootDoesNotExist {
 		return nil, false, errors.Wrap(err, "unable to perform filesystem walk")
 	}
 
@@ -78,11 +87,13 @@ func Watch(context context.Context, root string, events chan struct{}) error {
 	for {
 		select {
 		case <-timer.C:
-			// Perform a scan. If there's an error or no change, just continue.
-			// We have to assume that errors here are due to concurrent
-			// modifications - there's not much we can do to handle them.
+			// Perform a scan. If there's an error or no change, then reset the
+			// timer and try again. We have to assume that errors here are due
+			// to concurrent modifications, so there's not much we can do to
+			// handle them.
 			newContents, changed, err := poll(root, contents)
 			if err != nil || !changed {
+				timer.Reset(watchPollInterval)
 				continue
 			}
 
@@ -95,7 +106,7 @@ func Watch(context context.Context, root string, events chan struct{}) error {
 			default:
 			}
 
-			// Reset the timer.
+			// Reset the timer and continue polling.
 			timer.Reset(watchPollInterval)
 		case <-context.Done():
 			return errors.New("watch cancelled")
