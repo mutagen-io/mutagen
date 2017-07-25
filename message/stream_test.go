@@ -15,7 +15,7 @@ func TestStreamClean(t *testing.T) {
 	buffer := &bytes.Buffer{}
 
 	// Wrap it in a message stream.
-	stream := NewMessageStream(buffer)
+	stream := NewStream(buffer)
 
 	// Write a message to the stream.
 	if err := stream.Encode(sampleMessage{"content", 100}); err != nil {

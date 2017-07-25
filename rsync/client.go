@@ -45,7 +45,7 @@ type StagingStatus struct {
 }
 
 type Client struct {
-	stream            message.MessageStream
+	stream            *message.Stream
 	root              string
 	sinker            Sinker
 	engine            *Engine
@@ -65,7 +65,7 @@ func NewClient(connection io.ReadWriter, root string, sinker Sinker) *Client {
 
 	// Create the client.
 	return &Client{
-		stream:       message.NewCompressedMessageStream(connection),
+		stream:       message.NewCompressedStream(connection),
 		root:         root,
 		sinker:       sinker,
 		engine:       NewEngine(),

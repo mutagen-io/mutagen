@@ -7,17 +7,17 @@ import (
 	"github.com/golang/snappy"
 )
 
-type messageStream struct {
+type Stream struct {
 	decoder *gob.Decoder
 	encoder *gob.Encoder
 	flusher *snappy.Writer
 }
 
-func (s *messageStream) Decode(message interface{}) error {
+func (s *Stream) Decode(message interface{}) error {
 	return s.decoder.Decode(message)
 }
 
-func (s *messageStream) Encode(message interface{}) error {
+func (s *Stream) Encode(message interface{}) error {
 	// Encode the message.
 	if err := s.encoder.Encode(message); err != nil {
 		return err
@@ -34,24 +34,17 @@ func (s *messageStream) Encode(message interface{}) error {
 	return nil
 }
 
-// MessageStream provides message transmission and reception using the semantics
-// of the encoding/gob package.
-type MessageStream interface {
-	Decode(interface{}) error
-	Encode(interface{}) error
-}
-
-// NewMessageStream constructs a message stream using a raw byte stream.
-func NewMessageStream(raw io.ReadWriter) MessageStream {
-	return &messageStream{
+// NewStream constructs a message stream using a raw byte stream.
+func NewStream(raw io.ReadWriter) *Stream {
+	return &Stream{
 		decoder: gob.NewDecoder(raw),
 		encoder: gob.NewEncoder(raw),
 	}
 }
 
-// NewCompressedMessageStream constructs a compressed message stream using a raw
-// byte stream.
-func NewCompressedMessageStream(raw io.ReadWriter) MessageStream {
+// NewCompresseStream constructs a compressed message stream using a raw byte
+// stream.
+func NewCompressedStream(raw io.ReadWriter) *Stream {
 	// Create a decompressing decoder.
 	decoder := gob.NewDecoder(snappy.NewReader(raw))
 
@@ -60,5 +53,5 @@ func NewCompressedMessageStream(raw io.ReadWriter) MessageStream {
 	encoder := gob.NewEncoder(writer)
 
 	// Create the message stream.
-	return &messageStream{decoder, encoder, writer}
+	return &Stream{decoder, encoder, writer}
 }

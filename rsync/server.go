@@ -12,7 +12,7 @@ import (
 
 func Serve(connection io.ReadWriter, root string) error {
 	// Wrap the connection in a message stream.
-	stream := message.NewCompressedMessageStream(connection)
+	stream := message.NewCompressedStream(connection)
 
 	// Create an rsync engine.
 	engine := NewEngine()

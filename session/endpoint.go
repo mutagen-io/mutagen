@@ -63,7 +63,7 @@ func ServeEndpoint(connection io.ReadWriter) error {
 	defer cancelServe()
 
 	// Convert the control channel to a message stream.
-	control := message.NewMessageStream(streams[endpointChannelControl])
+	control := message.NewStream(streams[endpointChannelControl])
 
 	// Receive the initialization request.
 	var init initializeRequest
@@ -180,7 +180,7 @@ const (
 
 func (e *endpoint) serveWatch(context context.Context, connection io.ReadWriter) error {
 	// Convert the connection to a message stream.
-	stream := message.NewMessageStream(connection)
+	stream := message.NewStream(connection)
 
 	// Create an event channel.
 	events := make(chan struct{}, watchEventsBufferSize)
@@ -208,7 +208,7 @@ func (e *endpoint) serveWatch(context context.Context, connection io.ReadWriter)
 
 func (e *endpoint) transmitRsyncClientState(connection io.ReadWriter) error {
 	// Convert the connection to a message stream.
-	stream := message.NewMessageStream(connection)
+	stream := message.NewStream(connection)
 
 	// Loop on client state changes until there's an error.
 	var state rsync.StagingStatus
@@ -228,7 +228,7 @@ func (e *endpoint) transmitRsyncClientState(connection io.ReadWriter) error {
 	}
 }
 
-func (e *endpoint) serveControl(stream message.MessageStream) error {
+func (e *endpoint) serveControl(stream *message.Stream) error {
 	// Receive and process control requests until there's an error.
 	for {
 		// Grab the next request.

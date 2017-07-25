@@ -582,7 +582,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 func (c *controller) receiveWatchEvents(connection io.ReadWriter, dirty chan watchEvent) error {
 	// Convert the connection to a message stream.
-	events := message.NewMessageStream(connection)
+	events := message.NewStream(connection)
 
 	// Receive watch events until there's an error.
 	for {
@@ -602,7 +602,7 @@ func (c *controller) receiveWatchEvents(connection io.ReadWriter, dirty chan wat
 
 func (c *controller) receiveRsyncUpdates(connection io.ReadWriter, alpha bool) error {
 	// Convert the connection to a message stream.
-	updates := message.NewMessageStream(connection)
+	updates := message.NewStream(connection)
 
 	// Receive updates until there's an error.
 	for {
@@ -634,8 +634,8 @@ func (c *controller) synchronize(
 	c.stateLock.Unlock()
 
 	// Convert the connections to message streams.
-	alpha := message.NewMessageStream(alphaConnection)
-	beta := message.NewMessageStream(betaConnection)
+	alpha := message.NewStream(alphaConnection)
+	beta := message.NewStream(betaConnection)
 
 	// Load the archive and extract the ancestor.
 	archive := &Archive{}
@@ -814,7 +814,7 @@ func (c *controller) synchronize(
 	}
 }
 
-func (c *controller) initialize(endpoint message.MessageStream, alpha bool) (bool, error) {
+func (c *controller) initialize(endpoint *message.Stream, alpha bool) (bool, error) {
 	// Create the initialization request.
 	root := c.session.Alpha.Path
 	if !alpha {
@@ -844,7 +844,7 @@ func (c *controller) initialize(endpoint message.MessageStream, alpha bool) (boo
 }
 
 func (c *controller) scan(
-	endpoint message.MessageStream,
+	endpoint *message.Stream,
 	preservesExecutability bool,
 	ancestor *sync.Entry,
 ) (*sync.Entry, bool, error) {
@@ -911,7 +911,7 @@ func (c *controller) scan(
 	return snapshot, false, nil
 }
 
-func (c *controller) stage(endpoint message.MessageStream, transitions []sync.Change) error {
+func (c *controller) stage(endpoint *message.Stream, transitions []sync.Change) error {
 	// Send the request.
 	request := endpointRequest{Stage: &stageRequest{transitions}}
 	if err := endpoint.Encode(request); err != nil {
@@ -928,7 +928,7 @@ func (c *controller) stage(endpoint message.MessageStream, transitions []sync.Ch
 	return nil
 }
 
-func (c *controller) transition(endpoint message.MessageStream, transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
+func (c *controller) transition(endpoint *message.Stream, transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
 	// Send the request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
 	if err := endpoint.Encode(request); err != nil {
