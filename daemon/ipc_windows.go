@@ -51,6 +51,7 @@ func (l *daemonListener) Close() error {
 	// the same lifespan as the daemon, it's fine to just ignore the panic that
 	// arises when the listener is closed, because the resources will be cleaned
 	// up anyway.
+	// TODO: Should we limit this check to Windows XP?
 	defer func() {
 		recover()
 	}()

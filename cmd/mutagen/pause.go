@@ -15,7 +15,7 @@ Pauses a synchronization session.
 `
 
 func pauseMain(arguments []string) error {
-	// Parse flags.
+	// Parse command line arguments. The help flag is handled automatically.
 	flagSet := cmd.NewFlagSet("pause", pauseUsage, []int{1})
 	session := flagSet.ParseOrDie(arguments)[0]
 	if session == "" {

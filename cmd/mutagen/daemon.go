@@ -23,7 +23,7 @@ instance is only created if one doesn't already exist.
 `
 
 func daemonMain(arguments []string) error {
-	// Parse flags.
+	// Parse command line arguments. The help flag is handled automatically.
 	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
 	run := flagSet.BoolP("run", "r", false, "run the daemon server")
 	stop := flagSet.BoolP("stop", "s", false, "stop any running daemon server")

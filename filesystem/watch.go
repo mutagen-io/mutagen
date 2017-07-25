@@ -56,20 +56,19 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 }
 
 func Watch(context context.Context, root string, events chan struct{}) error {
-	// Attempt to use native watching on this path.
+	// Attempt to use native watching on this path. This will fail if the path
+	// can't be watched natively or if the watch is cancelled.
 	watchNative(context, root, events)
 
 	// If native watching failed, check (in a non-blocking fashion) if it was
-	// due to context cancellation. If so, then we don't want to fall back to
-	// polling and can save some setup.
+	// due to cancellation. If so, then we don't want to fall back to polling
+	// and can save some setup. If native watching failed for some other reason,
+	// then we can fall back to polling until cancellation.
 	select {
 	case <-context.Done():
 		return errors.New("watch cancelled")
 	default:
 	}
-
-	// If native watching failed for a reason other than cancellation, then
-	// fall back to polling until cancellation.
 
 	// Create a timer to regular polling.
 	timer := time.NewTimer(watchPollInterval)

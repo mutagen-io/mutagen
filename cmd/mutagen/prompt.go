@@ -17,7 +17,7 @@ var promptUsage = `usage: mutagen <prompt>
 `
 
 func promptMain(arguments []string) error {
-	// Parse command line arguments.
+	// Parse command line arguments. The help flag is handled automatically.
 	flagSet := cmd.NewFlagSet("prompt", promptUsage, []int{1})
 	prompt := flagSet.ParseOrDie(arguments)[0]
 

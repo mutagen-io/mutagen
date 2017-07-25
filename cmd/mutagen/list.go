@@ -249,7 +249,7 @@ func printMonitorLine(state sessionpkg.SessionState) {
 }
 
 func listMain(arguments []string) error {
-	// Parse flags.
+	// Parse command line arguments. The help flag is handled automatically.
 	var session string
 	var monitor bool
 	flagSet := cmd.NewFlagSet("list", listUsage, []int{0, 1})

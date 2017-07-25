@@ -44,11 +44,7 @@ var handlers = map[string]func([]string) error{
 const maximumCommandDistance = 4
 
 func main() {
-	// We have to do some manual argument parsing in here for command dispatch,
-	// because none of the CLI parsing libraries provide a decent mechanism for
-	// ensuring positional arguments appear before flags.
-
-	// Extract arguments, sans program name
+	// Extract arguments, sans program name.
 	arguments := os.Args[1:]
 	nArguments := len(arguments)
 
@@ -81,7 +77,8 @@ func main() {
 		}
 	}
 
-	// Parse and handle main entry point flags.
+	// Parse and handle main entry point flags. The help flag is handled
+	// automatically.
 	flagSet := cmd.NewFlagSet("mutagen", usage, nil)
 	version := flagSet.BoolP("version", "V", false, "")
 	legal := flagSet.BoolP("legal", "l", false, "")

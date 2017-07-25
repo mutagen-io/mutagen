@@ -30,7 +30,7 @@ func (p *ignorePatterns) Set(value string) error {
 }
 
 func createMain(arguments []string) error {
-	// Parse and handle flags.
+	// Parse command line arguments. The help flag is handled automatically.
 	var ignores ignorePatterns
 	flagSet := cmd.NewFlagSet("create", createUsage, []int{2})
 	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
