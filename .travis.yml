@@ -10,7 +10,7 @@ os:
 # version and because we want broader test coverage.
 # NOTE: If you change this version, change its value below in deploy as well.
 go:
-  - 1.8.x
+  - 1.9.x
   - tip
 
 # Allow failure on Go tip, we just want to be able to track behavior there.
@@ -29,10 +29,6 @@ install:
   - echo "Skipping the default go get..."
 
 # Run tests.
-# TODO: Go 1.9 will include a fix so that "..." patterns don't descend into
-# vendor directories (https://go-review.googlesource.com/c/38745). Once 1.9 is
-# out, we can consolidate these package-specific test commands into:
-#   go test -v -race -cover ./...
 script:
   - go version
   - go test -v -race -cover github.com/havoc-io/mutagen/message
@@ -42,12 +38,6 @@ script:
   - go test -v -race -cover github.com/havoc-io/mutagen/url
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
-
-# TODO: Once Go 1.9 lands, we'll be able to consolidate our tests and therefore
-# generate a single cover profile. The current hacks to consolidate cover
-# profiles are a pain (https://github.com/golang/go/issues/6909) and don't work
-# very well. Once we have a single cover profile, start uploading it to
-# coveralls.io.
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build
@@ -92,7 +82,7 @@ deploy:
     - build/mutagen_windows_amd64.zip
   on:
     repo: havoc-io/mutagen
-    condition: '"$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_GO_VERSION" =~ ^1\.8(\.[0-9]+)?$'
+    condition: '"$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$'
     tags: true
 
 # Send notifications.
