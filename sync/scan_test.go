@@ -28,7 +28,7 @@ func init() {
 }
 
 // gorootRebuildHashProxy wraps an instance of and implements hash.Hash, but it
-// signals a test error if any hashing occurs.  It is a test fixture for
+// signals a test error if any hashing occurs. It is a test fixture for
 // TestGorootRebuild.
 type gorootRebuildHashProxy struct {
 	hash.Hash

@@ -6,7 +6,7 @@ os:
   - osx
   - linux
 
-# Set Go versions.  We have to do this because Travis CI defaults to an older Go
+# Set Go versions. We have to do this because Travis CI defaults to an older Go
 # version and because we want broader test coverage.
 # NOTE: If you change this version, change its value below in deploy as well.
 go:
