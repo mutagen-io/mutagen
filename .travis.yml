@@ -1,14 +1,14 @@
 # Set the language.
 language: go
 
-# Set up the build matrix, with macOS being responsible for release build and
-# coverage profile uploading. Allow failure on Go tip - we just want to be able
-# to track behavior there.
+# Set up the build matrix, with macOS being responsible for release build
+# uploading. Allow failure on Go tip - we just want to be able to track behavior
+# there.
 matrix:
   include:
     - go: 1.9.x
       os: osx
-      env: MUTAGEN_COVERAGE_UPLOADER=true MUTAGEN_RELEASE_UPLOADER=true
+      env: MUTAGEN_RELEASE_UPLOADER=true
     - go: 1.9.x
       os: linux
     - go: tip
@@ -22,8 +22,6 @@ matrix:
 before_install:
   - git submodule init
   - git submodule update
-  - if [[ "$MUTAGEN_COVERAGE_UPLOADER" == "true" ]]; then go get -u -v github.com/wadey/gocovmerge ; fi
-  - if [[ "$MUTAGEN_COVERAGE_UPLOADER" == "true" ]]; then go get -u -v github.com/mattn/goveralls ; fi
 
 # Disable the default install step, which will try to do "go get -t -v ./..."
 # only to find that it doesn't work for vendored dependencies.
@@ -33,15 +31,13 @@ install:
 # Run tests.
 script:
   - go version
-  - go test -v -race -cover -coverprofile=message.cover github.com/havoc-io/mutagen/message
-  - go test -v -race -cover -coverprofile=multiplex.cover github.com/havoc-io/mutagen/multiplex
-  - go test -v -race -cover -coverprofile=rsync.cover github.com/havoc-io/mutagen/rsync
-  - go test -v -race -cover -coverprofile=sync.cover github.com/havoc-io/mutagen/sync
-  - go test -v -race -cover -coverprofile=url.cover github.com/havoc-io/mutagen/url
+  - go test -v -race -cover github.com/havoc-io/mutagen/message
+  - go test -v -race -cover github.com/havoc-io/mutagen/multiplex
+  - go test -v -race -cover github.com/havoc-io/mutagen/rsync
+  - go test -v -race -cover github.com/havoc-io/mutagen/sync
+  - go test -v -race -cover github.com/havoc-io/mutagen/url
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
-  - if [[ "$MUTAGEN_COVERAGE_UPLOADER" == "true" ]]; then gocovmerge *.cover > combined.cover ; fi
-  - if [[ "$MUTAGEN_COVERAGE_UPLOADER" == "true" ]]; then goveralls -coverprofile=combined.cover -service=travis-ci ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build
