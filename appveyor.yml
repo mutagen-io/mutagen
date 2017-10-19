@@ -36,7 +36,7 @@ before_test:
 test_script:
   - go version
   - go run scripts/ci_testing.go %RACEFLAG%
-  - codecov -f coverage.txt
+  - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
 
 # Send notifications.
