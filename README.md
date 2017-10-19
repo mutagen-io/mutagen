@@ -13,14 +13,16 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 ## Status
 
-| Windows                           | OS X/Linux                             |
-| :-------------------------------: | :------------------------------------: |
-| [![Windows][win-badge]][win-link] | [![OS X][osx-lin-badge]][osx-lin-link] |
+| Windows                           | macOS/Linux                                   | Code coverage                      |
+| :-------------------------------: | :-------------------------------------------: | :--------------------------------: |
+| [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Coverage][cov-badge]][cov-link] |
 
 [win-badge]: https://ci.appveyor.com/api/projects/status/qywidv5a1vf7g3b5/branch/master?svg=true "Windows build status"
 [win-link]:  https://ci.appveyor.com/project/havoc-io/mutagen/branch/master "Windows build status"
-[osx-lin-badge]: https://travis-ci.org/havoc-io/mutagen.svg?branch=master "OS X/Linux build status"
-[osx-lin-link]:  https://travis-ci.org/havoc-io/mutagen "OS X/Linux build status"
+[mac-lin-badge]: https://travis-ci.org/havoc-io/mutagen.svg?branch=master "macOS/Linux build status"
+[mac-lin-link]:  https://travis-ci.org/havoc-io/mutagen "macOS/Linux build status"
+[cov-badge]: https://codecov.io/gh/havoc-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
+[cov-link]: https://codecov.io/gh/havoc-io/mutagen "Code coverage status"
 
 
 ## Usage
