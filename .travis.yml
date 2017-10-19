@@ -10,8 +10,7 @@ os:
 # Go at a time, usually the latest, but we also monitor tip to get an idea of
 # whether or not the next release is going to break anything.
 # NOTE: If you change this version, change the corresponding conditions below in
-# code coverage and deployment uploading (see the after_success and deploy
-# sections).
+# code coverage and deployment uploading (see the script and deploy sections).
 go:
   - 1.9.x
   - tip
@@ -26,7 +25,10 @@ before_install:
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
 
-# Run tests and build bundles.
+# Run tests, upload the coverage report (if not running on tip), and build
+# bundles. We fold coverage report uploading into script to mirror the behavior
+# on AppVeyor (which is necessary because AppVeyor's after_test doesn't seem to
+# fail the build if an upload fails (which we want to do)).
 # HACK: We have to use a custom script to invoke tests because we want a
 # combined coverage report that includes all packages and go test currently
 # doesn't support that. We should monitor golang/go#6909 and golang/go#21126 so
@@ -35,12 +37,9 @@ install: true
 script:
   - go version
   - go run scripts/ci_testing.go --race
+  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
-
-# Upload coverage report if not running on tip.
-after_success:
-  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build

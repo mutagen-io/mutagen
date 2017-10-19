@@ -25,7 +25,9 @@ before_test:
   - go get -u -v github.com/wadey/gocovmerge
   - pip install codecov
 
-# Run tests and build bundles.
+# Run tests, upload the coverage report, and build bundles. We fold coverage
+# report uploading into test_script because after_test doesn't seem to fail the
+# build if an upload fails (which we want to do).
 # HACK: We have to use a custom script to invoke tests because we want a
 # combined coverage report that includes all packages and go test currently
 # doesn't support that. We should monitor golang/go#6909 and golang/go#21126 so
@@ -34,11 +36,8 @@ before_test:
 test_script:
   - go version
   - go run scripts/ci_testing.go %RACEFLAG%
-  - go run scripts/build.go --mode=testing
-
-# Upload coverage report.
-after_test:
   - codecov -f coverage.txt
+  - go run scripts/build.go --mode=testing
 
 # Send notifications.
 notifications:
