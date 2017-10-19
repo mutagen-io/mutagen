@@ -9,7 +9,7 @@ environment:
   GOPATH: C:\gopath
   matrix:
     - GOROOT: C:\go19
-      RACEFLAG: -race
+      RACEFLAG: --race
     - GOROOT: C:\go19-x86
 init:
   - set PATH=%GOROOT%\bin;%GOPATH%\bin;%PATH%
@@ -17,20 +17,30 @@ init:
 # Disable AppVeyor's default Visual Studio build system.
 build: off
 
-# Fetch vendored third-party dependencies.
+# Fetch vendored third-party dependencies, install a tool for merging coverage
+# profiles, and install the codecov.io Python-based upload tool.
 before_test:
   - git submodule init
   - git submodule update
+  - go get -u -v github.com/wadey/gocovmerge
+  - pip install codecov
 
-# Run tests.
+# Run tests and build bundles.
+# HACK: We have to use a custom script to invoke tests because we want coverage
+# reports for each and go test currently doesn't support generating either
+# multiple coverage reports or a unified coverage report when using a "./..."
+# package specification. We also use a custom tool to merge the generated
+# coverage reports. We should monitor golang/go#6909 and golang/go#21126 so that
+# we can remove this workaround once that Go toolchain supports this natively.
 test_script:
   - go version
-  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/message
-  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/multiplex
-  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/rsync
-  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/sync
-  - go test -v %RACEFLAG% -cover github.com/havoc-io/mutagen/url
+  - go run scripts/ci_testing.go %RACEFLAG%
   - go run scripts/build.go --mode=testing
+
+# Merge and upload coverage reports.
+after_test:
+  - gocovmerge *.cover > coverage.txt
+  - codecov
 
 # Send notifications.
 notifications:

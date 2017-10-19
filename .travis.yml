@@ -1,43 +1,48 @@
 # Set the language.
 language: go
 
-# Set up the build matrix, with macOS being responsible for release build
-# uploading. Allow failure on Go tip - we just want to be able to track behavior
-# there.
-matrix:
-  include:
-    - go: 1.9.x
-      os: osx
-      env: MUTAGEN_RELEASE_UPLOADER=true
-    - go: 1.9.x
-      os: linux
-    - go: tip
-      os: osx
-    - go: tip
-      os: linux
-  allow_failures:
-    - go: tip
+# Set test platforms.
+os:
+  - osx
+  - linux
 
-# Fetch vendored third-party dependencies.
+# Set our Go version(s). Mutagen generally only supports a specific version of
+# Go at a time, usually the latest, but we also monitor tip to get an idea of
+# whether or not the next release is going to break anything.
+# NOTE: If you change this version, change the corresponding conditions below in
+# code coverage and deployment uploading (see the after_success and deploy
+# sections).
+go:
+  - 1.9.x
+  - tip
+
+# Fetch vendored third-party dependencies and install a tool for merging
+# coverage profiles.
 before_install:
   - git submodule init
   - git submodule update
+  - go get -u -v github.com/wadey/gocovmerge
 
-# Disable the default install step, which will try to do "go get -t -v ./..."
-# only to find that it doesn't work for vendored dependencies.
-install:
-  - echo "Skipping the default go get..."
+# Skip the default install step since it doesn't make sense for Mutagen.
+install: true
 
-# Run tests.
+# Run tests and build bundles.
+# HACK: We have to use a custom script to invoke tests because we want coverage
+# reports for each and go test currently doesn't support generating either
+# multiple coverage reports or a unified coverage report when using a "./..."
+# package specification. We also use a custom tool to merge the generated
+# coverage reports. We should monitor golang/go#6909 and golang/go#21126 so that
+# we can remove this workaround once that Go toolchain supports this natively.
 script:
   - go version
-  - go test -v -race -cover github.com/havoc-io/mutagen/message
-  - go test -v -race -cover github.com/havoc-io/mutagen/multiplex
-  - go test -v -race -cover github.com/havoc-io/mutagen/rsync
-  - go test -v -race -cover github.com/havoc-io/mutagen/sync
-  - go test -v -race -cover github.com/havoc-io/mutagen/url
+  - go run scripts/ci_testing.go --race
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
+
+# Merge and upload coverage reports if not running on tip.
+after_success:
+  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then gocovmerge *.cover > coverage.txt ; fi
+  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build
@@ -80,7 +85,7 @@ deploy:
     - build/mutagen_windows_amd64.zip
   on:
     repo: havoc-io/mutagen
-    condition: '"$MUTAGEN_RELEASE_UPLOADER" == "true"'
+    condition: '"$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$'
     tags: true
 
 # Send notifications.
