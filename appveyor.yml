@@ -38,7 +38,7 @@ test_script:
 
 # Upload coverage report.
 after_test:
-  - codecov
+  - codecov -f coverage.txt
 
 # Send notifications.
 notifications:
