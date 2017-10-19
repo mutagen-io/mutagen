@@ -15,6 +15,11 @@ go:
   - 1.9.x
   - tip
 
+# Allow failure on Go tip, we just want to be able to track behavior there.
+matrix:
+  allow_failures:
+    - go: tip
+
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
 before_install:
