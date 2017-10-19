@@ -27,21 +27,19 @@ before_install:
 install: true
 
 # Run tests and build bundles.
-# HACK: We have to use a custom script to invoke tests because we want coverage
-# reports for each and go test currently doesn't support generating either
-# multiple coverage reports or a unified coverage report when using a "./..."
-# package specification. We also use a custom tool to merge the generated
-# coverage reports. We should monitor golang/go#6909 and golang/go#21126 so that
-# we can remove this workaround once that Go toolchain supports this natively.
+# HACK: We have to use a custom script to invoke tests because we want a
+# combined coverage report that includes all packages and go test currently
+# doesn't support that. We should monitor golang/go#6909 and golang/go#21126 so
+# that we can remove this workaround once that Go toolchain supports this
+# natively.
 script:
   - go version
   - go run scripts/ci_testing.go --race
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
 
-# Merge and upload coverage reports if not running on tip.
+# Upload coverage report if not running on tip.
 after_success:
-  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then gocovmerge *.cover > coverage.txt ; fi
   - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip

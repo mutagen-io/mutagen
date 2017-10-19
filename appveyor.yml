@@ -26,20 +26,18 @@ before_test:
   - pip install codecov
 
 # Run tests and build bundles.
-# HACK: We have to use a custom script to invoke tests because we want coverage
-# reports for each and go test currently doesn't support generating either
-# multiple coverage reports or a unified coverage report when using a "./..."
-# package specification. We also use a custom tool to merge the generated
-# coverage reports. We should monitor golang/go#6909 and golang/go#21126 so that
-# we can remove this workaround once that Go toolchain supports this natively.
+# HACK: We have to use a custom script to invoke tests because we want a
+# combined coverage report that includes all packages and go test currently
+# doesn't support that. We should monitor golang/go#6909 and golang/go#21126 so
+# that we can remove this workaround once that Go toolchain supports this
+# natively.
 test_script:
   - go version
   - go run scripts/ci_testing.go %RACEFLAG%
   - go run scripts/build.go --mode=testing
 
-# Merge and upload coverage reports.
+# Upload coverage report.
 after_test:
-  - gocovmerge *.cover > coverage.txt
   - codecov
 
 # Send notifications.
