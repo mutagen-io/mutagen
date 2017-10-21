@@ -96,12 +96,15 @@ func (r *readMultiplexer) Close() error {
 // Reader demultiplexes an io.Reader into independent byte streams. Multiplexing
 // can be accomplished using the Writer method. Demultiplexing will use an
 // additional background Goroutine to poll the underlying reader for data and
-// dispatch it appropriately. This Goroutine can only be terminated when the
-// returned io.Closer is closed (which terminates data routing) and the
-// underlying io.Reader is closed and reads on it unblock. Be careful with OS
-// pipes, because on some platforms (including macOS), reads can only be
-// unblocked by closing the write end, and closes on the read end while in a
-// blocking read can even block the close.
+// route it appropriately. This Goroutine is only guaranteed to terminate when
+// both the returned io.Closer is closed (which terminates data routing) and the
+// underlying io.Reader is closed and reads on it unblock. This means that the
+// io.Reader provided to this method must unblock when closed, and you should be
+// aware that this guarantee is not part of the io.Reader interface and that
+// many io.Reader objects don't adhere to this behavior. Be particularly careful
+// with OS pipes, because on some platforms reads can only be unblocked by
+// closing the write end of the pipe, and closes on the read end while in a
+// blocking read can even block the close operation.
 func Reader(reader io.Reader, channels uint8) ([]io.Reader, io.Closer) {
 	// Create our channel pipes.
 	readers := make([]io.Reader, channels)

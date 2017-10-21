@@ -9,9 +9,10 @@ type readWriter struct {
 	io.Writer
 }
 
-// ReadWriter performs multiplexing of a duplex stream. The returned closer is
-// that returned by multiplexing the io.Reader portion of the interface with the
-// Reader function, so it follows the same semantics.
+// ReadWriter performs multiplexing of a duplex stream. It is a simple wrapper
+// around the Reader and Writer methods, and thus the underlying stream must
+// adhere to the requirements of the arguments to those methods (which you
+// should review before using this method).
 func ReadWriter(stream io.ReadWriter, channels uint8) ([]io.ReadWriter, io.Closer) {
 	// Perform read multiplexing.
 	readers, closer := Reader(stream, channels)
