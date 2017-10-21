@@ -17,11 +17,7 @@ import (
 // used to satisfy an interface, the io.LimitedReader has to be allocated on the
 // heap (https://github.com/golang/go/issues/19361) (this is confirmed by escape
 // analysis). If this was ever fixed, we could use io.LimitedReader in
-// conjunction with io.CopyBuffer (though that's not as easy as it seems on its
-// surface - e.g. io.Reader is allowed to return io.EOF along with a non-0 byte
-// count, and io.CopyBuffer will gobble this up, so we might see a "successful"
-// read without any error, and then we'd be relying on the reader to return
-// io.EOF again on the next call, but the behavior there is undefined).
+// conjunction with io.CopyBuffer.
 func copyN(dst io.Writer, src io.Reader, n int64, buffer []byte) (int64, error) {
 	// Count the number of bytes we've copied.
 	var copied int64
