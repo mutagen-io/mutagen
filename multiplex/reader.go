@@ -48,6 +48,9 @@ func (r *readMultiplexer) closeAllPipesWithError(err error) {
 // closed, but not necessarily if the read end is closed (and trying to close
 // the read end during a blocking read can even block the close)).
 func (r *readMultiplexer) poll(reader *bufio.Reader) {
+	// Create a limiting wrapper around the reader to restrict read lengths.
+	limiter := &io.LimitedReader{R: reader}
+
 	// Create a copy buffer we can use for data forwarding.
 	buffer := make([]byte, readMultiplexerCopyBufferSize)
 
@@ -66,10 +69,17 @@ func (r *readMultiplexer) poll(reader *bufio.Reader) {
 			return
 		}
 
-		// Forward this channel's data.
-		_, err = copyN(r.pipes[header.channel], reader, int64(header.length), buffer)
-		if err != nil {
+		// Forward this channel's data. io.LimitedReader doesn't treat an early
+		// io.EOF as an io.ErrUnexpectedEOF (it's a limiting value, not a
+		// minimum value), so we also check that the transmitted length is what
+		// we expect (because CopyBuffer is expecting an io.EOF as its
+		// termination condition and will just gobble that up).
+		limiter.N = int64(header.length)
+		if copied, err := io.CopyBuffer(r.pipes[header.channel], limiter, buffer); err != nil {
 			r.closeAllPipesWithError(err)
+			return
+		} else if copied != int64(header.length) {
+			r.closeAllPipesWithError(io.ErrUnexpectedEOF)
 			return
 		}
 	}
