@@ -11,13 +11,13 @@ const (
 	// TODO: Figure out if we should set this on a per-machine basis. This value
 	// is taken from Go's io.Copy method, which defaults to allocating a 32k
 	// buffer if none is provided.
-	readMultiplexerCopyBufferSize = 32 * 1024
+	readDemultiplexerCopyBufferSize = 32 * 1024
 )
 
-// readMultiplexer implements the multiplexing protocol over an io.Reader. It
+// readDemultiplexer implements the multiplexing protocol over an io.Reader. It
 // uses a polling Goroutine to read headers and then forwards their data blocks
 // to io.Pipe objects that are given out as channels.
-type readMultiplexer struct {
+type readDemultiplexer struct {
 	pipes []*io.PipeWriter
 }
 
@@ -25,7 +25,7 @@ type readMultiplexer struct {
 // error, letting all channels know that they will not receive any more data. It
 // does not close the underlying reader, which must be done to ensure polling
 // shutdown.
-func (r *readMultiplexer) closeAllPipesWithError(err error) {
+func (r *readDemultiplexer) closeAllPipesWithError(err error) {
 	for _, p := range r.pipes {
 		p.CloseWithError(err)
 	}
@@ -47,12 +47,12 @@ func (r *readMultiplexer) closeAllPipesWithError(err error) {
 // on all systems (for OS pipes, the reader will unblock if the write end is
 // closed, but not necessarily if the read end is closed (and trying to close
 // the read end during a blocking read can even block the close)).
-func (r *readMultiplexer) poll(reader *bufio.Reader) {
+func (r *readDemultiplexer) poll(reader *bufio.Reader) {
 	// Create a limiting wrapper around the reader to restrict read lengths.
 	limiter := &io.LimitedReader{R: reader}
 
 	// Create a copy buffer we can use for data forwarding.
-	buffer := make([]byte, readMultiplexerCopyBufferSize)
+	buffer := make([]byte, readDemultiplexerCopyBufferSize)
 
 	// Loop until there's an error.
 	for {
@@ -88,7 +88,7 @@ func (r *readMultiplexer) poll(reader *bufio.Reader) {
 // Close closes all pipes in the multiplexer with io.ErrClosedPipe, letting all
 // channels know that they will not receive any more data. It does not close the
 // underlying reader, which must be done to ensure polling shutdown.
-func (r *readMultiplexer) Close() error {
+func (r *readDemultiplexer) Close() error {
 	r.closeAllPipesWithError(nil)
 	return nil
 }
@@ -116,7 +116,7 @@ func Reader(reader io.Reader, channels uint8) ([]io.Reader, io.Closer) {
 	}
 
 	// Create the multiplexer and start its polling Goroutine.
-	multiplexer := &readMultiplexer{pipes}
+	multiplexer := &readDemultiplexer{pipes}
 	go multiplexer.poll(bufio.NewReader(reader))
 
 	// Done.
