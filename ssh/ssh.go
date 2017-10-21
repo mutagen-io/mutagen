@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	connectTimeoutSeconds    = 5
-	connectionsDirectoryName = "connections"
+	sshConnectTimeoutSeconds = 5
 )
 
 // timeoutArgument returns a option flag that can be passed to scp or ssh to
@@ -20,7 +19,7 @@ const (
 // currently a fixed value, but in the future we might want to make this
 // configurable for people with poor connections.
 func timeoutArgument() string {
-	return fmt.Sprintf("-oConnectTimeout=%d", connectTimeoutSeconds)
+	return fmt.Sprintf("-oConnectTimeout=%d", sshConnectTimeoutSeconds)
 }
 
 // Copy copies a local file (which MUST be an absolute path) to a remote
@@ -58,7 +57,6 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 	// Set up arguments.
 	var scpArguments []string
 	scpArguments = append(scpArguments, timeoutArgument())
-	scpArguments = append(scpArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
 		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", remote.Port))
 	}
@@ -114,7 +112,6 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 	// Set up arguments.
 	var sshArguments []string
 	sshArguments = append(sshArguments, timeoutArgument())
-	sshArguments = append(sshArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
 		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", remote.Port))
 	}

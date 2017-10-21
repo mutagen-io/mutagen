@@ -58,7 +58,3 @@ func processAttributes() *syscall.SysProcAttr {
 		CreationFlags: process.DETACHED_PROCESS,
 	}
 }
-
-func controlMasterArguments() []string {
-	return nil
-}
