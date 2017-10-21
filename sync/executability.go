@@ -13,7 +13,7 @@ func propagateExecutability(ancestor, snapshot *Entry) {
 	} else if snapshot.Kind == EntryKind_Directory {
 		ancestorContents := ancestor.GetContents()
 		snapshotContents := snapshot.GetContents()
-		for name, _ := range nameUnion(ancestorContents, snapshotContents) {
+		for name := range nameUnion(ancestorContents, snapshotContents) {
 			propagateExecutability(ancestorContents[name], snapshotContents[name])
 		}
 	} else {

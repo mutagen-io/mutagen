@@ -120,7 +120,7 @@ func (m *Entry) MarshalTo(dAtA []byte) (int, error) {
 	}
 	if len(m.Contents) > 0 {
 		keysForContents := make([]string, 0, len(m.Contents))
-		for k, _ := range m.Contents {
+		for k := range m.Contents {
 			keysForContents = append(keysForContents, string(k))
 		}
 		github_com_gogo_protobuf_sortkeys.Strings(keysForContents)

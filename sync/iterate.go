@@ -13,7 +13,7 @@ func nameUnion(contentMaps ...map[string]*Entry) map[string]bool {
 
 	// Populate it.
 	for _, contents := range contentMaps {
-		for name, _ := range contents {
+		for name := range contents {
 			result[name] = true
 		}
 	}

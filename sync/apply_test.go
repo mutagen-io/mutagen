@@ -6,7 +6,7 @@ import (
 
 func TestApplyRootSwap(t *testing.T) {
 	changes := []Change{
-		Change{
+		{
 			Old: gorootSnapshot.Contents["bin"],
 			New: gorootSnapshot.Contents["VERSION"],
 		},

@@ -22,7 +22,7 @@ func (d *differ) diff(path string, base, target *Entry) {
 	// Otherwise check contents for differences.
 	baseContents := base.GetContents()
 	targetContents := target.GetContents()
-	for name, _ := range nameUnion(baseContents, targetContents) {
+	for name := range nameUnion(baseContents, targetContents) {
 		d.diff(pathpkg.Join(path, name), baseContents[name], targetContents[name])
 	}
 }
