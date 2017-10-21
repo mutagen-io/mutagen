@@ -35,8 +35,7 @@ For usage information, please see the
 
 ## FAQs
 
-Please see the
-[FAQ](https://github.com/havoc-io/mutagen/blob/master/doc/FAQ.md).
+Please see the [FAQ](doc/FAQ.md).
 
 
 ## Unique features
@@ -103,5 +102,4 @@ support on more obscure platforms and architectures).
 
 ## Building
 
-Please see the
-[build instructions](https://github.com/havoc-io/mutagen/blob/master/doc/BUILDING.md).
+Please see the [build instructions](doc/BUILDING.md).
