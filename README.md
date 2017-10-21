@@ -13,9 +13,9 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 ## Status
 
-| Windows                           | macOS/Linux                                   | Code coverage                      |
-| :-------------------------------: | :-------------------------------------------: | :--------------------------------: |
-| [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Coverage][cov-badge]][cov-link] |
+| Windows                           | macOS/Linux                                   | Code coverage                           | Report card                           |
+| :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :-----------------------------------: |
+| [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link]   |
 
 [win-badge]: https://ci.appveyor.com/api/projects/status/qywidv5a1vf7g3b5/branch/master?svg=true "Windows build status"
 [win-link]:  https://ci.appveyor.com/project/havoc-io/mutagen/branch/master "Windows build status"
@@ -23,6 +23,8 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 [mac-lin-link]:  https://travis-ci.org/havoc-io/mutagen "macOS/Linux build status"
 [cov-badge]: https://codecov.io/gh/havoc-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
 [cov-link]: https://codecov.io/gh/havoc-io/mutagen "Code coverage status"
+[rc-badge]: https://goreportcard.com/badge/github.com/havoc-io/mutagen "Report card status"
+[rc-link]: https://goreportcard.com/report/github.com/havoc-io/mutagen "Report card status"
 
 
 ## Usage
