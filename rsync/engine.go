@@ -469,8 +469,8 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	// Create a buffer that we can use to load data and search for matches. We
 	// start by filling it with a block's worth of data and then continuously
 	// appending bytes until we either fill the buffer (at which point we
-	// transmit data preceeding the block and truncate) or find a match (at
-	// which point we transmit data preceeding the block and then transmit the
+	// transmit data preceding the block and truncate) or find a match (at
+	// which point we transmit data preceding the block and then transmit the
 	// block match). Once we're unable to append a new byte or refill with a
 	// full block, we terminate our search and send the remaining data
 	// (potentially searching for one last short block match at the end of the
@@ -478,10 +478,10 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	//
 	// We choose the buffer size to hold a chunk of data of the maximum allowed
 	// transmission size and a block of data. This size choice is somewhat
-	// arbitary since we have a data chunking function and could load more data
+	// arbitrary since we have a data chunking function and could load more data
 	// before doing a truncation/transmission, but this is also a reasonable
 	// amount of data to hold in memory at any given time. We could choose a
-	// larger preceeding data chunk size to have less frequent truncations, but
+	// larger preceding data chunk size to have less frequent truncations, but
 	// (a) truncations are cheap and (b) we'll probably be doing a lot of
 	// sequential block matching cycles where we just continuously match blocks
 	// at the beginning of the buffer and then refill, so truncations won't be
@@ -541,12 +541,12 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 			}
 		}
 
-		// If there's a match, send any data preceeding the match and then send
+		// If there's a match, send any data preceding the match and then send
 		// the match. Otherwise, if we've reached buffer capacity, send the data
-		// preceeding the search block.
+		// preceding the search block.
 		if match {
 			if err := sendData(buffer[:occupancy-base.BlockSize]); err != nil {
-				return errors.Wrap(err, "unable to transmit data preceeding match")
+				return errors.Wrap(err, "unable to transmit data preceding match")
 			} else if err = sendBlock(matchIndex); err != nil {
 				return errors.Wrap(err, "unable to transmit match")
 			}

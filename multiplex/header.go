@@ -13,7 +13,7 @@ const (
 	maxBlockLength = 1<<32 - 1
 )
 
-// header is a tag-length pair that preceeds all data blocks on the wire. It
+// header is a tag-length pair that precedes all data blocks on the wire. It
 // encodes the channel and length for the block.
 type header struct {
 	// channel is the channel for the subsequent data block.

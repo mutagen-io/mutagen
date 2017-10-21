@@ -91,7 +91,7 @@ func parseSSH(raw string) (*URL, error) {
 		}
 
 		// If we've encountered a colon and we're not at the beginning of the
-		// remaining string, attempt to parse the preceeding value as a port.
+		// remaining string, attempt to parse the preceding value as a port.
 		if r == ':' && i != 0 {
 			if port64, err := strconv.ParseUint(raw[:i], 10, 16); err == nil {
 				port = uint32(port64)

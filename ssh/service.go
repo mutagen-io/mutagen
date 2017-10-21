@@ -53,7 +53,7 @@ func (s *Service) RegisterPrompter(prompter Prompter) string {
 }
 
 func (s *Service) UnregisterPrompter(identifier string) {
-	// Grab the holder and deregister it. If it isn't currently registed, this
+	// Grab the holder and deregister it. If it isn't currently registered, this
 	// must be a logic error.
 	s.holdersLock.Lock()
 	holder, ok := s.holders[identifier]

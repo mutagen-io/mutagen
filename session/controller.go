@@ -467,7 +467,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		// Set up rsync forwarding between endpoints and monitor for failure.
 		forwardingErrors := make(chan error, 4)
 		go func() {
-			// Foward the alpha client to the beta server.
+			// Forward the alpha client to the beta server.
 			_, err := io.Copy(
 				betaStreams[endpointChannelRsyncServer],
 				alphaStreams[endpointChannelRsyncClient],
@@ -476,7 +476,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 			backgroundGoroutinesDone.Done()
 		}()
 		go func() {
-			// Foward the beta client to the alpha server.
+			// Forward the beta client to the alpha server.
 			_, err := io.Copy(
 				alphaStreams[endpointChannelRsyncServer],
 				betaStreams[endpointChannelRsyncClient],

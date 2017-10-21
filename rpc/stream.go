@@ -67,7 +67,7 @@ func (s *stream) Send(value interface{}) error {
 	// Encode the message.
 	if err := s.encoder.Encode(value); err != nil {
 		s.errored = true
-		return errors.Wrap(err, "unabel to encode message")
+		return errors.Wrap(err, "unable to encode message")
 	}
 
 	// Success.

@@ -86,7 +86,7 @@ func (m testMessage) equal(other testMessage) bool {
 
 // sendMessages dispatches random messages over a stream and a channel.
 func sendMessages(channel uint8, stream io.Writer, errors chan error) {
-	// Create a reproducable random number generator.
+	// Create a reproducible random number generator.
 	random := rand.New(rand.NewSource(int64(channel)))
 
 	// Create an encoder.
@@ -108,7 +108,7 @@ func sendMessages(channel uint8, stream io.Writer, errors chan error) {
 }
 
 func receiveMessages(channel uint8, stream io.Reader, errors chan error) {
-	// Create a reproducable random number generator.
+	// Create a reproducible random number generator.
 	random := rand.New(rand.NewSource(int64(channel)))
 
 	// Create a decoder.
