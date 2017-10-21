@@ -7,9 +7,6 @@
 [submodule "vendor/github.com/texttheater/golang-levenshtein"]
 	path = vendor/github.com/texttheater/golang-levenshtein
 	url = https://github.com/texttheater/golang-levenshtein.git
-[submodule "vendor/github.com/kardianos/osext"]
-	path = vendor/github.com/kardianos/osext
-	url = https://github.com/kardianos/osext.git
 [submodule "vendor/github.com/satori/go.uuid"]
 	path = vendor/github.com/satori/go.uuid
 	url = https://github.com/satori/go.uuid.git
