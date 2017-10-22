@@ -530,6 +530,12 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		case err := <-receiveRsyncUpdateErrors:
 			failureCause = errors.Wrap(err, "rsync update receiving error")
 		case err := <-forwardingErrors:
+			// io.Copy is designed to gobble up io.EOF errors (since they
+			// represent its normal termination condition), so we reconstitute
+			// them here.
+			if err == nil {
+				err = io.EOF
+			}
 			failureCause = errors.Wrap(err, "rsync forwarding error")
 		case err := <-synchronizeErrors:
 			failureCause = errors.Wrap(err, "synchronization error")
@@ -562,7 +568,12 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		backgroundGoroutinesDone.Wait()
 
 		// Reset the synchronization state, but propagate the error that caused
-		// failure.
+		// failure. Although the error should always be non-nil, it can
+		// originate from code outside our control and thus we need to be extra
+		// careful.
+		if failureCause == nil {
+			failureCause = errors.New("unknown error")
+		}
 		c.stateLock.Lock()
 		c.state = SynchronizationState{
 			LastError: failureCause.Error(),
