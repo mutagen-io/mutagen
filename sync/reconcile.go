@@ -60,11 +60,9 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 
 	// Alpha and beta weren't equal at this node. Thus, at least one of them
 	// must differ from ancestor *at this node*. The other may also differ from
-	// the ancestor at this node, a subnode, or not at all. Start by computing
-	// the diff from ancestor to alpha and ancestor to beta. If one side is
+	// the ancestor at this node, a subnode, or not at all. If one side is
 	// unmodified, then we can simply propagate changes from the other side.
 	alphaDelta := diff(path, ancestor, alpha)
-	betaDelta := diff(path, ancestor, beta)
 	if len(alphaDelta) == 0 {
 		r.alphaChanges = append(r.alphaChanges, Change{
 			Path: path,
@@ -72,7 +70,9 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 			New:  beta,
 		})
 		return
-	} else if len(betaDelta) == 0 {
+	}
+	betaDelta := diff(path, ancestor, beta)
+	if len(betaDelta) == 0 {
 		r.betaChanges = append(r.betaChanges, Change{
 			Path: path,
 			Old:  ancestor,
