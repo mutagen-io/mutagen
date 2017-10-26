@@ -12,7 +12,7 @@ os:
 # NOTE: If you change this version, change the corresponding conditions below in
 # code coverage and deployment uploading (see the script and deploy sections).
 go:
-  - 1.9.x
+  - 1.9.2
   - tip
 
 # Allow failure on Go tip, we just want to be able to track behavior there.
