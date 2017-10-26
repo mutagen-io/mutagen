@@ -20,7 +20,7 @@ var usage = `ci_testing [-h|--help] [-r|--race]
 `
 
 func main() {
-	// Parse testArguments.
+	// Parse command line arguments.
 	var race bool
 	var i386 bool
 	var noCover bool

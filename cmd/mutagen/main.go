@@ -77,8 +77,7 @@ func main() {
 		}
 	}
 
-	// Parse and handle main entry point flags. The help flag is handled
-	// automatically.
+	// Parse command line arguments that pertain to the main entry point.
 	flagSet := cmd.NewFlagSet("mutagen", usage, nil)
 	version := flagSet.BoolP("version", "V", false, "")
 	legal := flagSet.BoolP("legal", "l", false, "")

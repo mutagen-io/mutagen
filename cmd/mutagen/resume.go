@@ -17,7 +17,7 @@ automatically reconnect without it.
 `
 
 func resumeMain(arguments []string) error {
-	// Parse command line arguments. The help flag is handled automatically.
+	// Parse command line arguments.
 	flagSet := cmd.NewFlagSet("resume", resumeUsage, []int{1})
 	session := flagSet.ParseOrDie(arguments)[0]
 	if session == "" {

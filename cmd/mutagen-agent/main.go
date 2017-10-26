@@ -22,7 +22,7 @@ type stdio struct {
 }
 
 func main() {
-	// Parse flags.
+	// Parse command line arguments.
 	flagSet := cmd.NewFlagSet("mutagen-agent", agentUsage, []int{1})
 	mode := flagSet.ParseOrDie(os.Args[1:])[0]
 

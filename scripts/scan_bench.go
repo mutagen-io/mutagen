@@ -36,7 +36,7 @@ func (p *ignorePatterns) Set(value string) error {
 }
 
 func main() {
-	// Parse arguments.
+	// Parse command line arguments.
 	var ignores ignorePatterns
 	var enableProfile bool
 	flagSet := cmd.NewFlagSet("scan_bench", usage, []int{1})

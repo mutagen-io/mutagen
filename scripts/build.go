@@ -302,7 +302,7 @@ Mutagen source tree. The default mode is 'slim'.
 `
 
 func main() {
-	// Parse and handle flags.
+	// Parse command line arguments.
 	flagSet := cmd.NewFlagSet("build", buildUsage, nil)
 	var mode string
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
