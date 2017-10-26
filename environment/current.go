@@ -16,3 +16,16 @@ func init() {
 		Current = current
 	}
 }
+
+func CopyCurrent() map[string]string {
+	// Create a new environment map.
+	result := make(map[string]string, len(Current))
+
+	// Populate it.
+	for k, v := range Current {
+		result[k] = v
+	}
+
+	// Done.
+	return result
+}

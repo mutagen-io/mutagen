@@ -71,10 +71,7 @@ func (t Target) ExecutableName(base string) string {
 
 func (t Target) goEnv() []string {
 	// Duplicate the existing environment.
-	result := make(map[string]string, len(environment.Current))
-	for k, v := range environment.Current {
-		result[k] = v
-	}
+	result := environment.CopyCurrent()
 
 	// Override GOOS/GOARCH.
 	result["GOOS"] = t.GOOS

@@ -13,6 +13,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/environment"
 )
 
 var usage = `ci_testing [-h|--help] [-r|--race]
@@ -21,8 +22,12 @@ var usage = `ci_testing [-h|--help] [-r|--race]
 func main() {
 	// Parse testArguments.
 	var race bool
+	var i386 bool
+	var noCover bool
 	flagSet := cmd.NewFlagSet("ci_testing", usage, nil)
-	flagSet.BoolVarP(&race, "race", "r", false, "enable race detection")
+	flagSet.BoolVar(&race, "race", false, "enable race detection")
+	flagSet.BoolVar(&i386, "i386", false, "test with GOARCH=386")
+	flagSet.BoolVar(&noCover, "no-cover", false, "disable coverage report")
 	flagSet.ParseOrDie(os.Args[1:])
 
 	// Create a list of all the packages to test. Go tooling uses "\n" rather
@@ -33,6 +38,15 @@ func main() {
 		cmd.Fatal(errors.Wrap(err, "unable to list test modules"))
 	}
 	packages := strings.Split(strings.TrimSpace(string(listOutput)), "\n")
+
+	// If building for 386, create a copy of the current environment and
+	// overwrite GOARCH.
+	var testEnvironment []string
+	if i386 {
+		newEnvironmentMap := environment.CopyCurrent()
+		newEnvironmentMap["GOARCH"] = "386"
+		testEnvironment = environment.Format(newEnvironmentMap)
+	}
 
 	// Create a temporary directory where we can place coverage profiles and
 	// register its cleanup on a best-effort basis (if we die before it's
@@ -71,6 +85,7 @@ func main() {
 
 		// Execute tests for the package.
 		testCommand := exec.Command("go", testArguments...)
+		testCommand.Env = testEnvironment
 		testCommand.Stdout = os.Stdout
 		testCommand.Stderr = os.Stderr
 		if err := testCommand.Run(); err != nil {
@@ -91,6 +106,11 @@ func main() {
 		} else {
 			extantCoverageProfiles = append(extantCoverageProfiles, p)
 		}
+	}
+
+	// If no coverage report is desired, then we're done.
+	if noCover {
+		return
 	}
 
 	// Invoke gocovmerge to create a combined coverage profile.

@@ -7,10 +7,7 @@ clone_folder: C:\gopath\src\github.com\havoc-io\mutagen
 # Set Go versions.
 environment:
   GOPATH: C:\gopath
-  matrix:
-    - GOROOT: C:\go19
-      RACEFLAG: --race
-    - GOROOT: C:\go19-x86
+  GOROOT: C:\go19
 init:
   - set PATH=%GOROOT%\bin;%GOPATH%\bin;%PATH%
 
@@ -35,7 +32,8 @@ before_test:
 # natively.
 test_script:
   - go version
-  - go run scripts/ci_testing.go %RACEFLAG%
+  - go run scripts/ci_testing.go --race
+  - go run scripts/ci_testing.go --i386 --no-cover
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
 

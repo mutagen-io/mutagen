@@ -82,10 +82,7 @@ func PromptCommandLine(message, prompt string) (string, error) {
 
 func prompterEnvironment(prompter, message string) []string {
 	// Create a copy of the current environment.
-	result := make(map[string]string, len(environment.Current))
-	for k, v := range environment.Current {
-		result[k] = v
-	}
+	result := environment.CopyCurrent()
 
 	// Handle based on whether or not there's a prompter.
 	if prompter == "" {
