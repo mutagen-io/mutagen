@@ -16,6 +16,24 @@ import (
 	"github.com/havoc-io/mutagen/environment"
 )
 
+var skippedPackages = []string{
+	"github.com/havoc-io/mutagen/cmd/mutagen",
+	"github.com/havoc-io/mutagen/cmd/mutagen-agent",
+	"github.com/havoc-io/mutagen/scripts",
+}
+
+func packageSkipped(pkg string) bool {
+	// Check if the package is flagged as skipped.
+	for _, p := range skippedPackages {
+		if p == pkg {
+			return true
+		}
+	}
+
+	// Otherwise the package isn't skipped.
+	return false
+}
+
 var usage = `ci_testing [-h|--help] [-r|--race]
 `
 
@@ -60,8 +78,8 @@ func main() {
 	// Loop over packages and execute tests.
 	var coverageProfiles []string
 	for _, p := range packages {
-		// Skip packages that aren't really packages.
-		if p == "github.com/havoc-io/mutagen/scripts" {
+		// Check if this package is skipped.
+		if packageSkipped(p) {
 			continue
 		}
 
