@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
 )
@@ -428,7 +429,7 @@ func main() {
 			// Compute the bundle path.
 			bundlePath := filepath.Join(
 				releasePath,
-				fmt.Sprintf("mutagen_%s.tar.gz", target.Name()),
+				fmt.Sprintf("mutagen_%s_v%s.tar.gz", target.Name(), mutagen.Version),
 			)
 
 			// Create the bundle.
