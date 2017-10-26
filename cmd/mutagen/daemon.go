@@ -24,18 +24,20 @@ instance is only created if one doesn't already exist.
 
 func daemonMain(arguments []string) error {
 	// Parse command line arguments. The help flag is handled automatically.
+	var run bool
+	var stop bool
 	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
-	run := flagSet.BoolP("run", "r", false, "run the daemon server")
-	stop := flagSet.BoolP("stop", "s", false, "stop any running daemon server")
+	flagSet.BoolVarP(&run, "run", "r", false, "run the daemon server")
+	flagSet.BoolVarP(&stop, "stop", "s", false, "stop any running daemon server")
 	flagSet.ParseOrDie(arguments)
 
 	// Check that options are sane.
-	if *run && *stop {
+	if run && stop {
 		return errors.New("-r/--run with -s/--stop doesn't make sense")
 	}
 
 	// If stopping is requested, try to send a termination request.
-	if *stop {
+	if stop {
 		daemonClient := rpc.NewClient(daemon.NewOpener())
 		stream, err := daemonClient.Invoke(daemon.MethodTerminate)
 		if err != nil {
@@ -47,7 +49,7 @@ func daemonMain(arguments []string) error {
 
 	// Unless running (non-backgrounding) is requested, then we need to restart
 	// in the background.
-	if !*run {
+	if !run {
 		daemonProcess := &exec.Cmd{
 			Path:        process.Current.ExecutablePath,
 			Args:        []string{"mutagen", "daemon", "--run"},
