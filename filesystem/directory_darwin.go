@@ -18,9 +18,34 @@ func normalizeDirectoryNames(path string, names []string) error {
 	// Check if the filesystem is some variant of HFS. If not, then no
 	// normalization is required.
 	//
-	// We perform this check by checking if the filesystem type name starts with
-	// "hfs". This is not the ideal way of checking for HFS volumes, but
-	// unfortunately macOS' statvfs and statfs implementations are a bit
+	// Well, that's not entirely true, but we have to take that position.
+	// Apple's new APFS is normalization-preserving (while being normalization-
+	// insensitive), which is great, except for cases where people convert HFS
+	// volumes to APFS in-place (the default behavior for macOS 10.12 -> 10.13
+	// upgrades), thus "locking-in" the decomposed normalization that HFS
+	// enforced. Unfortunately there's not really a good heuristic for
+	// determining which decomposed filenames on an APFS volume are due to HFS'
+	// behavior. We could assume that all decomposed filenames on APFS volume at
+	// like that for this reason, but (a) that's a pretty wild assumption,
+	// especially as time goes on, and (b) as HFS dies off and more people
+	// switch to APFS (likely though new volume creation), the cross-section of
+	// cases where some HFS-induced decomposition is still haunting cross-
+	// platform synchronization is going to become vanishingly small. People can
+	// also just fix the problem by fixing the file name normalization once and
+	// relying on APFS to preserve it.
+	//
+	// For a complete accounting of APFS' behavior, see the following article:
+	// 	https://developer.apple.com/library/content/documentation/FileManagement/Conceptual/APFS_Guide/FAQ/FAQ.html
+	// Search for "How does Apple File System handle filenames?" The behavior
+	// was a little inconsistent and crazy during the initial deployment on iOS
+	// 10.3, but it's pretty much settled down now, and was always sane on
+	// macOS, where its deployment occurred later. Even during the crazy periods
+	// though, the above logic regarding not doing normalization on APFS still
+	// stands.
+	//
+	// Anyway, we perform this check by checking if the filesystem type name
+	// starts with "hfs". This is not the ideal way of checking for HFS volumes,
+	// but unfortunately macOS' statvfs and statfs implementations are a bit
 	// terrible. According to the man pages, the f_fsid field of the statvfs
 	// structure is not meaningful, and it is seemingly not populated. The man
 	// pages also say that the f_type field of the statfs structure is reserved,
@@ -34,9 +59,9 @@ func normalizeDirectoryNames(path string, names []string) error {
 	//  https://trac.macports.org/ticket/52463
 	//  https://github.com/jrk/afsctool/commit/1146c90
 	//
-	// But this doesn't seem ideal, especially with APFS coming soon. Thus, the
-	// only sensible recourse is to use f_fstypename field, which is BARELY
-	// documented. I suspect this is what's being used by NSWorkspace's
+	// But this is not robust, because it can break at any time with OS updates.
+	// Thus, the only sensible recourse is to use f_fstypename field, which is
+	// BARELY documented. I suspect this is what's being used by NSWorkspace's
 	// getFileSystemInfoForPath... method.
 	//
 	// This check should cover all HFS variants.
@@ -60,21 +85,8 @@ func normalizeDirectoryNames(path string, names []string) error {
 	//
 	// In any case, converting to NFC should be a fairly decent approximation
 	// because most text will be have been in NFC normalization before HFS
-	// forcefully decomposed it. It's admittedly not perfect, though.
-	//
-	// Once Apple decides to take HFS out behind the shed and shoot it, this
-	// should be less of an issue. The new Apple File System (APFS) is a bit
-	// better - it just treats file names as bags-of-bytes (just like other
-	// filesystems). The one problem is that Apple is doing in-place conversion
-	// of HFS volumes as they're rolling out APFS, and it's not clear if they're
-	// converting to NFC as part of that (I seriously doubt it). If they're not,
-	// we'll probably still need to perform this normalization.
-	//
-	// TODO: Once APFS rolls out, if the converter doesn't perform NFC
-	// normalization, then I'd just make the NFC normalization unconditional on
-	// macOS until HFS has become a thing of the past (at which point I'd remove
-	// the normalization). Perhaps in the intermediate period, we can make the
-	// normalization configurable.
+	// forcefully decomposed it. At the end of the day, though, it's just a
+	// heuristic.
 	for i, n := range names {
 		names[i] = norm.NFC.String(n)
 	}
