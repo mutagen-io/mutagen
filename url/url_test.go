@@ -84,8 +84,24 @@ func TestProtocolBuffersMethods(t *testing.T) {
 	_, _ = protocol.EnumDescriptor()
 
 	// Test URL methods.
-	url := &URL{}
+	url := &URL{
+		Protocol: Protocol_SSH,
+		Username: "user",
+		Hostname: "host",
+		Port: 12345,
+		Path: "/some/path",
+	}
 	_ = url.String()
 	url.ProtoMessage()
 	_, _ = url.Descriptor()
+	encoded, err := url.Marshal()
+	if err != nil {
+		t.Error("unable to marshal URL:", err)
+	}
+	err = url.Unmarshal(encoded)
+	if err != nil {
+		t.Error("unable to unmarshal URL:", err)
+	}
+
+
 }
