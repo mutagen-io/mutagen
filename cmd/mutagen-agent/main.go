@@ -34,7 +34,7 @@ func main() {
 		return
 	}
 
-	// Perform housekeeping.
+	// Perform agent housekeeping.
 	agent.Housekeep()
 
 	// Create a stream on standard input/output.
