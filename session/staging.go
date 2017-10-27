@@ -130,15 +130,22 @@ func newStagingCoordinator(session string, version Version, alpha bool) (*stagin
 	}, nil
 }
 
+func (c *stagingCoordinator) prepare() error {
+	// Ensure the staging directory exists. If all went well during the last
+	// synchronization cycle, it should have been wiped, so we may need to
+	// recreate it.
+	if _, err := pathForStagingRoot(c.session, c.alpha); err != nil {
+		return errors.Wrap(err, "unable to re-create staging directory")
+	}
+
+	// Success.
+	return nil
+}
+
 func (c *stagingCoordinator) wipe() error {
 	// Remove the staging directory.
 	if err := os.RemoveAll(c.stagingRoot); err != nil {
 		return errors.Wrap(err, "unable to remove staging directory")
-	}
-
-	// Re-create the staging directory.
-	if _, err := pathForStagingRoot(c.session, c.alpha); err != nil {
-		return errors.Wrap(err, "unable to re-create staging directory")
 	}
 
 	// Success.

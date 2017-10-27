@@ -289,6 +289,11 @@ func (e *endpoint) handleScan(request *scanRequest) (*scanResponse, error) {
 }
 
 func (e *endpoint) handleStage(request *stageRequest) (*stageResponse, error) {
+	// Prepare the staging coordinator to receive incoming files.
+	if err := e.stagingCoordinator.prepare(); err != nil {
+		return nil, errors.Wrap(err, "unable to prepare staging coordinator")
+	}
+
 	// Compute the paths that need to be staged.
 	paths, entries, err := stagingPathsForChanges(request.Transitions)
 	if err != nil {
