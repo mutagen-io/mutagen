@@ -41,7 +41,9 @@ func normalizeDirectoryNames(path string, names []string) error {
 	// 10.3, but it's pretty much settled down now, and was always sane on
 	// macOS, where its deployment occurred later. Even during the crazy periods
 	// though, the above logic regarding not doing normalization on APFS still
-	// stands.
+	// stands. Also, don't look at other articles regarding APFS' behavior,
+	// because many were written incorrectly or using developer builds. The
+	// above is the authoritative source.
 	//
 	// Anyway, we perform this check by checking if the filesystem type name
 	// starts with "hfs". This is not the ideal way of checking for HFS volumes,
