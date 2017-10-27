@@ -1,0 +1,3 @@
+# Ignore Protocol Buffers generated code when computing code coverage.
+ignore:
+  - */*.pb.go
