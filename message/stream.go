@@ -8,9 +8,34 @@ import (
 )
 
 type Stream struct {
-	decoder *gob.Decoder
-	encoder *gob.Encoder
-	flusher *snappy.Writer
+	decoder    *gob.Decoder
+	encoder    *gob.Encoder
+	compressor *snappy.Writer
+}
+
+// NewStream constructs a message stream on top of a raw byte stream with
+// optional compression.
+func NewStream(raw io.ReadWriter, compress bool) *Stream {
+	// Extract the reader, wrapping it in a decompressor if necessary.
+	var reader io.Reader = raw
+	if compress {
+		reader = snappy.NewReader(raw)
+	}
+
+	// Extract the writer, wrapping it in a compressor if necessary.
+	var compressor *snappy.Writer
+	var writer io.Writer = raw
+	if compress {
+		compressor = snappy.NewBufferedWriter(raw)
+		writer = compressor
+	}
+
+	// Create the message stream.
+	return &Stream{
+		decoder:    gob.NewDecoder(reader),
+		encoder:    gob.NewEncoder(writer),
+		compressor: compressor,
+	}
 }
 
 func (s *Stream) Decode(message interface{}) error {
@@ -24,34 +49,12 @@ func (s *Stream) Encode(message interface{}) error {
 	}
 
 	// Flush if necessary.
-	if s.flusher != nil {
-		if err := s.flusher.Flush(); err != nil {
+	if s.compressor != nil {
+		if err := s.compressor.Flush(); err != nil {
 			return err
 		}
 	}
 
 	// Success.
 	return nil
-}
-
-// NewStream constructs a message stream using a raw byte stream.
-func NewStream(raw io.ReadWriter) *Stream {
-	return &Stream{
-		decoder: gob.NewDecoder(raw),
-		encoder: gob.NewEncoder(raw),
-	}
-}
-
-// NewCompresseStream constructs a compressed message stream using a raw byte
-// stream.
-func NewCompressedStream(raw io.ReadWriter) *Stream {
-	// Create a decompressing decoder.
-	decoder := gob.NewDecoder(snappy.NewReader(raw))
-
-	// Create a compressing writer.
-	writer := snappy.NewBufferedWriter(raw)
-	encoder := gob.NewEncoder(writer)
-
-	// Create the message stream.
-	return &Stream{decoder, encoder, writer}
 }

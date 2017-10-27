@@ -65,7 +65,7 @@ func NewClient(connection io.ReadWriter, root string, sinker Sinker) *Client {
 
 	// Create the client.
 	return &Client{
-		stream:       message.NewCompressedStream(connection),
+		stream:       message.NewStream(connection, true),
 		root:         root,
 		sinker:       sinker,
 		engine:       NewEngine(),

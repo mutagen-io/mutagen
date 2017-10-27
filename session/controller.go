@@ -593,7 +593,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 func (c *controller) receiveWatchEvents(connection io.ReadWriter, dirty chan watchEvent) error {
 	// Convert the connection to a message stream.
-	events := message.NewStream(connection)
+	events := message.NewStream(connection, false)
 
 	// Receive watch events until there's an error.
 	for {
@@ -613,7 +613,7 @@ func (c *controller) receiveWatchEvents(connection io.ReadWriter, dirty chan wat
 
 func (c *controller) receiveRsyncUpdates(connection io.ReadWriter, alpha bool) error {
 	// Convert the connection to a message stream.
-	updates := message.NewStream(connection)
+	updates := message.NewStream(connection, false)
 
 	// Receive updates until there's an error.
 	for {
@@ -645,8 +645,8 @@ func (c *controller) synchronize(
 	c.stateLock.Unlock()
 
 	// Convert the connections to message streams.
-	alpha := message.NewStream(alphaConnection)
-	beta := message.NewStream(betaConnection)
+	alpha := message.NewStream(alphaConnection, false)
+	beta := message.NewStream(betaConnection, false)
 
 	// Load the archive and extract the ancestor.
 	archive := &Archive{}
