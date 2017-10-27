@@ -7,11 +7,11 @@ import (
 )
 
 func TestCurrent(t *testing.T) {
-	// Ensure that our copy of the environment matches the length of the Go
-	// runtime's.
-	if len(Current) != len(os.Environ()) {
-		t.Error("parsed environment does not match native length")
-	}
+	// We purposely don't test that the length of the parsed environment matches
+	// the length of os.Environ(), because the latter can contain (and usually
+	// does contain on Windows) variable specifications with empty names (i.e.
+	// variable specifications that start with '='), and Parse simply ignores
+	// these.
 
 	// Ensure that our version of the environment matches what's in the Go
 	// runtime's environment.

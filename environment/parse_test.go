@@ -30,6 +30,8 @@ func TestParse(t *testing.T) {
 	// Create a faux environment to test.
 	native := []string{
 		"=",
+		"=something",
+		"=something2=other",
 		"a=b",
 		"WASHINGTON=george",
 		"WASHINGTON=george2",
@@ -38,7 +40,6 @@ func TestParse(t *testing.T) {
 		"JEFFERSON=tHoMaS!\n",
 	}
 	expected := map[string]string{
-		"":           "",
 		"a":          "b",
 		"WASHINGTON": "george2",
 		"Lincoln":    "abraham",
@@ -69,9 +70,8 @@ func TestParse(t *testing.T) {
 
 func TestParseBlock(t *testing.T) {
 	// Create a test block environment.
-	environment := "=\na=b\r\nWASHINGTON=george\nWASHINGTON=george2\r\r\r\n"
+	environment := "=\n=something\r\n=something2=other\na=b\r\nWASHINGTON=george\nWASHINGTON=george2\r\r\r\n"
 	expected := map[string]string{
-		"":           "",
 		"a":          "b",
 		"WASHINGTON": "george2",
 	}
