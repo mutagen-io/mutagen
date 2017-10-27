@@ -98,10 +98,7 @@ func TestProtocolBuffersMethods(t *testing.T) {
 	if err != nil {
 		t.Error("unable to marshal URL:", err)
 	}
-	err = url.Unmarshal(encoded)
-	if err != nil {
+	if err = url.Unmarshal(encoded); err != nil {
 		t.Error("unable to unmarshal URL:", err)
 	}
-
-
 }
