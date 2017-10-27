@@ -88,8 +88,8 @@ func TestProtocolBuffersMethods(t *testing.T) {
 		Protocol: Protocol_SSH,
 		Username: "user",
 		Hostname: "host",
-		Port: 12345,
-		Path: "/some/path",
+		Port:     12345,
+		Path:     "/some/path",
 	}
 	_ = url.String()
 	url.ProtoMessage()
