@@ -49,9 +49,6 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// time, and size haven't changed in order to re-use digests.
 	var digest []byte
 	cached, hit := s.cache.Entries[path]
-	// TODO: We should add another condition to match that enforces modification
-	// time is before the timestamp of the cache on disk. This is the same
-	// solution that Git uses to solve its index race condition.
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
 		modificationTime.Equal(cached.ModificationTime) &&
