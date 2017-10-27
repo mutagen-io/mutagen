@@ -40,6 +40,28 @@ var _ = time.Kitchen
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type CacheEntry struct {
+	// Mode stores the value of the Go os package's FileMode type. The meaning
+	// of this value is defined to be stable (even if we'd have to implement its
+	// computation ourselves when porting to another language), so it's safe to
+	// use, and it's a relatively sane implementation based on POSIX mode bits.
+	// At the moment, we only use the type bits of this value, so we might
+	// technically be able to get away with not storing the mode bits and just
+	// storing something like an EntryKind here instead. We definitely need some
+	// sort of type information though, in case we start supporting cache
+	// entries for things that aren't files, e.g. symlinks. But it's better to
+	// just have this additional mode information available for the sake of
+	// generality and extensibility. It may come in useful if we want to
+	// implement permission propagation or need a better change detection
+	// heuristic. If we decide to port to another language and determine that we
+	// don't need anything expect type information, we may want to deprecate
+	// this field (since it might be painful to reimplement its calculation) and
+	// use EntryKind instead. Unfortunately that'd be a bit difficult since the
+	// zero value of EntryKind is Directory and all cache entries are files, so
+	// using the default value wouldn't work, but we could just add a
+	// CacheEntryKind enumeration. At the moment though, it's highly unlikely
+	// that we'll switch away from Go, and I'm willing to live with this
+	// slightly "unclean" design, especially given its potential and the
+	// relative ease of deprecating it.
 	Mode             uint32    `protobuf:"varint,1,opt,name=mode,proto3" json:"mode,omitempty"`
 	ModificationTime time.Time `protobuf:"bytes,2,opt,name=modificationTime,stdtime" json:"modificationTime"`
 	Size_            uint64    `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
