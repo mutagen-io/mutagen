@@ -40,11 +40,11 @@ var usage = `ci_testing [-h|--help] [-r|--race]
 func main() {
 	// Parse command line arguments.
 	var race bool
-	var i386 bool
+	var goarch string
 	var noCover bool
 	flagSet := cmd.NewFlagSet("ci_testing", usage, nil)
 	flagSet.BoolVar(&race, "race", false, "enable race detection")
-	flagSet.BoolVar(&i386, "i386", false, "test with GOARCH=386")
+	flagSet.StringVar(&goarch, "goarch", "", "override the native GOARCH")
 	flagSet.BoolVar(&noCover, "no-cover", false, "disable coverage report")
 	flagSet.ParseOrDie(os.Args[1:])
 
@@ -57,12 +57,12 @@ func main() {
 	}
 	packages := strings.Split(strings.TrimSpace(string(listOutput)), "\n")
 
-	// If building for 386, create a copy of the current environment and
+	// If GOARCH is specified, create a copy of the current environment and
 	// overwrite GOARCH.
 	var testEnvironment []string
-	if i386 {
+	if goarch != "" {
 		newEnvironmentMap := environment.CopyCurrent()
-		newEnvironmentMap["GOARCH"] = "386"
+		newEnvironmentMap["GOARCH"] = goarch
 		testEnvironment = environment.Format(newEnvironmentMap)
 	}
 

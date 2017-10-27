@@ -33,7 +33,7 @@ before_test:
 test_script:
   - go version
   - go run scripts/ci_testing.go --race
-  - go run scripts/ci_testing.go --i386 --no-cover
+  - go run scripts/ci_testing.go --goarch=386 --no-cover
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
 
