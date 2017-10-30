@@ -47,10 +47,6 @@ type endpoint struct {
 // be fully terminated when the connection is broken and all pending reads and
 // writes unblock.
 func ServeEndpoint(connection io.ReadWriter) error {
-	// Perform session housekeeping.
-	housekeepCaches()
-	housekeepStaging()
-
 	// Perform multiplexing and ensure the multiplexer is shut down when we're
 	// done.
 	streams, multiplexer := multiplex.ReadWriter(connection, numberOfEndpointChannels)

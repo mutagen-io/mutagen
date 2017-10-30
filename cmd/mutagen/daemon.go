@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/agent"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/process"
@@ -80,6 +81,11 @@ func daemonMain(arguments []string) error {
 		return errors.Wrap(err, "unable to acquire daemon lock")
 	}
 	defer lock.Unlock()
+
+	// Perform housekeeping.
+	agent.Housekeep()
+	session.HousekeepCaches()
+	session.HousekeepStaging()
 
 	// Create the RPC server.
 	server := rpc.NewServer()

@@ -13,7 +13,7 @@ const (
 	maximumStagingRootAge = maximumCacheAge
 )
 
-func housekeepCaches() {
+func HousekeepCaches() {
 	// Compute the path to the caches directory. If we fail, just abort. We
 	// don't attempt to create the directory, because if it doesn't exist, then
 	// we don't need to do anything and we'll just bail when we fail to list the
@@ -46,7 +46,7 @@ func housekeepCaches() {
 	}
 }
 
-func housekeepStaging() {
+func HousekeepStaging() {
 	// Compute the path to the staging directory (the top-level directory
 	// containing all staging roots). If we fail, just abort. We don't attempt
 	// to create the directory, because if it doesn't exist, then we don't need

@@ -34,8 +34,10 @@ func main() {
 		return
 	}
 
-	// Perform agent housekeeping.
+	// Perform housekeeping.
 	agent.Housekeep()
+	session.HousekeepCaches()
+	session.HousekeepStaging()
 
 	// Create a stream on standard input/output.
 	stdio := &stdio{os.Stdin, os.Stdout}
