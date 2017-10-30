@@ -172,7 +172,7 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		// will be fine in practice, but it's not elegant.
 		previousStateIndex, poisoned = s.tracker.WaitForChange(previousStateIndex)
 		if poisoned {
-			return errors.New("state tracking termianted")
+			return errors.New("state tracking terminated")
 		}
 
 		// Lock the session registry.
@@ -314,7 +314,7 @@ func (s *Service) terminate(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to terminate session")
 	}
 
-	// Since we termianted the session, we're responsible for unregistering it.
+	// Since we terminated the session, we're responsible for unregistering it.
 	s.sessionsLock.Lock()
 	delete(s.sessions, request.Session)
 	s.sessionsLock.Unlock()
