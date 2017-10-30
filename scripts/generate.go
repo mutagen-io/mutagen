@@ -4,8 +4,8 @@ package main
 // the "gogo" Go code generator (https://github.com/gogo/protobuf). The
 // generated Go code depends only on pure Go libraries, so it doesn't need the
 // standard C++-based Protocol Buffers installation available to compile. Thus,
-// since we check-in the generated code, users can build transparently without
-// the need to install anything other than Go, and there is no need to run this
+// since we check-in the generated code, users can build Mutagen without the
+// need to install anything other than Go, and there is no need to run this
 // script as part of the normal build process.
 //
 // If you do want to run this script (say after modifying a .proto file), you'll
