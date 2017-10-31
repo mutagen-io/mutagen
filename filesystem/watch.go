@@ -65,6 +65,11 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 }
 
 func Watch(context context.Context, root string, events chan struct{}) error {
+	// Ensure that the events channel is buffered.
+	if cap(events) <= 1 {
+		panic("watch channel should be buffered")
+	}
+
 	// Attempt to use native watching on this path. This will fail if the path
 	// can't be watched natively or if the watch is cancelled.
 	watchNative(context, root, events)
