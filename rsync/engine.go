@@ -30,6 +30,11 @@ type Signature struct {
 	Hashes []BlockHash
 }
 
+// isZeroValue indicates whether or not the Operation has its zero value.
+func (s Signature) isZeroValue() bool {
+	return s.BlockSize == 0 && s.LastBlockSize == 0 && len(s.Hashes) == 0
+}
+
 // ensureValid verifies that signature invariants are respected.
 func (s Signature) ensureValid() error {
 	// If the block size is 0, then the last block size should also be 0 and
@@ -72,6 +77,11 @@ type Operation struct {
 	Start uint64
 	// Count is the number of blocks for block operations.
 	Count uint64
+}
+
+// isZeroValue indicates whether or not the Operation has its zero value.
+func (o Operation) isZeroValue() bool {
+	return len(o.Data) == 0 && o.Start == 0 && o.Count == 0
 }
 
 // ensureValid verifies that operation invariants are respected.
@@ -158,16 +168,6 @@ func OptimalBlockSizeForBase(base io.Seeker) (uint64, error) {
 // return until it has either transmitted the data buffer (if any) or copied it
 // for later transmission.
 type OperationTransmitter func(Operation) error
-
-// EndOfOperations is a sentinel error that can be returned by an
-// OperationReceiver.
-var EndOfOperations = errors.New("end of operations")
-
-// OperationReceiver retrieves and returns the next operation in an operation
-// stream. When there are no more operations, it should return an
-// EndOfOperations error. Operations are fully processed between calls, so the
-// receiver may re-use data buffers between operations.
-type OperationReceiver func() (Operation, error)
 
 // Engine provides rsync functionality without any notion of transport. It is
 // designed to be re-used to avoid heavy buffer allocation.
@@ -631,7 +631,7 @@ func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint6
 	return delta
 }
 
-func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Signature, receive OperationReceiver) error {
+func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Signature, operation Operation) error {
 	// Verify that the signature is sane. The caller probably does control its
 	// value (i.e. it's most likely not coming from the network), but if its
 	// invariants are broken it can cause this method to behave strangely.
@@ -639,54 +639,48 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Sign
 		return errors.Wrap(err, "invalid signature")
 	}
 
-	// Loop until the operation stream is finished or errored.
-	for {
-		// Grab the next operation, watching for completion or errors. Also
-		// verify that the operation's invariants haven't been broken.
-		operation, err := receive()
-		if err == EndOfOperations {
-			return nil
-		} else if err != nil {
-			return errors.Wrap(err, "unable to receive operation")
-		} else if err = operation.ensureValid(); err != nil {
-			return errors.Wrap(err, "invalid operation")
+	// Verify that the operation is sane.
+	if err := operation.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid operation")
+	}
+
+	// Handle the operation based on type.
+	if len(operation.Data) > 0 {
+		// Write data operations directly to the destination.
+		if _, err := destination.Write(operation.Data); err != nil {
+			return errors.Wrap(err, "unable to write data")
+		}
+	} else {
+		// Seek to the start of the requested block in base.
+		// TODO: We should technically validate that operation.Index
+		// multiplied by the block size can't overflow an int64. Worst case
+		// at the moment it will cause the seek operation to fail.
+		if _, err := base.Seek(int64(operation.Start)*int64(signature.BlockSize), io.SeekStart); err != nil {
+			return errors.Wrap(err, "unable to seek to base location")
 		}
 
-		// Handle the operation based on type.
-		if len(operation.Data) > 0 {
-			// Write data operations directly to the destination.
-			if _, err = destination.Write(operation.Data); err != nil {
-				return errors.Wrap(err, "unable to write data")
-			}
-		} else {
-			// Seek to the start of the requested block in base.
-			// TODO: We should technically validate that operation.Index
-			// multiplied by the block size can't overflow an int64. Worst case
-			// at the moment it will cause the seek operation to fail.
-			if _, err = base.Seek(int64(operation.Start)*int64(signature.BlockSize), io.SeekStart); err != nil {
-				return errors.Wrap(err, "unable to seek to base location")
+		// Copy the requested number of blocks.
+		for c := uint64(0); c < operation.Count; c++ {
+			// Compute the size to copy.
+			copyLength := signature.BlockSize
+			if operation.Start+c == uint64(len(signature.Hashes)-1) {
+				copyLength = signature.LastBlockSize
 			}
 
-			// Copy the requested number of blocks.
-			for c := uint64(0); c < operation.Count; c++ {
-				// Compute the size to copy.
-				copyLength := signature.BlockSize
-				if operation.Start+c == uint64(len(signature.Hashes)-1) {
-					copyLength = signature.LastBlockSize
-				}
+			// Create a buffer of the required size.
+			buffer := e.bufferWithSize(copyLength)
 
-				// Create a buffer of the required size.
-				buffer := e.bufferWithSize(copyLength)
-
-				// Copy the block.
-				if _, err := io.ReadFull(base, buffer); err != nil {
-					return errors.Wrap(err, "unable to read block data")
-				} else if _, err = destination.Write(buffer); err != nil {
-					return errors.Wrap(err, "unable to write block data")
-				}
+			// Copy the block.
+			if _, err := io.ReadFull(base, buffer); err != nil {
+				return errors.Wrap(err, "unable to read block data")
+			} else if _, err = destination.Write(buffer); err != nil {
+				return errors.Wrap(err, "unable to write block data")
 			}
 		}
 	}
+
+	// Success.
+	return nil
 }
 
 func (e *Engine) PatchBytes(base []byte, signature Signature, delta []Operation) ([]byte, error) {
@@ -696,22 +690,11 @@ func (e *Engine) PatchBytes(base []byte, signature Signature, delta []Operation)
 	// Create an output buffer.
 	output := bytes.NewBuffer(nil)
 
-	// Create an operation receiver that will return delta operations.
-	receive := func() (Operation, error) {
-		// If there are operations remaining, return the next one and reduce.
-		if len(delta) > 0 {
-			result := delta[0]
-			delta = delta[1:]
-			return result, nil
-		}
-
-		// Otherwise we're done.
-		return Operation{}, EndOfOperations
-	}
-
 	// Perform application.
-	if err := e.Patch(output, baseReader, signature, receive); err != nil {
-		return nil, err
+	for _, o := range delta {
+		if err := e.Patch(output, baseReader, signature, o); err != nil {
+			return nil, err
+		}
 	}
 
 	// Success.

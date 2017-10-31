@@ -4,34 +4,38 @@ import (
 	"github.com/pkg/errors"
 )
 
-// request encodes a batch request.
-type request struct {
-	// Paths are the requested paths.
-	Paths []string
-	// Signatures are the corresponding base signatures.
-	Signatures []Signature
-}
-
-func (r request) ensureValid() error {
-	// Ensure a 1-1 match between requested paths and signatures.
-	if len(r.Paths) != len(r.Signatures) {
-		return errors.New("path count does not match signature count")
-	}
-
-	// Success.
-	return nil
-}
-
-// response encodes a stream response. It is used in the internal client/server
-// protocol.
-type response struct {
-	// Done indicates that the response stream for this request is finished. If
-	// set, there will be no operation in the response, but there may be an
-	// error.
+// Transmission represents a single message in a transmission stream. Its
+// internals are public to allow for transmission using a reflection-based
+// encoder (such as gob), but it should otherwise be treated as an opaque type
+// with a private implementation.
+type Transmission struct {
+	// Done indicates that the operation stream for the current file is
+	// finished. If set, there will be no operation in the response, but there
+	// may be an error.
 	Done bool
-	// Operation is the next operation in the stream.
+	// Operation is the next operation in the stream for the current file.
 	Operation Operation
 	// Error indicates that a non-terminal error has occurred. It will only be
 	// present if Done is true.
 	Error string
+}
+
+// ensureValid ensures that the Transmission's invariants are respected.
+func (t Transmission) ensureValid() error {
+	// Handle validation based on whether or not the operation is marked as
+	// done.
+	if t.Done {
+		if !t.Operation.isZeroValue() {
+			return errors.New("non-zero operation at end of stream")
+		}
+	} else {
+		if t.Operation.isZeroValue() {
+			return errors.New("zero-value operation in middle of stream")
+		} else if t.Error != "" {
+			return errors.New("non-empty error in middle of stream")
+		}
+	}
+
+	// Success.
+	return nil
 }
