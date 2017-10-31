@@ -64,7 +64,7 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 	return result, changed, nil
 }
 
-func Watch(context context.Context, root string, events chan struct{}) error {
+func Watch(context context.Context, root string, events chan struct{}) {
 	// Ensure that the events channel is buffered.
 	if cap(events) <= 1 {
 		panic("watch channel should be buffered")
@@ -80,7 +80,7 @@ func Watch(context context.Context, root string, events chan struct{}) error {
 	// then we can fall back to polling until cancellation.
 	select {
 	case <-context.Done():
-		return errors.New("watch cancelled")
+		return
 	default:
 	}
 
@@ -96,6 +96,8 @@ func Watch(context context.Context, root string, events chan struct{}) error {
 			// timer and try again. We have to assume that errors here are due
 			// to concurrent modifications, so there's not much we can do to
 			// handle them.
+			// TODO: If we see a certain number of failed polls, we could just
+			// fall back to a timer.
 			newContents, changed, err := poll(root, contents)
 			if err != nil || !changed {
 				timer.Reset(watchPollInterval)
@@ -114,7 +116,7 @@ func Watch(context context.Context, root string, events chan struct{}) error {
 			// Reset the timer and continue polling.
 			timer.Reset(watchPollInterval)
 		case <-context.Done():
-			return errors.New("watch cancelled")
+			return
 		}
 	}
 }
