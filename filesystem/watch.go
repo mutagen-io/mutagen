@@ -72,7 +72,7 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 // TODO: Document that the events channel must be buffered.
 func Watch(context context.Context, root string, events chan struct{}) {
 	// Ensure that the events channel is buffered.
-	if cap(events) <= 1 {
+	if cap(events) < 1 {
 		panic("watch channel should be buffered")
 	}
 

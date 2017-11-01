@@ -123,15 +123,21 @@ func (r *receiver) Receive(message Transmission) error {
 		// application since we have independent hash validation, but it might
 		// be useful for some cases.
 
-		// Close out any base and target if we're not currently burning (they'll
-		// be nil if we are burning). There's not really any point to reporting
-		// errors here since they're non-terminal and there's not much that can
-		// be done about them anyway.
-		if !r.burning {
+		// Close out base and target if they're open, because we're done with
+		// this file. If they're not open, and we're not burning, it means that
+		// we have an empty file. Since we won't have opened any sink for the
+		// file (no operations came in for it), open one quickly and close it.
+		// Since we're already at the end of the stream for this file, there's
+		// no need to start burning operations if this fails.
+		if r.base != nil {
 			r.base.Close()
 			r.base = nil
 			r.target.Close()
 			r.target = nil
+		} else if !r.burning {
+			if target, _ := r.sinker.Sink(r.paths[r.received]); target != nil {
+				target.Close()
+			}
 		}
 
 		// Update the received count.
@@ -150,8 +156,7 @@ func (r *receiver) Receive(message Transmission) error {
 		return nil
 	}
 
-	// Extract the signature for this file. We know that this indexing is okay
-	// since we enforce received < total above.
+	// Extract the signature for this file.
 	signature := r.signatures[r.received]
 
 	// Check if we are starting a new file stream and need to open the base and
