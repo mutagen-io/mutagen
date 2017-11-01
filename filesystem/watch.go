@@ -64,11 +64,20 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 	return result, changed, nil
 }
 
+// TODO: Document that this function closes the events channel when the watch
+// is cancelled.
+// TODO: Document that this function will always succeed in one way or another
+// (it doesn't have any total failure modes) and won't exit until the associated
+// context is cancelled.
+// TODO: Document that the events channel must be buffered.
 func Watch(context context.Context, root string, events chan struct{}) {
 	// Ensure that the events channel is buffered.
 	if cap(events) <= 1 {
 		panic("watch channel should be buffered")
 	}
+
+	// Ensure that the events channel is closed when we're cancelled.
+	defer close(events)
 
 	// Attempt to use native watching on this path. This will fail if the path
 	// can't be watched natively or if the watch is cancelled.
