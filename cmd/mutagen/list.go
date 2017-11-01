@@ -157,8 +157,6 @@ func monitorPrefix(state sessionpkg.SessionState) string {
 			state.State.AlphaConnected,
 			state.State.BetaConnected,
 		}]
-	case sessionpkg.SynchronizationStatusInitializing:
-		return "**"
 	case sessionpkg.SynchronizationStatusScanning:
 		return "--"
 	case sessionpkg.SynchronizationStatusWaitingForRescan:
@@ -200,19 +198,19 @@ func monitorProblemSummary(problems []sync.Problem) string {
 // console width.
 const monitorStatusBarInnerWidth = 30
 
-func monitorStatusBar(status rsync.StagingStatus) string {
+func monitorStatusBar(status rsync.ReceivingStatus) string {
 	// If there is no staging going on, then return empty spaces.
 	if status.Total == 0 {
 		return fmt.Sprintf("[%s]", strings.Repeat(" ", monitorStatusBarInnerWidth))
 	}
 
 	// Watch for invalid or easy status cases.
-	if status.Index >= status.Total {
+	if status.Received >= status.Total {
 		return fmt.Sprintf("[%s]", strings.Repeat("#", monitorStatusBarInnerWidth))
 	}
 
 	// Compute the number of spaces meant to be occupied by completed blocks.
-	fractionCompleted := float32(status.Index) / float32(status.Total)
+	fractionCompleted := float32(status.Received) / float32(status.Total)
 	completedSpaces := int(fractionCompleted * monitorStatusBarInnerWidth)
 
 	// Compute the resultant bar.

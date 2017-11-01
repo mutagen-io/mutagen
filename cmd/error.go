@@ -15,5 +15,9 @@ func Error(err error) {
 
 func Fatal(err error) {
 	Error(err)
+	Die()
+}
+
+func Die() {
 	os.Exit(1)
 }

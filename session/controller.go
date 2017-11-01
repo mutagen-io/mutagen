@@ -2,7 +2,6 @@ package session
 
 import (
 	contextpkg "context"
-	"io"
 	"os"
 	syncpkg "sync"
 	"time"
@@ -13,8 +12,6 @@ import (
 
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/encoding"
-	"github.com/havoc-io/mutagen/message"
-	"github.com/havoc-io/mutagen/multiplex"
 	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/state"
 	"github.com/havoc-io/mutagen/sync"
@@ -73,21 +70,27 @@ func newSession(
 		}
 	}
 
+	// Create a session identifier.
+	identifier := uuid.NewV4().String()
+
+	// Set the session version.
+	version := Version_Version1
+
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaConnection, err := connect(alpha, prompter)
+	alphaEndpoint, err := connect(identifier, version, alpha, ignores, true, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaConnection, err := connect(beta, prompter)
+	betaEndpoint, err := connect(identifier, version, beta, ignores, false, prompter)
 	if err != nil {
-		alphaConnection.Close()
+		alphaEndpoint.close()
 		return nil, errors.Wrap(err, "unable to connect to beta")
 	}
 
 	// Create the session and archive.
 	session := &Session{
-		Identifier:           uuid.NewV4().String(),
-		Version:              Version_Version1,
+		Identifier:           identifier,
+		Version:              version,
 		CreationTime:         time.Now(),
 		CreatingVersionMajor: mutagen.VersionMajor,
 		CreatingVersionMinor: mutagen.VersionMinor,
@@ -101,27 +104,27 @@ func newSession(
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		alphaConnection.Close()
-		betaConnection.Close()
+		alphaEndpoint.close()
+		betaEndpoint.close()
 		return nil, errors.Wrap(err, "unable to compute session path")
 	}
 	archivePath, err := pathForArchive(session.Identifier)
 	if err != nil {
-		alphaConnection.Close()
-		betaConnection.Close()
+		alphaEndpoint.close()
+		betaEndpoint.close()
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
 	// Save components to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		alphaConnection.Close()
-		betaConnection.Close()
+		alphaEndpoint.close()
+		betaEndpoint.close()
 		return nil, errors.Wrap(err, "unable to save session")
 	}
 	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
 		os.Remove(sessionPath)
-		alphaConnection.Close()
-		betaConnection.Close()
+		alphaEndpoint.close()
+		betaEndpoint.close()
 		return nil, errors.Wrap(err, "unable to save archive")
 	}
 
@@ -137,7 +140,7 @@ func newSession(
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	controller.cancel = cancel
 	controller.done = make(chan struct{})
-	go controller.run(context, alphaConnection, betaConnection)
+	go controller.run(context, alphaEndpoint, betaEndpoint)
 
 	// Success.
 	return controller, nil
@@ -252,14 +255,28 @@ func (c *controller) resume(prompter string) error {
 	// Attempt to connect. This may fail for one or both of the endpoints, but
 	// in that case we'll simply leave the session unpaused and allow it to try
 	// to auto-reconnect later.
-	alphaConnection, alphaConnectErr := connect(c.session.Alpha, prompter)
-	betaConnection, betaConnectErr := connect(c.session.Beta, prompter)
+	alpha, alphaConnectErr := connect(
+		c.session.Identifier,
+		c.session.Version,
+		c.session.Alpha,
+		c.session.Ignores,
+		true,
+		prompter,
+	)
+	beta, betaConnectErr := connect(
+		c.session.Identifier,
+		c.session.Version,
+		c.session.Beta,
+		c.session.Ignores,
+		false,
+		prompter,
+	)
 
 	// Start the synchronization loop with what we have.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	c.cancel = cancel
 	c.done = make(chan struct{})
-	go c.run(context, alphaConnection, betaConnection)
+	go c.run(context, alpha, beta)
 
 	// Report any errors. Since we always want to start a synchronization loop,
 	// even on partial or complete failure (since it might be able to
@@ -340,16 +357,16 @@ func (c *controller) halt(mode haltMode) error {
 	return nil
 }
 
-func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteCloser) {
+func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
-		// Close any open connections. These might be open if the runloop was
+		// Close any endpoints. These might be non-nil if the runloop was
 		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
-			alpha.Close()
+			alpha.close()
 		}
 		if beta != nil {
-			beta.Close()
+			beta.close()
 		}
 
 		// Reset the state.
@@ -373,7 +390,14 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 		for {
 			// Ensure that alpha is connected.
 			if alpha == nil {
-				alpha, _ = reconnect(context, c.session.Alpha)
+				alpha, _ = reconnect(
+					context,
+					c.session.Identifier,
+					c.session.Version,
+					c.session.Alpha,
+					c.session.Ignores,
+					true,
+				)
 			}
 			c.stateLock.Lock()
 			c.state.AlphaConnected = (alpha != nil)
@@ -390,7 +414,14 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 
 			// Ensure that beta is connected.
 			if beta == nil {
-				beta, _ = reconnect(context, c.session.Beta)
+				beta, _ = reconnect(
+					context,
+					c.session.Identifier,
+					c.session.Version,
+					c.session.Beta,
+					c.session.Ignores,
+					false,
+				)
 			}
 			c.stateLock.Lock()
 			c.state.BetaConnected = (beta != nil)
@@ -413,170 +444,20 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 			}
 		}
 
-		// Multiplex endpoint connections.
-		alphaStreams, alphaMux := multiplex.ReadWriter(alpha, numberOfEndpointChannels)
-		betaStreams, betaMux := multiplex.ReadWriter(beta, numberOfEndpointChannels)
+		// Perform synchronization.
+		err := c.synchronize(context, alpha, beta)
 
-		// Create a wait group that we can use to verify that all of our
-		// background Goroutines have exited. This does not include the
-		// synchronization Goroutine, which is monitored separately. We have 8
-		// background Goroutines total (2 watch event tracking Goroutines, 2
-		// rsync update tracking Goroutines, and 4 rsync forwarding Goroutines).
-		var backgroundGoroutinesDone syncpkg.WaitGroup
-		backgroundGoroutinesDone.Add(8)
-
-		// Extract the event streams from each endpoint and convert them to
-		// messaging streams. Create a channel that can be used to track dirty
-		// states across both endpoints. Start two Goroutines
-		dirty := make(chan watchEvent, 1)
-		receiveWatchEventErrors := make(chan error, 2)
-		go func() {
-			receiveWatchEventErrors <- c.receiveWatchEvents(
-				alphaStreams[endpointChannelWatchEvents],
-				dirty,
-			)
-			backgroundGoroutinesDone.Done()
-		}()
-		go func() {
-			receiveWatchEventErrors <- c.receiveWatchEvents(
-				betaStreams[endpointChannelWatchEvents],
-				dirty,
-			)
-			backgroundGoroutinesDone.Done()
-		}()
-
-		// Extract the update channels for each endpoint and convert them to
-		// messaging streams. Start listening for updates in the background and
-		// monitor for failure.
-		receiveRsyncUpdateErrors := make(chan error, 2)
-		go func() {
-			receiveRsyncUpdateErrors <- c.receiveRsyncUpdates(
-				alphaStreams[endpointChannelRsyncUpdates],
-				true,
-			)
-			backgroundGoroutinesDone.Done()
-		}()
-		go func() {
-			receiveRsyncUpdateErrors <- c.receiveRsyncUpdates(
-				betaStreams[endpointChannelRsyncUpdates],
-				false,
-			)
-			backgroundGoroutinesDone.Done()
-		}()
-
-		// Set up rsync forwarding between endpoints and monitor for failure.
-		forwardingErrors := make(chan error, 4)
-		go func() {
-			// Forward the alpha client to the beta server.
-			_, err := io.Copy(
-				betaStreams[endpointChannelRsyncServer],
-				alphaStreams[endpointChannelRsyncClient],
-			)
-			forwardingErrors <- err
-			backgroundGoroutinesDone.Done()
-		}()
-		go func() {
-			// Forward the beta client to the alpha server.
-			_, err := io.Copy(
-				alphaStreams[endpointChannelRsyncServer],
-				betaStreams[endpointChannelRsyncClient],
-			)
-			forwardingErrors <- err
-			backgroundGoroutinesDone.Done()
-		}()
-		go func() {
-			// Forward the beta server to the alpha client.
-			_, err := io.Copy(
-				alphaStreams[endpointChannelRsyncClient],
-				betaStreams[endpointChannelRsyncServer],
-			)
-			forwardingErrors <- err
-			backgroundGoroutinesDone.Done()
-		}()
-		go func() {
-			// Forward the alpha server to the beta client.
-			_, err := io.Copy(
-				betaStreams[endpointChannelRsyncClient],
-				alphaStreams[endpointChannelRsyncServer],
-			)
-			forwardingErrors <- err
-			backgroundGoroutinesDone.Done()
-		}()
-
-		// Create a cancellable sub-context for synchronization. We need this so
-		// that we can stop synchronization in the event of an error in one of
-		// the background Goroutines.
-		syncContext, syncCancel := contextpkg.WithCancel(context)
-
-		// Synchronize with these endpoints in a separate Goroutine.
-		synchronizeErrors := make(chan error, 1)
-		go func() {
-			synchronizeErrors <- c.synchronize(
-				syncContext,
-				alphaStreams[endpointChannelControl],
-				betaStreams[endpointChannelControl],
-				dirty,
-			)
-		}()
-
-		// Wait for any component to fail. We don't monitor for cancellation
-		// explicitly in here because synchronize will see the cancellation and
-		// return.
-		var failureCause error
-		synchronizeDone := false
-		select {
-		case err := <-receiveWatchEventErrors:
-			failureCause = errors.Wrap(err, "watch event receiving error")
-		case err := <-receiveRsyncUpdateErrors:
-			failureCause = errors.Wrap(err, "rsync update receiving error")
-		case err := <-forwardingErrors:
-			// io.Copy is designed to gobble up io.EOF errors (since they
-			// represent its normal termination condition), so we reconstitute
-			// them here.
-			if err == nil {
-				err = io.EOF
-			}
-			failureCause = errors.Wrap(err, "rsync forwarding error")
-		case err := <-synchronizeErrors:
-			failureCause = errors.Wrap(err, "synchronization error")
-			synchronizeDone = true
-		}
-
-		// In case it wasn't synchronization that failed, cancel it.
-		syncCancel()
-
-		// Ensure that the synchronization Goroutine has exited before closing
-		// the multiplexers and underlying connections. We wait because we might
-		// be in the middle of a transition and it's possible that the
-		// connection has failed in a way that wouldn't prevent completion.
-		if !synchronizeDone {
-			<-synchronizeErrors
-		}
-
-		// Close the multiplexers.
-		alphaMux.Close()
-		betaMux.Close()
-
-		// Close the underlying endpoint connections.
-		alpha.Close()
+		// Close the endpoints.
+		alpha.close()
 		alpha = nil
-		beta.Close()
+		beta.close()
 		beta = nil
 
-		// Wait until all Goroutines have exited before resetting state. We have
-		// to do this because some Goroutines set state concurrently.
-		backgroundGoroutinesDone.Wait()
-
 		// Reset the synchronization state, but propagate the error that caused
-		// failure. Although the error should always be non-nil, it can
-		// originate from code outside our control and thus we need to be extra
-		// careful.
-		if failureCause == nil {
-			failureCause = errors.New("unknown error")
-		}
+		// failure.
 		c.stateLock.Lock()
 		c.state = SynchronizationState{
-			LastError: failureCause.Error(),
+			LastError: err.Error(),
 		}
 		c.stateLock.Unlock()
 
@@ -591,79 +472,13 @@ func (c *controller) run(context contextpkg.Context, alpha, beta io.ReadWriteClo
 	}
 }
 
-func (c *controller) receiveWatchEvents(connection io.ReadWriter, dirty chan watchEvent) error {
-	// Convert the connection to a message stream.
-	events := message.NewStream(connection, false)
-
-	// Receive watch events until there's an error.
-	for {
-		// Receive the next watch event.
-		var event watchEvent
-		if err := events.Decode(&event); err != nil {
-			return errors.Wrap(err, "unable to receive watch event")
-		}
-
-		// Forward it in a non-blocking manner.
-		select {
-		case dirty <- event:
-		default:
-		}
-	}
-}
-
-func (c *controller) receiveRsyncUpdates(connection io.ReadWriter, alpha bool) error {
-	// Convert the connection to a message stream.
-	updates := message.NewStream(connection, false)
-
-	// Receive updates until there's an error.
-	for {
-		// Receive the next status update.
-		var status rsync.StagingStatus
-		if err := updates.Decode(&status); err != nil {
-			return errors.Wrap(err, "unable to receive rsync status update")
-		}
-
-		// Update the state.
-		c.stateLock.Lock()
-		if alpha {
-			c.state.AlphaStaging = status
-		} else {
-			c.state.BetaStaging = status
-		}
-		c.stateLock.Unlock()
-	}
-}
-
-func (c *controller) synchronize(
-	context contextpkg.Context,
-	alphaConnection, betaConnection io.ReadWriter,
-	dirty chan watchEvent,
-) error {
-	// Update status to initializing.
-	c.stateLock.Lock()
-	c.state.Status = SynchronizationStatusInitializing
-	c.stateLock.Unlock()
-
-	// Convert the connections to message streams.
-	alpha := message.NewStream(alphaConnection, false)
-	beta := message.NewStream(betaConnection, false)
-
+func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoint) error {
 	// Load the archive and extract the ancestor.
 	archive := &Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
 		return errors.Wrap(err, "unable to load archive")
 	}
 	ancestor := archive.Root
-
-	// Perform initialization on each of the endpoints.
-	alphaPreservesExecutability, err := c.initialize(alpha, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to initialize alpha")
-	}
-	betaPreservesExecutability, err := c.initialize(beta, false)
-	if err != nil {
-		return errors.Wrap(err, "unable to initialize beta")
-	}
 
 	// Loop until there is a synchronization error. We always skip polling on
 	// the first time through the loop because changes may have occurred while
@@ -678,9 +493,18 @@ func (c *controller) synchronize(
 		// Unless we've been requested to skip polling, wait for a dirty state
 		// while monitoring for cancellation. If we've been requested to skip
 		// polling, it should only be for one iteration.
+		// TODO: Should we try to drain the alpha and beta pollers before
+		// continuing to avoid excessive synchronization?
 		if !skipPolling {
 			select {
-			case <-dirty:
+			case _, ok := <-alpha.poller():
+				if !ok {
+					return errors.New("alpha watch broken")
+				}
+			case _, ok := <-beta.poller():
+				if !ok {
+					return errors.New("beta watch broken")
+				}
 			case <-context.Done():
 				return errors.New("cancelled")
 			}
@@ -689,24 +513,17 @@ func (c *controller) synchronize(
 		}
 
 		// Perform scans.
-		alphaSnapshot, alphaTryAgain, alphaScanErr := c.scan(
-			alpha,
-			alphaPreservesExecutability,
-			ancestor,
-		)
+		// TODO: Should we sleep between retries?
+		alphaSnapshot, alphaTryAgain, alphaScanErr := alpha.scan(ancestor)
 		if alphaScanErr != nil {
-			return errors.Wrap(err, "alpha scan error")
+			return errors.Wrap(alphaScanErr, "alpha scan error")
 		} else if alphaTryAgain {
 			skipPolling = true
 			continue
 		}
-		betaSnapshot, betaTryAgain, betaScanErr := c.scan(
-			beta,
-			betaPreservesExecutability,
-			ancestor,
-		)
+		betaSnapshot, betaTryAgain, betaScanErr := beta.scan(ancestor)
 		if betaScanErr != nil {
-			return errors.Wrap(err, "beta scan error")
+			return errors.Wrap(betaScanErr, "beta scan error")
 		} else if betaTryAgain {
 			skipPolling = true
 			continue
@@ -728,40 +545,50 @@ func (c *controller) synchronize(
 		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
-		// Create staging result channels.
-		alphaStagingErrors := make(chan error, 1)
-		betaStagingErrors := make(chan error, 1)
-
-		// Start staging in separate Goroutines.
-		go func() {
-			alphaStagingErrors <- c.stage(alpha, alphaTransitions)
-		}()
-		go func() {
-			betaStagingErrors <- c.stage(beta, betaTransitions)
-		}()
-
-		// Wait for both stagings to complete. Because staging can take a long
-		// time to complete and is safe to interrupt, we poll for cancellation
-		// here. Once we return, the underlying connection will be closed and
-		// the staging Goroutines will error out.
-		var alphaStagingError, betaStagingError error
-		var alphaStagingDone, betaStagingDone bool
-		for !alphaStagingDone || !betaStagingDone {
-			select {
-			case alphaStagingError = <-alphaStagingErrors:
-				alphaStagingDone = true
-			case betaStagingError = <-betaStagingErrors:
-				betaStagingDone = true
-			case <-context.Done():
-				return errors.New("cancelled")
-			}
+		// Stage files on alpha.
+		stagingPaths, stagingEntries, stagingError := stagingPathsForChanges(alphaTransitions)
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to determine paths for staging on alpha")
+		}
+		stagingPaths, stagingSignatures, stagingReceiver, stagingError := alpha.stage(stagingPaths, stagingEntries)
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to begin staging on alpha")
+		}
+		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
+			c.stateLock.Lock()
+			c.state.AlphaStaging = status
+			c.stateLock.Unlock()
+			return nil
+		})
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to create monitoring receiver for staging on alpha")
+		}
+		stagingReceiver = rsync.NewPreemptableReceiver(stagingReceiver, context)
+		if stagingError = beta.supply(stagingPaths, stagingSignatures, stagingReceiver); stagingError != nil {
+			return errors.Wrap(stagingError, "unable to stage files on alpha")
 		}
 
-		// Check for staging errors.
-		if alphaStagingError != nil {
-			return errors.Wrap(alphaStagingError, "alpha staging error")
-		} else if betaStagingError != nil {
-			return errors.Wrap(betaStagingError, "beta staging error")
+		// Stage files on beta.
+		stagingPaths, stagingEntries, stagingError = stagingPathsForChanges(betaTransitions)
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to determine paths for staging on beta")
+		}
+		stagingPaths, stagingSignatures, stagingReceiver, stagingError = beta.stage(stagingPaths, stagingEntries)
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to begin staging on beta")
+		}
+		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
+			c.stateLock.Lock()
+			c.state.BetaStaging = status
+			c.stateLock.Unlock()
+			return nil
+		})
+		if stagingError != nil {
+			return errors.Wrap(stagingError, "unable to create monitoring receiver for staging on beta")
+		}
+		stagingReceiver = rsync.NewPreemptableReceiver(stagingReceiver, context)
+		if stagingError = alpha.supply(stagingPaths, stagingSignatures, stagingReceiver); stagingError != nil {
+			return errors.Wrap(stagingError, "unable to stage files on beta")
 		}
 
 		// Update status to transitioning.
@@ -775,8 +602,8 @@ func (c *controller) synchronize(
 		// indefinitely and should be relatively fast. We don't abort
 		// immediately on error, because we want to propagate any changes that
 		// we make.
-		alphaChanges, alphaProblems, alphaTransitionErr := c.transition(alpha, alphaTransitions)
-		betaChanges, betaProblems, betaTransitionErr := c.transition(beta, betaTransitions)
+		alphaChanges, alphaProblems, alphaTransitionErr := alpha.transition(alphaTransitions)
+		betaChanges, betaProblems, betaTransitionErr := beta.transition(betaTransitions)
 
 		// Record problems.
 		c.stateLock.Lock()
@@ -793,7 +620,7 @@ func (c *controller) synchronize(
 		// were transition errors, this code is still valid.
 		ancestorChanges = append(ancestorChanges, alphaChanges...)
 		ancestorChanges = append(ancestorChanges, betaChanges...)
-		ancestor, err = sync.Apply(ancestor, ancestorChanges)
+		ancestor, err := sync.Apply(ancestor, ancestorChanges)
 		if err != nil {
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
 		}
@@ -823,135 +650,4 @@ func (c *controller) synchronize(
 		c.state.LastError = ""
 		c.stateLock.Unlock()
 	}
-}
-
-func (c *controller) initialize(endpoint *message.Stream, alpha bool) (bool, error) {
-	// Create the initialization request.
-	root := c.session.Alpha.Path
-	if !alpha {
-		root = c.session.Beta.Path
-	}
-	request := initializeRequest{
-		Session: c.session.Identifier,
-		Version: c.session.Version,
-		Root:    root,
-		Ignores: c.session.Ignores,
-		Alpha:   alpha,
-	}
-
-	// Send the request.
-	if err := endpoint.Encode(request); err != nil {
-		return false, errors.Wrap(err, "unable to send initialize request")
-	}
-
-	// Receive the response.
-	var response initializeResponse
-	if err := endpoint.Decode(&response); err != nil {
-		return false, errors.Wrap(err, "unable to receive initialize response")
-	}
-
-	// Success.
-	return response.PreservesExecutability, nil
-}
-
-func (c *controller) scan(
-	endpoint *message.Stream,
-	preservesExecutability bool,
-	ancestor *sync.Entry,
-) (*sync.Entry, bool, error) {
-	// Create an rsync engine.
-	rsyncer := rsync.NewEngine()
-
-	// Start by expecting the ancestor as a base.
-	expected := ancestor
-
-	// If the endpoint doesn't preserve executability, then strip executability
-	// bits from the expected snapshot since the incoming value won't have them.
-	if !preservesExecutability {
-		expected = sync.StripExecutability(expected)
-	}
-
-	// Marshal the expected snapshot.
-	expectedBytes, err := marshalEntry(expected)
-	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to marshal expected snapshot")
-	}
-
-	// Compute the base snapshot signature.
-	expectedSignature := rsyncer.BytesSignature(
-		expectedBytes,
-		rsync.OptimalBlockSizeForBaseLength(uint64(len(expectedBytes))),
-	)
-
-	// Send the request.
-	request := endpointRequest{Scan: &scanRequest{expectedSignature}}
-	if err := endpoint.Encode(request); err != nil {
-		return nil, false, errors.Wrap(err, "unable to send scan request")
-	}
-
-	// Read the response.
-	var response scanResponse
-	if err := endpoint.Decode(&response); err != nil {
-		return nil, false, errors.Wrap(err, "unable to receive scan response")
-	}
-
-	// Check if the endpoint says we should try again.
-	if response.TryAgain {
-		return nil, true, nil
-	}
-
-	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := rsyncer.PatchBytes(expectedBytes, expectedSignature, response.SnapshotDelta)
-	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
-	}
-
-	// Unmarshal the snapshot.
-	snapshot, err := unmarshalEntry(snapshotBytes)
-	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
-	}
-
-	// If the endpoint doesn't preserve executability, then propagate
-	// executability from the ancestor.
-	if !preservesExecutability {
-		snapshot = sync.PropagateExecutability(ancestor, snapshot)
-	}
-
-	// Success.
-	return snapshot, false, nil
-}
-
-func (c *controller) stage(endpoint *message.Stream, transitions []sync.Change) error {
-	// Send the request.
-	request := endpointRequest{Stage: &stageRequest{transitions}}
-	if err := endpoint.Encode(request); err != nil {
-		return errors.Wrap(err, "unable to send staging request")
-	}
-
-	// Receive the response.
-	var response stageResponse
-	if err := endpoint.Decode(&response); err != nil {
-		return errors.Wrap(err, "unable to receive staging response")
-	}
-
-	// Success.
-	return nil
-}
-
-func (c *controller) transition(endpoint *message.Stream, transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
-	// Send the request.
-	request := endpointRequest{Transition: &transitionRequest{transitions}}
-	if err := endpoint.Encode(request); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to send transition request")
-	}
-
-	// Receive the response.
-	var response transitionResponse
-	if err := endpoint.Decode(&response); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to receive initialize response")
-	}
-
-	// Success.
-	return response.Changes, response.Problems, nil
 }

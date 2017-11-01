@@ -10,7 +10,6 @@ type SynchronizationStatus uint8
 const (
 	SynchronizationStatusDisconnected = iota
 	SynchronizationStatusConnecting
-	SynchronizationStatusInitializing
 	SynchronizationStatusScanning
 	SynchronizationStatusWaitingForRescan
 	SynchronizationStatusReconciling
@@ -25,8 +24,6 @@ func (s SynchronizationStatus) String() string {
 		return "Disconnected"
 	case SynchronizationStatusConnecting:
 		return "Connecting to endpoints"
-	case SynchronizationStatusInitializing:
-		return "Initializing endpoints"
 	case SynchronizationStatusScanning:
 		return "Watching for changes"
 	case SynchronizationStatusWaitingForRescan:
@@ -56,8 +53,8 @@ type SynchronizationState struct {
 	AlphaConnected bool
 	BetaConnected  bool
 	LastError      string
-	AlphaStaging   rsync.StagingStatus
-	BetaStaging    rsync.StagingStatus
+	AlphaStaging   rsync.ReceivingStatus
+	BetaStaging    rsync.ReceivingStatus
 	Conflicts      []sync.Conflict
 	AlphaProblems  []sync.Problem
 	BetaProblems   []sync.Problem

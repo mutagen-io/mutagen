@@ -253,6 +253,8 @@ func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
 
 func (e *Engine) Signature(base io.ReadSeeker, blockSize uint64) (Signature, error) {
 	// Ensure that the block size is sane.
+	// TODO: Should we switch to using OptimalBlockSizeForBase and remove
+	// DefaultBlockSize?
 	if blockSize == 0 {
 		blockSize = DefaultBlockSize
 	}

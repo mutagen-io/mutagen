@@ -402,7 +402,7 @@ func NewEncodingReceiver(encoder Encoder) Receiver {
 
 // Receive encodes the specified message using the underlying encoder.
 func (r *encodingReceiver) Receive(message Transmission) error {
-	return errors.Wrap(r.encoder.Encode(&message), "unable to encode message")
+	return errors.Wrap(r.encoder.Encode(message), "unable to encode message")
 }
 
 // finalize is a no-op for encoding receivers, because there is no reliable way
