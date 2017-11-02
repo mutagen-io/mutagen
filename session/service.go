@@ -2,6 +2,7 @@ package session
 
 import (
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -17,6 +18,8 @@ const (
 	MethodPause     = "session.Pause"
 	MethodResume    = "session.Resume"
 	MethodTerminate = "session.Terminate"
+
+	listThrottleInterval = 100 * time.Millisecond
 )
 
 type Service struct {
@@ -220,9 +223,13 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			return nil
 		}
 
-		// Otherwise wait for another (empty) request from the client as a
-		// backpressure mechanism so we don't send more messages than it can
-		// handle.
+		// Perform a sleep to throttle list requests and wait for another
+		// (empty) request from the client as a backpressure mechanism. Both of
+		// these operations are necessary. The sleep protects the daemon and the
+		// backpressure protects the client. In reality the sleep is probably
+		// sufficient to protect the client, but you need a backpressure
+		// mechanism to be sure.
+		time.Sleep(listThrottleInterval)
 		var readyRequest ListRequest
 		if err := stream.Receive(&readyRequest); err != nil {
 			return errors.Wrap(err, "unable to receive ready request")
