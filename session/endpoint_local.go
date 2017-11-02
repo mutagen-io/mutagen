@@ -96,8 +96,6 @@ func (e *localEndpoint) poller() chan struct{} {
 func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
-	// TODO: Should we eventually pass scan errors through after a certain
-	// number of retries?
 	result, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores)
 	if err != nil {
 		return nil, true, nil

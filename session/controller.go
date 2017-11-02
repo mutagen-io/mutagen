@@ -529,6 +529,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 
 		// Watch for retry requests.
+		// TODO: Should we eventually abort synchronization after a certain
+		// number of consecutive scan retries?
 		if alphaTryAgain || betaTryAgain {
 			// Update status to waiting for rescan.
 			c.stateLock.Lock()
