@@ -157,8 +157,10 @@ func monitorPrefix(state sessionpkg.SessionState) string {
 			state.State.AlphaConnected,
 			state.State.BetaConnected,
 		}]
-	case sessionpkg.SynchronizationStatusScanning:
+	case sessionpkg.SynchronizationStatusWatching:
 		return "--"
+	case sessionpkg.SynchronizationStatusScanning:
+		return "**"
 	case sessionpkg.SynchronizationStatusWaitingForRescan:
 		return ".."
 	case sessionpkg.SynchronizationStatusReconciling:

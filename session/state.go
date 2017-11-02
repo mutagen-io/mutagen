@@ -10,6 +10,7 @@ type SynchronizationStatus uint8
 const (
 	SynchronizationStatusDisconnected = iota
 	SynchronizationStatusConnecting
+	SynchronizationStatusWatching
 	SynchronizationStatusScanning
 	SynchronizationStatusWaitingForRescan
 	SynchronizationStatusReconciling
@@ -24,8 +25,10 @@ func (s SynchronizationStatus) String() string {
 		return "Disconnected"
 	case SynchronizationStatusConnecting:
 		return "Connecting to endpoints"
-	case SynchronizationStatusScanning:
+	case SynchronizationStatusWatching:
 		return "Watching for changes"
+	case SynchronizationStatusScanning:
+		return "Scanning files"
 	case SynchronizationStatusWaitingForRescan:
 		return "Waiting for rescan"
 	case SynchronizationStatusReconciling:

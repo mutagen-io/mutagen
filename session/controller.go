@@ -486,17 +486,17 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 	// for a scan retry.
 	skipPolling := true
 	for {
-		// Set status to scanning.
-		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusScanning
-		c.stateLock.Unlock()
-
 		// Unless we've been requested to skip polling, wait for a dirty state
 		// while monitoring for cancellation. If we've been requested to skip
 		// polling, it should only be for one iteration.
 		// TODO: Should we try to drain the alpha and beta pollers before
 		// continuing to avoid excessive synchronization?
 		if !skipPolling {
+			// Update status to watching.
+			c.stateLock.Lock()
+			c.state.Status = SynchronizationStatusWatching
+			c.stateLock.Unlock()
+
 			select {
 			case _, ok := <-alpha.poller():
 				if !ok {
@@ -507,25 +507,42 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 					return errors.New("beta watch broken")
 				}
 			case <-context.Done():
-				return errors.New("cancelled")
+				return errors.New("cancelled during polling")
 			}
 		} else {
 			skipPolling = false
 		}
 
+		// Update status to scanning.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusScanning
+		c.stateLock.Unlock()
+
 		// Perform scans.
-		// TODO: Should we sleep between retries?
 		alphaSnapshot, alphaTryAgain, alphaScanErr := alpha.scan(ancestor)
 		if alphaScanErr != nil {
 			return errors.Wrap(alphaScanErr, "alpha scan error")
-		} else if alphaTryAgain {
-			skipPolling = true
-			continue
 		}
 		betaSnapshot, betaTryAgain, betaScanErr := beta.scan(ancestor)
 		if betaScanErr != nil {
 			return errors.Wrap(betaScanErr, "beta scan error")
-		} else if betaTryAgain {
+		}
+
+		// Watch for retry requests.
+		if alphaTryAgain || betaTryAgain {
+			// Update status to waiting for rescan.
+			c.stateLock.Lock()
+			c.state.Status = SynchronizationStatusWaitingForRescan
+			c.stateLock.Unlock()
+
+			// Wait before trying to rescan, but watch for cancellation.
+			select {
+			case <-time.After(rescanWaitDuration):
+			case <-context.Done():
+				return errors.New("cancelled during rescan wait")
+			}
+
+			// Retry.
 			skipPolling = true
 			continue
 		}
