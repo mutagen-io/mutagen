@@ -482,7 +482,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 	// Loop until there is a synchronization error. We always skip polling on
 	// the first time through the loop because changes may have occurred while
-	// we were halted.
+	// we were halted. We also skip polling in the event that an endpoint asks
+	// for a scan retry.
 	skipPolling := true
 	for {
 		// Set status to scanning.
@@ -620,28 +621,29 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// were transition errors, this code is still valid.
 		ancestorChanges = append(ancestorChanges, alphaChanges...)
 		ancestorChanges = append(ancestorChanges, betaChanges...)
-		ancestor, err := sync.Apply(ancestor, ancestorChanges)
-		if err != nil {
+		if newAncestor, err := sync.Apply(ancestor, ancestorChanges); err != nil {
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
+		} else {
+			ancestor = newAncestor
 		}
 
 		// Validate the new ancestor before saving it to ensure that our
 		// reconciliation logic doesn't have any flaws.
-		if err = ancestor.EnsureValid(); err != nil {
+		if err := ancestor.EnsureValid(); err != nil {
 			return errors.Wrap(err, "new ancestor is invalid")
 		}
 
 		// Save the ancestor.
 		archive.Root = ancestor
-		if err = encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
+		if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
 			return errors.Wrap(err, "unable to save ancestor")
 		}
 
 		// Now check for transition errors.
 		if alphaTransitionErr != nil {
-			return errors.Wrap(err, "unable to apply changes to alpha")
+			return errors.Wrap(alphaTransitionErr, "unable to apply changes to alpha")
 		} else if betaTransitionErr != nil {
-			return errors.Wrap(err, "unable to apply changes to beta")
+			return errors.Wrap(alphaTransitionErr, "unable to apply changes to beta")
 		}
 
 		// After a successful synchronization cycle, clear any synchronization
