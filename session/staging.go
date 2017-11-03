@@ -5,58 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	pathpkg "path"
 
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/sync"
 )
-
-type stagingPathFinder struct {
-	paths   []string
-	entries []*sync.Entry
-}
-
-func (f *stagingPathFinder) find(path string, entry *sync.Entry) error {
-	// If the entry is non-existent, nothing needs to be staged.
-	if entry == nil {
-		return nil
-	}
-
-	// Handle based on type.
-	if entry.Kind == sync.EntryKind_File {
-		f.paths = append(f.paths, path)
-		f.entries = append(f.entries, entry)
-	} else if entry.Kind == sync.EntryKind_Directory {
-		for name, entry := range entry.Contents {
-			if err := f.find(pathpkg.Join(path, name), entry); err != nil {
-				return err
-			}
-		}
-	} else {
-		return errors.New("unknown entry type encountered")
-	}
-
-	// Success.
-	return nil
-}
-
-// TODO: Document that stagingPathsForChanges guarantees both returned slices
-// will have the same length.
-func stagingPathsForChanges(changes []sync.Change) ([]string, []*sync.Entry, error) {
-	// Create a path finder.
-	finder := &stagingPathFinder{}
-
-	// Have it find paths for all the changes.
-	for _, c := range changes {
-		if err := finder.find(c.Path, c.New); err != nil {
-			return nil, nil, errors.Wrap(err, "unable to find staging paths")
-		}
-	}
-
-	// Success.
-	return finder.paths, finder.entries, nil
-}
 
 type stagingSink struct {
 	session string

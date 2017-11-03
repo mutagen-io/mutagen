@@ -566,7 +566,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Unlock()
 
 		// Stage files on alpha.
-		stagingPaths, stagingEntries, stagingError := stagingPathsForChanges(alphaTransitions)
+		stagingPaths, stagingEntries, stagingError := sync.TransitionDependencies(alphaTransitions)
 		if stagingError != nil {
 			return errors.Wrap(stagingError, "unable to determine paths for staging on alpha")
 		}
@@ -589,7 +589,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 
 		// Stage files on beta.
-		stagingPaths, stagingEntries, stagingError = stagingPathsForChanges(betaTransitions)
+		stagingPaths, stagingEntries, stagingError = sync.TransitionDependencies(betaTransitions)
 		if stagingError != nil {
 			return errors.Wrap(stagingError, "unable to determine paths for staging on beta")
 		}
