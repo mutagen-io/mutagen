@@ -1,12 +1,11 @@
 package main
 
 import (
-	"path/filepath"
-
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
+	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/url"
@@ -46,17 +45,17 @@ func createMain(arguments []string) error {
 		return errors.Wrap(err, "unable to parse beta URL")
 	}
 
-	// If either URL is a relative path, convert it to an absolute path.
+	// If either URL is a local path, make sure it's normalized.
 	if alpha.Protocol == url.Protocol_Local {
-		if alphaPath, err := filepath.Abs(alpha.Path); err != nil {
-			return errors.Wrap(err, "unable to make alpha path absolute")
+		if alphaPath, err := filesystem.Normalize(alpha.Path); err != nil {
+			return errors.Wrap(err, "unable to normalize alpha path")
 		} else {
 			alpha.Path = alphaPath
 		}
 	}
 	if beta.Protocol == url.Protocol_Local {
-		if betaPath, err := filepath.Abs(beta.Path); err != nil {
-			return errors.Wrap(err, "unable to make beta path absolute")
+		if betaPath, err := filesystem.Normalize(beta.Path); err != nil {
+			return errors.Wrap(err, "unable to normalize beta path")
 		} else {
 			beta.Path = betaPath
 		}
