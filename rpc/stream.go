@@ -54,7 +54,7 @@ type stream struct {
 func newStream(connection net.Conn) *stream {
 	return &stream{
 		connection: connection,
-		stream:     message.NewStream(connection, false),
+		stream:     message.NewStream(connection),
 	}
 }
 
