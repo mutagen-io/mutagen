@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"syscall"
 
 	"github.com/pkg/errors"
 
@@ -54,7 +55,14 @@ func (s *stagingSink) Close() error {
 	}
 
 	// Relocate the file to the destination.
-	if err = os.Rename(s.storage.Name(), destination); err != nil {
+	// HACK: Just use syscall.Rename to avoid an os.Lstat call made by os.Rename
+	// that can add significant overhead (~10% of total synchronization time) on
+	// systems with slow stat implementations (e.g. macOS). We lose out on long
+	// path fixes on Windows, but those shouldn't be necessary for paths inside
+	// the staging directory (they are ~160 characters and up to 248 characters
+	// is safe - see fixLongPath implementation in Go runtime on Windows). Even
+	// on Linux this shaves about 2% of the time off.
+	if err = syscall.Rename(s.storage.Name(), destination); err != nil {
 		os.Remove(s.storage.Name())
 		return errors.Wrap(err, "unable to relocate file")
 	}
