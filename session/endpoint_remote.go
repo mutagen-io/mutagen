@@ -6,8 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/snappy"
-
 	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/sync"
@@ -71,27 +69,6 @@ type endpointRequest struct {
 	Transition *transitionRequest
 }
 
-// snappyEncoder is a wrapper around a gob encoder and Snappy compressor that
-// knows to flush the compression stream on each message write.
-type snappyEncoder struct {
-	// encoder is the underlying gob encoder. It wraps the Snappy writer but
-	// doesn't know anything about flushing writes.
-	encoder *gob.Encoder
-	// writer is the Snappy writer that needs to be flushed on each message.
-	writer *snappy.Writer
-}
-
-// Encode performs encoding according to gob semantics and then flushes the
-// underlying compression stream.
-func (e *snappyEncoder) Encode(value interface{}) error {
-	if err := e.encoder.Encode(value); err != nil {
-		return err
-	} else if err = e.writer.Flush(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // TODO: Document that the provided streams should be closed (in a manner that
 // unblocks them) when the function returns in order to ensure that all
 // Goroutines have exited (they could be blocked in encodes/decodes - we only
@@ -101,21 +78,9 @@ func (e *snappyEncoder) Encode(value interface{}) error {
 // while in a read or write, so it's better that the caller just ensures the
 // streams are closed, in this case by exiting the process.
 func ServeEndpoint(controlStream io.ReadWriter, watchStream io.Writer) error {
-	// Add Snappy compression to the control stream since we'll be sending rsync
-	// operations on it. The snappy.Writer type has a Close method, but this
-	// doesn't need to be called - it's mostly just an alias for Flush that
-	// marks the writer as "closed" - it doesn't free any resources, and it
-	// isn't safe to call concurrently, so we don't bother deferring its
-	// invocation.
-	controlReader := snappy.NewReader(controlStream)
-	controlWriter := snappy.NewBufferedWriter(controlStream)
-
 	// Create encoders and decoders.
-	encoder := &snappyEncoder{
-		encoder: gob.NewEncoder(controlWriter),
-		writer:  controlWriter,
-	}
-	decoder := gob.NewDecoder(controlReader)
+	encoder := gob.NewEncoder(controlStream)
+	decoder := gob.NewDecoder(controlStream)
 	watchEncoder := gob.NewEncoder(watchStream)
 
 	// Receive the initialize request. If this fails, then send a failure
@@ -176,7 +141,7 @@ func ServeEndpoint(controlStream io.ReadWriter, watchStream io.Writer) error {
 	}
 }
 
-func serveEndpointRequests(endpoint *localEndpoint, encoder *snappyEncoder, decoder *gob.Decoder) error {
+func serveEndpointRequests(endpoint *localEndpoint, encoder *gob.Encoder, decoder *gob.Decoder) error {
 	// Create an rsync engine for use in snapshot transmission.
 	rsyncEngine := rsync.NewEngine()
 
@@ -272,7 +237,7 @@ type remoteEndpoint struct {
 	// closer closes the underlying streams.
 	closer io.Closer
 	// encoder is the encoder for the control stream.
-	encoder *snappyEncoder
+	encoder *gob.Encoder
 	// decoder is the decoder for the control stream.
 	decoder *gob.Decoder
 	// watchEvents is the channel of watch events forwarded from the remote.
@@ -297,20 +262,9 @@ func newRemoteEndpoint(
 	ignores []string,
 	alpha bool,
 ) (*remoteEndpoint, error) {
-	// Add Snappy compression to the control stream since we'll be sending rsync
-	// operations on it. The snappy.Writer type has a Close method, but this
-	// doesn't need to be called - it's mostly just an alias for Flush that
-	// marks the writer as "closed" - it doesn't free any resources, and it
-	// isn't safe to call concurrently, so we don't bother with it.
-	controlReader := snappy.NewReader(controlStream)
-	controlWriter := snappy.NewBufferedWriter(controlStream)
-
 	// Create encoders and decoders.
-	encoder := &snappyEncoder{
-		encoder: gob.NewEncoder(controlWriter),
-		writer:  controlWriter,
-	}
-	decoder := gob.NewDecoder(controlReader)
+	encoder := gob.NewEncoder(controlStream)
+	decoder := gob.NewDecoder(controlStream)
 	watchDecoder := gob.NewDecoder(watchStream)
 
 	// Create and send the initialize request.

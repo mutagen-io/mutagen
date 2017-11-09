@@ -15,6 +15,14 @@ const (
 	connectionsDirectoryName = "connections"
 )
 
+// compressionArgument returns a flag that can be passed to scp or ssh to enable
+// compression. Note that while SSH does have a CompressionLevel configuration
+// option, this only applies to SSHv1. SSHv2 defaults to a DEFLATE level of 6,
+// which is what we want anyway.
+func compressionArgument() string {
+	return "-C"
+}
+
 // timeoutArgument returns a option flag that can be passed to scp or ssh to
 // limit connection time (though not transfer time or process lifetime). It is
 // currently a fixed value, but in the future we might want to make this
@@ -57,6 +65,7 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 
 	// Set up arguments.
 	var scpArguments []string
+	scpArguments = append(scpArguments, compressionArgument())
 	scpArguments = append(scpArguments, timeoutArgument())
 	scpArguments = append(scpArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
@@ -113,6 +122,7 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 
 	// Set up arguments.
 	var sshArguments []string
+	sshArguments = append(sshArguments, compressionArgument())
 	sshArguments = append(sshArguments, timeoutArgument())
 	sshArguments = append(sshArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
