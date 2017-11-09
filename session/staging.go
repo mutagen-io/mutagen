@@ -11,9 +11,13 @@ import (
 	"github.com/havoc-io/mutagen/sync"
 )
 
+const (
+	// byteMax is the maximum value a byte can take.
+	byteMax = 1<<8 - 1
+)
+
 type stagingSink struct {
-	session string
-	alpha   bool
+	root string
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
 	path     string
@@ -43,7 +47,7 @@ func (s *stagingSink) Close() error {
 	digest := s.digester.Sum(nil)
 
 	// Compute where the file should be relocated.
-	destination, err := pathForStaging(true, s.session, s.alpha, s.path, digest)
+	destination, err := pathForStaging(s.root, s.path, digest)
 	if err != nil {
 		os.Remove(s.storage.Name())
 		return errors.Wrap(err, "unable to compute staging destination")
@@ -59,63 +63,49 @@ func (s *stagingSink) Close() error {
 	return nil
 }
 
-// stagingCoordinator implements rsync.Sinker and sync.Provider.
+// stagingCoordinator coordinates the reception of files via rsync (by
+// implementing rsync.Sinker) and the provision of those files to transitions
+// (by implementing sync.Provider).
 type stagingCoordinator struct {
-	session     string
-	version     Version
-	alpha       bool
-	stagingRoot string
+	version Version
+	root    string
 }
 
 func newStagingCoordinator(session string, version Version, alpha bool) (*stagingCoordinator, error) {
-	// Compute/create the staging root.
-	stagingRoot, err := pathForStagingRoot(session, alpha)
+	// Compute the staging root.
+	root, err := pathForStagingRoot(session, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute staging root")
 	}
 
 	// Success.
 	return &stagingCoordinator{
-		session:     session,
-		version:     version,
-		alpha:       alpha,
-		stagingRoot: stagingRoot,
+		version: version,
+		root:    root,
 	}, nil
 }
 
 func (c *stagingCoordinator) prepare() error {
-	// Ensure the staging directory exists. If all went well during the last
-	// synchronization cycle, it should have been wiped, so we may need to
-	// recreate it.
-	if _, err := pathForStagingRoot(c.session, c.alpha); err != nil {
-		return errors.Wrap(err, "unable to re-create staging directory")
-	}
-
-	// Success.
-	return nil
+	// Create the staging root and all of its prefix directories. We keep this
+	// functionality in with the other path functionality to keep all of that
+	// logic together.
+	return createStagingRootWithPrefixes(c.root)
 }
 
 func (c *stagingCoordinator) wipe() error {
-	// Remove the staging directory.
-	if err := os.RemoveAll(c.stagingRoot); err != nil {
-		return errors.Wrap(err, "unable to remove staging directory")
-	}
-
-	// Success.
-	return nil
+	return errors.Wrap(os.RemoveAll(c.root), "unable to remove staging directory")
 }
 
 func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
 	// Create a temporary storage file in the staging root.
-	storage, err := ioutil.TempFile(c.stagingRoot, "staging")
+	storage, err := ioutil.TempFile(c.root, "staging")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create temporary storage file")
 	}
 
 	// Success.
 	return &stagingSink{
-		session:  c.session,
-		alpha:    c.alpha,
+		root:     c.root,
 		path:     path,
 		storage:  storage,
 		digester: c.version.hasher(),
@@ -123,15 +113,14 @@ func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
 }
 
 func (c *stagingCoordinator) Provide(path string, entry *sync.Entry) (string, error) {
-	// Compute the expected location of the file. We don't need to create the
-	// path components here because we're assuming the file already exists. If
-	// it doesn't, then things will just fail when we try to run os.Chmod below.
-	expectedLocation, err := pathForStaging(false, c.session, c.alpha, path, entry.Digest)
+	// Compute the expected location of the file.
+	expectedLocation, err := pathForStaging(c.root, path, entry.Digest)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute staging path")
 	}
 
-	// Ensure that it has the correct permissions.
+	// Ensure that it has the correct permissions. This will fail if the file
+	// doens't exist.
 	permissions := os.FileMode(0600)
 	if entry.Executable {
 		permissions = os.FileMode(0700)

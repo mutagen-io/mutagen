@@ -3,6 +3,7 @@ package session
 import (
 	"crypto/sha1"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -76,40 +77,40 @@ func pathForStagingRoot(session string, alpha bool) (string, error) {
 	// Compute the staging root name.
 	stagingRootName := fmt.Sprintf("%s_%s", session, endpointName)
 
-	// Compute/create the staging root. We have to create the staging root here
-	// because the staging coordinator relies on it to exist for creating
-	// temporary files.
-	// TODO: Should we try to incorporate this logic directly into the staging
-	// coordinator? It's dangerous to rely on this behavior existing separately.
-	return filesystem.Mutagen(true, stagingDirectoryName, stagingRootName)
+	// Compute the staging root, but don't create it.
+	return filesystem.Mutagen(false, stagingDirectoryName, stagingRootName)
 }
 
-func pathForStaging(create bool, session string, alpha bool, path string, digest []byte) (string, error) {
-	// Compute the endpoint name.
-	endpointName := alphaName
-	if !alpha {
-		endpointName = betaName
+func createStagingRootWithPrefixes(root string) error {
+	// Create the root.
+	if err := os.MkdirAll(root, 0700); err != nil {
+		return errors.Wrap(err, "unable to create staging directory")
 	}
 
-	// Compute the staging root name.
-	stagingRootName := fmt.Sprintf("%s_%s", session, endpointName)
+	// Create all prefix directories within the staging root.
+	var prefixBytes [1]byte
+	for b := 0; b <= byteMax; b++ {
+		prefixBytes[0] = byte(b)
+		prefix := fmt.Sprintf("%x", prefixBytes[:])
+		if err := os.MkdirAll(filepath.Join(root, prefix), 0700); err != nil {
+			return errors.Wrap(err, "unable to create staging prefix")
+		}
+	}
 
+	// Success.
+	return nil
+}
+
+func pathForStaging(root, path string, digest []byte) (string, error) {
 	// Compute the prefix for the entry.
-	if len(digest) < (stagingPrefixLength + 1) {
+	if len(digest) == 0 {
 		return "", errors.New("entry digest too short")
 	}
-	prefixBytes := digest[:stagingPrefixLength]
-	prefix := fmt.Sprintf("%x", prefixBytes)
-
-	// Compute/create the staging prefix directory.
-	prefixDirectoryPath, err := filesystem.Mutagen(create, stagingDirectoryName, stagingRootName, prefix)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to compute/create staging prefix directory")
-	}
+	prefix := fmt.Sprintf("%x", digest[:1])
 
 	// Compute the staging name.
 	stagingName := fmt.Sprintf("%x_%x", sha1.Sum([]byte(path)), digest)
 
 	// Success.
-	return filepath.Join(prefixDirectoryPath, stagingName), nil
+	return filepath.Join(root, prefix, stagingName), nil
 }

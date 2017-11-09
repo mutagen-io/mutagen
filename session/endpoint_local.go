@@ -123,10 +123,8 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	}
 
 	// It's possible that a previous staging was interrupted, so look for paths
-	// that are already staged. Since the staging coordinator tries to do an
-	// os.Chmod, we can assume that no error coming out of Provide means that
-	// the file exists. A non-nil error could indicate another problem, but
-	// we'll see it later in staging or transitioning.
+	// that are already staged by checking if our staging coordinator can
+	// already provide them.
 	unstagedPaths := make([]string, 0, len(paths))
 	for i, p := range paths {
 		if _, err := e.stagingCoordinator.Provide(p, entries[i]); err != nil {
