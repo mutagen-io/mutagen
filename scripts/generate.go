@@ -1,28 +1,25 @@
 package main
 
-// This script generates Go code from Protocol Buffers specifications. It uses
-// the "gogo" Go code generator (https://github.com/gogo/protobuf). The
-// generated Go code depends only on pure Go libraries, so it doesn't need the
-// standard C++-based Protocol Buffers installation available to compile. Thus,
-// since we check-in the generated code, users can build Mutagen without the
-// need to install anything other than Go, and there is no need to run this
+// This script generates Go code from Protocol Buffers specifications in the
+// Mutagen source tree. It uses the "protoc-gen-gogo" Go code generator
+// (https://github.com/gogo/protobuf). It builds this generator from the
+// vendored sources to ensure it matches the version of the runtime code that
+// goes into the final binaries.
+//
+// The generated Go code depends only on pure Go libraries, so it doesn't need
+// the standard C++-based Protocol Buffers installation available to compile.
+// Thus, since we check-in the generated code, users can build Mutagen without
+// the need to install anything other than Go, and there is no need to run this
 // script as part of the normal build process.
 //
-// If you do want to run this script (say after modifying a .proto file), you'll
-// need Protocol Buffers 3+ installed (the C++ version which includes protoc -
-// https://github.com/google/protobuf) and the "protoc-gen-gogo" generator
-// binary installed (see the "gogo" Go code generator link for installation
-// instructions). You will need to ensure that you have a version of the code
-// generator installed that corresponds to the vendored runtime package,
-// otherwise the generated code may be incompatible.
-//
-// TODO: Can this script compile the protoc-gen-gogo binary directly from the
-// vendor directory (into a temporary directory) and add it to the path of the
-// protoc executable? That would remove the need for manually keeping the
-// generator installation in sync with the runtime that's vendored.
+// If you do want to run this script (say after modifying a .proto file), then
+// you'll need the C++ version of Protocol Buffers 3+
+// (https://github.com/google/protobuf) installed with the protoc compiler in
+// your path.
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +28,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/environment"
 )
 
 var subdirectories = []struct {
@@ -43,6 +41,45 @@ var subdirectories = []struct {
 }
 
 func main() {
+	// Create a temporary directory in which we can build the generator and
+	// defer its removal.
+	generatorPath, err := ioutil.TempDir("", "mutagen_generate")
+	if err != nil {
+		cmd.Fatal(errors.New("unable to create directory for generator build"))
+	}
+	defer os.RemoveAll(generatorPath)
+
+	// Print status.
+	fmt.Println("Building generator")
+
+	// Build the generator.
+	generatorBuild := exec.Command(
+		"go",
+		"build",
+		"github.com/havoc-io/mutagen/vendor/github.com/gogo/protobuf/protoc-gen-gogo",
+	)
+	generatorBuild.Dir = generatorPath
+	generatorBuild.Stdin = os.Stdin
+	generatorBuild.Stdout = os.Stdout
+	generatorBuild.Stderr = os.Stderr
+	if err := generatorBuild.Run(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "generator build failed"))
+	}
+
+	// Create an environment with the generator injected into the path.
+	protocEnvironmentMap := environment.CopyCurrent()
+	if existingPath := protocEnvironmentMap["PATH"]; existingPath != "" {
+		protocEnvironmentMap["PATH"] = fmt.Sprintf(
+			"%s%s%s",
+			generatorPath,
+			string(os.PathListSeparator),
+			existingPath,
+		)
+	} else {
+		protocEnvironmentMap["PATH"] = generatorPath
+	}
+	protocEnvironment := environment.Format(protocEnvironmentMap)
+
 	// Compute the path to the Mutagen source directory.
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -86,6 +123,7 @@ func main() {
 		arguments = append(arguments, s.files...)
 		protoc := exec.Command("protoc", arguments...)
 		protoc.Dir = subdirectory
+		protoc.Env = protocEnvironment
 		protoc.Stdin = os.Stdin
 		protoc.Stdout = os.Stdout
 		protoc.Stderr = os.Stderr
