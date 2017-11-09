@@ -109,12 +109,7 @@ func (c engineTestCase) run(t *testing.T) {
 	if err := signature.ensureValid(); err != nil {
 		t.Fatal("generated signature was invalid:", err)
 	} else if len(signature.Hashes) != 0 {
-		if c.blockSize == 0 && signature.BlockSize != DefaultBlockSize {
-			t.Error(
-				"generated signature did not have correct default block size:",
-				signature.BlockSize, "!=", DefaultBlockSize,
-			)
-		} else if c.blockSize != 0 && signature.BlockSize != c.blockSize {
+		if c.blockSize != 0 && signature.BlockSize != c.blockSize {
 			t.Error(
 				"generated signature did not have correct block size:",
 				signature.BlockSize, "!=", c.blockSize,

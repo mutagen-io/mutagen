@@ -251,12 +251,20 @@ func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
 	return sha1.Sum(data)
 }
 
-func (e *Engine) Signature(base io.ReadSeeker, blockSize uint64) (Signature, error) {
-	// Ensure that the block size is sane.
-	// TODO: Should we switch to using OptimalBlockSizeForBase and remove
-	// DefaultBlockSize?
+func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) {
+	// Choose a block size if none is specified. If the base also implements
+	// io.Seeker (which most will since they need to for Patch), then use the
+	// optimal block size, otherwise use the default.
 	if blockSize == 0 {
-		blockSize = DefaultBlockSize
+		if baseSeeker, ok := base.(io.Seeker); ok {
+			if s, err := OptimalBlockSizeForBase(baseSeeker); err == nil {
+				blockSize = s
+			} else {
+				blockSize = DefaultBlockSize
+			}
+		} else {
+			blockSize = DefaultBlockSize
+		}
 	}
 
 	// Create the result.
