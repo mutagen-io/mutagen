@@ -1,8 +1,9 @@
 package agent
 
 import (
+	"bytes"
 	"fmt"
-	"io"
+	"net"
 	"os"
 	"path"
 	"strings"
@@ -197,7 +198,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	return nil
 }
 
-func connectSSH(remote *url.URL, prompter, mode string) (io.Writer, io.Reader, io.Reader, io.Closer, bool, error) {
+func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) {
 	// Compute the command to invoke.
 	// HACK: We rely on sshAgentPath not having any spaces in it. If we do
 	// eventually need to add any, we'll need to fix this up for the shell.
@@ -206,60 +207,88 @@ func connectSSH(remote *url.URL, prompter, mode string) (io.Writer, io.Reader, i
 	// Create an SSH process.
 	process, err := ssh.Command(prompter, "Connecting to agent", remote, command)
 	if err != nil {
-		return nil, nil, nil, nil, false, errors.Wrap(err, "unable to create SSH command")
+		return nil, false, errors.Wrap(err, "unable to create SSH command")
 	}
 
-	// Create a stream that wrap's the process' standard input/output.
-	stdInput, stdOuput, stdError, closer, err := extractAgentStreams(process)
+	// Create a connection that wrap's the process' standard input/output.
+	connection, err := newAgentConnection(remote, process)
 	if err != nil {
-		return nil, nil, nil, nil, false, errors.Wrap(err, "unable to create SSH process stream")
+		return nil, false, errors.Wrap(err, "unable to create SSH process connection")
 	}
+
+	// Redirect the process' standard error output to a buffer so that we can
+	// give better feedback in errors. This might be a bit dangerous since this
+	// buffer will be attached for the lifetime of the process and we don't know
+	// exactly how much output will be received (and thus we could buffer a
+	// large amount of it in memory), but generally speaking SSH doens't spit
+	// out much error output (unless in debug mode, which we won't be), and the
+	// agent doesn't spit out any.
+	// TODO: If we do start seeing large allocations in these buffers, a simple
+	// size-limited buffer might suffice, at least to get some of the error
+	// message.
+	// TODO: If we decide we want these errors available outside the agent
+	// package, it might be worth moving this buffer into the processStream
+	// type, exporting that type, and allowing type assertions that would give
+	// access to that buffer. But for now we're mostly just concerned with
+	// connection issues.
+	errorBuffer := bytes.NewBuffer(nil)
+	process.Stderr = errorBuffer
 
 	// Start the process.
 	if err = process.Start(); err != nil {
-		return nil, nil, nil, nil, false, errors.Wrap(err, "unable to start SSH agent process")
+		return nil, false, errors.Wrap(err, "unable to start SSH agent process")
 	}
 
 	// Confirm that the process started correctly by performing a version
 	// handshake.
-	if versionMatch, err := mutagen.ReceiveAndCompareVersion(stdOuput); err != nil {
+	if versionMatch, err := mutagen.ReceiveAndCompareVersion(connection); err != nil {
 		// If there's an error, check if SSH exits with a command not found
 		// error. We can't really check this until we try to interact with the
 		// process and see that it misbehaves. We wouldn't be able to see this
 		// returned as an error from the Start method because it just starts the
 		// SSH client itself, not the remote command.
 		if ssh.IsCommandNotFound(process.Wait()) {
-			return nil, nil, nil, nil, true, errors.New("command not found")
+			return nil, true, errors.New("command not found")
+		}
+
+		// Otherwise, check if there is any error output that might illuminate
+		// what happened. We let this overrule any err value here since that
+		// value will probably just be an EOF.
+		if errorBuffer.Len() > 0 {
+			return nil, false, errors.Errorf(
+				"SSH process failed with error output:\n%s",
+				strings.TrimSpace(errorBuffer.String()),
+			)
 		}
 
 		// Otherwise just wrap up whatever error we have.
-		return nil, nil, nil, nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
+		return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 	} else if !versionMatch {
-		return nil, nil, nil, nil, true, errors.New("version mismatch")
+		return nil, true, errors.New("version mismatch")
 	}
 
-	// Create a connection.
-	return stdInput, stdOuput, stdError, closer, false, nil
+	// Done.
+	return connection, false, nil
 }
 
-func DialSSH(remote *url.URL, prompter, mode string) (io.Writer, io.Reader, io.Reader, io.Closer, error) {
+func DialSSH(remote *url.URL, prompter, mode string) (net.Conn, error) {
 	// Attempt a connection. If this fails, but it's a failure that justfies
 	// attempting an install, then continue, otherwise fail.
-	if stdInput, stdOuput, stdError, closer, install, err := connectSSH(remote, prompter, mode); err == nil {
-		return stdInput, stdOuput, stdError, closer, nil
+	if connection, install, err := connectSSH(remote, prompter, mode); err == nil {
+		return connection, nil
 	} else if !install {
-		return nil, nil, nil, nil, errors.Wrap(err, "unable to connect to agent")
+		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
 
 	// Attempt to install.
 	if err := installSSH(remote, prompter); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "unable to install agent")
+		return nil, errors.Wrap(err, "unable to install agent")
 	}
 
 	// Re-attempt connectivity.
-	if stdInput, stdOuput, stdError, closer, _, err := connectSSH(remote, prompter, mode); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "unable to connect to agent")
+	if connection, _, err := connectSSH(remote, prompter, mode); err != nil {
+		return nil, errors.Wrap(err, "unable to connect to agent")
 	} else {
-		return stdInput, stdOuput, stdError, closer, nil
+		return connection, nil
 	}
 }

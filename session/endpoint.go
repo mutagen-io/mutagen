@@ -1,22 +1,22 @@
 package session
 
 import (
+	"context"
+
 	"github.com/havoc-io/mutagen/rsync"
 	"github.com/havoc-io/mutagen/sync"
 )
 
 // endpoint provides an interface to synchronization endpoints. It provides all
 // primitives necessary to support synchronization. None of its methods are safe
-// for concurrent invocation except close.
+// for concurrent invocation except close. If any method returns an error, the
+// endpoint should be considered failed and no more of its methods (other than
+// Close) should be invoked.
 type endpoint interface {
-	// poller returns a channel that will be populated when the endpoint is
-	// marked as dirty. The channel has exactly one element of internal
-	// buffering, so events will never be missed, redundant events won't be
-	// stored, and no internal code will block waiting for a receive on the
-	// channel. The channel will be closed when close is invoked. It will also
-	// be closed if any internal watch error occurs, so any polling code should
-	// also watch for that case.
-	poller() chan struct{}
+	// poll performs a one-shot poll for filesystem modifications in the
+	// endpoint's root. It blocks until an event occurs, the provided context is
+	// cancelled, or an error occurs. In the first two cases it returns nil.
+	poll(context context.Context) error
 
 	// scan performs a scan of the endpoint's synchronization root. It requires
 	// the ancestor to be passed in for executability propagation and for

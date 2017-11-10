@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"os/signal"
 
@@ -15,11 +14,6 @@ import (
 
 var agentUsage = `usage: mutagen-agent should not be manually invoked
 `
-
-type stdio struct {
-	io.Reader
-	io.Writer
-}
 
 func main() {
 	// Parse command line arguments.
@@ -39,11 +33,11 @@ func main() {
 	session.HousekeepCaches()
 	session.HousekeepStaging()
 
-	// Create a stream on standard input/output.
-	stdio := &stdio{os.Stdin, os.Stdout}
+	// Create a connection on standard input/output.
+	connection := &stdioConnection{}
 
 	// Perform a handshake.
-	if err := mutagen.SendVersion(stdio); err != nil {
+	if err := mutagen.SendVersion(connection); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to transmit version"))
 	}
 
@@ -53,25 +47,17 @@ func main() {
 		// termination.
 		endpointTermination := make(chan error, 1)
 		go func() {
-			endpointTermination <- session.ServeEndpoint(stdio, os.Stderr)
+			endpointTermination <- session.ServeEndpoint(connection)
 		}()
 
-		// Wait for termination from a signal or the endpoint. At this point we
-		// can't (or at least shouldn't) write to standard error because the
-		// endpoint server is using it to stream watch events and writing to it
-		// could cause the decoder on the other end to do something weird (like
-		// treat our output as a message size and try to decode a bunch of data,
-		// though even then it will unblock when the process exits). So we just
-		// bail once termination occurs. Anywhere else in this function it's
-		// fine to write to standard error because the endpoint client won't
-		// have started polling standard error yet.
+		// Wait for termination from a signal or the endpoint.
 		signalTermination := make(chan os.Signal, 1)
 		signal.Notify(signalTermination, cmd.TerminationSignals...)
 		select {
-		case <-signalTermination:
-			cmd.Die()
-		case <-endpointTermination:
-			cmd.Die()
+		case sig := <-signalTermination:
+			cmd.Fatal(errors.Errorf("terminated by signal: %s", sig))
+		case err := <-endpointTermination:
+			cmd.Fatal(errors.Wrap(err, "endpoint terminated"))
 		}
 	} else {
 		cmd.Fatal(errors.Errorf("unknown mode: %s", mode))

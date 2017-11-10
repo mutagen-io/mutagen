@@ -2,18 +2,12 @@ package session
 
 import (
 	"context"
-	"io"
 
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/agent"
 	urlpkg "github.com/havoc-io/mutagen/url"
 )
-
-type stdio struct {
-	io.Reader
-	io.Writer
-}
 
 func connect(
 	session string,
@@ -35,16 +29,13 @@ func connect(
 		return endpoint, nil
 	} else if url.Protocol == urlpkg.Protocol_SSH {
 		// Dial using the agent package, watching for errors
-		stdInput, stdOutput, stdError, closer, err := agent.DialSSH(url, prompter, agent.ModeEndpoint)
+		connection, err := agent.DialSSH(url, prompter, agent.ModeEndpoint)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to connect to SSH remote")
 		}
 
-		// Combine the processes input/output into a single stream.
-		stdio := &stdio{stdOutput, stdInput}
-
 		// Create a remote endpoint.
-		endpoint, err := newRemoteEndpoint(stdio, stdError, closer, session, version, url.Path, ignores, alpha)
+		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, ignores, alpha)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create remote endpoint")
 		}

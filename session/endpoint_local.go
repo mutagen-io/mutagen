@@ -89,8 +89,18 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 	}, nil
 }
 
-func (e *localEndpoint) poller() chan struct{} {
-	return e.watchEvents
+func (e *localEndpoint) poll(context context.Context) error {
+	// Wait for either cancellation or an event.
+	select {
+	case _, ok := <-e.watchEvents:
+		if !ok {
+			return errors.New("endpoint watcher terminated")
+		}
+	case <-context.Done():
+	}
+
+	// Done.
+	return nil
 }
 
 func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {

@@ -1,8 +1,9 @@
 package session
 
 import (
+	contextpkg "context"
 	"encoding/gob"
-	"io"
+	"net"
 
 	"github.com/pkg/errors"
 
@@ -24,7 +25,13 @@ type initializeResponse struct {
 	Error                  string
 }
 
-type watchEvent struct{}
+type pollRequest struct{}
+
+type pollCompletionRequest struct{}
+
+type pollResponse struct {
+	Error string
+}
 
 type scanRequest struct {
 	BaseSnapshotSignature rsync.Signature
@@ -63,6 +70,7 @@ type transitionResponse struct {
 }
 
 type endpointRequest struct {
+	Poll       *pollRequest
 	Scan       *scanRequest
 	Stage      *stageRequest
 	Supply     *supplyRequest
@@ -77,11 +85,13 @@ type endpointRequest struct {
 // pipes can (depending on the platform) block on close if you try to close
 // while in a read or write, so it's better that the caller just ensures the
 // streams are closed, in this case by exiting the process.
-func ServeEndpoint(controlStream io.ReadWriter, watchStream io.Writer) error {
+func ServeEndpoint(connection net.Conn) error {
+	// Defer closure of the connection.
+	defer connection.Close()
+
 	// Create encoders and decoders.
-	encoder := gob.NewEncoder(controlStream)
-	decoder := gob.NewDecoder(controlStream)
-	watchEncoder := gob.NewEncoder(watchStream)
+	encoder := gob.NewEncoder(connection)
+	decoder := gob.NewDecoder(connection)
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
@@ -108,40 +118,6 @@ func ServeEndpoint(controlStream io.ReadWriter, watchStream io.Writer) error {
 		return errors.Wrap(err, "unable to send initialize response")
 	}
 
-	// Serve watch events for the endpoint. This will exit when the events
-	// channel is closed, which will happen when the underlying endpoint is
-	// closed at the termination of ServeEndpoint. The watch is guaranteed not
-	// to stop unless cancelled - it doesn't have any total failure modes. The
-	// encoder may fail, so we have to track termination.
-	watchForwardingErrors := make(chan error, 1)
-	go func() {
-		events := endpoint.poller()
-		for _ = range events {
-			if err := watchEncoder.Encode(watchEvent{}); err != nil {
-				watchForwardingErrors <- err
-				return
-			}
-		}
-		watchForwardingErrors <- errors.New("watch ended")
-	}()
-
-	// Serve requests on the control channel. Any number of things may fail
-	// here, so we have to track termination.
-	requestServingErrors := make(chan error, 1)
-	go func() {
-		requestServingErrors <- serveEndpointRequests(endpoint, encoder, decoder)
-	}()
-
-	// Wait for failure from either serving Goroutine.
-	select {
-	case err := <-watchForwardingErrors:
-		return errors.Wrap(err, "watching forwarding failed")
-	case err := <-requestServingErrors:
-		return errors.Wrap(err, "serving failed")
-	}
-}
-
-func serveEndpointRequests(endpoint *localEndpoint, encoder *gob.Encoder, decoder *gob.Decoder) error {
 	// Create an rsync engine for use in snapshot transmission.
 	rsyncEngine := rsync.NewEngine()
 
@@ -154,7 +130,55 @@ func serveEndpointRequests(endpoint *localEndpoint, encoder *gob.Encoder, decode
 		}
 
 		// Handle the request based on type.
-		if request.Scan != nil {
+		if request.Poll != nil {
+			// Create a cancellable context for executing the poll.
+			pollContext, forceResponse := contextpkg.WithCancel(contextpkg.Background())
+
+			// Start a Goroutine to execute the poll and send a response when
+			// done.
+			responseSendResults := make(chan error, 1)
+			go func() {
+				if err := endpoint.poll(pollContext); err != nil {
+					encoder.Encode(pollResponse{Error: err.Error()})
+					responseSendResults <- errors.Wrap(err, "polling error")
+				}
+				responseSendResults <- errors.Wrap(
+					encoder.Encode(pollResponse{}),
+					"unable to send poll response",
+				)
+			}()
+
+			// Start a Goroutine to watch for the done request.
+			completionReceiveResults := make(chan error, 1)
+			go func() {
+				var request pollCompletionRequest
+				completionReceiveResults <- errors.Wrap(
+					decoder.Decode(&request),
+					"unable to receive completion request",
+				)
+			}()
+
+			// Wait for both a completion receive to finish and a response to be
+			// sent. Both of these will happen, though their order is not
+			// guaranteed. If the completion receive comes first, then force the
+			// response. If the response has been sent, then we know the
+			// completion request is on its way.
+			var responseSendErr, completionReceiveErr error
+			select {
+			case responseSendErr = <-responseSendResults:
+				completionReceiveErr = <-completionReceiveResults
+			case completionReceiveErr = <-completionReceiveResults:
+				forceResponse()
+				responseSendErr = <-responseSendResults
+			}
+
+			// Check for errors.
+			if responseSendErr != nil {
+				return responseSendErr
+			} else if completionReceiveErr != nil {
+				return completionReceiveErr
+			}
+		} else if request.Scan != nil {
 			// Perform a scan. Passing a nil ancestor is fine - it just stops
 			// executability propagation, but that will happen in the
 			// remoteEndpoint instance. If a retry is requested or an error
@@ -234,14 +258,12 @@ func serveEndpointRequests(endpoint *localEndpoint, encoder *gob.Encoder, decode
 // another endpoint over a network. It is designed to be paired with
 // ServeEndpoint.
 type remoteEndpoint struct {
-	// closer closes the underlying streams.
-	closer io.Closer
+	// connection is the underlying connection to the remote endpoint.
+	connection net.Conn
 	// encoder is the encoder for the control stream.
 	encoder *gob.Encoder
 	// decoder is the decoder for the control stream.
 	decoder *gob.Decoder
-	// watchEvents is the channel of watch events forwarded from the remote.
-	watchEvents chan struct{}
 	// rsyncEngine is the rsync engine used for snapshot transfers.
 	rsyncEngine *rsync.Engine
 	// preservesExecutability indicates whether or not the remote endpoint
@@ -253,9 +275,7 @@ type remoteEndpoint struct {
 // specified streams. The provided io.Closer must unblock reads and writes on
 // the control and watch streams when closed.
 func newRemoteEndpoint(
-	controlStream io.ReadWriter,
-	watchStream io.Reader,
-	closer io.Closer,
+	connection net.Conn,
 	session string,
 	version Version,
 	root string,
@@ -263,9 +283,8 @@ func newRemoteEndpoint(
 	alpha bool,
 ) (*remoteEndpoint, error) {
 	// Create encoders and decoders.
-	encoder := gob.NewEncoder(controlStream)
-	decoder := gob.NewDecoder(controlStream)
-	watchDecoder := gob.NewDecoder(watchStream)
+	encoder := gob.NewEncoder(connection)
+	decoder := gob.NewDecoder(connection)
 
 	// Create and send the initialize request.
 	request := initializeRequest{
@@ -276,50 +295,87 @@ func newRemoteEndpoint(
 		Alpha:   alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
-		closer.Close()
+		connection.Close()
 		return nil, errors.Wrap(err, "unable to send initialize request")
 	}
 
 	// Receive the response and check for remote errors.
 	var response initializeResponse
 	if err := decoder.Decode(&response); err != nil {
-		closer.Close()
+		connection.Close()
 		return nil, errors.Wrap(err, "unable to receive transition response")
 	} else if response.Error != "" {
-		closer.Close()
+		connection.Close()
 		return nil, errors.Errorf("remote error: %s", response.Error)
 	}
 
-	// Create a watch events channel and a Goroutine to forward events to it.
-	// Close the channel if there are any decoding errors.
-	watchEvents := make(chan struct{}, 1)
-	go func() {
-		for {
-			var event watchEvent
-			if watchDecoder.Decode(&event) != nil {
-				close(watchEvents)
-				return
-			}
-			select {
-			case watchEvents <- struct{}{}:
-			default:
-			}
-		}
-	}()
-
 	// Success.
 	return &remoteEndpoint{
-		closer:                 closer,
+		connection:             connection,
 		encoder:                encoder,
 		decoder:                decoder,
-		watchEvents:            watchEvents,
 		rsyncEngine:            rsync.NewEngine(),
 		preservesExecutability: response.PreservesExecutability,
 	}, nil
 }
 
-func (e *remoteEndpoint) poller() chan struct{} {
-	return e.watchEvents
+func (e *remoteEndpoint) poll(context contextpkg.Context) error {
+	// Create and send the poll request.
+	request := endpointRequest{Poll: &pollRequest{}}
+	if err := e.encoder.Encode(request); err != nil {
+		return errors.Wrap(err, "unable to send poll request")
+	}
+
+	// Wrap the completion context in a context that we can cancel in order to
+	// force sending the completion response if we receive an event.
+	completionContext, forceCompletionSend := contextpkg.WithCancel(context)
+
+	// Create a Goroutine that will send a poll completion request when the
+	// context is cancelled.
+	completionSendResults := make(chan error, 1)
+	go func() {
+		<-completionContext.Done()
+		completionSendResults <- errors.Wrap(
+			e.encoder.Encode(pollCompletionRequest{}),
+			"unable to send poll completion request",
+		)
+	}()
+
+	// Create a Goroutine that will receive a poll response.
+	responseReceiveResults := make(chan error, 1)
+	go func() {
+		var response pollResponse
+		if err := e.decoder.Decode(&response); err != nil {
+			responseReceiveResults <- errors.Wrap(err, "unable to receive poll response")
+		} else if response.Error != "" {
+			responseReceiveResults <- errors.Errorf("remote error: %s", response.Error)
+		}
+		responseReceiveResults <- nil
+	}()
+
+	// Wait for both a completion encode to finish and a response to be
+	// received. Both of these will happen, though their order is not
+	// guaranteed. If the completion send comes first, we know the response is
+	// on its way. If the response comes first, we need to force the completion
+	// send.
+	var completionSendErr, responseReceiveErr error
+	select {
+	case completionSendErr = <-completionSendResults:
+		responseReceiveErr = <-responseReceiveResults
+	case responseReceiveErr = <-responseReceiveResults:
+		forceCompletionSend()
+		completionSendErr = <-completionSendResults
+	}
+
+	// Check for errors.
+	if responseReceiveErr != nil {
+		return responseReceiveErr
+	} else if completionSendErr != nil {
+		return completionSendErr
+	}
+
+	// Done.
+	return nil
 }
 
 func (e *remoteEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
@@ -443,7 +499,6 @@ func (e *remoteEndpoint) transition(transitions []sync.Change) ([]sync.Change, [
 
 func (e *remoteEndpoint) close() error {
 	// Close the underlying connection. This will cause all stream reads/writes
-	// to unblock, which will also cause the watch event forwarding Goroutine to
-	// close the associated events channel and exit.
-	return e.closer.Close()
+	// to unblock.
+	return e.connection.Close()
 }

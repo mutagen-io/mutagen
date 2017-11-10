@@ -480,10 +480,6 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 	}
 	ancestor := archive.Root
 
-	// Extract polling channels.
-	alphaPoller := alpha.poller()
-	betaPoller := beta.poller()
-
 	// Loop until there is a synchronization error. We always skip polling on
 	// the first time through the loop because changes may have occurred while
 	// we were halted. We also skip polling in the event that an endpoint asks
@@ -493,48 +489,55 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// Unless we've been requested to skip polling, wait for a dirty state
 		// while monitoring for cancellation. If we've been requested to skip
 		// polling, it should only be for one iteration.
-		// TODO: Should we try to drain the alpha and beta pollers before
-		// continuing to avoid excessive synchronization?
 		if !skipPolling {
 			// Update status to watching.
 			c.stateLock.Lock()
 			c.state.Status = SynchronizationStatusWatching
 			c.stateLock.Unlock()
 
-			// Wait for an event or cancellation.
+			// Create a polling context that we can cancel. We don't make it a
+			// subcontext of our own cancellation context because it's easier to
+			// just track cancellation there separately.
+			pollContext, pollCancel := contextpkg.WithCancel(contextpkg.Background())
+
+			// Start alpha polling.
+			alphaPollResults := make(chan error, 1)
+			go func() {
+				alphaPollResults <- alpha.poll(pollContext)
+			}()
+
+			// Start beta polling.
+			betaPollResults := make(chan error, 1)
+			go func() {
+				betaPollResults <- beta.poll(pollContext)
+			}()
+
+			// Wait for either poll to return an event or an error, or for
+			// cancellation. In any of these cases, cancel polling and ensure
+			// that both polling operations have completed.
+			var alphaPollErr, betaPollErr error
+			cancelled := false
 			select {
-			case _, ok := <-alphaPoller:
-				if !ok {
-					return errors.New("alpha watch broken")
-				}
-			case _, ok := <-betaPoller:
-				if !ok {
-					return errors.New("beta watch broken")
-				}
+			case alphaPollErr = <-alphaPollResults:
+				pollCancel()
+				betaPollErr = <-betaPollResults
+			case betaPollErr = <-betaPollResults:
+				pollCancel()
+				alphaPollErr = <-alphaPollResults
 			case <-context.Done():
-				return errors.New("cancelled during polling")
+				cancelled = true
+				pollCancel()
+				alphaPollErr = <-alphaPollResults
+				betaPollErr = <-betaPollResults
 			}
 
-			// Ensure that the pollers are fully drained before continuing. We
-			// only take the first event that we get above, so there might be
-			// another event in the other poller. It's best to clear these out
-			// to avoid unnecessary resynchronizations.
-		PollerDrain:
-			for {
-				select {
-				case _, ok := <-alphaPoller:
-					if !ok {
-						return errors.New("alpha watch broken")
-					}
-				case _, ok := <-betaPoller:
-					if !ok {
-						return errors.New("beta watch broken")
-					}
-				case <-context.Done():
-					return errors.New("cancelled during polling")
-				default:
-					break PollerDrain
-				}
+			// Watch for errors or cancellation.
+			if cancelled {
+				return errors.New("cancelled during polling")
+			} else if alphaPollErr != nil {
+				return errors.Wrap(alphaPollErr, "alpha polling error")
+			} else if betaPollErr != nil {
+				return errors.Wrap(betaPollErr, "beta polling error")
 			}
 		} else {
 			skipPolling = false
