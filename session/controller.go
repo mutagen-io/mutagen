@@ -218,7 +218,7 @@ func (c *controller) resume(prompter string) error {
 		// If there is an existing synchronization loop, check if it's alredy
 		// connected.
 		c.stateLock.Lock()
-		connected := c.state.Status > SynchronizationStatusConnecting
+		connected := c.state.Status >= SynchronizationStatusWatching
 		c.stateLock.UnlockWithoutNotify()
 
 		// If we're already connect, then there's nothing we need to do. We
@@ -384,12 +384,12 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		// check for cancellation on each reconnect error so that we don't waste
 		// resources by trying another connect when the context has been
 		// cancelled (it'll be wasteful). This is better than sentinel errors.
-		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusConnecting
-		c.stateLock.Unlock()
 		for {
 			// Ensure that alpha is connected.
 			if alpha == nil {
+				c.stateLock.Lock()
+				c.state.Status = SynchronizationStatusConnectingAlpha
+				c.stateLock.Unlock()
 				alpha, _ = reconnect(
 					context,
 					c.session.Identifier,
@@ -414,6 +414,9 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 
 			// Ensure that beta is connected.
 			if beta == nil {
+				c.stateLock.Lock()
+				c.state.Status = SynchronizationStatusConnectingBeta
+				c.stateLock.Unlock()
 				beta, _ = reconnect(
 					context,
 					c.session.Identifier,

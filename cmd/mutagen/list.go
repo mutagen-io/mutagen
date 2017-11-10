@@ -154,9 +154,9 @@ func printMonitorLine(state sessionpkg.SessionState) {
 		status += state.State.Status.String()
 
 		// If we're staging and have sane statistics, add them.
-		staging := state.State.Status == sessionpkg.SynchronizationStatusStagingAlpha ||
-			state.State.Status == sessionpkg.SynchronizationStatusStagingBeta
-		if staging && state.State.Staging.Total > 0 {
+		if state.State.Status == sessionpkg.SynchronizationStatusStagingAlpha ||
+			state.State.Status == sessionpkg.SynchronizationStatusStagingBeta &&
+				state.State.Staging.Total > 0 {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
 				float32(state.State.Staging.Received)/float32(state.State.Staging.Total),
