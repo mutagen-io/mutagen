@@ -11,11 +11,14 @@ const (
 	SynchronizationStatusDisconnected = iota
 	SynchronizationStatusConnecting
 	SynchronizationStatusWatching
-	SynchronizationStatusScanning
+	SynchronizationStatusScanningAlpha
+	SynchronizationStatusScanningBeta
 	SynchronizationStatusWaitingForRescan
 	SynchronizationStatusReconciling
-	SynchronizationStatusStaging
-	SynchronizationStatusTransitioning
+	SynchronizationStatusStagingAlpha
+	SynchronizationStatusStagingBeta
+	SynchronizationStatusTransitioningAlpha
+	SynchronizationStatusTransitioningBeta
 	SynchronizationStatusSaving
 )
 
@@ -27,16 +30,22 @@ func (s SynchronizationStatus) String() string {
 		return "Connecting to endpoints"
 	case SynchronizationStatusWatching:
 		return "Watching for changes"
-	case SynchronizationStatusScanning:
-		return "Scanning files"
+	case SynchronizationStatusScanningAlpha:
+		return "Scanning files on alpha"
+	case SynchronizationStatusScanningBeta:
+		return "Scanning files on beta"
 	case SynchronizationStatusWaitingForRescan:
 		return "Waiting for rescan"
 	case SynchronizationStatusReconciling:
 		return "Reconciling changes"
-	case SynchronizationStatusStaging:
-		return "Staging changes"
-	case SynchronizationStatusTransitioning:
-		return "Applying changes"
+	case SynchronizationStatusStagingAlpha:
+		return "Staging files on alpha"
+	case SynchronizationStatusStagingBeta:
+		return "Staging files on beta"
+	case SynchronizationStatusTransitioningAlpha:
+		return "Applying changes on alpha"
+	case SynchronizationStatusTransitioningBeta:
+		return "Applying changes on beta"
 	case SynchronizationStatusSaving:
 		return "Saving archive"
 	default:
@@ -56,8 +65,7 @@ type SynchronizationState struct {
 	AlphaConnected bool
 	BetaConnected  bool
 	LastError      string
-	AlphaStaging   rsync.ReceivingStatus
-	BetaStaging    rsync.ReceivingStatus
+	Staging        rsync.ReceivingStatus
 	Conflicts      []sync.Conflict
 	AlphaProblems  []sync.Problem
 	BetaProblems   []sync.Problem

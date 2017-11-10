@@ -2,14 +2,12 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/rpc"
-	"github.com/havoc-io/mutagen/rsync"
 	sessionpkg "github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/sync"
 )
@@ -136,116 +134,44 @@ func printConflicts(conflicts []sync.Conflict) {
 	}
 }
 
-type connectionState struct {
-	alphaConnected bool
-	betaConnected  bool
-}
-
-var connectionStatePrefixes = map[connectionState]string{
-	{false, false}: "XX",
-	{true, false}:  "-X",
-	{false, true}:  "X-",
-	{true, true}:   "--",
-}
-
-func monitorPrefix(state sessionpkg.SessionState) string {
-	switch state.State.Status {
-	case sessionpkg.SynchronizationStatusDisconnected:
-		fallthrough
-	case sessionpkg.SynchronizationStatusConnecting:
-		return connectionStatePrefixes[connectionState{
-			state.State.AlphaConnected,
-			state.State.BetaConnected,
-		}]
-	case sessionpkg.SynchronizationStatusWatching:
-		return "--"
-	case sessionpkg.SynchronizationStatusScanning:
-		return "**"
-	case sessionpkg.SynchronizationStatusWaitingForRescan:
-		return ".."
-	case sessionpkg.SynchronizationStatusReconciling:
-		return "~~"
-	case sessionpkg.SynchronizationStatusStaging:
-		return "><"
-	case sessionpkg.SynchronizationStatusTransitioning:
-		return "<>"
-	case sessionpkg.SynchronizationStatusSaving:
-		return "[]"
-	default:
-		return "  "
-	}
-}
-
-func monitorConflictSummary(conflicts []sync.Conflict) string {
-	if len(conflicts) > 0 {
-		return "X"
-	}
-	return "-"
-}
-
-func monitorProblemSummary(problems []sync.Problem) string {
-	if len(problems) > 0 {
-		return "X"
-	}
-	return "-"
-}
-
-// TODO: If this has a value of 31, then the monitor line will have a width of
-// exactly 80 columns. But on cmd.exe consoles, the line needs to be narrower
-// than the console (which is 80 columns by default) in order to process '\r'
-// properly, otherwise it'll just move to the next line when it receives '\r'.
-// So for now, we've set it to 30, giving the monitor line a width of 78
-// columns, but in the future we might just be better off switching to some
-// curses-like interface to dynamically set the monitor line width based on the
-// console width.
-const monitorStatusBarInnerWidth = 30
-
-func monitorStatusBar(status rsync.ReceivingStatus) string {
-	// If there is no staging going on, then return empty spaces.
-	if status.Total == 0 {
-		return fmt.Sprintf("[%s]", strings.Repeat(" ", monitorStatusBarInnerWidth))
-	}
-
-	// Watch for invalid or easy status cases.
-	if status.Received >= status.Total {
-		return fmt.Sprintf("[%s]", strings.Repeat("#", monitorStatusBarInnerWidth))
-	}
-
-	// Compute the number of spaces meant to be occupied by completed blocks.
-	fractionCompleted := float32(status.Received) / float32(status.Total)
-	completedSpaces := int(fractionCompleted * monitorStatusBarInnerWidth)
-
-	// Compute the resultant bar.
-	return fmt.Sprintf(
-		"[%s%s]",
-		strings.Repeat("#", completedSpaces),
-		strings.Repeat("-", monitorStatusBarInnerWidth-completedSpaces),
-	)
-}
-
 func printMonitorLine(state sessionpkg.SessionState) {
 	// Print out a carriage return to wipe out the previous line.
 	fmt.Print("\r")
 
-	// Print the state prefix and a trailing space.
-	fmt.Printf("%s ", monitorPrefix(state))
+	// Build the status line.
+	var status string
+	if state.Session.Paused {
+		status += "Paused"
+	} else {
+		// Add a conflict flag if there are conflicts.
+		if len(state.State.Conflicts) > 0 {
+			status += "[Conflicts] "
+		}
 
-	// Print the conflict status and a trailing space.
-	fmt.Printf("%s ", monitorConflictSummary(state.State.Conflicts))
+		// Add a problems flag if there are problems.
+		if len(state.State.AlphaProblems) > 0 || len(state.State.BetaProblems) > 0 {
+			status += "[Problems] "
+		}
 
-	// Print the alpha status bar and a trailing space.
-	fmt.Printf(
-		"α(%s)%s ",
-		monitorProblemSummary(state.State.AlphaProblems),
-		monitorStatusBar(state.State.AlphaStaging),
-	)
+		// Add the status.
+		status += state.State.Status.String()
 
-	// Print the beta status bar.
-	fmt.Printf(
-		"β(%s)%s",
-		monitorProblemSummary(state.State.BetaProblems),
-		monitorStatusBar(state.State.BetaStaging),
-	)
+		// If we're staging and have sane statistics, add them.
+		staging := state.State.Status == sessionpkg.SynchronizationStatusStagingAlpha ||
+			state.State.Status == sessionpkg.SynchronizationStatusStagingBeta
+		if staging && state.State.Staging.Total > 0 {
+			status += fmt.Sprintf(
+				": %.0f%% (%d/%d)",
+				float32(state.State.Staging.Received)/float32(state.State.Staging.Total),
+				state.State.Staging.Received,
+				state.State.Staging.Total,
+			)
+		}
+	}
+
+	// Print the status. Ensure that it prints exactly 80 characters, truncating
+	// or right-padding with space as necessary.
+	fmt.Printf("%-80.80s", status)
 }
 
 func listMain(arguments []string) error {

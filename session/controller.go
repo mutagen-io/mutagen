@@ -543,16 +543,19 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			skipPolling = false
 		}
 
-		// Update status to scanning.
+		// Scan alpha.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusScanning
+		c.state.Status = SynchronizationStatusScanningAlpha
 		c.stateLock.Unlock()
-
-		// Perform scans.
 		alphaSnapshot, alphaTryAgain, alphaScanErr := alpha.scan(ancestor)
 		if alphaScanErr != nil {
 			return errors.Wrap(alphaScanErr, "alpha scan error")
 		}
+
+		// Scan beta.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusScanningBeta
+		c.stateLock.Unlock()
 		betaSnapshot, betaTryAgain, betaScanErr := beta.scan(ancestor)
 		if betaScanErr != nil {
 			return errors.Wrap(betaScanErr, "beta scan error")
@@ -584,18 +587,18 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.state.Status = SynchronizationStatusReconciling
 		c.stateLock.Unlock()
 
-		// Reconcile.
+		// Reconcile and record conflicts.
 		ancestorChanges, alphaTransitions, betaTransitions, conflicts := sync.Reconcile(
 			ancestor, alphaSnapshot, betaSnapshot,
 		)
-
-		// Update status to staging and record conflicts.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusStaging
 		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
 		// Stage files on alpha.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusStagingAlpha
+		c.stateLock.Unlock()
 		stagingPaths, stagingEntries, stagingError := sync.TransitionDependencies(alphaTransitions)
 		if stagingError != nil {
 			return errors.Wrap(stagingError, "unable to determine paths for staging on alpha")
@@ -606,7 +609,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
 			c.stateLock.Lock()
-			c.state.AlphaStaging = status
+			c.state.Staging = status
 			c.stateLock.Unlock()
 			return nil
 		})
@@ -619,6 +622,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 
 		// Stage files on beta.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusStagingBeta
+		c.stateLock.Unlock()
 		stagingPaths, stagingEntries, stagingError = sync.TransitionDependencies(betaTransitions)
 		if stagingError != nil {
 			return errors.Wrap(stagingError, "unable to determine paths for staging on beta")
@@ -629,7 +635,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
 			c.stateLock.Lock()
-			c.state.BetaStaging = status
+			c.state.Staging = status
 			c.stateLock.Unlock()
 			return nil
 		})
@@ -641,33 +647,26 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			return errors.Wrap(stagingError, "unable to stage files on beta")
 		}
 
-		// Update status to transitioning.
+		// Perform transitions on alpha.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusTransitioning
+		c.state.Status = SynchronizationStatusTransitioningAlpha
 		c.stateLock.Unlock()
-
-		// Perform transitions. We don't allow this to be cancelled by the
-		// synchroniztion context because we might lose information on changes
-		// that we've made. This is fine, because this method won't block
-		// indefinitely and should be relatively fast. We don't abort
-		// immediately on error, because we want to propagate any changes that
-		// we make.
 		alphaChanges, alphaProblems, alphaTransitionErr := alpha.transition(alphaTransitions)
+
+		// Perform transitions on beta.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusTransitioningBeta
+		c.stateLock.Unlock()
 		betaChanges, betaProblems, betaTransitionErr := beta.transition(betaTransitions)
 
-		// Record problems.
+		// Record problems and then combine changes and propagate them to the
+		// ancestor. Even if there were transition errors, this code is still
+		// valid.
 		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusSaving
 		c.state.AlphaProblems = alphaProblems
 		c.state.BetaProblems = betaProblems
 		c.stateLock.Unlock()
-
-		// Update status to transitioning.
-		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusSaving
-		c.stateLock.Unlock()
-
-		// Combine changes and propagate them to the ancestor. Even if there
-		// were transition errors, this code is still valid.
 		ancestorChanges = append(ancestorChanges, alphaChanges...)
 		ancestorChanges = append(ancestorChanges, betaChanges...)
 		if newAncestor, err := sync.Apply(ancestor, ancestorChanges); err != nil {
@@ -692,7 +691,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		if alphaTransitionErr != nil {
 			return errors.Wrap(alphaTransitionErr, "unable to apply changes to alpha")
 		} else if betaTransitionErr != nil {
-			return errors.Wrap(alphaTransitionErr, "unable to apply changes to beta")
+			return errors.Wrap(betaTransitionErr, "unable to apply changes to beta")
 		}
 
 		// After a successful synchronization cycle, clear any synchronization
