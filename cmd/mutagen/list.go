@@ -169,9 +169,14 @@ func printMonitorLine(state sessionpkg.SessionState) {
 		}
 	}
 
-	// Print the status. Ensure that it prints exactly 80 characters, truncating
-	// or right-padding with space as necessary.
-	fmt.Printf("%-80.80s", status)
+	// Print the status. Ensure that it prints exactly 79 characters, truncating
+	// or right-padding with space as necessary. The reason for 79 (vs. a more
+	// standard 80) is that on cmd.exe consoles the line width needs to be
+	// narrower than the console (which is 80 columns by default) for carriage
+	// return wipes to work (if it's the same width, the carriage return
+	// overflows to the next line, behaving exactly like a newline).
+	// TODO: We should probably try to detect the console width.
+	fmt.Printf("%-79.79s", status)
 }
 
 func listMain(arguments []string) error {
