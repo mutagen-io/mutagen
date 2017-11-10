@@ -480,6 +480,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 	}
 	ancestor := archive.Root
 
+	// Extract polling channels.
+	alphaPoller := alpha.poller()
+	betaPoller := beta.poller()
+
 	// Loop until there is a synchronization error. We always skip polling on
 	// the first time through the loop because changes may have occurred while
 	// we were halted. We also skip polling in the event that an endpoint asks
@@ -497,17 +501,40 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			c.state.Status = SynchronizationStatusWatching
 			c.stateLock.Unlock()
 
+			// Wait for an event or cancellation.
 			select {
-			case _, ok := <-alpha.poller():
+			case _, ok := <-alphaPoller:
 				if !ok {
 					return errors.New("alpha watch broken")
 				}
-			case _, ok := <-beta.poller():
+			case _, ok := <-betaPoller:
 				if !ok {
 					return errors.New("beta watch broken")
 				}
 			case <-context.Done():
 				return errors.New("cancelled during polling")
+			}
+
+			// Ensure that the pollers are fully drained before continuing. We
+			// only take the first event that we get above, so there might be
+			// another event in the other poller. It's best to clear these out
+			// to avoid unnecessary resynchronizations.
+		PollerDrain:
+			for {
+				select {
+				case _, ok := <-alphaPoller:
+					if !ok {
+						return errors.New("alpha watch broken")
+					}
+				case _, ok := <-betaPoller:
+					if !ok {
+						return errors.New("beta watch broken")
+					}
+				case <-context.Done():
+					return errors.New("cancelled during polling")
+				default:
+					break PollerDrain
+				}
 			}
 		} else {
 			skipPolling = false
