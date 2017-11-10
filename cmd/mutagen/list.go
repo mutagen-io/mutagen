@@ -135,9 +135,6 @@ func printConflicts(conflicts []sync.Conflict) {
 }
 
 func printMonitorLine(state sessionpkg.SessionState) {
-	// Print out a carriage return to wipe out the previous line.
-	fmt.Print("\r")
-
 	// Build the status line.
 	var status string
 	if state.Session.Paused {
@@ -169,14 +166,16 @@ func printMonitorLine(state sessionpkg.SessionState) {
 		}
 	}
 
-	// Print the status. Ensure that it prints exactly 79 characters, truncating
-	// or right-padding with space as necessary. The reason for 79 (vs. a more
-	// standard 80) is that on cmd.exe consoles the line width needs to be
-	// narrower than the console (which is 80 columns by default) for carriage
-	// return wipes to work (if it's the same width, the carriage return
-	// overflows to the next line, behaving exactly like a newline).
+	// Print the status, prefixed with a carriage return to wipe out the
+	// previous line. Ensure that the status prints as a specified width,
+	// truncating or right-padding with space as necessary. On POSIX systems,
+	// this width is 80 characters and on Windows it's 79. The reason for 79 on
+	// Windows is that for cmd.exe consoles the line width needs to be narrower
+	// than the console (which is 80 columns by default) for carriage return
+	// wipes to work (if it's the same width, the next carriage return overflows
+	// to the next line, behaving exactly like a newline).
 	// TODO: We should probably try to detect the console width.
-	fmt.Printf("%-79.79s", status)
+	fmt.Printf(monitorLineFormat, status)
 }
 
 func listMain(arguments []string) error {
