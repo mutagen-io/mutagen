@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// byteMax is the maximum value a byte can take.
-	byteMax = 1<<8 - 1
+	// numberOfByteValues is the number of values a byte can take.
+	numberOfByteValues = 1 << 8
 )
 
 type stagingSink struct {
@@ -75,8 +75,16 @@ func (s *stagingSink) Close() error {
 // (by implementing sync.Provider). It is not safe for concurrent access, and
 // each stagingSink it produces should be closed before another is created.
 type stagingCoordinator struct {
-	version       Version
-	root          string
+	// version is the session version.
+	version Version
+	// root is the staging root.
+	root string
+	// rootCreated indicates whether or not the staging root has been created
+	// by us since the last wipe.
+	rootCreated bool
+	// prefixCreated maps prefix names (e.g. "00" - "ff") to a boolean
+	// indicating whether or not the prefix has been created by us since the
+	// last wipe.
 	prefixCreated map[string]bool
 }
 
@@ -89,22 +97,10 @@ func newStagingCoordinator(session string, version Version, alpha bool) (*stagin
 
 	// Success.
 	return &stagingCoordinator{
-		version: version,
-		root:    root,
+		version:       version,
+		root:          root,
+		prefixCreated: make(map[string]bool, numberOfByteValues),
 	}, nil
-}
-
-func (c *stagingCoordinator) prepare() error {
-	// Ensure the staging root exists.
-	if err := os.MkdirAll(c.root, 0700); err != nil {
-		return errors.Wrap(err, "unable to create staging root")
-	}
-
-	// Create the prefix creation tracker.
-	c.prefixCreated = make(map[string]bool, byteMax)
-
-	// Success.
-	return nil
 }
 
 func (c *stagingCoordinator) ensurePrefixExists(prefix string) error {
@@ -113,10 +109,12 @@ func (c *stagingCoordinator) ensurePrefixExists(prefix string) error {
 		return nil
 	}
 
-	// Otherwise create it and mark it as created.
+	// Otherwise create it and mark it as created. We can also mark the root as
+	// created since it'll be an intermediate directory.
 	if err := os.MkdirAll(filepath.Join(c.root, prefix), 0700); err != nil {
 		return err
 	}
+	c.rootCreated = true
 	c.prefixCreated[prefix] = true
 
 	// Success.
@@ -124,8 +122,11 @@ func (c *stagingCoordinator) ensurePrefixExists(prefix string) error {
 }
 
 func (c *stagingCoordinator) wipe() error {
-	// Zero-out the prefix creation tracker.
-	c.prefixCreated = nil
+	// Reset the prefix creation tracker.
+	c.prefixCreated = make(map[string]bool, numberOfByteValues)
+
+	// Reset root creation tracking.
+	c.rootCreated = false
 
 	// Remove the staging root.
 	if err := os.RemoveAll(c.root); err != nil {
@@ -137,6 +138,14 @@ func (c *stagingCoordinator) wipe() error {
 }
 
 func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
+	// Create the staging root if we haven't already.
+	if !c.rootCreated {
+		if err := os.MkdirAll(c.root, 0700); err != nil {
+			return nil, errors.Wrap(err, "unable to create staging root")
+		}
+		c.rootCreated = true
+	}
+
 	// Create a temporary storage file in the staging root.
 	storage, err := ioutil.TempFile(c.root, "staging")
 	if err != nil {

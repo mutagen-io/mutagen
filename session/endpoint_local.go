@@ -126,11 +126,6 @@ func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 }
 
 func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
-	// Prepare the staging coordinator to receive incoming files.
-	if err := e.stagingCoordinator.prepare(); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "unable to prepare staging coordinator")
-	}
-
 	// It's possible that a previous staging was interrupted, so look for paths
 	// that are already staged by checking if our staging coordinator can
 	// already provide them.
