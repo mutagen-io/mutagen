@@ -77,6 +77,15 @@ type endpointRequest struct {
 	Transition *transitionRequest
 }
 
+type remoteEndpointServer struct {
+	// encoder is the control stream encoder.
+	encoder *gob.Encoder
+	// decoder is the control stream decoder.
+	decoder *gob.Decoder
+	// endpoint is the underlying local endpoint.
+	endpoint endpoint
+}
+
 // TODO: Document that the provided streams should be closed (in a manner that
 // unblocks them) when the function returns in order to ensure that all
 // Goroutines have exited (they could be blocked in encodes/decodes - we only
@@ -118,137 +127,46 @@ func ServeEndpoint(connection net.Conn) error {
 		return errors.Wrap(err, "unable to send initialize response")
 	}
 
-	// Create an rsync engine for use in snapshot transmission.
-	rsyncEngine := rsync.NewEngine()
+	// Create the server.
+	server := &remoteEndpointServer{
+		endpoint: endpoint,
+		encoder:  encoder,
+		decoder:  decoder,
+	}
 
+	// Server until an error occurs.
+	return server.serve()
+}
+
+func (s *remoteEndpointServer) serve() error {
 	// Receive and process control requests until there's an error.
 	for {
 		// Receive the next request.
 		var request endpointRequest
-		if err := decoder.Decode(&request); err != nil {
+		if err := s.decoder.Decode(&request); err != nil {
 			return errors.Wrap(err, "unable to receive request")
 		}
 
 		// Handle the request based on type.
 		if request.Poll != nil {
-			// Create a cancellable context for executing the poll.
-			pollContext, forceResponse := contextpkg.WithCancel(contextpkg.Background())
-
-			// Start a Goroutine to execute the poll and send a response when
-			// done.
-			responseSendResults := make(chan error, 1)
-			go func() {
-				if err := endpoint.poll(pollContext); err != nil {
-					encoder.Encode(pollResponse{Error: err.Error()})
-					responseSendResults <- errors.Wrap(err, "polling error")
-				}
-				responseSendResults <- errors.Wrap(
-					encoder.Encode(pollResponse{}),
-					"unable to send poll response",
-				)
-			}()
-
-			// Start a Goroutine to watch for the done request.
-			completionReceiveResults := make(chan error, 1)
-			go func() {
-				var request pollCompletionRequest
-				completionReceiveResults <- errors.Wrap(
-					decoder.Decode(&request),
-					"unable to receive completion request",
-				)
-			}()
-
-			// Wait for both a completion receive to finish and a response to be
-			// sent. Both of these will happen, though their order is not
-			// guaranteed. If the completion receive comes first, then force the
-			// response. If the response has been sent, then we know the
-			// completion request is on its way, but we still need to cancel the
-			// context to avoid leaking a Goroutine.
-			var responseSendErr, completionReceiveErr error
-			select {
-			case responseSendErr = <-responseSendResults:
-				forceResponse()
-				completionReceiveErr = <-completionReceiveResults
-			case completionReceiveErr = <-completionReceiveResults:
-				forceResponse()
-				responseSendErr = <-responseSendResults
-			}
-
-			// Check for errors.
-			if responseSendErr != nil {
-				return responseSendErr
-			} else if completionReceiveErr != nil {
-				return completionReceiveErr
+			if err := s.servePoll(request.Poll); err != nil {
+				return errors.Wrap(err, "unable to serve poll request")
 			}
 		} else if request.Scan != nil {
-			// Perform a scan. Passing a nil ancestor is fine - it just stops
-			// executability propagation, but that will happen in the
-			// remoteEndpoint instance. If a retry is requested or an error
-			// occurs, send a response.
-			snapshot, tryAgain, err := endpoint.scan(nil)
-			if tryAgain {
-				if err := encoder.Encode(scanResponse{TryAgain: true}); err != nil {
-					return errors.Wrap(err, "unable to send scan retry response")
-				}
-				continue
-			} else if err != nil {
-				encoder.Encode(scanResponse{Error: err.Error()})
-				return errors.Wrap(err, "unable to perform scan")
-			}
-
-			// Marshal the snapshot.
-			snapshotBytes, err := marshalEntry(snapshot)
-			if err != nil {
-				return errors.Wrap(err, "unable to marshal snapshot")
-			}
-
-			// Compute it's delta against the base.
-			delta := rsyncEngine.DeltafyBytes(snapshotBytes, request.Scan.BaseSnapshotSignature, 0)
-
-			// Send the response.
-			if err := encoder.Encode(scanResponse{SnapshotDelta: delta}); err != nil {
-				return errors.Wrap(err, "unable to send scan response")
+			if err := s.serveScan(request.Scan); err != nil {
+				return errors.Wrap(err, "unable to serve scan request")
 			}
 		} else if request.Stage != nil {
-			// Begin staging.
-			paths, signatures, receiver, err := endpoint.stage(request.Stage.Paths, request.Stage.Entries)
-			if err != nil {
-				encoder.Encode(stageResponse{Error: err.Error()})
-				return errors.Wrap(err, "unable to begin staging")
-			}
-
-			// Send the response.
-			if err = encoder.Encode(stageResponse{Paths: paths, Signatures: signatures}); err != nil {
-				return errors.Wrap(err, "unable to send stage response")
-			}
-
-			// The remote side of the connection should now forward rsync
-			// operations, so we need to decode and forward them to the
-			// receiver. If this operation completes successfully, staging is
-			// complete and successful.
-			if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
-				return errors.Wrap(err, "unable to decode and forward rsync operations")
+			if err := s.serveStage(request.Stage); err != nil {
+				return errors.Wrap(err, "unable to serve stage request")
 			}
 		} else if request.Supply != nil {
-			// Create an encoding receiver that can transmit rsync operations to
-			// the remote.
-			receiver := rsync.NewEncodingReceiver(encoder)
-
-			// Perform supplying.
-			if err := endpoint.supply(request.Supply.Paths, request.Supply.Signatures, receiver); err != nil {
-				return errors.Wrap(err, "unable to perform supplying")
+			if err := s.serveSupply(request.Supply); err != nil {
+				return errors.Wrap(err, "unable to serve supply request")
 			}
 		} else if request.Transition != nil {
-			// Perform the transition.
-			changes, problems, err := endpoint.transition(request.Transition.Transitions)
-			if err != nil {
-				encoder.Encode(transitionResponse{Error: err.Error()})
-				return errors.Wrap(err, "unable to perform transition")
-			}
-
-			// Send the response.
-			if err = encoder.Encode(transitionResponse{Changes: changes, Problems: problems}); err != nil {
-				return errors.Wrap(err, "unable to send transition response")
+			if err := s.serveTransition(request.Transition); err != nil {
+				return errors.Wrap(err, "unable to serve transition request")
 			}
 		} else {
 			return errors.New("invalid request")
@@ -256,15 +174,162 @@ func ServeEndpoint(connection net.Conn) error {
 	}
 }
 
-// remoteEndpoint is an endpoint implementation that provides a proxy for
+func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
+	// Create a cancellable context for executing the poll. The context may be
+	// cancelled to force a response, but in case the response comes naturally,
+	// ensure the context is cancelled before we're done to avoid leaking a
+	// Goroutine.
+	pollContext, forceResponse := contextpkg.WithCancel(contextpkg.Background())
+	defer forceResponse()
+
+	// Start a Goroutine to execute the poll and send a response when done.
+	responseSendResults := make(chan error, 1)
+	go func() {
+		if err := s.endpoint.poll(pollContext); err != nil {
+			s.encoder.Encode(pollResponse{Error: err.Error()})
+			responseSendResults <- errors.Wrap(err, "polling error")
+		}
+		responseSendResults <- errors.Wrap(
+			s.encoder.Encode(pollResponse{}),
+			"unable to send poll response",
+		)
+	}()
+
+	// Start a Goroutine to watch for the done request.
+	completionReceiveResults := make(chan error, 1)
+	go func() {
+		var request pollCompletionRequest
+		completionReceiveResults <- errors.Wrap(
+			s.decoder.Decode(&request),
+			"unable to receive completion request",
+		)
+	}()
+
+	// Wait for both a completion request to be received and a response to be
+	// sent. Both of these will happen, though their order is not guaranteed. If
+	// the response has been sent, then we know the completion request is on its
+	// way, so just wait for it. If the completion receive comes first, then
+	// force the response and wait for it to be sent.
+	var responseSendErr, completionReceiveErr error
+	select {
+	case responseSendErr = <-responseSendResults:
+		completionReceiveErr = <-completionReceiveResults
+	case completionReceiveErr = <-completionReceiveResults:
+		forceResponse()
+		responseSendErr = <-responseSendResults
+	}
+
+	// Check for errors.
+	if responseSendErr != nil {
+		return responseSendErr
+	} else if completionReceiveErr != nil {
+		return completionReceiveErr
+	}
+
+	// Success.
+	return nil
+}
+
+func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
+	// Perform a scan. Passing a nil ancestor is fine - it just stops
+	// executability propagation, but that will happen in the remoteEndpointClient
+	// instance. If a retry is requested or an error occurs, send a response.
+	snapshot, tryAgain, err := s.endpoint.scan(nil)
+	if tryAgain {
+		if err := s.encoder.Encode(scanResponse{TryAgain: true}); err != nil {
+			return errors.Wrap(err, "unable to send scan retry response")
+		}
+		return nil
+	} else if err != nil {
+		s.encoder.Encode(scanResponse{Error: err.Error()})
+		return errors.Wrap(err, "unable to perform scan")
+	}
+
+	// Marshal the snapshot.
+	snapshotBytes, err := marshalEntry(snapshot)
+	if err != nil {
+		return errors.Wrap(err, "unable to marshal snapshot")
+	}
+
+	// Create an rsync engine and compute the snapshot's delta against the base.
+	engine := rsync.NewEngine()
+	delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
+
+	// Send the response.
+	response := scanResponse{SnapshotDelta: delta}
+	if err := s.encoder.Encode(response); err != nil {
+		return errors.Wrap(err, "unable to send scan response")
+	}
+
+	// Success.
+	return nil
+}
+
+func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
+	// Begin staging.
+	paths, signatures, receiver, err := s.endpoint.stage(request.Paths, request.Entries)
+	if err != nil {
+		s.encoder.Encode(stageResponse{Error: err.Error()})
+		return errors.Wrap(err, "unable to begin staging")
+	}
+
+	// Send the response.
+	if err = s.encoder.Encode(stageResponse{Paths: paths, Signatures: signatures}); err != nil {
+		return errors.Wrap(err, "unable to send stage response")
+	}
+
+	// The remote side of the connection should now forward rsync operations, so
+	// we need to decode and forward them to the receiver. If this operation
+	// completes successfully, staging is complete and successful.
+	if err = rsync.DecodeToReceiver(s.decoder, uint64(len(paths)), receiver); err != nil {
+		return errors.Wrap(err, "unable to decode and forward rsync operations")
+	}
+
+	// Success.
+	return nil
+}
+
+func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
+	// Create an encoding receiver that can transmit rsync operations to the
+	// remote.
+	receiver := rsync.NewEncodingReceiver(s.encoder)
+
+	// Perform supplying.
+	if err := s.endpoint.supply(request.Paths, request.Signatures, receiver); err != nil {
+		return errors.Wrap(err, "unable to perform supplying")
+	}
+
+	// Success.
+	return nil
+}
+
+func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error {
+	// Perform the transition.
+	changes, problems, err := s.endpoint.transition(request.Transitions)
+	if err != nil {
+		s.encoder.Encode(transitionResponse{Error: err.Error()})
+		return errors.Wrap(err, "unable to perform transition")
+	}
+
+	// Send the response.
+	response := transitionResponse{Changes: changes, Problems: problems}
+	if err = s.encoder.Encode(response); err != nil {
+		return errors.Wrap(err, "unable to send transition response")
+	}
+
+	// Success.
+	return nil
+}
+
+// remoteEndpointClient is an endpoint implementation that provides a proxy for
 // another endpoint over a network. It is designed to be paired with
 // ServeEndpoint.
-type remoteEndpoint struct {
-	// connection is the underlying connection to the remote endpoint.
+type remoteEndpointClient struct {
+	// connection is the control stream connection.
 	connection net.Conn
-	// encoder is the encoder for the control stream.
+	// encoder is the control stream encoder.
 	encoder *gob.Encoder
-	// decoder is the decoder for the control stream.
+	// decoder is the control stream decoder.
 	decoder *gob.Decoder
 	// rsyncEngine is the rsync engine used for snapshot transfers.
 	rsyncEngine *rsync.Engine
@@ -273,9 +338,8 @@ type remoteEndpoint struct {
 	preservesExecutability bool
 }
 
-// newRemoteEndpoint constructs a new remote Endpoint instance using the
-// specified streams. The provided io.Closer must unblock reads and writes on
-// the control and watch streams when closed.
+// newRemoteEndpoint constructs a new remote endpoint instance using the
+// specified connection.
 func newRemoteEndpoint(
 	connection net.Conn,
 	session string,
@@ -283,7 +347,7 @@ func newRemoteEndpoint(
 	root string,
 	ignores []string,
 	alpha bool,
-) (*remoteEndpoint, error) {
+) (endpoint, error) {
 	// Create encoders and decoders.
 	encoder := gob.NewEncoder(connection)
 	decoder := gob.NewDecoder(connection)
@@ -312,7 +376,7 @@ func newRemoteEndpoint(
 	}
 
 	// Success.
-	return &remoteEndpoint{
+	return &remoteEndpointClient{
 		connection:             connection,
 		encoder:                encoder,
 		decoder:                decoder,
@@ -321,7 +385,7 @@ func newRemoteEndpoint(
 	}, nil
 }
 
-func (e *remoteEndpoint) poll(context contextpkg.Context) error {
+func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 	// Create and send the poll request.
 	request := endpointRequest{Poll: &pollRequest{}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -380,7 +444,7 @@ func (e *remoteEndpoint) poll(context contextpkg.Context) error {
 	return nil
 }
 
-func (e *remoteEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
+func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 	// Marshal the ancestor and compute its rsync signature. We'll use it as a
 	// base for an rsync transfer of the serialized snapshot.
 	ancestorBytes, err := marshalEntry(ancestor)
@@ -428,7 +492,7 @@ func (e *remoteEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 	return snapshot, false, nil
 }
 
-func (e *remoteEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
+func (e *remoteEndpointClient) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// Create and send the stage request.
 	request := endpointRequest{Stage: &stageRequest{paths, entries}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -451,7 +515,7 @@ func (e *remoteEndpoint) stage(paths []string, entries []*sync.Entry) ([]string,
 	return response.Paths, response.Signatures, receiver, nil
 }
 
-func (e *remoteEndpoint) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
+func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
 	// Create and send the supply request.
 	request := endpointRequest{Supply: &supplyRequest{paths, signatures}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -480,7 +544,7 @@ func (e *remoteEndpoint) supply(paths []string, signatures []rsync.Signature, re
 	return nil
 }
 
-func (e *remoteEndpoint) transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
+func (e *remoteEndpointClient) transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
 	// Create and send the transition request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -499,7 +563,7 @@ func (e *remoteEndpoint) transition(transitions []sync.Change) ([]sync.Change, [
 	return response.Changes, response.Problems, nil
 }
 
-func (e *remoteEndpoint) close() error {
+func (e *remoteEndpointClient) close() error {
 	// Close the underlying connection. This will cause all stream reads/writes
 	// to unblock.
 	return e.connection.Close()

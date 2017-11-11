@@ -36,7 +36,7 @@ type localEndpoint struct {
 	stagingCoordinator *stagingCoordinator
 }
 
-func newLocalEndpoint(session string, version Version, root string, ignores []string, alpha bool) (*localEndpoint, error) {
+func newLocalEndpoint(session string, version Version, root string, ignores []string, alpha bool) (endpoint, error) {
 	// Validate endpoint parameters.
 	if session == "" {
 		return nil, errors.New("empty session identifier")

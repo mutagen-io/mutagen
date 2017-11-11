@@ -20,12 +20,14 @@ type endpoint interface {
 
 	// scan performs a scan of the endpoint's synchronization root. It requires
 	// the ancestor to be passed in for executability propagation and for
-	// optimized transfers if the endpoint is remote. It returns the scan
-	// result, a bit indicating whether or not to re-try the scan, and any error
-	// that occurred while trying to create the scan. Only one of these values
-	// will be non-nil/false. If all are nil, it indicates that the
-	// synchronization root doesn't exist on the endpoint, but that the scan
-	// otherwise completed successfully.
+	// optimized transfers if the endpoint is remote. Ancestory may be nil, in
+	// which case executability propagation will not occur and transfers from
+	// endpoints may be less than optimal. It returns the scan result, a bool
+	// indicating whether or not to re-try the scan, and any error that occurred
+	// while trying to create the scan. Only one of these values will be
+	// non-nil/false. If all are nil, it indicates that the synchronization root
+	// doesn't exist on the endpoint, but that the scan otherwise completed
+	// successfully.
 	scan(ancestor *sync.Entry) (*sync.Entry, bool, error)
 
 	// stage performs staging on the endpoint. It accepts a list of file paths
