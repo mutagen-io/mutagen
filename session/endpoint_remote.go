@@ -393,8 +393,12 @@ func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 	}
 
 	// Wrap the completion context in a context that we can cancel in order to
-	// force sending the completion response if we receive an event.
+	// force sending the completion response if we receive an event. The context
+	// may be cancelled before we return (in the event that we receive an early
+	// completion request), but we defer its (idempotent) cancellation to ensure
+	// the context is cancelled.
 	completionContext, forceCompletionSend := contextpkg.WithCancel(context)
+	defer forceCompletionSend()
 
 	// Create a Goroutine that will send a poll completion request when the
 	// context is cancelled.
