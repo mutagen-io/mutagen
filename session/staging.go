@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 
@@ -17,7 +18,7 @@ const (
 )
 
 type stagingSink struct {
-	root string
+	coordinator *stagingCoordinator
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
 	path     string
@@ -47,10 +48,16 @@ func (s *stagingSink) Close() error {
 	digest := s.digester.Sum(nil)
 
 	// Compute where the file should be relocated.
-	destination, err := pathForStaging(s.root, s.path, digest)
+	destination, prefix, err := pathForStaging(s.coordinator.root, s.path, digest)
 	if err != nil {
 		os.Remove(s.storage.Name())
 		return errors.Wrap(err, "unable to compute staging destination")
+	}
+
+	// Ensure the prefix directory exists.
+	if err = s.coordinator.ensurePrefixExists(prefix); err != nil {
+		os.Remove(s.storage.Name())
+		return errors.Wrap(err, "unable to create prefix directory")
 	}
 
 	// Relocate the file to the destination.
@@ -65,10 +72,12 @@ func (s *stagingSink) Close() error {
 
 // stagingCoordinator coordinates the reception of files via rsync (by
 // implementing rsync.Sinker) and the provision of those files to transitions
-// (by implementing sync.Provider).
+// (by implementing sync.Provider). It is not safe for concurrent access, and
+// each stagingSink it produces should be closed before another is created.
 type stagingCoordinator struct {
-	version Version
-	root    string
+	version       Version
+	root          string
+	prefixCreated map[string]bool
 }
 
 func newStagingCoordinator(session string, version Version, alpha bool) (*stagingCoordinator, error) {
@@ -86,14 +95,45 @@ func newStagingCoordinator(session string, version Version, alpha bool) (*stagin
 }
 
 func (c *stagingCoordinator) prepare() error {
-	// Create the staging root and all of its prefix directories. We keep this
-	// functionality in with the other path functionality to keep all of that
-	// logic together.
-	return createStagingRootWithPrefixes(c.root)
+	// Ensure the staging root exists.
+	if err := os.MkdirAll(c.root, 0700); err != nil {
+		return errors.Wrap(err, "unable to create staging root")
+	}
+
+	// Create the prefix creation tracker.
+	c.prefixCreated = make(map[string]bool, byteMax)
+
+	// Success.
+	return nil
+}
+
+func (c *stagingCoordinator) ensurePrefixExists(prefix string) error {
+	// Check if we've already created that prefix.
+	if c.prefixCreated[prefix] {
+		return nil
+	}
+
+	// Otherwise create it and mark it as created.
+	if err := os.MkdirAll(filepath.Join(c.root, prefix), 0700); err != nil {
+		return err
+	}
+	c.prefixCreated[prefix] = true
+
+	// Success.
+	return nil
 }
 
 func (c *stagingCoordinator) wipe() error {
-	return errors.Wrap(os.RemoveAll(c.root), "unable to remove staging directory")
+	// Zero-out the prefix creation tracker.
+	c.prefixCreated = nil
+
+	// Remove the staging root.
+	if err := os.RemoveAll(c.root); err != nil {
+		errors.Wrap(err, "unable to remove staging directory")
+	}
+
+	// Success.
+	return nil
 }
 
 func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
@@ -105,16 +145,16 @@ func (c *stagingCoordinator) Sink(path string) (io.WriteCloser, error) {
 
 	// Success.
 	return &stagingSink{
-		root:     c.root,
-		path:     path,
-		storage:  storage,
-		digester: c.version.hasher(),
+		coordinator: c,
+		path:        path,
+		storage:     storage,
+		digester:    c.version.hasher(),
 	}, nil
 }
 
 func (c *stagingCoordinator) Provide(path string, entry *sync.Entry) (string, error) {
 	// Compute the expected location of the file.
-	expectedLocation, err := pathForStaging(c.root, path, entry.Digest)
+	expectedLocation, _, err := pathForStaging(c.root, path, entry.Digest)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute staging path")
 	}

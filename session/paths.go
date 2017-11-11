@@ -3,7 +3,6 @@ package session
 import (
 	"crypto/sha1"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -81,30 +80,10 @@ func pathForStagingRoot(session string, alpha bool) (string, error) {
 	return filesystem.Mutagen(false, stagingDirectoryName, stagingRootName)
 }
 
-func createStagingRootWithPrefixes(root string) error {
-	// Create the root.
-	if err := os.MkdirAll(root, 0700); err != nil {
-		return errors.Wrap(err, "unable to create staging directory")
-	}
-
-	// Create all prefix directories within the staging root.
-	var prefixBytes [1]byte
-	for b := 0; b <= byteMax; b++ {
-		prefixBytes[0] = byte(b)
-		prefix := fmt.Sprintf("%x", prefixBytes[:])
-		if err := os.MkdirAll(filepath.Join(root, prefix), 0700); err != nil {
-			return errors.Wrap(err, "unable to create staging prefix")
-		}
-	}
-
-	// Success.
-	return nil
-}
-
-func pathForStaging(root, path string, digest []byte) (string, error) {
+func pathForStaging(root, path string, digest []byte) (string, string, error) {
 	// Compute the prefix for the entry.
 	if len(digest) == 0 {
-		return "", errors.New("entry digest too short")
+		return "", "", errors.New("entry digest too short")
 	}
 	prefix := fmt.Sprintf("%x", digest[:1])
 
@@ -112,5 +91,5 @@ func pathForStaging(root, path string, digest []byte) (string, error) {
 	stagingName := fmt.Sprintf("%x_%x", sha1.Sum([]byte(path)), digest)
 
 	// Success.
-	return filepath.Join(root, prefix, stagingName), nil
+	return filepath.Join(root, prefix, stagingName), prefix, nil
 }

@@ -26,7 +26,8 @@ type Receiver interface {
 
 // Sinker provides the interface for a receiver to store incoming files.
 type Sinker interface {
-	// Sink should return a new io.WriteCloser for staging the given path.
+	// Sink should return a new io.WriteCloser for staging the given path. Each
+	// result it returns will be closed before Sink is invoked again.
 	Sink(path string) (io.WriteCloser, error)
 }
 
