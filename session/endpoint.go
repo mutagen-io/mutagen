@@ -44,7 +44,7 @@ type endpoint interface {
 
 	// transition performs the specified transitions on the endpoint. It returns
 	// a list of successfully applied changes and a list of problems that
-	// occured while applying transitions.
+	// occurred while applying transitions.
 	// TODO: Should we consider pre-emptability for transition? It could
 	// probably be done by just checking for cancellation during each transition
 	// path and reporting "cancelled" for problems arising after that, but
