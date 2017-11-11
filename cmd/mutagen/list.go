@@ -159,7 +159,7 @@ func printMonitorLine(state sessionpkg.SessionState) {
 				state.State.Staging.Total > 0 {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
-				float32(state.State.Staging.Received)/float32(state.State.Staging.Total),
+				100.0*float32(state.State.Staging.Received)/float32(state.State.Staging.Total),
 				state.State.Staging.Received,
 				state.State.Staging.Total,
 			)
