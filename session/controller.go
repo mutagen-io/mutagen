@@ -504,43 +504,43 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			pollContext, pollCancel := contextpkg.WithCancel(contextpkg.Background())
 
 			// Start alpha polling.
-			alphaPollResults := make(chan error, 1)
+			αPollResults := make(chan error, 1)
 			go func() {
-				alphaPollResults <- alpha.poll(pollContext)
+				αPollResults <- alpha.poll(pollContext)
 			}()
 
 			// Start beta polling.
-			betaPollResults := make(chan error, 1)
+			βPollResults := make(chan error, 1)
 			go func() {
-				betaPollResults <- beta.poll(pollContext)
+				βPollResults <- beta.poll(pollContext)
 			}()
 
 			// Wait for either poll to return an event or an error, or for
 			// cancellation. In any of these cases, cancel polling and ensure
 			// that both polling operations have completed.
-			var alphaPollErr, betaPollErr error
+			var αPollErr, βPollErr error
 			cancelled := false
 			select {
-			case alphaPollErr = <-alphaPollResults:
+			case αPollErr = <-αPollResults:
 				pollCancel()
-				betaPollErr = <-betaPollResults
-			case betaPollErr = <-betaPollResults:
+				βPollErr = <-βPollResults
+			case βPollErr = <-βPollResults:
 				pollCancel()
-				alphaPollErr = <-alphaPollResults
+				αPollErr = <-αPollResults
 			case <-context.Done():
 				cancelled = true
 				pollCancel()
-				alphaPollErr = <-alphaPollResults
-				betaPollErr = <-betaPollResults
+				αPollErr = <-αPollResults
+				βPollErr = <-βPollResults
 			}
 
 			// Watch for errors or cancellation.
 			if cancelled {
 				return errors.New("cancelled during polling")
-			} else if alphaPollErr != nil {
-				return errors.Wrap(alphaPollErr, "alpha polling error")
-			} else if betaPollErr != nil {
-				return errors.Wrap(betaPollErr, "beta polling error")
+			} else if αPollErr != nil {
+				return errors.Wrap(αPollErr, "alpha polling error")
+			} else if βPollErr != nil {
+				return errors.Wrap(βPollErr, "beta polling error")
 			}
 		} else {
 			skipPolling = false
@@ -550,24 +550,24 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusScanningAlpha
 		c.stateLock.Unlock()
-		alphaSnapshot, alphaTryAgain, alphaScanErr := alpha.scan(ancestor)
-		if alphaScanErr != nil {
-			return errors.Wrap(alphaScanErr, "alpha scan error")
+		αSnapshot, αTryAgain, αScanErr := alpha.scan(ancestor)
+		if αScanErr != nil {
+			return errors.Wrap(αScanErr, "alpha scan error")
 		}
 
 		// Scan beta.
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusScanningBeta
 		c.stateLock.Unlock()
-		betaSnapshot, betaTryAgain, betaScanErr := beta.scan(ancestor)
-		if betaScanErr != nil {
-			return errors.Wrap(betaScanErr, "beta scan error")
+		βSnapshot, βTryAgain, βScanErr := beta.scan(ancestor)
+		if βScanErr != nil {
+			return errors.Wrap(βScanErr, "beta scan error")
 		}
 
 		// Watch for retry requests.
 		// TODO: Should we eventually abort synchronization after a certain
 		// number of consecutive scan retries?
-		if alphaTryAgain || betaTryAgain {
+		if αTryAgain || βTryAgain {
 			// Update status to waiting for rescan.
 			c.stateLock.Lock()
 			c.state.Status = SynchronizationStatusWaitingForRescan
@@ -591,87 +591,89 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Unlock()
 
 		// Reconcile and record conflicts.
-		ancestorChanges, alphaTransitions, betaTransitions, conflicts := sync.Reconcile(
-			ancestor, alphaSnapshot, betaSnapshot,
+		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
+			ancestor, αSnapshot, βSnapshot,
 		)
 		c.stateLock.Lock()
 		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
-		// Stage files on alpha.
-		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusStagingAlpha
-		c.stateLock.Unlock()
-		stagingPaths, stagingEntries, stagingError := sync.TransitionDependencies(alphaTransitions)
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to determine paths for staging on alpha")
-		}
-		stagingPaths, stagingSignatures, stagingReceiver, stagingError := alpha.stage(stagingPaths, stagingEntries)
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to begin staging on alpha")
-		}
-		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
+		// Create a monitoring callback for rsync staging.
+		monitor := func(status rsync.ReceivingStatus) error {
 			c.stateLock.Lock()
 			c.state.Staging = status
 			c.stateLock.Unlock()
 			return nil
-		})
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to create monitoring receiver for staging on alpha")
 		}
-		stagingReceiver = rsync.NewPreemptableReceiver(stagingReceiver, context)
-		if stagingError = beta.supply(stagingPaths, stagingSignatures, stagingReceiver); stagingError != nil {
-			return errors.Wrap(stagingError, "unable to stage files on alpha")
+
+		// Stage files on alpha.
+		c.stateLock.Lock()
+		c.state.Status = SynchronizationStatusStagingAlpha
+		c.stateLock.Unlock()
+		if paths, entries, err := sync.TransitionDependencies(αTransitions); err != nil {
+			return errors.Wrap(err, "unable to determine paths for staging on alpha")
+		} else if len(paths) > 0 {
+			paths, signatures, receiver, err := alpha.stage(paths, entries)
+			if err != nil {
+				return errors.Wrap(err, "unable to begin staging on alpha")
+			}
+			receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+			receiver = rsync.NewPreemptableReceiver(receiver, context)
+			if err = beta.supply(paths, signatures, receiver); err != nil {
+				return errors.Wrap(err, "unable to stage files on alpha")
+			}
 		}
 
 		// Stage files on beta.
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusStagingBeta
 		c.stateLock.Unlock()
-		stagingPaths, stagingEntries, stagingError = sync.TransitionDependencies(betaTransitions)
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to determine paths for staging on beta")
-		}
-		stagingPaths, stagingSignatures, stagingReceiver, stagingError = beta.stage(stagingPaths, stagingEntries)
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to begin staging on beta")
-		}
-		stagingReceiver, stagingError = rsync.NewMonitoringReceiver(stagingReceiver, stagingPaths, func(status rsync.ReceivingStatus) error {
-			c.stateLock.Lock()
-			c.state.Staging = status
-			c.stateLock.Unlock()
-			return nil
-		})
-		if stagingError != nil {
-			return errors.Wrap(stagingError, "unable to create monitoring receiver for staging on beta")
-		}
-		stagingReceiver = rsync.NewPreemptableReceiver(stagingReceiver, context)
-		if stagingError = alpha.supply(stagingPaths, stagingSignatures, stagingReceiver); stagingError != nil {
-			return errors.Wrap(stagingError, "unable to stage files on beta")
+		if paths, entries, err := sync.TransitionDependencies(βTransitions); err != nil {
+			return errors.Wrap(err, "unable to determine paths for staging on beta")
+		} else if len(paths) > 0 {
+			paths, signatures, receiver, err := beta.stage(paths, entries)
+			if err != nil {
+				return errors.Wrap(err, "unable to begin staging on beta")
+			}
+			receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+			receiver = rsync.NewPreemptableReceiver(receiver, context)
+			if err = alpha.supply(paths, signatures, receiver); err != nil {
+				return errors.Wrap(err, "unable to stage files on beta")
+			}
 		}
 
 		// Perform transitions on alpha.
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusTransitioningAlpha
 		c.stateLock.Unlock()
-		alphaChanges, alphaProblems, alphaTransitionErr := alpha.transition(alphaTransitions)
+		var αChanges []sync.Change
+		var αProblems []sync.Problem
+		var αTransitionErr error
+		if len(αTransitions) > 0 {
+			αChanges, αProblems, αTransitionErr = alpha.transition(αTransitions)
+		}
 
 		// Perform transitions on beta.
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusTransitioningBeta
 		c.stateLock.Unlock()
-		betaChanges, betaProblems, betaTransitionErr := beta.transition(betaTransitions)
+		var βChanges []sync.Change
+		var βProblems []sync.Problem
+		var βTransitionErr error
+		if len(βTransitions) > 0 {
+			βChanges, βProblems, βTransitionErr = beta.transition(βTransitions)
+		}
 
 		// Record problems and then combine changes and propagate them to the
 		// ancestor. Even if there were transition errors, this code is still
 		// valid.
 		c.stateLock.Lock()
 		c.state.Status = SynchronizationStatusSaving
-		c.state.AlphaProblems = alphaProblems
-		c.state.BetaProblems = betaProblems
+		c.state.AlphaProblems = αProblems
+		c.state.BetaProblems = βProblems
 		c.stateLock.Unlock()
-		ancestorChanges = append(ancestorChanges, alphaChanges...)
-		ancestorChanges = append(ancestorChanges, betaChanges...)
+		ancestorChanges = append(ancestorChanges, αChanges...)
+		ancestorChanges = append(ancestorChanges, βChanges...)
 		if newAncestor, err := sync.Apply(ancestor, ancestorChanges); err != nil {
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
 		} else {
@@ -691,10 +693,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 
 		// Now check for transition errors.
-		if alphaTransitionErr != nil {
-			return errors.Wrap(alphaTransitionErr, "unable to apply changes to alpha")
-		} else if betaTransitionErr != nil {
-			return errors.Wrap(betaTransitionErr, "unable to apply changes to beta")
+		if αTransitionErr != nil {
+			return errors.Wrap(αTransitionErr, "unable to apply changes to alpha")
+		} else if βTransitionErr != nil {
+			return errors.Wrap(βTransitionErr, "unable to apply changes to beta")
 		}
 
 		// After a successful synchronization cycle, clear any synchronization

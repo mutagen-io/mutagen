@@ -262,14 +262,14 @@ type monitoringReceiver struct {
 
 // NewMonitoringReceiver wraps a receiver and provides monitoring information
 // via a callback.
-func NewMonitoringReceiver(receiver Receiver, paths []string, monitor Monitor) (Receiver, error) {
+func NewMonitoringReceiver(receiver Receiver, paths []string, monitor Monitor) Receiver {
 	return &monitoringReceiver{
 		receiver:  receiver,
 		paths:     paths,
 		total:     uint64(len(paths)),
 		beginning: true,
 		monitor:   monitor,
-	}, nil
+	}
 }
 
 // Receive forwards messages to its underlying receiver and performs status
