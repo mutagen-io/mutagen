@@ -96,6 +96,9 @@ type engineTestCase struct {
 
 // run executes the test case.
 func (c engineTestCase) run(t *testing.T) {
+	// Mark this as a helper function.
+	t.Helper()
+
 	// Generate base and target data.
 	base := c.base.generate()
 	target := c.target.generate()
