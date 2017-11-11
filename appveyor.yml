@@ -28,14 +28,14 @@ before_test:
 # HACK: We have to use a custom script to invoke tests because we want a
 # combined coverage report that includes all packages and go test currently
 # doesn't support that (golang/go#6909).
-# TODO: It looks like golang/go#6909 is going to be resolved in Go 1.10, so I
-# think we'll be able to ditch our custom ci_testing.go script and just use the
-# toolchain directly. We'll also be able to ditch gocovmerge and just get a
-# unified coverage profile directly. Other relevant issues are golang/go#10271
-# and golang/go#21126, which are slight variations on the main issue and will
-# also seemingly be resolved in Go 1.10. We may still need to find a way to skip
-# the directories we have that are not actually Go packages - it depends whether
-# or not they cause problems.
+# TODO: It looks like golang/go#6909 has been resolved by golang/go@283558e,
+# which should be available in Go 1.10, so I think we'll be able to ditch our
+# custom ci_testing.go script and just use the toolchain directly. We'll also be
+# able to ditch gocovmerge and just get a unified coverage profile directly.
+# Other relevant issues are golang/go#10271 and golang/go#21126, which are
+# slight variations on the main issue and will also seemingly be resolved in
+# Go 1.10. We may still need to find a way to skip the directories we have that
+# are not actually Go packages - it depends whether or not they cause problems.
 test_script:
   - go version
   - go run scripts/ci_testing.go --race
