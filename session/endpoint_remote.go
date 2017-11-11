@@ -251,8 +251,10 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 		return errors.Wrap(err, "unable to marshal snapshot")
 	}
 
-	// Create an rsync engine and compute the snapshot's delta against the base.
+	// Create an rsync engine.
 	engine := rsync.NewEngine()
+
+	// Compute the snapshot's delta against the base.
 	delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
 
 	// Send the response.
@@ -331,8 +333,6 @@ type remoteEndpointClient struct {
 	encoder *gob.Encoder
 	// decoder is the control stream decoder.
 	decoder *gob.Decoder
-	// rsyncEngine is the rsync engine used for snapshot transfers.
-	rsyncEngine *rsync.Engine
 	// preservesExecutability indicates whether or not the remote endpoint
 	// preserves executability.
 	preservesExecutability bool
@@ -380,7 +380,6 @@ func newRemoteEndpoint(
 		connection:             connection,
 		encoder:                encoder,
 		decoder:                decoder,
-		rsyncEngine:            rsync.NewEngine(),
 		preservesExecutability: response.PreservesExecutability,
 	}, nil
 }
@@ -449,13 +448,16 @@ func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 }
 
 func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
+	// Create an rsync engine.
+	engine := rsync.NewEngine()
+
 	// Marshal the ancestor and compute its rsync signature. We'll use it as a
 	// base for an rsync transfer of the serialized snapshot.
 	ancestorBytes, err := marshalEntry(ancestor)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to marshal ancestor")
 	}
-	ancestorSignature := e.rsyncEngine.BytesSignature(ancestorBytes, 0)
+	ancestorSignature := engine.BytesSignature(ancestorBytes, 0)
 
 	// Create and send the scan request.
 	request := endpointRequest{Scan: &scanRequest{ancestorSignature}}
@@ -475,7 +477,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := e.rsyncEngine.PatchBytes(ancestorBytes, ancestorSignature, response.SnapshotDelta)
+	snapshotBytes, err := engine.PatchBytes(ancestorBytes, ancestorSignature, response.SnapshotDelta)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}

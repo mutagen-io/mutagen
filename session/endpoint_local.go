@@ -30,8 +30,6 @@ type localEndpoint struct {
 	cache *sync.Cache
 	// scanHasher is the hasher used for scans.
 	scanHasher hash.Hash
-	// rsyncEngine is the rsync engine used for computing signatures.
-	rsyncEngine *rsync.Engine
 	// stagingCoordinator is the staging coordinator.
 	stagingCoordinator *stagingCoordinator
 }
@@ -86,7 +84,6 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 		cachePath:          cachePath,
 		cache:              cache,
 		scanHasher:         version.hasher(),
-		rsyncEngine:        rsync.NewEngine(),
 		stagingCoordinator: stagingCoordinator,
 	}, nil
 }
@@ -144,6 +141,9 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 		}
 	}
 
+	// Create an rsync engine.
+	engine := rsync.NewEngine()
+
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltafying/patching.
@@ -151,7 +151,7 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	for i, p := range unstagedPaths {
 		if base, err := os.Open(filepath.Join(e.root, p)); err != nil {
 			continue
-		} else if signature, err := e.rsyncEngine.Signature(base, 0); err != nil {
+		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
 			continue
 		} else {
