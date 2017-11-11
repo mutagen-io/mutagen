@@ -60,6 +60,7 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 	// Compute the cache path.
 	cachePath, err := pathForCache(session, alpha)
 	if err != nil {
+		watchCancel()
 		return nil, errors.Wrap(err, "unable to compute/create cache path")
 	}
 
@@ -72,6 +73,7 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 	// Create a staging coordinator.
 	stagingCoordinator, err := newStagingCoordinator(session, version, alpha)
 	if err != nil {
+		watchCancel()
 		return nil, errors.Wrap(err, "unable to create staging coordinator")
 	}
 

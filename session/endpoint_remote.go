@@ -162,10 +162,12 @@ func ServeEndpoint(connection net.Conn) error {
 			// sent. Both of these will happen, though their order is not
 			// guaranteed. If the completion receive comes first, then force the
 			// response. If the response has been sent, then we know the
-			// completion request is on its way.
+			// completion request is on its way, but we still need to cancel the
+			// context to avoid leaking a Goroutine.
 			var responseSendErr, completionReceiveErr error
 			select {
 			case responseSendErr = <-responseSendResults:
+				forceResponse()
 				completionReceiveErr = <-completionReceiveResults
 			case completionReceiveErr = <-completionReceiveResults:
 				forceResponse()
