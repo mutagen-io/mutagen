@@ -31,8 +31,8 @@ To see help for a particular command, use 'mutagen <command> --help'.
 
 // handlers maps command names to their handlers.
 var handlers = map[string]func([]string) error{
-	"list":      listMain,
 	"create":    createMain,
+	"list":      listMain,
 	"pause":     pauseMain,
 	"resume":    resumeMain,
 	"terminate": terminateMain,
