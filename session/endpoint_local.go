@@ -30,8 +30,8 @@ type localEndpoint struct {
 	cache *sync.Cache
 	// scanHasher is the hasher used for scans.
 	scanHasher hash.Hash
-	// stagingCoordinator is the staging coordinator.
-	stagingCoordinator *stagingCoordinator
+	// stager is the staging coordinator.
+	stager *stager
 }
 
 func newLocalEndpoint(session string, version Version, root string, ignores []string, alpha bool) (endpoint, error) {
@@ -69,7 +69,7 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 	}
 
 	// Create a staging coordinator.
-	stagingCoordinator, err := newStagingCoordinator(session, version, alpha)
+	stager, err := newStager(session, version, alpha)
 	if err != nil {
 		watchCancel()
 		return nil, errors.Wrap(err, "unable to create staging coordinator")
@@ -77,14 +77,14 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 
 	// Success.
 	return &localEndpoint{
-		root:               root,
-		watchCancel:        watchCancel,
-		watchEvents:        watchEvents,
-		ignores:            ignores,
-		cachePath:          cachePath,
-		cache:              cache,
-		scanHasher:         version.hasher(),
-		stagingCoordinator: stagingCoordinator,
+		root:        root,
+		watchCancel: watchCancel,
+		watchEvents: watchEvents,
+		ignores:     ignores,
+		cachePath:   cachePath,
+		cache:       cache,
+		scanHasher:  version.hasher(),
+		stager:      stager,
 	}, nil
 }
 
@@ -131,7 +131,7 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	// already provide them.
 	unstagedPaths := make([]string, 0, len(paths))
 	for i, p := range paths {
-		if _, err := e.stagingCoordinator.Provide(p, entries[i]); err != nil {
+		if _, err := e.stager.Provide(p, entries[i]); err != nil {
 			unstagedPaths = append(unstagedPaths, p)
 		}
 	}
@@ -156,7 +156,7 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	}
 
 	// Create a receiver.
-	receiver, err := rsync.NewReceiver(e.root, unstagedPaths, signatures, e.stagingCoordinator)
+	receiver, err := rsync.NewReceiver(e.root, unstagedPaths, signatures, e.stager)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to create rsync receiver")
 	}
@@ -171,7 +171,7 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 
 func (e *localEndpoint) transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
 	// Perform the transition.
-	changes, problems := sync.Transition(e.root, transitions, e.cache, e.stagingCoordinator)
+	changes, problems := sync.Transition(e.root, transitions, e.cache, e.stager)
 
 	// Wipe the staging directory. We don't monitor for errors here, because we
 	// need to return the changes and problems no matter what, but if there's
@@ -180,7 +180,7 @@ func (e *localEndpoint) transition(transitions []sync.Change) ([]sync.Change, []
 	// TODO: If we see a large number of problems, should we avoid wiping the
 	// staging directory? It could be due to a parent path component missing,
 	// which could be corrected.
-	e.stagingCoordinator.wipe()
+	e.stager.wipe()
 
 	// Done.
 	return changes, problems, nil
