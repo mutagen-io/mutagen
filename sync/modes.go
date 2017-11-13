@@ -19,4 +19,8 @@ const (
 	// execute a file. If a file's entry indicates it is executable, this bit
 	// should be set by providers.
 	UserExecutablePermission os.FileMode = 0100
+
+	// directoryBaseMode is the base mode for directories created in
+	// trannsitions.
+	directoryBaseMode os.FileMode = 0700
 )

@@ -394,7 +394,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	fullPath := filepath.Join(root, path)
 
 	// Attempt to create the directory.
-	if err := os.Mkdir(fullPath, 0700); err != nil {
+	if err := os.Mkdir(fullPath, directoryBaseMode); err != nil {
 		return nil, []Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to create directory"),
