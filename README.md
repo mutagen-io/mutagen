@@ -31,7 +31,8 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 For usage information, please see the
 [documentation site](https://havoc-io.github.io/mutagen). For platform-specific
-instructions and known issues, please see the [platform guide](doc/PLATFORM.md).
+instructions and known issues, please see the
+[platform guide](doc/PLATFORMs.md).
 
 
 ## FAQs
