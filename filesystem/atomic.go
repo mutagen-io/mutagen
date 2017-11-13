@@ -69,6 +69,13 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to open source file")
 	}
 
+	// Grab the source file's metadata.
+	metadata, err := source.Stat()
+	if err != nil {
+		source.Close()
+		return errors.Wrap(err, "unable to grab source file metadata")
+	}
+
 	// Create a temporary file next to the destination.
 	dirname, basename := filepath.Split(newPath)
 	temporary, err := ioutil.TempFile(dirname, basename)
@@ -77,6 +84,13 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to create temporary file")
 	}
 	temporaryPath := temporary.Name()
+
+	// Set the file mode on the destination.
+	if err = temporary.Chmod(metadata.Mode()); err != nil {
+		source.Close()
+		temporary.Close()
+		return errors.Wrap(err, "unable to set file mode")
+	}
 
 	// Copy the file contents. We'll handle errors below.
 	_, err = io.Copy(temporary, source)
