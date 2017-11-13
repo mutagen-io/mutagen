@@ -161,21 +161,28 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	}, nil
 }
 
-func (s *stager) Provide(path string, entry *sync.Entry) (string, error) {
+func (s *stager) Provide(path string, entry *sync.Entry, baseMode os.FileMode) (string, error) {
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, entry.Digest)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute staging path")
 	}
 
-	// Ensure that it has the correct permissions. This will fail if the file
-	// doens't exist.
-	permissions := os.FileMode(0600)
-	if entry.Executable {
-		permissions = os.FileMode(0700)
+	// Compute the file mode.
+	mode := baseMode
+	if mode == 0 {
+		mode = sync.ProviderBaseMode
 	}
-	if err = os.Chmod(expectedLocation, permissions); err != nil {
-		return "", errors.Wrap(err, "unable to set file permissions")
+	if entry.Executable {
+		mode |= sync.UserExecutablePermission
+	} else {
+		mode &^= sync.AnyExecutablePermission
+	}
+
+	// Ensure that it has the correct mode. This will fail if the file doesn't
+	// exist.
+	if err = os.Chmod(expectedLocation, mode); err != nil {
+		return "", errors.Wrap(err, "unable to set file mode")
 	}
 
 	// Success.

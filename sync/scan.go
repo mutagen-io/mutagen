@@ -43,7 +43,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	size := uint64(info.Size())
 
 	// Compute executability.
-	executable := (mode&0111 != 0)
+	executable := (mode&AnyExecutablePermission != 0)
 
 	// Try to find a cached digest. We only enforce that type, modification
 	// time, and size haven't changed in order to re-use digests.

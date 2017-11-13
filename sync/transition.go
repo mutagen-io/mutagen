@@ -18,10 +18,10 @@ import (
 type Provider interface {
 	// Provide returns a filesystem path to a file containing the contents for
 	// the path given as the first argument with the properties specified by the
-	// second argument. The digest and executability properties of the entry
-	// must be guaranteed by the provider. The entry will always be a file type
-	// entry.
-	Provide(string, *Entry) (string, error)
+	// second argument and a mode based on the base mode and entry properties.
+	// If a zero base mode is provided, a base mode of ProviderBaseMode should
+	// be assumed.
+	Provide(path string, entry *Entry, baseMode os.FileMode) (string, error)
 }
 
 func ensureRouteWithProperCase(root, path string, skipLast bool) error {
@@ -69,7 +69,7 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	return nil
 }
 
-func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *Cache) error {
+func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *Cache) (os.FileMode, error) {
 	// Grab cache information for this path. If we can't find it, we treat this
 	// as an immediate fail. This is a bit of a heuristic/hack, because we could
 	// recompute the digest of what's on disk, but for our use case this is very
@@ -77,16 +77,19 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	// last scan.
 	cacheEntry, ok := cache.Entries[path]
 	if !ok {
-		return errors.New("unable to find cache information for path")
+		return 0, errors.New("unable to find cache information for path")
 	}
 
 	// Grab stat information for this path.
 	info, err := os.Lstat(fullPath)
 	if os.IsNotExist(err) {
-		return nil
+		return 0, nil
 	} else if err != nil {
-		return errors.Wrap(err, "unable to grab file statistics")
+		return 0, errors.Wrap(err, "unable to grab file statistics")
 	}
+
+	// Grab the model.
+	mode := info.Mode()
 
 	// Grab the modification time.
 	modificationTime := info.ModTime()
@@ -97,16 +100,16 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	// check that it hasn't changed from the perspective of the filesystem, and
 	// that is accomplished as part of the mode check. This is why we don't
 	// restrict the mode comparison to the type bits.
-	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
+	match := os.FileMode(cacheEntry.Mode) == mode &&
 		modificationTime.Equal(cacheEntry.ModificationTime) &&
 		cacheEntry.Size_ == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, expected.Digest)
 	if !match {
-		return errors.New("modification detected")
+		return 0, errors.New("modification detected")
 	}
 
 	// Success.
-	return nil
+	return mode, nil
 }
 
 func ensureExpectedSymlinkOrNothing(fullPath string, expected *Entry) error {
@@ -149,7 +152,7 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting or that it's been removed.
-	if err := ensureExpectedFileOrNothing(fullPath, path, target, cache); err != nil {
+	if _, err := ensureExpectedFileOrNothing(fullPath, path, target, cache); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
@@ -329,12 +332,13 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	if err := ensureExpectedFileOrNothing(fullPath, path, oldEntry, cache); err != nil {
+	baseMode, err := ensureExpectedFileOrNothing(fullPath, path, oldEntry, cache)
+	if err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, newEntry)
+	stagedPath, err := provider.Provide(path, newEntry, baseMode)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
 	}
@@ -353,7 +357,7 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 	fullPath := filepath.Join(root, path)
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, target)
+	stagedPath, err := provider.Provide(path, target, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to locate staged file")
 	}
