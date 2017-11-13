@@ -75,11 +75,12 @@ func createMain(arguments []string) error {
 	defer stream.Close()
 
 	// Send the initial request.
-	if err := stream.Send(sessionpkg.CreateRequest{
+	request := sessionpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
 		Ignores: []string(ignores),
-	}); err != nil {
+	}
+	if err := stream.Send(request); err != nil {
 		return errors.Wrap(err, "unable to send creation request")
 	}
 
