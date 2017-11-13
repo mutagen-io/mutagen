@@ -89,7 +89,27 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	}
 
 	// Success.
-	return &Entry{EntryKind_File, executable, digest, nil}, nil
+	return &Entry{
+		Kind:       EntryKind_File,
+		Executable: executable,
+		Digest:     digest,
+	}, nil
+}
+
+func (s *scanner) symlink(path string) (*Entry, error) {
+	// Read the link target and ensure it's sane.
+	target, err := os.Readlink(filepath.Join(s.root, path))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to read symlink target")
+	} else if target == "" {
+		return nil, errors.New("empty symlink target read")
+	}
+
+	// Success.
+	return &Entry{
+		Kind:   EntryKind_Symlink,
+		Target: target,
+	}, nil
 }
 
 func (s *scanner) directory(path string) (*Entry, error) {
@@ -124,6 +144,8 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		kind := EntryKind_File
 		if mode := info.Mode(); mode&os.ModeDir != 0 {
 			kind = EntryKind_Directory
+		} else if mode&os.ModeSymlink != 0 {
+			kind = EntryKind_Symlink
 		} else if mode&os.ModeType != 0 {
 			continue
 		}
@@ -132,6 +154,12 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		var entry *Entry
 		if kind == EntryKind_File {
 			entry, err = s.file(contentPath, info)
+		} else if kind == EntryKind_Symlink {
+			if symlinksSupported {
+				entry, err = s.symlink(contentPath)
+			} else {
+				continue
+			}
 		} else if kind == EntryKind_Directory {
 			entry, err = s.directory(contentPath)
 		} else {
@@ -148,7 +176,10 @@ func (s *scanner) directory(path string) (*Entry, error) {
 	}
 
 	// Success.
-	return &Entry{EntryKind_Directory, false, nil, contents}, nil
+	return &Entry{
+		Kind:     EntryKind_Directory,
+		Contents: contents,
+	}, nil
 }
 
 func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry, *Cache, error) {

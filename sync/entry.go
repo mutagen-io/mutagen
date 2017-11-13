@@ -19,6 +19,8 @@ func (e *Entry) EnsureValid() error {
 			return errors.New("executable directory detected")
 		} else if e.Digest != nil {
 			return errors.New("non-nil directory digest detected")
+		} else if e.Target != "" {
+			return errors.New("non-empty symlink target detected for directory")
 		}
 
 		// Validate contents. Nil entries are NOT allowed as contents.
@@ -32,14 +34,30 @@ func (e *Entry) EnsureValid() error {
 			}
 		}
 	} else if e.Kind == EntryKind_File {
-		// Ensure that there are no contents.
+		// Ensure that no invalid fields are set.
 		if e.Contents != nil {
 			return errors.New("non-nil file contents detected")
+		} else if e.Target != "" {
+			return errors.New("non-empty symlink target detected for file")
 		}
 
 		// Ensure that the digest is non-empty.
 		if len(e.Digest) == 0 {
 			return errors.New("file with empty digest detected")
+		}
+	} else if e.Kind == EntryKind_Symlink {
+		// Ensure that no invalid fields are set.
+		if e.Executable {
+			return errors.New("executable symlink detected")
+		} else if e.Digest != nil {
+			return errors.New("non-nil symlink digest detected")
+		} else if e.Contents != nil {
+			return errors.New("non-nil symlink contents detected")
+		}
+
+		// Ensure that the target is non-empty.
+		if e.Target == "" {
+			return errors.New("symlink with empty target detected")
 		}
 	} else {
 		return errors.New("unknown entry kind detected")
@@ -66,7 +84,8 @@ func (e *Entry) equalShallow(other *Entry) bool {
 	// Check properties.
 	return e.Kind == other.Kind &&
 		e.Executable == other.Executable &&
-		bytes.Equal(e.Digest, other.Digest)
+		bytes.Equal(e.Digest, other.Digest) &&
+		e.Target == other.Target
 }
 
 func (e *Entry) Equal(other *Entry) bool {
@@ -101,6 +120,7 @@ func (e *Entry) copyShallow() *Entry {
 		Kind:       e.Kind,
 		Executable: e.Executable,
 		Digest:     e.Digest,
+		Target:     e.Target,
 	}
 }
 
@@ -115,6 +135,7 @@ func (e *Entry) copy() *Entry {
 		Kind:       e.Kind,
 		Executable: e.Executable,
 		Digest:     e.Digest,
+		Target:     e.Target,
 	}
 
 	// If the original entry doesn't have any contents, return now to save an

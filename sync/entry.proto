@@ -11,6 +11,7 @@ option (gogoproto.sizer_all) = true;
 enum EntryKind {
     Directory = 0;
     File = 1;
+    Symlink = 2;
 }
 
 message Entry {
@@ -20,4 +21,5 @@ message Entry {
     bool executable = 2;
     bytes digest = 3;
     map<string, Entry> contents = 4;
+    string target = 5;
 }

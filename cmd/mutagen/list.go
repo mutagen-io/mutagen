@@ -83,7 +83,12 @@ func formatEntryKind(entry *sync.Entry) string {
 	} else if entry.Kind == sync.EntryKind_Directory {
 		return "Directory"
 	} else if entry.Kind == sync.EntryKind_File {
-		return "File"
+		if entry.Executable {
+			return fmt.Sprintf("Executable File (%x)", entry.Digest)
+		}
+		return fmt.Sprintf("File (%x)", entry.Digest)
+	} else if entry.Kind == sync.EntryKind_Symlink {
+		return fmt.Sprintf("Symlink (%s)", entry.Target)
 	} else {
 		return "<unknown>"
 	}

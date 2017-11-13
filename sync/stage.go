@@ -18,15 +18,17 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 	}
 
 	// Handle based on type.
-	if entry.Kind == EntryKind_File {
-		f.paths = append(f.paths, path)
-		f.entries = append(f.entries, entry)
-	} else if entry.Kind == EntryKind_Directory {
+	if entry.Kind == EntryKind_Directory {
 		for name, entry := range entry.Contents {
 			if err := f.find(pathpkg.Join(path, name), entry); err != nil {
 				return err
 			}
 		}
+	} else if entry.Kind == EntryKind_File {
+		f.paths = append(f.paths, path)
+		f.entries = append(f.entries, entry)
+	} else if entry.Kind == EntryKind_Symlink {
+		return nil
 	} else {
 		return errors.New("unknown entry type encountered")
 	}

@@ -69,7 +69,7 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	return nil
 }
 
-func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
+func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *Cache) error {
 	// Grab cache information for this path. If we can't find it, we treat this
 	// as an immediate fail. This is a bit of a heuristic/hack, because we could
 	// recompute the digest of what's on disk, but for our use case this is very
@@ -82,7 +82,9 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 
 	// Grab stat information for this path.
 	info, err := os.Lstat(fullPath)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
 		return errors.Wrap(err, "unable to grab file statistics")
 	}
 
@@ -98,9 +100,27 @@ func ensureExpected(fullPath, path string, target *Entry, cache *Cache) error {
 	match := os.FileMode(cacheEntry.Mode) == info.Mode() &&
 		modificationTime.Equal(cacheEntry.ModificationTime) &&
 		cacheEntry.Size_ == uint64(info.Size()) &&
-		bytes.Equal(cacheEntry.Digest, target.Digest)
+		bytes.Equal(cacheEntry.Digest, expected.Digest)
 	if !match {
 		return errors.New("modification detected")
+	}
+
+	// Success.
+	return nil
+}
+
+func ensureExpectedSymlinkOrNothing(fullPath string, expected *Entry) error {
+	// Grab the link target.
+	target, err := os.Readlink(fullPath)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return errors.Wrap(err, "unable to read symlink target")
+	}
+
+	// Ensure that the targets match.
+	if target != expected.Target {
+		return errors.New("symlink target does not match expected")
 	}
 
 	// Success.
@@ -128,12 +148,31 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 	fullPath := filepath.Join(root, path)
 
 	// Ensure that the existing entry hasn't been modified from what we're
-	// expecting.
-	if err := ensureExpected(fullPath, path, target, cache); err != nil {
+	// expecting or that it's been removed.
+	if err := ensureExpectedFileOrNothing(fullPath, path, target, cache); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
 	// Remove the file.
+	return os.Remove(fullPath)
+}
+
+func removeSymlink(root, path string, target *Entry) error {
+	// Check that symlinks are supported on this platform.
+	if !symlinksSupported {
+		return errors.New("symlinks not supported on this platform")
+	}
+
+	// Compute the full path to this symlink.
+	fullPath := filepath.Join(root, path)
+
+	// Ensure that the existing symlink hasn't been modified from what we're
+	// expecting or that it's been removed.
+	if err := ensureExpectedSymlinkOrNothing(fullPath, target); err != nil {
+		return errors.Wrap(err, "unable to validate existing symlink")
+	}
+
+	// Remove the symlink.
 	return os.Remove(fullPath)
 }
 
@@ -183,6 +222,13 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []Problem {
 				contentProblems = append(contentProblems, newProblem(
 					contentPath,
 					errors.Wrap(err, "unable to remove file"),
+				))
+			}
+		} else if entry.Kind == EntryKind_Symlink {
+			if err = removeSymlink(root, contentPath, entry); err != nil {
+				contentProblems = append(contentProblems, newProblem(
+					contentPath,
+					errors.Wrap(err, "unable to remove symlink"),
 				))
 			}
 		} else {
@@ -247,6 +293,13 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 				errors.Wrap(err, "unable to remove file"),
 			)}
 		}
+	} else if target.Kind == EntryKind_Symlink {
+		if err := removeSymlink(root, path, targetCopy); err != nil {
+			problems = []Problem{newProblem(
+				path,
+				errors.Wrap(err, "unable to remove symlink"),
+			)}
+		}
 	} else {
 		problems = []Problem{newProblem(
 			path,
@@ -264,7 +317,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 	return nil, nil
 }
 
-func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider Provider) error {
+func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider Provider) error {
 	// Compute the full path to this file.
 	fullPath := filepath.Join(root, path)
 
@@ -276,7 +329,7 @@ func swap(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider P
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	if err := ensureExpected(fullPath, path, oldEntry, cache); err != nil {
+	if err := ensureExpectedFileOrNothing(fullPath, path, oldEntry, cache); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
@@ -308,6 +361,24 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 	// Rename the staged file.
 	if err := filesystem.RenameFileAtomic(stagedPath, fullPath); err != nil {
 		return nil, errors.Wrap(err, "unable to relocate staged file")
+	}
+
+	// Success.
+	return target, nil
+}
+
+func createSymlink(root, path string, target *Entry) (*Entry, error) {
+	// Check that symlinks are supported on this platform.
+	if !symlinksSupported {
+		return nil, errors.New("symlinks not supported on this platform")
+	}
+
+	// Compute the full path to the target.
+	fullPath := filepath.Join(root, path)
+
+	// Create the symlink.
+	if err := os.Symlink(target.Target, fullPath); err != nil {
+		return nil, errors.Wrap(err, "unable to link to target")
 	}
 
 	// Success.
@@ -354,6 +425,15 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 				contentProblems = append(contentProblems, newProblem(
 					contentPath,
 					errors.Wrap(err, "unable to create file"),
+				))
+			}
+		} else if entry.Kind == EntryKind_Symlink {
+			var err error
+			createdContent, err = createSymlink(root, contentPath, entry)
+			if err != nil {
+				contentProblems = append(contentProblems, newProblem(
+					contentPath,
+					errors.Wrap(err, "unable to create symlink"),
 				))
 			}
 		} else {
@@ -416,6 +496,15 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 		} else {
 			return created, nil
 		}
+	} else if target.Kind == EntryKind_Symlink {
+		if created, err := createSymlink(root, path, target); err != nil {
+			return created, []Problem{newProblem(
+				path,
+				errors.Wrap(err, "unable to create symlink"),
+			)}
+		} else {
+			return created, nil
+		}
 	}
 	return nil, []Problem{newProblem(
 		path,
@@ -446,7 +535,7 @@ func Transition(root string, transitions []Change, cache *Cache, provider Provid
 			t.Old.Kind == EntryKind_File &&
 			t.New.Kind == EntryKind_File
 		if fileToFile {
-			if err := swap(root, t.Path, t.Old, t.New, cache, provider); err != nil {
+			if err := swapFile(root, t.Path, t.Old, t.New, cache, provider); err != nil {
 				results = append(results, Change{Path: t.Path, New: t.Old})
 				problems = append(problems, newProblem(
 					t.Path,
