@@ -1,13 +1,15 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/daemon"
 	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rpc"
-	"github.com/havoc-io/mutagen/session"
+	sessionpkg "github.com/havoc-io/mutagen/session"
 	"github.com/havoc-io/mutagen/url"
 )
 
@@ -66,14 +68,14 @@ func createMain(arguments []string) error {
 
 	// Invoke the session creation method and ensure the resulting stream is
 	// closed when we're done.
-	stream, err := daemonClient.Invoke(session.MethodCreate)
+	stream, err := daemonClient.Invoke(sessionpkg.MethodCreate)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke session creation")
 	}
 	defer stream.Close()
 
 	// Send the initial request.
-	if err := stream.Send(session.CreateRequest{
+	if err := stream.Send(sessionpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
 		Ignores: []string(ignores),
@@ -82,5 +84,19 @@ func createMain(arguments []string) error {
 	}
 
 	// Handle authentication challenges.
-	return handleChallengePrompts(stream)
+	if err := handlePromptRequests(stream); err != nil {
+		return errors.Wrap(err, "unable to handle prompt requests")
+	}
+
+	// Receive the create response.
+	var response sessionpkg.CreateResponse
+	if err := stream.Receive(&response); err != nil {
+		return errors.Wrap(err, "unable to receive create response")
+	}
+
+	// Print the session identifier.
+	fmt.Println("Created session", response.Session)
+
+	// Success.
+	return nil
 }

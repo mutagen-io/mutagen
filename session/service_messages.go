@@ -5,6 +5,7 @@ import (
 )
 
 type PromptRequest struct {
+	Done    bool
 	Message string
 	Prompt  string
 }
@@ -17,6 +18,10 @@ type CreateRequest struct {
 	Alpha   *url.URL
 	Beta    *url.URL
 	Ignores []string
+}
+
+type CreateResponse struct {
+	Session string
 }
 
 type ListRequest struct {
@@ -37,6 +42,8 @@ type PauseResponse struct{}
 type ResumeRequest struct {
 	Session string
 }
+
+type ResumeResponse struct{}
 
 type TerminateRequest struct {
 	Session string

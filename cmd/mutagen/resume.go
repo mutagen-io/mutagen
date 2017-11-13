@@ -41,5 +41,16 @@ func resumeMain(arguments []string) error {
 	}
 
 	// Handle authentication challenges.
-	return handleChallengePrompts(stream)
+	if err := handlePromptRequests(stream); err != nil {
+		return errors.Wrap(err, "unable to handle prompt requests")
+	}
+
+	// Receive the resume response.
+	var response sessionpkg.ResumeResponse
+	if err := stream.Receive(&response); err != nil {
+		return errors.Wrap(err, "unable to receive resume response")
+	}
+
+	// Success.
+	return nil
 }

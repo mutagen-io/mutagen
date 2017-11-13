@@ -146,13 +146,25 @@ func (s *Service) create(stream rpc.HandlerStream) error {
 		return err
 	}
 
+	// Extract the session identifier.
+	sessionId := controller.session.Identifier
+
 	// Register the controller.
 	s.sessionsLock.Lock()
-	s.sessions[controller.session.Identifier] = controller
+	s.sessions[sessionId] = controller
 	s.sessionsLock.Unlock()
 
-	// Success. We signal the end of the stream by closing it (which sends an
-	// io.EOF), and returning from the handler will do that by default.
+	// Signal prompt completion.
+	if err := stream.Send(PromptRequest{Done: true}); err != nil {
+		return errors.Wrap(err, "unable to terminate prompting stream")
+	}
+
+	// Send the response.
+	if err := stream.Send(CreateResponse{Session: sessionId}); err != nil {
+		return errors.Wrap(err, "unable to send create response")
+	}
+
+	// Success.
 	return nil
 }
 
@@ -259,8 +271,13 @@ func (s *Service) pause(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to pause session")
 	}
 
+	// Send the response.
+	if err := stream.Send(PauseResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send pause response")
+	}
+
 	// Success.
-	return stream.Send(PauseResponse{})
+	return nil
 }
 
 func (s *Service) resume(stream rpc.HandlerStream) error {
@@ -294,8 +311,17 @@ func (s *Service) resume(stream rpc.HandlerStream) error {
 		return err
 	}
 
-	// Success. We signal the end of the stream by closing it (which sends an
-	// io.EOF), and returning from the handler will do that by default.
+	// Signal prompt completion.
+	if err := stream.Send(PromptRequest{Done: true}); err != nil {
+		return errors.Wrap(err, "unable to terminate prompting stream")
+	}
+
+	// Send the response.
+	if err := stream.Send(ResumeResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send resume response")
+	}
+
+	// Success.
 	return nil
 }
 
@@ -326,6 +352,11 @@ func (s *Service) terminate(stream rpc.HandlerStream) error {
 	delete(s.sessions, request.Session)
 	s.sessionsLock.Unlock()
 
-	// Done.
-	return stream.Send(TerminateResponse{})
+	// Send the response.
+	if err := stream.Send(TerminateResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send terminate response")
+	}
+
+	// Success.
+	return nil
 }
