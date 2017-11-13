@@ -24,9 +24,17 @@ type CreateResponse struct {
 	Session string
 }
 
+type ListRequestKind uint8
+
+const (
+	ListRequestKindSingle ListRequestKind = iota
+	ListRequestKindRepeated
+	ListRequestKindRepeatedLatest
+)
+
 type ListRequest struct {
+	Kind    ListRequestKind
 	Session string
-	Monitor bool
 }
 
 type ListResponse struct {

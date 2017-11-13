@@ -12,12 +12,16 @@ import (
 	"github.com/havoc-io/mutagen/sync"
 )
 
-var listUsage = `usage: mutagen list [-h|--help] [-m|--monitor] [<session>]
+var listUsage = `usage: mutagen list [-h|--help] [<session>]
 
 Lists existing synchronization sessions and their statuses. A specific session
-identifier can be specified to show information for only that session. If
-coupled with the -m/--monitor flag, the list command will show a dynamic display
-of synchronization status for the specified session.
+identifier can be specified to show information for only that session.
+`
+
+var monitorUsage = `usage: mutagen monitor [-h|--help] [<session>]
+
+Shows a dynamic status display for the specified session. If no session is
+specified, then the most recently created session is displayed.
 `
 
 func printSession(monitor bool, state sessionpkg.SessionState) {
@@ -181,17 +185,10 @@ func printMonitorLine(state sessionpkg.SessionState) {
 func listMain(arguments []string) error {
 	// Parse command line arguments.
 	var session string
-	var monitor bool
 	flagSet := cmd.NewFlagSet("list", listUsage, []int{0, 1})
-	flagSet.BoolVarP(&monitor, "monitor", "m", false, "continuously monitor session")
-	sessionArguments := flagSet.ParseOrDie(arguments)
-	if len(sessionArguments) == 1 {
-		session = sessionArguments[0]
-	}
-
-	// Check that options are sane.
-	if monitor && session == "" {
-		return errors.New("-m/--monitor only supported with single session")
+	sessions := flagSet.ParseOrDie(arguments)
+	if len(sessions) == 1 {
+		session = sessions[0]
 	}
 
 	// Create a daemon client.
@@ -206,16 +203,79 @@ func listMain(arguments []string) error {
 	defer stream.Close()
 
 	// Send the list request.
-	if err := stream.Send(sessionpkg.ListRequest{
+	request := sessionpkg.ListRequest{
+		Kind:    sessionpkg.ListRequestKindSingle,
 		Session: session,
-		Monitor: monitor,
-	}); err != nil {
+	}
+	if err := stream.Send(request); err != nil {
+		return errors.Wrap(err, "unable to send listing request")
+	}
+
+	// Receive the response.
+	var response sessionpkg.ListResponse
+	if err := stream.Receive(&response); err != nil {
+		return errors.Wrap(err, "unable to receive listing response")
+	}
+
+	// Loop through and print sessions.
+	for i, s := range response.Sessions {
+		// Print the session information.
+		printSession(false, s)
+
+		// Print alpha information.
+		printEndpoint(false, true, s)
+
+		// Print beta information.
+		printEndpoint(false, false, s)
+
+		// Print conflicts, if any.
+		if len(s.State.Conflicts) > 0 {
+			printConflicts(s.State.Conflicts)
+		}
+
+		// If this isn't the last session, print a newline.
+		if i < len(response.Sessions)-1 {
+			fmt.Println()
+		}
+	}
+
+	// Success.
+	return nil
+}
+
+func monitorMain(arguments []string) error {
+	// Parse command line arguments.
+	var session string
+	flagSet := cmd.NewFlagSet("monitor", monitorUsage, []int{0, 1})
+	sessions := flagSet.ParseOrDie(arguments)
+	if len(sessions) == 1 {
+		session = sessions[0]
+	}
+
+	// Create a daemon client.
+	daemonClient := rpc.NewClient(daemon.NewOpener())
+
+	// Invoke the session list method and ensure the resulting stream is closed
+	// when we're done.
+	stream, err := daemonClient.Invoke(sessionpkg.MethodList)
+	if err != nil {
+		return errors.Wrap(err, "unable to invoke session listing")
+	}
+	defer stream.Close()
+
+	// Send the list request.
+	kind := sessionpkg.ListRequestKindRepeated
+	if session == "" {
+		kind = sessionpkg.ListRequestKindRepeatedLatest
+	}
+	request := sessionpkg.ListRequest{Kind: kind, Session: session}
+	if err := stream.Send(request); err != nil {
 		return errors.Wrap(err, "unable to send listing request")
 	}
 
 	// Loop indefinitely. We'll bail after a single response if monitoring
 	// wasn't requested.
-	printSessionInformation := true
+	sessionInformationPrinted := false
 	monitorLinePrinted := false
 	for {
 		// Receive the next response. If there's an error, clear the monitor
@@ -228,49 +288,11 @@ func listMain(arguments []string) error {
 			return errors.Wrap(err, "unable to receive listing response")
 		}
 
-		// The first time through the loop (which will be the only time if not
-		// monitoring), we print the session state.
-		if printSessionInformation {
-			// Loop through and print sessions.
-			for i, s := range response.Sessions {
-				// Print the session information.
-				printSession(monitor, s)
-
-				// Print alpha information.
-				printEndpoint(monitor, true, s)
-
-				// Print beta information.
-				printEndpoint(monitor, false, s)
-
-				// Print conflicts (if any) if we're not in monitor mode.
-				if !monitor && len(s.State.Conflicts) > 0 {
-					printConflicts(s.State.Conflicts)
-				}
-
-				// If we're not in monitor mode and this isn't the last session,
-				// print a newline. We don't really need the monitor check since
-				// there should only be one session in monitor mode, but it is
-				// safer in case the daemon has sent something weird back.
-				if !monitor && i < len(response.Sessions)-1 {
-					fmt.Println()
-				}
-			}
-
-			// Mark the session information as printed.
-			printSessionInformation = false
-		}
-
-		// If we're not monitoring, we're done, otherwise print the monitoring
-		// line.
-		if !monitor {
-			return nil
-		}
-
 		// Validate the response for monitoring. If there's an error, clear the
 		// monitor line (if any) before returning for better error legibility.
 		if len(response.Sessions) != 1 {
 			err = errors.New("invalid listing response")
-		} else if response.Sessions[0].Session.Identifier != session {
+		} else if session != "" && response.Sessions[0].Session.Identifier != session {
 			err = errors.New("listing response returned invalid session")
 		}
 		if err != nil {
@@ -278,6 +300,21 @@ func listMain(arguments []string) error {
 				fmt.Println()
 			}
 			return err
+		}
+
+		// Print session information the first time through the loop.
+		if !sessionInformationPrinted {
+			// Print the session information.
+			printSession(true, response.Sessions[0])
+
+			// Print alpha information.
+			printEndpoint(true, true, response.Sessions[0])
+
+			// Print beta information.
+			printEndpoint(true, false, response.Sessions[0])
+
+			// Mark the session information as printed.
+			sessionInformationPrinted = true
 		}
 
 		// Print the monitoring line and record that we've done so.

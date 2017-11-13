@@ -33,6 +33,7 @@ To see help for a particular command, use 'mutagen <command> --help'.
 var handlers = map[string]func([]string) error{
 	"create":    createMain,
 	"list":      listMain,
+	"monitor":   monitorMain,
 	"pause":     pauseMain,
 	"resume":    resumeMain,
 	"terminate": terminateMain,

@@ -175,6 +175,36 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
+	// Determine the session of interest and whether or not this is a repeated
+	// request. An empty session identifier after this point indicates that all
+	// sessions are of interest.
+	var session string
+	var repeated bool
+	switch request.Kind {
+	case ListRequestKindSingle:
+		session = request.Session
+	case ListRequestKindRepeated:
+		session = request.Session
+		repeated = true
+	case ListRequestKindRepeatedLatest:
+		var mostRecentSessionCreationTime time.Time
+		s.sessionsLock.Lock()
+		for _, controller := range s.sessions {
+			state := controller.currentState()
+			if state.Session.CreationTime.After(mostRecentSessionCreationTime) {
+				session = state.Session.Identifier
+				mostRecentSessionCreationTime = state.Session.CreationTime
+			}
+		}
+		s.sessionsLock.Unlock()
+		if session == "" {
+			return errors.New("no sessions present")
+		}
+		repeated = true
+	default:
+		return errors.New("unknown list request kind")
+	}
+
 	// Loop indefinitely and track state changes. We'll bail after a single
 	// response if monitoring wasn't requested.
 	previousStateIndex := uint64(0)
@@ -196,8 +226,8 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		// Create a snapshot of the necessary session states.
 		var sessions []SessionState
 		var err error
-		if request.Session != "" {
-			if controller, ok := s.sessions[request.Session]; ok {
+		if session != "" {
+			if controller, ok := s.sessions[session]; ok {
 				sessions = append(sessions, controller.currentState())
 			} else {
 				err = errors.New("unable to find requested session")
@@ -230,8 +260,8 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			return errors.Wrap(err, "unable to send list response")
 		}
 
-		// If monitoring wasn't requested, then we're done.
-		if !request.Monitor {
+		// If repeated listings weren't requested, then we're done.
+		if !repeated {
 			return nil
 		}
 
