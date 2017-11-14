@@ -12,8 +12,8 @@ caveats listed below.
   properly. If run directly inside a mintty console, both
   [daemonization](https://github.com/havoc-io/mutagen/issues/3) and
   [command line prompting](https://github.com/howeyc/gopass/issues/34) will
-  fail. Since the `winpty` command is present in most mintty environments, the
-  best option is simply to add a shell alias, e.g.
+  fail to function properly. Since the `winpty` command is present in most
+  mintty environments, the best option is simply to add a shell alias, e.g.
   `alias mutagen="winpty mutagen"`.
 
 
