@@ -9,7 +9,7 @@ open an issue.
 
 - **Is there a GUI?** Not yet, but one is in development. This should negate the
   need to manually launch the daemon, as well as provide grapical session
-  management and monitoring. Expect this circa late February or early March.
+  management and monitoring. Expect this circa late January 2018.
 - **Can I synchronize more than two endpoints together?** Yes, though not
   directly. You'll want to set up a star topology with one copy of the files at
   the center (probably on your local machine, though technically it doesn't have
@@ -34,28 +34,23 @@ open an issue.
   ".git" at any level in a directory hierarchy. Ignored paths will not be
   deleted by Mutagen if their parents are deleted on the remote side - you'll
   have to manually delete them. This is by design.
-- **Does it support symlinks?** Only for synchronization roots and even then
-  with some caveats. If a symlink is used as a synchronization root, it will
-  work (e.g. a symlink to a directory), but if the root is replaced or removed
-  by the synchronization algorithm (e.g. it's a directory that's deleted or a
-  file that's modified), then the symlink itself will be replaced. Within
-  synchronization roots, symlinks are simply ignored. It may be possible to add
-  support for them in the future, especially with the Windows symlink support
-  [finally being brought into the spotlight](https://blogs.windows.com/buildingapps/2016/12/02/symlinks-windows-10/),
-  but from a theoretical standpoint, there's only two ways to handle them:
-  either recreate them (in which case they may point to nothing or even be
-  invalid if their path doesn't translate) or copy a file with the path of the
-  symlink in it (which is pretty much useless and just prone to messing up the
-  actual symlink). So they're ignored for now. They won't be deleted either,
-  meaning that if you delete a directory hierarchy and the change propagates to
-  a replica of that directory that contains a symlink, it will be marked as a
-  problem requiring manual resolution (i.e. it will require you to manually
-  delete the symlink). This is by design.
+- **Does it support symlinks?** Yes, but on POSIX systems only. Windows symlink
+  support in the Go standard library is currently incomplete, but Windows also
+  has additional issues with symlinks, including complex permissions (at least
+  [pre-Windows 10](https://blogs.windows.com/buildingapps/2016/12/02/symlinks-windows-10/))
+  and semantics that don't match up well with POSIX symlinks. For now, if
+  Windows receives symlink entries from a POSIX system, it will simply avoid
+  creating them. Likewise, any NTFS reparse point symlinks on Windows won't be
+  propagated to other systems (either Windows or POSIX). It may be possible to
+  pave over the Windows symlink APIs in the future with an abstraction that
+  makes them "POSIX-y" enough to synchronize, but since symlinks aren't widely
+  used on Windows anyway, this is not a priority. Please feel free to open an
+  issue if this affects you!
 - **Can I use it for respositories?** Yes! This was actually why I originally
   created Mutagen - the desire to develop cross-platform applications without
   having to write code in the console or a VM or having to push/pull changes to
   test every two seconds. You can have a single copy of the repository that you
-  edit (in your nice $70 text editor) and then mirror to your test platforms
+  edit (in your nice $80 text editor) and then mirror to your test platforms
   (which you might then interact with using the terminal). If you do this, it's
   highly recommended that you ignore SCM directories (e.g. `.git`, `.svn`, or
   `.hg`) using the ignore patterns described above. Although Mutagen WILL
@@ -69,8 +64,9 @@ open an issue.
   [Cygwin](https://www.cygwin.com/), [MSYS2](https://msys2.github.io/), or
   [Git for Windows](https://git-scm.com/)), but it *will* support the
   [PowerShell team's OpenSSH port](https://github.com/PowerShell/Win32-OpenSSH)
-  once that's released. The PowerShell port currently has some significant bugs
-  that prevent Mutagen from operating.
+  once that's released. Unfortunately the PowerShell port still has some
+  blocking issues (such as broken `$SSH_ASKPASS` support) that prevent Mutagen
+  from working.
 - **Will you add proper packaging?** Yes, eventually I want to have Windows
   installers, macOS... somethings (not .pkg files, maybe Homebrew), and
   .deb/.rpm packages, ideally with a PPA or similar. At the moment though,
@@ -109,10 +105,8 @@ open an issue.
   [started writing support for](https://github.com/havoc-io/go-keytar), but it
   was more trouble than it was worth. It's also very difficult (if not
   impossible) to determine when stored/cached passwords should be invalidated.
-  I understand that some organizations disable public key authentication, and in
-  those cases I would recommend
-  [enabling SSH ControlMaster support](https://developer.rackspace.com/blog/speeding-up-ssh-session-creation/)
-  to make your life more bearable.
+  For now, Mutagen uses SSH `ControlMaster` support on platforms where it's
+  supported (everywhere but Windows) to avoid asking for passwords frequently.
 - **How does it work?** The synchronization algorithm is fairly simple, but I
   haven't had time to document it yet. This is coming though! The essential idea
   is to watch each endpoint for changes, make a metadata snapshot of the
@@ -124,8 +118,7 @@ open an issue.
 - **Why Go? Rust makes me feel safer.** Yeah, me too. Go is currently the only
   language that has the requisite cross-compiling capabilities, syscall-only
   binaries, and simple asynchronous I/O handling. It does have some downsides
-  though, e.g. binary size, memory usage, thread usage (exacterbated by IPC in
-  our case), and most importantly its inability to enforce certain invariants in
-  synchronization data structures and algorithms. A rewrite in Rust is not out
-  of the question once rustup and tokio mature, especially since Mutagen is
-  < 15 KLOC.
+  though, e.g. binary size, memory usage, thread usage, and most importantly its
+  inability to enforce certain invariants in synchronization data structures and
+  algorithms. A rewrite in Rust is not out of the question once rustup and tokio
+  mature, especially since Mutagen is < 15 KLOC.
