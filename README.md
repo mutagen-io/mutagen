@@ -52,12 +52,13 @@ getting.
   administrative permissions to use.
 - Mutagen only needs to be installed on the computer where you want to control
   synchronization. Mutagen comes with a broad range of small, cross-compiled
-  "agent" binaries that it automatically copies as necessary to remote
-  endpoints. Most major platforms and architectures are supported.
+  "agent" binaries that it automatically copies to remote endpoints as
+  necessary. Most major platforms and architectures are supported.
 - Mutagen propagates changes bi-directionally. Any conflicts that arise will be
-  flagged for resolution. Resolution is performed by manually deleting the
-  undesired side of the conflict. Conflicts won't stop non-conflicting changes
-  from propagating.
+  flagged for resolution. Automatic conflict resolution is performed if doing so
+  does not result in destruction of unsynchronized changes. Manual conflict
+  resolution is performed by manually deleting the undesired side of the
+  conflict. Conflicts won't stop non-conflicting changes from propagating.
 - Mutagen uses the [rsync](https://rsync.samba.org/tech_report/) algorithm to
   perform differential file transfers. These transfers are pipelined to mitigate
   the effects of latency. It stages files outside of the synchronization root
@@ -73,16 +74,18 @@ getting.
 - On systems that support recursive file monitoring (Windows and macOS), Mutagen
   effeciently watches synchronization roots for changes. Other systems currently
   use regular and efficient polling out of a desire to support very large
-  directory hierarchies that might exhaust watch file descriptors, but support
-  for watching small directories on these systems isn't ruled out.
+  directory hierarchies that might exhaust watch and file descriptors, but
+  support for watching small directories on these systems isn't ruled out.
 - Mutagen is agnostic of the transport to endpoints - all it requires is a byte
   stream to each endpoint. Support is currently built-in for local and SSH-based
   synchronization, but support for other remote types can easily be added. As a
   corollary, Mutagen can even synchronize between two remote endpoints without
   ever needing a local copy of the files.
 - Mutagen can display dynamic synchronization status in the terminal.
-- **Mutagen does not propagate (most) permissions.** Mutagen is much like Git in
-  this regard - it only propagates entry type and executability. This is by
+- **Mutagen does not propagate (most) permissions**, but it does preserve
+  permissions when updating files. The only permission propagated by Mutagen is
+  executability or lack thereof. Any other permissions are left untouched for
+  existing files and set to user-only access for newly created files. This is by
   design, since Mutagen's raison d'être is remote code editing and mirroring.
   Nothing in the current Mutagen design precludes adding permission propagation
   in the future.
