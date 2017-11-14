@@ -10,8 +10,9 @@ needs to be checked out into your `$GOPATH` to build, which you can do with
 
     go get -d github.com/havoc-io/mutagen
 
-Mutagen uses Git submodules for vendoring, so if doing a Git checkout, you'll
-want to run the following inside the Mutagen source tree:
+Mutagen uses Git submodules for vendoring, so if doing a Git checkout (rather
+than a `go get`), you'll want to run the following inside the Mutagen source
+tree:
 
     git submodule init
     git submodule update
