@@ -121,4 +121,4 @@ open an issue.
   though, e.g. binary size, memory usage, thread usage, and most importantly its
   inability to enforce certain invariants in synchronization data structures and
   algorithms. A rewrite in Rust is not out of the question once rustup and tokio
-  mature, especially since Mutagen is < 15 KLOC.
+  mature, especially since Mutagen is < 20 KLOC.
