@@ -21,6 +21,7 @@ Supported commands include:
 
     create          Start a new synchronization session
     list            List current synchronization sessions
+    monitor         Perform live monitoring of a synchronization session
     pause           Pause a synchronization session
     resume          Resume a synchronization session
     terminate       Stop and remove a synchronization session
