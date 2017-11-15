@@ -54,7 +54,7 @@ getting.
   synchronization. Mutagen comes with a broad range of small, cross-compiled
   "agent" binaries that it automatically copies to remote endpoints as
   necessary. Most major platforms and architectures are supported.
-- Mutagen propagates changes bi-directionally. Any conflicts that arise will be
+- Mutagen propagates changes bidirectionally. Any conflicts that arise will be
   flagged for resolution. Automatic conflict resolution is performed if doing so
   does not result in destruction of unsynchronized changes. Manual conflict
   resolution is performed by manually deleting the undesired side of the
