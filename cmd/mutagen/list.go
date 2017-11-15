@@ -29,6 +29,14 @@ func printSession(state sessionpkg.SessionState) {
 	}
 	fmt.Println("Status:", statusString)
 
+	// Printed ignore paths, if any.
+	if len(state.Session.Ignores) > 0 {
+		fmt.Println("Ignored paths:")
+		for _, p := range state.Session.Ignores {
+			fmt.Printf("\t%s\n", p)
+		}
+	}
+
 	// Print the last error, if any.
 	if state.State.LastError != "" {
 		fmt.Println("Last error:", state.State.LastError)

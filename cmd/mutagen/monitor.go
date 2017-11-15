@@ -124,6 +124,12 @@ func monitorMain(arguments []string) error {
 		// Print session information the first time through the loop.
 		if !sessionInformationPrinted {
 			fmt.Println("Session:", state.Session.Identifier)
+			if len(state.Session.Ignores) > 0 {
+				fmt.Println("Ignored paths:")
+				for _, p := range state.Session.Ignores {
+					fmt.Printf("\t%s\n", p)
+				}
+			}
 			fmt.Println("Alpha:", state.Session.Alpha.Format())
 			fmt.Println("Beta:", state.Session.Beta.Format())
 			sessionInformationPrinted = true
