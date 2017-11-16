@@ -18,6 +18,13 @@ Lists existing synchronization sessions and their statuses. A specific session
 identifier can be specified to show information for only that session.
 `
 
+func formatPath(path string) string {
+	if path == "" {
+		return "(root)"
+	}
+	return path
+}
+
 func printSession(state sessionpkg.SessionState) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
@@ -80,7 +87,7 @@ func printEndpoint(state sessionpkg.SessionState, alpha bool) {
 	if len(problems) > 0 {
 		fmt.Println("\tProblems:")
 		for _, p := range problems {
-			fmt.Printf("\t\t%s: %v\n", p.Path, p.Error)
+			fmt.Printf("\t\t%s: %v\n", formatPath(p.Path), p.Error)
 		}
 	}
 }
@@ -112,7 +119,7 @@ func printConflicts(conflicts []sync.Conflict) {
 		for _, a := range c.AlphaChanges {
 			fmt.Printf(
 				"\t(α) %s (%s -> %s)\n",
-				a.Path,
+				formatPath(a.Path),
 				formatEntryKind(a.Old),
 				formatEntryKind(a.New),
 			)
@@ -122,7 +129,7 @@ func printConflicts(conflicts []sync.Conflict) {
 		for _, b := range c.BetaChanges {
 			fmt.Printf(
 				"\t(β) %s (%s -> %s)\n",
-				b.Path,
+				formatPath(b.Path),
 				formatEntryKind(b.Old),
 				formatEntryKind(b.New),
 			)
