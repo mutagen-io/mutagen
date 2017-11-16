@@ -221,9 +221,8 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 		buffer:   make([]byte, scannerCopyBufferSize),
 	}
 
-	// Create the snapshot. We use os.Stat, as opposed to os.Lstat, because we
-	// DO want to follow symbolic links at the root.
-	if info, err := os.Stat(root); err != nil {
+	// Create the snapshot.
+	if info, err := os.Lstat(root); err != nil {
 		if os.IsNotExist(err) {
 			return nil, newCache, nil
 		} else {
