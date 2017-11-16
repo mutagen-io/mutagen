@@ -9,6 +9,7 @@ type SynchronizationStatus uint8
 
 const (
 	SynchronizationStatusDisconnected = iota
+	SynchronizationStatusHaltedOnRootDeletion
 	SynchronizationStatusConnectingAlpha
 	SynchronizationStatusConnectingBeta
 	SynchronizationStatusWatching
@@ -27,6 +28,8 @@ func (s SynchronizationStatus) String() string {
 	switch s {
 	case SynchronizationStatusDisconnected:
 		return "Disconnected"
+	case SynchronizationStatusHaltedOnRootDeletion:
+		return "Halted due to root deletion"
 	case SynchronizationStatusConnectingAlpha:
 		return "Connecting to alpha"
 	case SynchronizationStatusConnectingBeta:

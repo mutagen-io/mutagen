@@ -598,6 +598,43 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
+		// Check if a root deletion is being propagated. If so, switch to a
+		// halted state. This is a best-effort safety check. While we'll
+		// definitely detect root deletion, it may happen (for directories) that
+		// a large portion of the root is deleted before the root itself and
+		// that this partial deletion is captured during a scan and propagated
+		// and the root deletion is not detected until the next scan. Scans have
+		// been designed to completely abort if they detect concurrent
+		// modifications, and there's a high cross-section for this detection.
+		// But there's no silver bullet for this problem, at least not without
+		// rendering Mutagen basically useless when it comes to propagating
+		// changes. We may be able to add a flag to avoid propagating deletions
+		// of any kind in the future, but that would be specialized and a
+		// relatively harsh restriction to put in place as a general safety
+		// mechanism.
+		rootDeletion := false
+		for _, t := range αTransitions {
+			if t.Path == "" && t.New == nil {
+				rootDeletion = true
+				break
+			}
+		}
+		if !rootDeletion {
+			for _, t := range βTransitions {
+				if t.Path == "" && t.New == nil {
+					rootDeletion = true
+					break
+				}
+			}
+		}
+		if rootDeletion {
+			c.stateLock.Lock()
+			c.state.Status = SynchronizationStatusHaltedOnRootDeletion
+			c.stateLock.Unlock()
+			<-context.Done()
+			return errors.New("cancelled while halted on root deletion")
+		}
+
 		// Create a monitoring callback for rsync staging.
 		monitor := func(status rsync.ReceivingStatus) error {
 			c.stateLock.Lock()

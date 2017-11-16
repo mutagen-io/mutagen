@@ -131,12 +131,20 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		}
 
 		// Grab stat information for this path. If the path has disappeared
-		// between list time and stat time, just ignore it.
+		// between list time and stat time, then concurrent modifications
+		// (deletions or renames) are likely occurring and we should abort. We
+		// could do what something like filepath.Walk does and check the error
+		// using os.IsNotExist and just ignore the file if it's been removed,
+		// but in order for our root deletion safety check to be more effective,
+		// we don't want to take snapshots in the middle of a deletion
+		// operation. It wouldn't stop the snapshot from being correct in the
+		// context of our synchronization algorithm, but we really want to get a
+		// picture once the deletion has stopped. Again, this doesn't guarantee
+		// we'll catch all concurrent deletions - there's a race there, but it
+		// will astronomically increase our chances, and also probably minimize
+		// the number of resynchronizations that we need to do.
 		info, err := os.Lstat(filepath.Join(s.root, contentPath))
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
 			return nil, errors.Wrap(err, "unable to stat directory content")
 		}
 
