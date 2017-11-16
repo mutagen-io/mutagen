@@ -215,8 +215,8 @@ func (c *controller) resume(prompter string) error {
 
 	// Check if there's an existing synchronization loop.
 	if c.cancel != nil {
-		// If there is an existing synchronization loop, check if it's alredy
-		// connected.
+		// If there is an existing synchronization loop, check if it's already
+		// in a state that's considered "connected".
 		c.stateLock.Lock()
 		connected := c.state.Status >= SynchronizationStatusWatching
 		c.stateLock.UnlockWithoutNotify()
