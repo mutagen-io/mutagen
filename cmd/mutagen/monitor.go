@@ -19,7 +19,7 @@ specified, then the most recently created session is displayed.
 
 func printMonitorLine(state sessionpkg.SessionState) {
 	// Build the status line.
-	var status string
+	status := "Status: "
 	if state.Session.Paused {
 		status += "Paused"
 	} else {
