@@ -93,6 +93,16 @@ getting.
   case-(in)sensitivity, HFS's pseudo-NFD Unicode normalization, systems that
   don't support executability bits, or file names that might create NTFS
   alternate data streams.
+- Mutagen has a **best-effort** safety mechanism that prevents propagation of
+  synchronization *root* deletions. If Mutagen detects that one side of the
+  synchronization session has been completely deleted, it will halt and refuse
+  to propagate the removal, requiring the user to manually remove file on the
+  other side and then use `mutagen resume` to continue the session. This
+  detection is not perfect for directories since their deletion is non-atomic
+  and Mutagen may see a large portion of the directory deleted while deletion is
+  ongoing and propagate that deletion. That being said, Mutagen makes every
+  effort to avoid synchronizing while concurrent changes are ongoing, instead
+  waiting for the filesystem to stabilize.
 
 You might have surmised that Mutagen's closest cousin is the
 [Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
