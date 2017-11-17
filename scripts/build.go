@@ -291,7 +291,7 @@ func buildAgentForTargetInTesting(target Target) bool {
 				target.GOARCH == "arm"))
 }
 
-var buildUsage = `usage: build [-h|--help] [-m|--mode=<mode>]
+var buildUsage = `usage: build [-h|--help] [-m|--mode=<mode>] [-s|--skip-bundles]
 
 The mode flag takes three values: 'slim', 'testing', and 'release'. 'slim' will
 build binaries only for the current platform. 'testing' will build the CLI
@@ -299,14 +299,18 @@ binary for only the current platform and agents for a small subset of platforms.
 Both 'slim' and 'testing' will place their build output (CLI binary and agent
 bundle) in the '$GOPATH/bin' directory. 'release' will build CLI and agent
 binaries for all platforms and package them in the 'build' subdirectory of the
-Mutagen source tree. The default mode is 'slim'.
+Mutagen source tree. The default mode is 'slim'. If 'release' mode is specified
+with the -s/--skip-bundles flag, then all release artifacts will be built but
+release bundles won't be produced.
 `
 
 func main() {
 	// Parse command line arguments.
 	flagSet := cmd.NewFlagSet("build", buildUsage, nil)
 	var mode string
+	var skipBundles bool
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
+	flagSet.BoolVarP(&skipBundles, "skip-bundles", "s", false, "skip release bundle building")
 	flagSet.ParseOrDie(os.Args[1:])
 	if mode != "slim" && mode != "testing" && mode != "release" {
 		cmd.Fatal(errors.New("invalid build mode"))
@@ -415,8 +419,9 @@ func main() {
 			cmd.Fatal(errors.Wrap(err, "unable to build CLI"))
 		}
 
-		// If we're in release mode, create the release bundle.
-		if mode == "release" {
+		// If we're in release mode, create the release bundle, unless we're
+		// explicitly requested not to.
+		if mode == "release" && !skipBundles {
 			// Print information.
 			fmt.Println("Building release bundle for", target)
 
