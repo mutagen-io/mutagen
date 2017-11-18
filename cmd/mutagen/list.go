@@ -177,9 +177,14 @@ func listMain(arguments []string) error {
 		return errors.Wrap(err, "unable to receive listing response")
 	}
 
+	// Determine whether or not to print delimiters.
+	printDelimiters := len(response.Sessions) > 1
+
 	// Loop through and print sessions.
 	for _, state := range response.Sessions {
-		fmt.Println(delimiterLine)
+		if printDelimiters {
+			fmt.Println(delimiterLine)
+		}
 		printSession(state)
 		printEndpoint(state, true)
 		printEndpoint(state, false)
@@ -187,7 +192,9 @@ func listMain(arguments []string) error {
 			printConflicts(state.State.Conflicts)
 		}
 	}
-	fmt.Println(delimiterLine)
+	if printDelimiters {
+		fmt.Println(delimiterLine)
+	}
 
 	// Success.
 	return nil
