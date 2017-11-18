@@ -177,19 +177,17 @@ func listMain(arguments []string) error {
 		return errors.Wrap(err, "unable to receive listing response")
 	}
 
-	// Loop through and print sessions. We print an empty line on all sessions
-	// but the last to serve as a visual delimiter.
-	for i, state := range response.Sessions {
+	// Loop through and print sessions.
+	for _, state := range response.Sessions {
+		fmt.Println(delimiterLine)
 		printSession(state)
 		printEndpoint(state, true)
 		printEndpoint(state, false)
 		if len(state.State.Conflicts) > 0 {
 			printConflicts(state.State.Conflicts)
 		}
-		if i < len(response.Sessions)-1 {
-			fmt.Println()
-		}
 	}
+	fmt.Println(delimiterLine)
 
 	// Success.
 	return nil
