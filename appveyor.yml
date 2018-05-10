@@ -7,7 +7,7 @@ clone_folder: C:\gopath\src\github.com\havoc-io\mutagen
 # Set Go versions.
 environment:
   GOPATH: C:\gopath
-  GOROOT: C:\go19
+  GOROOT: C:\go110
 init:
   - set PATH=%GOROOT%\bin;%GOPATH%\bin;%PATH%
 

@@ -9,10 +9,14 @@ os:
 # Set our Go version(s). Mutagen generally only supports a specific version of
 # Go at a time, usually the latest, but we also monitor tip to get an idea of
 # whether or not the next release is going to break anything.
+# NOTE: When specifying versions with a trailing 0 (e.g. 1.10), you need to
+# enclose the version in quotation marks for YAML to treat it as a string rather
+# than a float to be truncated:
+# https://github.com/travis-ci/travis-ci/issues/9247
 # NOTE: If you change this version, change the corresponding conditions below in
 # code coverage and deployment uploading (see the script and deploy sections).
 go:
-  - 1.9.2
+  - "1.10"
   - tip
 
 # Allow failure on Go tip, we just want to be able to track behavior there.
@@ -49,7 +53,7 @@ script:
   - go version
   - go run scripts/ci_testing.go --race
   - go run scripts/ci_testing.go --goarch=386 --no-cover
-  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
+  - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.10(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
 
@@ -70,7 +74,7 @@ deploy:
   file: build/mutagen_*_*v*
   on:
     repo: havoc-io/mutagen
-    condition: '"$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_GO_VERSION" =~ ^1\.9(\.[0-9]+)?$'
+    condition: '"$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_GO_VERSION" =~ ^1\.10(\.[0-9]+)?$'
     tags: true
 
 # Send notifications.
