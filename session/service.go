@@ -128,7 +128,10 @@ func (s *Service) create(stream rpc.HandlerStream) error {
 	}
 
 	//  Wrap the stream in a prompter and register it with the SSH service.
-	prompter := s.sshService.RegisterPrompter(&streamPrompter{stream})
+	prompter, err := s.sshService.RegisterPrompter(&streamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
 
 	// Attempt to create a session.
 	controller, err := newSession(
@@ -328,10 +331,13 @@ func (s *Service) resume(stream rpc.HandlerStream) error {
 	}
 
 	//  Wrap the stream in a prompter and register it with the SSH service.
-	prompter := s.sshService.RegisterPrompter(&streamPrompter{stream})
+	prompter, err := s.sshService.RegisterPrompter(&streamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
 
 	// Attempt to resume.
-	err := controller.resume(prompter)
+	err = controller.resume(prompter)
 
 	// Unregister the prompter.
 	s.sshService.UnregisterPrompter(prompter)

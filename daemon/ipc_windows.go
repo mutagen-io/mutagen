@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	npipe "gopkg.in/natefinch/npipe.v2"
 
@@ -69,7 +69,11 @@ func (l *daemonListener) Close() error {
 
 func NewListener() (net.Listener, error) {
 	// Create a unique pipe name.
-	pipeName := fmt.Sprintf(`\\.\pipe\mutagen-%s`, uuid.NewV4())
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to generate UUID for named pipe")
+	}
+	pipeName := fmt.Sprintf(`\\.\pipe\mutagen-%s`, randomUUID.String())
 
 	// Compute the path to the pipe name record.
 	pipeNameRecordPath, err := subpath(pipeNameRecordName)

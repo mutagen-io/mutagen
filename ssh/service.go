@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	"github.com/havoc-io/mutagen/rpc"
 )
@@ -35,9 +35,13 @@ func (s *Service) Methods() map[string]rpc.Handler {
 	}
 }
 
-func (s *Service) RegisterPrompter(prompter Prompter) string {
+func (s *Service) RegisterPrompter(prompter Prompter) (string, error) {
 	// Generate a unique identifier for this prompter.
-	identifier := uuid.NewV4().String()
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to generate UUID for prompter")
+	}
+	identifier := randomUUID.String()
 
 	// Create and populate a channel for passing the prompter around.
 	holder := make(chan Prompter, 1)
@@ -49,7 +53,7 @@ func (s *Service) RegisterPrompter(prompter Prompter) string {
 	s.holdersLock.Unlock()
 
 	// Done.
-	return identifier
+	return identifier, nil
 }
 
 func (s *Service) UnregisterPrompter(identifier string) {

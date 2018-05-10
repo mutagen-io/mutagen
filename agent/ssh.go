@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/environment"
@@ -152,7 +152,11 @@ func installSSH(remote *url.URL, prompter string) error {
 	// default destination directory for SCP copies. That should be true in
 	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
 	// probe information to handle this more carefully.
-	destination := agentBaseName + uuid.NewV4().String()
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return errors.Wrap(err, "unable to generate UUID for agent copying")
+	}
+	destination := agentBaseName + randomUUID.String()
 	if goos == "windows" {
 		destination += ".exe"
 	}

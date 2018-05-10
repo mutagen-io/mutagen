@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/environment"
@@ -84,9 +84,13 @@ func main() {
 		}
 
 		// Create a unique name for the coverage profile for this package.
+		randomUUID, err := uuid.NewRandom()
+		if err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to generate UUID for coverage profile"))
+		}
 		profile := filepath.Join(
 			temporaryDirectory,
-			fmt.Sprintf("%s.cover", uuid.NewV4().String()),
+			fmt.Sprintf("%s.cover", randomUUID.String()),
 		)
 		coverageProfiles = append(coverageProfiles, profile)
 

@@ -7,9 +7,6 @@
 [submodule "vendor/github.com/texttheater/golang-levenshtein"]
 	path = vendor/github.com/texttheater/golang-levenshtein
 	url = https://github.com/texttheater/golang-levenshtein.git
-[submodule "vendor/github.com/satori/go.uuid"]
-	path = vendor/github.com/satori/go.uuid
-	url = https://github.com/satori/go.uuid.git
 [submodule "vendor/gopkg.in/natefinch/npipe.v2"]
 	path = vendor/gopkg.in/natefinch/npipe.v2
 	url = https://github.com/natefinch/npipe.git
@@ -37,3 +34,6 @@
 [submodule "vendor/github.com/gogo/protobuf"]
 	path = vendor/github.com/gogo/protobuf
 	url = https://github.com/gogo/protobuf.git
+[submodule "vendor/github.com/google/uuid"]
+	path = vendor/github.com/google/uuid
+	url = https://github.com/google/uuid.git

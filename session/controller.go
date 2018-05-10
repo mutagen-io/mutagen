@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/encoding"
@@ -70,8 +70,12 @@ func newSession(
 		}
 	}
 
-	// Create a session identifier.
-	identifier := uuid.NewV4().String()
+	// Create a unique session identifier.
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to generate UUID for session")
+	}
+	identifier := randomUUID.String()
 
 	// Set the session version.
 	version := Version_Version1
