@@ -181,6 +181,13 @@ func installSSH(remote *url.URL, prompter string) error {
 	// binary is extracted from the bundle, it will lose its executability bit
 	// since Windows can't preserve this. This will also be applied to Windows
 	// POSIX remotes, but a "chmod +x" there will just be a no-op.
+	// HACK: This assumes that the SSH user's home directory is used as the
+	// default working directory for SSH commands. We have to do this because we
+	// don't have a portable mechanism to invoke the command relative to the
+	// user's home directory and we don't want to do a probe of the remote
+	// system before invoking the command. This assumption should be fine for
+	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
+	// probe information to handle this more carefully.
 	if runtime.GOOS == "windows" && posix {
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
 		if err := ssh.Run(prompter, "Setting agent executability", remote, executabilityCommand); err != nil {
@@ -190,12 +197,8 @@ func installSSH(remote *url.URL, prompter string) error {
 
 	// Invoke the remote installation.
 	// HACK: This assumes that the SSH user's home directory is used as the
-	// default working directory for SSH commands. We have to do this because we
-	// don't have a portable mechanism to invoke the command relative to the
-	// user's home directory and we don't want to do a probe of the remote
-	// system before invoking the endpoint. This assumption should be fine for
-	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
-	// probe information to handle this more carefully.
+	// default working directory for SSH commands. The reasons for assuming this
+	// are outlined above.
 	var installCommand string
 	if posix {
 		installCommand = fmt.Sprintf("./%s install", destination, destination)
