@@ -201,7 +201,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// are outlined above.
 	var installCommand string
 	if posix {
-		installCommand = fmt.Sprintf("./%s install", destination, destination)
+		installCommand = fmt.Sprintf("./%s install", destination)
 	} else {
 		installCommand = fmt.Sprintf("%s install", destination)
 	}
