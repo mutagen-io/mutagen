@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -174,13 +175,20 @@ func installSSH(remote *url.URL, prompter string) error {
 		return errors.Wrap(err, "unable to copy agent binary")
 	}
 
-	// Invoke the remote installation. For POSIX remotes, we have to incorporate
-	// a "chmod +x" in order for the remote to execute the installer. The POSIX
-	// solution is necessary in the event that an installer is sent from a
-	// Windows to a POSIX system using SCP, since there's no way to preserve the
-	// executability bit (Windows doesn't have one). This will also be applied
-	// to Windows POSIX environments, but a "chmod +x" there will have no
-	// effect.
+	// For cases where we're copying from a Windows system to a POSIX remote,
+	// invoke "chmod +x" to add executability back to the copied binary. This is
+	// necessary under the specified circumstances because as soon as the agent
+	// binary is extracted from the bundle, it will lose its executability bit
+	// since Windows can't preserve this. This will also be applied to Windows
+	// POSIX remotes, but a "chmod +x" there will just be a no-op.
+	if runtime.GOOS == "windows" && posix {
+		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
+		if err := ssh.Run(prompter, "Setting agent executability", remote, executabilityCommand); err != nil {
+			return errors.Wrap(err, "unable to set agent executability")
+		}
+	}
+
+	// Invoke the remote installation.
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. We have to do this because we
 	// don't have a portable mechanism to invoke the command relative to the
@@ -190,7 +198,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// probe information to handle this more carefully.
 	var installCommand string
 	if posix {
-		installCommand = fmt.Sprintf("chmod +x %s && ./%s install", destination, destination)
+		installCommand = fmt.Sprintf("./%s install", destination, destination)
 	} else {
 		installCommand = fmt.Sprintf("%s install", destination)
 	}
