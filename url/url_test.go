@@ -2,6 +2,8 @@ package url
 
 import (
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func TestAccessorsNil(t *testing.T) {
@@ -94,7 +96,7 @@ func TestProtocolBuffersMethods(t *testing.T) {
 	_ = url.String()
 	url.ProtoMessage()
 	_, _ = url.Descriptor()
-	encoded, err := url.Marshal()
+	encoded, err := proto.Marhsal(url)
 	if err != nil {
 		t.Error("unable to marshal URL:", err)
 	}
