@@ -53,7 +53,7 @@ func ServeEndpoint(connection net.Conn) error {
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
 	}
-	defer endpoint.close()
+	defer endpoint.shutdown()
 
 	// Send a successful initialize response.
 	response := initializeResponse{PreservesExecutability: filesystem.PreservesExecutability}

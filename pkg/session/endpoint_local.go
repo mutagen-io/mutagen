@@ -186,7 +186,7 @@ func (e *localEndpoint) transition(transitions []sync.Change) ([]sync.Change, []
 	return changes, problems, nil
 }
 
-func (e *localEndpoint) close() error {
+func (e *localEndpoint) shutdown() error {
 	// Terminate filesystem watching. This will result in the associated events
 	// channel being closed.
 	e.watchCancel()

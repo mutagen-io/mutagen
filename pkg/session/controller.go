@@ -96,7 +96,7 @@ func newSession(
 	}
 	betaEndpoint, err := connect(identifier, version, beta, ignores, false, prompter)
 	if err != nil {
-		alphaEndpoint.close()
+		alphaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
 	}
 
@@ -117,27 +117,27 @@ func newSession(
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		alphaEndpoint.close()
-		betaEndpoint.close()
+		alphaEndpoint.shutdown()
+		betaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to compute session path")
 	}
 	archivePath, err := pathForArchive(session.Identifier)
 	if err != nil {
-		alphaEndpoint.close()
-		betaEndpoint.close()
+		alphaEndpoint.shutdown()
+		betaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
 	// Save components to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		alphaEndpoint.close()
-		betaEndpoint.close()
+		alphaEndpoint.shutdown()
+		betaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to save session")
 	}
 	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
 		os.Remove(sessionPath)
-		alphaEndpoint.close()
-		betaEndpoint.close()
+		alphaEndpoint.shutdown()
+		betaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to save archive")
 	}
 
@@ -378,13 +378,13 @@ func (c *controller) halt(mode haltMode) error {
 func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
-		// Close any endpoints. These might be non-nil if the runloop was
+		// Shutdown any endpoints. These might be non-nil if the runloop was
 		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
-			alpha.close()
+			alpha.shutdown()
 		}
 		if beta != nil {
-			beta.close()
+			beta.shutdown()
 		}
 
 		// Reset the state.
@@ -468,10 +468,10 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		// Perform synchronization.
 		err := c.synchronize(context, alpha, beta)
 
-		// Close the endpoints.
-		alpha.close()
+		// Shutdown the endpoints.
+		alpha.shutdown()
 		alpha = nil
-		beta.close()
+		beta.shutdown()
 		beta = nil
 
 		// Reset the synchronization state, but propagate the error that caused

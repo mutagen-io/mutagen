@@ -257,7 +257,7 @@ func (e *remoteEndpointClient) transition(transitions []sync.Change) ([]sync.Cha
 	return response.Changes, response.Problems, nil
 }
 
-func (e *remoteEndpointClient) close() error {
+func (e *remoteEndpointClient) shutdown() error {
 	// Close the underlying connection. This will cause all stream reads/writes
 	// to unblock.
 	return e.connection.Close()

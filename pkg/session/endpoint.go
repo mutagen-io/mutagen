@@ -9,9 +9,9 @@ import (
 
 // endpoint provides an interface to synchronization endpoints. It provides all
 // primitives necessary to support synchronization. None of its methods are safe
-// for concurrent invocation except close. If any method returns an error, the
-// endpoint should be considered failed and no more of its methods (other than
-// Close) should be invoked.
+// for concurrent invocation except shutdown. If any method returns an error,
+// the endpoint should be considered failed and no more of its methods (other
+// than shutdown) should be invoked.
 type endpoint interface {
 	// poll performs a one-shot poll for filesystem modifications in the
 	// endpoint's root. It blocks until an event occurs, the provided context is
@@ -36,8 +36,8 @@ type endpoint interface {
 	// return a list of paths, their signatures, and a receiver to receive them.
 	// The returned receiver must be finalized (i.e. transmitted to) before
 	// subsequent methods can be invoked on the endpoint. If the receiver fails,
-	// the endpoint should be considered contaminated and not used (though close
-	// can and should still be invoked).
+	// the endpoint should be considered contaminated and not used (though
+	// shutdown can and should still be invoked).
 	stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error)
 
 	// supply transmits files in a streaming fashion using the rsync algorithm
@@ -55,13 +55,13 @@ type endpoint interface {
 	// cancellation until they're all done anyway.
 	transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error)
 
-	// close terminates any resources associated with the endpoint. For local
-	// endpoints, close will not preempt calls, but for remote endpoints it will
-	// because it closes the underlying connection to the endpoint (actually, it
-	// terminates that connection). close can safely be called concurrently with
-	// other methods, though it's only recommended when you don't want the
-	// possibility of preempting the method (e.g. in transition) or you know
-	// that the operation can continue and terminate on its own (e.g. in scan).
-	// close should only be invoked once.
-	close() error
+	// shutdown terminates any resources associated with the endpoint. For local
+	// endpoints, shutdown will not preempt calls, but for remote endpoints it
+	// will because it closes the underlying connection to the endpoint
+	// (actually, it terminates that connection). shutdown can safely be called
+	// concurrently with other methods, though it's only recommended when you
+	// don't want the possibility of preempting the method (e.g. in transition)
+	// or you know that the operation can continue and terminate on its own
+	// (e.g. in scan). shutdown should only be invoked once.
+	shutdown() error
 }

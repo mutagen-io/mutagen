@@ -71,11 +71,11 @@ func reconnect(ctx context.Context,
 		// Perform the connection.
 		endpoint, err := connect(session, version, url, ignores, alpha, "")
 
-		// If we can't transmit the resulting endpoint, close it.
+		// If we can't transmit the resulting endpoint, shut it down.
 		select {
 		case <-ctx.Done():
 			if endpoint != nil {
-				endpoint.close()
+				endpoint.shutdown()
 			}
 		case results <- connectResult{endpoint, err}:
 		}
