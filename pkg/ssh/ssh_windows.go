@@ -20,15 +20,15 @@ var commandSearchPaths = []string{
 	`C:\msys64\usr\bin`,
 	`C:\cygwin\bin`,
 	`C:\cygwin64\bin`,
-	// TODO: Add the PowerShell OpenSSH paths once there's a stable release.
+	// TODO: Add the PowerShell OpenSSH paths once there's a usable release.
 }
 
 func commandNamed(name string) (string, error) {
 	// TODO: When the OpenSSH landscape on Windows eventually stablizes (i.e.
-	// once the PowerShell team releases a stable OpenSSH version), we might try
-	// to do an exec.LookPath call to let any binary in the user's path be
-	// picked up first. We'd still need the well-known paths though, since they
-	// might not be in the user's path.
+	// once the PowerShell team releases a stable and usable OpenSSH version),
+	// we might try to do an exec.LookPath call to let any binary in the user's
+	// path be picked up first. We'd still need the well-known paths though,
+	// since they might not be in the user's path.
 
 	// Scan well-known directories where we might find a viable binary.
 	for _, path := range commandSearchPaths {
