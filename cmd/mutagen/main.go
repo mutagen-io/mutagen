@@ -8,10 +8,10 @@ import (
 
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
-	"github.com/havoc-io/mutagen"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/environment"
-	"github.com/havoc-io/mutagen/ssh"
+	"github.com/havoc-io/mutagen/pkg/environment"
+	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
 // usage provides help information for the main entry point.

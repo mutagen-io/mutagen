@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/rpc"
-	"github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/ssh"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
 func handlePromptRequests(stream rpc.ClientStream) error {

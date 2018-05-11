@@ -7,13 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/agent"
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/daemon"
-	"github.com/havoc-io/mutagen/process"
-	"github.com/havoc-io/mutagen/rpc"
-	"github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/ssh"
+	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
 var daemonUsage = `usage: mutagen daemon [-h|--help] [-s|--stop]

@@ -7,10 +7,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/daemon"
-	"github.com/havoc-io/mutagen/environment"
-	"github.com/havoc-io/mutagen/rpc"
-	"github.com/havoc-io/mutagen/ssh"
+	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/environment"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
 var promptUsage = `usage: mutagen <prompt>

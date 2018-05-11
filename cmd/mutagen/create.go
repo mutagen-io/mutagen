@@ -6,11 +6,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/daemon"
-	"github.com/havoc-io/mutagen/filesystem"
-	"github.com/havoc-io/mutagen/rpc"
-	sessionpkg "github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/url"
+	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>]

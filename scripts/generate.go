@@ -28,7 +28,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/environment"
+	"github.com/havoc-io/mutagen/pkg/environment"
 )
 
 var subdirectories = []struct {

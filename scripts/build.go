@@ -13,9 +13,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/environment"
+	"github.com/havoc-io/mutagen/pkg/environment"
 )
 
 const (

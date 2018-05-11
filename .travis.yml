@@ -29,7 +29,6 @@ matrix:
 before_install:
   - git submodule init
   - git submodule update
-  - go get -u -v github.com/wadey/gocovmerge
 
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
@@ -38,21 +37,10 @@ install: true
 # bundles. We fold coverage report uploading into script to mirror the behavior
 # on AppVeyor (which is necessary because AppVeyor's after_test doesn't seem to
 # fail the build if an upload fails (which we want to do)).
-# HACK: We have to use a custom script to invoke tests because we want a
-# combined coverage report that includes all packages and go test currently
-# doesn't support that (golang/go#6909).
-# TODO: It looks like golang/go#6909 has been resolved by golang/go@283558e,
-# which should be available in Go 1.10, so I think we'll be able to ditch our
-# custom ci_testing.go script and just use the toolchain directly. We'll also be
-# able to ditch gocovmerge and just get a unified coverage profile directly.
-# Other relevant issues are golang/go#10271 and golang/go#21126, which are
-# slight variations on the main issue and will also seemingly be resolved in
-# Go 1.10. We may still need to find a way to skip the directories we have that
-# are not actually Go packages - it depends whether or not they cause problems.
 script:
   - go version
-  - go run scripts/ci_testing.go --race
-  - go run scripts/ci_testing.go --goarch=386 --no-cover
+  - go test -v -race -coverprofile=coverage.txt ./pkg/...
+  - GOARCH=386 go test -v ./pkg/...
   - if [[ "$TRAVIS_GO_VERSION" =~ ^1\.10(\.[0-9]+)?$ ]]; then bash <(curl -s https://codecov.io/bash) ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi

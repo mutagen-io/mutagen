@@ -6,10 +6,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/daemon"
-	"github.com/havoc-io/mutagen/rpc"
-	sessionpkg "github.com/havoc-io/mutagen/session"
-	"github.com/havoc-io/mutagen/sync"
+	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 var listUsage = `usage: mutagen list [-h|--help] [<session>]

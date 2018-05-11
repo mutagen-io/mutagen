@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/daemon"
-	"github.com/havoc-io/mutagen/rpc"
-	sessionpkg "github.com/havoc-io/mutagen/session"
+	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/rpc"
+	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
 
 var monitorUsage = `usage: mutagen monitor [-h|--help] [<session>]
