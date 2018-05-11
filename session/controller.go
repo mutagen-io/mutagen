@@ -176,6 +176,11 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "unable to load session configuration")
 	}
 
+	// Validate the session.
+	if err := session.ensureValid(); err != nil {
+		return nil, errors.Wrap(err, "invalid session found on disk")
+	}
+
 	// Create the controller.
 	controller := &controller{
 		sessionPath: sessionPath,
