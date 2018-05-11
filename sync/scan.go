@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/havoc-io/mutagen/filesystem"
 )
 
@@ -45,14 +47,22 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Compute executability.
 	executable := (mode&AnyExecutablePermission != 0)
 
+	// Convert the timestamp to Protocol Buffers format.
+	modificationTimeProto, err := ptypes.TimestampProto(modificationTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to convert modification time format")
+	}
+
 	// Try to find a cached digest. We only enforce that type, modification
 	// time, and size haven't changed in order to re-use digests.
 	var digest []byte
 	cached, hit := s.cache.Entries[path]
 	match := hit &&
 		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
-		modificationTime.Equal(cached.ModificationTime) &&
-		cached.Size_ == size
+		cached.ModificationTime != nil &&
+		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
+		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
+		cached.Size == size
 	if match {
 		digest = cached.Digest
 	}
@@ -83,8 +93,8 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Add a cache entry.
 	s.newCache.Entries[path] = &CacheEntry{
 		Mode:             uint32(mode),
-		ModificationTime: modificationTime,
-		Size_:            size,
+		ModificationTime: modificationTimeProto,
+		Size:             size,
 		Digest:           digest,
 	}
 
@@ -209,7 +219,9 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 	if cacheLength := len(cache.GetEntries()); cacheLength != 0 {
 		initialCacheCapacity = cacheLength
 	}
-	newCache := &Cache{make(map[string]*CacheEntry, initialCacheCapacity)}
+	newCache := &Cache{
+		Entries: make(map[string]*CacheEntry, initialCacheCapacity),
+	}
 
 	// Create a scanner.
 	s := &scanner{

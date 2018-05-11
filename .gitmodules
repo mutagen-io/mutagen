@@ -31,9 +31,9 @@
 [submodule "vendor/golang.org/x/sys"]
 	path = vendor/golang.org/x/sys
 	url = https://github.com/golang/sys.git
-[submodule "vendor/github.com/gogo/protobuf"]
-	path = vendor/github.com/gogo/protobuf
-	url = https://github.com/gogo/protobuf.git
 [submodule "vendor/github.com/google/uuid"]
 	path = vendor/github.com/google/uuid
 	url = https://github.com/google/uuid.git
+[submodule "vendor/github.com/golang/protobuf"]
+	path = vendor/github.com/golang/protobuf
+	url = https://github.com/golang/protobuf.git

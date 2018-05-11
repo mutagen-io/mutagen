@@ -268,14 +268,9 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
 
-Protocol Buffers for Go with Gadgets (https://github.com/gogo/protobuf)
-
-Copyright (c) 2013, The GoGo Authors. All rights reserved.
-http://github.com/gogo/protobuf
-
 Go support for Protocol Buffers - Google's data interchange format
 
-Copyright 2010 The Go Authors.  All rights reserved.
+Copyright 2010 The Go Authors. All rights reserved.
 https://github.com/golang/protobuf
 
 Redistribution and use in source and binary forms, with or without modification,

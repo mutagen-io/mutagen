@@ -4,12 +4,6 @@ package sync;
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-
 message CacheEntry {
     // Mode stores the value of the Go os package's FileMode type. The meaning
     // of this value is defined to be stable (even if we'd have to implement its
@@ -30,7 +24,7 @@ message CacheEntry {
     // and I'm willing to live with this slightly "unclean" design, especially
     // given its potential and the relative ease of deprecating it if necessary.
     uint32 mode = 1;
-    google.protobuf.Timestamp modificationTime = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+    google.protobuf.Timestamp modificationTime = 2;
     uint64 size = 3;
     bytes digest = 4;
 }

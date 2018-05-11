@@ -1,7 +1,7 @@
 package encoding
 
 import (
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 func LoadAndUnmarshalProtobuf(path string, message proto.Message) error {

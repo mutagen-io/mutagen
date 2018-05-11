@@ -1,8 +1,8 @@
 package main
 
 // This script generates Go code from Protocol Buffers specifications in the
-// Mutagen source tree. It uses the "protoc-gen-gogo" Go code generator
-// (https://github.com/gogo/protobuf). It builds this generator from the
+// Mutagen source tree. It uses the canonical Go Protocol Buffers code generator
+// (https://github.com/golang/protobuf). It builds this generator from the
 // vendored sources to ensure it matches the version of the runtime code that
 // goes into the final binaries.
 //
@@ -56,7 +56,7 @@ func main() {
 	generatorBuild := exec.Command(
 		"go",
 		"build",
-		"github.com/havoc-io/mutagen/vendor/github.com/gogo/protobuf/protoc-gen-gogo",
+		"github.com/havoc-io/mutagen/vendor/github.com/golang/protobuf/protoc-gen-go",
 	)
 	generatorBuild.Dir = generatorPath
 	generatorBuild.Stdin = os.Stdin
@@ -101,25 +101,18 @@ func main() {
 		// Print directory information.
 		fmt.Println("Processing", subdirectory)
 
-		// Execute the Protocol Buffers compiler using the gogo generator.
+		// Execute the Protocol Buffers compiler using the Go code generator.
 		// HACK: We specify include paths so that we can reference definitions
 		// between packages, but this means that we also end up needing to
 		// specify -I., because for some reason the Protocol Buffers compiler is
 		// too stupid to include this automatically. If you don't believe me,
 		// try removing that argument and the compiler will literally print a
 		// message telling you how "stupid" it is.
-		// HACK: We have to use a special argument to the "gogo" generator to
-		// have it point to the "gogo" timestamp implementation. The default
-		// timestamp.proto file that protoc imports sets go_package to
-		// github.com/golang/protobuf/ptypes/timestamp, so we just override
-		// that to point to the message implementation in the "gogo"
-		// repository).
 		arguments := make([]string, 0, len(s.files)+1)
 		arguments = append(arguments, "-I.")
 		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		timestampRedirect := "Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types"
-		arguments = append(arguments, fmt.Sprintf("--gogo_out=%s:.", timestampRedirect))
+		arguments = append(arguments, fmt.Sprintf("--go_out=."))
 		arguments = append(arguments, s.files...)
 		protoc := exec.Command("protoc", arguments...)
 		protoc.Dir = subdirectory

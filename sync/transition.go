@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/havoc-io/mutagen/filesystem"
 )
 
@@ -94,6 +96,18 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	// Grab the modification time.
 	modificationTime := info.ModTime()
 
+	// Grab the cached modification time and convert it to a Go format. This
+	// conversion function handles nil Protocol Buffers timestamps (mapping them
+	// to zero-value Go timestamps), but these shouldn't ever occur and it's
+	// worth watching for them explicitly.
+	if cacheEntry.ModificationTime == nil {
+		return 0, errors.New("cached modification time absent")
+	}
+	cachedModificationTime, err := ptypes.Timestamp(cacheEntry.ModificationTime)
+	if err != nil {
+		return 0, errors.Wrap(err, "unable to convert cached modification time format")
+	}
+
 	// If stat information doesn't match, don't bother re-hashing, just abort.
 	// Note that we don't really have to check executability here (and we
 	// shouldn't since it's not preserved on all systems) - we just need to
@@ -101,8 +115,8 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	// that is accomplished as part of the mode check. This is why we don't
 	// restrict the mode comparison to the type bits.
 	match := os.FileMode(cacheEntry.Mode) == mode &&
-		modificationTime.Equal(cacheEntry.ModificationTime) &&
-		cacheEntry.Size_ == uint64(info.Size()) &&
+		modificationTime.Equal(cachedModificationTime) &&
+		cacheEntry.Size == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, expected.Digest)
 	if !match {
 		return 0, errors.New("modification detected")

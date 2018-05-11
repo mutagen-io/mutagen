@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/havoc-io/mutagen"
 	"github.com/havoc-io/mutagen/encoding"
 	"github.com/havoc-io/mutagen/rsync"
@@ -80,6 +82,13 @@ func newSession(
 	// Set the session version.
 	version := Version_Version1
 
+	// Compute the creation time and convert it to Protocol Buffers format.
+	creationTime := time.Now()
+	creationTimeProto, err := ptypes.TimestampProto(creationTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to convert creation time format")
+	}
+
 	// Attempt to connect. Session creation is only allowed after if successful.
 	alphaEndpoint, err := connect(identifier, version, alpha, ignores, true, prompter)
 	if err != nil {
@@ -95,7 +104,7 @@ func newSession(
 	session := &Session{
 		Identifier:           identifier,
 		Version:              version,
-		CreationTime:         time.Now(),
+		CreationTime:         creationTimeProto,
 		CreatingVersionMajor: mutagen.VersionMajor,
 		CreatingVersionMinor: mutagen.VersionMinor,
 		CreatingVersionPatch: mutagen.VersionPatch,

@@ -2,12 +2,6 @@ syntax = "proto3";
 
 package sync;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-
 enum EntryKind {
     Directory = 0;
     File = 1;
@@ -15,8 +9,6 @@ enum EntryKind {
 }
 
 message Entry {
-    option (gogoproto.stable_marshaler) = true;
-
     EntryKind kind = 1;
     bool executable = 2;
     bytes digest = 3;

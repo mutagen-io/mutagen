@@ -4,14 +4,8 @@ package session;
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
 import "github.com/havoc-io/mutagen/sync/entry.proto";
 import "github.com/havoc-io/mutagen/url/url.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.sizer_all) = true;
 
 enum Version {
     Unknown = 0;
@@ -21,7 +15,7 @@ enum Version {
 message Session {
     string identifier = 1;
     Version version = 2;
-    google.protobuf.Timestamp creationTime = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+    google.protobuf.Timestamp creationTime = 3;
     uint32 creatingVersionMajor = 4;
     uint32 creatingVersionMinor = 5;
     uint32 creatingVersionPatch = 6;

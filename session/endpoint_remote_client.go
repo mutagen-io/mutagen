@@ -141,7 +141,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 
 	// Marshal the ancestor and compute its rsync signature. We'll use it as a
 	// base for an rsync transfer of the serialized snapshot.
-	ancestorBytes, err := marshalEntry(ancestor)
+	ancestorBytes, err := marshalEntry(ancestor, true)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to marshal ancestor")
 	}

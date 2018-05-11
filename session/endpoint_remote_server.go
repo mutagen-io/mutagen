@@ -180,7 +180,7 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	}
 
 	// Marshal the snapshot.
-	snapshotBytes, err := marshalEntry(snapshot)
+	snapshotBytes, err := marshalEntry(snapshot, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to marshal snapshot")
 	}

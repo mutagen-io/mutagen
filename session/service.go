@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/havoc-io/mutagen/filesystem"
 	"github.com/havoc-io/mutagen/rpc"
 	"github.com/havoc-io/mutagen/ssh"
@@ -194,9 +196,14 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		s.sessionsLock.Lock()
 		for _, controller := range s.sessions {
 			state := controller.currentState()
-			if state.Session.CreationTime.After(mostRecentSessionCreationTime) {
+			creationTime, err := ptypes.Timestamp(state.Session.CreationTime)
+			if err != nil {
+				s.sessionsLock.Unlock()
+				return errors.Wrap(err, "unable to convert creation time format")
+			}
+			if creationTime.After(mostRecentSessionCreationTime) {
 				session = state.Session.Identifier
-				mostRecentSessionCreationTime = state.Session.CreationTime
+				mostRecentSessionCreationTime = creationTime
 			}
 		}
 		s.sessionsLock.Unlock()
@@ -253,9 +260,10 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 
 		// Sort sessions by creation time.
 		sort.Slice(sessions, func(i, j int) bool {
-			return sessions[i].Session.CreationTime.Before(
-				sessions[j].Session.CreationTime,
-			)
+			iTime := sessions[i].Session.CreationTime
+			jTime := sessions[j].Session.CreationTime
+			return iTime.Seconds < jTime.Seconds ||
+				(iTime.Seconds == jTime.Seconds && iTime.Nanos < jTime.Nanos)
 		})
 
 		// Send this response.
