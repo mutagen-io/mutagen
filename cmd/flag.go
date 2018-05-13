@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	flag "github.com/ogier/pflag"
+	flag "github.com/spf13/pflag"
 
 	"github.com/pkg/errors"
 )

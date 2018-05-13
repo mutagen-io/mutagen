@@ -109,7 +109,9 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-pflag (https://github.com/ogier/pflag)
+pflag (https://github.com/spf13/pflag)
+
+Original version available at https://github.com/ogier/pflag.
 
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.

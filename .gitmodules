@@ -1,9 +1,6 @@
 [submodule "vendor/github.com/pkg/errors"]
 	path = vendor/github.com/pkg/errors
 	url = https://github.com/pkg/errors.git
-[submodule "vendor/github.com/ogier/pflag"]
-	path = vendor/github.com/ogier/pflag
-	url = https://github.com/ogier/pflag.git
 [submodule "vendor/github.com/texttheater/golang-levenshtein"]
 	path = vendor/github.com/texttheater/golang-levenshtein
 	url = https://github.com/texttheater/golang-levenshtein.git
@@ -37,3 +34,6 @@
 [submodule "vendor/github.com/golang/protobuf"]
 	path = vendor/github.com/golang/protobuf
 	url = https://github.com/golang/protobuf.git
+[submodule "vendor/github.com/spf13/pflag"]
+	path = vendor/github.com/spf13/pflag
+	url = https://github.com/spf13/pflag.git

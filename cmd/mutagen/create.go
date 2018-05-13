@@ -25,6 +25,10 @@ func (p *ignorePatterns) String() string {
 	return "ignore patterns"
 }
 
+func (p *ignorePatterns) Type() string {
+	return "string"
+}
+
 func (p *ignorePatterns) Set(value string) error {
 	*p = append(*p, value)
 	return nil
@@ -32,9 +36,9 @@ func (p *ignorePatterns) Set(value string) error {
 
 func createMain(arguments []string) error {
 	// Parse command line arguments.
-	var ignores ignorePatterns
+	var ignores []string
 	flagSet := cmd.NewFlagSet("create", createUsage, []int{2})
-	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
+	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	urls := flagSet.ParseOrDie(arguments)
 
 	// Extract and parse URLs.
@@ -78,7 +82,7 @@ func createMain(arguments []string) error {
 	request := sessionpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
-		Ignores: []string(ignores),
+		Ignores: ignores,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(err, "unable to send creation request")
