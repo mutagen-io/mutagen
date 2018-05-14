@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	connectTimeoutSeconds    = 5
-	connectionsDirectoryName = "connections"
+	connectTimeoutSeconds = 5
 )
 
 // compressionArgument returns a flag that can be passed to scp or ssh to enable
@@ -67,7 +66,6 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 	var scpArguments []string
 	scpArguments = append(scpArguments, compressionArgument())
 	scpArguments = append(scpArguments, timeoutArgument())
-	scpArguments = append(scpArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
 		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", remote.Port))
 	}
@@ -124,7 +122,6 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 	var sshArguments []string
 	sshArguments = append(sshArguments, compressionArgument())
 	sshArguments = append(sshArguments, timeoutArgument())
-	sshArguments = append(sshArguments, controlMasterArguments()...)
 	if remote.Port != 0 {
 		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", remote.Port))
 	}
