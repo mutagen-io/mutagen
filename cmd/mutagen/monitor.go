@@ -8,8 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
 
@@ -66,8 +64,12 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
 
-	// Create a daemon client.
-	daemonClient := rpc.NewClient(daemon.NewOpener())
+	// Create a daemon client and defer its closure.
+	daemonClient, err := createDaemonClient()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+	}
+	defer daemonClient.Close()
 
 	// Invoke the session list method and ensure the resulting stream is closed
 	// when we're done.

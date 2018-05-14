@@ -189,8 +189,12 @@ func daemonStopMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
-	// Create a daemon client.
-	daemonClient := rpc.NewClient(daemon.NewOpener())
+	// Create a daemon client and defer its closure.
+	daemonClient, err := createDaemonClient()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+	}
+	defer daemonClient.Close()
 
 	// Invoke termination.
 	stream, err := daemonClient.Invoke(daemon.MethodTerminate)

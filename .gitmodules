@@ -37,3 +37,6 @@
 [submodule "vendor/github.com/spf13/cobra"]
 	path = vendor/github.com/spf13/cobra
 	url = https://github.com/spf13/cobra.git
+[submodule "vendor/github.com/hashicorp/yamux"]
+	path = vendor/github.com/hashicorp/yamux
+	url = https://github.com/hashicorp/yamux.git

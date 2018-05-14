@@ -14,7 +14,7 @@ const (
 	socketName = "daemon.sock"
 )
 
-func dialTimeout(timeout time.Duration) (net.Conn, error) {
+func DialTimeout(timeout time.Duration) (net.Conn, error) {
 	// Compute the socket path.
 	socketPath, err := subpath(socketName)
 	if err != nil {

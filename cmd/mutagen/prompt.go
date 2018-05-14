@@ -6,9 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/environment"
-	"github.com/havoc-io/mutagen/pkg/rpc"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
@@ -28,8 +27,12 @@ func prompt(prompt string) error {
 	}
 	message := string(messageBytes)
 
-	// Create a daemon client.
-	daemonClient := rpc.NewClient(daemon.NewOpener())
+	// Create a daemon client and defer its closure.
+	daemonClient, err := createDaemonClient()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+	}
+	defer daemonClient.Close()
 
 	// Invoke the SSH prompt method and ensure the resulting stream is closed
 	// when we're done.

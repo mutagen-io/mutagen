@@ -1,37 +1,36 @@
 package rpc
 
 import (
+	"io"
 	"net"
 	"sync"
 
 	"github.com/pkg/errors"
+
+	"github.com/hashicorp/yamux"
 )
 
-// Opener opens new connections.
-type Opener interface {
-	Open() (net.Conn, error)
-}
-
-// Acceptor is a simplified version of net.Listener geared towards multiplexers.
-// It accepts new connections.
-type Acceptor interface {
-	Accept() (net.Conn, error)
-}
-
 type Client struct {
-	openerLock sync.Mutex
-	opener     Opener
+	multiplexerLock sync.Mutex
+	multiplexer     *yamux.Session
 }
 
-func NewClient(opener Opener) *Client {
-	return &Client{opener: opener}
+func NewClient(stream io.ReadWriteCloser) (*Client, error) {
+	// Create the multiplexer.
+	multiplexer, err := yamux.Client(stream, yamux.DefaultConfig())
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create multiplexer")
+	}
+
+	// Create the client.
+	return &Client{multiplexer: multiplexer}, nil
 }
 
 func (c *Client) Invoke(method string) (ClientStream, error) {
 	// Open a connection.
-	c.openerLock.Lock()
-	connection, err := c.opener.Open()
-	c.openerLock.Unlock()
+	c.multiplexerLock.Lock()
+	connection, err := c.multiplexer.Open()
+	c.multiplexerLock.Unlock()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to open connection to server")
 	}
@@ -47,6 +46,15 @@ func (c *Client) Invoke(method string) (ClientStream, error) {
 
 	// Success.
 	return stream, nil
+}
+
+func (c *Client) Close() error {
+	// Lock the multiplexer and defer its release.
+	c.multiplexerLock.Lock()
+	defer c.multiplexerLock.Unlock()
+
+	// Attempt to close the multiplexer.
+	return errors.Wrap(c.multiplexer.Close(), "unable to close multiplexer")
 }
 
 type Handler func(HandlerStream) error
@@ -81,13 +89,10 @@ func (s *Server) Register(service Service) {
 	}
 }
 
-func (s *Server) serveConnection(connection net.Conn) {
-	// Ensure that the connection is closed once the handler is finished.
-	defer connection.Close()
-
-	// Create a stream on top of the connection. Ensure that it's closed when
-	// we're done with it.
-	stream := newStream(connection)
+func (s *Server) serveStream(rawStream *yamux.Stream) {
+	// Create a message stream on top of the raw stream. Ensure that it's closed
+	// when we're done with it.
+	stream := newStream(rawStream)
 	defer stream.Close()
 
 	// Receive the invocation request.
@@ -113,13 +118,35 @@ func (s *Server) serveConnection(connection net.Conn) {
 	}
 }
 
-func (s *Server) Serve(acceptor Acceptor) error {
-	// Accept and serve connections until there is an error with the acceptor.
+func (s *Server) multiplexAndServe(connection io.ReadWriteCloser) error {
+	// Wrap the connection in a multiplexer and defer its closure.
+	multiplexer, err := yamux.Server(connection, yamux.DefaultConfig())
+	if err != nil {
+		connection.Close()
+		return errors.Wrap(err, "unable to create multiplexer")
+	}
+	defer multiplexer.Close()
+
+	// Accept and serve streams until there is an error with the multiplexer.
 	for {
-		connection, err := acceptor.Accept()
+		stream, err := multiplexer.AcceptStream()
+		if err != nil {
+			return errors.Wrap(err, "unable to accept stream")
+		}
+		go s.serveStream(stream)
+	}
+}
+
+func (s *Server) Serve(listener net.Listener) error {
+	// Defer closure of the listener.
+	defer listener.Close()
+
+	// Accept and serve until there's an error with the listener.
+	for {
+		connection, err := listener.Accept()
 		if err != nil {
 			return errors.Wrap(err, "error accepting connection")
 		}
-		go s.serveConnection(connection)
+		go s.multiplexAndServe(connection)
 	}
 }

@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
 
@@ -19,8 +17,12 @@ func pauseMain(command *cobra.Command, arguments []string) {
 	}
 	session = arguments[0]
 
-	// Create a daemon client.
-	daemonClient := rpc.NewClient(daemon.NewOpener())
+	// Create a daemon client and defer its closure.
+	daemonClient, err := createDaemonClient()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+	}
+	defer daemonClient.Close()
 
 	// Invoke the session pause method and ensure the resulting stream is closed
 	// when we're done.
