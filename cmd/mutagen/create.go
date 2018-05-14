@@ -8,12 +8,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 func createMain(command *cobra.Command, arguments []string) {
+	// Load the Mutagen configuration.
+	configuration, err := configuration.Load()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to load configuration file"))
+	}
+
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
 		cmd.Fatal(errors.New("invalid number of endpoint URLs provided"))
@@ -43,6 +50,12 @@ func createMain(command *cobra.Command, arguments []string) {
 		}
 	}
 
+	// Compute ignores by appending those specified on the command line to the
+	// defaults specified in the user's configuration.
+	var ignores []string
+	ignores = append(ignores, configuration.Ignore.Default...)
+	ignores = append(ignores, createConfiguration.ignores...)
+
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
 	if err != nil {
@@ -62,7 +75,7 @@ func createMain(command *cobra.Command, arguments []string) {
 	request := sessionpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
-		Ignores: createConfiguration.ignores,
+		Ignores: ignores,
 	}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send creation request"))

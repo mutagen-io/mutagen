@@ -8,6 +8,10 @@ import (
 )
 
 const (
+	// mutagenConfigurationName is the name of the Mutagen configuration file
+	// inside the user's home directory.
+	mutagenConfigurationName = ".mutagen.toml"
+
 	// MutagenDirectoryName is the name of the Mutagen control directory inside
 	// the user's home directory.
 	MutagenDirectoryName = ".mutagen"
@@ -16,6 +20,12 @@ const (
 	// directory and its subdirectories.
 	mutagenDirectoryPermissions os.FileMode = 0700
 )
+
+var MutagenConfigurationPath string
+
+func init() {
+	MutagenConfigurationPath = filepath.Join(homeDirectory, mutagenConfigurationName)
+}
 
 func Mutagen(create bool, subpath ...string) (string, error) {
 	// Collect path components and compute the result.

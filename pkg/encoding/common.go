@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 
@@ -12,6 +13,9 @@ func loadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 	// Grab the file contents.
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return err
+		}
 		return errors.Wrap(err, "unable to load file")
 	}
 
