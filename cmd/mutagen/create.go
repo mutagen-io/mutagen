@@ -19,21 +19,6 @@ var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>]
 Creates and starts a new synchronization session.
 `
 
-type ignorePatterns []string
-
-func (p *ignorePatterns) String() string {
-	return "ignore patterns"
-}
-
-func (p *ignorePatterns) Type() string {
-	return "string"
-}
-
-func (p *ignorePatterns) Set(value string) error {
-	*p = append(*p, value)
-	return nil
-}
-
 func createMain(arguments []string) error {
 	// Parse command line arguments.
 	var ignores []string
