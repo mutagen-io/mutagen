@@ -43,3 +43,6 @@
 [submodule "vendor/github.com/BurntSushi/toml"]
 	path = vendor/github.com/BurntSushi/toml
 	url = https://github.com/BurntSushi/toml.git
+[submodule "vendor/github.com/inconshreveable/mousetrap"]
+	path = vendor/github.com/inconshreveable/mousetrap
+	url = https://github.com/inconshreveable/mousetrap.git
