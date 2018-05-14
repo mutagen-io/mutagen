@@ -15,11 +15,6 @@ import (
 )
 
 func rootMain(command *cobra.Command, arguments []string) {
-	// Sanity check configuration.
-	if rootConfiguration.version && rootConfiguration.legal {
-		cmd.Fatal(errors.New("version and legal information requested simultaneously"))
-	}
-
 	// Print version information, if requested.
 	if rootConfiguration.version {
 		fmt.Println(mutagen.Version)
@@ -29,6 +24,14 @@ func rootMain(command *cobra.Command, arguments []string) {
 	// Print legal information, if requested.
 	if rootConfiguration.legal {
 		fmt.Print(mutagen.LegalNotice)
+		return
+	}
+
+	// Generate bash completion script, if requested.
+	if rootConfiguration.bashCompletionScript != "" {
+		if err := command.GenBashCompletionFile(rootConfiguration.bashCompletionScript); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to generate bash completion script"))
+		}
 		return
 	}
 
@@ -46,9 +49,10 @@ var rootCommand = &cobra.Command{
 }
 
 var rootConfiguration struct {
-	help    bool
-	version bool
-	legal   bool
+	help                 bool
+	version              bool
+	legal                bool
+	bashCompletionScript string
 }
 
 func init() {
@@ -58,6 +62,8 @@ func init() {
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
 	flags.BoolVarP(&rootConfiguration.version, "version", "V", false, "Show version information")
 	flags.BoolVarP(&rootConfiguration.legal, "legal", "l", false, "Show legal information")
+	flags.StringVar(&rootConfiguration.bashCompletionScript, "generate-bash-completion", "", "Generate bash completion script")
+	flags.MarkHidden("generate-bash-completion")
 
 	// Disable Cobra's command sorting behavior. By default, it sorts commands
 	// alphabetically in the help output.
