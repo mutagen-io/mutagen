@@ -35,9 +35,9 @@ var subdirectories = []struct {
 	path  string
 	files []string
 }{
-	{"session", []string{"session.proto"}},
-	{"sync", []string{"cache.proto", "entry.proto"}},
-	{"url", []string{"url.proto"}},
+	{"pkg/session", []string{"session.proto"}},
+	{"pkg/sync", []string{"cache.proto", "entry.proto"}},
+	{"pkg/url", []string{"url.proto"}},
 }
 
 func main() {
