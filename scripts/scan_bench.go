@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/spf13/pflag"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/cmd"
@@ -24,25 +26,27 @@ const (
 var usage = `scan_bench [-h|--help] [-p|--profile] [-i|--ignore=<pattern>] <path>
 `
 
-type ignorePatterns []string
-
-func (p *ignorePatterns) String() string {
-	return "ignore patterns"
-}
-
-func (p *ignorePatterns) Set(value string) error {
-	*p = append(*p, value)
-	return nil
-}
-
 func main() {
 	// Parse command line arguments.
-	var ignores ignorePatterns
+	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
+	flagSet.SetOutput(ioutil.Discard)
+	var ignores []string
 	var enableProfile bool
-	flagSet := cmd.NewFlagSet("scan_bench", usage, []int{1})
-	flagSet.VarP(&ignores, "ignore", "i", "specify ignore paths")
+	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
-	path := flagSet.ParseOrDie(os.Args[1:])[0]
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		if err == pflag.ErrHelp {
+			fmt.Fprint(os.Stdout, usage)
+			return
+		} else {
+			cmd.Fatal(errors.Wrap(err, "unable to parse command line"))
+		}
+	}
+	arguments := flagSet.Args()
+	if len(arguments) != 1 {
+		cmd.Fatal(errors.New("invalid number of paths specified"))
+	}
+	path := arguments[0]
 
 	// Print information.
 	fmt.Println("Analyzing", path)
@@ -57,7 +61,7 @@ func main() {
 		}
 	}
 	start := time.Now()
-	snapshot, cache, err := sync.Scan(path, sha1.New(), nil, []string(ignores))
+	snapshot, cache, err := sync.Scan(path, sha1.New(), nil, ignores)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -80,7 +84,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	snapshot, _, err = sync.Scan(path, sha1.New(), cache, []string(ignores))
+	snapshot, _, err = sync.Scan(path, sha1.New(), cache, ignores)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {

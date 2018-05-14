@@ -7,8 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/rpc"
@@ -16,50 +18,43 @@ import (
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-var daemonUsage = `usage: mutagen daemon [-h|--help] [-s|--stop]
+func daemonMain(command *cobra.Command, arguments []string) {
+	// If no commands were given, then print help information and bail. We don't
+	// have to worry about warning about arguments being present here (which
+	// would be incorrect usage) because arguments can't even reach this point
+	// (they will be mistaken for subcommands and a error will be displayed).
+	command.Help()
+}
 
-Controls the lifecycle of the daemon. The default behavior of this command is to
-start the daemon in the background. The command is idempotent - a daemon
-instance is only created if one doesn't already exist.
-`
+var daemonCommand = &cobra.Command{
+	Use:   "daemon",
+	Short: "Controls the Mutagen daemon lifecycle",
+	Run:   daemonMain,
+}
 
-func daemonMain(arguments []string) error {
-	// Parse command line arguments.
-	var run bool
-	var stop bool
-	flagSet := cmd.NewFlagSet("daemon", daemonUsage, nil)
-	flagSet.BoolVarP(&run, "run", "r", false, "run the daemon server")
-	flagSet.BoolVarP(&stop, "stop", "s", false, "stop any running daemon server")
-	flagSet.ParseOrDie(arguments)
+var daemonConfiguration struct {
+	help bool
+}
 
-	// Check that options are sane.
-	if run && stop {
-		return errors.New("-r/--run with -s/--stop doesn't make sense")
-	}
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonCommand.Flags()
+	flags.BoolVarP(&daemonConfiguration.help, "help", "h", false, "Show help information")
 
-	// If stopping is requested, try to send a termination request.
-	if stop {
-		daemonClient := rpc.NewClient(daemon.NewOpener())
-		stream, err := daemonClient.Invoke(daemon.MethodTerminate)
-		if err != nil {
-			return errors.Wrap(err, "unable to invoke daemon termination")
-		}
-		stream.Close()
-		return nil
-	}
+	// Register commands. We do this here (rather than in individual init
+	// functions) so that we can control the order.
+	daemonCommand.AddCommand(
+		daemonRunCommand,
+		daemonStartCommand,
+		daemonStopCommand,
+	)
+}
 
-	// Unless running (non-backgrounding) is requested, then we need to restart
-	// in the background.
-	if !run {
-		daemonProcess := &exec.Cmd{
-			Path:        process.Current.ExecutablePath,
-			Args:        []string{"mutagen", "daemon", "--run"},
-			SysProcAttr: daemonProcessAttributes,
-		}
-		if err := daemonProcess.Start(); err != nil {
-			return errors.Wrap(err, "unable to fork daemon")
-		}
-		return nil
+func daemonRunMain(command *cobra.Command, arguments []string) {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
 	// TODO: Do we eventually want to encapsulate the construction of the daemon
@@ -78,7 +73,7 @@ func daemonMain(arguments []string) error {
 	// does seem to be basically instant).
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		return errors.Wrap(err, "unable to acquire daemon lock")
+		cmd.Fatal(errors.Wrap(err, "unable to acquire daemon lock"))
 	}
 	defer lock.Unlock()
 
@@ -103,7 +98,7 @@ func daemonMain(arguments []string) error {
 	// generated during a synchronization cycle.
 	sessionService, err := session.NewService(sshService)
 	if err != nil {
-		return errors.Wrap(err, "unable to create session service")
+		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
 	}
 	server.Register(sessionService)
 	defer sessionService.Shutdown()
@@ -111,7 +106,7 @@ func daemonMain(arguments []string) error {
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
 	if err != nil {
-		return errors.Wrap(err, "unable to create daemon listener")
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon listener"))
 	}
 	defer listener.Close()
 
@@ -128,10 +123,96 @@ func daemonMain(arguments []string) error {
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
 	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+		cmd.Fatal(errors.Errorf("terminated by signal: %s", sig))
 	case <-daemonTermination:
-		return nil
+		return
 	case err = <-serverTermination:
-		return errors.Wrap(err, "premature server termination")
+		cmd.Fatal(errors.Wrap(err, "premature server termination"))
 	}
+}
+
+var daemonRunCommand = &cobra.Command{
+	Use:    "run",
+	Short:  "Runs the Mutagen daemon",
+	Run:    daemonRunMain,
+	Hidden: true,
+}
+
+var daemonRunConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonRunCommand.Flags()
+	flags.BoolVarP(&daemonRunConfiguration.help, "help", "h", false, "Show help information")
+}
+
+func daemonStartMain(command *cobra.Command, arguments []string) {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		cmd.Fatal(errors.New("unexpected arguments provided"))
+	}
+
+	// Restart in the background.
+	daemonProcess := &exec.Cmd{
+		Path:        process.Current.ExecutablePath,
+		Args:        []string{"mutagen", "daemon", "run"},
+		SysProcAttr: daemonProcessAttributes,
+	}
+	if err := daemonProcess.Start(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
+	}
+}
+
+var daemonStartCommand = &cobra.Command{
+	Use:   "start",
+	Short: "Starts the Mutagen daemon if it's not already running",
+	Run:   daemonStartMain,
+}
+
+var daemonStartConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonStartCommand.Flags()
+	flags.BoolVarP(&daemonStartConfiguration.help, "help", "h", false, "Show help information")
+}
+
+func daemonStopMain(command *cobra.Command, arguments []string) {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		cmd.Fatal(errors.New("unexpected arguments provided"))
+	}
+
+	// Create a daemon client.
+	daemonClient := rpc.NewClient(daemon.NewOpener())
+
+	// Invoke termination.
+	stream, err := daemonClient.Invoke(daemon.MethodTerminate)
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to invoke daemon termination"))
+	}
+	stream.Close()
+}
+
+var daemonStopCommand = &cobra.Command{
+	Use:   "stop",
+	Short: "Stops the Mutagen daemon if it's running",
+	Run:   daemonStopMain,
+}
+
+var daemonStopConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonStopCommand.Flags()
+	flags.BoolVarP(&daemonStopConfiguration.help, "help", "h", false, "Show help information")
 }

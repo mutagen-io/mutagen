@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,9 +14,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/spf13/pflag"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/environment"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
 const (
@@ -291,7 +294,7 @@ func buildAgentForTargetInTesting(target Target) bool {
 				target.GOARCH == "arm"))
 }
 
-var buildUsage = `usage: build [-h|--help] [-m|--mode=<mode>] [-s|--skip-bundles]
+var usage = `usage: build [-h|--help] [-m|--mode=<mode>] [-s|--skip-bundles]
 
 The mode flag takes three values: 'slim', 'testing', and 'release'. 'slim' will
 build binaries only for the current platform. 'testing' will build the CLI
@@ -306,12 +309,20 @@ release bundles won't be produced.
 
 func main() {
 	// Parse command line arguments.
-	flagSet := cmd.NewFlagSet("build", buildUsage, nil)
+	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
+	flagSet.SetOutput(ioutil.Discard)
 	var mode string
 	var skipBundles bool
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
 	flagSet.BoolVarP(&skipBundles, "skip-bundles", "s", false, "skip release bundle building")
-	flagSet.ParseOrDie(os.Args[1:])
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		if err == pflag.ErrHelp {
+			fmt.Fprint(os.Stdout, usage)
+			return
+		} else {
+			cmd.Fatal(errors.Wrap(err, "unable to parse command line"))
+		}
+	}
 	if mode != "slim" && mode != "testing" && mode != "release" {
 		cmd.Fatal(errors.New("invalid build mode"))
 	}

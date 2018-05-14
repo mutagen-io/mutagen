@@ -3,25 +3,21 @@ package main
 import (
 	"github.com/pkg/errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
 
-var terminateUsage = `usage: mutagen terminate [-h|--help] <session>
-
-Terminates a synchronization session. To temporarily halt session
-synchronization, use the pause command.
-`
-
-func terminateMain(arguments []string) error {
-	// Parse command line arguments.
-	flagSet := cmd.NewFlagSet("terminate", terminateUsage, []int{1})
-	session := flagSet.ParseOrDie(arguments)[0]
-	if session == "" {
-		return errors.New("empty session identifier")
+func terminateMain(command *cobra.Command, arguments []string) {
+	// Parse session specification.
+	var session string
+	if len(arguments) != 1 {
+		cmd.Fatal(errors.New("session not specified"))
 	}
+	session = arguments[0]
 
 	// Create a daemon client.
 	daemonClient := rpc.NewClient(daemon.NewOpener())
@@ -30,21 +26,35 @@ func terminateMain(arguments []string) error {
 	// closed when we're done.
 	stream, err := daemonClient.Invoke(sessionpkg.MethodTerminate)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke session terminate")
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session terminate"))
 	}
 	defer stream.Close()
 
 	// Send the terminate request.
 	if err := stream.Send(sessionpkg.TerminateRequest{Session: session}); err != nil {
-		return errors.Wrap(err, "unable to send terminate request")
+		cmd.Fatal(errors.Wrap(err, "unable to send terminate request"))
 	}
 
 	// Receive the terminate response.
 	var response sessionpkg.TerminateResponse
 	if err := stream.Receive(&response); err != nil {
-		return errors.Wrap(err, "unable to receive terminate response")
+		cmd.Fatal(errors.Wrap(err, "unable to receive terminate response"))
 	}
+}
 
-	// Success.
-	return nil
+var terminateCommand = &cobra.Command{
+	Use:   "terminate <session>",
+	Short: "Permanently terminates a synchronization session",
+	Run:   terminateMain,
+}
+
+var terminateConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := terminateCommand.Flags()
+	flags.BoolVarP(&terminateConfiguration.help, "help", "h", false, "Show help information")
 }

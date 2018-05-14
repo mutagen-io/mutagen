@@ -3,24 +3,21 @@ package main
 import (
 	"github.com/pkg/errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
 
-var pauseUsage = `usage: mutagen pause [-h|--help] <session>
-
-Pauses a synchronization session.
-`
-
-func pauseMain(arguments []string) error {
-	// Parse command line arguments.
-	flagSet := cmd.NewFlagSet("pause", pauseUsage, []int{1})
-	session := flagSet.ParseOrDie(arguments)[0]
-	if session == "" {
-		return errors.New("empty session identifier")
+func pauseMain(command *cobra.Command, arguments []string) {
+	// Parse session specification.
+	var session string
+	if len(arguments) != 1 {
+		cmd.Fatal(errors.New("session not specified"))
 	}
+	session = arguments[0]
 
 	// Create a daemon client.
 	daemonClient := rpc.NewClient(daemon.NewOpener())
@@ -29,21 +26,35 @@ func pauseMain(arguments []string) error {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sessionpkg.MethodPause)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke session pause")
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session pause"))
 	}
 	defer stream.Close()
 
 	// Send the pause request.
 	if err := stream.Send(sessionpkg.PauseRequest{Session: session}); err != nil {
-		return errors.Wrap(err, "unable to send pause request")
+		cmd.Fatal(errors.Wrap(err, "unable to send pause request"))
 	}
 
 	// Receive the pause response.
 	var response sessionpkg.PauseResponse
 	if err := stream.Receive(&response); err != nil {
-		return errors.Wrap(err, "unable to receive pause response")
+		cmd.Fatal(errors.Wrap(err, "unable to receive pause response"))
 	}
+}
 
-	// Success.
-	return nil
+var pauseCommand = &cobra.Command{
+	Use:   "pause <session>",
+	Short: "Pauses a synchronization session",
+	Run:   pauseMain,
+}
+
+var pauseConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := pauseCommand.Flags()
+	flags.BoolVarP(&pauseConfiguration.help, "help", "h", false, "Show help information")
 }

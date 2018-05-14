@@ -5,17 +5,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
-
-var monitorUsage = `usage: mutagen monitor [-h|--help] [<session>]
-
-Shows a dynamic status display for the specified session. If no session is
-specified, then the most recently created session is displayed.
-`
 
 func printMonitorLine(state sessionpkg.SessionState) {
 	// Build the status line.
@@ -61,13 +57,13 @@ func printMonitorLine(state sessionpkg.SessionState) {
 	fmt.Printf(monitorLineFormat, status)
 }
 
-func monitorMain(arguments []string) error {
-	// Parse command line arguments.
+func monitorMain(command *cobra.Command, arguments []string) {
+	// Parse session specification.
 	var session string
-	flagSet := cmd.NewFlagSet("monitor", monitorUsage, []int{0, 1})
-	sessions := flagSet.ParseOrDie(arguments)
-	if len(sessions) == 1 {
-		session = sessions[0]
+	if len(arguments) == 1 {
+		session = arguments[0]
+	} else if len(arguments) > 1 {
+		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
 
 	// Create a daemon client.
@@ -77,7 +73,7 @@ func monitorMain(arguments []string) error {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sessionpkg.MethodList)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke session listing")
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
 	}
 	defer stream.Close()
 
@@ -88,7 +84,7 @@ func monitorMain(arguments []string) error {
 	}
 	request := sessionpkg.ListRequest{Kind: kind, Session: session}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(err, "unable to send listing request")
+		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
 	}
 
 	// Loop indefinitely. We'll bail after a single response if monitoring
@@ -103,7 +99,7 @@ func monitorMain(arguments []string) error {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			return errors.Wrap(err, "unable to receive listing response")
+			cmd.Fatal(errors.Wrap(err, "unable to receive listing response"))
 		}
 
 		// Validate the response. If there's an error, clear the monitor line
@@ -115,7 +111,7 @@ func monitorMain(arguments []string) error {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			return err
+			cmd.Fatal(err)
 		}
 
 		// Extract the session state.
@@ -148,7 +144,24 @@ func monitorMain(arguments []string) error {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			return errors.Wrap(err, "unable to send ready request")
+			cmd.Fatal(errors.Wrap(err, "unable to send ready request"))
 		}
 	}
+}
+
+var monitorCommand = &cobra.Command{
+	Use:   "monitor [<session>]",
+	Short: "Shows a dynamic status display for the specified session",
+	Run:   monitorMain,
+}
+
+var monitorConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := monitorCommand.Flags()
+	flags.BoolVarP(&monitorConfiguration.help, "help", "h", false, "Show help information")
 }

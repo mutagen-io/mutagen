@@ -6,130 +6,92 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/environment"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-// usage provides help information for the main entry point.
-var usage = `usage: mutagen [-V|--version] [-h|--help] [-l|--legal] <command> [<args>]
-
-Supported commands include:
-
-    create          Start a new synchronization session
-    list            List current synchronization sessions
-    monitor         Perform live monitoring of a synchronization session
-    pause           Pause a synchronization session
-    resume          Resume a synchronization session
-    terminate       Stop and remove a synchronization session
-    daemon          Control the synchronization daemon lifecycle
-
-To see help for a particular command, use 'mutagen <command> --help'.
-`
-
-// handlers maps command names to their handlers.
-var handlers = map[string]func([]string) error{
-	"create":    createMain,
-	"list":      listMain,
-	"monitor":   monitorMain,
-	"pause":     pauseMain,
-	"resume":    resumeMain,
-	"terminate": terminateMain,
-	"daemon":    daemonMain,
-}
-
-// maximumCommandDistance specifies the maximum Levenshtein distance allowed for
-// commands to be considered a match for suggestions.
-const maximumCommandDistance = 4
-
-func main() {
-	// Extract arguments, sans program name.
-	arguments := os.Args[1:]
-	nArguments := len(arguments)
-
-	// Check if a prompting environment is set. If so, treat this as a prompt
-	// request.
-	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
-		if err := promptMain(arguments); err != nil {
-			cmd.Fatal(err)
-		}
-		return
+func rootMain(command *cobra.Command, arguments []string) {
+	// Sanity check configuration.
+	if rootConfiguration.version && rootConfiguration.legal {
+		cmd.Fatal(errors.New("version and legal information requested simultaneously"))
 	}
 
-	// Verify that there are arguments, otherwise print help and exit
-	if nArguments == 0 {
-		fmt.Fprint(os.Stderr, usage)
-		os.Exit(1)
-	}
-
-	// Split up the arguments. We treat the first argument that doesn't start
-	// with '-' as the command name, and all subsequent arguments as belonging
-	// to that command.
-	var command string
-	var commandArguments []string
-	for i := 0; i < nArguments; i++ {
-		if arguments[i][0] != '-' {
-			command = arguments[i]
-			commandArguments = arguments[i+1:]
-			arguments = arguments[:i]
-			break
-		}
-	}
-
-	// Parse command line arguments that pertain to the main entry point.
-	flagSet := cmd.NewFlagSet("mutagen", usage, nil)
-	version := flagSet.BoolP("version", "V", false, "")
-	legal := flagSet.BoolP("legal", "l", false, "")
-	flagSet.ParseOrDie(arguments)
-	if *version {
+	// Print version information, if requested.
+	if rootConfiguration.version {
 		fmt.Println(mutagen.Version)
 		return
-	} else if *legal {
+	}
+
+	// Print legal information, if requested.
+	if rootConfiguration.legal {
 		fmt.Print(mutagen.LegalNotice)
 		return
 	}
 
-	// If we haven't exited, then attempt to dispatch the command. We know that
-	// command will be non-empty at this point because there were a non-0 number
-	// of arguments and there were no flags specified (if there were flags
-	// specified, they would either have errored (because they were incorrect)
-	// or exited (because that's what all of them do)). Handlers may also exit
-	// on their own, but by allowing them to return their errors, we make it
-	// easier for them to defer cleanup.
-	if handler, ok := handlers[command]; ok {
-		if err := handler(commandArguments); err != nil {
+	// If no flags were set, then print help information and bail. We don't have
+	// to worry about warning about arguments being present here (which would
+	// be incorrect usage) because arguments can't even reach this point (they
+	// will be mistaken for subcommands and a error will be displayed).
+	command.Help()
+}
+
+var rootCommand = &cobra.Command{
+	Use:   "mutagen",
+	Short: "Mutagen provides simple, continuous, bi-directional file synchronization.",
+	Run:   rootMain,
+}
+
+var rootConfiguration struct {
+	help    bool
+	version bool
+	legal   bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := rootCommand.Flags()
+	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&rootConfiguration.version, "version", "V", false, "Show version information")
+	flags.BoolVarP(&rootConfiguration.legal, "legal", "l", false, "Show legal information")
+
+	// Disable Cobra's command sorting behavior. By default, it sorts commands
+	// alphabetically in the help output.
+	cobra.EnableCommandSorting = false
+
+	// Register commands. We do this here (rather than in individual init
+	// functions) so that we can control the order.
+	rootCommand.AddCommand(
+		createCommand,
+		listCommand,
+		monitorCommand,
+		pauseCommand,
+		resumeCommand,
+		terminateCommand,
+		daemonCommand,
+	)
+}
+
+func main() {
+	// Check if a prompting environment is set. If so, treat this as a prompt
+	// request. Prompting is sort of a special pseudo-command that's indicated
+	// by the presence of environment variables, and hence it has to be handled
+	// in a bit of a special manner.
+	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
+		if len(os.Args) != 2 {
+			cmd.Fatal(errors.New("incorrect number of prompt arguments"))
+		} else if err := prompt(os.Args[1]); err != nil {
 			cmd.Fatal(err)
 		}
 		return
 	}
 
-	// If we couldn't dispatch, the command name is invalid.
-	cmd.Error(errors.Errorf("unknown command: %s", command))
-
-	// Try to find similar commands in case the user made a typo.
-	var matches []string
-	for name := range handlers {
-		editDistance := levenshtein.DistanceForStrings(
-			[]rune(command),
-			[]rune(name),
-			levenshtein.DefaultOptions,
-		)
-		if editDistance <= maximumCommandDistance {
-			matches = append(matches, name)
-		}
+	// Execute the root command.
+	if err := rootCommand.Execute(); err != nil {
+		os.Exit(1)
 	}
-
-	// Print similar commands, if any.
-	if len(matches) > 0 {
-		fmt.Fprintln(os.Stderr, "\nSimilar commands:")
-		for _, match := range matches {
-			fmt.Fprintf(os.Stderr, "\t%s\n", match)
-		}
-	}
-
-	// Bail.
-	os.Exit(1)
 }

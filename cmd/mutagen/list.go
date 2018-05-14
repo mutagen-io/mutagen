@@ -5,18 +5,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/rpc"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
-
-var listUsage = `usage: mutagen list [-h|--help] [<session>]
-
-Lists existing synchronization sessions and their statuses. A specific session
-identifier can be specified to show information for only that session.
-`
 
 func formatPath(path string) string {
 	if path == "" {
@@ -142,13 +138,13 @@ func printConflicts(conflicts []sync.Conflict) {
 	}
 }
 
-func listMain(arguments []string) error {
-	// Parse command line arguments.
+func listMain(command *cobra.Command, arguments []string) {
+	// Parse session specification.
 	var session string
-	flagSet := cmd.NewFlagSet("list", listUsage, []int{0, 1})
-	sessions := flagSet.ParseOrDie(arguments)
-	if len(sessions) == 1 {
-		session = sessions[0]
+	if len(arguments) == 1 {
+		session = arguments[0]
+	} else if len(arguments) > 1 {
+		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
 
 	// Create a daemon client.
@@ -158,7 +154,7 @@ func listMain(arguments []string) error {
 	// when we're done.
 	stream, err := daemonClient.Invoke(sessionpkg.MethodList)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke session listing")
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
 	}
 	defer stream.Close()
 
@@ -168,13 +164,13 @@ func listMain(arguments []string) error {
 		Session: session,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(err, "unable to send listing request")
+		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
 	}
 
 	// Receive the response.
 	var response sessionpkg.ListResponse
 	if err := stream.Receive(&response); err != nil {
-		return errors.Wrap(err, "unable to receive listing response")
+		cmd.Fatal(errors.Wrap(err, "unable to receive listing response"))
 	}
 
 	// Determine whether or not to print delimiters.
@@ -195,7 +191,21 @@ func listMain(arguments []string) error {
 	if printDelimiters {
 		fmt.Println(delimiterLine)
 	}
+}
 
-	// Success.
-	return nil
+var listCommand = &cobra.Command{
+	Use:   "list [<session>]",
+	Short: "Lists existing synchronization sessions and their statuses",
+	Run:   listMain,
+}
+
+var listConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := listCommand.Flags()
+	flags.BoolVarP(&listConfiguration.help, "help", "h", false, "Show help information")
 }

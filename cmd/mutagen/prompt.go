@@ -6,21 +6,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/environment"
 	"github.com/havoc-io/mutagen/pkg/rpc"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-var promptUsage = `usage: mutagen <prompt>
-`
-
-func promptMain(arguments []string) error {
-	// Parse command line arguments.
-	flagSet := cmd.NewFlagSet("prompt", promptUsage, []int{1})
-	prompt := flagSet.ParseOrDie(arguments)[0]
-
+func prompt(prompt string) error {
 	// Extract environment parameters.
 	prompter := environment.Current[ssh.PrompterEnvironmentVariable]
 	if prompter == "" {

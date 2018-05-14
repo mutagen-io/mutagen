@@ -5,6 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/spf13/cobra"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
@@ -13,40 +15,31 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
-var createUsage = `usage: mutagen create [-h|--help] [-i|--ignore=<pattern>]
-                      <alpha> <beta>
-
-Creates and starts a new synchronization session.
-`
-
-func createMain(arguments []string) error {
-	// Parse command line arguments.
-	var ignores []string
-	flagSet := cmd.NewFlagSet("create", createUsage, []int{2})
-	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
-	urls := flagSet.ParseOrDie(arguments)
-
-	// Extract and parse URLs.
-	alpha, err := url.Parse(urls[0])
-	if err != nil {
-		return errors.Wrap(err, "unable to parse alpha URL")
+func createMain(command *cobra.Command, arguments []string) {
+	// Validate, extract, and parse URLs.
+	if len(arguments) != 2 {
+		cmd.Fatal(errors.New("invalid number of endpoint URLs provided"))
 	}
-	beta, err := url.Parse(urls[1])
+	alpha, err := url.Parse(arguments[0])
 	if err != nil {
-		return errors.Wrap(err, "unable to parse beta URL")
+		cmd.Fatal(errors.Wrap(err, "unable to parse alpha URL"))
+	}
+	beta, err := url.Parse(arguments[1])
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to parse beta URL"))
 	}
 
 	// If either URL is a local path, make sure it's normalized.
 	if alpha.Protocol == url.Protocol_Local {
 		if alphaPath, err := filesystem.Normalize(alpha.Path); err != nil {
-			return errors.Wrap(err, "unable to normalize alpha path")
+			cmd.Fatal(errors.Wrap(err, "unable to normalize alpha path"))
 		} else {
 			alpha.Path = alphaPath
 		}
 	}
 	if beta.Protocol == url.Protocol_Local {
 		if betaPath, err := filesystem.Normalize(beta.Path); err != nil {
-			return errors.Wrap(err, "unable to normalize beta path")
+			cmd.Fatal(errors.Wrap(err, "unable to normalize beta path"))
 		} else {
 			beta.Path = betaPath
 		}
@@ -59,7 +52,7 @@ func createMain(arguments []string) error {
 	// closed when we're done.
 	stream, err := daemonClient.Invoke(sessionpkg.MethodCreate)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke session creation")
+		cmd.Fatal(errors.Wrap(err, "unable to invoke session creation"))
 	}
 	defer stream.Close()
 
@@ -67,26 +60,42 @@ func createMain(arguments []string) error {
 	request := sessionpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
-		Ignores: ignores,
+		Ignores: createConfiguration.ignores,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(err, "unable to send creation request")
+		cmd.Fatal(errors.Wrap(err, "unable to send creation request"))
 	}
 
 	// Handle authentication challenges.
 	if err := handlePromptRequests(stream); err != nil {
-		return errors.Wrap(err, "unable to handle prompt requests")
+		cmd.Fatal(errors.Wrap(err, "unable to handle prompt requests"))
 	}
 
 	// Receive the create response.
 	var response sessionpkg.CreateResponse
 	if err := stream.Receive(&response); err != nil {
-		return errors.Wrap(err, "unable to receive create response")
+		cmd.Fatal(errors.Wrap(err, "unable to receive create response"))
 	}
 
 	// Print the session identifier.
 	fmt.Println("Created session", response.Session)
+}
 
-	// Success.
-	return nil
+var createCommand = &cobra.Command{
+	Use:   "create <alpha> <beta>",
+	Short: "Creates and starts a new synchronization session",
+	Run:   createMain,
+}
+
+var createConfiguration struct {
+	help    bool
+	ignores []string
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := createCommand.Flags()
+	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
+	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 }

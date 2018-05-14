@@ -6,19 +6,18 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
-var agentUsage = `usage: mutagen-agent should not be manually invoked
-`
-
 func main() {
-	// Parse command line arguments.
-	flagSet := cmd.NewFlagSet("mutagen-agent", agentUsage, []int{1})
-	mode := flagSet.ParseOrDie(os.Args[1:])[0]
+	// Validate and parse the invocation mode.
+	if len(os.Args) != 2 {
+		cmd.Fatal(errors.New("invalid number of arguments"))
+	}
+	mode := os.Args[1]
 
 	// Handle install.
 	if mode == agent.ModeInstall {

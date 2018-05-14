@@ -6,11 +6,11 @@ import (
 )
 
 func Warning(message string) {
-	fmt.Fprintln(os.Stderr, "warning:", message)
+	fmt.Fprintln(os.Stderr, "Warning:", message)
 }
 
 func Error(err error) {
-	fmt.Fprintln(os.Stderr, "error:", err)
+	fmt.Fprintln(os.Stderr, "Error:", err)
 }
 
 func Fatal(err error) {
