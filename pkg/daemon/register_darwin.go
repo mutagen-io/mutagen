@@ -1,5 +1,10 @@
 package daemon
 
+// The implementation of daemon registration is largely based on these two
+// articles:
+// https://developer.apple.com/library/content/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html
+// https://developer.apple.com/library/content/technotes/tn2083/_index.html#//apple_ref/doc/uid/DTS10003794-CH1-SUBSECTION44
+
 import (
 	"fmt"
 	"os"
