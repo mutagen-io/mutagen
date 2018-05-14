@@ -53,6 +53,16 @@ func Register() error {
 		return nil
 	}
 
+	// Acquire the lock to ensure the daemon isn't running. We switch the start
+	// and stop mechanism depending on whether or not we're registered, so we
+	// need to make sure we don't try to stop a daemon started using a different
+	// mechanism.
+	lock, err := AcquireLock()
+	if err != nil {
+		return errors.New("unable to alter registration while daemon is running")
+	}
+	defer lock.Unlock()
+
 	// Ensure the user's Library directory exists.
 	targetPath := filepath.Join(filesystem.HomeDirectory, libraryDirectoryName)
 	if err := os.MkdirAll(targetPath, libraryDirectoryPermissions); err != nil {
@@ -74,12 +84,6 @@ func Register() error {
 		return errors.Wrap(err, "unable to write launchd agent plist")
 	}
 
-	// Attempt to load the daemon.
-	load := exec.Command("launchctl", "load", targetPath)
-	if err := load.Run(); err != nil {
-		return errors.Wrap(err, "unable to load launchd plist")
-	}
-
 	// Success.
 	return nil
 }
@@ -92,6 +96,16 @@ func Unregister() error {
 		return nil
 	}
 
+	// Acquire the lock to ensure the daemon isn't running. We switch the start
+	// and stop mechanism depending on whether or not we're registered, so we
+	// need to make sure we don't try to stop a daemon started using a different
+	// mechanism.
+	lock, err := AcquireLock()
+	if err != nil {
+		return errors.New("unable to alter registration while daemon is running")
+	}
+	defer lock.Unlock()
+
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
 		filesystem.HomeDirectory,
@@ -99,12 +113,6 @@ func Unregister() error {
 		launchAgentsDirectoryName,
 		launchdPlistName,
 	)
-
-	// Attempt to unload the daemon.
-	unload := exec.Command("launchctl", "unload", targetPath)
-	if err := unload.Run(); err != nil {
-		return errors.Wrap(err, "unable to unload launchd plist")
-	}
 
 	// Attempt to remove the launchd plist.
 	if err := os.Remove(targetPath); err != nil {
@@ -140,10 +148,54 @@ func registered() (bool, error) {
 	return true, nil
 }
 
-func StartStopAllowed() (bool, error) {
+func RegisteredStart() (bool, error) {
+	// Check if we're registered. If not, we don't handle the start request.
 	if registered, err := registered(); err != nil {
 		return false, errors.Wrap(err, "unable to determine daemon registration status")
-	} else {
-		return !registered, nil
+	} else if !registered {
+		return false, nil
 	}
+
+	// Compute the launchd plist path.
+	targetPath := filepath.Join(
+		filesystem.HomeDirectory,
+		libraryDirectoryName,
+		launchAgentsDirectoryName,
+		launchdPlistName,
+	)
+
+	// Attempt to load the daemon.
+	load := exec.Command("launchctl", "load", targetPath)
+	if err := load.Run(); err != nil {
+		return false, errors.Wrap(err, "unable to load launchd plist")
+	}
+
+	// Success.
+	return true, nil
+}
+
+func RegisteredStop() (bool, error) {
+	// Check if we're registered. If not, we don't handle the stop request.
+	if registered, err := registered(); err != nil {
+		return false, errors.Wrap(err, "unable to determine daemon registration status")
+	} else if !registered {
+		return false, nil
+	}
+
+	// Compute the launchd plist path.
+	targetPath := filepath.Join(
+		filesystem.HomeDirectory,
+		libraryDirectoryName,
+		launchAgentsDirectoryName,
+		launchdPlistName,
+	)
+
+	// Attempt to unload the daemon.
+	unload := exec.Command("launchctl", "unload", targetPath)
+	if err := unload.Run(); err != nil {
+		return false, errors.Wrap(err, "unable to unload launchd plist")
+	}
+
+	// Success.
+	return true, nil
 }

@@ -168,11 +168,12 @@ func daemonStartMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
-	// Check if start has been disabled due to registration with the system.
-	if allowed, err := daemon.StartStopAllowed(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to determine if start is allowed"))
-	} else if !allowed {
-		cmd.Fatal(errors.New("manual start not allowed while daemon is registered with system"))
+	// If the daemon is registered with the system, it may have a different
+	// start mechanism, so see if the system should handle it.
+	if handled, err := daemon.RegisteredStart(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to start daemon using system mechanism"))
+	} else if handled {
+		return
 	}
 
 	// Restart in the background.
@@ -209,11 +210,12 @@ func daemonStopMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
-	// Check if stop has been disabled due to registration with the system.
-	if allowed, err := daemon.StartStopAllowed(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to determine if stop is allowed"))
-	} else if !allowed {
-		cmd.Fatal(errors.New("manual stop not allowed while daemon is registered with system"))
+	// If the daemon is registered with the system, it may have a different stop
+	// mechanism, so see if the system should handle it.
+	if handled, err := daemon.RegisteredStop(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to stop daemon using system mechanism"))
+	} else if handled {
+		return
 	}
 
 	// Create a daemon client and defer its closure.

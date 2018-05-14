@@ -19,3 +19,11 @@ func Unregister() error {
 func StartStopAllowed() (bool, error) {
 	return true, nil
 }
+
+func RegisteredStart() (bool, error) {
+	return false, nil
+}
+
+func RegisteredStop() (bool, error) {
+	return false, nil
+}
