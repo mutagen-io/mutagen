@@ -21,7 +21,7 @@ func tildeExpand(path string) (string, error) {
 	}
 
 	// Compute the path.
-	return filepath.Join(homeDirectory, path[1:]), nil
+	return filepath.Join(HomeDirectory, path[1:]), nil
 }
 
 func Normalize(path string) (string, error) {

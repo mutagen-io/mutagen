@@ -24,13 +24,13 @@ const (
 var MutagenConfigurationPath string
 
 func init() {
-	MutagenConfigurationPath = filepath.Join(homeDirectory, mutagenConfigurationName)
+	MutagenConfigurationPath = filepath.Join(HomeDirectory, mutagenConfigurationName)
 }
 
 func Mutagen(create bool, subpath ...string) (string, error) {
 	// Collect path components and compute the result.
 	components := make([]string, 0, 2+len(subpath))
-	components = append(components, homeDirectory, MutagenDirectoryName)
+	components = append(components, HomeDirectory, MutagenDirectoryName)
 	root := filepath.Join(components...)
 	components = append(components, subpath...)
 	result := filepath.Join(components...)

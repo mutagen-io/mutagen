@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// homeDirectory is the cached path to the current user's home directory.
-var homeDirectory string
+// HomeDirectory is the cached path to the current user's home directory.
+var HomeDirectory string
 
 func init() {
 	// Grab the current user's home directory. Check that it isn't empty,
@@ -20,6 +20,6 @@ func init() {
 	} else if currentUser.HomeDir == "" {
 		panic(errors.Wrap(err, "unable to determine home directory"))
 	} else {
-		homeDirectory = currentUser.HomeDir
+		HomeDirectory = currentUser.HomeDir
 	}
 }

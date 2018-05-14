@@ -38,7 +38,7 @@ func isParentOrSelf(parent, child string) bool {
 func watchNative(context context.Context, root string, events chan struct{}) error {
 	// We only support watching for roots that are descendants of the home
 	// directory or the home directory itself.
-	if !isParentOrSelf(homeDirectory, root) {
+	if !isParentOrSelf(HomeDirectory, root) {
 		return errors.New("root is not a subpath of home")
 	}
 
@@ -54,7 +54,7 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 
 	// Create a recursive watch on the home directory. Ensure that it's stopped
 	// when we're done.
-	watchPath := fmt.Sprintf("%s/...", homeDirectory)
+	watchPath := fmt.Sprintf("%s/...", HomeDirectory)
 	if err := notify.Watch(watchPath, nativeEvents, notify.All); err != nil {
 		return errors.Wrap(err, "unable to create watcher")
 	}

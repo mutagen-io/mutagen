@@ -43,12 +43,25 @@ func init() {
 	flags.BoolVarP(&daemonConfiguration.help, "help", "h", false, "Show help information")
 
 	// Register commands. We do this here (rather than in individual init
-	// functions) so that we can control the order.
-	daemonCommand.AddCommand(
-		daemonRunCommand,
-		daemonStartCommand,
-		daemonStopCommand,
-	)
+	// functions) so that we can control the order. If registration isn't
+	// supported on the platform, then we exclude those commands. For some
+	// reason, AddCommand can't be invoked twice, so we can't add these commands
+	// conditionally later.
+	if daemon.RegistrationSupported {
+		daemonCommand.AddCommand(
+			daemonRunCommand,
+			daemonStartCommand,
+			daemonStopCommand,
+			daemonRegisterCommand,
+			daemonUnregisterCommand,
+		)
+	} else {
+		daemonCommand.AddCommand(
+			daemonRunCommand,
+			daemonStartCommand,
+			daemonStopCommand,
+		)
+	}
 }
 
 func daemonRunMain(command *cobra.Command, arguments []string) {
@@ -155,6 +168,13 @@ func daemonStartMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
+	// Check if start has been disabled due to registration with the system.
+	if allowed, err := daemon.StartStopAllowed(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to determine if start is allowed"))
+	} else if !allowed {
+		cmd.Fatal(errors.New("manual start not allowed while daemon is registered with system"))
+	}
+
 	// Restart in the background.
 	daemonProcess := &exec.Cmd{
 		Path:        process.Current.ExecutablePath,
@@ -189,6 +209,13 @@ func daemonStopMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
 
+	// Check if stop has been disabled due to registration with the system.
+	if allowed, err := daemon.StartStopAllowed(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to determine if stop is allowed"))
+	} else if !allowed {
+		cmd.Fatal(errors.New("manual stop not allowed while daemon is registered with system"))
+	}
+
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
 	if err != nil {
@@ -219,4 +246,62 @@ func init() {
 	// message, but Cobra still implements it automatically.
 	flags := daemonStopCommand.Flags()
 	flags.BoolVarP(&daemonStopConfiguration.help, "help", "h", false, "Show help information")
+}
+
+func daemonRegisterMain(command *cobra.Command, arguments []string) {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		cmd.Fatal(errors.New("unexpected arguments provided"))
+	}
+
+	// Attempt registration.
+	if err := daemon.Register(); err != nil {
+		cmd.Fatal(err)
+	}
+}
+
+var daemonRegisterCommand = &cobra.Command{
+	Use:   "register",
+	Short: "Registers Mutagen to start as a per-user daemon on login",
+	Run:   daemonRegisterMain,
+}
+
+var daemonRegisterConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonRegisterCommand.Flags()
+	flags.BoolVarP(&daemonRegisterConfiguration.help, "help", "h", false, "Show help information")
+}
+
+func daemonUnregisterMain(command *cobra.Command, arguments []string) {
+	// Validate arguments.
+	if len(arguments) != 0 {
+		cmd.Fatal(errors.New("unexpected arguments provided"))
+	}
+
+	// Attempt deregistration.
+	if err := daemon.Unregister(); err != nil {
+		cmd.Fatal(err)
+	}
+}
+
+var daemonUnregisterCommand = &cobra.Command{
+	Use:   "unregister",
+	Short: "Unregisters Mutagen as a per-user daemon",
+	Run:   daemonUnregisterMain,
+}
+
+var daemonUnregisterConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := daemonUnregisterCommand.Flags()
+	flags.BoolVarP(&daemonUnregisterConfiguration.help, "help", "h", false, "Show help information")
 }
