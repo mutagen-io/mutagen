@@ -11,11 +11,15 @@ import (
 
 func resumeMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var sessionQuery string
-	if len(arguments) != 1 {
-		cmd.Fatal(errors.New("session not specified"))
+	var sessionQueries []string
+	if len(arguments) > 0 {
+		if resumeConfiguration.all {
+			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
+		}
+		sessionQueries = arguments
+	} else if !resumeConfiguration.all {
+		cmd.Fatal(errors.New("no sessions specified"))
 	}
-	sessionQuery = arguments[0]
 
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
@@ -33,7 +37,11 @@ func resumeMain(command *cobra.Command, arguments []string) {
 	defer stream.Close()
 
 	// Send the resume request.
-	if err := stream.Send(sessionpkg.ResumeRequest{SessionQuery: sessionQuery}); err != nil {
+	request := sessionpkg.ResumeRequest{
+		All:            resumeConfiguration.all,
+		SessionQueries: sessionQueries,
+	}
+	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send resume request"))
 	}
 
@@ -50,12 +58,13 @@ func resumeMain(command *cobra.Command, arguments []string) {
 }
 
 var resumeCommand = &cobra.Command{
-	Use:   "resume <session>",
+	Use:   "resume [<session>...]",
 	Short: "Resumes a paused or disconnected synchronization session",
 	Run:   resumeMain,
 }
 
 var resumeConfiguration struct {
+	all  bool
 	help bool
 }
 
@@ -63,5 +72,6 @@ func init() {
 	// Bind flags to configuration. We manually add help to override the default
 	// message, but Cobra still implements it automatically.
 	flags := resumeCommand.Flags()
+	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
 	flags.BoolVarP(&resumeConfiguration.help, "help", "h", false, "Show help information")
 }

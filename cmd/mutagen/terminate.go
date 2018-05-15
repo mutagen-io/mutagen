@@ -11,11 +11,15 @@ import (
 
 func terminateMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var sessionQuery string
-	if len(arguments) != 1 {
-		cmd.Fatal(errors.New("session not specified"))
+	var sessionQueries []string
+	if len(arguments) > 0 {
+		if terminateConfiguration.all {
+			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
+		}
+		sessionQueries = arguments
+	} else if !terminateConfiguration.all {
+		cmd.Fatal(errors.New("no sessions specified"))
 	}
-	sessionQuery = arguments[0]
 
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
@@ -33,7 +37,11 @@ func terminateMain(command *cobra.Command, arguments []string) {
 	defer stream.Close()
 
 	// Send the terminate request.
-	if err := stream.Send(sessionpkg.TerminateRequest{SessionQuery: sessionQuery}); err != nil {
+	request := sessionpkg.TerminateRequest{
+		All:            terminateConfiguration.all,
+		SessionQueries: sessionQueries,
+	}
+	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send terminate request"))
 	}
 
@@ -45,12 +53,13 @@ func terminateMain(command *cobra.Command, arguments []string) {
 }
 
 var terminateCommand = &cobra.Command{
-	Use:   "terminate <session>",
+	Use:   "terminate [<session>...]",
 	Short: "Permanently terminates a synchronization session",
 	Run:   terminateMain,
 }
 
 var terminateConfiguration struct {
+	all  bool
 	help bool
 }
 
@@ -58,5 +67,6 @@ func init() {
 	// Bind flags to configuration. We manually add help to override the default
 	// message, but Cobra still implements it automatically.
 	flags := terminateCommand.Flags()
+	flags.BoolVarP(&terminateConfiguration.all, "all", "a", false, "Terminate all sessions")
 	flags.BoolVarP(&terminateConfiguration.help, "help", "h", false, "Show help information")
 }

@@ -160,7 +160,7 @@ func listMain(command *cobra.Command, arguments []string) {
 
 	// Send the list request.
 	request := sessionpkg.ListRequest{
-		Kind:           sessionpkg.ListRequestKindSingle,
+		All:            len(sessionQueries) == 0,
 		SessionQueries: sessionQueries,
 	}
 	if err := stream.Send(request); err != nil {

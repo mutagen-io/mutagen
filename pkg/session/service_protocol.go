@@ -24,37 +24,34 @@ type CreateResponse struct {
 	Session string
 }
 
-type ListRequestKind uint8
-
-const (
-	ListRequestKindSingle ListRequestKind = iota
-	ListRequestKindRepeated
-	ListRequestKindRepeatedLatest
-)
-
 type ListRequest struct {
-	Kind           ListRequestKind
-	SessionQueries []string
+	PreviousStateIndex uint64
+	All                bool
+	SessionQueries     []string
 }
 
 type ListResponse struct {
+	StateIndex    uint64
 	SessionStates []SessionState
 }
 
 type PauseRequest struct {
-	SessionQuery string
+	All            bool
+	SessionQueries []string
 }
 
 type PauseResponse struct{}
 
 type ResumeRequest struct {
-	SessionQuery string
+	All            bool
+	SessionQueries []string
 }
 
 type ResumeResponse struct{}
 
 type TerminateRequest struct {
-	SessionQuery string
+	All            bool
+	SessionQueries []string
 }
 
 type TerminateResponse struct{}

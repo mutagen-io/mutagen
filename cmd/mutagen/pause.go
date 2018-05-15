@@ -11,11 +11,15 @@ import (
 
 func pauseMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var sessionQuery string
-	if len(arguments) != 1 {
-		cmd.Fatal(errors.New("session not specified"))
+	var sessionQueries []string
+	if len(arguments) > 0 {
+		if pauseConfiguration.all {
+			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
+		}
+		sessionQueries = arguments
+	} else if !pauseConfiguration.all {
+		cmd.Fatal(errors.New("no sessions specified"))
 	}
-	sessionQuery = arguments[0]
 
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
@@ -33,7 +37,11 @@ func pauseMain(command *cobra.Command, arguments []string) {
 	defer stream.Close()
 
 	// Send the pause request.
-	if err := stream.Send(sessionpkg.PauseRequest{SessionQuery: sessionQuery}); err != nil {
+	request := sessionpkg.PauseRequest{
+		All:            pauseConfiguration.all,
+		SessionQueries: sessionQueries,
+	}
+	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send pause request"))
 	}
 
@@ -45,12 +53,13 @@ func pauseMain(command *cobra.Command, arguments []string) {
 }
 
 var pauseCommand = &cobra.Command{
-	Use:   "pause <session>",
+	Use:   "pause [<session>...]",
 	Short: "Pauses a synchronization session",
 	Run:   pauseMain,
 }
 
 var pauseConfiguration struct {
+	all  bool
 	help bool
 }
 
@@ -58,5 +67,6 @@ func init() {
 	// Bind flags to configuration. We manually add help to override the default
 	// message, but Cobra still implements it automatically.
 	flags := pauseCommand.Flags()
+	flags.BoolVarP(&pauseConfiguration.all, "all", "a", false, "Pause all sessions")
 	flags.BoolVarP(&pauseConfiguration.help, "help", "h", false, "Show help information")
 }

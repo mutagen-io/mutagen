@@ -57,9 +57,11 @@ func printMonitorLine(state sessionpkg.SessionState) {
 
 func monitorMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
+	var session string
 	var sessionQueries []string
 	if len(arguments) == 1 {
-		sessionQueries = append(sessionQueries, arguments[0])
+		session = arguments[0]
+		sessionQueries = []string{session}
 	} else if len(arguments) > 1 {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
@@ -71,43 +73,64 @@ func monitorMain(command *cobra.Command, arguments []string) {
 	}
 	defer daemonClient.Close()
 
-	// Invoke the session list method and ensure the resulting stream is closed
-	// when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodList)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
-	}
-	defer stream.Close()
-
-	// Send the list request.
-	kind := sessionpkg.ListRequestKindRepeated
-	if len(sessionQueries) == 0 {
-		kind = sessionpkg.ListRequestKindRepeatedLatest
-	}
-	request := sessionpkg.ListRequest{Kind: kind, SessionQueries: sessionQueries}
-	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
-	}
-
-	// Loop indefinitely. We'll bail after a single response if monitoring
-	// wasn't requested.
+	// Loop and print monitoring information indefinitely.
+	var previousStateIndex uint64
 	sessionInformationPrinted := false
 	monitorLinePrinted := false
 	for {
+		// Invoke the session list method.
+		stream, err := daemonClient.Invoke(sessionpkg.MethodList)
+		if err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
+		}
+
+		// Create the list request. If there's no session specified, then we
+		// need to grab all sessions and identify the most recently created one
+		// for future queries.
+		request := sessionpkg.ListRequest{
+			PreviousStateIndex: previousStateIndex,
+			All:                session == "",
+			SessionQueries:     sessionQueries,
+		}
+
+		// Send the list request.
+		if err := stream.Send(request); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
+		}
+
 		// Receive the next response. If there's an error, clear the monitor
 		// line (if any) before returning for better error legibility.
 		var response sessionpkg.ListResponse
 		if err := stream.Receive(&response); err != nil {
+			stream.Close()
 			if monitorLinePrinted {
 				fmt.Println()
 			}
 			cmd.Fatal(errors.Wrap(err, "unable to receive listing response"))
 		}
 
-		// Validate the response. If there's an error, clear the monitor line
-		// (if any) before returning for better error legibility.
-		if len(response.SessionStates) != 1 {
-			err = errors.New("invalid listing response")
+		// Close the stream.
+		if err := stream.Close(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to close listing stream"))
+		}
+
+		// Validate the response and extract the relevant session state. If no
+		// session has been specified and it's our first time through the loop,
+		// identify the most recently created session.
+		var state sessionpkg.SessionState
+		previousStateIndex = response.StateIndex
+		if session == "" {
+			if len(response.SessionStates) == 0 {
+				err = errors.New("no sessions exist")
+			} else {
+				state = response.SessionStates[len(response.SessionStates)-1]
+				session = state.Session.Identifier
+				sessionQueries = []string{session}
+			}
+		} else if len(response.SessionStates) != 1 {
+			err = errors.New("invalid list response")
+		} else {
+			state = response.SessionStates[0]
 		}
 		if err != nil {
 			if monitorLinePrinted {
@@ -115,9 +138,6 @@ func monitorMain(command *cobra.Command, arguments []string) {
 			}
 			cmd.Fatal(err)
 		}
-
-		// Extract the session state.
-		state := response.SessionStates[0]
 
 		// Print session information the first time through the loop.
 		if !sessionInformationPrinted {
@@ -134,20 +154,8 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		}
 
 		// Print the monitoring line and record that we've done so.
-		printMonitorLine(response.SessionStates[0])
+		printMonitorLine(state)
 		monitorLinePrinted = true
-
-		// Send another (empty) request to let the daemon know that we're ready
-		// for another response. This is a backpressure mechanism to keep the
-		// daemon from sending more requests than we can handle in monitor mode.
-		// If there's an error, clear the monitor line (if any) before returning
-		// for better error legibility.
-		if err := stream.Send(sessionpkg.ListRequest{}); err != nil {
-			if monitorLinePrinted {
-				fmt.Println()
-			}
-			cmd.Fatal(errors.Wrap(err, "unable to send ready request"))
-		}
 	}
 }
 
