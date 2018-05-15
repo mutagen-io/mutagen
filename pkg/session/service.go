@@ -2,6 +2,7 @@ package session
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -67,6 +68,53 @@ func NewService(sshService *ssh.Service) (*Service, error) {
 		sessionsLock: sessionsLock,
 		sessions:     sessions,
 	}, nil
+}
+
+const (
+	minimumSessionMatchLength = 5
+)
+
+// findSession provides fuzzy session matching by converting a query string into
+// a full session id. The query string is tried as a full session id, session id
+// prefix, URL substring, and then host substring. If the specified query
+// matches more than one session, it is considered ambiguous and an error is
+// returned.
+func (s *Service) findSession(query string) (string, error) {
+	// Don't allow empty or short strings to match anything.
+	if query == "" {
+		return "", errors.New("empty session specification is invalid")
+	} else if len(query) < minimumSessionMatchLength {
+		return "", errors.Errorf(
+			"session specification must be at least %d characters",
+			minimumSessionMatchLength,
+		)
+	}
+
+	// Grab the registry lock and defer its release.
+	s.sessionsLock.Lock()
+	defer s.sessionsLock.UnlockWithoutNotify()
+
+	// Track a match.
+	result := ""
+
+	// Search for matches.
+	for identifier, controller := range s.sessions {
+		match := identifier == query ||
+			strings.HasPrefix(identifier, query) ||
+			strings.Contains(controller.session.Alpha.Path, query) ||
+			strings.Contains(controller.session.Beta.Path, query) ||
+			strings.Contains(controller.session.Alpha.Hostname, query) ||
+			strings.Contains(controller.session.Beta.Hostname, query)
+		if match {
+			if result != "" {
+				return "", errors.Errorf("query \"%s\" matches multiple sessions", query)
+			}
+			result = identifier
+		}
+	}
+
+	// Success.
+	return result, nil
 }
 
 func (s *Service) Methods() map[string]rpc.Handler {
@@ -180,16 +228,16 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Determine the session of interest and whether or not this is a repeated
-	// request. An empty session identifier after this point indicates that all
-	// sessions are of interest.
-	var session string
+	// Determine the session query of interest and whether or not this is a
+	// repeated request. An empty session query after this point indicates that
+	// all sessions are of interest.
+	var sessionQuery string
 	var repeated bool
 	switch request.Kind {
 	case ListRequestKindSingle:
-		session = request.Session
+		sessionQuery = request.SessionQuery
 	case ListRequestKindRepeated:
-		session = request.Session
+		sessionQuery = request.SessionQuery
 		repeated = true
 	case ListRequestKindRepeatedLatest:
 		var mostRecentSessionCreationTime time.Time
@@ -202,17 +250,28 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 				return errors.Wrap(err, "unable to convert creation time format")
 			}
 			if creationTime.After(mostRecentSessionCreationTime) {
-				session = state.Session.Identifier
+				sessionQuery = state.Session.Identifier
 				mostRecentSessionCreationTime = creationTime
 			}
 		}
 		s.sessionsLock.Unlock()
-		if session == "" {
+		if sessionQuery == "" {
 			return errors.New("no sessions present")
 		}
 		repeated = true
 	default:
 		return errors.New("unknown list request kind")
+	}
+
+	// If a session query has been provided, resolve the full session identifier
+	// to which it refers.
+	session := ""
+	if sessionQuery != "" {
+		if s, err := s.findSession(sessionQuery); err != nil {
+			return errors.Wrap(err, "unable to identify session")
+		} else {
+			session = s
+		}
 	}
 
 	// Loop indefinitely and track state changes. We'll bail after a single
@@ -240,7 +299,7 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			if controller, ok := s.sessions[session]; ok {
 				sessions = append(sessions, controller.currentState())
 			} else {
-				err = errors.New("unable to find requested session")
+				err = errors.New("requested session no longer exists")
 			}
 		} else {
 			for _, controller := range s.sessions {
@@ -297,9 +356,15 @@ func (s *Service) pause(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
+	// Resolve the session query to a full session identifier.
+	session, err := s.findSession(request.SessionQuery)
+	if err != nil {
+		return errors.Wrap(err, "unable to identify session")
+	}
+
 	// Lock the session registry and try to find the specified controller.
 	s.sessionsLock.Lock()
-	controller, ok := s.sessions[request.Session]
+	controller, ok := s.sessions[session]
 	s.sessionsLock.UnlockWithoutNotify()
 
 	// If we couldn't find the controller, abort.
@@ -328,9 +393,15 @@ func (s *Service) resume(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
+	// Resolve the session query to a full session identifier.
+	session, err := s.findSession(request.SessionQuery)
+	if err != nil {
+		return errors.Wrap(err, "unable to identify session")
+	}
+
 	// Lock the session registry and try to find the specified controller.
 	s.sessionsLock.Lock()
-	controller, ok := s.sessions[request.Session]
+	controller, ok := s.sessions[session]
 	s.sessionsLock.UnlockWithoutNotify()
 
 	// If we couldn't find the controller, abort.
@@ -376,9 +447,15 @@ func (s *Service) terminate(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
+	// Resolve the session query to a full session identifier.
+	session, err := s.findSession(request.SessionQuery)
+	if err != nil {
+		return errors.Wrap(err, "unable to identify session")
+	}
+
 	// Lock the session registry and try to find the specified controller.
 	s.sessionsLock.Lock()
-	controller, ok := s.sessions[request.Session]
+	controller, ok := s.sessions[session]
 	s.sessionsLock.UnlockWithoutNotify()
 
 	// If we couldn't find the controller, abort.
@@ -393,7 +470,7 @@ func (s *Service) terminate(stream rpc.HandlerStream) error {
 
 	// Since we terminated the session, we're responsible for unregistering it.
 	s.sessionsLock.Lock()
-	delete(s.sessions, request.Session)
+	delete(s.sessions, session)
 	s.sessionsLock.Unlock()
 
 	// Send the response.

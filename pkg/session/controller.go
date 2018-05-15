@@ -12,8 +12,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/state"
 	"github.com/havoc-io/mutagen/pkg/sync"

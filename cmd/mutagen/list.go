@@ -138,9 +138,9 @@ func printConflicts(conflicts []sync.Conflict) {
 
 func listMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var session string
+	var sessionQuery string
 	if len(arguments) == 1 {
-		session = arguments[0]
+		sessionQuery = arguments[0]
 	} else if len(arguments) > 1 {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
@@ -162,8 +162,8 @@ func listMain(command *cobra.Command, arguments []string) {
 
 	// Send the list request.
 	request := sessionpkg.ListRequest{
-		Kind:    sessionpkg.ListRequestKindSingle,
-		Session: session,
+		Kind:         sessionpkg.ListRequestKindSingle,
+		SessionQuery: sessionQuery,
 	}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))

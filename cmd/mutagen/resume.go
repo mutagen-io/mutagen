@@ -11,11 +11,11 @@ import (
 
 func resumeMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var session string
+	var sessionQuery string
 	if len(arguments) != 1 {
 		cmd.Fatal(errors.New("session not specified"))
 	}
-	session = arguments[0]
+	sessionQuery = arguments[0]
 
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
@@ -33,7 +33,7 @@ func resumeMain(command *cobra.Command, arguments []string) {
 	defer stream.Close()
 
 	// Send the resume request.
-	if err := stream.Send(sessionpkg.ResumeRequest{Session: session}); err != nil {
+	if err := stream.Send(sessionpkg.ResumeRequest{SessionQuery: sessionQuery}); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send resume request"))
 	}
 

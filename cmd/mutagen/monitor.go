@@ -57,9 +57,9 @@ func printMonitorLine(state sessionpkg.SessionState) {
 
 func monitorMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var session string
+	var sessionQuery string
 	if len(arguments) == 1 {
-		session = arguments[0]
+		sessionQuery = arguments[0]
 	} else if len(arguments) > 1 {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
@@ -81,10 +81,10 @@ func monitorMain(command *cobra.Command, arguments []string) {
 
 	// Send the list request.
 	kind := sessionpkg.ListRequestKindRepeated
-	if session == "" {
+	if sessionQuery == "" {
 		kind = sessionpkg.ListRequestKindRepeatedLatest
 	}
-	request := sessionpkg.ListRequest{Kind: kind, Session: session}
+	request := sessionpkg.ListRequest{Kind: kind, SessionQuery: sessionQuery}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
 	}

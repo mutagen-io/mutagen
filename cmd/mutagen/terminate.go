@@ -11,11 +11,11 @@ import (
 
 func terminateMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var session string
+	var sessionQuery string
 	if len(arguments) != 1 {
 		cmd.Fatal(errors.New("session not specified"))
 	}
-	session = arguments[0]
+	sessionQuery = arguments[0]
 
 	// Create a daemon client and defer its closure.
 	daemonClient, err := createDaemonClient()
@@ -33,7 +33,7 @@ func terminateMain(command *cobra.Command, arguments []string) {
 	defer stream.Close()
 
 	// Send the terminate request.
-	if err := stream.Send(sessionpkg.TerminateRequest{Session: session}); err != nil {
+	if err := stream.Send(sessionpkg.TerminateRequest{SessionQuery: sessionQuery}); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send terminate request"))
 	}
 
