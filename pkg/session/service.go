@@ -99,8 +99,17 @@ func (s *Service) findSession(query string) (string, error) {
 
 	// Search for matches.
 	for identifier, controller := range s.sessions {
-		match := identifier == query ||
-			strings.HasPrefix(identifier, query) ||
+		// If the query matches an identifier exactly, then treat that as the
+		// only match. In theory someone could be weird and use a session id as
+		// an element of an endpoint URL, in which case the match would be
+		// ambiguous, and in that case I don't want to disable the ability to
+		// end the session.
+		if identifier == query {
+			return identifier, nil
+		}
+
+		// Otherwise attempt fuzzy matching.
+		match := strings.HasPrefix(identifier, query) ||
 			strings.Contains(controller.session.Alpha.Path, query) ||
 			strings.Contains(controller.session.Beta.Path, query) ||
 			strings.Contains(controller.session.Alpha.Hostname, query) ||
