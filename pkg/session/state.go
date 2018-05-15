@@ -59,12 +59,6 @@ func (s SynchronizationStatus) String() string {
 	}
 }
 
-type StagingStatus struct {
-	Path  string
-	Index uint64
-	Total uint64
-}
-
 // SynchronizationState represents the current state of a synchronization loop.
 type SynchronizationState struct {
 	Status         SynchronizationStatus
