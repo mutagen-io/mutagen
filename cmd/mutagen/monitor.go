@@ -57,9 +57,9 @@ func printMonitorLine(state sessionpkg.SessionState) {
 
 func monitorMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
-	var sessionQuery string
+	var sessionQueries []string
 	if len(arguments) == 1 {
-		sessionQuery = arguments[0]
+		sessionQueries = append(sessionQueries, arguments[0])
 	} else if len(arguments) > 1 {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
@@ -81,10 +81,10 @@ func monitorMain(command *cobra.Command, arguments []string) {
 
 	// Send the list request.
 	kind := sessionpkg.ListRequestKindRepeated
-	if sessionQuery == "" {
+	if len(sessionQueries) == 0 {
 		kind = sessionpkg.ListRequestKindRepeatedLatest
 	}
-	request := sessionpkg.ListRequest{Kind: kind, SessionQuery: sessionQuery}
+	request := sessionpkg.ListRequest{Kind: kind, SessionQueries: sessionQueries}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
 	}
@@ -106,7 +106,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 
 		// Validate the response. If there's an error, clear the monitor line
 		// (if any) before returning for better error legibility.
-		if len(response.Sessions) != 1 {
+		if len(response.SessionStates) != 1 {
 			err = errors.New("invalid listing response")
 		}
 		if err != nil {
@@ -117,7 +117,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		}
 
 		// Extract the session state.
-		state := response.Sessions[0]
+		state := response.SessionStates[0]
 
 		// Print session information the first time through the loop.
 		if !sessionInformationPrinted {
@@ -134,7 +134,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		}
 
 		// Print the monitoring line and record that we've done so.
-		printMonitorLine(response.Sessions[0])
+		printMonitorLine(response.SessionStates[0])
 		monitorLinePrinted = true
 
 		// Send another (empty) request to let the daemon know that we're ready

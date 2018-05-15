@@ -122,6 +122,11 @@ func (s *Service) findSession(query string) (string, error) {
 		}
 	}
 
+	// Handle the case where we don't find any matches.
+	if result == "" {
+		return "", errors.Errorf("query \"%s\" doesn't match any sessions", query)
+	}
+
 	// Success.
 	return result, nil
 }
@@ -237,19 +242,20 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Determine the session query of interest and whether or not this is a
-	// repeated request. An empty session query after this point indicates that
-	// all sessions are of interest.
-	var sessionQuery string
+	// Determine the session queries of interest and whether or not this is a
+	// repeated request. An nil or empty session query slice after this point
+	// indicates that all sessions are of interest.
+	var sessionQueries []string
 	var repeated bool
 	switch request.Kind {
 	case ListRequestKindSingle:
-		sessionQuery = request.SessionQuery
+		sessionQueries = request.SessionQueries
 	case ListRequestKindRepeated:
-		sessionQuery = request.SessionQuery
+		sessionQueries = request.SessionQueries
 		repeated = true
 	case ListRequestKindRepeatedLatest:
 		var mostRecentSessionCreationTime time.Time
+		var mostRecentSessionId string
 		s.sessionsLock.Lock()
 		for _, controller := range s.sessions {
 			state := controller.currentState()
@@ -259,27 +265,28 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 				return errors.Wrap(err, "unable to convert creation time format")
 			}
 			if creationTime.After(mostRecentSessionCreationTime) {
-				sessionQuery = state.Session.Identifier
 				mostRecentSessionCreationTime = creationTime
+				mostRecentSessionId = state.Session.Identifier
 			}
 		}
 		s.sessionsLock.Unlock()
-		if sessionQuery == "" {
+		if mostRecentSessionId == "" {
 			return errors.New("no sessions present")
 		}
+		sessionQueries = append(sessionQueries, mostRecentSessionId)
 		repeated = true
 	default:
 		return errors.New("unknown list request kind")
 	}
 
-	// If a session query has been provided, resolve the full session identifier
-	// to which it refers.
-	session := ""
-	if sessionQuery != "" {
-		if s, err := s.findSession(sessionQuery); err != nil {
+	// If session queries have been provided, resolve the full session
+	// identifiers to which they refer.
+	var sessions []string
+	for _, q := range sessionQueries {
+		if s, err := s.findSession(q); err != nil {
 			return errors.Wrap(err, "unable to identify session")
 		} else {
-			session = s
+			sessions = append(sessions, s)
 		}
 	}
 
@@ -302,17 +309,19 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 		s.sessionsLock.Lock()
 
 		// Create a snapshot of the necessary session states.
-		var sessions []SessionState
+		var sessionStates []SessionState
 		var err error
-		if session != "" {
-			if controller, ok := s.sessions[session]; ok {
-				sessions = append(sessions, controller.currentState())
-			} else {
-				err = errors.New("requested session no longer exists")
+		if len(sessions) > 0 {
+			for _, identifier := range sessions {
+				if controller, ok := s.sessions[identifier]; ok {
+					sessionStates = append(sessionStates, controller.currentState())
+				} else {
+					err = errors.New("requested session no longer exists")
+				}
 			}
 		} else {
 			for _, controller := range s.sessions {
-				sessions = append(sessions, controller.currentState())
+				sessionStates = append(sessionStates, controller.currentState())
 			}
 		}
 
@@ -326,16 +335,16 @@ func (s *Service) list(stream rpc.HandlerStream) error {
 			return err
 		}
 
-		// Sort sessions by creation time.
-		sort.Slice(sessions, func(i, j int) bool {
-			iTime := sessions[i].Session.CreationTime
-			jTime := sessions[j].Session.CreationTime
+		// Sort session states by session creation time.
+		sort.Slice(sessionStates, func(i, j int) bool {
+			iTime := sessionStates[i].Session.CreationTime
+			jTime := sessionStates[j].Session.CreationTime
 			return iTime.Seconds < jTime.Seconds ||
 				(iTime.Seconds == jTime.Seconds && iTime.Nanos < jTime.Nanos)
 		})
 
 		// Send this response.
-		if err := stream.Send(ListResponse{Sessions: sessions}); err != nil {
+		if err := stream.Send(ListResponse{SessionStates: sessionStates}); err != nil {
 			return errors.Wrap(err, "unable to send list response")
 		}
 

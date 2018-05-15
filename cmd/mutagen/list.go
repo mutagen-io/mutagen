@@ -137,12 +137,10 @@ func printConflicts(conflicts []sync.Conflict) {
 }
 
 func listMain(command *cobra.Command, arguments []string) {
-	// Parse session specification.
-	var sessionQuery string
-	if len(arguments) == 1 {
-		sessionQuery = arguments[0]
-	} else if len(arguments) > 1 {
-		cmd.Fatal(errors.New("multiple session specification not allowed"))
+	// Parse session specifications.
+	var sessionQueries []string
+	if len(arguments) > 0 {
+		sessionQueries = arguments
 	}
 
 	// Create a daemon client and defer its closure.
@@ -162,8 +160,8 @@ func listMain(command *cobra.Command, arguments []string) {
 
 	// Send the list request.
 	request := sessionpkg.ListRequest{
-		Kind:         sessionpkg.ListRequestKindSingle,
-		SessionQuery: sessionQuery,
+		Kind:           sessionpkg.ListRequestKindSingle,
+		SessionQueries: sessionQueries,
 	}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
@@ -176,10 +174,10 @@ func listMain(command *cobra.Command, arguments []string) {
 	}
 
 	// Determine whether or not to print delimiters.
-	printDelimiters := len(response.Sessions) > 1
+	printDelimiters := len(response.SessionStates) > 1
 
 	// Loop through and print sessions.
-	for _, state := range response.Sessions {
+	for _, state := range response.SessionStates {
 		if printDelimiters {
 			fmt.Println(delimiterLine)
 		}
@@ -196,7 +194,7 @@ func listMain(command *cobra.Command, arguments []string) {
 }
 
 var listCommand = &cobra.Command{
-	Use:   "list [<session>]",
+	Use:   "list [<session>...]",
 	Short: "Lists existing synchronization sessions and their statuses",
 	Run:   listMain,
 }

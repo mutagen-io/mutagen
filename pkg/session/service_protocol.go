@@ -33,12 +33,12 @@ const (
 )
 
 type ListRequest struct {
-	Kind         ListRequestKind
-	SessionQuery string
+	Kind           ListRequestKind
+	SessionQueries []string
 }
 
 type ListResponse struct {
-	Sessions []SessionState
+	SessionStates []SessionState
 }
 
 type PauseRequest struct {
