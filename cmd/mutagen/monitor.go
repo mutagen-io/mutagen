@@ -96,7 +96,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			return errors.Wrap(err, "unable to invoke list")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "list error")
 		}
 
 		// Validate the response and extract the relevant session state. If no

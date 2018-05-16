@@ -73,7 +73,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Create(createContext)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke create")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke create")
 	}
 
 	// Send the initial request.
@@ -83,7 +83,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Ignores: ignores,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(err, "unable to send create request")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send create request")
 	}
 
 	// Receive and process responses until we're done.
@@ -91,7 +91,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(err, "unable to receive response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to receive response")
 		} else if response.Session != "" {
 			if response.Prompt != nil {
 				return errors.New("invalid create response received (session with prompt)")
@@ -108,7 +108,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
 			return errors.Wrap(err, "unable to perform prompting")
 		} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
-			return errors.Wrap(err, "unable to send prompt response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
 		}
 	}
 }

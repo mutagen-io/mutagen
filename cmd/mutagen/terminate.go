@@ -37,7 +37,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		Specifications: specifications,
 	}
 	if _, err := sessionService.Terminate(context.Background(), request); err != nil {
-		return errors.Wrap(err, "unable to invoke terminate")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "terminate error")
 	}
 
 	// Success.

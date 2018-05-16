@@ -154,7 +154,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 	}
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke list")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "list error")
 	}
 
 	// Determine whether or not to print delimiters.

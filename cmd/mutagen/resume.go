@@ -39,7 +39,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke resume")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}
 
 	// Send the initial request.
@@ -47,7 +47,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		Specifications: specifications,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(err, "unable to send resume request")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
 	// Receive and process responses until we're done.
@@ -55,7 +55,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(err, "unable to receive response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to receive response")
 		} else if response.Prompt == nil {
 			return nil
 		} else {
@@ -66,7 +66,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
 			return errors.Wrap(err, "unable to perform prompting")
 		} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
-			return errors.Wrap(err, "unable to send prompt response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
 		}
 	}
 }

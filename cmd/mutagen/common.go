@@ -5,9 +5,12 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"google.golang.org/grpc"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
@@ -46,4 +49,12 @@ func createDaemonClientConnection() (*grpc.ClientConn, error) {
 		grpc.WithDialer(daemonDialer),
 		grpc.WithBlock(),
 	)
+}
+
+func peelAwayRPCErrorLayer(err error) error {
+	if status, ok := grpcstatus.FromError(err); !ok {
+		return err
+	} else {
+		return errors.New(status.Message())
+	}
 }
