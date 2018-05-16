@@ -297,7 +297,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 	}
 
 	// Create a copy of target for mutation.
-	targetCopy := target.copy()
+	targetCopy := target.Copy()
 
 	// Check the target type and handle accordingly.
 	var problems []Problem
@@ -417,7 +417,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 
 	// Create a shallow copy of the target that we'll populate as we create its
 	// contents.
-	created := target.copyShallow()
+	created := target.CopyShallow()
 
 	// If there are contents in the target, allocate a map for created, because
 	// we'll need to populate it.

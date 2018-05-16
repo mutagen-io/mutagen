@@ -25,7 +25,7 @@ func propagateExecutability(ancestor, snapshot *Entry) {
 
 func PropagateExecutability(ancestor, snapshot *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := snapshot.copy()
+	result := snapshot.Copy()
 
 	// Perform propagation.
 	propagateExecutability(ancestor, result)
@@ -56,7 +56,7 @@ func stripExecutability(snapshot *Entry) {
 
 func StripExecutability(snapshot *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := snapshot.copy()
+	result := snapshot.Copy()
 
 	// Perform stripping.
 	stripExecutability(result)

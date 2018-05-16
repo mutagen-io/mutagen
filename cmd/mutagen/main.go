@@ -88,16 +88,12 @@ func init() {
 }
 
 func main() {
-	// Check if a prompting environment is set. If so, treat this as a prompt
-	// request. Prompting is sort of a special pseudo-command that's indicated
-	// by the presence of environment variables, and hence it has to be handled
-	// in a bit of a special manner.
+	// Check if an SSH prompting environment is set. If so, treat this as a
+	// prompt request. Prompting is sort of a special pseudo-command that's
+	// indicated by the presence of environment variables, and hence it has to
+	// be handled in a bit of a special manner.
 	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
-		if len(os.Args) != 2 {
-			cmd.Fatal(errors.New("incorrect number of prompt arguments"))
-		} else if err := prompt(os.Args[1]); err != nil {
-			cmd.Fatal(err)
-		}
+		promptSSH(os.Args[1:])
 		return
 	}
 

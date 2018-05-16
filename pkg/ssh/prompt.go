@@ -2,83 +2,20 @@ package ssh
 
 import (
 	"encoding/base64"
-	"fmt"
-	"strings"
-
-	"github.com/pkg/errors"
-
-	"github.com/howeyc/gopass"
 
 	"github.com/havoc-io/mutagen/pkg/environment"
 	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 const (
+	PrompterEnvironmentVariable              = "MUTAGEN_SSH_PROMPTER"
+	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_SSH_PROMPTER_MESSAGE_BASE64"
+
 	sshAskpassEnvironmentVariable = "SSH_ASKPASS"
-	sshDisplayEnvironmentVariable = "DISPLAY"
+	displayEnvironmentVariable    = "DISPLAY"
 
 	mutagenDisplay = "mutagen"
-
-	PrompterEnvironmentVariable              = "MUTAGEN_PROMPTER"
-	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_PROMPTER_MESSAGE_BASE64"
 )
-
-type PromptClass uint8
-
-const (
-	PromptClassSecret PromptClass = iota
-	PromptClassEcho
-	PromptClassBinary
-)
-
-var binaryPromptSuffixes = []string{
-	"(yes/no)? ",
-	"(yes/no): ",
-}
-
-func ClassifyPrompt(prompt string) PromptClass {
-	// Check if this is a yes/no prompt.
-	for _, suffix := range binaryPromptSuffixes {
-		if strings.HasSuffix(prompt, suffix) {
-			return PromptClassBinary
-		}
-	}
-
-	// TODO: Are there any non-binary prompts from OpenSSH with responses that
-	// should be echoed? If so, we need to create a white-listed registry of
-	// regular expressions to match them.
-
-	// Otherwise assume this is a secret prompt.
-	return PromptClassSecret
-}
-
-func PromptCommandLine(message, prompt string) (string, error) {
-	// Classify the prompt.
-	class := ClassifyPrompt(prompt)
-
-	// Figure out which getter to use.
-	var getter func() ([]byte, error)
-	if class == PromptClassEcho || class == PromptClassBinary {
-		getter = gopass.GetPasswdEchoed
-	} else {
-		getter = gopass.GetPasswd
-	}
-
-	// Print the message (if any) and the prompt.
-	if message != "" {
-		fmt.Println(message)
-	}
-	fmt.Print(prompt)
-
-	// Get the result.
-	result, err := getter()
-	if err != nil {
-		return "", errors.Wrap(err, "unable to read response")
-	}
-
-	// Success.
-	return string(result), nil
-}
 
 func prompterEnvironment(prompter, message string) []string {
 	// Create a copy of the current environment.
@@ -91,15 +28,18 @@ func prompterEnvironment(prompter, message string) []string {
 		// Cygwin SSH binary) will include default SSH_ASKPASS values that throw
 		// up GUIs without any message or context and we don't want that.
 		delete(result, sshAskpassEnvironmentVariable)
-		delete(result, sshDisplayEnvironmentVariable)
+		delete(result, displayEnvironmentVariable)
 	} else {
 		// Convert message to base64 encoding so that we can pass it through the
 		// environment safely.
 		messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
 
-		// Insert necessary environment variables.
+		// Tell SSH to use Mutagen to perform prompting.
 		result[sshAskpassEnvironmentVariable] = process.Current.ExecutablePath
-		result[sshDisplayEnvironmentVariable] = mutagenDisplay
+		result[displayEnvironmentVariable] = mutagenDisplay
+
+		// Add environment variables to make Mutagen recognize an SSH prompting
+		// invocation.
 		result[PrompterEnvironmentVariable] = prompter
 		result[PrompterMessageBase64EnvironmentVariable] = messageBase64
 	}

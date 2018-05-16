@@ -37,12 +37,18 @@
 [submodule "vendor/github.com/spf13/cobra"]
 	path = vendor/github.com/spf13/cobra
 	url = https://github.com/spf13/cobra.git
-[submodule "vendor/github.com/hashicorp/yamux"]
-	path = vendor/github.com/hashicorp/yamux
-	url = https://github.com/hashicorp/yamux.git
 [submodule "vendor/github.com/BurntSushi/toml"]
 	path = vendor/github.com/BurntSushi/toml
 	url = https://github.com/BurntSushi/toml.git
 [submodule "vendor/github.com/inconshreveable/mousetrap"]
 	path = vendor/github.com/inconshreveable/mousetrap
 	url = https://github.com/inconshreveable/mousetrap.git
+[submodule "vendor/google.golang.org/grpc"]
+	path = vendor/google.golang.org/grpc
+	url = https://github.com/grpc/grpc-go.git
+[submodule "vendor/golang.org/x/net"]
+	path = vendor/golang.org/x/net
+	url = https://github.com/golang/net.git
+[submodule "vendor/google.golang.org/genproto"]
+	path = vendor/google.golang.org/genproto
+	url = https://github.com/google/go-genproto.git

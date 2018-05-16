@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package service;
+
+import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
+
+message PromptRequest{
+    string prompter = 1;
+    prompt.Prompt prompt = 2;
+}
+
+message PromptResponse{
+    string response = 1;
+}
+
+service Prompt {
+    rpc Prompt(PromptRequest) returns (PromptResponse) {}
+}

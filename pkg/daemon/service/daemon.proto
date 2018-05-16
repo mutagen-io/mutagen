@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package service;
+
+message VersionRequest{}
+
+message VersionResponse {
+    // TODO: Should we encapsulate these inside a Version message type, perhaps
+    // in the mutagen package?
+    uint64 major = 1;
+    uint64 minor = 2;
+    uint64 patch = 3;
+}
+
+message ShutdownRequest{}
+
+message ShutdownResponse{}
+
+service Daemon {
+    rpc Version(VersionRequest) returns (VersionResponse) {}
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+}

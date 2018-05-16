@@ -109,7 +109,7 @@ func (e *Entry) Equal(other *Entry) bool {
 	return true
 }
 
-func (e *Entry) copyShallow() *Entry {
+func (e *Entry) CopyShallow() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
 		return nil
@@ -124,7 +124,7 @@ func (e *Entry) copyShallow() *Entry {
 	}
 }
 
-func (e *Entry) copy() *Entry {
+func (e *Entry) Copy() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
 		return nil
@@ -147,7 +147,7 @@ func (e *Entry) copy() *Entry {
 	// Copy contents.
 	result.Contents = make(map[string]*Entry)
 	for name, entry := range e.Contents {
-		result.Contents[name] = entry.copy()
+		result.Contents[name] = entry.Copy()
 	}
 
 	// Done.

@@ -1,57 +1,33 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"context"
+	"net"
+	"time"
+
+	"google.golang.org/grpc"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/rpc"
-	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-func createDaemonClient() (*rpc.Client, error) {
-	// Dial the daemon.
-	connection, err := daemon.DialTimeout(daemon.DefaultDialTimeout)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to connect to daemon")
-	}
-
-	// Create the client.
-	client, err := rpc.NewClient(connection)
-	if err != nil {
-		return nil, err
-	}
-
-	// Success.
-	return client, nil
+func daemonDialer(_ string, timeout time.Duration) (net.Conn, error) {
+	return daemon.DialTimeout(timeout)
 }
 
-func handlePromptRequests(stream rpc.ClientStream) error {
-	// Loop until there's an error or no more challenges.
-	for {
-		// Grab the next challenge.
-		var challenge session.PromptRequest
-		if err := stream.Receive(&challenge); err != nil {
-			return errors.Wrap(err, "unable to receive authentication challenge")
-		}
+func createDaemonClientConnection() (*grpc.ClientConn, error) {
+	// Create a context to timeout the dial.
+	dialContext, cancel := context.WithTimeout(
+		context.Background(),
+		daemon.RecommendedDialTimeout,
+	)
+	defer cancel()
 
-		// Check for completion.
-		if challenge.Done {
-			return nil
-		}
-
-		// Perform prompting.
-		response, err := ssh.PromptCommandLine(
-			challenge.Message,
-			challenge.Prompt,
-		)
-		if err != nil {
-			return errors.Wrap(err, "unable to perform prompting")
-		}
-
-		// Send the response.
-		if err = stream.Send(session.PromptResponse{Response: response}); err != nil {
-			return errors.Wrap(err, "unable to send challenge response")
-		}
-	}
+	// Perform dialing.
+	return grpc.DialContext(
+		dialContext,
+		"",
+		grpc.WithInsecure(),
+		grpc.WithDialer(daemonDialer),
+		grpc.WithBlock(),
+	)
 }

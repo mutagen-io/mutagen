@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package session;
+
+import "github.com/havoc-io/mutagen/pkg/session/session.proto";
+import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+
+enum Status {
+    Disconnected = 0;
+    HaltedOnRootDeletion = 1;
+    ConnectingAlpha = 2;
+    ConnectingBeta = 3;
+    Watching = 4;
+    ScanningAlpha = 5;
+    ScanningBeta = 6;
+    WaitingForRescan = 7;
+    Reconciling = 8;
+    StagingAlpha = 9;
+    StagingBeta = 10;
+    TransitioningAlpha = 11;
+    TransitioningBeta = 12;
+    Saving = 13;
+}
+
+message StagingStatus {
+    string path = 1;
+    uint64 received = 2;
+    uint64 total = 3;
+}
+
+message Change {
+    string path = 1;
+    sync.Entry old = 2;
+    sync.Entry new = 3;
+}
+
+message Conflict {
+    repeated Change alphaChanges = 1;
+    repeated Change betaChanges = 2;
+}
+
+message Problem {
+    string path = 1;
+    string error = 2;
+}
+
+message State {
+    Session session = 1;
+    Status status = 2;
+    bool alphaConnected = 3;
+    bool betaConnected = 4;
+    string lastError = 5;
+    StagingStatus stagingStatus = 6;
+    repeated Conflict conflicts = 7;
+    repeated Problem alphaProblems = 8;
+    repeated Problem betaProblems = 9;
+}

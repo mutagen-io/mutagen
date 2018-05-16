@@ -8,12 +8,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/rpc"
+	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
+	promptsvcpkg "github.com/havoc-io/mutagen/pkg/prompt/service"
 	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/ssh"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
 func daemonRunMain(command *cobra.Command, arguments []string) {
@@ -21,16 +24,6 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	if len(arguments) != 0 {
 		cmd.Fatal(errors.New("unexpected arguments provided"))
 	}
-
-	// TODO: Do we eventually want to encapsulate the construction of the daemon
-	// RPC server into the daemon package, much like we do with endpoints? It
-	// becomes a bit difficult to do cleanly. Also, I want the ability to have
-	// different processes host the daemon (e.g. a GUI). In those cases, we may
-	// want to add additional services that wouldn't be present in the CLI
-	// daemon. So I'll leave things the way they are for now, but I'd like to
-	// keep thinking about this for the future. One easy thing we could do is
-	// move the daemon lock into the daemon service (and add a corresponding
-	// shutdown method to the daemon service).
 
 	// Attempt to acquire the daemon lock and defer its release. If there is a
 	// crash, the lock will be released by the OS automatically, but on Windows
@@ -47,25 +40,25 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	session.HousekeepCaches()
 	session.HousekeepStaging()
 
-	// Create the RPC server.
-	server := rpc.NewServer()
+	// Create the gRPC server.
+	server := grpc.NewServer()
 
 	// Create and register the daemon service.
-	daemonService, daemonTermination := daemon.NewService()
-	server.Register(daemonService)
+	daemonService := daemonsvcpkg.New()
+	daemonsvcpkg.RegisterDaemonServer(server, daemonService)
 
-	// Create and regsiter the SSH service.
-	sshService := ssh.NewService()
-	server.Register(sshService)
+	// Create and register the prompt service.
+	promptService := promptsvcpkg.New()
+	promptsvcpkg.RegisterPromptServer(server, promptService)
 
-	// Create the and register the session service and defer its shutdown. We
-	// want to do a clean shutdown because we don't want to information
+	// Create and register the session service and defer its shutdown. We want
+	// to do a clean shutdown because we don't want to lose information
 	// generated during a synchronization cycle.
-	sessionService, err := session.NewService(sshService)
+	sessionService, err := sessionsvcpkg.New(promptService)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
 	}
-	server.Register(sessionService)
+	sessionsvcpkg.RegisterSessionServer(server, sessionService)
 	defer sessionService.Shutdown()
 
 	// Create the daemon listener and defer its closure.
@@ -77,9 +70,9 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 
 	// Serve incoming connections in a separate Goroutine, watching for serving
 	// failure.
-	serverTermination := make(chan error, 1)
+	serverErrors := make(chan error, 1)
 	go func() {
-		serverTermination <- server.Serve(listener)
+		serverErrors <- server.Serve(listener)
 	}()
 
 	// Wait for termination from a signal, the server, or the daemon server. We
@@ -89,9 +82,9 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	select {
 	case sig := <-signalTermination:
 		cmd.Fatal(errors.Errorf("terminated by signal: %s", sig))
-	case <-daemonTermination:
+	case <-daemonService.Termination:
 		return
-	case err = <-serverTermination:
+	case err = <-serverErrors:
 		cmd.Fatal(errors.Wrap(err, "premature server termination"))
 	}
 }

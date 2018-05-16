@@ -40,7 +40,7 @@ type controller struct {
 	// it is modified.
 	session *Session
 	// state represents the current synchronization state.
-	state SynchronizationState
+	state *State
 	// lifecycleLock guards the disabled, cancel, and done members.
 	lifecycleLock syncpkg.Mutex
 	// disabled indicates that no more changes to the synchronization loop
@@ -147,6 +147,10 @@ func newSession(
 		archivePath: archivePath,
 		stateLock:   state.NewTrackingLock(tracker),
 		session:     session,
+		state: &State{
+			Session:       session,
+			StagingStatus: &StagingStatus{},
+		},
 	}
 
 	// Start a synchronization loop.
@@ -187,6 +191,10 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		archivePath: archivePath,
 		stateLock:   state.NewTrackingLock(tracker),
 		session:     session,
+		state: &State{
+			Session:       session,
+			StagingStatus: &StagingStatus{},
+		},
 	}
 
 	// If the session isn't marked as paused, start a synchronization loop.
@@ -201,24 +209,15 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 	return controller, nil
 }
 
-func (c *controller) currentState() SessionState {
+func (c *controller) currentState() *State {
 	// Lock the session state and defer its release. It's very important that we
 	// unlock without a notification here, otherwise we'd trigger an infinite
 	// cycle of list/notify.
 	c.stateLock.Lock()
 	defer c.stateLock.UnlockWithoutNotify()
 
-	// Create the result. We make shallow copies of both state components. Both
-	// technically have fields that contain mutable values, but these values are
-	// treated as immutable so it is okay.
-	result := SessionState{
-		Session: &Session{},
-		State:   c.state,
-	}
-	*result.Session = *c.session
-
-	// Done.
-	return result
+	// Perform a (pseudo) deep copy of the state.
+	return c.state.Copy()
 }
 
 func (c *controller) resume(prompter string) error {
@@ -236,7 +235,7 @@ func (c *controller) resume(prompter string) error {
 		// If there is an existing synchronization loop, check if it's already
 		// in a state that's considered "connected".
 		c.stateLock.Lock()
-		connected := c.state.Status >= SynchronizationStatusWatching
+		connected := c.state.Status >= Status_Watching
 		c.stateLock.UnlockWithoutNotify()
 
 		// If we're already connect, then there's nothing we need to do. We
@@ -389,7 +388,10 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 
 		// Reset the state.
 		c.stateLock.Lock()
-		c.state = SynchronizationState{}
+		c.state = &State{
+			Session:       c.session,
+			StagingStatus: &StagingStatus{},
+		}
 		c.stateLock.Unlock()
 
 		// Signal completion.
@@ -406,7 +408,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 			// Ensure that alpha is connected.
 			if alpha == nil {
 				c.stateLock.Lock()
-				c.state.Status = SynchronizationStatusConnectingAlpha
+				c.state.Status = Status_ConnectingAlpha
 				c.stateLock.Unlock()
 				alpha, _ = reconnect(
 					context,
@@ -433,7 +435,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 			// Ensure that beta is connected.
 			if beta == nil {
 				c.stateLock.Lock()
-				c.state.Status = SynchronizationStatusConnectingBeta
+				c.state.Status = Status_ConnectingBeta
 				c.stateLock.Unlock()
 				beta, _ = reconnect(
 					context,
@@ -477,8 +479,10 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		// Reset the synchronization state, but propagate the error that caused
 		// failure.
 		c.stateLock.Lock()
-		c.state = SynchronizationState{
-			LastError: err.Error(),
+		c.state = &State{
+			Session:       c.session,
+			LastError:     err.Error(),
+			StagingStatus: &StagingStatus{},
 		}
 		c.stateLock.Unlock()
 
@@ -513,7 +517,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		if !skipPolling {
 			// Update status to watching.
 			c.stateLock.Lock()
-			c.state.Status = SynchronizationStatusWatching
+			c.state.Status = Status_Watching
 			c.stateLock.Unlock()
 
 			// Create a polling context that we can cancel. We don't make it a
@@ -566,7 +570,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Scan alpha.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusScanningAlpha
+		c.state.Status = Status_ScanningAlpha
 		c.stateLock.Unlock()
 		αSnapshot, αTryAgain, αScanErr := alpha.scan(ancestor)
 		if αScanErr != nil {
@@ -575,7 +579,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Scan beta.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusScanningBeta
+		c.state.Status = Status_ScanningBeta
 		c.stateLock.Unlock()
 		βSnapshot, βTryAgain, βScanErr := beta.scan(ancestor)
 		if βScanErr != nil {
@@ -588,7 +592,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		if αTryAgain || βTryAgain {
 			// Update status to waiting for rescan.
 			c.stateLock.Lock()
-			c.state.Status = SynchronizationStatusWaitingForRescan
+			c.state.Status = Status_WaitingForRescan
 			c.stateLock.Unlock()
 
 			// Wait before trying to rescan, but watch for cancellation.
@@ -605,15 +609,15 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Update status to reconciling.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusReconciling
+		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
-		// Reconcile and record conflicts.
+		// Perform reconciliation and record conflicts.
 		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
 			ancestor, αSnapshot, βSnapshot,
 		)
 		c.stateLock.Lock()
-		c.state.Conflicts = conflicts
+		c.state.Conflicts = convertConflicts(conflicts)
 		c.stateLock.Unlock()
 
 		// Check if a root deletion is being propagated. If so, switch to a
@@ -647,7 +651,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 		if rootDeletion {
 			c.stateLock.Lock()
-			c.state.Status = SynchronizationStatusHaltedOnRootDeletion
+			c.state.Status = Status_HaltedOnRootDeletion
 			c.stateLock.Unlock()
 			<-context.Done()
 			return errors.New("cancelled while halted on root deletion")
@@ -656,14 +660,16 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// Create a monitoring callback for rsync staging.
 		monitor := func(status rsync.ReceivingStatus) error {
 			c.stateLock.Lock()
-			c.state.Staging = status
+			c.state.StagingStatus.Path = status.Path
+			c.state.StagingStatus.Received = status.Received
+			c.state.StagingStatus.Total = status.Total
 			c.stateLock.Unlock()
 			return nil
 		}
 
 		// Stage files on alpha.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusStagingAlpha
+		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
 		if paths, entries, err := sync.TransitionDependencies(αTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on alpha")
@@ -681,7 +687,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Stage files on beta.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusStagingBeta
+		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
 		if paths, entries, err := sync.TransitionDependencies(βTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on beta")
@@ -699,7 +705,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Perform transitions on alpha.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusTransitioningAlpha
+		c.state.Status = Status_TransitioningAlpha
 		c.stateLock.Unlock()
 		var αChanges []sync.Change
 		var αProblems []sync.Problem
@@ -710,7 +716,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 
 		// Perform transitions on beta.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusTransitioningBeta
+		c.state.Status = Status_TransitioningBeta
 		c.stateLock.Unlock()
 		var βChanges []sync.Change
 		var βProblems []sync.Problem
@@ -723,9 +729,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// ancestor. Even if there were transition errors, this code is still
 		// valid.
 		c.stateLock.Lock()
-		c.state.Status = SynchronizationStatusSaving
-		c.state.AlphaProblems = αProblems
-		c.state.BetaProblems = βProblems
+		c.state.Status = Status_Saving
+		c.state.AlphaProblems = convertProblems(αProblems)
+		c.state.BetaProblems = convertProblems(βProblems)
 		c.stateLock.Unlock()
 		ancestorChanges = append(ancestorChanges, αChanges...)
 		ancestorChanges = append(ancestorChanges, βChanges...)

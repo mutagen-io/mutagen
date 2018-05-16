@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -10,7 +11,8 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -56,44 +58,60 @@ func createMain(command *cobra.Command, arguments []string) {
 	ignores = append(ignores, configuration.Ignore.Default...)
 	ignores = append(ignores, createConfiguration.ignores...)
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke the session creation method and ensure the resulting stream is
-	// closed when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodCreate)
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
+
+	// Invoke the session create method. The stream will close when the
+	// associated context is cancelled.
+	createContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := sessionService.Create(createContext)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session creation"))
+		cmd.Fatal(errors.Wrap(err, "unable to invoke create"))
 	}
-	defer stream.Close()
 
 	// Send the initial request.
-	request := sessionpkg.CreateRequest{
+	request := &sessionsvcpkg.CreateRequest{
 		Alpha:   alpha,
 		Beta:    beta,
 		Ignores: ignores,
 	}
 	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send creation request"))
+		cmd.Fatal(errors.Wrap(err, "unable to send create request"))
 	}
 
-	// Handle authentication challenges.
-	if err := handlePromptRequests(stream); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to handle prompt requests"))
-	}
+	// Receive and process responses until we're done.
+	for {
+		// Receive the next response, watching for completion or another prompt.
+		var prompt *promptpkg.Prompt
+		if response, err := stream.Recv(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to receive response"))
+		} else if response.Session != "" {
+			if response.Prompt != nil {
+				cmd.Fatal(errors.New("invalid create response received (session with prompt)"))
+			}
+			fmt.Println("Created session", response.Session)
+			return
+		} else if response.Prompt == nil {
+			cmd.Fatal(errors.New("invalid create response received (empty)"))
+		} else {
+			prompt = response.Prompt
+		}
 
-	// Receive the create response.
-	var response sessionpkg.CreateResponse
-	if err := stream.Receive(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive create response"))
+		// Process the prompt.
+		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+		} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to send prompt response"))
+		}
 	}
-
-	// Print the session identifier.
-	fmt.Println("Created session", response.Session)
 }
 
 var createCommand = &cobra.Command{

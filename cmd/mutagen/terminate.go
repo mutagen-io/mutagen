@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
 func terminateMain(command *cobra.Command, arguments []string) {
@@ -21,34 +23,23 @@ func terminateMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke the session terminate method and ensure the resulting stream is
-	// closed when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodTerminate)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session terminate"))
-	}
-	defer stream.Close()
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
 
-	// Send the terminate request.
-	request := sessionpkg.TerminateRequest{
-		All:            terminateConfiguration.all,
+	// Invoke terminate.
+	request := &sessionsvcpkg.TerminateRequest{
+		All:            len(sessionQueries) == 0,
 		SessionQueries: sessionQueries,
 	}
-	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send terminate request"))
-	}
-
-	// Receive the terminate response.
-	var response sessionpkg.TerminateResponse
-	if err := stream.Receive(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive terminate response"))
+	if _, err := sessionService.Terminate(context.Background(), request); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to invoke terminate"))
 	}
 }
 

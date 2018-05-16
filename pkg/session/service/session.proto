@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package service;
+
+import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
+import "github.com/havoc-io/mutagen/pkg/session/state.proto";
+import "github.com/havoc-io/mutagen/pkg/url/url.proto";
+
+message CreateRequest {
+    url.URL alpha = 1;
+    url.URL beta = 2;
+    repeated string ignores = 3;
+    string response = 4;
+}
+
+message CreateResponse {
+    string session = 1;
+    prompt.Prompt prompt = 2;
+}
+
+message ListRequest {
+    uint64 previousStateIndex = 1;
+    bool all = 2;
+    repeated string sessionQueries = 3;
+}
+
+message ListResponse {
+    uint64 stateIndex = 1;
+    repeated session.State sessionStates = 2;
+}
+
+message PauseRequest {
+    bool all = 1;
+    repeated string sessionQueries = 2;
+}
+
+message PauseResponse{}
+
+message ResumeRequest {
+    bool all = 1;
+    repeated string sessionQueries = 2;
+    string response = 3;
+}
+
+message ResumeResponse {
+    prompt.Prompt prompt = 1;
+}
+
+message TerminateRequest {
+    bool all = 1;
+    repeated string sessionQueries = 2;
+}
+
+message TerminateResponse{}
+
+service Session {
+    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Pause(PauseRequest) returns (PauseResponse) {}
+    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
+}

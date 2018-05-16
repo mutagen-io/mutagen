@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -35,9 +36,34 @@ var subdirectories = []struct {
 	path  string
 	files []string
 }{
-	{"pkg/session", []string{"session.proto"}},
-	{"pkg/sync", []string{"cache.proto", "entry.proto"}},
-	{"pkg/url", []string{"url.proto"}},
+	{
+		"github.com/havoc-io/mutagen/pkg/daemon/service",
+		[]string{"daemon.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/prompt",
+		[]string{"prompt.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/prompt/service",
+		[]string{"prompt.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/session",
+		[]string{"session.proto", "state.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/session/service",
+		[]string{"session.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/sync",
+		[]string{"cache.proto", "entry.proto"},
+	},
+	{
+		"github.com/havoc-io/mutagen/pkg/url",
+		[]string{"url.proto"},
+	},
 }
 
 func main() {
@@ -87,19 +113,13 @@ func main() {
 	}
 	mutagenSource := filepath.Dir(filepath.Dir(file))
 
-	// Compute the vendoring path.
-	vendor := filepath.Join(mutagenSource, "vendor")
-
-	// Compute the GOPATH src directory.
+	// Compute the $GOPATH/src directory.
 	gopathSrc := filepath.Dir(filepath.Dir(filepath.Dir(mutagenSource)))
 
 	// Process subdirectories.
 	for _, s := range subdirectories {
-		// Compute the subdirectory path.
-		subdirectory := filepath.Join(mutagenSource, s.path)
-
 		// Print directory information.
-		fmt.Println("Processing", subdirectory)
+		fmt.Println("Processing", s.path)
 
 		// Execute the Protocol Buffers compiler using the Go code generator.
 		// HACK: We specify include paths so that we can reference definitions
@@ -108,14 +128,14 @@ func main() {
 		// too stupid to include this automatically. If you don't believe me,
 		// try removing that argument and the compiler will literally print a
 		// message telling you how "stupid" it is.
-		arguments := make([]string, 0, len(s.files)+1)
-		arguments = append(arguments, "-I.")
-		arguments = append(arguments, fmt.Sprintf("-I%s", vendor))
+		var arguments []string
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		arguments = append(arguments, fmt.Sprintf("--go_out=."))
-		arguments = append(arguments, s.files...)
+		arguments = append(arguments, fmt.Sprintf("--go_out=plugins=grpc:."))
+		for _, f := range s.files {
+			arguments = append(arguments, path.Join(s.path, f))
+		}
 		protoc := exec.Command("protoc", arguments...)
-		protoc.Dir = subdirectory
+		protoc.Dir = gopathSrc
 		protoc.Env = protocEnvironment
 		protoc.Stdin = os.Stdin
 		protoc.Stdout = os.Stdout

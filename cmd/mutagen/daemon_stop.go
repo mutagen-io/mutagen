@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
 )
 
 func daemonStopMain(command *cobra.Command, arguments []string) {
@@ -23,19 +26,19 @@ func daemonStopMain(command *cobra.Command, arguments []string) {
 		return
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke termination.
-	stream, err := daemonClient.Invoke(daemon.MethodTerminate)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke daemon termination"))
-	}
-	stream.Close()
+	// Create a daemon service client.
+	daemonService := daemonsvcpkg.NewDaemonClient(daemonConnection)
+
+	// Invoke shutdown. We don't check the response or error, because the daemon
+	// may terminate before it has a chance to send the response.
+	daemonService.Shutdown(context.Background(), &daemonsvcpkg.ShutdownRequest{})
 }
 
 var daemonStopCommand = &cobra.Command{

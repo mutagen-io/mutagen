@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -9,36 +10,37 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
-func printMonitorLine(state sessionpkg.SessionState) {
+func printMonitorLine(state *sessionpkg.State) {
 	// Build the status line.
 	status := "Status: "
 	if state.Session.Paused {
 		status += "Paused"
 	} else {
 		// Add a conflict flag if there are conflicts.
-		if len(state.State.Conflicts) > 0 {
+		if len(state.Conflicts) > 0 {
 			status += "[Conflicts] "
 		}
 
 		// Add a problems flag if there are problems.
-		if len(state.State.AlphaProblems) > 0 || len(state.State.BetaProblems) > 0 {
+		if len(state.AlphaProblems) > 0 || len(state.BetaProblems) > 0 {
 			status += "[Problems] "
 		}
 
 		// Add the status.
-		status += state.State.Status.String()
+		status += state.Status.Description()
 
 		// If we're staging and have sane statistics, add them.
-		if state.State.Status == sessionpkg.SynchronizationStatusStagingAlpha ||
-			state.State.Status == sessionpkg.SynchronizationStatusStagingBeta &&
-				state.State.Staging.Total > 0 {
+		if state.Status == sessionpkg.Status_StagingAlpha ||
+			state.Status == sessionpkg.Status_StagingBeta &&
+				state.StagingStatus.Total > 0 {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
-				100.0*float32(state.State.Staging.Received)/float32(state.State.Staging.Total),
-				state.State.Staging.Received,
-				state.State.Staging.Total,
+				100.0*float32(state.StagingStatus.Received)/float32(state.StagingStatus.Total),
+				state.StagingStatus.Received,
+				state.StagingStatus.Total,
 			)
 		}
 	}
@@ -66,58 +68,43 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
 
 	// Loop and print monitoring information indefinitely.
 	var previousStateIndex uint64
 	sessionInformationPrinted := false
 	monitorLinePrinted := false
 	for {
-		// Invoke the session list method.
-		stream, err := daemonClient.Invoke(sessionpkg.MethodList)
-		if err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
-		}
-
 		// Create the list request. If there's no session specified, then we
 		// need to grab all sessions and identify the most recently created one
 		// for future queries.
-		request := sessionpkg.ListRequest{
+		request := &sessionsvcpkg.ListRequest{
 			PreviousStateIndex: previousStateIndex,
 			All:                session == "",
 			SessionQueries:     sessionQueries,
 		}
 
-		// Send the list request.
-		if err := stream.Send(request); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
-		}
-
-		// Receive the next response. If there's an error, clear the monitor
-		// line (if any) before returning for better error legibility.
-		var response sessionpkg.ListResponse
-		if err := stream.Receive(&response); err != nil {
-			stream.Close()
+		// Invoke list.
+		response, err := sessionService.List(context.Background(), request)
+		if err != nil {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			cmd.Fatal(errors.Wrap(err, "unable to receive listing response"))
-		}
-
-		// Close the stream.
-		if err := stream.Close(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to close listing stream"))
+			cmd.Fatal(errors.Wrap(err, "unable to invoke list"))
 		}
 
 		// Validate the response and extract the relevant session state. If no
 		// session has been specified and it's our first time through the loop,
 		// identify the most recently created session.
-		var state sessionpkg.SessionState
+		var state *sessionpkg.State
 		previousStateIndex = response.StateIndex
 		if session == "" {
 			if len(response.SessionStates) == 0 {

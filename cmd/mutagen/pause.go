@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
 func pauseMain(command *cobra.Command, arguments []string) {
@@ -21,34 +23,23 @@ func pauseMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke the session pause method and ensure the resulting stream is closed
-	// when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodPause)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session pause"))
-	}
-	defer stream.Close()
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
 
-	// Send the pause request.
-	request := sessionpkg.PauseRequest{
-		All:            pauseConfiguration.all,
+	// Invoke pause.
+	request := &sessionsvcpkg.PauseRequest{
+		All:            len(sessionQueries) == 0,
 		SessionQueries: sessionQueries,
 	}
-	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send pause request"))
-	}
-
-	// Receive the pause response.
-	var response sessionpkg.PauseResponse
-	if err := stream.Receive(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive pause response"))
+	if _, err := sessionService.Pause(context.Background(), request); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to invoke pause"))
 	}
 }
 

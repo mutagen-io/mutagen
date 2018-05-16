@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -19,12 +21,12 @@ func formatPath(path string) string {
 	return path
 }
 
-func printSession(state sessionpkg.SessionState) {
+func printSession(state *sessionpkg.State) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
 
 	// Print status.
-	statusString := state.State.Status.String()
+	statusString := state.Status.Description()
 	if state.Session.Paused {
 		statusString = "Paused"
 	}
@@ -39,8 +41,8 @@ func printSession(state sessionpkg.SessionState) {
 	}
 
 	// Print the last error, if any.
-	if state.State.LastError != "" {
-		fmt.Println("Last error:", state.State.LastError)
+	if state.LastError != "" {
+		fmt.Println("Last error:", state.LastError)
 	}
 }
 
@@ -51,7 +53,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpoint(state sessionpkg.SessionState, alpha bool) {
+func printEndpoint(state *sessionpkg.State, alpha bool) {
 	// Print the header for this endpoint.
 	header := "Alpha:"
 	if !alpha {
@@ -67,16 +69,16 @@ func printEndpoint(state sessionpkg.SessionState, alpha bool) {
 	fmt.Println("\tURL:", url.Format())
 
 	// Print status.
-	connected := state.State.AlphaConnected
+	connected := state.AlphaConnected
 	if !alpha {
-		connected = state.State.BetaConnected
+		connected = state.BetaConnected
 	}
 	fmt.Println("\tStatus:", formatConnectionStatus(connected))
 
 	// Print problems, if any.
-	problems := state.State.AlphaProblems
+	problems := state.AlphaProblems
 	if !alpha {
-		problems = state.State.BetaProblems
+		problems = state.BetaProblems
 	}
 	if len(problems) > 0 {
 		fmt.Println("\tProblems:")
@@ -103,7 +105,7 @@ func formatEntryKind(entry *sync.Entry) string {
 	}
 }
 
-func printConflicts(conflicts []sync.Conflict) {
+func printConflicts(conflicts []*sessionpkg.Conflict) {
 	// Print the header.
 	fmt.Println("Conflicts:")
 
@@ -143,34 +145,24 @@ func listMain(command *cobra.Command, arguments []string) {
 		sessionQueries = arguments
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke the session list method and ensure the resulting stream is closed
-	// when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodList)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session listing"))
-	}
-	defer stream.Close()
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
 
-	// Send the list request.
-	request := sessionpkg.ListRequest{
+	// Invoke list.
+	request := &sessionsvcpkg.ListRequest{
 		All:            len(sessionQueries) == 0,
 		SessionQueries: sessionQueries,
 	}
-	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send listing request"))
-	}
-
-	// Receive the response.
-	var response sessionpkg.ListResponse
-	if err := stream.Receive(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive listing response"))
+	response, err := sessionService.List(context.Background(), request)
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to invoke list"))
 	}
 
 	// Determine whether or not to print delimiters.
@@ -184,8 +176,8 @@ func listMain(command *cobra.Command, arguments []string) {
 		printSession(state)
 		printEndpoint(state, true)
 		printEndpoint(state, false)
-		if len(state.State.Conflicts) > 0 {
-			printConflicts(state.State.Conflicts)
+		if len(state.Conflicts) > 0 {
+			printConflicts(state.Conflicts)
 		}
 	}
 	if printDelimiters {

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) {
@@ -21,23 +24,27 @@ func resumeMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
 
-	// Create a daemon client and defer its closure.
-	daemonClient, err := createDaemonClient()
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon client"))
+		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
 	}
-	defer daemonClient.Close()
+	defer daemonConnection.Close()
 
-	// Invoke the session resume method and ensure the resulting stream is closed
-	// when we're done.
-	stream, err := daemonClient.Invoke(sessionpkg.MethodResume)
+	// Create a session service client.
+	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
+
+	// Invoke the session resume method. The stream will close when the
+	// associated context is cancelled.
+	resumeContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke session resume"))
+		cmd.Fatal(errors.Wrap(err, "unable to invoke resume"))
 	}
-	defer stream.Close()
 
-	// Send the resume request.
-	request := sessionpkg.ResumeRequest{
+	// Send the initial request.
+	request := &sessionsvcpkg.ResumeRequest{
 		All:            resumeConfiguration.all,
 		SessionQueries: sessionQueries,
 	}
@@ -45,15 +52,24 @@ func resumeMain(command *cobra.Command, arguments []string) {
 		cmd.Fatal(errors.Wrap(err, "unable to send resume request"))
 	}
 
-	// Handle authentication challenges.
-	if err := handlePromptRequests(stream); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to handle prompt requests"))
-	}
+	// Receive and process responses until we're done.
+	for {
+		// Receive the next response, watching for completion or another prompt.
+		var prompt *promptpkg.Prompt
+		if response, err := stream.Recv(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to receive response"))
+		} else if response.Prompt == nil {
+			return
+		} else {
+			prompt = response.Prompt
+		}
 
-	// Receive the resume response.
-	var response sessionpkg.ResumeResponse
-	if err := stream.Receive(&response); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to receive resume response"))
+		// Process the prompt.
+		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+		} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to send prompt response"))
+		}
 	}
 }
 

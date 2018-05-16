@@ -5,5 +5,5 @@ import (
 )
 
 const (
-	DefaultDialTimeout = 1 * time.Second
+	RecommendedDialTimeout = 1 * time.Second
 )

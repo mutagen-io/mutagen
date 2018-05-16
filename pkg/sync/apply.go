@@ -9,7 +9,7 @@ import (
 // TODO: Document that this function ignores the Old value for changes.
 func Apply(base *Entry, changes []Change) (*Entry, error) {
 	// Create a mutable copy of base.
-	result := base.copy()
+	result := base.Copy()
 
 	// Apply changes.
 	for _, c := range changes {
