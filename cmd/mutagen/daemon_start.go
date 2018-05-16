@@ -7,23 +7,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/process"
 )
 
-func daemonStartMain(command *cobra.Command, arguments []string) {
+func daemonStartMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
-		cmd.Fatal(errors.New("unexpected arguments provided"))
+		return errors.New("unexpected arguments provided")
 	}
 
 	// If the daemon is registered with the system, it may have a different
 	// start mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStart(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to start daemon using system mechanism"))
+		return errors.Wrap(err, "unable to start daemon using system mechanism")
 	} else if handled {
-		return
+		return nil
 	}
 
 	// Restart in the background.
@@ -33,14 +32,17 @@ func daemonStartMain(command *cobra.Command, arguments []string) {
 		SysProcAttr: daemonProcessAttributes,
 	}
 	if err := daemonProcess.Start(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to fork daemon"))
+		return errors.Wrap(err, "unable to fork daemon")
 	}
+
+	// Success.
+	return nil
 }
 
 var daemonStartCommand = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the Mutagen daemon if it's not already running",
-	Run:   daemonStartMain,
+	Run:   mainify(daemonStartMain),
 }
 
 var daemonStartConfiguration struct {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
@@ -57,7 +56,7 @@ func printMonitorLine(state *sessionpkg.State) {
 	fmt.Printf(monitorLineFormat, status)
 }
 
-func monitorMain(command *cobra.Command, arguments []string) {
+func monitorMain(command *cobra.Command, arguments []string) error {
 	// Parse session specification.
 	var session string
 	var specifications []string
@@ -65,13 +64,13 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		session = arguments[0]
 		specifications = []string{session}
 	} else if len(arguments) > 1 {
-		cmd.Fatal(errors.New("multiple session specification not allowed"))
+		return errors.New("multiple session specification not allowed")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -97,7 +96,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			cmd.Fatal(errors.Wrap(err, "unable to invoke list"))
+			return errors.Wrap(err, "unable to invoke list")
 		}
 
 		// Validate the response and extract the relevant session state. If no
@@ -122,7 +121,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			cmd.Fatal(err)
+			return err
 		}
 
 		// Print session information the first time through the loop.
@@ -148,7 +147,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 var monitorCommand = &cobra.Command{
 	Use:   "monitor [<session>]",
 	Short: "Shows a dynamic status display for the specified session",
-	Run:   monitorMain,
+	Run:   mainify(monitorMain),
 }
 
 var monitorConfiguration struct {

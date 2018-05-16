@@ -14,25 +14,25 @@ import (
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-func rootMain(command *cobra.Command, arguments []string) {
+func rootMain(command *cobra.Command, arguments []string) error {
 	// Print version information, if requested.
 	if rootConfiguration.version {
 		fmt.Println(mutagen.Version)
-		return
+		return nil
 	}
 
 	// Print legal information, if requested.
 	if rootConfiguration.legal {
 		fmt.Print(mutagen.LegalNotice)
-		return
+		return nil
 	}
 
 	// Generate bash completion script, if requested.
 	if rootConfiguration.bashCompletionScript != "" {
 		if err := command.GenBashCompletionFile(rootConfiguration.bashCompletionScript); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to generate bash completion script"))
+			return errors.Wrap(err, "unable to generate bash completion script")
 		}
-		return
+		return nil
 	}
 
 	// If no flags were set, then print help information and bail. We don't have
@@ -40,12 +40,15 @@ func rootMain(command *cobra.Command, arguments []string) {
 	// be incorrect usage) because arguments can't even reach this point (they
 	// will be mistaken for subcommands and a error will be displayed).
 	command.Help()
+
+	// Success.
+	return nil
 }
 
 var rootCommand = &cobra.Command{
 	Use:   "mutagen",
 	Short: "Mutagen provides simple, continuous, bi-directional file synchronization.",
-	Run:   rootMain,
+	Run:   mainify(rootMain),
 }
 
 var rootConfiguration struct {
@@ -93,7 +96,9 @@ func main() {
 	// indicated by the presence of environment variables, and hence it has to
 	// be handled in a bit of a special manner.
 	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
-		promptSSH(os.Args[1:])
+		if err := promptSSH(os.Args[1:]); err != nil {
+			cmd.Fatal(err)
+		}
 		return
 	}
 

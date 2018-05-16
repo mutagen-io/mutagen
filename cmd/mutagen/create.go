@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
@@ -16,37 +15,37 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
-func createMain(command *cobra.Command, arguments []string) {
+func createMain(command *cobra.Command, arguments []string) error {
 	// Load the Mutagen configuration.
 	configuration, err := configuration.Load()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to load configuration file"))
+		return errors.Wrap(err, "unable to load configuration file")
 	}
 
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
-		cmd.Fatal(errors.New("invalid number of endpoint URLs provided"))
+		return errors.New("invalid number of endpoint URLs provided")
 	}
 	alpha, err := url.Parse(arguments[0])
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to parse alpha URL"))
+		return errors.Wrap(err, "unable to parse alpha URL")
 	}
 	beta, err := url.Parse(arguments[1])
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to parse beta URL"))
+		return errors.Wrap(err, "unable to parse beta URL")
 	}
 
 	// If either URL is a local path, make sure it's normalized.
 	if alpha.Protocol == url.Protocol_Local {
 		if alphaPath, err := filesystem.Normalize(alpha.Path); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to normalize alpha path"))
+			return errors.Wrap(err, "unable to normalize alpha path")
 		} else {
 			alpha.Path = alphaPath
 		}
 	}
 	if beta.Protocol == url.Protocol_Local {
 		if betaPath, err := filesystem.Normalize(beta.Path); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to normalize beta path"))
+			return errors.Wrap(err, "unable to normalize beta path")
 		} else {
 			beta.Path = betaPath
 		}
@@ -61,7 +60,7 @@ func createMain(command *cobra.Command, arguments []string) {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -74,7 +73,7 @@ func createMain(command *cobra.Command, arguments []string) {
 	defer cancel()
 	stream, err := sessionService.Create(createContext)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke create"))
+		return errors.Wrap(err, "unable to invoke create")
 	}
 
 	// Send the initial request.
@@ -84,7 +83,7 @@ func createMain(command *cobra.Command, arguments []string) {
 		Ignores: ignores,
 	}
 	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send create request"))
+		return errors.Wrap(err, "unable to send create request")
 	}
 
 	// Receive and process responses until we're done.
@@ -92,24 +91,24 @@ func createMain(command *cobra.Command, arguments []string) {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to receive response"))
+			return errors.Wrap(err, "unable to receive response")
 		} else if response.Session != "" {
 			if response.Prompt != nil {
-				cmd.Fatal(errors.New("invalid create response received (session with prompt)"))
+				return errors.New("invalid create response received (session with prompt)")
 			}
 			fmt.Println("Created session", response.Session)
-			return
+			return nil
 		} else if response.Prompt == nil {
-			cmd.Fatal(errors.New("invalid create response received (empty)"))
+			return errors.New("invalid create response received (empty)")
 		} else {
 			prompt = response.Prompt
 		}
 
 		// Process the prompt.
 		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+			return errors.Wrap(err, "unable to perform prompting")
 		} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to send prompt response"))
+			return errors.Wrap(err, "unable to send prompt response")
 		}
 	}
 }
@@ -117,7 +116,7 @@ func createMain(command *cobra.Command, arguments []string) {
 var createCommand = &cobra.Command{
 	Use:   "create <alpha> <beta>",
 	Short: "Creates and starts a new synchronization session",
-	Run:   createMain,
+	Run:   mainify(createMain),
 }
 
 var createConfiguration struct {

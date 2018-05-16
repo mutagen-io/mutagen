@@ -5,26 +5,28 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
-func daemonUnregisterMain(command *cobra.Command, arguments []string) {
+func daemonUnregisterMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
-		cmd.Fatal(errors.New("unexpected arguments provided"))
+		return errors.New("unexpected arguments provided")
 	}
 
 	// Attempt deregistration.
 	if err := daemon.Unregister(); err != nil {
-		cmd.Fatal(err)
+		return err
 	}
+
+	// Success.
+	return nil
 }
 
 var daemonUnregisterCommand = &cobra.Command{
 	Use:   "unregister",
 	Short: "Unregisters Mutagen as a per-user daemon",
-	Run:   daemonUnregisterMain,
+	Run:   mainify(daemonUnregisterMain),
 }
 
 var daemonUnregisterConfiguration struct {

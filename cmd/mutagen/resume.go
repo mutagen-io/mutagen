@@ -7,27 +7,26 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
-func resumeMain(command *cobra.Command, arguments []string) {
+func resumeMain(command *cobra.Command, arguments []string) error {
 	// Parse session specifications.
 	var specifications []string
 	if len(arguments) > 0 {
 		if resumeConfiguration.all {
-			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
+			return errors.New("-a/--all specified with specific sessions")
 		}
 		specifications = arguments
 	} else if !resumeConfiguration.all {
-		cmd.Fatal(errors.New("no sessions specified"))
+		return errors.New("no sessions specified")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -40,7 +39,7 @@ func resumeMain(command *cobra.Command, arguments []string) {
 	defer cancel()
 	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke resume"))
+		return errors.Wrap(err, "unable to invoke resume")
 	}
 
 	// Send the initial request.
@@ -48,7 +47,7 @@ func resumeMain(command *cobra.Command, arguments []string) {
 		Specifications: specifications,
 	}
 	if err := stream.Send(request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to send resume request"))
+		return errors.Wrap(err, "unable to send resume request")
 	}
 
 	// Receive and process responses until we're done.
@@ -56,18 +55,18 @@ func resumeMain(command *cobra.Command, arguments []string) {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to receive response"))
+			return errors.Wrap(err, "unable to receive response")
 		} else if response.Prompt == nil {
-			return
+			return nil
 		} else {
 			prompt = response.Prompt
 		}
 
 		// Process the prompt.
 		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to perform prompting"))
+			return errors.Wrap(err, "unable to perform prompting")
 		} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to send prompt response"))
+			return errors.Wrap(err, "unable to send prompt response")
 		}
 	}
 }
@@ -75,7 +74,7 @@ func resumeMain(command *cobra.Command, arguments []string) {
 var resumeCommand = &cobra.Command{
 	Use:   "resume [<session>...]",
 	Short: "Resumes a paused or disconnected synchronization session",
-	Run:   resumeMain,
+	Run:   mainify(resumeMain),
 }
 
 var resumeConfiguration struct {

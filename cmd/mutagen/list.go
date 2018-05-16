@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -138,11 +137,11 @@ func printConflicts(conflicts []*sessionpkg.Conflict) {
 	}
 }
 
-func listMain(command *cobra.Command, arguments []string) {
+func listMain(command *cobra.Command, arguments []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -155,7 +154,7 @@ func listMain(command *cobra.Command, arguments []string) {
 	}
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke list"))
+		return errors.Wrap(err, "unable to invoke list")
 	}
 
 	// Determine whether or not to print delimiters.
@@ -176,12 +175,15 @@ func listMain(command *cobra.Command, arguments []string) {
 	if printDelimiters {
 		fmt.Println(delimiterLine)
 	}
+
+	// Success.
+	return nil
 }
 
 var listCommand = &cobra.Command{
 	Use:   "list [<session>...]",
 	Short: "Lists existing synchronization sessions and their statuses",
-	Run:   listMain,
+	Run:   mainify(listMain),
 }
 
 var listConfiguration struct {

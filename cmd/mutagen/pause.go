@@ -7,26 +7,25 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
-func pauseMain(command *cobra.Command, arguments []string) {
+func pauseMain(command *cobra.Command, arguments []string) error {
 	// Parse session specifications.
 	var specifications []string
 	if len(arguments) > 0 {
 		if pauseConfiguration.all {
-			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
+			return errors.New("-a/--all specified with specific sessions")
 		}
 		specifications = arguments
 	} else if !pauseConfiguration.all {
-		cmd.Fatal(errors.New("no sessions specified"))
+		return errors.New("no sessions specified")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -38,14 +37,17 @@ func pauseMain(command *cobra.Command, arguments []string) {
 		Specifications: specifications,
 	}
 	if _, err := sessionService.Pause(context.Background(), request); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to invoke pause"))
+		return errors.Wrap(err, "unable to invoke pause")
 	}
+
+	// Success.
+	return nil
 }
 
 var pauseCommand = &cobra.Command{
 	Use:   "pause [<session>...]",
 	Short: "Pauses a synchronization session",
-	Run:   pauseMain,
+	Run:   mainify(pauseMain),
 }
 
 var pauseConfiguration struct {

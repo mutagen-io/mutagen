@@ -7,29 +7,28 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
 )
 
-func daemonStopMain(command *cobra.Command, arguments []string) {
+func daemonStopMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
-		cmd.Fatal(errors.New("unexpected arguments provided"))
+		return errors.New("unexpected arguments provided")
 	}
 
 	// If the daemon is registered with the system, it may have a different stop
 	// mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStop(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to stop daemon using system mechanism"))
+		return errors.Wrap(err, "unable to stop daemon using system mechanism")
 	} else if handled {
-		return
+		return nil
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to connect to daemon"))
+		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
 
@@ -39,12 +38,15 @@ func daemonStopMain(command *cobra.Command, arguments []string) {
 	// Invoke shutdown. We don't check the response or error, because the daemon
 	// may terminate before it has a chance to send the response.
 	daemonService.Shutdown(context.Background(), &daemonsvcpkg.ShutdownRequest{})
+
+	// Success.
+	return nil
 }
 
 var daemonStopCommand = &cobra.Command{
 	Use:   "stop",
 	Short: "Stops the Mutagen daemon if it's running",
-	Run:   daemonStopMain,
+	Run:   mainify(daemonStopMain),
 }
 
 var daemonStopConfiguration struct {

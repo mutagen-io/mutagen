@@ -19,10 +19,10 @@ import (
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
-func daemonRunMain(command *cobra.Command, arguments []string) {
+func daemonRunMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
-		cmd.Fatal(errors.New("unexpected arguments provided"))
+		return errors.New("unexpected arguments provided")
 	}
 
 	// Attempt to acquire the daemon lock and defer its release. If there is a
@@ -31,7 +31,7 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	// does seem to be basically instant).
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to acquire daemon lock"))
+		return errors.Wrap(err, "unable to acquire daemon lock")
 	}
 	defer lock.Unlock()
 
@@ -56,7 +56,7 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	// generated during a synchronization cycle.
 	sessionService, err := sessionsvcpkg.New(promptService)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create session service"))
+		return errors.Wrap(err, "unable to create session service")
 	}
 	sessionsvcpkg.RegisterSessionServer(server, sessionService)
 	defer sessionService.Shutdown()
@@ -64,7 +64,7 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon listener"))
+		return errors.Wrap(err, "unable to create daemon listener")
 	}
 	defer listener.Close()
 
@@ -81,18 +81,18 @@ func daemonRunMain(command *cobra.Command, arguments []string) {
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
 	case sig := <-signalTermination:
-		cmd.Fatal(errors.Errorf("terminated by signal: %s", sig))
+		return errors.Errorf("terminated by signal: %s", sig)
 	case <-daemonService.Termination:
-		return
+		return nil
 	case err = <-serverErrors:
-		cmd.Fatal(errors.Wrap(err, "premature server termination"))
+		return errors.Wrap(err, "premature server termination")
 	}
 }
 
 var daemonRunCommand = &cobra.Command{
 	Use:    "run",
 	Short:  "Runs the Mutagen daemon",
-	Run:    daemonRunMain,
+	Run:    mainify(daemonRunMain),
 	Hidden: true,
 }
 

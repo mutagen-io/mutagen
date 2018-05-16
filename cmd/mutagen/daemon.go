@@ -6,18 +6,21 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
-func daemonMain(command *cobra.Command, arguments []string) {
+func daemonMain(command *cobra.Command, arguments []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point
 	// (they will be mistaken for subcommands and a error will be displayed).
 	command.Help()
+
+	// Success.
+	return nil
 }
 
 var daemonCommand = &cobra.Command{
 	Use:   "daemon",
 	Short: "Controls the Mutagen daemon lifecycle",
-	Run:   daemonMain,
+	Run:   mainify(daemonMain),
 }
 
 var daemonConfiguration struct {
