@@ -75,31 +75,6 @@ const (
 	minimumSessionSpecificationLength = 5
 )
 
-func fuzzyMatch(specification string, controller *controller) (bool, bool, error) {
-	// Don't allow empty or short strings to match anything.
-	if specification == "" {
-		return false, false, errors.New("empty session specification is invalid")
-	} else if len(specification) < minimumSessionSpecificationLength {
-		return false, false, errors.Errorf(
-			"session specification must be at least %d characters",
-			minimumSessionSpecificationLength,
-		)
-	}
-
-	// Check for an exact match.
-	exact := controller.session.Identifier == specification
-
-	// Check for a fuzzy match.
-	fuzzy := strings.HasPrefix(controller.session.Identifier, specification) ||
-		strings.Contains(controller.session.Alpha.Path, specification) ||
-		strings.Contains(controller.session.Beta.Path, specification) ||
-		strings.Contains(controller.session.Alpha.Hostname, specification) ||
-		strings.Contains(controller.session.Beta.Hostname, specification)
-
-	// Done.
-	return exact, fuzzy, nil
-}
-
 func (m *Manager) findControllers(specifications []string) ([]*controller, error) {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
@@ -108,14 +83,32 @@ func (m *Manager) findControllers(specifications []string) ([]*controller, error
 	// Generate a list of controllers matching the specified specifications.
 	controllers := make([]*controller, 0, len(specifications))
 	for _, specification := range specifications {
+		// Validate the specification.
+		if specification == "" {
+			return nil, errors.New("empty session specification is invalid")
+		} else if len(specification) < minimumSessionSpecificationLength {
+			return nil, errors.Errorf(
+				"session specification must be at least %d characters",
+				minimumSessionSpecificationLength,
+			)
+		}
+
+		// Attempt to find a match.
 		var match *controller
 		for _, controller := range m.sessions {
-			if exact, fuzzy, err := fuzzyMatch(specification, controller); err != nil {
-				return nil, err
-			} else if exact {
+			// Check for an exact match.
+			if controller.session.Identifier == specification {
 				match = controller
 				break
-			} else if fuzzy {
+			}
+
+			// Check for a fuzzy match.
+			fuzzy := strings.HasPrefix(controller.session.Identifier, specification) ||
+				strings.Contains(controller.session.Alpha.Path, specification) ||
+				strings.Contains(controller.session.Beta.Path, specification) ||
+				strings.Contains(controller.session.Alpha.Hostname, specification) ||
+				strings.Contains(controller.session.Beta.Hostname, specification)
+			if fuzzy {
 				if match != nil {
 					return nil, errors.Errorf("specification \"%s\" matches multiple sessions", specification)
 				}
