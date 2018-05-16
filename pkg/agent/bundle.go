@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -79,8 +80,21 @@ func executableForPlatform(goos, goarch string) (string, error) {
 		return "", errors.Wrap(err, "unable to copy agent data")
 	}
 
+	// If we're not on Windows and our target system is not Windows, mark the
+	// file as executable. This will save us an additional "chmod +x" command
+	// during agent installation.
+	if runtime.GOOS != "windows" && goos != "windows" {
+		if err := file.Chmod(0700); err != nil {
+			file.Close()
+			os.Remove(file.Name())
+			return "", errors.Wrap(err, "unable to make agent executable")
+		}
+	}
+
 	// Close the file.
-	file.Close()
+	if err := file.Close(); err != nil {
+		return "", errors.Wrap(err, "unable to close temporary file")
+	}
 
 	// Success.
 	return file.Name(), nil
