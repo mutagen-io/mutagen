@@ -122,12 +122,6 @@ func main() {
 		fmt.Println("Processing", s.path)
 
 		// Execute the Protocol Buffers compiler using the Go code generator.
-		// HACK: We specify include paths so that we can reference definitions
-		// between packages, but this means that we also end up needing to
-		// specify -I., because for some reason the Protocol Buffers compiler is
-		// too stupid to include this automatically. If you don't believe me,
-		// try removing that argument and the compiler will literally print a
-		// message telling you how "stupid" it is.
 		var arguments []string
 		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
 		arguments = append(arguments, fmt.Sprintf("--go_out=plugins=grpc:."))
