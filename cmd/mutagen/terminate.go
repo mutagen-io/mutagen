@@ -12,13 +12,13 @@ import (
 )
 
 func terminateMain(command *cobra.Command, arguments []string) {
-	// Parse session specification.
-	var sessionQueries []string
+	// Parse session specifications.
+	var specifications []string
 	if len(arguments) > 0 {
 		if terminateConfiguration.all {
 			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
 		}
-		sessionQueries = arguments
+		specifications = arguments
 	} else if !terminateConfiguration.all {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
@@ -35,8 +35,7 @@ func terminateMain(command *cobra.Command, arguments []string) {
 
 	// Invoke terminate.
 	request := &sessionsvcpkg.TerminateRequest{
-		All:            len(sessionQueries) == 0,
-		SessionQueries: sessionQueries,
+		Specifications: specifications,
 	}
 	if _, err := sessionService.Terminate(context.Background(), request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to invoke terminate"))

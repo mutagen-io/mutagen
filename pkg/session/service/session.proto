@@ -20,8 +20,7 @@ message CreateResponse {
 
 message ListRequest {
     uint64 previousStateIndex = 1;
-    bool all = 2;
-    repeated string sessionQueries = 3;
+    repeated string specifications = 2;
 }
 
 message ListResponse {
@@ -30,16 +29,14 @@ message ListResponse {
 }
 
 message PauseRequest {
-    bool all = 1;
-    repeated string sessionQueries = 2;
+    repeated string specifications = 1;
 }
 
 message PauseResponse{}
 
 message ResumeRequest {
-    bool all = 1;
-    repeated string sessionQueries = 2;
-    string response = 3;
+    repeated string specifications = 1;
+    string response = 2;
 }
 
 message ResumeResponse {
@@ -47,8 +44,7 @@ message ResumeResponse {
 }
 
 message TerminateRequest {
-    bool all = 1;
-    repeated string sessionQueries = 2;
+    repeated string specifications = 1;
 }
 
 message TerminateResponse{}

@@ -60,10 +60,10 @@ func printMonitorLine(state *sessionpkg.State) {
 func monitorMain(command *cobra.Command, arguments []string) {
 	// Parse session specification.
 	var session string
-	var sessionQueries []string
+	var specifications []string
 	if len(arguments) == 1 {
 		session = arguments[0]
-		sessionQueries = []string{session}
+		specifications = []string{session}
 	} else if len(arguments) > 1 {
 		cmd.Fatal(errors.New("multiple session specification not allowed"))
 	}
@@ -88,8 +88,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 		// for future queries.
 		request := &sessionsvcpkg.ListRequest{
 			PreviousStateIndex: previousStateIndex,
-			All:                session == "",
-			SessionQueries:     sessionQueries,
+			Specifications:     specifications,
 		}
 
 		// Invoke list.
@@ -112,7 +111,7 @@ func monitorMain(command *cobra.Command, arguments []string) {
 			} else {
 				state = response.SessionStates[len(response.SessionStates)-1]
 				session = state.Session.Identifier
-				sessionQueries = []string{session}
+				specifications = []string{session}
 			}
 		} else if len(response.SessionStates) != 1 {
 			err = errors.New("invalid list response")

@@ -13,13 +13,13 @@ import (
 )
 
 func resumeMain(command *cobra.Command, arguments []string) {
-	// Parse session specification.
-	var sessionQueries []string
+	// Parse session specifications.
+	var specifications []string
 	if len(arguments) > 0 {
 		if resumeConfiguration.all {
 			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
 		}
-		sessionQueries = arguments
+		specifications = arguments
 	} else if !resumeConfiguration.all {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
@@ -45,8 +45,7 @@ func resumeMain(command *cobra.Command, arguments []string) {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.ResumeRequest{
-		All:            resumeConfiguration.all,
-		SessionQueries: sessionQueries,
+		Specifications: specifications,
 	}
 	if err := stream.Send(request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to send resume request"))

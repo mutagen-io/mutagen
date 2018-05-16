@@ -72,58 +72,58 @@ func (m *Manager) allControllers() []*controller {
 }
 
 const (
-	minimumSessionMatchLength = 5
+	minimumSessionSpecificationLength = 5
 )
 
-func fuzzyMatch(query string, controller *controller) (bool, bool, error) {
+func fuzzyMatch(specification string, controller *controller) (bool, bool, error) {
 	// Don't allow empty or short strings to match anything.
-	if query == "" {
+	if specification == "" {
 		return false, false, errors.New("empty session specification is invalid")
-	} else if len(query) < minimumSessionMatchLength {
+	} else if len(specification) < minimumSessionSpecificationLength {
 		return false, false, errors.Errorf(
 			"session specification must be at least %d characters",
-			minimumSessionMatchLength,
+			minimumSessionSpecificationLength,
 		)
 	}
 
 	// Check for an exact match.
-	exact := controller.session.Identifier == query
+	exact := controller.session.Identifier == specification
 
 	// Check for a fuzzy match.
-	fuzzy := strings.HasPrefix(controller.session.Identifier, query) ||
-		strings.Contains(controller.session.Alpha.Path, query) ||
-		strings.Contains(controller.session.Beta.Path, query) ||
-		strings.Contains(controller.session.Alpha.Hostname, query) ||
-		strings.Contains(controller.session.Beta.Hostname, query)
+	fuzzy := strings.HasPrefix(controller.session.Identifier, specification) ||
+		strings.Contains(controller.session.Alpha.Path, specification) ||
+		strings.Contains(controller.session.Beta.Path, specification) ||
+		strings.Contains(controller.session.Alpha.Hostname, specification) ||
+		strings.Contains(controller.session.Beta.Hostname, specification)
 
 	// Done.
 	return exact, fuzzy, nil
 }
 
-func (m *Manager) findControllers(queries []string) ([]*controller, error) {
+func (m *Manager) findControllers(specifications []string) ([]*controller, error) {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
 	defer m.sessionsLock.UnlockWithoutNotify()
 
-	// Generate a list of controllers matching the specified queries.
-	controllers := make([]*controller, 0, len(queries))
-	for _, query := range queries {
+	// Generate a list of controllers matching the specified specifications.
+	controllers := make([]*controller, 0, len(specifications))
+	for _, specification := range specifications {
 		var match *controller
 		for _, controller := range m.sessions {
-			if exact, fuzzy, err := fuzzyMatch(query, controller); err != nil {
+			if exact, fuzzy, err := fuzzyMatch(specification, controller); err != nil {
 				return nil, err
 			} else if exact {
 				match = controller
 				break
 			} else if fuzzy {
 				if match != nil {
-					return nil, errors.Errorf("query \"%s\" matches multiple sessions", query)
+					return nil, errors.Errorf("specification \"%s\" matches multiple sessions", specification)
 				}
 				match = controller
 			}
 		}
 		if match == nil {
-			return nil, errors.Errorf("query \"%s\" doesn't match any sessions", query)
+			return nil, errors.Errorf("specification \"%s\" doesn't match any sessions", specification)
 		}
 		controllers = append(controllers, match)
 	}
@@ -165,7 +165,7 @@ func (m *Manager) Create(alpha, beta *url.URL, ignores []string, prompter string
 	return controller.session.Identifier, nil
 }
 
-func (m *Manager) List(previousStateIndex uint64, queries []string) (uint64, []*State, error) {
+func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
 	if poisoned {
@@ -174,9 +174,9 @@ func (m *Manager) List(previousStateIndex uint64, queries []string) (uint64, []*
 
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
-	if len(queries) == 0 {
+	if len(specifications) == 0 {
 		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(queries); err != nil {
+	} else if cs, err := m.findControllers(specifications); err != nil {
 		return 0, nil, errors.Wrap(err, "unable to locate requested sessions")
 	} else {
 		controllers = cs
@@ -200,12 +200,12 @@ func (m *Manager) List(previousStateIndex uint64, queries []string) (uint64, []*
 	return stateIndex, states, nil
 }
 
-func (m *Manager) Pause(queries []string) error {
+func (m *Manager) Pause(specifications []string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
-	if len(queries) == 0 {
+	if len(specifications) == 0 {
 		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(queries); err != nil {
+	} else if cs, err := m.findControllers(specifications); err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
 	} else {
 		controllers = cs
@@ -222,12 +222,12 @@ func (m *Manager) Pause(queries []string) error {
 	return nil
 }
 
-func (m *Manager) Resume(queries []string, prompter string) error {
+func (m *Manager) Resume(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
-	if len(queries) == 0 {
+	if len(specifications) == 0 {
 		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(queries); err != nil {
+	} else if cs, err := m.findControllers(specifications); err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
 	} else {
 		controllers = cs
@@ -244,12 +244,12 @@ func (m *Manager) Resume(queries []string, prompter string) error {
 	return nil
 }
 
-func (m *Manager) Terminate(queries []string) error {
+func (m *Manager) Terminate(specifications []string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
-	if len(queries) == 0 {
+	if len(specifications) == 0 {
 		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(queries); err != nil {
+	} else if cs, err := m.findControllers(specifications); err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
 	} else {
 		controllers = cs

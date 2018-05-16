@@ -12,13 +12,13 @@ import (
 )
 
 func pauseMain(command *cobra.Command, arguments []string) {
-	// Parse session specification.
-	var sessionQueries []string
+	// Parse session specifications.
+	var specifications []string
 	if len(arguments) > 0 {
 		if pauseConfiguration.all {
 			cmd.Fatal(errors.New("-a/--all specified with specific sessions"))
 		}
-		sessionQueries = arguments
+		specifications = arguments
 	} else if !pauseConfiguration.all {
 		cmd.Fatal(errors.New("no sessions specified"))
 	}
@@ -35,8 +35,7 @@ func pauseMain(command *cobra.Command, arguments []string) {
 
 	// Invoke pause.
 	request := &sessionsvcpkg.PauseRequest{
-		All:            len(sessionQueries) == 0,
-		SessionQueries: sessionQueries,
+		Specifications: specifications,
 	}
 	if _, err := sessionService.Pause(context.Background(), request); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to invoke pause"))

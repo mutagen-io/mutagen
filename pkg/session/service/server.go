@@ -71,18 +71,9 @@ func (s *Server) Create(stream Session_CreateServer) error {
 }
 
 func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, error) {
-	// Validate and extract session queries.
-	var queries []string
-	if len(request.SessionQueries) > 0 {
-		if request.All {
-			return nil, errors.New("all sessions requested with specifications provided")
-		}
-		queries = request.SessionQueries
-	}
-
 	// Perform listing.
 	// TODO: Figure out a way to monitor for cancellation.
-	stateIndex, states, err := s.manager.List(request.PreviousStateIndex, queries)
+	stateIndex, states, err := s.manager.List(request.PreviousStateIndex, request.Specifications)
 	if err != nil {
 		return nil, err
 	}
@@ -95,18 +86,9 @@ func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, e
 }
 
 func (s *Server) Pause(_ context.Context, request *PauseRequest) (*PauseResponse, error) {
-	// Validate and extract session queries.
-	var queries []string
-	if len(request.SessionQueries) > 0 {
-		if request.All {
-			return nil, errors.New("all sessions requested with specifications provided")
-		}
-		queries = request.SessionQueries
-	}
-
 	// Perform pausing.
 	// TODO: Figure out a way to monitor for cancellation.
-	if err := s.manager.Pause(queries); err != nil {
+	if err := s.manager.Pause(request.Specifications); err != nil {
 		return nil, err
 	}
 
@@ -121,15 +103,6 @@ func (s *Server) Resume(stream Session_ResumeServer) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Validate and extract session queries.
-	var queries []string
-	if len(request.SessionQueries) > 0 {
-		if request.All {
-			return errors.New("all sessions requested with specifications provided")
-		}
-		queries = request.SessionQueries
-	}
-
 	// Wrap the stream in a prompter and register it with the prompt server.
 	prompter, err := s.promptServer.RegisterPrompter(&resumeStreamPrompter{stream})
 	if err != nil {
@@ -138,7 +111,7 @@ func (s *Server) Resume(stream Session_ResumeServer) error {
 
 	// Perform resuming.
 	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Resume(queries, prompter)
+	err = s.manager.Resume(request.Specifications, prompter)
 
 	// Unregister the prompter.
 	s.promptServer.UnregisterPrompter(prompter)
@@ -158,18 +131,9 @@ func (s *Server) Resume(stream Session_ResumeServer) error {
 }
 
 func (s *Server) Terminate(_ context.Context, request *TerminateRequest) (*TerminateResponse, error) {
-	// Validate and extract session queries.
-	var queries []string
-	if len(request.SessionQueries) > 0 {
-		if request.All {
-			return nil, errors.New("all sessions requested with specifications provided")
-		}
-		queries = request.SessionQueries
-	}
-
 	// Perform termination.
 	// TODO: Figure out a way to monitor for cancellation.
-	if err := s.manager.Terminate(queries); err != nil {
+	if err := s.manager.Terminate(request.Specifications); err != nil {
 		return nil, err
 	}
 

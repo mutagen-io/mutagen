@@ -139,12 +139,6 @@ func printConflicts(conflicts []*sessionpkg.Conflict) {
 }
 
 func listMain(command *cobra.Command, arguments []string) {
-	// Parse session specifications.
-	var sessionQueries []string
-	if len(arguments) > 0 {
-		sessionQueries = arguments
-	}
-
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
@@ -157,8 +151,7 @@ func listMain(command *cobra.Command, arguments []string) {
 
 	// Invoke list.
 	request := &sessionsvcpkg.ListRequest{
-		All:            len(sessionQueries) == 0,
-		SessionQueries: sessionQueries,
+		Specifications: arguments,
 	}
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
