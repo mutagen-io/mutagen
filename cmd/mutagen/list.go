@@ -157,6 +157,13 @@ func listMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "list error")
 	}
 
+	// Validate the list response contents.
+	for _, s := range response.SessionStates {
+		if err = s.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session state detected in response")
+		}
+	}
+
 	// Determine whether or not to print delimiters.
 	printDelimiters := len(response.SessionStates) > 1
 
