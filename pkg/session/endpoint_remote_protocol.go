@@ -53,12 +53,12 @@ type supplyRequest struct {
 }
 
 type transitionRequest struct {
-	Transitions []sync.Change
+	Transitions []*sync.Change
 }
 
 type transitionResponse struct {
-	Changes  []sync.Change
-	Problems []sync.Problem
+	Changes  []*sync.Change
+	Problems []*sync.Problem
 	Error    string
 }
 

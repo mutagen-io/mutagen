@@ -193,14 +193,14 @@ func removeSymlink(root, path string, target *Entry) error {
 	return os.Remove(fullPath)
 }
 
-func removeDirectory(root, path string, target *Entry, cache *Cache) []Problem {
+func removeDirectory(root, path string, target *Entry, cache *Cache) []*Problem {
 	// Compute the full path to this directory.
 	fullPath := filepath.Join(root, path)
 
 	// List the contents for this directory.
 	contentNames, err := filesystem.DirectoryContents(fullPath)
 	if err != nil {
-		return []Problem{newProblem(path, errors.Wrap(err, "unable to read directory contents"))}
+		return []*Problem{newProblem(path, errors.Wrap(err, "unable to read directory contents"))}
 	}
 
 	// Loop through contents and remove them. We do this to ensure that what
@@ -214,7 +214,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []Problem {
 	// Note that we don't need to check that we've removed all entries listed in
 	// the target. If they aren't in the directory contents, then they must have
 	// already been deleted.
-	var problems []Problem
+	var problems []*Problem
 	for _, name := range contentNames {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
@@ -231,7 +231,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []Problem {
 		}
 
 		// Handle its removal accordingly.
-		var contentProblems []Problem
+		var contentProblems []*Problem
 		if entry.Kind == EntryKind_Directory {
 			contentProblems = removeDirectory(root, contentPath, entry, cache)
 		} else if entry.Kind == EntryKind_File {
@@ -281,7 +281,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []Problem {
 	return problems
 }
 
-func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) {
+func remove(root, path string, target *Entry, cache *Cache) (*Entry, []*Problem) {
 	// If the target is nil, we're done.
 	if target == nil {
 		return nil, nil
@@ -290,7 +290,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 	// Ensure that the path of the target exists (relative to the root) with the
 	// specificed casing.
 	if err := ensureRouteWithProperCase(root, path, false); err != nil {
-		return target, []Problem{newProblem(
+		return target, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to verify path to target"),
 		)}
@@ -300,25 +300,25 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []Problem) 
 	targetCopy := target.Copy()
 
 	// Check the target type and handle accordingly.
-	var problems []Problem
+	var problems []*Problem
 	if target.Kind == EntryKind_Directory {
 		problems = removeDirectory(root, path, targetCopy, cache)
 	} else if target.Kind == EntryKind_File {
 		if err := removeFile(root, path, targetCopy, cache); err != nil {
-			problems = []Problem{newProblem(
+			problems = []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to remove file"),
 			)}
 		}
 	} else if target.Kind == EntryKind_Symlink {
 		if err := removeSymlink(root, path, targetCopy); err != nil {
-			problems = []Problem{newProblem(
+			problems = []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to remove symlink"),
 			)}
 		}
 	} else {
-		problems = []Problem{newProblem(
+		problems = []*Problem{newProblem(
 			path,
 			errors.New("removal requested for unknown entry type"),
 		)}
@@ -403,13 +403,13 @@ func createSymlink(root, path string, target *Entry) (*Entry, error) {
 	return target, nil
 }
 
-func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, []Problem) {
+func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, []*Problem) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
 	// Attempt to create the directory.
 	if err := os.Mkdir(fullPath, directoryBaseMode); err != nil {
-		return nil, []Problem{newProblem(
+		return nil, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to create directory"),
 		)}
@@ -426,14 +426,14 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	}
 
 	// Attempt to create the target contents. Track problems as we go.
-	var problems []Problem
+	var problems []*Problem
 	for name, entry := range target.Contents {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 
 		// Handle content creation based on type.
 		var createdContent *Entry
-		var contentProblems []Problem
+		var contentProblems []*Problem
 		if entry.Kind == EntryKind_Directory {
 			createdContent, contentProblems = createDirectory(root, contentPath, entry, provider)
 		} else if entry.Kind == EntryKind_File {
@@ -477,7 +477,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	return created, problems
 }
 
-func create(root, path string, target *Entry, provider Provider) (*Entry, []Problem) {
+func create(root, path string, target *Entry, provider Provider) (*Entry, []*Problem) {
 	// If the target is nil, we're done.
 	if target == nil {
 		return nil, nil
@@ -485,7 +485,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 
 	// Ensure that the parent of the target path exists with the proper casing.
 	if err := ensureRouteWithProperCase(root, path, true); err != nil {
-		return nil, []Problem{newProblem(
+		return nil, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to verify path to target"),
 		)}
@@ -496,7 +496,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 
 	// Ensure that the target path doesn't exist.
 	if err := ensureNotExists(fullPath); err != nil {
-		return nil, []Problem{newProblem(
+		return nil, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to ensure path does not exist"),
 		)}
@@ -507,7 +507,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 		return createDirectory(root, path, target, provider)
 	} else if target.Kind == EntryKind_File {
 		if created, err := createFile(root, path, target, provider); err != nil {
-			return created, []Problem{newProblem(
+			return created, []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to create file"),
 			)}
@@ -516,7 +516,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 		}
 	} else if target.Kind == EntryKind_Symlink {
 		if created, err := createSymlink(root, path, target); err != nil {
-			return created, []Problem{newProblem(
+			return created, []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to create symlink"),
 			)}
@@ -524,16 +524,16 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []Prob
 			return created, nil
 		}
 	}
-	return nil, []Problem{newProblem(
+	return nil, []*Problem{newProblem(
 		path,
 		errors.New("creation requested for unknown entry type"),
 	)}
 }
 
-func Transition(root string, transitions []Change, cache *Cache, provider Provider) ([]Change, []Problem) {
+func Transition(root string, transitions []*Change, cache *Cache, provider Provider) ([]*Change, []*Problem) {
 	// Set up results.
-	var results []Change
-	var problems []Problem
+	var results []*Change
+	var problems []*Problem
 
 	// Iterate through transitions.
 	for _, t := range transitions {
@@ -554,13 +554,13 @@ func Transition(root string, transitions []Change, cache *Cache, provider Provid
 			t.New.Kind == EntryKind_File
 		if fileToFile {
 			if err := swapFile(root, t.Path, t.Old, t.New, cache, provider); err != nil {
-				results = append(results, Change{Path: t.Path, New: t.Old})
+				results = append(results, &Change{Path: t.Path, New: t.Old})
 				problems = append(problems, newProblem(
 					t.Path,
 					errors.Wrap(err, "unable to swap file"),
 				))
 			} else {
-				results = append(results, Change{Path: t.Path, New: t.New})
+				results = append(results, &Change{Path: t.Path, New: t.New})
 			}
 			continue
 		}
@@ -570,7 +570,7 @@ func Transition(root string, transitions []Change, cache *Cache, provider Provid
 		// fails, record the reduced entry as well as any problems preventing
 		// full removal and continue to the next transition.
 		if r, p := remove(root, t.Path, t.Old, cache); r != nil {
-			results = append(results, Change{Path: t.Path, New: r})
+			results = append(results, &Change{Path: t.Path, New: r})
 			problems = append(problems, p...)
 			continue
 		}
@@ -580,7 +580,7 @@ func Transition(root string, transitions []Change, cache *Cache, provider Provid
 		// whatever portion of the target we create as well as any problems
 		// preventing full creation.
 		c, p := create(root, t.Path, t.New, provider)
-		results = append(results, Change{Path: t.Path, New: c})
+		results = append(results, &Change{Path: t.Path, New: c})
 		problems = append(problems, p...)
 	}
 

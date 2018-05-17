@@ -117,6 +117,14 @@ func main() {
 	stop = time.Now()
 	fmt.Println("Snapshot deserialization took", stop.Sub(start))
 
+	// Validate the deserialized snapshot.
+	start = time.Now()
+	if err = deserializedSnapshot.EnsureValid(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "deserialized snapshot invalid"))
+	}
+	stop = time.Now()
+	fmt.Println("Snapshot validation took", stop.Sub(start))
+
 	// Write the serialized snapshot to disk.
 	start = time.Now()
 	if err = ioutil.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {

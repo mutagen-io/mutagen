@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package sync;
+
+import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+
+message Change {
+    string path = 1;
+    Entry old = 2;
+    Entry new = 3;
+}

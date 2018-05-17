@@ -62,7 +62,13 @@ var subdirectories = []struct {
 	},
 	{
 		"github.com/havoc-io/mutagen/pkg/sync",
-		[]string{"cache.proto", "entry.proto"},
+		[]string{
+			"cache.proto",
+			"change.proto",
+			"conflict.proto",
+			"entry.proto",
+			"problem.proto",
+		},
 	},
 	{
 		"github.com/havoc-io/mutagen/pkg/url",

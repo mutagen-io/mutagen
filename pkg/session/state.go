@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/pkg/errors"
 )
 
 func (s Status) Description() string {
@@ -39,6 +39,52 @@ func (s Status) Description() string {
 	}
 }
 
+func (s *State) EnsureValid() error {
+	// A nil state is not valid.
+	if s == nil {
+		return errors.New("nil state")
+	}
+
+	// We intentionally don't validate the status because we'd have to maintain
+	// a pretty large conditional or data structure and we only use it for
+	// display anyway, where it'll just render as "Unknown" or similar if it's
+	// no valid.
+
+	// Ensure the session is valid.
+	if err := s.Session.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session")
+	}
+
+	// Ensure the staging status is valid.
+	if err := s.StagingStatus.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid staging status")
+	}
+
+	// Ensure that all conflicts are valid.
+	for _, c := range s.Conflicts {
+		if err := c.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid conflict detected")
+		}
+	}
+
+	// Ensure that all of alpha's problem are valid.
+	for _, c := range s.AlphaProblems {
+		if err := c.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid alpha problem detected")
+		}
+	}
+
+	// Ensure that all of beta's problem are valid.
+	for _, c := range s.BetaProblems {
+		if err := c.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid beta problem detected")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
 func (s *State) Copy() *State {
 	// Create a shallow copy of the state.
 	result := &State{}
@@ -52,68 +98,6 @@ func (s *State) Copy() *State {
 
 	// All other composite members are either immutable values or considered to
 	// be immutable, so we don't need to copy them.
-
-	// Done.
-	return result
-}
-
-func convertConflicts(conflicts []sync.Conflict) []*Conflict {
-	// If the existing slice is empty, then so is the result.
-	if len(conflicts) == 0 {
-		return nil
-	}
-
-	// Allocate the result.
-	result := make([]*Conflict, len(conflicts))
-
-	// Perform conversions.
-	for i, c := range conflicts {
-		// Create the base conflict.
-		conflict := &Conflict{
-			AlphaChanges: make([]*Change, len(c.AlphaChanges)),
-			BetaChanges:  make([]*Change, len(c.BetaChanges)),
-		}
-		result[i] = conflict
-
-		// Convert alpha changes.
-		for a, alphaChange := range c.AlphaChanges {
-			conflict.AlphaChanges[a] = &Change{
-				Path: alphaChange.Path,
-				Old:  alphaChange.Old.CopyShallow(),
-				New:  alphaChange.New.CopyShallow(),
-			}
-		}
-
-		// Convert beta changes.
-		for b, betaChange := range c.BetaChanges {
-			conflict.BetaChanges[b] = &Change{
-				Path: betaChange.Path,
-				Old:  betaChange.Old.CopyShallow(),
-				New:  betaChange.New.CopyShallow(),
-			}
-		}
-	}
-
-	// Done.
-	return result
-}
-
-func convertProblems(problems []sync.Problem) []*Problem {
-	// If the existing slice is empty, then so is the result.
-	if len(problems) == 0 {
-		return nil
-	}
-
-	// Allocate the result.
-	result := make([]*Problem, len(problems))
-
-	// Perform conversion.
-	for i, p := range problems {
-		result[i] = &Problem{
-			Path:  p.Path,
-			Error: p.Error,
-		}
-	}
 
 	// Done.
 	return result

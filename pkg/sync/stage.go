@@ -41,7 +41,7 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 // paths and their corresponding entries that will need to be provided in order
 // to apply the transitions using Transition. It guarantees that both returned
 // slices will have the same length.
-func TransitionDependencies(transitions []Change) ([]string, []*Entry, error) {
+func TransitionDependencies(transitions []*Change) ([]string, []*Entry, error) {
 	// Create a path finder.
 	finder := &stagingPathFinder{}
 

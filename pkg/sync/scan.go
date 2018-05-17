@@ -200,8 +200,13 @@ func (s *scanner) directory(path string) (*Entry, error) {
 	}, nil
 }
 
+// TODO: Note that the provided cache is assumed to be valid (i.e. that it
+// doesn't have any nil entries), so callers should run EnsureValid on anything
+// they pull from disk
 func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry, *Cache, error) {
-	// If the cache is nil, create an empty one.
+	// A nil cache is technically valid, but if the provided cache is nil,
+	// replace it with an empty one, that way we don't have to use the
+	// GetEntries accessor everywhere.
 	if cache == nil {
 		cache = &Cache{}
 	}
@@ -216,7 +221,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 	// existing cache length. If the existing cache is empty, create one with
 	// the default capacity.
 	initialCacheCapacity := defaultInitialCacheCapacity
-	if cacheLength := len(cache.GetEntries()); cacheLength != 0 {
+	if cacheLength := len(cache.Entries); cacheLength != 0 {
 		initialCacheCapacity = cacheLength
 	}
 	newCache := &Cache{

@@ -62,9 +62,14 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 		return nil, errors.Wrap(err, "unable to compute/create cache path")
 	}
 
-	// Load any existing cache. If it fails, just replace it with an empty one.
+	// Load any existing cache. If it fails to load or validate, just replace it
+	// with an empty one.
+	// TODO: Should we let validation errors bubble up? They may be indicative
+	// of something bad.
 	cache := &sync.Cache{}
 	if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
+		cache = &sync.Cache{}
+	} else if cache.EnsureValid() != nil {
 		cache = &sync.Cache{}
 	}
 
@@ -169,7 +174,7 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 	return rsync.Transmit(e.root, paths, signatures, receiver)
 }
 
-func (e *localEndpoint) transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
+func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Change, []*sync.Problem, error) {
 	// Perform the transition.
 	changes, problems := sync.Transition(e.root, transitions, e.cache, e.stager)
 

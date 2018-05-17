@@ -180,7 +180,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 	}
 
 	// Validate the session.
-	if err := session.ensureValid(); err != nil {
+	if err := session.EnsureValid(); err != nil {
 		return nil, errors.Wrap(err, "invalid session found on disk")
 	}
 
@@ -498,6 +498,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 	archive := &Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
 		return errors.Wrap(err, "unable to load archive")
+	} else if err = archive.Root.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid archive found on disk")
 	}
 	ancestor := archive.Root
 
@@ -613,7 +615,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			ancestor, αSnapshot, βSnapshot,
 		)
 		c.stateLock.Lock()
-		c.state.Conflicts = convertConflicts(conflicts)
+		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
 		// Check if a root deletion is being propagated. If so, switch to a
@@ -701,8 +703,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_TransitioningAlpha
 		c.stateLock.Unlock()
-		var αChanges []sync.Change
-		var αProblems []sync.Problem
+		var αChanges []*sync.Change
+		var αProblems []*sync.Problem
 		var αTransitionErr error
 		if len(αTransitions) > 0 {
 			αChanges, αProblems, αTransitionErr = alpha.transition(αTransitions)
@@ -712,8 +714,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_TransitioningBeta
 		c.stateLock.Unlock()
-		var βChanges []sync.Change
-		var βProblems []sync.Problem
+		var βChanges []*sync.Change
+		var βProblems []*sync.Problem
 		var βTransitionErr error
 		if len(βTransitions) > 0 {
 			βChanges, βProblems, βTransitionErr = beta.transition(βTransitions)
@@ -724,8 +726,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// valid.
 		c.stateLock.Lock()
 		c.state.Status = Status_Saving
-		c.state.AlphaProblems = convertProblems(αProblems)
-		c.state.BetaProblems = convertProblems(βProblems)
+		c.state.AlphaProblems = αProblems
+		c.state.BetaProblems = βProblems
 		c.stateLock.Unlock()
 		ancestorChanges = append(ancestorChanges, αChanges...)
 		ancestorChanges = append(ancestorChanges, βChanges...)

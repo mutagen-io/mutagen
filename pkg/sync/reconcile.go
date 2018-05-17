@@ -4,8 +4,8 @@ import (
 	pathpkg "path"
 )
 
-func nonDeletionChangesOnly(changes []Change) []Change {
-	var result []Change
+func nonDeletionChangesOnly(changes []*Change) []*Change {
+	var result []*Change
 	for _, c := range changes {
 		if c.New != nil {
 			result = append(result, c)
@@ -15,10 +15,10 @@ func nonDeletionChangesOnly(changes []Change) []Change {
 }
 
 type reconciler struct {
-	ancestorChanges []Change
-	alphaChanges    []Change
-	betaChanges     []Change
-	conflicts       []Conflict
+	ancestorChanges []*Change
+	alphaChanges    []*Change
+	betaChanges     []*Change
+	conflicts       []*Conflict
 }
 
 func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
@@ -35,7 +35,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		if !ancestor.equalShallow(alpha) {
 			r.ancestorChanges = append(
 				r.ancestorChanges,
-				Change{
+				&Change{
 					Path: path,
 					Old:  nil,
 					New:  alpha.CopyShallow(),
@@ -64,7 +64,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// unmodified, then we can simply propagate changes from the other side.
 	alphaDelta := diff(path, ancestor, alpha)
 	if len(alphaDelta) == 0 {
-		r.alphaChanges = append(r.alphaChanges, Change{
+		r.alphaChanges = append(r.alphaChanges, &Change{
 			Path: path,
 			Old:  ancestor,
 			New:  beta,
@@ -73,7 +73,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	}
 	betaDelta := diff(path, ancestor, beta)
 	if len(betaDelta) == 0 {
-		r.betaChanges = append(r.betaChanges, Change{
+		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
 			Old:  ancestor,
 			New:  alpha,
@@ -120,14 +120,14 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
 	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
 	if len(alphaDeltaNonDeletion) == 0 {
-		r.alphaChanges = append(r.alphaChanges, Change{
+		r.alphaChanges = append(r.alphaChanges, &Change{
 			Path: path,
 			Old:  alpha,
 			New:  beta,
 		})
 		return
 	} else if len(betaDeltaNonDeletion) == 0 {
-		r.betaChanges = append(r.betaChanges, Change{
+		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
 			Old:  beta,
 			New:  alpha,
@@ -139,13 +139,13 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// to be lost if we were to propgate changes from one side to the other, so
 	// we need to record a conflict. We only record non-deletion changes because
 	// those are the only ones that create conflict.
-	r.conflicts = append(r.conflicts, Conflict{
+	r.conflicts = append(r.conflicts, &Conflict{
 		AlphaChanges: alphaDeltaNonDeletion,
 		BetaChanges:  betaDeltaNonDeletion,
 	})
 }
 
-func Reconcile(ancestor, alpha, beta *Entry) ([]Change, []Change, []Change, []Conflict) {
+func Reconcile(ancestor, alpha, beta *Entry) ([]*Change, []*Change, []*Change, []*Conflict) {
 	// Create the reconciler.
 	r := &reconciler{}
 

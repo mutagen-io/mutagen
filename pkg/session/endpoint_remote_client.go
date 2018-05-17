@@ -238,7 +238,7 @@ func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signatu
 	return nil
 }
 
-func (e *remoteEndpointClient) transition(transitions []sync.Change) ([]sync.Change, []sync.Problem, error) {
+func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.Change, []*sync.Problem, error) {
 	// Create and send the transition request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
 	if err := e.encoder.Encode(request); err != nil {

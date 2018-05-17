@@ -4,7 +4,8 @@ package session;
 
 import "github.com/havoc-io/mutagen/pkg/rsync/receive.proto";
 import "github.com/havoc-io/mutagen/pkg/session/session.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+import "github.com/havoc-io/mutagen/pkg/sync/conflict.proto";
+import "github.com/havoc-io/mutagen/pkg/sync/problem.proto";
 
 enum Status {
     Disconnected = 0;
@@ -23,22 +24,6 @@ enum Status {
     Saving = 13;
 }
 
-message Change {
-    string path = 1;
-    sync.Entry old = 2;
-    sync.Entry new = 3;
-}
-
-message Conflict {
-    repeated Change alphaChanges = 1;
-    repeated Change betaChanges = 2;
-}
-
-message Problem {
-    string path = 1;
-    string error = 2;
-}
-
 message State {
     Session session = 1;
     Status status = 2;
@@ -46,7 +31,7 @@ message State {
     bool betaConnected = 4;
     string lastError = 5;
     rsync.ReceiverStatus stagingStatus = 6;
-    repeated Conflict conflicts = 7;
-    repeated Problem alphaProblems = 8;
-    repeated Problem betaProblems = 9;
+    repeated sync.Conflict conflicts = 7;
+    repeated sync.Problem alphaProblems = 8;
+    repeated sync.Problem betaProblems = 9;
 }

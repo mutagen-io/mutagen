@@ -25,8 +25,8 @@ func (v Version) hasher() hash.Hash {
 	}
 }
 
-func (s *Session) ensureValid() error {
-	// Ensure that the session is non-nil.
+func (s *Session) EnsureValid() error {
+	// A nil session is not valid.
 	if s == nil {
 		return errors.New("nil session")
 	}

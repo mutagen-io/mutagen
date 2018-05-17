@@ -104,7 +104,7 @@ func formatEntryKind(entry *sync.Entry) string {
 	}
 }
 
-func printConflicts(conflicts []*sessionpkg.Conflict) {
+func printConflicts(conflicts []*sync.Conflict) {
 	// Print the header.
 	fmt.Println("Conflicts:")
 

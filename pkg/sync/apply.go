@@ -6,8 +6,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO: Document that this function ignores the Old value for changes.
-func Apply(base *Entry, changes []Change) (*Entry, error) {
+// TODO: Document that this function ignores the Old value for changes and that
+// it assumes all changes are valid.
+func Apply(base *Entry, changes []*Change) (*Entry, error) {
 	// Create a mutable copy of base.
 	result := base.Copy()
 

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package sync;
+
+import "github.com/havoc-io/mutagen/pkg/sync/change.proto";
+
+message Conflict {
+    repeated Change alphaChanges = 1;
+    repeated Change betaChanges = 2;
+}
