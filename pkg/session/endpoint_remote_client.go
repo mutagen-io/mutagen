@@ -258,6 +258,18 @@ func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.C
 		return nil, nil, errors.Errorf("remote error: %s", response.Error)
 	}
 
+	// Validate the response internals since they came over the wire.
+	for _, c := range response.Changes {
+		if err := c.EnsureValid(); err != nil {
+			return nil, nil, errors.Wrap(err, "received invalid change")
+		}
+	}
+	for _, p := range response.Problems {
+		if err := p.EnsureValid(); err != nil {
+			return nil, nil, errors.Wrap(err, "received invalid problem")
+		}
+	}
+
 	// Success.
 	return response.Changes, response.Problems, nil
 }

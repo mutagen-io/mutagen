@@ -202,6 +202,15 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 }
 
 func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
+	// Validate the request internals since they came over the wire.
+	for _, e := range request.Entries {
+		if err := e.EnsureValid(); err != nil {
+			err = errors.Wrap(err, "received invalid entry")
+			s.encoder.Encode(stageResponse{Error: err.Error()})
+			return err
+		}
+	}
+
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.stage(request.Paths, request.Entries)
 	if err != nil {
@@ -240,6 +249,15 @@ func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
 }
 
 func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error {
+	// Validate the request internals since they came over the wire.
+	for _, t := range request.Transitions {
+		if err := t.EnsureValid(); err != nil {
+			err = errors.Wrap(err, "received invalid transition")
+			s.encoder.Encode(transitionResponse{Error: err.Error()})
+			return err
+		}
+	}
+
 	// Perform the transition.
 	changes, problems, err := s.endpoint.transition(request.Transitions)
 	if err != nil {
