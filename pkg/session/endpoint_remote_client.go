@@ -176,6 +176,11 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
 	}
 
+	// Ensure that the snapshot is valid since it came over the network.
+	if err = snapshot.EnsureValid(); err != nil {
+		return nil, false, errors.Wrap(err, "invalid snapshot received")
+	}
+
 	// If the endpoint doesn't preserve executability, then propagate
 	// executability from the ancestor.
 	if !e.preservesExecutability {

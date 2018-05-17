@@ -173,14 +173,11 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
-	// Load the session.
+	// Load and validate the session.
 	session := &Session{}
 	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
 		return nil, errors.Wrap(err, "unable to load session configuration")
-	}
-
-	// Validate the session.
-	if err := session.EnsureValid(); err != nil {
+	} else if err = session.EnsureValid(); err != nil {
 		return nil, errors.Wrap(err, "invalid session found on disk")
 	}
 
