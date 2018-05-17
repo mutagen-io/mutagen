@@ -7,17 +7,17 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
-type Configuraton struct {
+type Configuration struct {
 	Ignore struct {
 		Default []string `toml:"default"`
 	} `toml:"ignore"`
 }
 
-func Load() (*Configuraton, error) {
+func Load() (*Configuration, error) {
 	// Create a configuration that we can decode into. We set any default values
 	// here because nothing will be modified in this structure if the
 	// configuration file doesn't exist.
-	result := &Configuraton{}
+	result := &Configuration{}
 
 	// Attempt to load the configuration from disk.
 	if err := encoding.LoadAndUnmarshalTOML(filesystem.MutagenConfigurationPath, result); err != nil {
