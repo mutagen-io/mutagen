@@ -38,8 +38,14 @@ func Install() error {
 		return errors.Wrap(err, "unable to compute agent destination")
 	}
 
+	// Compute the path to the current executable.
+	executablePath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "unable to determine executable path")
+	}
+
 	// Relocate the current executable to the installation path.
-	if err = os.Rename(process.Current.ExecutablePath, destination); err != nil {
+	if err = os.Rename(executablePath, destination); err != nil {
 		return errors.Wrap(err, "unable to relocate agent executable")
 	}
 

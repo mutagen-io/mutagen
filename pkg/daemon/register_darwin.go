@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 const RegistrationSupported = true
@@ -80,8 +79,14 @@ func Register() error {
 		return errors.Wrap(err, "unable to create LaunchAgents directory")
 	}
 
+	// Compute the path to the current executable.
+	executablePath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "unable to determine executable path")
+	}
+
 	// Format a launchd plist.
-	plist := fmt.Sprintf(launchdPlistTemplate, process.Current.ExecutablePath)
+	plist := fmt.Sprintf(launchdPlistTemplate, executablePath)
 
 	// Attempt to write the launchd plist.
 	targetPath = filepath.Join(targetPath, launchdPlistName)

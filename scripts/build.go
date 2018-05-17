@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/environment"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
@@ -40,7 +39,7 @@ var GOPATH, GOBIN string
 
 func init() {
 	// Compute the GOPATH.
-	if gopath, ok := environment.Current["GOPATH"]; !ok {
+	if gopath, ok := os.LookupEnv("GOPATH"); !ok {
 		panic("unable to determine GOPATH")
 	} else {
 		GOPATH = gopath
@@ -75,19 +74,19 @@ func (t Target) ExecutableName(base string) string {
 
 func (t Target) goEnv() []string {
 	// Duplicate the existing environment.
-	result := environment.CopyCurrent()
+	result := os.Environ()
 
 	// Override GOOS/GOARCH.
-	result["GOOS"] = t.GOOS
-	result["GOARCH"] = t.GOARCH
+	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
+	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
 	if t.GOOS == "arm" {
-		result["GOARM"] = minimumARMSupport
+		result = append(result, fmt.Sprintf("GOARM=%s", minimumARMSupport))
 	}
 
-	// Reformat.
-	return environment.Format(result)
+	// Done.
+	return result
 }
 
 func (t Target) Get(url string) error {

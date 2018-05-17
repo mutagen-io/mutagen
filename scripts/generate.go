@@ -29,7 +29,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/environment"
 )
 
 var subdirectories = []struct {
@@ -103,18 +102,20 @@ func main() {
 	}
 
 	// Create an environment with the generator injected into the path.
-	protocEnvironmentMap := environment.CopyCurrent()
-	if existingPath := protocEnvironmentMap["PATH"]; existingPath != "" {
-		protocEnvironmentMap["PATH"] = fmt.Sprintf(
-			"%s%s%s",
+	protocEnvironment := os.Environ()
+	if existingPath := os.Getenv("PATH"); existingPath != "" {
+		protocEnvironment = append(protocEnvironment, fmt.Sprintf(
+			"PATH=%s%s%s",
 			generatorPath,
 			string(os.PathListSeparator),
 			existingPath,
-		)
+		))
 	} else {
-		protocEnvironmentMap["PATH"] = generatorPath
+		protocEnvironment = append(protocEnvironment, fmt.Sprintf(
+			"PATH=%s",
+			generatorPath,
+		))
 	}
-	protocEnvironment := environment.Format(protocEnvironmentMap)
 
 	// Compute the path to the Mutagen source directory.
 	_, file, _, ok := runtime.Caller(0)

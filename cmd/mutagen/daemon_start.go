@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 
 	"github.com/pkg/errors"
@@ -8,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 func daemonStartMain(command *cobra.Command, arguments []string) error {
@@ -25,9 +25,15 @@ func daemonStartMain(command *cobra.Command, arguments []string) error {
 		return nil
 	}
 
+	// Compute the path to the current executable.
+	executablePath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "unable to determine executable path")
+	}
+
 	// Restart in the background.
 	daemonProcess := &exec.Cmd{
-		Path:        process.Current.ExecutablePath,
+		Path:        executablePath,
 		Args:        []string{"mutagen", "daemon", "run"},
 		SysProcAttr: daemonProcessAttributes,
 	}

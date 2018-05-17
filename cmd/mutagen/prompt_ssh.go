@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/environment"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	promptsvcpkg "github.com/havoc-io/mutagen/pkg/prompt/service"
 	"github.com/havoc-io/mutagen/pkg/ssh"
@@ -21,11 +21,11 @@ func promptSSH(arguments []string) error {
 	prompt := arguments[0]
 
 	// Extract environment parameters.
-	prompter := environment.Current[ssh.PrompterEnvironmentVariable]
+	prompter := os.Getenv(ssh.PrompterEnvironmentVariable)
 	if prompter == "" {
 		return errors.New("no prompter specified")
 	}
-	messageBase64 := environment.Current[ssh.PrompterMessageBase64EnvironmentVariable]
+	messageBase64 := os.Getenv(ssh.PrompterMessageBase64EnvironmentVariable)
 	if messageBase64 == "" {
 		return errors.New("no message specified")
 	}

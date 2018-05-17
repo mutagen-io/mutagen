@@ -8,43 +8,17 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 
-	"github.com/havoc-io/mutagen/pkg/environment"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
-
-var sshAgentPath string
-
-func init() {
-	// Compute the agent SSH command.
-	// HACK: This assumes that the SSH user's home directory is used as the
-	// default working directory for SSH commands. We have to do this because we
-	// don't have a portable mechanism to invoke the command relative to the
-	// user's home directory (tilde doesn't work on Windows) and we don't want
-	// to do a probe of the remote system before invoking the endpoint. This
-	// assumption should be fine for 99.9% of cases, but if it becomes a major
-	// issue, the only other options I see are probing before invoking (slow) or
-	// using the Go SSH library to do this (painful to faithfully emulate
-	// OpenSSH's behavior). Perhaps probing could be hidden behind an option?
-	// HACK: We're assuming that none of these path components have spaces in
-	// them, but since we control all of them, this is probably okay.
-	// HACK: When invoking on Windows systems, we can use forward slashes for
-	// the path and leave the "exe" suffix off the target name. This saves us a
-	// target check.
-	sshAgentPath = path.Join(
-		filesystem.MutagenDirectoryName,
-		agentsDirectoryName,
-		mutagen.Version,
-		agentBaseName,
-	)
-}
 
 func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
@@ -82,26 +56,43 @@ func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 }
 
 func probeSSHWindows(remote *url.URL, prompter string) (string, string, error) {
-	// Try to print the remote environment.
-	envBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "cmd /c set")
+	// Attempt to dump the remote environment.
+	outputBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "cmd /c set")
 	if err != nil {
-		return "", "", errors.Wrap(err, "unable to invoke set")
+		return "", "", errors.Wrap(err, "unable to invoke remote environment printing")
+	} else if !utf8.Valid(outputBytes) {
+		// TODO: Since we're dealing with Windows, we almost certainly want to
+		// support UTF-16 as well, but all of the Windows POSIX environments
+		// currently use UTF-8, and it seems like that's the direction that the
+		// official OpenSSH implementation will go as well, so maybe it won't
+		// be necessary to support this.
+		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
 
-	// Parse set output.
-	env, err := environment.ParseBlock(string(envBytes))
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to parse environment")
+	// Parse the environment output.
+	output := string(outputBytes)
+	output = strings.Replace(output, "\r\n", "\n", -1)
+	output = strings.TrimSpace(output)
+	environment := strings.Split(output, "\n")
+
+	// Extract the OS and PROCESSOR_ARCHITECTURE environment variables.
+	var os, processorArchitecture string
+	for _, e := range environment {
+		if strings.HasPrefix(e, "OS=") {
+			os = e[3:]
+		} else if strings.HasPrefix(e, "PROCESSOR_ARCHITECTURE=") {
+			processorArchitecture = e[23:]
+		}
 	}
 
-	// Translate GOOS.
-	goos, ok := osEnvToGOOS[env["OS"]]
+	// Translate to GOOS.
+	goos, ok := osEnvToGOOS[os]
 	if !ok {
 		return "", "", errors.New("unknown platform")
 	}
 
-	// Translate GOARCH.
-	goarch, ok := processorArchitectureEnvToGOARCH[env["PROCESSOR_ARCHITECTURE"]]
+	// Translate to GOARCH.
+	goarch, ok := processorArchitectureEnvToGOARCH[processorArchitecture]
 	if !ok {
 		return "", "", errors.New("unknown architecture")
 	}
@@ -214,6 +205,28 @@ func installSSH(remote *url.URL, prompter string) error {
 }
 
 func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) {
+	// Compute the agent SSH command.
+	// HACK: This assumes that the SSH user's home directory is used as the
+	// default working directory for SSH commands. We have to do this because we
+	// don't have a portable mechanism to invoke the command relative to the
+	// user's home directory (tilde doesn't work on Windows) and we don't want
+	// to do a probe of the remote system before invoking the endpoint. This
+	// assumption should be fine for 99.9% of cases, but if it becomes a major
+	// issue, the only other options I see are probing before invoking (slow) or
+	// using the Go SSH library to do this (painful to faithfully emulate
+	// OpenSSH's behavior). Perhaps probing could be hidden behind an option?
+	// HACK: We're assuming that none of these path components have spaces in
+	// them, but since we control all of them, this is probably okay.
+	// HACK: When invoking on Windows systems, we can use forward slashes for
+	// the path and leave the "exe" suffix off the target name. This saves us a
+	// target check.
+	sshAgentPath := path.Join(
+		filesystem.MutagenDirectoryName,
+		agentsDirectoryName,
+		mutagen.Version,
+		agentBaseName,
+	)
+
 	// Compute the command to invoke.
 	// HACK: We rely on sshAgentPath not having any spaces in it. If we do
 	// eventually need to add any, we'll need to fix this up for the shell.

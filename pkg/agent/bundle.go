@@ -19,15 +19,17 @@ const (
 	agentBundleName = "mutagen-agents.tar.gz"
 )
 
-var bundlePath string
-
-func init() {
-	// Compute the path to the agent bundle.
-	bundlePath = filepath.Join(process.Current.ExecutableParentPath, agentBundleName)
-}
-
 // TODO: Note that this file will not mark the resultant file as executable.
 func executableForPlatform(goos, goarch string) (string, error) {
+	// Compute the path to the current executable.
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to determine executable path")
+	}
+
+	// Compute the path to the agent bundle.
+	bundlePath := filepath.Join(filepath.Dir(executablePath), agentBundleName)
+
 	// Open the bundle path and ensure its closure.
 	bundle, err := os.Open(bundlePath)
 	if err != nil {

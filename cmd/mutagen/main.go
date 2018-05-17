@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/environment"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
@@ -67,7 +66,7 @@ func main() {
 	// prompt request. Prompting is sort of a special pseudo-command that's
 	// indicated by the presence of environment variables, and hence it has to
 	// be handled in a bit of a special manner.
-	if _, ok := environment.Current[ssh.PrompterEnvironmentVariable]; ok {
+	if _, ok := os.LookupEnv(ssh.PrompterEnvironmentVariable); ok {
 		if err := promptSSH(os.Args[1:]); err != nil {
 			cmd.Fatal(err)
 		}

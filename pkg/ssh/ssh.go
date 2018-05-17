@@ -81,7 +81,11 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 	scpProcess.SysProcAttr = processAttributes()
 
 	// Set the environment necessary for prompting.
-	scpProcess.Env = prompterEnvironment(prompter, message)
+	if e, err := prompterEnvironment(prompter, message); err != nil {
+		return errors.Wrap(err, "unable to create prompter environment")
+	} else {
+		scpProcess.Env = e
+	}
 
 	// Run the operation.
 	if err = scpProcess.Run(); err != nil {
@@ -134,7 +138,11 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 	sshProcess.SysProcAttr = processAttributes()
 
 	// Set the environment necessary for prompting.
-	sshProcess.Env = prompterEnvironment(prompter, message)
+	if e, err := prompterEnvironment(prompter, message); err != nil {
+		return nil, errors.Wrap(err, "unable to create prompter environment")
+	} else {
+		sshProcess.Env = e
+	}
 
 	// Done.
 	return sshProcess, nil
