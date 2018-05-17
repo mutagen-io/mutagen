@@ -2,7 +2,6 @@ package filesystem
 
 import (
 	"os"
-	"sort"
 
 	"github.com/pkg/errors"
 )
@@ -25,10 +24,6 @@ func DirectoryContents(path string) ([]string, error) {
 	if err := normalizeDirectoryNames(path, names); err != nil {
 		return nil, errors.Wrap(err, "unable to normalize directory names")
 	}
-
-	// Sort the names. This isn't really necessary for our use case, but it is
-	// cheap and will make behavior nicer.
-	sort.Strings(names)
 
 	// Success.
 	return names, nil
