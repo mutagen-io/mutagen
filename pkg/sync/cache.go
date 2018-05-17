@@ -18,8 +18,8 @@ func (c *Cache) EnsureValid() error {
 	for _, e := range c.Entries {
 		if e == nil {
 			return errors.New("nil cache entry detected")
-		} else if e.Timestamp == nil {
-			return errors.New("cache entry will nil timestamp detected")
+		} else if e.ModificationTime == nil {
+			return errors.New("cache entry will nil modification time detected")
 		}
 	}
 
