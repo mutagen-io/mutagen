@@ -7,8 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows/registry"
-
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 const RegistrationSupported = true
@@ -28,8 +26,14 @@ func Register() error {
 	}
 	defer key.Close()
 
+	// Compute the path to the current executable.
+	executablePath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "unable to determine executable path")
+	}
+
 	// Compute the command to start the Mutagen daemon.
-	command := fmt.Sprintf("\"%s\" daemon start", process.Current.ExecutablePath)
+	command := fmt.Sprintf("\"%s\" daemon start", executablePath)
 
 	// Attempt to register the daemon.
 	if err := key.SetStringValue(runKeyName, command); err != nil {
