@@ -96,13 +96,7 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	// Grab the modification time.
 	modificationTime := info.ModTime()
 
-	// Grab the cached modification time and convert it to a Go format. This
-	// conversion function handles nil Protocol Buffers timestamps (mapping them
-	// to zero-value Go timestamps), but these shouldn't ever occur and it's
-	// worth watching for them explicitly.
-	if cacheEntry.ModificationTime == nil {
-		return 0, errors.New("cached modification time absent")
-	}
+	// Grab the cached modification time and convert it to a Go format.
 	cachedModificationTime, err := ptypes.Timestamp(cacheEntry.ModificationTime)
 	if err != nil {
 		return 0, errors.Wrap(err, "unable to convert cached modification time format")
