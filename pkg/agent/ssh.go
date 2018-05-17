@@ -25,6 +25,8 @@ func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 	unameSMBytes, err := ssh.Output(prompter, "Probing endpoint", remote, "uname -s -m")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke uname")
+	} else if !utf8.Valid(unameSMBytes) {
+		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
 
 	// Parse uname output.
@@ -61,11 +63,6 @@ func probeSSHWindows(remote *url.URL, prompter string) (string, string, error) {
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke remote environment printing")
 	} else if !utf8.Valid(outputBytes) {
-		// TODO: Since we're dealing with Windows, we almost certainly want to
-		// support UTF-16 as well, but all of the Windows POSIX environments
-		// currently use UTF-8, and it seems like that's the direction that the
-		// official OpenSSH implementation will go as well, so maybe it won't
-		// be necessary to support this.
 		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
 

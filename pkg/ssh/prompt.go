@@ -14,10 +14,7 @@ const (
 	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_SSH_PROMPTER_MESSAGE_BASE64"
 )
 
-func prompterEnvironment(prompter, message string) ([]string, error) {
-	// Create a copy of the current environment.
-	environment := os.Environ()
-
+func addPrompterVariables(environment []string, prompter, message string) ([]string, error) {
 	// Handle based on whether or not there's a prompter.
 	if prompter == "" {
 		// If there is no prompter, then enforce that SSH_ASKPASS is not set,

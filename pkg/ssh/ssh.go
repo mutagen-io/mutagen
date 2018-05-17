@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -80,12 +81,20 @@ func Copy(prompter, message, local string, remote *url.URL) error {
 	// Force it to run detached.
 	scpProcess.SysProcAttr = processAttributes()
 
-	// Set the environment necessary for prompting.
-	if e, err := prompterEnvironment(prompter, message); err != nil {
+	// Create a copy of the current environment.
+	environment := os.Environ()
+
+	// Add locale environment variables.
+	environment = addLocaleVariables(environment)
+
+	// Add prompting environment variables
+	environment, err = addPrompterVariables(environment, prompter, message)
+	if err != nil {
 		return errors.Wrap(err, "unable to create prompter environment")
-	} else {
-		scpProcess.Env = e
 	}
+
+	// Set the environment.
+	scpProcess.Env = environment
 
 	// Run the operation.
 	if err = scpProcess.Run(); err != nil {
@@ -137,12 +146,20 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 	// Force it to run detached.
 	sshProcess.SysProcAttr = processAttributes()
 
-	// Set the environment necessary for prompting.
-	if e, err := prompterEnvironment(prompter, message); err != nil {
+	// Create a copy of the current environment.
+	environment := os.Environ()
+
+	// Add locale environment variables.
+	environment = addLocaleVariables(environment)
+
+	// Add prompting environment variables
+	environment, err = addPrompterVariables(environment, prompter, message)
+	if err != nil {
 		return nil, errors.Wrap(err, "unable to create prompter environment")
-	} else {
-		sshProcess.Env = e
 	}
+
+	// Set the environment.
+	sshProcess.Env = environment
 
 	// Done.
 	return sshProcess, nil
