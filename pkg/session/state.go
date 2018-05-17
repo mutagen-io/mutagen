@@ -50,12 +50,6 @@ func (s *State) Copy() *State {
 		*result.Session = *s.Session
 	}
 
-	// Create a shallow copy of the StagingStatus member, if present.
-	if s.StagingStatus != nil {
-		result.StagingStatus = &StagingStatus{}
-		*result.StagingStatus = *s.StagingStatus
-	}
-
 	// All other composite members are either immutable values or considered to
 	// be immutable, so we don't need to copy them.
 

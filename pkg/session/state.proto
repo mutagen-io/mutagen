@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package session;
 
+import "github.com/havoc-io/mutagen/pkg/rsync/receive.proto";
 import "github.com/havoc-io/mutagen/pkg/session/session.proto";
 import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
 
@@ -20,12 +21,6 @@ enum Status {
     TransitioningAlpha = 11;
     TransitioningBeta = 12;
     Saving = 13;
-}
-
-message StagingStatus {
-    string path = 1;
-    uint64 received = 2;
-    uint64 total = 3;
 }
 
 message Change {
@@ -50,7 +45,7 @@ message State {
     bool alphaConnected = 3;
     bool betaConnected = 4;
     string lastError = 5;
-    StagingStatus stagingStatus = 6;
+    rsync.ReceiverStatus stagingStatus = 6;
     repeated Conflict conflicts = 7;
     repeated Problem alphaProblems = 8;
     repeated Problem betaProblems = 9;

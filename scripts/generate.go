@@ -49,6 +49,10 @@ var subdirectories = []struct {
 		[]string{"prompt.proto"},
 	},
 	{
+		"github.com/havoc-io/mutagen/pkg/rsync",
+		[]string{"receive.proto"},
+	},
+	{
 		"github.com/havoc-io/mutagen/pkg/session",
 		[]string{"session.proto", "state.proto"},
 	},

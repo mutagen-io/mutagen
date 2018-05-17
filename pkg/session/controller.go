@@ -148,8 +148,7 @@ func newSession(
 		stateLock:   state.NewTrackingLock(tracker),
 		session:     session,
 		state: &State{
-			Session:       session,
-			StagingStatus: &StagingStatus{},
+			Session: session,
 		},
 	}
 
@@ -192,8 +191,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		stateLock:   state.NewTrackingLock(tracker),
 		session:     session,
 		state: &State{
-			Session:       session,
-			StagingStatus: &StagingStatus{},
+			Session: session,
 		},
 	}
 
@@ -389,8 +387,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		// Reset the state.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session:       c.session,
-			StagingStatus: &StagingStatus{},
+			Session: c.session,
 		}
 		c.stateLock.Unlock()
 
@@ -480,9 +477,8 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		// failure.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session:       c.session,
-			LastError:     err.Error(),
-			StagingStatus: &StagingStatus{},
+			Session:   c.session,
+			LastError: err.Error(),
 		}
 		c.stateLock.Unlock()
 
@@ -658,11 +654,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 
 		// Create a monitoring callback for rsync staging.
-		monitor := func(status rsync.ReceivingStatus) error {
+		monitor := func(status *rsync.ReceiverStatus) error {
 			c.stateLock.Lock()
-			c.state.StagingStatus.Path = status.Path
-			c.state.StagingStatus.Received = status.Received
-			c.state.StagingStatus.Total = status.Total
+			c.state.StagingStatus = status
 			c.stateLock.Unlock()
 			return nil
 		}

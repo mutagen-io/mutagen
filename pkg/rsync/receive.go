@@ -226,21 +226,14 @@ func (r *receiver) finalize() {
 	r.finalized = true
 }
 
-// ReceivingStatus encodes that status of a receiver.
-type ReceivingStatus struct {
-	// Path is the path currently being transmitted.
-	Path string
-	// Received is the number of paths that have already been transmitted.
-	Received uint64
-	// Total is the total number of paths to transmit.
-	Total uint64
-	// TODO: Expand this struct with more detailed status information, e.g.
-	// failed requests, bandwidth, internal statistics, speedup factor, etc.
-}
-
 // Monitor is the interface that monitors must implement to capture status
-// information from a monitoring receiver.
-type Monitor func(ReceivingStatus) error
+// information from a monitoring receiver. The argument provided to this
+// function will be allocated on each update and can be kept by the monitoring
+// callback. There's no point in attempting to re-use the allocated argument
+// because (a) it would be complicated and the callback would most likely just
+// copy it anyway and (b) it will only be allocated once per received file, and
+// the per-file allocations are already significantly higher.
+type Monitor func(*ReceiverStatus) error
 
 // monitoringReceiver is a Receiver implementation that can invoke a callback
 // with information about the status of transmission.
@@ -316,7 +309,7 @@ func (r *monitoringReceiver) Receive(message Transmission) error {
 		}
 
 		// Send the status.
-		status := ReceivingStatus{
+		status := &ReceiverStatus{
 			Path:     path,
 			Received: r.received,
 			Total:    r.total,
@@ -338,7 +331,7 @@ func (r *monitoringReceiver) finalize() {
 
 	// Perform a final status update. We don't bother checking for an error
 	// because it's inconsequential at this point.
-	r.monitor(ReceivingStatus{})
+	r.monitor(nil)
 }
 
 // preemptableReceiver is a Receiver implementation that provides preemption
