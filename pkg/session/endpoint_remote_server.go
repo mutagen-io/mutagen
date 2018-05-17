@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 )
@@ -179,11 +181,13 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 		return errors.Wrap(err, "unable to perform scan")
 	}
 
-	// Marshal the snapshot.
-	snapshotBytes, err := marshalEntry(snapshot, true)
-	if err != nil {
+	// Marshal the snapshot in a deterministic fashion.
+	buffer := proto.NewBuffer(nil)
+	buffer.SetDeterministic(true)
+	if err := buffer.Marshal(&Archive{Root: snapshot}); err != nil {
 		return errors.Wrap(err, "unable to marshal snapshot")
 	}
+	snapshotBytes := buffer.Bytes()
 
 	// Create an rsync engine.
 	engine := rsync.NewEngine()

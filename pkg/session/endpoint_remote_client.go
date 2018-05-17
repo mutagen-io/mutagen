@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
@@ -139,12 +141,15 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
-	// Marshal the ancestor and compute its rsync signature. We'll use it as a
-	// base for an rsync transfer of the serialized snapshot.
-	ancestorBytes, err := marshalEntry(ancestor, true)
-	if err != nil {
+	// Marshal the ancestor in a deterministic fashion and compute its rsync
+	// signature. We'll use it as a base for an rsync transfer of the serialized
+	// snapshot.
+	buffer := proto.NewBuffer(nil)
+	buffer.SetDeterministic(true)
+	if err := buffer.Marshal(&Archive{Root: ancestor}); err != nil {
 		return nil, false, errors.Wrap(err, "unable to marshal ancestor")
 	}
+	ancestorBytes := buffer.Bytes()
 	ancestorSignature := engine.BytesSignature(ancestorBytes, 0)
 
 	// Create and send the scan request.
@@ -171,10 +176,11 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	}
 
 	// Unmarshal the snapshot.
-	snapshot, err := unmarshalEntry(snapshotBytes)
-	if err != nil {
+	archive := &Archive{}
+	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
 	}
+	snapshot := archive.Root
 
 	// Ensure that the snapshot is valid since it came over the network.
 	if err = snapshot.EnsureValid(); err != nil {
