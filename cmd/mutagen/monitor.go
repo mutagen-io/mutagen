@@ -32,9 +32,9 @@ func printMonitorLine(state *sessionpkg.State) {
 		status += state.Status.Description()
 
 		// If we're staging and have sane statistics, add them.
-		if state.Status == sessionpkg.Status_StagingAlpha ||
-			state.Status == sessionpkg.Status_StagingBeta &&
-				state.StagingStatus.Total > 0 {
+		if (state.Status == sessionpkg.Status_StagingAlpha ||
+			state.Status == sessionpkg.Status_StagingBeta) &&
+			state.StagingStatus != nil {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
 				100.0*float32(state.StagingStatus.Received)/float32(state.StagingStatus.Total),
@@ -101,10 +101,10 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 
 		// Validate the list response contents.
 		for _, s := range response.SessionStates {
-			if monitorLinePrinted {
-				fmt.Println()
-			}
 			if err = s.EnsureValid(); err != nil {
+				if monitorLinePrinted {
+					fmt.Println()
+				}
 				return errors.Wrap(err, "invalid session state detected in response")
 			}
 		}
