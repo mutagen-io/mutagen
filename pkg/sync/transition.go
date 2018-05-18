@@ -5,7 +5,6 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -53,10 +52,17 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 			return errors.Wrap(err, "unable to read directory contents")
 		}
 
-		// Ensure that this path exists in contents. We can do a binary search
-		// since contents will be sorted. If there's not a match, we're done.
-		index := sort.SearchStrings(contents, components[0])
-		if index == len(contents) || contents[index] != components[0] {
+		// Ensure that this path exists in contents. It's important to note that
+		// the contents are not guaranteed to be ordered, so we can't do a
+		// binary search here.
+		found := false
+		for _, c := range contents {
+			if c == components[0] {
+				found = true
+				break
+			}
+		}
+		if !found {
 			return errors.New("unable to find matching entry")
 		}
 
