@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -190,7 +191,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 var listCommand = &cobra.Command{
 	Use:   "list [<session>...]",
 	Short: "Lists existing synchronization sessions and their statuses",
-	Run:   mainify(listMain),
+	Run:   cmd.Mainify(listMain),
 }
 
 var listConfiguration struct {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
@@ -103,7 +104,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 var createCommand = &cobra.Command{
 	Use:   "create <alpha> <beta>",
 	Short: "Creates and starts a new synchronization session",
-	Run:   mainify(createMain),
+	Run:   cmd.Mainify(createMain),
 }
 
 var createConfiguration struct {

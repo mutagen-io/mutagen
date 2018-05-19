@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
@@ -157,7 +158,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 var monitorCommand = &cobra.Command{
 	Use:   "monitor [<session>]",
 	Short: "Shows a dynamic status display for the specified session",
-	Run:   mainify(monitorMain),
+	Run:   cmd.Mainify(monitorMain),
 }
 
 var monitorConfiguration struct {

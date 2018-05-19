@@ -92,7 +92,7 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 var daemonRunCommand = &cobra.Command{
 	Use:    "run",
 	Short:  "Runs the Mutagen daemon",
-	Run:    mainify(daemonRunMain),
+	Run:    cmd.Mainify(daemonRunMain),
 	Hidden: true,
 }
 

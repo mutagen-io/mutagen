@@ -23,7 +23,7 @@ func rootMain(command *cobra.Command, arguments []string) error {
 var rootCommand = &cobra.Command{
 	Use:   "mutagen",
 	Short: "Mutagen provides simple, continuous, bi-directional file synchronization.",
-	Run:   mainify(rootMain),
+	Run:   cmd.Mainify(rootMain),
 }
 
 var rootConfiguration struct {

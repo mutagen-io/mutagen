@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
@@ -19,7 +20,7 @@ func versionMain(command *cobra.Command, arguments []string) error {
 var versionCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
-	Run:   mainify(versionMain),
+	Run:   cmd.Mainify(versionMain),
 }
 
 var versionConfiguration struct {

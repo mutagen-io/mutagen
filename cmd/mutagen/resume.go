@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
@@ -74,7 +75,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 var resumeCommand = &cobra.Command{
 	Use:   "resume [<session>...]",
 	Short: "Resumes a paused or disconnected synchronization session",
-	Run:   mainify(resumeMain),
+	Run:   cmd.Mainify(resumeMain),
 }
 
 var resumeConfiguration struct {

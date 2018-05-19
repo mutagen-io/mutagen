@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
@@ -47,7 +48,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 var terminateCommand = &cobra.Command{
 	Use:   "terminate [<session>...]",
 	Short: "Permanently terminates a synchronization session",
-	Run:   mainify(terminateMain),
+	Run:   cmd.Mainify(terminateMain),
 }
 
 var terminateConfiguration struct {

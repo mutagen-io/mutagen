@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
@@ -20,7 +21,7 @@ func daemonMain(command *cobra.Command, arguments []string) error {
 var daemonCommand = &cobra.Command{
 	Use:   "daemon",
 	Short: "Controls the Mutagen daemon lifecycle",
-	Run:   mainify(daemonMain),
+	Run:   cmd.Mainify(daemonMain),
 }
 
 var daemonConfiguration struct {

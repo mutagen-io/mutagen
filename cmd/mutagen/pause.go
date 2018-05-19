@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
@@ -47,7 +48,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 var pauseCommand = &cobra.Command{
 	Use:   "pause [<session>...]",
 	Short: "Pauses a synchronization session",
-	Run:   mainify(pauseMain),
+	Run:   cmd.Mainify(pauseMain),
 }
 
 var pauseConfiguration struct {
