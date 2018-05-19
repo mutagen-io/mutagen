@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
+	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
@@ -64,6 +65,13 @@ func newSession(
 ) (*controller, error) {
 	// TODO: Should we perform URL validation in here? They should be validated
 	// by the respective dialers.
+
+	// Load default ignores, if any, and prepend them to the provided ignores.
+	configuration, err := configuration.Load()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to load configuration file")
+	}
+	ignores = append(configuration.Ignore.Default, ignores...)
 
 	// Verify that the ignores are valid.
 	for _, ignore := range ignores {
