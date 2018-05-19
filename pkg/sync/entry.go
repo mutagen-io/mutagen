@@ -94,6 +94,11 @@ func (e *Entry) Equal(other *Entry) bool {
 		return false
 	}
 
+	// If both are nil, then we're done.
+	if e == nil && other == nil {
+		return true
+	}
+
 	// Compare contents.
 	if len(e.Contents) != len(other.Contents) {
 		return false
