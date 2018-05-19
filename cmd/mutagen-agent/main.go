@@ -2,63 +2,68 @@ package main
 
 import (
 	"os"
-	"os/signal"
 
-	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
+func rootMain(command *cobra.Command, arguments []string) error {
+	// If no commands were given, then print help information and bail. We don't
+	// have to worry about warning about arguments being present here (which
+	// would be incorrect usage) because arguments can't even reach this point
+	// (they will be mistaken for subcommands and a error will be displayed).
+	command.Help()
+
+	// Success.
+	return nil
+}
+
+var rootCommand = &cobra.Command{
+	Use:   "mutagen-agent",
+	Short: "The Mutagen agent should not be invoked by human beings.",
+	Run:   cmd.Mainify(rootMain),
+}
+
+var rootConfiguration struct {
+	help bool
+}
+
+func init() {
+	// Bind flags to configuration. We manually add help to override the default
+	// message, but Cobra still implements it automatically.
+	flags := rootCommand.Flags()
+	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+
+	// Disable Cobra's command sorting behavior. By default, it sorts commands
+	// alphabetically in the help output.
+	cobra.EnableCommandSorting = false
+
+	// Disable Cobra's use of mousetrap. This breaks daemon registration on
+	// Windows because it tries to enforce that the CLI only be launched from
+	// a console, which it's not when running automatically.
+	cobra.MousetrapHelpText = ""
+
+	// Register commands. We do this here (rather than in individual init
+	// functions) so that we can control the order.
+	rootCommand.AddCommand(
+		installCommand,
+		endpointCommand,
+		versionCommand,
+		legalCommand,
+	)
+}
+
 func main() {
-	// Validate and parse the invocation mode.
-	if len(os.Args) != 2 {
-		cmd.Fatal(errors.New("invalid number of arguments"))
-	}
-	mode := os.Args[1]
-
-	// Handle install.
-	if mode == agent.ModeInstall {
-		if err := agent.Install(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to install"))
-		}
-		return
-	}
-
 	// Perform housekeeping.
 	agent.Housekeep()
 	session.HousekeepCaches()
 	session.HousekeepStaging()
 
-	// Create a connection on standard input/output.
-	connection := &stdioConnection{}
-
-	// Perform a handshake.
-	if err := mutagen.SendVersion(connection); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to transmit version"))
-	}
-
-	// Handle based on mode.
-	if mode == agent.ModeEndpoint {
-		// Serve an endpoint on standard input/output and monitor for its
-		// termination.
-		endpointTermination := make(chan error, 1)
-		go func() {
-			endpointTermination <- session.ServeEndpoint(connection)
-		}()
-
-		// Wait for termination from a signal or the endpoint.
-		signalTermination := make(chan os.Signal, 1)
-		signal.Notify(signalTermination, cmd.TerminationSignals...)
-		select {
-		case sig := <-signalTermination:
-			cmd.Fatal(errors.Errorf("terminated by signal: %s", sig))
-		case err := <-endpointTermination:
-			cmd.Fatal(errors.Wrap(err, "endpoint terminated"))
-		}
-	} else {
-		cmd.Fatal(errors.Errorf("unknown mode: %s", mode))
+	// Execute the root command.
+	if err := rootCommand.Execute(); err != nil {
+		os.Exit(1)
 	}
 }
