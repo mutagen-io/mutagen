@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/profile"
+	"github.com/havoc-io/mutagen/cmd/profile"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
