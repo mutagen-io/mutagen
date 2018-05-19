@@ -25,7 +25,7 @@ func Load() (*Configuration, error) {
 
 	// Attempt to load the configuration from disk.
 	// TODO: Should we implement a caching mechanism where we run a stat call
-	// and watch for filesystem modification.
+	// and watch for filesystem modification?
 	if err := encoding.LoadAndUnmarshalTOML(filesystem.MutagenConfigurationPath, result); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err

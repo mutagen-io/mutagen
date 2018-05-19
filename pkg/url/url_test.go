@@ -18,7 +18,7 @@ func TestProtocolSupported(t *testing.T) {
 	// Ensure that one above the highest value protocol is marked as
 	// unsupported. This should help keep enumeration values and test code in
 	// sync.
-	if (Protocol_SSH+1).supported() {
+	if (Protocol_SSH + 1).supported() {
 		t.Error("unknown protocol marked as supported")
 	}
 }
@@ -33,11 +33,11 @@ func TestURLEnsureValid(t *testing.T) {
 	// Ensure that a URL with an unsupported protocol is invalid. This should
 	// also keep enumeration values and test code in sync.
 	invalid = &URL{
-		Protocol: (Protocol_SSH+1),
+		Protocol: (Protocol_SSH + 1),
 		Username: "george",
 		Hostname: "washington",
-		Port: 22,
-		Path: "~/path",
+		Port:     22,
+		Path:     "~/path",
 	}
 	if invalid.EnsureValid() == nil {
 		t.Error("nil URL marked as valid")
@@ -48,8 +48,8 @@ func TestURLEnsureValid(t *testing.T) {
 		Protocol: Protocol_SSH,
 		Username: "george",
 		Hostname: "washington",
-		Port: 22,
-		Path: "~/path",
+		Port:     22,
+		Path:     "~/path",
 	}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL marked as invalid:", err)
