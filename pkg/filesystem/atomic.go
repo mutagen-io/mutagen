@@ -89,6 +89,7 @@ func RenameFileAtomic(oldPath, newPath string) error {
 	if err = temporary.Chmod(metadata.Mode()); err != nil {
 		source.Close()
 		temporary.Close()
+		os.Remove(temporaryPath)
 		return errors.Wrap(err, "unable to set file mode")
 	}
 
