@@ -19,9 +19,9 @@ func TestTracker(t *testing.T) {
 
 	// Start a Goroutine with which we'll coordinate.
 	go func() {
-		// Wait for a successful change.
-		firstState, poisoned := tracker.WaitForChange(0)
-		if poisoned || firstState == 0 {
+		// Wait for a successful change from the initial tracker state (1).
+		firstState, poisoned := tracker.WaitForChange(1)
+		if poisoned || firstState != 2 {
 			handoff <- false
 			return
 		}
