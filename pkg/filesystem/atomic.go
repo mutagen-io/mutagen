@@ -69,12 +69,13 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to open source file")
 	}
 
-	// Grab the source file's metadata.
+	// Grab the source file's mode.
 	metadata, err := source.Stat()
 	if err != nil {
 		source.Close()
 		return errors.Wrap(err, "unable to grab source file metadata")
 	}
+	mode := metadata.Mode()
 
 	// Create a temporary file next to the destination.
 	dirname, basename := filepath.Split(newPath)
@@ -84,14 +85,6 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to create temporary file")
 	}
 	temporaryPath := temporary.Name()
-
-	// Set the file mode on the destination.
-	if err = temporary.Chmod(metadata.Mode()); err != nil {
-		source.Close()
-		temporary.Close()
-		os.Remove(temporaryPath)
-		return errors.Wrap(err, "unable to set file mode")
-	}
 
 	// Copy the file contents. We'll handle errors below.
 	_, err = io.Copy(temporary, source)
@@ -104,6 +97,14 @@ func RenameFileAtomic(oldPath, newPath string) error {
 	if err != nil {
 		os.Remove(temporaryPath)
 		return errors.Wrap(err, "unable to copy file contents")
+	}
+
+	// Set the file mode on the destination. Note that we can't do this using
+	// os.File.Chmod because that's not supported on Windows - only path-based
+	// Chmod is supported.
+	if err = os.Chmod(temporaryPath, mode); err != nil {
+		os.Remove(temporaryPath)
+		return errors.Wrap(err, "unable to set file mode")
 	}
 
 	// Move the temporary file into place.
