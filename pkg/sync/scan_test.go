@@ -17,7 +17,7 @@ var gorootCache *Cache
 
 func init() {
 	// Create the GOROOT snapshot and cache.
-	if snapshot, cache, err := Scan(runtime.GOROOT(), sha1.New(), nil, nil); err != nil {
+	if snapshot, cache, err := Scan(runtime.GOROOT(), sha1.New(), nil, nil, SymlinkMode_Sane); err != nil {
 		panic("couldn't create GOROOT snapshot: " + err.Error())
 	} else if snapshot.Kind != EntryKind_Directory {
 		panic("GOROOT snapshot is not a directory")
@@ -46,7 +46,7 @@ func (p *gorootRebuildHashProxy) Sum(b []byte) []byte {
 // ensuring that no re-hashing occurs and that results are consistent.
 func TestEfficientRebuild(t *testing.T) {
 	hasher := &gorootRebuildHashProxy{sha1.New(), t}
-	if snapshot, _, err := Scan(runtime.GOROOT(), hasher, gorootCache, nil); err != nil {
+	if snapshot, _, err := Scan(runtime.GOROOT(), hasher, gorootCache, nil, SymlinkMode_Sane); err != nil {
 		t.Fatal("couldn't rebuild GOROOT snapshot:", err)
 	} else if !snapshot.Equal(gorootSnapshot) {
 		t.Error("re-snapshotting produced a non-equivalent snapshot")
@@ -57,7 +57,7 @@ func TestEfficientRebuild(t *testing.T) {
 // don't exist.
 func TestBuilderNonExistent(t *testing.T) {
 	// Create the snapshotter.
-	snapshot, cache, err := Scan("THIS/DOES/NOT/EXIST", sha1.New(), nil, nil)
+	snapshot, cache, err := Scan("THIS/DOES/NOT/EXIST", sha1.New(), nil, nil, SymlinkMode_Sane)
 
 	// Ensure that the snapshot root is nil.
 	if snapshot != nil {

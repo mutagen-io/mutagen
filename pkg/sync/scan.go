@@ -115,12 +115,15 @@ func (s *scanner) symlink(path string, enforceSane bool) (*Entry, error) {
 		return nil, errors.Wrap(err, "unable to read symlink target")
 	}
 
-	// If requested, enforce that the link is sane.
+	// If requested, enforce that the link is sane, otherwise just ensure that
+	// it's non-empty (this is required even in POSIX raw mode).
 	if enforceSane {
 		target, err = normalizeSymlinkAndEnsureSane(path, target)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("invalid symlink (%s)", path))
 		}
+	} else if target == "" {
+		return nil, errors.New("symlink target is empty")
 	}
 
 	// Success.
