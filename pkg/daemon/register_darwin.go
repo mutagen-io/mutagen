@@ -176,6 +176,8 @@ func RegisteredStart() (bool, error) {
 
 	// Attempt to load the daemon.
 	load := exec.Command("launchctl", "load", targetPath)
+	load.Stdout = os.Stdout
+	load.Stderr = os.Stderr
 	if err := load.Run(); err != nil {
 		return false, errors.Wrap(err, "unable to load launchd plist")
 	}
@@ -202,6 +204,8 @@ func RegisteredStop() (bool, error) {
 
 	// Attempt to unload the daemon.
 	unload := exec.Command("launchctl", "unload", targetPath)
+	unload.Stdout = os.Stdout
+	unload.Stderr = os.Stderr
 	if err := unload.Run(); err != nil {
 		return false, errors.Wrap(err, "unable to unload launchd plist")
 	}
