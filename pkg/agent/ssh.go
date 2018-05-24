@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
 	"runtime"
 	"strings"
 	"unicode/utf8"
@@ -18,6 +17,11 @@ import (
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 	"github.com/havoc-io/mutagen/pkg/url"
+)
+
+const (
+	windowsInvalidCommandFragment = "is not recognized as an internal or external command"
+	windowsCommandNotFoundFragment = "The system cannot find the path specified"
 )
 
 func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
@@ -136,7 +140,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// temporary destination. For Windows remotes, we add a ".exe" suffix, which
 	// will automatically make the file executable on the remote (POSIX systems
 	// are handled separately below). For POSIX systems, we add a dot prefix to
-	// hide the executable a bit.
+	// hide the executable.
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default destination directory for SCP copies. That should be true in
 	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
@@ -201,8 +205,13 @@ func installSSH(remote *url.URL, prompter string) error {
 	return nil
 }
 
-func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) {
-	// Compute the agent SSH command.
+func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn, bool, bool, error) {
+	// Compute the agent SSH command. Unless we have reason to assume that this
+	// is a Windows system, we construct a path using forward slashes. This will
+	// work for all POSIX systems and POSIX-like environments on Windows. If we
+	// know we're hitting a Windows SSH server that's going to invoke commands
+	// inside cmd.exe, then use backslashes, otherwise the invocation won't
+	// work.
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. We have to do this because we
 	// don't have a portable mechanism to invoke the command relative to the
@@ -211,18 +220,24 @@ func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) 
 	// assumption should be fine for 99.9% of cases, but if it becomes a major
 	// issue, the only other options I see are probing before invoking (slow) or
 	// using the Go SSH library to do this (painful to faithfully emulate
-	// OpenSSH's behavior). Perhaps probing could be hidden behind an option?
+	// OpenSSH's behavior). Perhaps we can allow expicit home directory
+	// specification via a command line flag if this becomes necessary.
 	// HACK: We're assuming that none of these path components have spaces in
 	// them, but since we control all of them, this is probably okay.
-	// HACK: When invoking on Windows systems, we can use forward slashes for
-	// the path and leave the "exe" suffix off the target name. This saves us a
-	// target check.
-	sshAgentPath := path.Join(
+	// HACK: When invoking on Windows systems (whether inside a POSIX
+	// environment or cmd.exe), we can leave the "exe" suffix off the target
+	// name. Fortunately this allows us to also avoid having to try the
+	// combination of forward slashes + ".exe" for Windows POSIX environments.
+	pathSeparator := "/"
+	if windows {
+		pathSeparator = "\\"
+	}
+	sshAgentPath := strings.Join([]string{
 		filesystem.MutagenDirectoryName,
 		agentsDirectoryName,
 		mutagen.Version,
 		agentBaseName,
-	)
+	}, pathSeparator)
 
 	// Compute the command to invoke.
 	// HACK: We rely on sshAgentPath not having any spaces in it. If we do
@@ -232,13 +247,13 @@ func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) 
 	// Create an SSH process.
 	process, err := ssh.Command(prompter, "Connecting to agent", remote, command)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to create SSH command")
+		return nil, false, false, errors.Wrap(err, "unable to create SSH command")
 	}
 
 	// Create a connection that wrap's the process' standard input/output.
 	connection, err := newAgentConnection(remote, process)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to create SSH process connection")
+		return nil, false, false, errors.Wrap(err, "unable to create SSH process connection")
 	}
 
 	// Redirect the process' standard error output to a buffer so that we can
@@ -261,47 +276,70 @@ func connectSSH(remote *url.URL, prompter, mode string) (net.Conn, bool, error) 
 
 	// Start the process.
 	if err = process.Start(); err != nil {
-		return nil, false, errors.Wrap(err, "unable to start SSH agent process")
+		return nil, false, false, errors.Wrap(err, "unable to start SSH agent process")
 	}
 
 	// Confirm that the process started correctly by performing a version
 	// handshake.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(connection); err != nil {
+		// Extract error output and ensure it's UTF-8.
+		errorOutput := errorBuffer.String()
+		if !utf8.ValidString(errorOutput) {
+			return nil, false, false, errors.New("remote did not return UTF-8 output")
+		}
+
 		// If there's an error, check if SSH exits with a command not found
-		// error. We can't really check this until we try to interact with the
-		// process and see that it misbehaves. We wouldn't be able to see this
-		// returned as an error from the Start method because it just starts the
-		// SSH client itself, not the remote command.
+		// error (or an error message on Windows indicating and invalid command
+		// (due to POSIX path formatting) or command not found). We can't really
+		// check this until we try to interact with the process and see that it
+		// misbehaves. We wouldn't be able to see this returned as an error from
+		// the Start method because it just starts the SSH client itself, not
+		// the remote command.
 		if ssh.IsCommandNotFound(process.Wait()) {
-			return nil, true, errors.New("command not found")
+			return nil, true, false, errors.New("command not found")
+		} else if strings.Index(errorOutput, windowsInvalidCommandFragment) != -1 {
+			return nil, true, true, errors.New("invalid command")
+		} else if strings.Index(errorOutput, windowsCommandNotFoundFragment) != -1 {
+			return nil, true, true, errors.New("command not found")
 		}
 
 		// Otherwise, check if there is any error output that might illuminate
 		// what happened. We let this overrule any err value here since that
 		// value will probably just be an EOF.
-		if errorBuffer.Len() > 0 {
-			return nil, false, errors.Errorf(
+		if errorOutput != "" {
+			return nil, false, false, errors.Errorf(
 				"SSH process failed with error output:\n%s",
-				strings.TrimSpace(errorBuffer.String()),
+				strings.TrimSpace(errorOutput),
 			)
 		}
 
 		// Otherwise just wrap up whatever error we have.
-		return nil, false, errors.Wrap(err, "unable to handshake with SSH agent process")
+		return nil, false, false, errors.Wrap(err, "unable to handshake with SSH agent process")
 	} else if !versionMatch {
-		return nil, true, errors.New("version mismatch")
+		return nil, false, false, errors.New("version mismatch")
 	}
 
 	// Done.
-	return connection, false, nil
+	return connection, false, false, nil
 }
 
 func DialSSH(remote *url.URL, prompter, mode string) (net.Conn, error) {
-	// Attempt a connection. If this fails, but it's a failure that justfies
-	// attempting an install, then continue, otherwise fail.
-	if connection, install, err := connectSSH(remote, prompter, mode); err == nil {
+	// Attempt a connection. If this fails but we detect a Windows environment
+	// in the process, then re-attempt a connection under the Windows
+	// assumption.
+	connection, install, windows, err := connectSSH(remote, prompter, mode, false)
+	if err == nil {
 		return connection, nil
-	} else if !install {
+	} else if windows {
+		connection, install, windows, err = connectSSH(remote, prompter, mode, true)
+		if err == nil {
+			return connection, nil
+		}
+	}
+
+	// If we didn't detect a Windows environment, or we did and it also failed,
+	// then check if an install is recommended. If not, then bail.
+	if !install {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	}
 
@@ -311,7 +349,7 @@ func DialSSH(remote *url.URL, prompter, mode string) (net.Conn, error) {
 	}
 
 	// Re-attempt connectivity.
-	if connection, _, err := connectSSH(remote, prompter, mode); err != nil {
+	if connection, _, _, err := connectSSH(remote, prompter, mode, windows); err != nil {
 		return nil, errors.Wrap(err, "unable to connect to agent")
 	} else {
 		return connection, nil
