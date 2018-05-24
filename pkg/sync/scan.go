@@ -252,6 +252,8 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 			return rootEntry, newCache, nil
 		}
 	} else if mode&os.ModeType != 0 {
+		// We explicitly disallow symlinks as synchronization roots because
+		// there's no easy way to propagate changes to them.
 		return nil, nil, errors.New("invalid snapshot root type")
 	} else {
 		if rootEntry, err := s.file("", info); err != nil {

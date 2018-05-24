@@ -12,7 +12,8 @@ func (c *Cache) EnsureValid() error {
 	}
 
 	// Technically we could validate each path, but that's error prone,
-	// expensive, and not really needed for memory safety.
+	// expensive, and not really needed for memory safety. Also note that an
+	// empty path is valid when the synchronization root is a file.
 
 	// Nil cache entries are invalid.
 	for _, e := range c.Entries {
