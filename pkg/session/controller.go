@@ -497,13 +497,13 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		}
 		c.stateLock.Unlock()
 
-		// Do a non-blocking check for cancellation so that we don't waste
-		// resources by trying another connect when the context has been
-		// cancelled (it'll be wasteful).ontrol is better than sentinel errors.
+		// If synchronization failed, wait and then try to reconnect. Watch for
+		// cancellation in the mean time. This cancellation check will also
+		// catch cases where the synchronization loop has been cancelled.
 		select {
 		case <-context.Done():
 			return
-		default:
+		case <-time.After(autoReconnectInterval):
 		}
 	}
 }
