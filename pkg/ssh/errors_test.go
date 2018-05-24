@@ -1,3 +1,0 @@
-package ssh
-
-// TODO: Implement.

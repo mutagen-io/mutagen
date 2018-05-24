@@ -15,14 +15,21 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 const (
-	windowsInvalidCommandFragment = "is not recognized as an internal or external command"
+	posixCommandNotFoundExitCode   = 127
+	windowsInvalidCommandFragment  = "is not recognized as an internal or external command"
 	windowsCommandNotFoundFragment = "The system cannot find the path specified"
 )
+
+func isPOSIXCommandNotFound(err error) bool {
+	code, codeErr := process.ExitCodeForError(err)
+	return codeErr == nil && code == posixCommandNotFoundExitCode
+}
 
 func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
@@ -295,7 +302,7 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 		// misbehaves. We wouldn't be able to see this returned as an error from
 		// the Start method because it just starts the SSH client itself, not
 		// the remote command.
-		if ssh.IsCommandNotFound(process.Wait()) {
+		if isPOSIXCommandNotFound(process.Wait()) {
 			return nil, true, false, errors.New("command not found")
 		} else if strings.Index(errorOutput, windowsInvalidCommandFragment) != -1 {
 			return nil, true, true, errors.New("invalid command")
