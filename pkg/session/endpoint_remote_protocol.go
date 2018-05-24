@@ -58,7 +58,13 @@ type transitionRequest struct {
 }
 
 type transitionResponse struct {
-	Changes  []*sync.Change
+	// HACK: We have to use Archive to wrap our Entry results here because gob
+	// won't encode a nil pointer in this slice, and the results of transitions
+	// may very well be nil. We probably ought to transition to Protocol Buffers
+	// for the remote endpoint protocol eventually, if not fully fledged gRPC,
+	// but that's going to require converting all of the rsync types to Protocol
+	// Buffers, which I'm not quite read to do.
+	Results  []*Archive
 	Problems []*sync.Problem
 	Error    string
 }

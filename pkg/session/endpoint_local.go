@@ -186,12 +186,12 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 	return rsync.Transmit(e.root, paths, signatures, receiver)
 }
 
-func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Change, []*sync.Problem, error) {
+func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Perform the transition.
-	changes, problems := sync.Transition(e.root, transitions, e.cache, e.stager)
+	results, problems := sync.Transition(e.root, transitions, e.cache, e.stager)
 
 	// Wipe the staging directory. We don't monitor for errors here, because we
-	// need to return the changes and problems no matter what, but if there's
+	// need to return the results and problems no matter what, but if there's
 	// something weird going on with the filesystem, we'll see it the next time
 	// we scan or stage.
 	// TODO: If we see a large number of problems, should we avoid wiping the
@@ -200,7 +200,7 @@ func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Change, 
 	e.stager.wipe()
 
 	// Done.
-	return changes, problems, nil
+	return results, problems, nil
 }
 
 func (e *localEndpoint) shutdown() error {

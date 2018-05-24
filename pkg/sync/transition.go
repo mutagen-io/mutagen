@@ -520,9 +520,9 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 	)}
 }
 
-func Transition(root string, transitions []*Change, cache *Cache, provider Provider) ([]*Change, []*Problem) {
+func Transition(root string, transitions []*Change, cache *Cache, provider Provider) ([]*Entry, []*Problem) {
 	// Set up results.
-	var results []*Change
+	var results []*Entry
 	var problems []*Problem
 
 	// Iterate through transitions.
@@ -544,13 +544,13 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 			t.New.Kind == EntryKind_File
 		if fileToFile {
 			if err := swapFile(root, t.Path, t.Old, t.New, cache, provider); err != nil {
-				results = append(results, &Change{Path: t.Path, New: t.Old})
+				results = append(results, t.Old)
 				problems = append(problems, newProblem(
 					t.Path,
 					errors.Wrap(err, "unable to swap file"),
 				))
 			} else {
-				results = append(results, &Change{Path: t.Path, New: t.New})
+				results = append(results, t.New)
 			}
 			continue
 		}
@@ -560,17 +560,17 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 		// fails, record the reduced entry as well as any problems preventing
 		// full removal and continue to the next transition.
 		if r, p := remove(root, t.Path, t.Old, cache); r != nil {
-			results = append(results, &Change{Path: t.Path, New: r})
+			results = append(results, r)
 			problems = append(problems, p...)
 			continue
 		}
 
 		// At this point, we should have nil on disk. Transition to whatever the
-		// new entry is. If the new-entry is nil, this is a no-op. Record
+		// new entry is. If the new entry is nil, this is a no-op. Record
 		// whatever portion of the target we create as well as any problems
 		// preventing full creation.
 		c, p := create(root, t.Path, t.New, provider)
-		results = append(results, &Change{Path: t.Path, New: c})
+		results = append(results, c)
 		problems = append(problems, p...)
 	}
 

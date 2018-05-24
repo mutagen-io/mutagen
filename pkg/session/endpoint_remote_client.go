@@ -251,7 +251,7 @@ func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signatu
 	return nil
 }
 
-func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.Change, []*sync.Problem, error) {
+func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Create and send the transition request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -266,10 +266,22 @@ func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.C
 		return nil, nil, errors.Errorf("remote error: %s", response.Error)
 	}
 
+	// HACK: Extract the wrapped results.
+	results := make([]*sync.Entry, len(response.Results))
+	for r, result := range response.Results {
+		if result == nil {
+			return nil, nil, errors.New("nil result wrapper received")
+		}
+		results[r] = result.Root
+	}
+
 	// Validate the response internals since they came over the wire.
-	for _, c := range response.Changes {
-		if err := c.EnsureValid(); err != nil {
-			return nil, nil, errors.Wrap(err, "received invalid change")
+	if len(results) != len(transitions) {
+		return nil, nil, errors.New("transition results have invalid length")
+	}
+	for _, e := range results {
+		if err := e.EnsureValid(); err != nil {
+			return nil, nil, errors.Wrap(err, "received invalid entry")
 		}
 	}
 	for _, p := range response.Problems {
@@ -279,7 +291,7 @@ func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.C
 	}
 
 	// Success.
-	return response.Changes, response.Problems, nil
+	return results, response.Problems, nil
 }
 
 func (e *remoteEndpointClient) shutdown() error {

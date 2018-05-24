@@ -270,14 +270,21 @@ func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error
 	}
 
 	// Perform the transition.
-	changes, problems, err := s.endpoint.transition(request.Transitions)
+	results, problems, err := s.endpoint.transition(request.Transitions)
 	if err != nil {
 		s.encoder.Encode(transitionResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to perform transition")
 	}
 
+	// HACK: Wrap the results in Archives since gob can't encode nil pointers in
+	// the result array.
+	wrappedResults := make([]*Archive, len(results))
+	for r, result := range results {
+		wrappedResults[r] = &Archive{Root: result}
+	}
+
 	// Send the response.
-	response := transitionResponse{Changes: changes, Problems: problems}
+	response := transitionResponse{Results: wrappedResults, Problems: problems}
 	if err = s.encoder.Encode(response); err != nil {
 		return errors.Wrap(err, "unable to send transition response")
 	}

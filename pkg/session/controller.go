@@ -728,26 +728,40 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			}
 		}
 
-		// Perform transitions on alpha.
+		// Perform transitions on alpha if necessary. If the transition doesn't
+		// completely error out, then convert the results to ancestor changes.
 		c.stateLock.Lock()
 		c.state.Status = Status_TransitioningAlpha
 		c.stateLock.Unlock()
-		var αChanges []*sync.Change
+		var αResults []*sync.Entry
 		var αProblems []*sync.Problem
 		var αTransitionErr error
+		var αChanges []*sync.Change
 		if len(αTransitions) > 0 {
-			αChanges, αProblems, αTransitionErr = alpha.transition(αTransitions)
+			αResults, αProblems, αTransitionErr = alpha.transition(αTransitions)
+			if αTransitionErr == nil {
+				for t, transition := range αTransitions {
+					αChanges = append(αChanges, &sync.Change{Path: transition.Path, New: αResults[t]})
+				}
+			}
 		}
 
-		// Perform transitions on beta.
+		// Perform transitions on beta if necessary. If the transition doesn't
+		// completely error out, then convert the results to ancestor changes.
 		c.stateLock.Lock()
 		c.state.Status = Status_TransitioningBeta
 		c.stateLock.Unlock()
-		var βChanges []*sync.Change
+		var βResults []*sync.Entry
 		var βProblems []*sync.Problem
 		var βTransitionErr error
+		var βChanges []*sync.Change
 		if len(βTransitions) > 0 {
-			βChanges, βProblems, βTransitionErr = beta.transition(βTransitions)
+			βResults, βProblems, βTransitionErr = beta.transition(βTransitions)
+			if βTransitionErr == nil {
+				for t, transition := range βTransitions {
+					βChanges = append(βChanges, &sync.Change{Path: transition.Path, New: βResults[t]})
+				}
+			}
 		}
 
 		// Record problems and then combine changes and propagate them to the
