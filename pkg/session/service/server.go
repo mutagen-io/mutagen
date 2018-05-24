@@ -41,6 +41,8 @@ func (s *Server) Create(stream Session_CreateServer) error {
 		return errors.Wrap(err, "unable to validate alpha URL")
 	} else if err = request.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "unable to validate beta URL")
+	} else if !request.SymlinkMode.Supported() {
+		return errors.New("unknown or unsupported symlink mode")
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
@@ -51,7 +53,13 @@ func (s *Server) Create(stream Session_CreateServer) error {
 
 	// Perform creation.
 	// TODO: Figure out a way to monitor for cancellation.
-	session, err := s.manager.Create(request.Alpha, request.Beta, request.Ignores, prompter)
+	session, err := s.manager.Create(
+		request.Alpha,
+		request.Beta,
+		request.Ignores,
+		request.SymlinkMode,
+		prompter,
+	)
 
 	// Unregister the prompter.
 	s.promptServer.UnregisterPrompter(prompter)

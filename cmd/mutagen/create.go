@@ -12,6 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -45,6 +46,18 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate and convert the symlink mode specification.
+	var symlinkMode sync.SymlinkMode
+	if createConfiguration.symlinkMode == "sane" {
+		symlinkMode = sync.SymlinkMode_Sane
+	} else if createConfiguration.symlinkMode == "ignore" {
+		symlinkMode = sync.SymlinkMode_Ignore
+	} else if createConfiguration.symlinkMode == "posix-raw" {
+		symlinkMode = sync.SymlinkMode_POSIXRaw
+	} else {
+		return errors.Errorf("unknown symlink mode: \"%s\"", createConfiguration.symlinkMode)
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
@@ -66,9 +79,10 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.CreateRequest{
-		Alpha:   alpha,
-		Beta:    beta,
-		Ignores: createConfiguration.ignores,
+		Alpha:       alpha,
+		Beta:        beta,
+		Ignores:     createConfiguration.ignores,
+		SymlinkMode: symlinkMode,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send create request")
@@ -108,8 +122,9 @@ var createCommand = &cobra.Command{
 }
 
 var createConfiguration struct {
-	help    bool
-	ignores []string
+	help        bool
+	ignores     []string
+	symlinkMode string
 }
 
 func init() {
@@ -118,4 +133,5 @@ func init() {
 	flags := createCommand.Flags()
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
+	flags.StringVarP(&createConfiguration.symlinkMode, "symlink-mode", "s", "sane", "Specify symlink mode (sane|ignore|posix-raw)")
 }

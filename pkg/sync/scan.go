@@ -1,11 +1,13 @@
 package sync
 
 import (
+	"fmt"
 	"hash"
 	"io"
 	"os"
 	pathpkg "path"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -106,13 +108,19 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	}, nil
 }
 
-func (s *scanner) symlink(path string) (*Entry, error) {
-	// Read the link target and ensure it's sane.
+func (s *scanner) symlink(path string, enforceSane bool) (*Entry, error) {
+	// Read the link target.
 	target, err := os.Readlink(filepath.Join(s.root, path))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read symlink target")
-	} else if target == "" {
-		return nil, errors.New("empty symlink target read")
+	}
+
+	// If requested, enforce that the link is sane.
+	if enforceSane {
+		target, err = normalizeSymlinkAndEnsureSane(path, target)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("invalid symlink (%s)", path))
+		}
 	}
 
 	// Success.
@@ -122,7 +130,7 @@ func (s *scanner) symlink(path string) (*Entry, error) {
 	}, nil
 }
 
-func (s *scanner) directory(path string) (*Entry, error) {
+func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error) {
 	// Read directory contents.
 	directoryContents, err := filesystem.DirectoryContents(filepath.Join(s.root, path))
 	if err != nil {
@@ -173,13 +181,17 @@ func (s *scanner) directory(path string) (*Entry, error) {
 		if kind == EntryKind_File {
 			entry, err = s.file(contentPath, info)
 		} else if kind == EntryKind_Symlink {
-			if symlinksSupported {
-				entry, err = s.symlink(contentPath)
-			} else {
+			if symlinkMode == SymlinkMode_Sane {
+				entry, err = s.symlink(contentPath, true)
+			} else if symlinkMode == SymlinkMode_Ignore {
 				continue
+			} else if symlinkMode == SymlinkMode_POSIXRaw {
+				entry, err = s.symlink(contentPath, false)
+			} else {
+				panic("unknown symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentPath)
+			entry, err = s.directory(contentPath, symlinkMode)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -203,7 +215,7 @@ func (s *scanner) directory(path string) (*Entry, error) {
 // TODO: Note that the provided cache is assumed to be valid (i.e. that it
 // doesn't have any nil entries), so callers should run EnsureValid on anything
 // they pull from disk
-func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, *Cache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the
 	// GetEntries accessor everywhere.
@@ -215,6 +227,11 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to create ignorer")
+	}
+
+	// Verify that the symlink mode is sane for this platform.
+	if symlinkMode == SymlinkMode_POSIXRaw && runtime.GOOS == "windows" {
+		return nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -246,7 +263,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string) (*Entry
 			return nil, nil, errors.Wrap(err, "unable to probe snapshot root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
-		if rootEntry, err := s.directory(""); err != nil {
+		if rootEntry, err := s.directory("", symlinkMode); err != nil {
 			return nil, nil, err
 		} else {
 			return rootEntry, newCache, nil

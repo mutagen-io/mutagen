@@ -39,7 +39,7 @@ func (s *Session) EnsureValid() error {
 
 	// Ensure that the session version is supported.
 	if !s.Version.supported() {
-		return errors.New("unsupported or unknown session version")
+		return errors.New("unknown or unsupported session version")
 	}
 
 	// Ensure that the creation time is present.
@@ -59,6 +59,11 @@ func (s *Session) EnsureValid() error {
 		return errors.New("nil beta URL")
 	} else if err := s.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid beta URL")
+	}
+
+	// Ensure that the symlink mode is sane.
+	if !s.SymlinkMode.Supported() {
+		return errors.New("unknown or unsupported symlink mode")
 	}
 
 	// Success.

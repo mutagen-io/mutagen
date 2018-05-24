@@ -5,6 +5,7 @@ package session;
 import "google/protobuf/timestamp.proto";
 
 import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
 import "github.com/havoc-io/mutagen/pkg/url/url.proto";
 
 enum Version {
@@ -23,6 +24,7 @@ message Session {
     url.URL beta = 8;
     repeated string ignores = 9;
     bool paused = 10;
+    sync.SymlinkMode symlinkMode = 11;
 }
 
 // Archive is a wrapper around Entry that allows identification of non-existent

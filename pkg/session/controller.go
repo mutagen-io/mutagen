@@ -61,6 +61,7 @@ func newSession(
 	tracker *state.Tracker,
 	alpha, beta *url.URL,
 	ignores []string,
+	symlinkMode sync.SymlinkMode,
 	prompter string,
 ) (*controller, error) {
 	// TODO: Should we perform URL validation in here? They should be validated
@@ -74,6 +75,10 @@ func newSession(
 	ignores = append(configuration.Ignore.Default, ignores...)
 
 	// Verify that the ignores are valid.
+	// TODO: We verify this here so that we also validate those ignores loaded
+	// from the configuration file, but should we relocate both of these things
+	// to the session service creation handler? It verifies all other
+	// parameters and could even load the default ignores.
 	for _, ignore := range ignores {
 		if !sync.ValidIgnorePattern(ignore) {
 			return nil, errors.Errorf("invalid ignore specified: %s", ignore)
@@ -98,11 +103,11 @@ func newSession(
 	}
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(identifier, version, alpha, ignores, true, prompter)
+	alphaEndpoint, err := connect(identifier, version, alpha, ignores, symlinkMode, true, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(identifier, version, beta, ignores, false, prompter)
+	betaEndpoint, err := connect(identifier, version, beta, ignores, symlinkMode, false, prompter)
 	if err != nil {
 		alphaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
@@ -119,6 +124,7 @@ func newSession(
 		Alpha:                alpha,
 		Beta:                 beta,
 		Ignores:              ignores,
+		SymlinkMode:          symlinkMode,
 	}
 	archive := &Archive{}
 
@@ -280,6 +286,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Version,
 		c.session.Alpha,
 		c.session.Ignores,
+		c.session.SymlinkMode,
 		true,
 		prompter,
 	)
@@ -288,6 +295,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Version,
 		c.session.Beta,
 		c.session.Ignores,
+		c.session.SymlinkMode,
 		false,
 		prompter,
 	)
@@ -418,6 +426,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Version,
 					c.session.Alpha,
 					c.session.Ignores,
+					c.session.SymlinkMode,
 					true,
 				)
 			}
@@ -445,6 +454,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Version,
 					c.session.Beta,
 					c.session.Ignores,
+					c.session.SymlinkMode,
 					false,
 				)
 			}
@@ -577,7 +587,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Unlock()
 		αSnapshot, αTryAgain, αScanErr := alpha.scan(ancestor)
 		if αScanErr != nil {
-			return errors.Wrap(αScanErr, "alpha scan error")
+			αScanErr = errors.Wrap(αScanErr, "alpha scan error")
+			if !αTryAgain {
+				return αScanErr
+			} else {
+				c.stateLock.Lock()
+				c.state.LastError = αScanErr.Error()
+				c.stateLock.Unlock()
+			}
 		}
 
 		// Scan beta.
@@ -586,7 +603,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Unlock()
 		βSnapshot, βTryAgain, βScanErr := beta.scan(ancestor)
 		if βScanErr != nil {
-			return errors.Wrap(βScanErr, "beta scan error")
+			βScanErr = errors.Wrap(βScanErr, "beta scan error")
+			if !βTryAgain {
+				return βScanErr
+			} else {
+				c.stateLock.Lock()
+				c.state.LastError = βScanErr.Error()
+				c.stateLock.Unlock()
+			}
 		}
 
 		// Watch for retry requests.

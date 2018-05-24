@@ -175,11 +175,6 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 }
 
 func removeSymlink(root, path string, target *Entry) error {
-	// Check that symlinks are supported on this platform.
-	if !symlinksSupported {
-		return errors.New("symlinks not supported on this platform")
-	}
-
 	// Compute the full path to this symlink.
 	fullPath := filepath.Join(root, path)
 
@@ -386,11 +381,6 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 }
 
 func createSymlink(root, path string, target *Entry) (*Entry, error) {
-	// Check that symlinks are supported on this platform.
-	if !symlinksSupported {
-		return nil, errors.New("symlinks not supported on this platform")
-	}
-
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 

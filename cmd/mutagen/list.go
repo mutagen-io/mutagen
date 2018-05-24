@@ -40,6 +40,9 @@ func printSession(state *sessionpkg.State) {
 		}
 	}
 
+	// Print symlink mode.
+	fmt.Println("Symlink Mode:", state.Session.SymlinkMode.Description())
+
 	// Print the last error, if any.
 	if state.LastError != "" {
 		fmt.Println("Last error:", state.LastError)

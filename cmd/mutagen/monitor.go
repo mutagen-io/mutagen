@@ -29,6 +29,11 @@ func printMonitorLine(state *sessionpkg.State) {
 			status += "[Problems] "
 		}
 
+		// Add an error flag if there is one present.
+		if state.LastError != "" {
+			status += "[Errored] "
+		}
+
 		// Add the status.
 		status += state.Status.Description()
 
@@ -144,6 +149,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 					fmt.Printf("\t%s\n", p)
 				}
 			}
+			fmt.Println("Symlink Mode:", state.Session.SymlinkMode.Description())
 			fmt.Println("Alpha:", state.Session.Alpha.Format())
 			fmt.Println("Beta:", state.Session.Beta.Format())
 			sessionInformationPrinted = true

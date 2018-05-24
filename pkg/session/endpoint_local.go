@@ -23,6 +23,8 @@ type localEndpoint struct {
 	watchEvents chan struct{}
 	// ignores is the list of ignored paths for the session. It is static.
 	ignores []string
+	// symlinkMode is the symlink mode for the session. It is static.
+	symlinkMode sync.SymlinkMode
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
@@ -34,14 +36,23 @@ type localEndpoint struct {
 	stager *stager
 }
 
-func newLocalEndpoint(session string, version Version, root string, ignores []string, alpha bool) (endpoint, error) {
+func newLocalEndpoint(
+	session string,
+	version Version,
+	root string,
+	ignores []string,
+	symlinkMode sync.SymlinkMode,
+	alpha bool,
+) (endpoint, error) {
 	// Validate endpoint parameters.
 	if session == "" {
 		return nil, errors.New("empty session identifier")
 	} else if !version.supported() {
-		return nil, errors.New("unsupported session version")
+		return nil, errors.New("unknown or unsupported session version")
 	} else if root == "" {
 		return nil, errors.New("empty root path")
+	} else if !symlinkMode.Supported() {
+		return nil, errors.New("unknown or unsupported symlink mode")
 	}
 
 	// Expand and normalize the root path.
@@ -86,6 +97,7 @@ func newLocalEndpoint(session string, version Version, root string, ignores []st
 		watchCancel: watchCancel,
 		watchEvents: watchEvents,
 		ignores:     ignores,
+		symlinkMode: symlinkMode,
 		cachePath:   cachePath,
 		cache:       cache,
 		scanHasher:  version.hasher(),
@@ -110,9 +122,9 @@ func (e *localEndpoint) poll(context context.Context) error {
 func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
-	result, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores)
+	result, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
 	if err != nil {
-		return nil, true, nil
+		return nil, true, err
 	}
 
 	// Propagate executability from the ancestor to the result if necessary.

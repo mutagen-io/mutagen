@@ -36,6 +36,7 @@ func newRemoteEndpoint(
 	version Version,
 	root string,
 	ignores []string,
+	symlinkMode sync.SymlinkMode,
 	alpha bool,
 ) (endpoint, error) {
 	// Create encoders and decoders.
@@ -44,11 +45,12 @@ func newRemoteEndpoint(
 
 	// Create and send the initialize request.
 	request := initializeRequest{
-		Session: session,
-		Version: version,
-		Root:    root,
-		Ignores: ignores,
-		Alpha:   alpha,
+		Session:     session,
+		Version:     version,
+		Root:        root,
+		Ignores:     ignores,
+		SymlinkMode: symlinkMode,
+		Alpha:       alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
 		connection.Close()
@@ -166,7 +168,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 
 	// Check if the endpoint says we should try again.
 	if response.TryAgain {
-		return nil, true, nil
+		return nil, true, errors.New(response.Error)
 	}
 
 	// Apply the remote's deltas to the expected snapshot.

@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/sync"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -14,13 +15,14 @@ func connect(
 	version Version,
 	url *urlpkg.URL,
 	ignores []string,
+	symlinkMode sync.SymlinkMode,
 	alpha bool,
 	prompter string,
 ) (endpoint, error) {
 	// Handle based on protocol.
 	if url.Protocol == urlpkg.Protocol_Local {
 		// Create a local endpoint.
-		endpoint, err := newLocalEndpoint(session, version, url.Path, ignores, alpha)
+		endpoint, err := newLocalEndpoint(session, version, url.Path, ignores, symlinkMode, alpha)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create local endpoint")
 		}
@@ -35,7 +37,7 @@ func connect(
 		}
 
 		// Create a remote endpoint.
-		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, ignores, alpha)
+		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, ignores, symlinkMode, alpha)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create remote endpoint")
 		}
@@ -56,11 +58,13 @@ type connectResult struct {
 // reconnect is a version of connect that accepts a context for cancellation. It
 // is only designed for auto-reconnection purposes, so it does not accept a
 // prompter.
-func reconnect(ctx context.Context,
+func reconnect(
+	ctx context.Context,
 	session string,
 	version Version,
 	url *urlpkg.URL,
 	ignores []string,
+	symlinkMode sync.SymlinkMode,
 	alpha bool,
 ) (endpoint, error) {
 	// Create a channel to deliver the connection result.
@@ -69,7 +73,7 @@ func reconnect(ctx context.Context,
 	// Start a connection operation in the background.
 	go func() {
 		// Perform the connection.
-		endpoint, err := connect(session, version, url, ignores, alpha, "")
+		endpoint, err := connect(session, version, url, ignores, symlinkMode, alpha, "")
 
 		// If we can't transmit the resulting endpoint, shut it down.
 		select {

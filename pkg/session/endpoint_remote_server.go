@@ -49,7 +49,14 @@ func ServeEndpoint(connection net.Conn) error {
 
 	// Create the underlying endpoint. If it fails to create, then send a
 	// failure response and abort. If it succeeds, then defer its closure.
-	endpoint, err := newLocalEndpoint(request.Session, request.Version, request.Root, request.Ignores, request.Alpha)
+	endpoint, err := newLocalEndpoint(
+		request.Session,
+		request.Version,
+		request.Root,
+		request.Ignores,
+		request.SymlinkMode,
+		request.Alpha,
+	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
 		encoder.Encode(initializeResponse{Error: err.Error()})
@@ -172,7 +179,7 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	// instance. If a retry is requested or an error occurs, send a response.
 	snapshot, tryAgain, err := s.endpoint.scan(nil)
 	if tryAgain {
-		if err := s.encoder.Encode(scanResponse{TryAgain: true}); err != nil {
+		if err := s.encoder.Encode(scanResponse{TryAgain: true, Error: err.Error()}); err != nil {
 			return errors.Wrap(err, "unable to send scan retry response")
 		}
 		return nil

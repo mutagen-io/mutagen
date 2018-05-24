@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package sync;
+
+enum SymlinkMode {
+    Sane = 0;
+    Ignore = 1;
+    POSIXRaw = 2;
+}

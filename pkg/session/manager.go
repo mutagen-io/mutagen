@@ -8,6 +8,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/state"
+	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -142,9 +143,9 @@ func (m *Manager) Shutdown() {
 	}
 }
 
-func (m *Manager) Create(alpha, beta *url.URL, ignores []string, prompter string) (string, error) {
+func (m *Manager) Create(alpha, beta *url.URL, ignores []string, symlinkMode sync.SymlinkMode, prompter string) (string, error) {
 	// Attempt to create a session.
-	controller, err := newSession(m.tracker, alpha, beta, ignores, prompter)
+	controller, err := newSession(m.tracker, alpha, beta, ignores, symlinkMode, prompter)
 	if err != nil {
 		return "", err
 	}

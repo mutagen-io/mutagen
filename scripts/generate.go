@@ -67,6 +67,7 @@ var subdirectories = []struct {
 			"conflict.proto",
 			"entry.proto",
 			"problem.proto",
+			"symlink.proto",
 		},
 	},
 	{
