@@ -52,3 +52,12 @@
 [submodule "vendor/google.golang.org/genproto"]
 	path = vendor/google.golang.org/genproto
 	url = https://github.com/google/go-genproto.git
+[submodule "vendor/github.com/fatih/color"]
+	path = vendor/github.com/fatih/color
+	url = https://github.com/fatih/color.git
+[submodule "vendor/github.com/mattn/go-colorable"]
+	path = vendor/github.com/mattn/go-colorable
+	url = https://github.com/mattn/go-colorable.git
+[submodule "vendor/github.com/mattn/go-isatty"]
+	path = vendor/github.com/mattn/go-isatty
+	url = https://github.com/mattn/go-isatty.git

@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
@@ -17,21 +19,21 @@ func printMonitorLine(state *sessionpkg.State) {
 	// Build the status line.
 	status := "Status: "
 	if state.Session.Paused {
-		status += "Paused"
+		status += color.YellowString("[Paused]")
 	} else {
 		// Add a conflict flag if there are conflicts.
 		if len(state.Conflicts) > 0 {
-			status += "[Conflicts] "
+			status += color.RedString("[Conflicts] ")
 		}
 
 		// Add a problems flag if there are problems.
 		if len(state.AlphaProblems) > 0 || len(state.BetaProblems) > 0 {
-			status += "[Problems] "
+			status += color.RedString("[Problems] ")
 		}
 
 		// Add an error flag if there is one present.
 		if state.LastError != "" {
-			status += "[Errored] "
+			status += color.RedString("[Errored] ")
 		}
 
 		// Add the status.

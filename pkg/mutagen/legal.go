@@ -77,6 +77,33 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
+color (https://github.com/fatih/color)
+
+Copyright (c) 2013 Fatih Arslan
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
+go-colorable (https://github.com/mattn/go-colorable)
+
+Copyright (c) 2016 Yasuhiro Matsumoto
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
+go-isatty (https://github.com/mattn/go-isatty)
+
+Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
 Go support for Protocol Buffers (https://github.com/golang/protobuf)
 
 Copyright 2010 The Go Authors.  All rights reserved.

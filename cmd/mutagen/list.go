@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
@@ -28,7 +30,7 @@ func printSession(state *sessionpkg.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
-		statusString = "Paused"
+		statusString = color.YellowString("[Paused]")
 	}
 	fmt.Println("Status:", statusString)
 
@@ -45,7 +47,7 @@ func printSession(state *sessionpkg.State) {
 
 	// Print the last error, if any.
 	if state.LastError != "" {
-		fmt.Println("Last error:", state.LastError)
+		color.Red("Last error: %s\n", state.LastError)
 	}
 }
 
@@ -84,9 +86,9 @@ func printEndpoint(state *sessionpkg.State, alpha bool) {
 		problems = state.BetaProblems
 	}
 	if len(problems) > 0 {
-		fmt.Println("\tProblems:")
+		color.Red("\tProblems:\n")
 		for _, p := range problems {
-			fmt.Printf("\t\t%s: %v\n", formatPath(p.Path), p.Error)
+			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
 		}
 	}
 }
@@ -110,13 +112,13 @@ func formatEntryKind(entry *sync.Entry) string {
 
 func printConflicts(conflicts []*sync.Conflict) {
 	// Print the header.
-	fmt.Println("Conflicts:")
+	color.Red("Conflicts:\n")
 
 	// Print conflicts.
 	for i, c := range conflicts {
 		// Print the alpha changes.
 		for _, a := range c.AlphaChanges {
-			fmt.Printf(
+			color.Red(
 				"\t(α) %s (%s -> %s)\n",
 				formatPath(a.Path),
 				formatEntryKind(a.Old),
@@ -126,7 +128,7 @@ func printConflicts(conflicts []*sync.Conflict) {
 
 		// Print the beta changes.
 		for _, b := range c.BetaChanges {
-			fmt.Printf(
+			color.Red(
 				"\t(β) %s (%s -> %s)\n",
 				formatPath(b.Path),
 				formatEntryKind(b.Old),
