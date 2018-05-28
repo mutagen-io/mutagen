@@ -21,6 +21,14 @@ import (
 )
 
 const (
+	// posixCommandNotFoundExitCode is the exit code returned by most (all?)
+	// POSIX shells when the provided command isn't found. It seems to have
+	// originated with the Bourne shell and then been brought over to bash, zsh,
+	// and others. It doesn't seem to have a corresponding errno value, which I
+	// guess makes sense since errno values aren't generally expected to be used
+	// as exit codes, so we have to define it manually.
+	// TODO: Figure out if other shells return different exit codes when a
+	// command isn't found.
 	posixCommandNotFoundExitCode   = 127
 	windowsInvalidCommandFragment  = "is not recognized as an internal or external command"
 	windowsCommandNotFoundFragment = "The system cannot find the path specified"
