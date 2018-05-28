@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"compress/flate"
 	"io"
 	"net"
 	"os/exec"
@@ -50,10 +51,53 @@ type agentConnection struct {
 	url *url.URL
 	// process is the process hosting the connection to the agent.
 	process *exec.Cmd
-	// Reader is the process' standard output.
-	io.Reader
-	// Writer is the process' standard input.
-	io.Writer
+	// decompressor is the flate decompressor wrapping the process' standard
+	// output.
+	decompressor io.Reader
+	// compressor is the flate compressor wrapping the process' standard input.
+	compressor *flate.Writer
+}
+
+// newAgentConnection creates a new net.Conn object by wraping an agent process.
+// It must be called before the process is stated.
+func newAgentConnection(url *url.URL, process *exec.Cmd) (net.Conn, error) {
+	// Redirect the process' standard input and wrap it in a compressor. If
+	// providing a sane compression level, the flate API guarantees the creation
+	// of the compressor to succeed.
+	standardInput, err := process.StdinPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to redirect input")
+	}
+	compressor, _ := flate.NewWriter(standardInput, 6)
+
+	// Redirect the process' standard output and wrap it in a decompressor.
+	standardOutput, err := process.StdoutPipe()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to redirect output")
+	}
+	decompressor := flate.NewReader(standardOutput)
+
+	// Create the result.
+	return &agentConnection{
+		url:          url,
+		process:      process,
+		decompressor: decompressor,
+		compressor:   compressor,
+	}, nil
+}
+
+func (c *agentConnection) Read(buffer []byte) (int, error) {
+	return c.decompressor.Read(buffer)
+}
+
+func (c *agentConnection) Write(buffer []byte) (int, error) {
+	if count, err := c.compressor.Write(buffer); err != nil {
+		return count, err
+	} else if err = c.compressor.Flush(); err != nil {
+		return 0, errors.Wrap(err, "unable to flush compressor")
+	} else {
+		return count, nil
+	}
 }
 
 // Close closes the agent stream.
@@ -63,6 +107,15 @@ type agentConnection struct {
 // reads or writes and won't necessarily unblock if closed, and they might even
 // block the close - it's all platform dependent. But terminating the process
 // will close the remote ends of the pipes and thus unblocks and reads/writes.
+// HACK: As a result of simply terminating the process, we also don't close the
+// compressor and decompressor, however these don't leak any resources if left
+// unclosed, so that shouldn't be a problem. By not doing this, we're relying on
+// an implementation detail of the flate package, but since the interface of the
+// flate package limits itself to accepting io.Reader/Writer, it limits what
+// could possibly leak. This isn't ideal, but it mirrors the behavior on the
+// agent side of things, and it's necessary to avoid any of the side-effects of
+// those Close methods (like trying to read/write on the underlying stream,
+// which can lead to indefinite blocking for OS pipes).
 func (c *agentConnection) Close() error {
 	// HACK: Accessing the Process field of an os/exec.Cmd could be a bit
 	// dangerous if other code was accessing the Cmd at the same time, but in
@@ -101,23 +154,4 @@ func (c *agentConnection) SetReadDeadline(_ time.Time) error {
 // SetWriteDeadline sets the write deadline for the connection.
 func (c *agentConnection) SetWriteDeadline(_ time.Time) error {
 	return errors.New("write deadlines not supported by agent connections")
-}
-
-// newAgentConnection creates a new net.Conn object by wraping an agent process.
-// It must be called before the process is stated.
-func newAgentConnection(url *url.URL, process *exec.Cmd) (net.Conn, error) {
-	// Redirect the process' standard input.
-	standardInput, err := process.StdinPipe()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to redirect input")
-	}
-
-	// Redirect the process' standard output.
-	standardOutput, err := process.StdoutPipe()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to redirect output")
-	}
-
-	// Create the result.
-	return &agentConnection{url, process, standardOutput, standardInput}, nil
 }

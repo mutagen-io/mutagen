@@ -131,9 +131,11 @@ func Command(prompter, message string, remote *url.URL, command string) (*exec.C
 		target = fmt.Sprintf("%s@%s", remote.Username, remote.Hostname)
 	}
 
-	// Set up arguments.
+	// Set up arguments. We intentionally don't use compression on SSH commands
+	// since the agent stream uses the FLATE algorithm internally and it's much
+	// more efficient to compress at that layer, even with the slower Go
+	// implementation.
 	var sshArguments []string
-	sshArguments = append(sshArguments, compressionArgument())
 	sshArguments = append(sshArguments, timeoutArgument())
 	if remote.Port != 0 {
 		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", remote.Port))

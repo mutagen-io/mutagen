@@ -15,7 +15,7 @@ import (
 
 func endpointMain(command *cobra.Command, arguments []string) error {
 	// Create a connection on standard input/output.
-	connection := &stdioConnection{}
+	connection := newStdioConnection()
 
 	// Perform a handshake.
 	if err := mutagen.SendVersion(connection); err != nil {
