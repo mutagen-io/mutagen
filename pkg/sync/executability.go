@@ -16,10 +16,6 @@ func propagateExecutability(ancestor, snapshot *Entry) {
 		}
 	} else if snapshot.Kind == EntryKind_File {
 		snapshot.Executable = ancestor.Executable
-	} else if snapshot.Kind == EntryKind_Symlink {
-		return
-	} else {
-		panic("unhandled entry kind")
 	}
 }
 
@@ -47,10 +43,6 @@ func stripExecutability(snapshot *Entry) {
 		}
 	} else if snapshot.Kind == EntryKind_File {
 		snapshot.Executable = false
-	} else if snapshot.Kind == EntryKind_Symlink {
-		return
-	} else {
-		panic("unhandled entry kind")
 	}
 }
 

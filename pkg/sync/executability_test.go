@@ -4,6 +4,18 @@ import (
 	"testing"
 )
 
+func TestExecutabilityStripNil(t *testing.T) {
+	if StripExecutability(nil) != nil {
+		t.Fatal("executability stripping of nil entry did not return nil")
+	}
+}
+
+func TestExecutabilityPropagateNil(t *testing.T) {
+	if PropagateExecutability(testDirectoryEntry, nil) != nil {
+		t.Fatal("executability propagation to nil entry did not return nil")
+	}
+}
+
 func TestExecutabilityPropagationCycle(t *testing.T) {
 	// Create a copy of the test directory entry with executability stripped and
 	// ensure that it differs.
