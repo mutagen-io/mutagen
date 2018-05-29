@@ -37,40 +37,38 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	// Decompose the path.
 	components := strings.Split(path, "/")
 
-	// If we were requested to not check the last component, then remove it from
-	// the list.
+	// Exclude the last component from checking if requested.
 	if skipLast && len(components) > 0 {
 		components = components[:len(components)-1]
 	}
 
 	// While components remain, read the contents of the current parent and
 	// ensure that a child with the correct cased entry exists.
-	for len(components) > 0 {
+	for _, component := range components {
 		// Grab the contents for this location.
 		contents, err := filesystem.DirectoryContents(parent)
 		if err != nil {
 			return errors.Wrap(err, "unable to read directory contents")
 		}
 
-		// Ensure that this path exists in contents. It's important to note that
-		// the contents are not guaranteed to be ordered, so we can't do a
-		// binary search here.
+		// Check if this path component exists in the contents. It's important
+		// to note that the contents are not guaranteed to be ordered, so we
+		// can't do a binary search here.
 		found := false
-		for _, c := range contents {
-			if c == components[0] {
+		for _, content := range contents {
+			if content == component {
 				found = true
 				break
 			}
 		}
+
+		// If the component wasn't found, then return an error.
 		if !found {
 			return errors.New("unable to find matching entry")
 		}
 
 		// Update the parent.
-		parent = filepath.Join(parent, components[0])
-
-		// Reduce the component list.
-		components = components[1:]
+		parent = filepath.Join(parent, component)
 	}
 
 	// Success.
@@ -365,6 +363,11 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
+	// Ensure that the target path doesn't exist with a case conflict.
+	if err := ensureNotExists(fullPath); err != nil {
+		return nil, errors.Wrap(err, "case conflict")
+	}
+
 	// Compute the path to the staged file.
 	stagedPath, err := provider.Provide(path, target, 0)
 	if err != nil {
@@ -384,6 +387,11 @@ func createSymlink(root, path string, target *Entry) (*Entry, error) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
 
+	// Ensure that the target path doesn't exist with a case conflict.
+	if err := ensureNotExists(fullPath); err != nil {
+		return nil, errors.Wrap(err, "case conflict")
+	}
+
 	// Create the symlink.
 	if err := os.Symlink(target.Target, fullPath); err != nil {
 		return nil, errors.Wrap(err, "unable to link to target")
@@ -396,6 +404,14 @@ func createSymlink(root, path string, target *Entry) (*Entry, error) {
 func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, []*Problem) {
 	// Compute the full path to the target.
 	fullPath := filepath.Join(root, path)
+
+	// Ensure that the target path doesn't exist with a case conflict.
+	if err := ensureNotExists(fullPath); err != nil {
+		return nil, []*Problem{newProblem(
+			path,
+			errors.Wrap(err, "case conflict"),
+		)}
+	}
 
 	// Attempt to create the directory.
 	if err := os.Mkdir(fullPath, directoryBaseMode); err != nil {
@@ -490,17 +506,6 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 		return nil, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to verify path to target"),
-		)}
-	}
-
-	// Compute the full path to this file.
-	fullPath := filepath.Join(root, path)
-
-	// Ensure that the target path doesn't exist.
-	if err := ensureNotExists(fullPath); err != nil {
-		return nil, []*Problem{newProblem(
-			path,
-			errors.Wrap(err, "unable to ensure path does not exist"),
 		)}
 	}
 
