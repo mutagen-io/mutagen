@@ -473,6 +473,18 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 		return nil, nil
 	}
 
+	// If we're creating something at the root, then ensure that the parent of
+	// the root path exists and is a directory. We can assume that it's intended
+	// to be a directory since the root is intented to exist inside it.
+	if path == "" {
+		if err := os.MkdirAll(filepath.Dir(root), directoryBaseMode); err != nil {
+			return nil, []*Problem{newProblem(
+				path,
+				errors.Wrap(err, "unable to create parent component of root path"),
+			)}
+		}
+	}
+
 	// Ensure that the parent of the target path exists with the proper casing.
 	if err := ensureRouteWithProperCase(root, path, true); err != nil {
 		return nil, []*Problem{newProblem(
