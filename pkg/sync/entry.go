@@ -59,6 +59,9 @@ func (e *Entry) EnsureValid() error {
 		if e.Target == "" {
 			return errors.New("symlink with empty target detected")
 		}
+
+		// We intentionally avoid any validation on the symlink target itself
+		// because there's no validation that we can perform in POSIX raw mode.
 	} else {
 		return errors.New("unknown entry kind detected")
 	}

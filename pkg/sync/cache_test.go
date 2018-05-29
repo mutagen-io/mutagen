@@ -6,7 +6,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-func TestNilCacheInvalid(t *testing.T) {
+func TestCacheNilInvalid(t *testing.T) {
 	var cache *Cache
 	if cache.EnsureValid() == nil {
 		t.Error("nil cache considered valid")
@@ -29,14 +29,14 @@ func TestCacheEntryNilTimeInvalid(t *testing.T) {
 	}
 }
 
-func TestEmptyCacheValid(t *testing.T) {
+func TestCacheEmptyValid(t *testing.T) {
 	cache := &Cache{Entries: make(map[string]*CacheEntry)}
 	if err := cache.EnsureValid(); err != nil {
 		t.Error("empty cache failed validation:", err)
 	}
 }
 
-func TestValidCacheValid(t *testing.T) {
+func TestCacheValid(t *testing.T) {
 	cache := &Cache{Entries: make(map[string]*CacheEntry)}
 	cache.Entries["name"] = &CacheEntry{
 		Mode:             0600,

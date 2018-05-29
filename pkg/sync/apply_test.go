@@ -5,24 +5,30 @@ import (
 )
 
 func TestApplyRootSwap(t *testing.T) {
+	// Create a change the swaps out the root entry.
 	changes := []*Change{
 		{
-			Old: gorootSnapshot.Contents["bin"],
-			New: gorootSnapshot.Contents["VERSION"],
+			Old: testDirectoryEntry,
+			New: testFileEntry,
 		},
 	}
-	if result, err := Apply(gorootSnapshot.Contents["bin"], changes); err != nil {
+
+	// Ensure that the swap is applied correctly.
+	if result, err := Apply(testDirectoryEntry, changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
-	} else if !result.Equal(gorootSnapshot.Contents["VERSION"]) {
+	} else if !result.Equal(testFileEntry) {
 		t.Error("mismatch after root replacement")
 	}
 }
 
-func TestDiffApply(t *testing.T) {
-	changes := diff("", gorootSnapshot.Contents["doc"], gorootSnapshot.Contents["src"])
-	if result, err := Apply(gorootSnapshot.Contents["doc"], changes); err != nil {
+func TestApplyDiff(t *testing.T) {
+	// Compute the diff between two different directories.
+	changes := diff("", testDirectoryEntry, testAlternateDirectoryEntry)
+
+	// Test that applying the diff to the base results in the target.
+	if result, err := Apply(testDirectoryEntry, changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
-	} else if !result.Equal(gorootSnapshot.Contents["src"]) {
+	} else if !result.Equal(testAlternateDirectoryEntry) {
 		t.Error("mismatch after diff/apply cycle")
 	}
 }
