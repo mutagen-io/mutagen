@@ -32,3 +32,18 @@ func TestApplyDiff(t *testing.T) {
 		t.Error("mismatch after diff/apply cycle")
 	}
 }
+
+func TestApplyMissingParentPath(t *testing.T) {
+	// Create a change with an invalid path.
+	changes := []*Change{
+		{
+			Path: "this/does/not/exist",
+			New:  testFileEntry,
+		},
+	}
+
+	// Ensure that application of the change fails.
+	if _, err := Apply(testDirectoryEntry, changes); err == nil {
+		t.Fatal("change referencing invalid path did not fail to apply")
+	}
+}

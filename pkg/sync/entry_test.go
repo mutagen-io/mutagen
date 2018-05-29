@@ -295,6 +295,12 @@ func TestDifferentDirectoriesNotEqual(t *testing.T) {
 	}
 }
 
+func TestEntryNilCopyShallow(t *testing.T) {
+	if testNilEntry.CopyShallow() != nil {
+		t.Error("shallow copy of nil entry non-nil")
+	}
+}
+
 func TestEntryDirectoryCopyShallow(t *testing.T) {
 	directory := testDirectoryEntry.CopyShallow()
 	if directory == nil {
@@ -325,6 +331,12 @@ func TestEntrySymlinkCopyShallow(t *testing.T) {
 	}
 	if !symlink.equalShallow(testSymlinkEntry) {
 		t.Error("shallow copy of symlink not considered shallow equal to original")
+	}
+}
+
+func TestEntryNilCopy(t *testing.T) {
+	if testNilEntry.Copy() != nil {
+		t.Error("copy of nil entry non-nil")
 	}
 }
 

@@ -36,7 +36,7 @@ func (c *ignoreTestCase) run(t *testing.T) {
 	}
 }
 
-func TestNoIgnores(t *testing.T) {
+func TestIgnoreNone(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: nil,
 		tests: []ignoreTestValue{
@@ -47,7 +47,7 @@ func TestNoIgnores(t *testing.T) {
 	test.run(t)
 }
 
-func TestBasicIgnores(t *testing.T) {
+func TestIgnoreBasic(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: []string{
 			"something",
@@ -65,7 +65,7 @@ func TestBasicIgnores(t *testing.T) {
 	test.run(t)
 }
 
-func TestNegateOrdering(t *testing.T) {
+func TestIgnoreNegateOrdering(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: []string{
 			"!something",
@@ -83,7 +83,7 @@ func TestNegateOrdering(t *testing.T) {
 	test.run(t)
 }
 
-func TestWildcard(t *testing.T) {
+func TestIgnoreWildcard(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: []string{
 			"some*",
@@ -101,7 +101,7 @@ func TestWildcard(t *testing.T) {
 	test.run(t)
 }
 
-func TestPathWildcard(t *testing.T) {
+func TestIgnorePathWildcard(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: []string{
 			"some/*",
@@ -120,19 +120,19 @@ func TestPathWildcard(t *testing.T) {
 	test.run(t)
 }
 
-func TestEmptyIgnorePatternInvalid(t *testing.T) {
+func TestIgnoreEmptyPatternInvalid(t *testing.T) {
 	if ValidIgnorePattern("") {
 		t.Fatal("empty pattern should be invalid")
 	}
 }
 
-func TestInvalidPattern(t *testing.T) {
+func TestIgnoreInvalidPatternInvalid(t *testing.T) {
 	if ValidIgnorePattern("\\") {
 		t.Fatal("invalid pattern should be invalid")
 	}
 }
 
-func TestInvalidPatternOnIgnorer(t *testing.T) {
+func TestIgnoreInvalidPatternOnIgnorerConstruction(t *testing.T) {
 	if ignorer, err := newIgnorer([]string{"\\"}); err == nil {
 		t.Error("ignorer creation should fail on invalid pattern")
 	} else if ignorer != nil {
