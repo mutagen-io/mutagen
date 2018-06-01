@@ -216,9 +216,24 @@ func TestIgnorePathWildcard(t *testing.T) {
 	test.run(t)
 }
 
-func TestIgnoreEmptyPatternInvalid(t *testing.T) {
+func TestIgnoreEmptyPatternsInvalid(t *testing.T) {
 	if ValidIgnorePattern("") {
-		t.Fatal("empty pattern should be invalid")
+		t.Error("empty pattern should be invalid")
+	}
+	if ValidIgnorePattern("!") {
+		t.Error("negated empty pattern should be invalid")
+	}
+	if ValidIgnorePattern("/") {
+		t.Error("root pattern should be invalid")
+	}
+	if ValidIgnorePattern("!/") {
+		t.Error("negated root pattern should be invalid")
+	}
+	if ValidIgnorePattern("//") {
+		t.Error("root directory pattern should be invalid")
+	}
+	if ValidIgnorePattern("!//") {
+		t.Error("negated root directory pattern should be invalid")
 	}
 }
 
