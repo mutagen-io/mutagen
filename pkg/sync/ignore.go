@@ -26,7 +26,7 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	} else if pattern == "/" || pattern == "!/" {
 		return nil, errors.New("root pattern")
 	} else if pattern == "//" || pattern == "!//" {
-		return nil, errors.New("empty root pattern")
+		return nil, errors.New("directory root pattern")
 	}
 
 	// Check if this is a negated pattern. If so, remove the exclamation point
