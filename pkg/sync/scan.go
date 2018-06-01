@@ -146,11 +146,6 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 
-		// If this path is ignored, then skip it.
-		if s.ignorer.ignored(contentPath) {
-			continue
-		}
-
 		// Grab stat information for this path. If the path has disappeared
 		// between list time and stat time, then concurrent modifications
 		// (deletions or renames) are likely occurring and we should abort. We
@@ -176,6 +171,11 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		} else if mode&os.ModeSymlink != 0 {
 			kind = EntryKind_Symlink
 		} else if mode&os.ModeType != 0 {
+			continue
+		}
+
+		// If this path is ignored, then skip it.
+		if s.ignorer.ignored(contentPath, kind == EntryKind_Directory) {
 			continue
 		}
 

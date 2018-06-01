@@ -1,30 +1,60 @@
 package sync
 
 import (
+	pathpkg "path"
+	"strings"
+
 	"github.com/pkg/errors"
 
 	"github.com/bmatcuk/doublestar"
 )
 
 type ignorePattern struct {
-	negated bool
-	pattern string
+	negated       bool
+	directoryOnly bool
+	matchLeaf     bool
+	pattern       string
 }
 
 func newIgnorePattern(pattern string) (*ignorePattern, error) {
-	// If the pattern is empty, it's invalid.
-	if pattern == "" {
+	// Check for invalid patterns, or at least those that would leave us with an
+	// empty string after parsing. Obviously we can't perform general complete
+	// validation for all patterns, but if they pass this parsing, they should
+	// be sane enough to at least try to match.
+	if pattern == "" || pattern == "!" {
 		return nil, errors.New("empty pattern")
+	} else if pattern == "/" || pattern == "!/" {
+		return nil, errors.New("root pattern")
+	} else if pattern == "//" || pattern == "!//" {
+		return nil, errors.New("empty root pattern")
 	}
 
-	// Check if this is a negated pattern. If so, strip off but record the
-	// negation. Since we assume UTF-8, we can assume the '!' character will be
-	// a single-byte rune.
+	// Check if this is a negated pattern. If so, remove the exclamation point
+	// prefix, since it won't enter into pattern matching.
 	negated := false
 	if pattern[0] == '!' {
 		negated = true
 		pattern = pattern[1:]
 	}
+
+	// Check if this is an absolute pattern. If so, remove the forward slash
+	// prefix, since it won't enter into pattern matching.
+	absolute := false
+	if pattern[0] == '/' {
+		absolute = true
+		pattern = pattern[1:]
+	}
+
+	// Check if this is a directory-only pattern. If so, remove the trailing
+	// slash, since it won't enter into pattern matching.
+	directoryOnly := false
+	if pattern[len(pattern)-1] == '/' {
+		directoryOnly = true
+		pattern = pattern[:len(pattern)-1]
+	}
+
+	// Determine whether or not the pattern contains a slash.
+	containsSlash := strings.Contains(pattern, "/")
 
 	// Attempt to do a match with the pattern to ensure validity. We have to
 	// match against a non-empty path (we choose something simple), otherwise
@@ -34,15 +64,38 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	}
 
 	// Success.
-	return &ignorePattern{negated, pattern}, nil
+	return &ignorePattern{
+		negated:       negated,
+		directoryOnly: directoryOnly,
+		matchLeaf:     (!absolute && !containsSlash),
+		pattern:       pattern,
+	}, nil
 }
 
-func (i *ignorePattern) matches(path string) bool {
-	// Check if there is a match. Since we've already validated the pattern in
-	// the constructor, we know match can't fail with an error (it's only return
-	// code is on bad patterns).
-	match, _ := doublestar.Match(i.pattern, path)
-	return match
+func (i *ignorePattern) matches(path string, directory bool) (bool, bool) {
+	// If this pattern only applies to directories and this is not a directory,
+	// then this is not a match.
+	if i.directoryOnly && !directory {
+		return false, false
+	}
+
+	// Check if there is a direct match. Since we've already validated the
+	// pattern in the constructor, we know match can't fail with an error (it's
+	// only return code is on bad patterns).
+	if match, _ := doublestar.Match(i.pattern, path); match {
+		return true, i.negated
+	}
+
+	// If it makes sense, attempt to match on the last component of the path,
+	// assuming the path is non-empty (non-root).
+	if i.matchLeaf && path != "" {
+		if match, _ := doublestar.Match(i.pattern, pathpkg.Base(path)); match {
+			return true, i.negated
+		}
+	}
+
+	// No match.
+	return false, false
 }
 
 func ValidIgnorePattern(pattern string) bool {
@@ -70,21 +123,18 @@ func newIgnorer(patterns []string) (*ignorer, error) {
 	return &ignorer{ignorePatterns}, nil
 }
 
-func (i *ignorer) ignored(path string) bool {
+func (i *ignorer) ignored(path string, directory bool) bool {
 	// Nothing is initially ignored.
 	ignored := false
 
 	// Run through patterns, keeping track of the ignored state as we reach more
 	// specific rules.
 	for _, p := range i.patterns {
-		// If there's no match, then this rule doesn't apply.
-		if !p.matches(path) {
+		if match, negated := p.matches(path, directory); !match {
 			continue
+		} else {
+			ignored = !negated
 		}
-
-		// If we have a match, then change the ignored state based on whether or
-		// not the pattern is negated.
-		ignored = !p.negated
 	}
 
 	// Done.

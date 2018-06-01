@@ -5,8 +5,9 @@ import (
 )
 
 type ignoreTestValue struct {
-	path     string
-	expected bool
+	path      string
+	directory bool
+	expected  bool
 }
 
 type ignoreTestCase struct {
@@ -30,7 +31,7 @@ func (c *ignoreTestCase) run(t *testing.T) {
 
 	// Verify test values.
 	for _, p := range c.tests {
-		if ignorer.ignored(p.path) != p.expected {
+		if ignorer.ignored(p.path, p.directory) != p.expected {
 			t.Error("ignore behavior not as expected for", p.path)
 		}
 	}
@@ -40,26 +41,117 @@ func TestIgnoreNone(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: nil,
 		tests: []ignoreTestValue{
-			{"something", false},
-			{"some/path", false},
+			{"", false, false},
+			{"", true, false},
+			{"something", false, false},
+			{"something", true, false},
+			{"some/path", false, false},
+			{"some/path", true, false},
 		},
 	}
 	test.run(t)
 }
 
-func TestIgnoreBasic(t *testing.T) {
+func TestIgnorerBasic(t *testing.T) {
 	test := &ignoreTestCase{
 		ignores: []string{
 			"something",
 			"otherthing",
 			"!something",
+			"somedir/",
 		},
 		tests: []ignoreTestValue{
-			{"", false},
-			{"something", false},
-			{"something/other", false},
-			{"otherthing", true},
-			{"some/path", false},
+			{"", false, false},
+			{"", true, false},
+			{"something", false, false},
+			{"something", true, false},
+			{"subpath/something", false, false},
+			{"subpath/something", true, false},
+			{"otherthing", false, true},
+			{"otherthing", true, true},
+			{"subpath/otherthing", false, true},
+			{"subpath/otherthing", true, true},
+			{"random", false, false},
+			{"random", true, false},
+			{"subpath/random", false, false},
+			{"subpath/random", true, false},
+			{"somedir", false, false},
+			{"somedir", true, true},
+			{"subpath/somedir", false, false},
+			{"subpath/somedir", true, true},
+		},
+	}
+	test.run(t)
+}
+
+func TestIgnoreGroup(t *testing.T) {
+	test := &ignoreTestCase{
+		ignores: []string{
+			"*.py[cod]",
+			"*.dir[cod]/",
+		},
+		tests: []ignoreTestValue{
+			{"", false, false},
+			{"", true, false},
+			{"run.py", false, false},
+			{"run.pyc", false, true},
+			{"run.pyc", true, true},
+			{"subpath/run.pyd", false, true},
+			{"subpath/run.pyd", true, true},
+			{"run.dir", false, false},
+			{"run.dir", true, false},
+			{"run.dirc", false, false},
+			{"run.dirc", true, true},
+			{"subpath/run.dird", false, false},
+			{"subpath/run.dird", true, true},
+		},
+	}
+	test.run(t)
+}
+
+func TestIgnoreRootRelative(t *testing.T) {
+	test := &ignoreTestCase{
+		ignores: []string{
+			"/abspath",
+			"/absdir/",
+			"/name",
+			"!*/**/name",
+		},
+		tests: []ignoreTestValue{
+			{"", false, false},
+			{"", true, false},
+			{"abspath", false, true},
+			{"abspath", true, true},
+			{"subpath/abspath", false, false},
+			{"subpath/abspath", true, false},
+			{"absdir", false, false},
+			{"absdir", true, true},
+			{"subpath/absdir", false, false},
+			{"subpath/absdir", true, false},
+			{"name", false, true},
+			{"name", true, true},
+			{"subpath/name", false, false},
+			{"subpath/name", true, false},
+		},
+	}
+	test.run(t)
+}
+
+func TestIgnoreDoublestar(t *testing.T) {
+	test := &ignoreTestCase{
+		ignores: []string{
+			"some/*",
+			"some/**/*",
+			"!some/other",
+		},
+		tests: []ignoreTestValue{
+			{"", false, false},
+			{"", true, false},
+			{"something", false, false},
+			{"some", false, false},
+			{"some/path", false, true},
+			{"some/other", false, false},
+			{"some/other/path", false, true},
 		},
 	}
 	test.run(t)
@@ -73,11 +165,12 @@ func TestIgnoreNegateOrdering(t *testing.T) {
 			"something",
 		},
 		tests: []ignoreTestValue{
-			{"", false},
-			{"something", true},
-			{"something/other", false},
-			{"otherthing", true},
-			{"some/path", false},
+			{"", false, false},
+			{"", true, false},
+			{"something", false, true},
+			{"something/other", false, false},
+			{"otherthing", false, true},
+			{"some/path", false, false},
 		},
 	}
 	test.run(t)
@@ -90,12 +183,13 @@ func TestIgnoreWildcard(t *testing.T) {
 			"!someone",
 		},
 		tests: []ignoreTestValue{
-			{"", false},
-			{"som", false},
-			{"some", true},
-			{"something", true},
-			{"someone", false},
-			{"some/path", false},
+			{"", false, false},
+			{"", true, false},
+			{"som", false, false},
+			{"some", false, true},
+			{"something", false, true},
+			{"someone", false, false},
+			{"some/path", false, false},
 		},
 	}
 	test.run(t)
@@ -109,12 +203,14 @@ func TestIgnorePathWildcard(t *testing.T) {
 			"!some/other",
 		},
 		tests: []ignoreTestValue{
-			{"", false},
-			{"something", false},
-			{"some", false},
-			{"some/path", true},
-			{"some/other", false},
-			{"some/other/path", true},
+			{"", false, false},
+			{"", true, false},
+			{"something", false, false},
+			{"some", false, false},
+			{"some/path", false, true},
+			{"some/other", false, false},
+			{"some/other/path", false, true},
+			{"subdir/some/other/path", false, false},
 		},
 	}
 	test.run(t)
