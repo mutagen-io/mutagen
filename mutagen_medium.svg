@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+    <g>
+        <title>Mutagen Logo</title>
+        <polygon points="281.600,112.935 742.400,112.935 972.800,512 742.400,911.065 281.600,911.065 51.200,512.000" style="fill-opacity:0.0;stroke:rgb(51,51,51);stroke-width:60;" />
+        <polygon points="316.241,172.935 707.759,172.935 742.400,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" />
+        <polygon points="316.241,172.935 707.759,172.935 742.400,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" transform="rotate(120, 512, 512)" />
+        <polygon points="316.241,172.935 707.759,172.935 742.400,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" transform="rotate(240, 512, 512)" />
+        <polygon points="316.241,172.935 480.679,172.935 515.320,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" transform="rotate(60, 512, 512)" />
+        <polygon points="316.241,172.935 480.679,172.935 515.320,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" transform="rotate(180, 512, 512)" />
+        <polygon points="316.241,172.935 480.679,172.935 515.320,232.935 281.600,232.935" style="fill:rgb(51,51,51);stroke-width:0;" transform="rotate(300, 512, 512)" />
+    </g>
+</svg>

@@ -1,0 +1,148 @@
+/* Global styles */
+
+html {
+    /* Size settings */
+    height: 100%;
+
+    /* Hide horizontal overflow and always show vertical scroll bar */
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+body {
+    /* Size settings */
+    height: 100%;
+
+    /* Padding settings */
+    padding-top: 30px;
+
+    /* Color settings */
+    color: #333;
+
+    /* Font settings */
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    font-size: 18px;
+    line-height: 1.4em;
+}
+
+@media (max-width: 992px) {
+    body {
+        /* Padding settings */
+        padding-top: 10px;
+    }
+}
+
+
+/* Content styles */
+
+a {
+    /* Color settings */
+    color: #ff3002;
+}
+
+a:hover {
+    /* Color settings */
+    color: #ff3002;
+
+    /* Disable link underline on hover */
+    text-decoration: none;
+}
+
+h1 {
+    /* Font settings */
+    font-size: 60px;
+}
+
+@media (max-width: 992px) {
+    h1 {
+        /* Font settings */
+        font-size: 45px;
+    }
+}
+
+h2 {
+    /* Margin settings */
+    margin-top: 40px;
+
+    /* Font settings */
+    font-size: 22px;
+}
+
+
+/* Footer styles */
+
+.wrapper {
+    /* Size settings */
+    min-height: 100%;
+
+    /* Margin settings (bottom margin should be footer height) */
+    margin: 0 auto -100px;
+}
+
+footer, .footer-push {
+    /* Position settings */
+    position: relative;
+
+    /* Size settings */
+    height: 100px;
+
+    /* Font settings */
+    font-size: 16px;
+
+    /* Color settings */
+    color: #888;
+
+    /* Alignment settings */
+    text-align: center;
+}
+
+.copyright {
+    /* Position settings */
+    position: absolute;
+    bottom: 15px;
+
+    /* Size settings */
+    width: 100%;
+}
+
+
+/* Alert style overrides */
+
+
+.alert {
+    /* Don't add a border radius */
+    border-radius: 0;
+}
+
+
+/* Code style overrides */
+
+code {
+    /* Use a nicer color for inline code */
+    color: #ff3002;
+
+    /* Don't add a border radius */
+    border-radius: 0;
+}
+
+pre {
+    /* Don't wrap code with a border */
+    border: none;
+
+    /* Don't add a border radius */
+    border-radius: 0;
+
+    /* Override bootstrap's wrapping of code */
+    overflow-x: auto;
+
+    /* Remove excessive padding */
+    padding: 0 0 5px 25px;
+}
+
+pre code {
+    /* Override bootstrap's wrapping of code */
+    overflow-wrap: normal;
+    white-space: pre;
+    font-size: 14px;
+}

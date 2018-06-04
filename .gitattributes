@@ -1,0 +1,2 @@
+# Automatically normalize line endings to \n when checking in text files.
+* text=auto

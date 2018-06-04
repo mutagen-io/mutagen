@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Set the page title -->
+        <title>Mutagen</title>
+
+        <!-- We only use UTF-8 -->
+        <meta charset="utf-8">
+
+        <!-- Set up responsiveness on mobile devices -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Set up favicon -->
+        <link rel="shortcut icon" href="favicon.png">
+
+        <!-- Bootstrap styles -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+        <!-- Google web fonts -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,500,700">
+
+        <!-- Mutagen-specific styles and overrides -->
+        <link rel="stylesheet" href="mutagen.css">
+    </head>
+    <body>
+        <div class="container wrapper">
+            <div class="row">
+                <div class="col-xs-10 col-xs-offset-1 col-md-8 col-md-offset-2">
+                    <img src="mutagen_medium.svg" class="img-responsive center-block" alt="Mutagen logo" style="width:25%;">
+                    <h1 class="text-center" style="margin-top:0;">Mutagen</h1>
+                    <p class="text-center">
+                        Mutagen is a cross-platform, continuous, bidirectional
+                        file synchronization utility designed to be simple,
+                        robust, and performant. It can operate locally or over
+                        SSH.
+                    </p>
+                    <p class="text-center">
+                        <!-- Place this tag where you want the button to render. -->
+                        <a href="https://github.com/havoc-io/mutagen">
+                            Source Code
+                        </a> | <a href="https://github.com/havoc-io/mutagen/blob/master/LICENSE">
+                            License
+                        </a> | <a href="https://github.com/havoc-io/mutagen/releases/latest">
+                            Download
+                        </a>
+                    </p>
+                    <br />
+                    <div class="alert alert-danger" role="alert">
+                        <p>
+                            <b>Warning:</b> Mutagen is a very powerful tool that
+                            is still in early beta. It will almost certainly
+                            have unknown
+                            <a href="https://github.com/havoc-io/mutagen/issues">issues</a>.
+                            It should not be used on production or
+                            mission-critical systems. Use on <i>any</i> system
+                            is at your own risk (please see the
+                            <a href="https://github.com/havoc-io/mutagen/blob/master/LICENSE">license</a>).
+                        </p>
+                    </div>
+                    <div class="alert alert-info">
+                        <p>
+                            <b>On a lighter note:</b> Mutagen <i>is</i> looking
+                            for testers, and it will definitely reach its full
+                            potential in the near future. If you want to follow
+                            Mutagen's development status then please star and
+                            follow it on
+                            <a href="https://github.com/havoc-io/mutagen">GitHub</a>!
+                        </p>
+                    </div>
+                    <h2>Installation</h2>
+                    <p>
+                        <a href="https://github.com/havoc-io/mutagen/releases/latest">Download</a>
+                        the appropriate release for your platform and add its
+                        contents to your path. There is no need to install
+                        Mutagen on remote systems. Basic usage information is
+                        available through the built-in help.
+                    </p>
+<pre>
+<code>
+$ mutagen --help
+usage: mutagen [-V|--version] [-h|--help] [-l|--legal] &lt;command&gt; [&lt;args&gt;]
+
+Supported commands include:
+
+    create          Start a new synchronization session
+    list            List current synchronization sessions
+    monitor         Perform live monitoring of a synchronization session
+    pause           Pause a synchronization session
+    resume          Resume a synchronization session
+    terminate       Stop and remove a synchronization session
+    daemon          Control the synchronization daemon lifecycle
+
+To see help for a particular command, use 'mutagen &lt;command&gt; --help'.
+</code>
+</pre>
+                    <h2>Initialization</h2>
+                    <p>
+                        Mutagen has a small daemon component that runs on a
+                        per-user basis in the background and performs watching,
+                        synchronization, and reconnection. The daemon is started
+                        using the <code>daemon</code> command.
+                    </p>
+<pre>
+<code>
+$ mutagen daemon
+</code>
+</pre>
+                    <p>
+                        This command is fast and idempotent, so it can safely be
+                        added to your shell initialization script
+                        (<code>.bashrc</code>, etc). The daemon will
+                        automatically stop at shutdown, but you can also
+                        manually stop it using <code>mutagen daemon -s</code>.
+                    </p>
+                    <h2>Creating a synchronization session</h2>
+                    <p>
+                        Mutagen creates synchronization sessions between two
+                        endpoints (alpha and beta) via the <code>create</code>
+                        command. Endpoints can be local or remote (via SSH).
+                    </p>
+<pre>
+<code>
+$ mutagen create --ignore='**/.git' /local/path user@somewhere:~/remote/path
+Connecting to agent
+user@somewhere's password:
+</code>
+</pre>
+                    <p>
+                        Whatever content the endpoint URLs point to will be kept
+                        in sync, be it files or directories. All non-conflicting
+                        changes (<b>including deletions!</b>) to either side
+                        will be propagated to the other.
+                    </p>
+                    <h2>Listing sessions</h2>
+                    <p>
+                        The <code>list</code> command shows the current status
+                        of each session, as well as any conflicts or problems
+                        that have arisen in the propagation of changes between
+                        endpoints.
+                    </p>
+<pre>
+<code>
+$ mutagen list
+Session: 7bb4a56b-f4be-4083-be24-7f590beda02e
+Ignored paths:
+        **/.git
+Status: Watching for changes
+Alpha:
+        URL: /local/path
+        Status: Connected
+Beta:
+        URL: user@somewhere:~/remote/path
+        Status: Connected
+</code>
+</pre>
+                    <h2>Monitoring a session</h2>
+                    <p>
+                        The <code>monitor</code> command shows live monitoring
+                        information for a session.
+                    </p>
+<pre>
+<code>
+$ mutagen monitor 7bb4a56b-f4be-4083-be24-7f590beda02e
+Session: 7bb4a56b-f4be-4083-be24-7f590beda02e
+Ignored paths:
+        **/.git
+Alpha: /local/path
+Beta: user@somewhere:~/remote/path
+Staging files on alpha: 75% (8942/11782)
+</code>
+</pre>
+                    <h2>Pausing a session</h2>
+                    <p>
+                        Synchronization can be temporarily halted using the
+                        <code>pause</code> command.
+                    </p>
+<pre>
+<code>
+$ mutagen pause 7bb4a56b-f4be-4083-be24-7f590beda02e
+</code>
+</pre>
+                    <h2>Resuming a session</h2>
+                    <p>
+                        Sessions can be resumed via the <code>resume</code>
+                        command. This command will ensure that a session is
+                        unpaused and synchronizing. If the daemon can't
+                        automatically reconnect to an endpoint because
+                        authentication is required, the resume command can be
+                        used to provide credentials.
+                    </p>
+<pre>
+<code>
+$ mutagen resume 7bb4a56b-f4be-4083-be24-7f590beda02e
+Connecting to agent
+user@somewhere's password:
+</code>
+</pre>
+                    <h2>Terminating a session</h2>
+                    <p>
+                        Synchronization can be permanently halted for a session
+                        (and the session removed) using the
+                        <code>terminate</code> command. This will not delete
+                        files on either endpoint (but should be done
+                        <b>before</b> completely deleting files on either
+                        endpoint to avoid propagating the complete deletion).
+                    </p>
+<pre>
+<code>
+$ mutagen terminate 7bb4a56b-f4be-4083-be24-7f590beda02e
+</code>
+</pre>
+                </div>
+            </div>
+            <!-- Note that this needs to go *inside* the wrapper. -->
+            <div class="footer-push"></div>
+        </div>
+        <footer>
+            <div class="copyright">Copyright © 2016 – 2018 Jacob Howard</div>
+        </footer>
+    </body>
+</html>
