@@ -278,9 +278,10 @@ func (c *controller) resume(prompter string) error {
 	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
 	c.stateLock.Unlock()
 
-	// Attempt to connect. This may fail for one or both of the endpoints, but
-	// in that case we'll simply leave the session unpaused and allow it to try
-	// to auto-reconnect later.
+	// Attempt to connect to alpha.
+	c.stateLock.Lock()
+	c.state.Status = Status_ConnectingAlpha
+	c.stateLock.Unlock()
 	alpha, alphaConnectErr := connect(
 		c.session.Identifier,
 		c.session.Version,
@@ -290,6 +291,14 @@ func (c *controller) resume(prompter string) error {
 		true,
 		prompter,
 	)
+	c.stateLock.Lock()
+	c.state.AlphaConnected = (alpha != nil)
+	c.stateLock.Unlock()
+
+	// Attempt to connect to beta.
+	c.stateLock.Lock()
+	c.state.Status = Status_ConnectingBeta
+	c.stateLock.Unlock()
 	beta, betaConnectErr := connect(
 		c.session.Identifier,
 		c.session.Version,
@@ -299,8 +308,13 @@ func (c *controller) resume(prompter string) error {
 		false,
 		prompter,
 	)
+	c.stateLock.Lock()
+	c.state.BetaConnected = (beta != nil)
+	c.stateLock.Unlock()
 
-	// Start the synchronization loop with what we have.
+	// Start the synchronization loop with what we have. Alpha or beta may have
+	// failed to connect (and be nil), but in any case that'll just make the run
+	// loop keep trying to connect.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	c.cancel = cancel
 	c.done = make(chan struct{})
