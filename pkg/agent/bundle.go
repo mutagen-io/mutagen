@@ -19,7 +19,6 @@ const (
 	agentBundleName = "mutagen-agents.tar.gz"
 )
 
-// TODO: Note that this file will not mark the resultant file as executable.
 func executableForPlatform(goos, goarch string) (string, error) {
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
