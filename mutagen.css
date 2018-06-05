@@ -14,7 +14,7 @@ body {
     height: 100%;
 
     /* Padding settings */
-    padding-top: 30px;
+    padding-top: 20px;
 
     /* Color settings */
     color: #333;
@@ -63,10 +63,14 @@ h1 {
 
 h2 {
     /* Margin settings */
-    margin-top: 40px;
+    margin-top: 30px;
 
     /* Font settings */
     font-size: 22px;
+}
+
+#github-buttons {
+    margin-top: 18px;
 }
 
 
