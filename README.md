@@ -1,17 +1,20 @@
 # Mutagen
 
 Mutagen is a cross-platform, continuous, bidirectional file synchronization
-utility designed to be simple, robust, and performant. It can operate locally or
-over SSH.
+utility designed to be simple, robust, and performant. It is designed for use in
+remote development. It can operate locally or over SSH.
 
-**Warning:** Mutagen is a very powerful tool that is still in early beta. It has
-[known issues](https://github.com/havoc-io/mutagen/issues) and will almost
+
+## Status
+
+Mutagen is a very powerful tool that is still in early beta. It will almost
 certainly have unknown issues. It should not be used on production or
 mission-critical systems. Use on *any* system is at your own risk (please see
 the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
-
-## Status
+That being said, Mutagen is a very useful tool and I use it daily for work on
+remote systems. The more people who use it and report
+[issues](https://github.com/havoc-io/mutagen/issues), the better it will get!
 
 | Windows                           | macOS/Linux                                   | Code coverage                           | Report card                           |
 | :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :-----------------------------------: |
@@ -29,9 +32,10 @@ the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
 
 ## Usage
 
-For usage information, please see the
-[documentation site](https://havoc-io.github.io/mutagen). For platform-specific
-instructions and known issues, please see the
+For a quick usage guide that will cover 99% of your needs, please see the
+[documentation site](https://mutagen.io).
+
+For platform-specific instructions and known issues, please see the
 [platform guide](doc/PLATFORMS.md).
 
 

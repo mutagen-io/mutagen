@@ -9,7 +9,7 @@ open an issue.
 
 - **Is there a GUI?** Not yet, but one is in development. This should negate the
   need to manually launch the daemon, as well as provide grapical session
-  management and monitoring. Expect this circa late January 2018.
+  management and monitoring.
 - **Can I synchronize more than two endpoints together?** Yes, though not
   directly. You'll want to set up a star topology with one copy of the files at
   the center (probably on your local machine, though technically it doesn't have
@@ -120,5 +120,6 @@ open an issue.
   binaries, and simple asynchronous I/O handling. It does have some downsides
   though, e.g. binary size, memory usage, thread usage, and most importantly its
   inability to enforce certain invariants in synchronization data structures and
-  algorithms. A rewrite in Rust is not out of the question once rustup and tokio
-  mature, especially since Mutagen is < 20 KLOC.
+  algorithms. A rewrite in Rust is not out of the question once rustup extends
+  its cross-compiling abilities and the Rust async I/O ecosystem matures,
+  especially since Mutagen is < 20 KLOC.
