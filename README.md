@@ -2,7 +2,7 @@
 
 Mutagen is a cross-platform, continuous, bidirectional file synchronization
 utility designed to be simple, robust, and performant. It is designed for use in
-remote development. It can operate locally or over SSH.
+remote development. It can synchronize locally or over SSH.
 
 
 ## Status
