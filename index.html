@@ -44,23 +44,67 @@
                     </p>
                     <h2>Installation</h2>
                     <p>
-                        <a href="https://github.com/havoc-io/mutagen/releases/latest">Download</a>
-                        the appropriate release for your platform and add its
-                        contents to your path. There is no need to install
-                        Mutagen on remote systems. Basic usage information is
-                        available through the built-in help.
+                        Mutagen can be installed by
+                        <a href="https://github.com/havoc-io/mutagen/releases/latest">downloading</a>
+                        the appropriate release for your platform and adding its
+                        contents to your path.
+                    </p>
+                    <p>
+                        Alternatively,
+                        <a href="https://brew.sh" alt="Homebrew">Homebrew</a>
+                        users can install Mutagen with:
+                    </p>
+<pre>
+<code>
+$ brew install havoc-io/mutagen/mutagen
+</code>
+</pre>
+                    <p>
+                        There is no need to install Mutagen on remote systems.
+                    </p>
+                    <h2>Usage</h2>
+                    <p>
+                        Mutagen is built around the concept of a synchronization
+                        <b>session</b>. A session synchronizes the filesystem
+                        contents at two <b>endpoints</b> (<b>alpha</b> and
+                        <b>beta</b>) in a continuous, bidirectional fashion. An
+                        endpoint is simply a URL that points to either a local
+                        or remote file location. A session will monitor both
+                        endpoints for changes and automatically propagate any
+                        non-conflicting changes (<u>including deletions!</u>)
+                        from one endpoint to the other. Any conflicts that arise
+                        can be resolved by deleting the copy of the conflicting
+                        files on the side that should be overwritten.
+                    </p>
+                    <p>
+                        The Mutagen <b>daemon</b> is a per-user process that
+                        runs in the background and manages sessions. Any number
+                        of sessions may be running at a given time. If a session
+                        becomes disconnected from a remote endpoint, the daemon
+                        will automatically attempt to reconnect the session in
+                        the background. Mutagen is highly resilient to
+                        connection dropouts and will pick up synchronization
+                        right where it left off.
+                    </p>
+                    <p>
+                        Mutagen provides a number of subcommands that allow for
+                        the creation and management of sessions, as well as
+                        management of the daemon lifecycle. The following
+                        sections outline usage of these commands.
+                    </p>
+                    <p>
+                        Additional usage information is available through the
+                        built-in help:
                     </p>
 <pre>
 <code>
 $ mutagen --help
 </code>
 </pre>
-                    <h2>Initialization</h2>
+                    <h2>Starting the daemon</h2>
                     <p>
-                        Mutagen has a small daemon component that runs on a
-                        per-user basis in the background and performs watching,
-                        synchronization, and reconnection. The daemon is started
-                        using the <code>daemon</code> command.
+                        The Mutagen daemon is started using the
+                        <code>daemon</code> command:
                     </p>
 <pre>
 <code>
@@ -76,9 +120,8 @@ $ mutagen daemon
                     </p>
                     <h2>Creating a synchronization session</h2>
                     <p>
-                        Mutagen creates synchronization sessions between two
-                        endpoints (alpha and beta) via the <code>create</code>
-                        command. Endpoints can be local or remote (via SSH).
+                        Sessions can be created using the <code>create</code>
+                        command:
                     </p>
 <pre>
 <code>
@@ -86,17 +129,29 @@ $ mutagen create --ignore='**/.git' /local/path user@somewhere:~/remote/path
 </code>
 </pre>
                     <p>
-                        Whatever content the endpoint URLs point to will be kept
-                        in sync, be it files or directories. All non-conflicting
-                        changes (<b>including deletions!</b>) to either side
-                        will be propagated to the other.
+                        Endpoints can be local paths or SCP-style URLs. The
+                        order of the endpoints is not important &mdash; it only
+                        determines which will be referred to as
+                        &quot;alpha&quot; and which will be referred to as
+                        &quot;beta&quot;.
+                    </p>
+                    <p>
+                        If authentication is required to connect to a remote
+                        endpoint, the the <code>create</code> command will ask
+                        for credentials.
+                    </p>
+                    <p>
+                        When creating sessions, <b>ignore</b> specifications can
+                        be provided to ignore content within a synchronization
+                        root. When a path is ignored, Mutagen won't propagate it
+                        or modify it.
                     </p>
                     <h2>Listing sessions</h2>
                     <p>
                         The <code>list</code> command shows the current status
                         of each session, as well as any conflicts or problems
                         that have arisen in the propagation of changes between
-                        endpoints.
+                        endpoints:
                     </p>
 <pre>
 <code>
@@ -116,7 +171,7 @@ Beta:
                     <h2>Monitoring a session</h2>
                     <p>
                         The <code>monitor</code> command shows live monitoring
-                        information for a session.
+                        information for a session:
                     </p>
 <pre>
 <code>
@@ -132,7 +187,7 @@ Staging files on alpha: 75% (8942/11782)
                     <h2>Pausing a session</h2>
                     <p>
                         Synchronization can be temporarily halted using the
-                        <code>pause</code> command.
+                        <code>pause</code> command:
                     </p>
 <pre>
 <code>
@@ -142,31 +197,37 @@ $ mutagen pause 7bb4a56b-f4be-4083-be24-7f590beda02e
                     <h2>Resuming a session</h2>
                     <p>
                         Sessions can be resumed via the <code>resume</code>
-                        command. This command will ensure that a session is
-                        unpaused and synchronizing. If the daemon can't
-                        automatically reconnect to an endpoint because
-                        authentication is required, the resume command can be
-                        used to provide credentials.
+                        command:
                     </p>
 <pre>
 <code>
 $ mutagen resume 7bb4a56b-f4be-4083-be24-7f590beda02e
 </code>
 </pre>
+                    <p>
+                        This command will ensure that a session is unpaused and
+                        attempting to synchronize. If the daemon can't
+                        automatically reconnect to an endpoint because
+                        authentication is required, the <code>resume</code>
+                        command can be used to provide credentials.
+                    </p>
                     <h2>Terminating a session</h2>
                     <p>
                         Synchronization can be permanently halted for a session
-                        (and the session removed) using the
-                        <code>terminate</code> command. This will not delete
-                        files on either endpoint (but should be done
-                        <b>before</b> completely deleting files on either
-                        endpoint to avoid propagating the complete deletion).
+                        (and the session deleted) using the
+                        <code>terminate</code> command:
                     </p>
 <pre>
 <code>
 $ mutagen terminate 7bb4a56b-f4be-4083-be24-7f590beda02e
 </code>
 </pre>
+                    <p>
+                        This will not delete files on either endpoint (but
+                        should be done <u>before</u> completely deleting files
+                        on either endpoint to avoid propagating the complete
+                        deletion).
+                    </p>
                 </div>
             </div>
             <!-- Note that this needs to go *inside* the wrapper. -->

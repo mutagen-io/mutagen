@@ -49,6 +49,10 @@ a:hover {
     text-decoration: none;
 }
 
+#github-buttons {
+    margin-top: 18px;
+}
+
 h1 {
     /* Font settings */
     font-size: 60px;
@@ -69,8 +73,8 @@ h2 {
     font-size: 22px;
 }
 
-#github-buttons {
-    margin-top: 18px;
+p {
+    margin: 15px 0px 15px 0px;
 }
 
 
