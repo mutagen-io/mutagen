@@ -53,19 +53,6 @@
 <pre>
 <code>
 $ mutagen --help
-usage: mutagen [-V|--version] [-h|--help] [-l|--legal] &lt;command&gt; [&lt;args&gt;]
-
-Supported commands include:
-
-    create          Start a new synchronization session
-    list            List current synchronization sessions
-    monitor         Perform live monitoring of a synchronization session
-    pause           Pause a synchronization session
-    resume          Resume a synchronization session
-    terminate       Stop and remove a synchronization session
-    daemon          Control the synchronization daemon lifecycle
-
-To see help for a particular command, use 'mutagen &lt;command&gt; --help'.
 </code>
 </pre>
                     <h2>Initialization</h2>
@@ -96,8 +83,6 @@ $ mutagen daemon
 <pre>
 <code>
 $ mutagen create --ignore='**/.git' /local/path user@somewhere:~/remote/path
-Connecting to agent
-user@somewhere's password:
 </code>
 </pre>
                     <p>
@@ -166,8 +151,6 @@ $ mutagen pause 7bb4a56b-f4be-4083-be24-7f590beda02e
 <pre>
 <code>
 $ mutagen resume 7bb4a56b-f4be-4083-be24-7f590beda02e
-Connecting to agent
-user@somewhere's password:
 </code>
 </pre>
                     <h2>Terminating a session</h2>
