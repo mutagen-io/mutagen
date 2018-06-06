@@ -1,14 +1,8 @@
 package sync
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"hash"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 func newTestHasher() hash.Hash {
@@ -285,121 +279,4 @@ var testDirectoryWithAbsoluteSymlink = &Entry{
 			Target: "/path/to/neighboring file",
 		},
 	},
-}
-
-type testProvider struct {
-	servingRoot string
-	contentMap  map[string][]byte
-}
-
-func newTestProvider(contentMap map[string][]byte) (*testProvider, error) {
-	// Create a temporary directory for serving files.
-	servingRoot, err := ioutil.TempDir("", "mutagen_provide_root")
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create serving directory")
-	}
-
-	// Create the test provider.
-	return &testProvider{
-		servingRoot: servingRoot,
-		contentMap:  contentMap,
-	}, nil
-}
-
-func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) (string, error) {
-	// Ensure the entry is a file type.
-	if entry.Kind != EntryKind_File {
-		return "", errors.New("invalid entry kind provision requested")
-	}
-
-	// Grab the content for this path.
-	content, ok := p.contentMap[path]
-	if !ok {
-		return "", errors.New("unable to find content for path")
-	}
-
-	// Ensure it matches the requested hash.
-	contentHash := sha1.Sum(content)
-	if !bytes.Equal(entry.Digest, contentHash[:]) {
-		return "", errors.New("requested entry digest does not match expected")
-	}
-
-	// Create a temporary file in the serving root.
-	temporaryFile, err := ioutil.TempFile(p.servingRoot, "mutagen_provide")
-	if err != nil {
-		return "", errors.Wrap(err, "unable to create temporary file")
-	}
-
-	// Write content.
-	_, err = temporaryFile.Write(content)
-	temporaryFile.Close()
-	if err != nil {
-		os.Remove(temporaryFile.Name())
-		return "", errors.Wrap(err, "unable to write file contents")
-	}
-
-	// Compute the file mode.
-	mode := baseMode
-	if mode == 0 {
-		mode = ProviderBaseMode
-	}
-	if entry.Executable {
-		mode |= UserExecutablePermission
-	} else {
-		mode &^= AnyExecutablePermission
-	}
-
-	// Set the file mode.
-	if err := os.Chmod(temporaryFile.Name(), mode); err != nil {
-		os.Remove(temporaryFile.Name())
-		return "", errors.Wrap(err, "unable to set file mode")
-	}
-
-	// Success.
-	return temporaryFile.Name(), nil
-}
-
-func (p *testProvider) Finalize() error {
-	return os.RemoveAll(p.servingRoot)
-}
-
-func createTestContentOnDisk(entry *Entry, contentMap map[string][]byte) (string, string, error) {
-	// Create a provider and ensure its cleanup.
-	provider, err := newTestProvider(contentMap)
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to create test provider")
-	}
-	defer provider.Finalize()
-
-	// Create temporary directory to act as the parent of our root and defer its
-	// cleanup.
-	parent, err := ioutil.TempDir("", "mutagen_simulated")
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to create temporary root parent")
-	}
-
-	// Compute the path to the root.
-	root := filepath.Join(parent, "root")
-
-	// Set up transitions to create the specified entry at the root.
-	transitions := []*Change{{New: entry}}
-
-	// Create an empty cache for the transition. This is fine since we're only
-	// doing creations and don't need the cache.
-	cache := &Cache{}
-
-	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, cache, SymlinkMode_Sane, provider); len(problems) != 0 {
-		os.RemoveAll(parent)
-		return "", "", errors.New("problems occurred during creation transition")
-	} else if len(entries) != 1 {
-		os.RemoveAll(parent)
-		return "", "", errors.New("unexpected number of entries returned from creation transition")
-	} else if !entries[0].Equal(entry) {
-		os.RemoveAll(parent)
-		return "", "", errors.New("created entry does not match expected")
-	}
-
-	// Success.
-	return root, parent, nil
 }

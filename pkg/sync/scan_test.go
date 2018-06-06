@@ -22,14 +22,14 @@ func testCreateScanCycle(
 	expectEqual bool,
 ) error {
 	// Create test content on disk and defer its removal.
-	root, parent, err := createTestContentOnDisk(entry, contentMap)
+	root, parent, err := testTransitionCreate(entry, contentMap, false)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test content")
 	}
 	defer os.RemoveAll(parent)
 
 	// Compute the expected scan result. If we're on a system that doesn't
-	// preserve executability, then strip it from what's expected.
+	// preserve executability, then strip executability from the expected value.
 	expected := entry
 	if !filesystem.PreservesExecutability {
 		expected = StripExecutability(expected)
@@ -270,7 +270,7 @@ func (p *rescanHashProxy) Sum(b []byte) []byte {
 
 func TestEfficientRescan(t *testing.T) {
 	// Create test content on disk and defer its removal.
-	root, parent, err := createTestContentOnDisk(testDirectory1Entry, testDirectory1ContentMap)
+	root, parent, err := testTransitionCreate(testDirectory1Entry, testDirectory1ContentMap, false)
 	if err != nil {
 		t.Fatal("unable to create test content on disk:", err)
 	}
