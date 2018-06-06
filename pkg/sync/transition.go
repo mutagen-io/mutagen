@@ -124,13 +124,23 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	return mode, nil
 }
 
-func ensureExpectedSymlinkOrNothing(fullPath string, expected *Entry) error {
+func ensureExpectedSymlinkOrNothing(root, path string, expected *Entry, symlinkMode SymlinkMode) error {
 	// Grab the link target.
-	target, err := os.Readlink(fullPath)
+	target, err := os.Readlink(filepath.Join(root, path))
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return errors.Wrap(err, "unable to read symlink target")
+	}
+
+	// If we're in sane symlink mode, then we need to normalize the target
+	// coming from disk, because some systems (e.g. Windows) won't round-trip
+	// the target correctly.
+	if symlinkMode == SymlinkMode_Sane {
+		target, err = normalizeSymlinkAndEnsureSane(path, target)
+		if err != nil {
+			return errors.Wrap(err, "unable to normalize target in sane mode")
+		}
 	}
 
 	// Ensure that the targets match.
@@ -172,21 +182,18 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 	return os.Remove(fullPath)
 }
 
-func removeSymlink(root, path string, target *Entry) error {
-	// Compute the full path to this symlink.
-	fullPath := filepath.Join(root, path)
-
+func removeSymlink(root, path string, target *Entry, symlinkMode SymlinkMode) error {
 	// Ensure that the existing symlink hasn't been modified from what we're
 	// expecting or that it's been removed.
-	if err := ensureExpectedSymlinkOrNothing(fullPath, target); err != nil {
+	if err := ensureExpectedSymlinkOrNothing(root, path, target, symlinkMode); err != nil {
 		return errors.Wrap(err, "unable to validate existing symlink")
 	}
 
 	// Remove the symlink.
-	return os.Remove(fullPath)
+	return os.Remove(filepath.Join(root, path))
 }
 
-func removeDirectory(root, path string, target *Entry, cache *Cache) []*Problem {
+func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode SymlinkMode) []*Problem {
 	// Compute the full path to this directory.
 	fullPath := filepath.Join(root, path)
 
@@ -226,7 +233,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []*Problem 
 		// Handle its removal accordingly.
 		var contentProblems []*Problem
 		if entry.Kind == EntryKind_Directory {
-			contentProblems = removeDirectory(root, contentPath, entry, cache)
+			contentProblems = removeDirectory(root, contentPath, entry, cache, symlinkMode)
 		} else if entry.Kind == EntryKind_File {
 			if err = removeFile(root, contentPath, entry, cache); err != nil {
 				contentProblems = append(contentProblems, newProblem(
@@ -235,7 +242,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []*Problem 
 				))
 			}
 		} else if entry.Kind == EntryKind_Symlink {
-			if err = removeSymlink(root, contentPath, entry); err != nil {
+			if err = removeSymlink(root, contentPath, entry, symlinkMode); err != nil {
 				contentProblems = append(contentProblems, newProblem(
 					contentPath,
 					errors.Wrap(err, "unable to remove symlink"),
@@ -274,7 +281,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache) []*Problem 
 	return problems
 }
 
-func remove(root, path string, target *Entry, cache *Cache) (*Entry, []*Problem) {
+func remove(root, path string, target *Entry, cache *Cache, symlinkMode SymlinkMode) (*Entry, []*Problem) {
 	// If the target is nil, we're done.
 	if target == nil {
 		return nil, nil
@@ -295,7 +302,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []*Problem)
 	// Check the target type and handle accordingly.
 	var problems []*Problem
 	if target.Kind == EntryKind_Directory {
-		problems = removeDirectory(root, path, targetCopy, cache)
+		problems = removeDirectory(root, path, targetCopy, cache, symlinkMode)
 	} else if target.Kind == EntryKind_File {
 		if err := removeFile(root, path, targetCopy, cache); err != nil {
 			problems = []*Problem{newProblem(
@@ -304,7 +311,7 @@ func remove(root, path string, target *Entry, cache *Cache) (*Entry, []*Problem)
 			)}
 		}
 	} else if target.Kind == EntryKind_Symlink {
-		if err := removeSymlink(root, path, targetCopy); err != nil {
+		if err := removeSymlink(root, path, targetCopy, symlinkMode); err != nil {
 			problems = []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to remove symlink"),
@@ -537,7 +544,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 	)}
 }
 
-func Transition(root string, transitions []*Change, cache *Cache, provider Provider) ([]*Entry, []*Problem) {
+func Transition(root string, transitions []*Change, cache *Cache, symlinkMode SymlinkMode, provider Provider) ([]*Entry, []*Problem) {
 	// Set up results.
 	var results []*Entry
 	var problems []*Problem
@@ -576,7 +583,7 @@ func Transition(root string, transitions []*Change, cache *Cache, provider Provi
 		// don't expect to see anything (t.Old == nil), this is a no-op. If this
 		// fails, record the reduced entry as well as any problems preventing
 		// full removal and continue to the next transition.
-		if r, p := remove(root, t.Path, t.Old, cache); r != nil {
+		if r, p := remove(root, t.Path, t.Old, cache, symlinkMode); r != nil {
 			results = append(results, r)
 			problems = append(problems, p...)
 			continue

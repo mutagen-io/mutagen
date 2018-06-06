@@ -42,7 +42,7 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte) error {
 	transitions := []*Change{{Old: expected}}
 
 	// Perform the removal transition.
-	if entries, problems := Transition(root, transitions, cache, nil); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, cache, SymlinkMode_Sane, nil); len(problems) != 0 {
 		return errors.New("problems occurred during removal transition")
 	} else if len(entries) != 1 {
 		return errors.New("unexpected number of entries returned from removal transition")

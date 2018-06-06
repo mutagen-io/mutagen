@@ -188,7 +188,7 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 
 func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Perform the transition.
-	results, problems := sync.Transition(e.root, transitions, e.cache, e.stager)
+	results, problems := sync.Transition(e.root, transitions, e.cache, e.symlinkMode, e.stager)
 
 	// Wipe the staging directory. We don't monitor for errors here, because we
 	// need to return the results and problems no matter what, but if there's

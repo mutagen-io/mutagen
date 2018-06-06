@@ -376,7 +376,7 @@ func createTestContentOnDisk(entry *Entry, contentMap map[string][]byte) (string
 	cache := &Cache{}
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, cache, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, cache, SymlinkMode_Sane, provider); len(problems) != 0 {
 		os.RemoveAll(parent)
 		return "", "", errors.New("problems occurred during creation transition")
 	} else if len(entries) != 1 {
