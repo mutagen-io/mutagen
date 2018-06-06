@@ -11,6 +11,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 type remoteEndpointServer struct {
@@ -191,7 +192,7 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	// Marshal the snapshot in a deterministic fashion.
 	buffer := proto.NewBuffer(nil)
 	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(&Archive{Root: snapshot}); err != nil {
+	if err := buffer.Marshal(&sync.Archive{Root: snapshot}); err != nil {
 		return errors.Wrap(err, "unable to marshal snapshot")
 	}
 	snapshotBytes := buffer.Bytes()
@@ -280,7 +281,7 @@ func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error
 	// the result array.
 	wrappedResults := make([]*Archive, len(results))
 	for r, result := range results {
-		wrappedResults[r] = &Archive{Root: result}
+		wrappedResults[r] = &sync.Archive{Root: result}
 	}
 
 	// Send the response.

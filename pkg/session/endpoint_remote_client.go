@@ -148,7 +148,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	// snapshot.
 	buffer := proto.NewBuffer(nil)
 	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(&Archive{Root: ancestor}); err != nil {
+	if err := buffer.Marshal(&sync.Archive{Root: ancestor}); err != nil {
 		return nil, false, errors.Wrap(err, "unable to marshal ancestor")
 	}
 	ancestorBytes := buffer.Bytes()
@@ -178,7 +178,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	}
 
 	// Unmarshal the snapshot.
-	archive := &Archive{}
+	archive := &sync.Archive{}
 	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot")
 	}

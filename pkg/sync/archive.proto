@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sync;
+
+import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+
+// Archive is a wrapper around Entry that allows identification of non-existent
+// roots when serializing. In-memory, a nil-Entry (that arrives without any
+// error) represents an absence of content on the filesystem. Unfortunately,
+// there is no way to represent that as an encoded message (an empty byte slice
+// would successfully decode to an empty directory entry). By adding a level of
+// indirection that allows for an unset root entry, we can encode Entry messages
+// in a way that allows us to represent absence.
+message Archive {
+    Entry root = 1;
+}

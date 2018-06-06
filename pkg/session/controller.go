@@ -126,7 +126,7 @@ func newSession(
 		Ignores:              ignores,
 		SymlinkMode:          symlinkMode,
 	}
-	archive := &Archive{}
+	archive := &sync.Archive{}
 
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(session.Identifier)
@@ -524,7 +524,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 
 func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoint) error {
 	// Load the archive and extract the ancestor.
-	archive := &Archive{}
+	archive := &sync.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
 		return errors.Wrap(err, "unable to load archive")
 	} else if err = archive.Root.EnsureValid(); err != nil {

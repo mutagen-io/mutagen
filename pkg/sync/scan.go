@@ -263,7 +263,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 		if os.IsNotExist(err) {
 			return nil, newCache, nil
 		} else {
-			return nil, nil, errors.Wrap(err, "unable to probe snapshot root")
+			return nil, nil, errors.Wrap(err, "unable to probe scan root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
 		if rootEntry, err := s.directory("", symlinkMode); err != nil {
@@ -274,7 +274,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	} else if mode&os.ModeType != 0 {
 		// We explicitly disallow symlinks as synchronization roots because
 		// there's no easy way to propagate changes to them.
-		return nil, nil, errors.New("invalid snapshot root type")
+		return nil, nil, errors.New("invalid scan root type")
 	} else {
 		if rootEntry, err := s.file("", info); err != nil {
 			return nil, nil, err
