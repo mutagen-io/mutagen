@@ -20,7 +20,7 @@ func TestTransitionDependenciesInvalid(t *testing.T) {
 	transitions := []*Change{
 		{
 			Path: "",
-			New: root,
+			New:  root,
 		},
 	}
 	if _, _, err := TransitionDependencies(transitions); err == nil {
