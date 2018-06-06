@@ -264,11 +264,8 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 		}
 	}
 
-	// Create a hasher.
-	hasher := newTestHasher()
-
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_Sane)
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Sane)
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
@@ -452,21 +449,150 @@ func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
 }
 
 func TestTransitionCreateInvalidPathCase(t *testing.T) {
-	// TODO: Implement.
+	// Create temporary directory to act as the parent of our root and defer its
+	// removal.
+	parent, err := ioutil.TempDir("", "mutagen_simulated")
+	if err != nil {
+		t.Fatal("unable to create temporary root parent:", err)
+	}
+	defer os.RemoveAll(parent)
+
+	// Compute the path to the root.
+	root := filepath.Join(parent, "root")
+
+	// Set up the creation transitions.
+	transitions := []*Change{{New: testDirectory1Entry}}
+
+	// Create a provider and ensure its cleanup.
+	provider, err := newTestProvider(testDirectory1ContentMap, newTestHasher())
+	if err != nil {
+		t.Fatal("unable to create creation provider:", err)
+	}
+	defer provider.finalize()
+
+	// Perform the creation transition.
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Sane, provider); len(problems) != 0 {
+		t.Fatal("problems occurred during creation transition")
+	} else if len(entries) != 1 {
+		t.Fatal("unexpected number of entries returned from creation transition")
+	} else if !entries[0].Equal(testDirectory1Entry) {
+		t.Fatal("created entry does not match expected")
+	}
+
+	// Compute the expected entry. If we're on a system that doesn't preserve
+	// executability, then strip executability from the expected value.
+	expected := testDirectory1Entry
+	if !filesystem.PreservesExecutability {
+		expected = StripExecutability(expected)
+	}
+
+	// Perform a scan.
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Sane)
+	if err != nil {
+		t.Fatal("unable to perform scan:", err)
+	} else if cache == nil {
+		t.Fatal("nil cache returned")
+	} else if !snapshot.Equal(expected) {
+		t.Fatal("snapshot not equal to expected")
+	}
+
+	// Modify the case of the "directory" path.
+	if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
+		t.Fatal("unable to rename directory to temporary name:", err)
+	}
+	if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
+		t.Fatal("unable to rename directory to temporary name:", err)
+	}
+
+	// Attempt to create content inside the directory.
+	createNewTransitions := []*Change{{Path: "directory/new", New: testFile1Entry}}
+
+	// Set up a custom content map for this.
+	contentMap := map[string][]byte{
+		"directory/new": testFile1Contents,
+	}
+
+	// Create a provider and ensure its cleanup.
+	createNewProvider, err := newTestProvider(contentMap, newTestHasher())
+	if err != nil {
+		t.Fatal("unable to create new creation provider:", err)
+	}
+	defer createNewProvider.finalize()
+
+	// Perform the swap transition and ensure that it fails.
+	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_Sane, createNewProvider); len(problems) == 0 {
+		t.Fatal("transition succeeded unexpectedly")
+	} else if len(entries) != 1 {
+		t.Fatal("unexpected number of entries returned from creation transition")
+	} else if entries[0] != nil {
+		t.Fatal("failed creation transition returned non-nil entry")
+	}
 }
 
-func TestTransitionSwapFileAtSubpath(t *testing.T) {
-	// TODO: Implement.
-}
+func TestTransitionSwapFile(t *testing.T) {
+	// Create temporary directory to act as the parent of our root and defer its
+	// removal.
+	parent, err := ioutil.TempDir("", "mutagen_simulated")
+	if err != nil {
+		t.Fatal("unable to create temporary root parent:", err)
+	}
+	defer os.RemoveAll(parent)
 
-func TestTransitionSwapRootFile(t *testing.T) {
-	// TODO: Implement.
-}
+	// Compute the path to the root.
+	root := filepath.Join(parent, "root")
 
-func TestTransitionSwapFileAtSubpathInvalidCase(t *testing.T) {
-	// TODO: Implement.
-}
+	// Set up the creation transitions.
+	transitions := []*Change{{New: testFile1Entry}}
 
-func TestTransitionSwapFileAtSubpathInvalidContent(t *testing.T) {
-	// TODO: Implement.
+	// Create a provider and ensure its cleanup.
+	provider, err := newTestProvider(testFile1ContentMap, newTestHasher())
+	if err != nil {
+		t.Fatal("unable to create creation provider:", err)
+	}
+	defer provider.finalize()
+
+	// Perform the creation transition.
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Sane, provider); len(problems) != 0 {
+		t.Fatal("problems occurred during creation transition")
+	} else if len(entries) != 1 {
+		t.Fatal("unexpected number of entries returned from creation transition")
+	} else if !entries[0].Equal(testFile1Entry) {
+		t.Fatal("created entry does not match expected")
+	}
+
+	// Compute the expected entry. If we're on a system that doesn't preserve
+	// executability, then strip executability from the expected value.
+	expected := testFile1Entry
+	if !filesystem.PreservesExecutability {
+		expected = StripExecutability(expected)
+	}
+
+	// Perform a scan.
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Sane)
+	if err != nil {
+		t.Fatal("unable to perform scan:", err)
+	} else if cache == nil {
+		t.Fatal("nil cache returned")
+	} else if !snapshot.Equal(expected) {
+		t.Fatal("snapshot not equal to expected")
+	}
+
+	// Set up the swap transitions.
+	swapTransitions := []*Change{{Old: expected, New: testFile2Entry}}
+
+	// Create a provider and ensure its cleanup.
+	swapProvider, err := newTestProvider(testFile2ContentMap, newTestHasher())
+	if err != nil {
+		t.Fatal("unable to create swap provider:", err)
+	}
+	defer swapProvider.finalize()
+
+	// Perform the swap transition.
+	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_Sane, swapProvider); len(problems) != 0 {
+		t.Fatal("problems occurred during creation transition")
+	} else if len(entries) != 1 {
+		t.Fatal("unexpected number of entries returned from creation transition")
+	} else if !entries[0].Equal(testFile2Entry) {
+		t.Fatal("created entry does not match expected")
+	}
 }
