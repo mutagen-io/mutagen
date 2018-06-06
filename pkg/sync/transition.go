@@ -75,7 +75,7 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	return nil
 }
 
-func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *Cache) (os.FileMode, error) {
+func ensureExpectedFile(fullPath, path string, expected *Entry, cache *Cache) (os.FileMode, error) {
 	// Grab cache information for this path. If we can't find it, we treat this
 	// as an immediate fail. This is a bit of a heuristic/hack, because we could
 	// recompute the digest of what's on disk, but for our use case this is very
@@ -88,9 +88,7 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 
 	// Grab stat information for this path.
 	info, err := os.Lstat(fullPath)
-	if os.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
+	if err != nil {
 		return 0, errors.Wrap(err, "unable to grab file statistics")
 	}
 
@@ -124,12 +122,10 @@ func ensureExpectedFileOrNothing(fullPath, path string, expected *Entry, cache *
 	return mode, nil
 }
 
-func ensureExpectedSymlinkOrNothing(root, path string, expected *Entry, symlinkMode SymlinkMode) error {
+func ensureExpectedSymlink(root, path string, expected *Entry, symlinkMode SymlinkMode) error {
 	// Grab the link target.
 	target, err := os.Readlink(filepath.Join(root, path))
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return errors.Wrap(err, "unable to read symlink target")
 	}
 
@@ -173,8 +169,8 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 	fullPath := filepath.Join(root, path)
 
 	// Ensure that the existing entry hasn't been modified from what we're
-	// expecting or that it's been removed.
-	if _, err := ensureExpectedFileOrNothing(fullPath, path, target, cache); err != nil {
+	// expecting.
+	if _, err := ensureExpectedFile(fullPath, path, target, cache); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
@@ -184,8 +180,8 @@ func removeFile(root, path string, target *Entry, cache *Cache) error {
 
 func removeSymlink(root, path string, target *Entry, symlinkMode SymlinkMode) error {
 	// Ensure that the existing symlink hasn't been modified from what we're
-	// expecting or that it's been removed.
-	if err := ensureExpectedSymlinkOrNothing(root, path, target, symlinkMode); err != nil {
+	// expecting.
+	if err := ensureExpectedSymlink(root, path, target, symlinkMode); err != nil {
 		return errors.Wrap(err, "unable to validate existing symlink")
 	}
 
@@ -210,10 +206,6 @@ func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode
 	// condition here between the time we grab the directory contents and the
 	// time we remove, but it is very small and we also compare file contents,
 	// so the chance of deleting something we shouldn't is very small.
-	//
-	// Note that we don't need to check that we've removed all entries listed in
-	// the target. If they aren't in the directory contents, then they must have
-	// already been deleted.
 	var problems []*Problem
 	for _, name := range contentNames {
 		// Compute the content path.
@@ -265,16 +257,23 @@ func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode
 		}
 	}
 
-	// Attempt to remove the directory. If this succeeds, then clear any prior
-	// problems, because clearly they no longer matter. This isn't a recursive
-	// removal, so if something below failed to delete, this will still fail.
-	if err := os.Remove(fullPath); err != nil {
+	// Ensure that the target contents are now empty. This ensures that we saw
+	// each entry we expected to on disk and removed it ourselves. If we didn't,
+	// then we should abort and rescan, because there are concurrent
+	// modifications occurring that are removing files. Otherwise, so long as no
+	// problems occurred, attempt to remove the directory itself.
+	if len(target.Contents) != 0 {
 		problems = append(problems, newProblem(
 			path,
-			errors.Wrap(err, "unable to remove directory"),
+			errors.New("concurrent deletion detected"),
 		))
-	} else {
-		problems = nil
+	} else if len(problems) == 0 {
+		if err := os.Remove(fullPath); err != nil {
+			problems = append(problems, newProblem(
+				path,
+				errors.Wrap(err, "unable to remove directory"),
+			))
+		}
 	}
 
 	// Done.
@@ -346,7 +345,7 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	baseMode, err := ensureExpectedFileOrNothing(fullPath, path, oldEntry, cache)
+	baseMode, err := ensureExpectedFile(fullPath, path, oldEntry, cache)
 	if err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
