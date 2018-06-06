@@ -11,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func newTestHasher() hash.Hash {
+	return sha1.New()
+}
+
 var testFile1Contents = []byte("Hello, world!")
 
 var testFile1ContentsSHA1 = []byte{
@@ -348,91 +352,7 @@ func (p *testProvider) Finalize() error {
 	return os.RemoveAll(p.servingRoot)
 }
 
-type ContentTestValue uint8
-
-const (
-	ContentTestValueNil ContentTestValue = iota
-	ContentTestValueFile1
-	ContentTestValueFile2
-	ContentTestValueFile3
-	ContentTestValueDirectory1
-	ContentTestValueDirectory2
-	ContentTestValueDirectory3
-	ContentTestValueSymlink
-	ContentTestValueDirectoryWithSaneSymlink
-	ContentTestValueDirectoryWithInvalidSymlink
-	ContentTestValueDirectoryWithEscapingSymlink
-	ContentTestValueDirectoryWithAbsoluteSymlink
-)
-
-func (v ContentTestValue) Hasher() hash.Hash {
-	return sha1.New()
-}
-
-func (v ContentTestValue) entry() *Entry {
-	switch v {
-	case ContentTestValueNil:
-		return nil
-	case ContentTestValueFile1:
-		return testFile1Entry
-	case ContentTestValueFile2:
-		return testFile2Entry
-	case ContentTestValueFile3:
-		return testFile3Entry
-	case ContentTestValueDirectory1:
-		return testDirectory1Entry
-	case ContentTestValueDirectory2:
-		return testDirectory2Entry
-	case ContentTestValueDirectory3:
-		return testDirectory3Entry
-	case ContentTestValueSymlink:
-		return testSymlinkEntry
-	case ContentTestValueDirectoryWithSaneSymlink:
-		return testDirectoryWithSaneSymlink
-	case ContentTestValueDirectoryWithInvalidSymlink:
-		return testDirectoryWithInvalidSymlink
-	case ContentTestValueDirectoryWithEscapingSymlink:
-		return testDirectoryWithEscapingSymlink
-	case ContentTestValueDirectoryWithAbsoluteSymlink:
-		return testDirectoryWithAbsoluteSymlink
-	default:
-		panic("unknown content test value")
-	}
-}
-
-func (v ContentTestValue) CreateOnDisk() (string, string, error) {
-	// Grab the entry for this test value.
-	entry := v.entry()
-
-	// Identify the content map to use when creating.
-	var contentMap map[string][]byte
-	switch v {
-	case ContentTestValueNil:
-		contentMap = testNilContentMap
-	case ContentTestValueFile1:
-		contentMap = testFile1ContentMap
-	case ContentTestValueFile2:
-		contentMap = testFile2ContentMap
-	case ContentTestValueFile3:
-		contentMap = testFile3ContentMap
-	case ContentTestValueDirectory1:
-		contentMap = testDirectory1ContentMap
-	case ContentTestValueDirectory2:
-		contentMap = testDirectory2ContentMap
-	case ContentTestValueDirectory3:
-		contentMap = testDirectory3ContentMap
-	case ContentTestValueDirectoryWithSaneSymlink:
-		contentMap = nil
-	case ContentTestValueDirectoryWithInvalidSymlink:
-		contentMap = nil
-	case ContentTestValueDirectoryWithEscapingSymlink:
-		contentMap = nil
-	case ContentTestValueDirectoryWithAbsoluteSymlink:
-		contentMap = nil
-	default:
-		return "", "", errors.New("content test value not supported as root")
-	}
-
+func createTestContentOnDisk(entry *Entry, contentMap map[string][]byte) (string, string, error) {
 	// Create a provider and ensure its cleanup.
 	provider, err := newTestProvider(contentMap)
 	if err != nil {
@@ -440,8 +360,8 @@ func (v ContentTestValue) CreateOnDisk() (string, string, error) {
 	}
 	defer provider.Finalize()
 
-	// Create temporary directory in which we can create the root. The root will
-	// exist inside the directory, not at the directory location.
+	// Create temporary directory to act as the parent of our root and defer its
+	// cleanup.
 	parent, err := ioutil.TempDir("", "mutagen_simulated")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to create temporary root parent")
@@ -458,15 +378,12 @@ func (v ContentTestValue) CreateOnDisk() (string, string, error) {
 	cache := &Cache{}
 
 	// Perform the creation transition.
-	entries, problems := Transition(root, transitions, cache, provider)
-
-	// Ensure that there were no problems.
-	if len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, cache, provider); len(problems) != 0 {
 		os.RemoveAll(parent)
-		return "", "", errors.New("problems occurred during creation")
+		return "", "", errors.New("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		os.RemoveAll(parent)
-		return "", "", errors.New("unexpected number of entries returned from transition")
+		return "", "", errors.New("unexpected number of entries returned from creation transition")
 	} else if !entries[0].Equal(entry) {
 		os.RemoveAll(parent)
 		return "", "", errors.New("created entry does not match expected")
