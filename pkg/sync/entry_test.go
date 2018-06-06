@@ -84,7 +84,7 @@ func TestEntryDirectoryInvalidContentInvalid(t *testing.T) {
 }
 
 func TestEntryDirectoryValid(t *testing.T) {
-	if err := testDirectoryEntry.EnsureValid(); err != nil {
+	if err := testDirectory1Entry.EnsureValid(); err != nil {
 		t.Fatal("valid directory considered invalid:", err)
 	}
 }
@@ -208,7 +208,7 @@ func TestEntryNilNonNilNotEqualShallow(t *testing.T) {
 }
 
 func TestEntrySameDirectoryEqualShallow(t *testing.T) {
-	if !testDirectoryEntry.equalShallow(testDirectoryEntry) {
+	if !testDirectory1Entry.equalShallow(testDirectory1Entry) {
 		t.Error("identical directories not considered shallow equal")
 	}
 }
@@ -232,7 +232,7 @@ func TestEntrySymlinkFileNotEqualShallow(t *testing.T) {
 }
 
 func TestDifferentDirectoriesEqualShallow(t *testing.T) {
-	if !testDirectoryEntry.equalShallow(testAlternateDirectoryEntry) {
+	if !testDirectory1Entry.equalShallow(testDirectory2Entry) {
 		t.Error("different directories not considered shallow equal")
 	}
 }
@@ -266,7 +266,7 @@ func TestEntryEmptyDirectoriesEqual(t *testing.T) {
 }
 
 func TestEntrySameDirectoryEqual(t *testing.T) {
-	if !testDirectoryEntry.Equal(testDirectoryEntry) {
+	if !testDirectory1Entry.Equal(testDirectory1Entry) {
 		t.Error("identical directories not considered equal")
 	}
 }
@@ -290,8 +290,14 @@ func TestEntrySymlinkFileNotEqual(t *testing.T) {
 }
 
 func TestDifferentDirectoriesNotEqual(t *testing.T) {
-	if testDirectoryEntry.Equal(testAlternateDirectoryEntry) {
-		t.Error("different directories considered equal")
+	if testDirectory1Entry.Equal(testDirectory2Entry) {
+		t.Error("directories 1 and 2 considered equal")
+	}
+	if testDirectory1Entry.Equal(testDirectory3Entry) {
+		t.Error("directories 1 and 3 considered equal")
+	}
+	if testDirectory2Entry.Equal(testDirectory3Entry) {
+		t.Error("directories 2 and 3 considered equal")
 	}
 }
 
@@ -302,14 +308,14 @@ func TestEntryNilCopyShallow(t *testing.T) {
 }
 
 func TestEntryDirectoryCopyShallow(t *testing.T) {
-	directory := testDirectoryEntry.CopyShallow()
+	directory := testDirectory1Entry.CopyShallow()
 	if directory == nil {
 		t.Error("shallow copy of directory returned nil")
 	}
 	if directory.Contents != nil {
 		t.Error("shallow copy of directory has non-nil contents")
 	}
-	if !directory.equalShallow(testDirectoryEntry) {
+	if !directory.equalShallow(testDirectory1Entry) {
 		t.Error("shallow copy of directory not considered shallow equal to original")
 	}
 }
@@ -355,11 +361,11 @@ func TestEmptyDirectoryCopy(t *testing.T) {
 }
 
 func TestEntryDirectoryCopy(t *testing.T) {
-	directory := testDirectoryEntry.Copy()
+	directory := testDirectory1Entry.Copy()
 	if directory == nil {
 		t.Error("copy of directory returned nil")
 	}
-	if !directory.Equal(testDirectoryEntry) {
+	if !directory.Equal(testDirectory1Entry) {
 		t.Error("copy of directory not considered equal to original")
 	}
 }

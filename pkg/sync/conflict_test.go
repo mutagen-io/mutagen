@@ -48,7 +48,7 @@ func TestConflictInvalidBetaChangeInvalid(t *testing.T) {
 func TestConflictValid(t *testing.T) {
 	conflict := &Conflict{
 		AlphaChanges: []*Change{{New: testFileEntry}},
-		BetaChanges:  []*Change{{New: testDirectoryEntry}},
+		BetaChanges:  []*Change{{New: testDirectory1Entry}},
 	}
 	if err := conflict.EnsureValid(); err != nil {
 		t.Error("valid conflict considered invalid:", err)

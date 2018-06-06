@@ -8,13 +8,13 @@ func TestApplyRootSwap(t *testing.T) {
 	// Create a change the swaps out the root entry.
 	changes := []*Change{
 		{
-			Old: testDirectoryEntry,
+			Old: testDirectory1Entry,
 			New: testFileEntry,
 		},
 	}
 
 	// Ensure that the swap is applied correctly.
-	if result, err := Apply(testDirectoryEntry, changes); err != nil {
+	if result, err := Apply(testDirectory1Entry, changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
 	} else if !result.Equal(testFileEntry) {
 		t.Error("mismatch after root replacement")
@@ -23,12 +23,12 @@ func TestApplyRootSwap(t *testing.T) {
 
 func TestApplyDiff(t *testing.T) {
 	// Compute the diff between two different directories.
-	changes := diff("", testDirectoryEntry, testAlternateDirectoryEntry)
+	changes := diff("", testDirectory1Entry, testDirectory2Entry)
 
 	// Test that applying the diff to the base results in the target.
-	if result, err := Apply(testDirectoryEntry, changes); err != nil {
+	if result, err := Apply(testDirectory1Entry, changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
-	} else if !result.Equal(testAlternateDirectoryEntry) {
+	} else if !result.Equal(testDirectory2Entry) {
 		t.Error("mismatch after diff/apply cycle")
 	}
 }
@@ -43,7 +43,7 @@ func TestApplyMissingParentPath(t *testing.T) {
 	}
 
 	// Ensure that application of the change fails.
-	if _, err := Apply(testDirectoryEntry, changes); err == nil {
+	if _, err := Apply(testDirectory1Entry, changes); err == nil {
 		t.Fatal("change referencing invalid path did not fail to apply")
 	}
 }
