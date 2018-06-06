@@ -15,12 +15,12 @@ func TestTransitionDependenciesEmtpy(t *testing.T) {
 }
 
 func TestTransitionDependenciesInvalid(t *testing.T) {
+	root := testDirectory1Entry.Copy()
+	root.Contents["directory"].Contents["subfile"].Kind = (EntryKind_Symlink + 1)
 	transitions := []*Change{
 		{
 			Path: "",
-			New: &Entry{
-				Kind: (EntryKind_Symlink + 1),
-			},
+			New: root,
 		},
 	}
 	if _, _, err := TransitionDependencies(transitions); err == nil {
@@ -28,7 +28,23 @@ func TestTransitionDependenciesInvalid(t *testing.T) {
 	}
 }
 
-func TestTransitionDependencies(t *testing.T) {
+func TestTransitionDependenciesNewNil(t *testing.T) {
+	transitions := []*Change{
+		{
+			Path: "",
+			New:  nil,
+		},
+	}
+	if names, entries, err := TransitionDependencies(transitions); err != nil {
+		t.Error("transition dependency finding failed:", err)
+	} else if len(names) != 0 {
+		t.Error("unexpected number of names")
+	} else if len(entries) != 0 {
+		t.Error("unexpected number of entries")
+	}
+}
+
+func TestTransitionDependenciesNewNonNil(t *testing.T) {
 	transitions := []*Change{
 		{
 			Path: "",
