@@ -16,7 +16,7 @@ That being said, Mutagen is a very useful tool and I use it daily for work on
 remote systems. The more people who use it and report
 [issues](https://github.com/havoc-io/mutagen/issues), the better it will get!
 
-| Windows                           | macOS/Linux                                   | Code coverage                           | Report card                           |
+| Windows                           | macOS/Linux                                   | Core code coverage                      | Report card                           |
 | :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :-----------------------------------: |
 | [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link]   |
 
