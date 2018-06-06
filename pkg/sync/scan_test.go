@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 func testCreateScanCycle(value ContentTestValue, ignores []string, symlinkMode SymlinkMode, expectEqual bool) error {
@@ -20,8 +22,12 @@ func testCreateScanCycle(value ContentTestValue, ignores []string, symlinkMode S
 	}
 	defer os.RemoveAll(parent)
 
-	// Grab the expected entry.
+	// Grab the expected entry. If we're on a system that doesn't support
+	// executability, then strip executability from the expected value.
 	expected := value.entry()
+	if !filesystem.PreservesExecutability {
+		expected = StripExecutability(expected)
+	}
 
 	// Create a hasher.
 	hasher := value.Hasher()
@@ -264,8 +270,12 @@ func TestEfficientRescan(t *testing.T) {
 	}
 	defer os.RemoveAll(parent)
 
-	// Grab the expected entry.
+	// Grab the expected entry. If we're on a system that doesn't support
+	// executability, then strip executability from the expected value.
 	expected := ContentTestValueDirectory1.entry()
+	if !filesystem.PreservesExecutability {
+		expected = StripExecutability(expected)
+	}
 
 	// Create a hasher.
 	hasher := ContentTestValueDirectory1.Hasher()
