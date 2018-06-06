@@ -6,6 +6,126 @@ import (
 	"testing"
 )
 
+// TestSignatureIsZeroValue verifies the isZeroValue behavior of Signature.
+func TestSignatureIsZeroValue(t *testing.T) {
+	var zeroValue Signature
+	if !zeroValue.isZeroValue() {
+		t.Error("zero-value signature not classified as zero-value")
+	}
+}
+
+// TestSignatureZeroBlockSizeNonZeroLastBlockSizeInvalid verifies the
+// ensureValid behavior of Signature when the block size is zero and the last
+// block size is non-zero.
+func TestSignatureZeroBlockSizeNonZeroLastBlockSizeInvalid(t *testing.T) {
+	signature := Signature{LastBlockSize: 8192}
+	if signature.ensureValid() == nil {
+		t.Error("zero block size with non-zero last block size considered valid")
+	}
+}
+
+// TestSignatureZeroBlockSizeWithHashesInvalid verifies the ensureValid behavior
+// of Signature when the block size is zero and hashes are present.
+func TestSignatureZeroBlockSizeWithHashesInvalid(t *testing.T) {
+	signature := Signature{Hashes: []BlockHash{{Weak: 5}}}
+	if signature.ensureValid() == nil {
+		t.Error("zero block size with hashes considered valid")
+	}
+}
+
+// TestSignatureZeroLastBlockSizeInvalid verifies the ensureValid behavior of
+// Signature when the last block size is 0.
+func TestSignatureZeroLastBlockSizeInvalid(t *testing.T) {
+	signature := Signature{BlockSize: 8192}
+	if signature.ensureValid() == nil {
+		t.Error("zero last block size considered valid")
+	}
+}
+
+// TestSignatureLastBlockSizeTooBigInvalid verifies the ensureValid behavior of
+// Signature when the last block size is too big.
+func TestSignatureLastBlockSizeTooBigInvalid(t *testing.T) {
+	signature := Signature{BlockSize: 8192, LastBlockSize: 8193}
+	if signature.ensureValid() == nil {
+		t.Error("overly large last block size considered valid")
+	}
+}
+
+// TestSignatureNoHashesInvalid verifies the ensureValid behavior of Signature
+// when no hashes are present.
+func TestSignatureNoHashesInvalid(t *testing.T) {
+	signature := Signature{BlockSize: 8192, LastBlockSize: 8192}
+	if signature.ensureValid() == nil {
+		t.Error("signature with no hashes considered valid")
+	}
+}
+
+// TestSignatureValid verifies the ensureValid behavior of Signature for a valid
+// signature.
+func TestSignatureValid(t *testing.T) {
+	signature := Signature{
+		BlockSize:     8192,
+		LastBlockSize: 8192,
+		Hashes:        []BlockHash{{Weak: 1}},
+	}
+	if err := signature.ensureValid(); err != nil {
+		t.Error("valid signature failed validation:", err)
+	}
+}
+
+// TestOperationIsZeroValue verifies the isZeroValue behavior of Operation.
+func TestOperationIsZeroValue(t *testing.T) {
+	var zeroValue Operation
+	if !zeroValue.isZeroValue() {
+		t.Error("zero-value operation not classified as zero-value")
+	}
+}
+
+// TestOperationDataAndStartInvalid verifies the ensureValid behavior of
+// Operation when data and a block start index are provided.
+func TestOperationDataAndStartInvalid(t *testing.T) {
+	operation := Operation{Data: []byte{0}, Start: 4}
+	if operation.ensureValid() == nil {
+		t.Error("operation with data and start considered valid")
+	}
+}
+
+// TestOperationDataAndCountInvalid verifies the ensureValid behavior of
+// Operation when data and a block count are provided.
+func TestOperationDataAndCountInvalid(t *testing.T) {
+	operation := Operation{Data: []byte{0}, Count: 4}
+	if operation.ensureValid() == nil {
+		t.Error("operation with data and count considered valid")
+	}
+}
+
+// TestOperationZeroCountInvalid verifies the ensureValid behavior of Operation
+// when the block count is zero.
+func TestOperationZeroCountInvalid(t *testing.T) {
+	operation := Operation{Start: 40}
+	if operation.ensureValid() == nil {
+		t.Error("operation with zero count considered valid")
+	}
+}
+
+// TestOperationDataValid verifies the ensureValid behavior of Operation in the
+// case of a valid data operation.
+func TestOperationDataValid(t *testing.T) {
+	operation := Operation{Data: []byte{0}}
+	if err := operation.ensureValid(); err != nil {
+		t.Error("valid data operation considered invalid")
+	}
+}
+
+// TestOperationBlocksValid verifies the ensureValid behavior of Operation in the
+// case of a valid block operation.
+func TestOperationBlocksValid(t *testing.T) {
+	operation := Operation{Start: 10, Count: 50}
+	if err := operation.ensureValid(); err != nil {
+		t.Error("valid block operation considered invalid")
+	}
+}
+
 // TestMinimumBlockSize verifies that OptimalBlockSizeForBaseLength returns a
 // sane minimum block size.
 func TestMinimumBlockSize(t *testing.T) {
