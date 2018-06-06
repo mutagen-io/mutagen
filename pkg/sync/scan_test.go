@@ -75,8 +75,4 @@ func TestBuilderNonExistent(t *testing.T) {
 	}
 }
 
-// TODO: Add verification of change detection.
-
-// TODO: Add verification of reference entries in GOROOT, including files.
-
 // TODO: Add ignore tests.
