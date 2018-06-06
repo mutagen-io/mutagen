@@ -279,7 +279,7 @@ func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error
 
 	// HACK: Wrap the results in Archives since gob can't encode nil pointers in
 	// the result array.
-	wrappedResults := make([]*Archive, len(results))
+	wrappedResults := make([]*sync.Archive, len(results))
 	for r, result := range results {
 		wrappedResults[r] = &sync.Archive{Root: result}
 	}

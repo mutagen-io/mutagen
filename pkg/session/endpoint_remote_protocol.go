@@ -64,7 +64,7 @@ type transitionResponse struct {
 	// for the remote endpoint protocol eventually, if not fully fledged gRPC,
 	// but that's going to require converting all of the rsync types to Protocol
 	// Buffers, which I'm not quite read to do.
-	Results  []*Archive
+	Results  []*sync.Archive
 	Problems []*sync.Problem
 	Error    string
 }
