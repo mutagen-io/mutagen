@@ -229,6 +229,19 @@ var testDirectory3ContentMap = map[string][]byte{
 	"executable file":              testFile2Contents,
 }
 
+var testDirectoryWithCaseConflict = &Entry{
+	Kind: EntryKind_Directory,
+	Contents: map[string]*Entry{
+		"FileName": testFile1Entry,
+		"FILENAME": testFile3Entry,
+	},
+}
+
+var testDirectoryWithCaseConflictContentMap = map[string][]byte{
+	"FileName": testFile1Contents,
+	"FILENAME": testFile3Contents,
+}
+
 var testSymlinkEntry = &Entry{
 	Kind:   EntryKind_Symlink,
 	Target: "file",

@@ -2,6 +2,7 @@ package sync
 
 import (
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -93,5 +94,17 @@ func TestTransitionDirectory2Root(t *testing.T) {
 func TestTransitionDirectory3Root(t *testing.T) {
 	if err := testTransitionCycle(testDirectory3Entry, testDirectory3ContentMap); err != nil {
 		t.Error("transition cycle failed:", err)
+	}
+}
+
+func TestTransitionCaseConflict(t *testing.T) {
+	// HACK: We actually ought to be determining this based on the filesystem
+	// being used, but it's a sufficient test mechanism for now.
+	expectCaseConflict := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
+	err := testTransitionCycle(testDirectoryWithCaseConflict, testDirectoryWithCaseConflictContentMap)
+	if expectCaseConflict && err == nil {
+		t.Error("expected case conflict")
+	} else if !expectCaseConflict && err != nil {
+		t.Error("unexpected case conflict")
 	}
 }
