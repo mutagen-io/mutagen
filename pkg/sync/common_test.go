@@ -38,8 +38,6 @@ var testFile3ContentsSHA1 = []byte{
 
 var testNilEntry *Entry
 
-var testNilContentMap map[string][]byte
-
 var testFile1Entry = &Entry{
 	Kind:   EntryKind_File,
 	Digest: testFile1ContentsSHA1,

@@ -55,7 +55,7 @@ func testCreateScanCycle(
 }
 
 func TestScanNilRoot(t *testing.T) {
-	if err := testCreateScanCycle(testNilEntry, testNilContentMap, nil, SymlinkMode_Sane, true); err != nil {
+	if err := testCreateScanCycle(testNilEntry, nil, nil, SymlinkMode_Sane, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
