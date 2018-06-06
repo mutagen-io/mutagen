@@ -4,13 +4,6 @@ import (
 	"testing"
 )
 
-// TestGOROOTValid rebuilds the GOROOT snapshot is valid.
-func TestEntryGOROOTValid(t *testing.T) {
-	if err := gorootSnapshot.EnsureValid(); err != nil {
-		t.Fatal("GOROOT invalid:", err)
-	}
-}
-
 func TestEntryNilValid(t *testing.T) {
 	if err := testNilEntry.EnsureValid(); err != nil {
 		t.Fatal("nil entry considered invalid:", err)
@@ -51,7 +44,7 @@ func TestEntryDirectoryEmptyContentNameInvalid(t *testing.T) {
 	directory := &Entry{
 		Kind: EntryKind_Directory,
 		Contents: map[string]*Entry{
-			"": testFileEntry,
+			"": testFile1Entry,
 		},
 	}
 	if directory.EnsureValid() == nil {
@@ -93,7 +86,7 @@ func TestEntryFileContentsInvalid(t *testing.T) {
 	file := &Entry{
 		Kind: EntryKind_File,
 		Contents: map[string]*Entry{
-			"file": testFileEntry,
+			"file": testFile1Entry,
 		},
 	}
 	if file.EnsureValid() == nil {
@@ -132,7 +125,7 @@ func TestEntryFileEmptyDigestInvalid(t *testing.T) {
 }
 
 func TestEntryFileValid(t *testing.T) {
-	if err := testFileEntry.EnsureValid(); err != nil {
+	if err := testFile1Entry.EnsureValid(); err != nil {
 		t.Fatal("valid file considered invalid:", err)
 	}
 }
@@ -164,7 +157,7 @@ func TestEntrySymlinkContentsInvalid(t *testing.T) {
 		Kind:   EntryKind_Symlink,
 		Target: "file",
 		Contents: map[string]*Entry{
-			"file": testFileEntry,
+			"file": testFile1Entry,
 		},
 	}
 	if symlink.EnsureValid() == nil {
@@ -202,7 +195,7 @@ func TestEntryNilNilEqualShallow(t *testing.T) {
 }
 
 func TestEntryNilNonNilNotEqualShallow(t *testing.T) {
-	if testNilEntry.equalShallow(testFileEntry) {
+	if testNilEntry.equalShallow(testFile1Entry) {
 		t.Error("nil and non-nil entries considered shallow equal")
 	}
 }
@@ -214,7 +207,7 @@ func TestEntrySameDirectoryEqualShallow(t *testing.T) {
 }
 
 func TestEntrySameFileEqualShallow(t *testing.T) {
-	if !testFileEntry.equalShallow(testFileEntry) {
+	if !testFile1Entry.equalShallow(testFile1Entry) {
 		t.Error("identical files not considered shallow equal")
 	}
 }
@@ -226,7 +219,7 @@ func TestEntrySameSymlinkEqualShallow(t *testing.T) {
 }
 
 func TestEntrySymlinkFileNotEqualShallow(t *testing.T) {
-	if testSymlinkEntry.equalShallow(testFileEntry) {
+	if testSymlinkEntry.equalShallow(testFile1Entry) {
 		t.Error("symlink and file considered shallow equal")
 	}
 }
@@ -272,7 +265,7 @@ func TestEntrySameDirectoryEqual(t *testing.T) {
 }
 
 func TestEntrySameFileEqual(t *testing.T) {
-	if !testFileEntry.Equal(testFileEntry) {
+	if !testFile1Entry.Equal(testFile1Entry) {
 		t.Error("identical files not considered equal")
 	}
 }
@@ -284,7 +277,7 @@ func TestEntrySameSymlinkEqual(t *testing.T) {
 }
 
 func TestEntrySymlinkFileNotEqual(t *testing.T) {
-	if testSymlinkEntry.Equal(testFileEntry) {
+	if testSymlinkEntry.Equal(testFile1Entry) {
 		t.Error("symlink and file considered shallow equal")
 	}
 }
@@ -321,11 +314,11 @@ func TestEntryDirectoryCopyShallow(t *testing.T) {
 }
 
 func TestEntryFileCopyShallow(t *testing.T) {
-	file := testFileEntry.CopyShallow()
+	file := testFile1Entry.CopyShallow()
 	if file == nil {
 		t.Error("shallow copy of file returned nil")
 	}
-	if !file.equalShallow(testFileEntry) {
+	if !file.equalShallow(testFile1Entry) {
 		t.Error("shallow copy of file not considered shallow equal to original")
 	}
 }
@@ -371,11 +364,11 @@ func TestEntryDirectoryCopy(t *testing.T) {
 }
 
 func TestEntryFileCopy(t *testing.T) {
-	file := testFileEntry.Copy()
+	file := testFile1Entry.Copy()
 	if file == nil {
 		t.Error("copy of file returned nil")
 	}
-	if !file.Equal(testFileEntry) {
+	if !file.Equal(testFile1Entry) {
 		t.Error("copy of file not considered equal to original")
 	}
 }

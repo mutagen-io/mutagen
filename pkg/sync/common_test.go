@@ -1,20 +1,31 @@
 package sync
 
-const (
-	testFile1Contents = "Hello, world!"
-	testFile2Contents = "#!/bin/bash\necho 'Hello, world!'"
-	testFile3Contents = "Something else"
+import (
+	"bytes"
+	"crypto/sha1"
+	"hash"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/pkg/errors"
 )
+
+var testFile1Contents = []byte("Hello, world!")
 
 var testFile1ContentsSHA1 = []byte{
 	0x94, 0x3a, 0x70, 0x2d, 0x06, 0xf3, 0x45, 0x99, 0xae, 0xe1,
 	0xf8, 0xda, 0x8e, 0xf9, 0xf7, 0x29, 0x60, 0x31, 0xd6, 0x99,
 }
 
+var testFile2Contents = []byte("#!/bin/bash\necho 'Hello, world!'")
+
 var testFile2ContentsSHA1 = []byte{
-	0xe5, 0x38, 0x33, 0x8f, 0xc4, 0xe9, 0x98, 0x3b, 0xf4, 0x8e,
-	0x04, 0xba, 0x41, 0x59, 0x25, 0xc0, 0x0b, 0x33, 0xe5, 0xcb,
+	0xc8, 0x5f, 0x28, 0x3f, 0xa0, 0xb4, 0x2d, 0xf3, 0x28, 0xf4,
+	0x10, 0xd4, 0xf3, 0x64, 0x4c, 0x78, 0x0b, 0x30, 0xda, 0x68,
 }
+
+var testFile3Contents = []byte("Something else")
 
 var testFile3ContentsSHA1 = []byte{
 	0x48, 0xf8, 0x8a, 0xc3, 0x22, 0xa0, 0x66, 0x76, 0x82, 0xd3,
@@ -23,20 +34,36 @@ var testFile3ContentsSHA1 = []byte{
 
 var testNilEntry *Entry
 
-// testDirectory1Entry is a sample directory entry for use in testing. It has
-// the following structure:
-//
-//   /
-//     empty directory/
-//     directory/
-//       subdirectory/
-//       subfile (file 3)
-//       another symlink (=> ../executable file)
-//     second directory/
-//       subfile.exe (file 3)
-//     file (file 1)
-//     executable file (file 2, executable)
-//     symlink (=> directory/subfile)
+var testNilContentMap map[string][]byte
+
+var testFile1Entry = &Entry{
+	Kind:   EntryKind_File,
+	Digest: testFile1ContentsSHA1,
+}
+
+var testFile1ContentMap = map[string][]byte{
+	"": testFile1Contents,
+}
+
+var testFile2Entry = &Entry{
+	Kind:       EntryKind_File,
+	Digest:     testFile2ContentsSHA1,
+	Executable: true,
+}
+
+var testFile2ContentMap = map[string][]byte{
+	"": testFile2Contents,
+}
+
+var testFile3Entry = &Entry{
+	Kind:   EntryKind_File,
+	Digest: testFile3ContentsSHA1,
+}
+
+var testFile3ContentMap = map[string][]byte{
+	"": testFile3Contents,
+}
+
 var testDirectory1Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
@@ -84,21 +111,13 @@ var testDirectory1Entry = &Entry{
 	},
 }
 
-// testDirectory2Entry is a sample directory entry for use in testing. It has
-// the following structure:
-//
-//   /
-//     empty directory/
-//       new subfile (file 3)
-//     renamed directory/
-//       subdirectory/
-//       subfile (file 3)
-//       another symlink (=> ../executable file)
-//     second directory/
-//       subfile.exe (file 3, executable)
-//     renamed file (file 1)
-//     executable file (file 2, executable)
-//     new symlink (=> renamed directory/subfile)
+var testDirectory1ContentMap = map[string][]byte{
+	"directory/subfile":            testFile3Contents,
+	"second directory/subfile.exe": testFile3Contents,
+	"file":            testFile1Contents,
+	"executable file": testFile2Contents,
+}
+
 var testDirectory2Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
@@ -153,20 +172,14 @@ var testDirectory2Entry = &Entry{
 	},
 }
 
-// testDirectory3Entry is a sample directory entry for use in testing. It is a
-// subentry of testDirectory2Entry. It has the following structure:
-//
-//   /
-//     empty directory/
-//       new subfile (file 3)
-//     renamed directory/
-//       subdirectory/
-//       subfile (file 3)
-//       another symlink (=> ../executable file)
-//     second directory/
-//       subfile.exe (file 3, executable)
-//     executable file (file 2, executable)
-//     new symlink (=> renamed directory/subfile)
+var testDirectory2ContentMap = map[string][]byte{
+	"empty directory/new subfile":  testFile3Contents,
+	"renamed directory/subfile":    testFile3Contents,
+	"second directory/subfile.exe": testFile3Contents,
+	"renamed_file":                 testFile1Contents,
+	"executable file":              testFile2Contents,
+}
+
 var testDirectory3Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
@@ -207,9 +220,11 @@ var testDirectory3Entry = &Entry{
 	},
 }
 
-var testFileEntry = &Entry{
-	Kind:   EntryKind_File,
-	Digest: testFile1ContentsSHA1,
+var testDirectory3ContentMap = map[string][]byte{
+	"empty directory/new subfile":  testFile3Contents,
+	"renamed directory/subfile":    testFile3Contents,
+	"second directory/subfile.exe": testFile3Contents,
+	"executable file":              testFile2Contents,
 }
 
 var testSymlinkEntry = &Entry{
@@ -217,12 +232,246 @@ var testSymlinkEntry = &Entry{
 	Target: "file",
 }
 
-func createTestDirectoryRoot() (string, error) {
-	// TODO: Implement.
-	return "", nil
+var testDirectoryWithSaneSymlink = &Entry{
+	Kind: EntryKind_Directory,
+	Contents: map[string]*Entry{
+		"sane symlink": {
+			Kind:   EntryKind_Symlink,
+			Target: "neighboring file",
+		},
+	},
 }
 
-func createTestFileRoot() (string, error) {
-	// TODO: Implement.
-	return "", nil
+var testDirectoryWithInvalidSymlink = &Entry{
+	Kind: EntryKind_Directory,
+	Contents: map[string]*Entry{
+		"invalid-symlink": {
+			Kind:   EntryKind_Symlink,
+			Target: "neighboring:file",
+		},
+	},
+}
+
+var testDirectoryWithEscapingSymlink = &Entry{
+	Kind: EntryKind_Directory,
+	Contents: map[string]*Entry{
+		"escaping_symlink": {
+			Kind:   EntryKind_Symlink,
+			Target: "../parent neighbor",
+		},
+	},
+}
+
+var testDirectoryWithAbsoluteSymlink = &Entry{
+	Kind: EntryKind_Directory,
+	Contents: map[string]*Entry{
+		"absolute symlink": {
+			Kind:   EntryKind_Symlink,
+			Target: "/path/to/neighboring file",
+		},
+	},
+}
+
+type testProvider struct {
+	servingRoot string
+	contentMap  map[string][]byte
+}
+
+func newTestProvider(contentMap map[string][]byte) (*testProvider, error) {
+	// Create a temporary directory for serving files.
+	servingRoot, err := ioutil.TempDir("", "mutagen_provide_root")
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create serving directory")
+	}
+
+	// Create the test provider.
+	return &testProvider{
+		servingRoot: servingRoot,
+		contentMap:  contentMap,
+	}, nil
+}
+
+func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) (string, error) {
+	// Ensure the entry is a file type.
+	if entry.Kind != EntryKind_File {
+		return "", errors.New("invalid entry kind provision requested")
+	}
+
+	// Grab the content for this path.
+	content, ok := p.contentMap[path]
+	if !ok {
+		return "", errors.New("unable to find content for path")
+	}
+
+	// Ensure it matches the requested hash.
+	contentHash := sha1.Sum(content)
+	if !bytes.Equal(entry.Digest, contentHash[:]) {
+		return "", errors.New("requested entry digest does not match expected")
+	}
+
+	// Create a temporary file in the serving root.
+	temporaryFile, err := ioutil.TempFile(p.servingRoot, "mutagen_provide")
+	if err != nil {
+		return "", errors.Wrap(err, "unable to create temporary file")
+	}
+
+	// Write content.
+	_, err = temporaryFile.Write(content)
+	temporaryFile.Close()
+	if err != nil {
+		os.Remove(temporaryFile.Name())
+		return "", errors.Wrap(err, "unable to write file contents")
+	}
+
+	// Compute the file mode.
+	mode := baseMode
+	if mode == 0 {
+		mode = ProviderBaseMode
+	}
+	if entry.Executable {
+		mode |= UserExecutablePermission
+	} else {
+		mode &^= AnyExecutablePermission
+	}
+
+	// Set the file mode.
+	if err := os.Chmod(temporaryFile.Name(), mode); err != nil {
+		os.Remove(temporaryFile.Name())
+		return "", errors.Wrap(err, "unable to set file mode")
+	}
+
+	// Success.
+	return temporaryFile.Name(), nil
+}
+
+func (p *testProvider) Finalize() error {
+	return os.RemoveAll(p.servingRoot)
+}
+
+type ContentTestValue uint8
+
+const (
+	ContentTestValueNil ContentTestValue = iota
+	ContentTestValueFile1
+	ContentTestValueFile2
+	ContentTestValueFile3
+	ContentTestValueDirectory1
+	ContentTestValueDirectory2
+	ContentTestValueDirectory3
+	ContentTestValueSymlink
+	ContentTestValueDirectoryWithSaneSymlink
+	ContentTestValueDirectoryWithInvalidSymlink
+	ContentTestValueDirectoryWithEscapingSymlink
+	ContentTestValueDirectoryWithAbsoluteSymlink
+)
+
+func (v ContentTestValue) Hasher() hash.Hash {
+	return sha1.New()
+}
+
+func (v ContentTestValue) entry() *Entry {
+	switch v {
+	case ContentTestValueNil:
+		return nil
+	case ContentTestValueFile1:
+		return testFile1Entry
+	case ContentTestValueFile2:
+		return testFile2Entry
+	case ContentTestValueFile3:
+		return testFile3Entry
+	case ContentTestValueDirectory1:
+		return testDirectory1Entry
+	case ContentTestValueDirectory2:
+		return testDirectory2Entry
+	case ContentTestValueDirectory3:
+		return testDirectory3Entry
+	case ContentTestValueSymlink:
+		return testSymlinkEntry
+	case ContentTestValueDirectoryWithSaneSymlink:
+		return testDirectoryWithSaneSymlink
+	case ContentTestValueDirectoryWithInvalidSymlink:
+		return testDirectoryWithInvalidSymlink
+	case ContentTestValueDirectoryWithEscapingSymlink:
+		return testDirectoryWithEscapingSymlink
+	case ContentTestValueDirectoryWithAbsoluteSymlink:
+		return testDirectoryWithAbsoluteSymlink
+	default:
+		panic("unknown content test value")
+	}
+}
+
+func (v ContentTestValue) CreateOnDisk() (string, string, error) {
+	// Grab the entry for this test value.
+	entry := v.entry()
+
+	// Identify the content map to use when creating.
+	var contentMap map[string][]byte
+	switch v {
+	case ContentTestValueNil:
+		contentMap = testNilContentMap
+	case ContentTestValueFile1:
+		contentMap = testFile1ContentMap
+	case ContentTestValueFile2:
+		contentMap = testFile2ContentMap
+	case ContentTestValueFile3:
+		contentMap = testFile3ContentMap
+	case ContentTestValueDirectory1:
+		contentMap = testDirectory1ContentMap
+	case ContentTestValueDirectory2:
+		contentMap = testDirectory2ContentMap
+	case ContentTestValueDirectory3:
+		contentMap = testDirectory3ContentMap
+	case ContentTestValueDirectoryWithSaneSymlink:
+		contentMap = nil
+	case ContentTestValueDirectoryWithInvalidSymlink:
+		contentMap = nil
+	case ContentTestValueDirectoryWithEscapingSymlink:
+		contentMap = nil
+	case ContentTestValueDirectoryWithAbsoluteSymlink:
+		contentMap = nil
+	default:
+		return "", "", errors.New("content test value not supported as root")
+	}
+
+	// Create a provider and ensure its cleanup.
+	provider, err := newTestProvider(contentMap)
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to create test provider")
+	}
+	defer provider.Finalize()
+
+	// Create temporary directory in which we can create the root. The root will
+	// exist inside the directory, not at the directory location.
+	parent, err := ioutil.TempDir("", "mutagen_simulated")
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to create temporary root parent")
+	}
+
+	// Compute the path to the root.
+	root := filepath.Join(parent, "root")
+
+	// Set up transitions to create the specified entry at the root.
+	transitions := []*Change{{New: entry}}
+
+	// Create an empty cache for the transition. This is fine since we're only
+	// doing creations and don't need the cache.
+	cache := &Cache{}
+
+	// Perform the creation transition.
+	entries, problems := Transition(root, transitions, cache, provider)
+
+	// Ensure that there were no problems.
+	if len(problems) != 0 {
+		os.RemoveAll(parent)
+		return "", "", errors.New("problems occurred during creation")
+	} else if len(entries) != 1 {
+		os.RemoveAll(parent)
+		return "", "", errors.New("unexpected number of entries returned from transition")
+	} else if !entries[0].Equal(entry) {
+		os.RemoveAll(parent)
+		return "", "", errors.New("created entry does not match expected")
+	}
+
+	// Success.
+	return root, parent, nil
 }

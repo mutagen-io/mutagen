@@ -29,11 +29,11 @@ func TestDiffDeletionIdentity(t *testing.T) {
 }
 
 func TestDiffFileToDirectory(t *testing.T) {
-	if changes := diff("", testFileEntry, testDirectory1Entry); len(changes) != 1 {
+	if changes := diff("", testFile1Entry, testDirectory1Entry); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
 		t.Error("unexpected change path:", changes[0].Path, "!=", "")
-	} else if changes[0].Old != testFileEntry {
+	} else if changes[0].Old != testFile1Entry {
 		t.Error("unexpected old entry")
 	} else if changes[0].New != testDirectory1Entry {
 		t.Error("unexpected new entry")
@@ -41,13 +41,13 @@ func TestDiffFileToDirectory(t *testing.T) {
 }
 
 func TestDiffDirectoryToFile(t *testing.T) {
-	if changes := diff("", testDirectory1Entry, testFileEntry); len(changes) != 1 {
+	if changes := diff("", testDirectory1Entry, testFile1Entry); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
 		t.Error("unexpected change path:", changes[0].Path, "!=", "")
 	} else if changes[0].Old != testDirectory1Entry {
 		t.Error("unexpected old entry")
-	} else if changes[0].New != testFileEntry {
+	} else if changes[0].New != testFile1Entry {
 		t.Error("unexpected new entry")
 	}
 }

@@ -8,7 +8,7 @@ func TestReconcileNonDeletionChangesOnly(t *testing.T) {
 	changes := []*Change{
 		{
 			Path: "file",
-			New:  testFileEntry,
+			New:  testFile1Entry,
 		},
 		{
 			Path: "directory",
@@ -80,9 +80,9 @@ func TestReconcileDirectoryNothingChanged(t *testing.T) {
 func TestReconcileFileNothingChanged(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFileEntry,
-		testFileEntry,
-		testFileEntry,
+		testFile1Entry,
+		testFile1Entry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -215,7 +215,7 @@ func TestReconcileAlphaCreatedRoot(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		nil,
-		testFileEntry,
+		testFile1Entry,
 		nil,
 	)
 
@@ -236,7 +236,7 @@ func TestReconcileAlphaCreatedRoot(t *testing.T) {
 		t.Error("beta transition has unexpected path")
 	} else if βTransitions[0].Old != nil {
 		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFileEntry {
+	} else if βTransitions[0].New != testFile1Entry {
 		t.Error("beta transition has unexpected new entry")
 	}
 
@@ -251,7 +251,7 @@ func TestReconcileBetaCreatedRoot(t *testing.T) {
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		nil,
 		nil,
-		testFileEntry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -266,7 +266,7 @@ func TestReconcileBetaCreatedRoot(t *testing.T) {
 		t.Error("alpha transition has unexpected path")
 	} else if αTransitions[0].Old != nil {
 		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFileEntry {
+	} else if αTransitions[0].New != testFile1Entry {
 		t.Error("alpha transition has unexpected new entry")
 	}
 
@@ -285,8 +285,8 @@ func TestReconcileBothCreatedSameFile(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		nil,
-		testFileEntry,
-		testFileEntry,
+		testFile1Entry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -294,7 +294,7 @@ func TestReconcileBothCreatedSameFile(t *testing.T) {
 		t.Error("unexpected number of ancestor changes")
 	} else if newAncestor, err := Apply(nil, ancestorChanges); err != nil {
 		t.Error("unable to apply ancestor changes")
-	} else if !newAncestor.Equal(testFileEntry) {
+	} else if !newAncestor.Equal(testFile1Entry) {
 		t.Error("post-change ancestor does not match expected")
 	}
 
@@ -381,7 +381,7 @@ func TestReconcileBothCreatedDifferentTypes(t *testing.T) {
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		nil,
 		testDirectory1Entry,
-		testFileEntry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -410,7 +410,7 @@ func TestReconcileAlphaDeletedRootBetaCreatedFile(t *testing.T) {
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		testDirectory1Entry,
 		nil,
-		testFileEntry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -425,7 +425,7 @@ func TestReconcileAlphaDeletedRootBetaCreatedFile(t *testing.T) {
 		t.Error("alpha transition has unexpected path")
 	} else if αTransitions[0].Old != nil {
 		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFileEntry {
+	} else if αTransitions[0].New != testFile1Entry {
 		t.Error("alpha transition has unexpected new entry")
 	}
 
@@ -444,7 +444,7 @@ func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		testDirectory1Entry,
-		testFileEntry,
+		testFile1Entry,
 		nil,
 	)
 
@@ -465,7 +465,7 @@ func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
 		t.Error("beta transition has unexpected path")
 	} else if βTransitions[0].Old != nil {
 		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFileEntry {
+	} else if βTransitions[0].New != testFile1Entry {
 		t.Error("beta transition has unexpected new entry")
 	}
 
@@ -478,7 +478,7 @@ func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
 func TestReconcileAlphaDeletedRootBetaCreatedDirectory(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFileEntry,
+		testFile1Entry,
 		nil,
 		testDirectory1Entry,
 	)
@@ -513,7 +513,7 @@ func TestReconcileAlphaDeletedRootBetaCreatedDirectory(t *testing.T) {
 func TestReconcileAlphaCreatedDirectoryBetaDeletedRoot(t *testing.T) {
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFileEntry,
+		testFile1Entry,
 		testDirectory1Entry,
 		nil,
 	)
@@ -615,7 +615,7 @@ func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContents(t *testing.T)
 	// Perform reconciliation.
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		testDirectory2Entry,
-		testFileEntry,
+		testFile1Entry,
 		testDirectory3Entry,
 	)
 
@@ -636,7 +636,7 @@ func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContents(t *testing.T)
 		t.Error("beta transition has unexpected path")
 	} else if βTransitions[0].Old != testDirectory3Entry {
 		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFileEntry {
+	} else if βTransitions[0].New != testFile1Entry {
 		t.Error("beta transition has unexpected new entry")
 	}
 
@@ -651,7 +651,7 @@ func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectory(t *testing.T)
 	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
 		testDirectory2Entry,
 		testDirectory3Entry,
-		testFileEntry,
+		testFile1Entry,
 	)
 
 	// Validate ancestor changes.
@@ -666,7 +666,7 @@ func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectory(t *testing.T)
 		t.Error("alpha transition has unexpected path")
 	} else if αTransitions[0].Old != testDirectory3Entry {
 		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFileEntry {
+	} else if αTransitions[0].New != testFile1Entry {
 		t.Error("alpha transition has unexpected new entry")
 	}
 

@@ -9,14 +9,14 @@ func TestApplyRootSwap(t *testing.T) {
 	changes := []*Change{
 		{
 			Old: testDirectory1Entry,
-			New: testFileEntry,
+			New: testFile1Entry,
 		},
 	}
 
 	// Ensure that the swap is applied correctly.
 	if result, err := Apply(testDirectory1Entry, changes); err != nil {
 		t.Fatal("unable to apply changes:", err)
-	} else if !result.Equal(testFileEntry) {
+	} else if !result.Equal(testFile1Entry) {
 		t.Error("mismatch after root replacement")
 	}
 }
@@ -38,7 +38,7 @@ func TestApplyMissingParentPath(t *testing.T) {
 	changes := []*Change{
 		{
 			Path: "this/does/not/exist",
-			New:  testFileEntry,
+			New:  testFile1Entry,
 		},
 	}
 

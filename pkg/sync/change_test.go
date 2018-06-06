@@ -20,8 +20,8 @@ func TestChangeBothNilInvalid(t *testing.T) {
 
 func TestChangeBothSameInvalid(t *testing.T) {
 	change := &Change{
-		Old: testFileEntry,
-		New: testFileEntry,
+		Old: testFile1Entry,
+		New: testFile1Entry,
 	}
 	if change.EnsureValid() == nil {
 		t.Error("change with duplicate considered valid")

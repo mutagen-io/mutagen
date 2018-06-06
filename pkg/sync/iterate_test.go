@@ -13,18 +13,18 @@ func TestIterateNameUnionEmpty(t *testing.T) {
 func TestIterateNameUnion(t *testing.T) {
 	firstContents := map[string]*Entry{
 		"name1": testDirectory1Entry,
-		"name2": testFileEntry,
+		"name2": testFile1Entry,
 		"name3": testSymlinkEntry,
 	}
 	secondContents := map[string]*Entry{
 		"name1": testDirectory1Entry,
-		"name2": testFileEntry,
+		"name2": testFile1Entry,
 		"name3": testSymlinkEntry,
 	}
 	thirdContents := map[string]*Entry{
 		"name1": testDirectory1Entry,
 		"name3": testSymlinkEntry,
-		"name4": testFileEntry,
+		"name4": testFile1Entry,
 		"name5": testSymlinkEntry,
 	}
 	union := nameUnion(firstContents, secondContents, thirdContents)
