@@ -48,16 +48,26 @@ func ServeEndpoint(connection net.Conn) error {
 		return err
 	}
 
+	// Validate the initialization request parameters.
+	var validationErr error
+	if request.Session == "" {
+		validationErr = errors.New("empty session identifier")
+	} else if !request.Version.supported() {
+		validationErr = errors.New("unknown or unsupported session version")
+	} else if request.Root == "" {
+		validationErr = errors.New("empty root path")
+	} else if err := request.Configuration.EnsureValid(); err != nil {
+		validationErr = errors.Wrap(err, "invalid session configuration")
+	}
+	if validationErr != nil {
+		err := errors.Wrap(validationErr, "invalid initialization request")
+		encoder.Encode(initializeResponse{Error: err.Error()})
+		return err
+	}
+
 	// Create the underlying endpoint. If it fails to create, then send a
 	// failure response and abort. If it succeeds, then defer its closure.
-	endpoint, err := newLocalEndpoint(
-		request.Session,
-		request.Version,
-		request.Root,
-		request.Ignores,
-		request.SymlinkMode,
-		request.Alpha,
-	)
+	endpoint, err := newLocalEndpoint(request.Session, request.Version, request.Root, request.Configuration, request.Alpha)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
 		encoder.Encode(initializeResponse{Error: err.Error()})

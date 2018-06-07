@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
@@ -31,6 +30,9 @@ type controller struct {
 	sessionPath string
 	// archivePath is the path to the serialized archive.
 	archivePath string
+	// mergedConfiguration is the merged configuration resulting from
+	// per-session and global configurations.
+	mergedConfiguration *Configuration
 	// stateLock guards and tracks changes to the session member's Paused field
 	// and the state member. Code may access static members of the session
 	// without holding this lock, but any reads or writes to the Paused field
@@ -57,33 +59,15 @@ type controller struct {
 	done chan struct{}
 }
 
-func newSession(
-	tracker *state.Tracker,
-	alpha, beta *url.URL,
-	ignores []string,
-	symlinkMode sync.SymlinkMode,
-	prompter string,
-) (*controller, error) {
-	// TODO: Should we perform URL validation in here? They should be validated
-	// by the respective dialers.
-
-	// Load default ignores, if any, and prepend them to the provided ignores.
-	configuration, err := configuration.Load()
+func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Configuration, prompter string) (*controller, error) {
+	// Create a snapshot of the global configuration.
+	globalConfiguration, err := snapshotGlobalConfiguration()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to load configuration file")
+		return nil, errors.Wrap(err, "unable to snapshot global configuration")
 	}
-	ignores = append(configuration.Ignore.Default, ignores...)
 
-	// Verify that the ignores are valid.
-	// TODO: We verify this here so that we also validate those ignores loaded
-	// from the configuration file, but should we relocate both of these things
-	// to the session service creation handler? It verifies all other
-	// parameters and could even load the default ignores.
-	for _, ignore := range ignores {
-		if !sync.ValidIgnorePattern(ignore) {
-			return nil, errors.Errorf("invalid ignore specified: %s", ignore)
-		}
-	}
+	// Create an effective merged configuration.
+	mergedConfiguration := MergeConfigurations(configuration, globalConfiguration)
 
 	// Create a unique session identifier.
 	randomUUID, err := uuid.NewRandom()
@@ -103,11 +87,11 @@ func newSession(
 	}
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(identifier, version, alpha, ignores, symlinkMode, true, prompter)
+	alphaEndpoint, err := connect(identifier, version, alpha, mergedConfiguration, true, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(identifier, version, beta, ignores, symlinkMode, false, prompter)
+	betaEndpoint, err := connect(identifier, version, beta, mergedConfiguration, false, prompter)
 	if err != nil {
 		alphaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
@@ -123,8 +107,8 @@ func newSession(
 		CreatingVersionPatch: mutagen.VersionPatch,
 		Alpha:                alpha,
 		Beta:                 beta,
-		Ignores:              ignores,
-		SymlinkMode:          symlinkMode,
+		Configuration:        configuration,
+		GlobalConfiguration:  globalConfiguration,
 	}
 	archive := &sync.Archive{}
 
@@ -157,10 +141,11 @@ func newSession(
 
 	// Create the controller.
 	controller := &controller{
-		sessionPath: sessionPath,
-		archivePath: archivePath,
-		stateLock:   state.NewTrackingLock(tracker),
-		session:     session,
+		sessionPath:         sessionPath,
+		archivePath:         archivePath,
+		mergedConfiguration: mergedConfiguration,
+		stateLock:           state.NewTrackingLock(tracker),
+		session:             session,
 		state: &State{
 			Session: session,
 		},
@@ -195,12 +180,19 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "invalid session found on disk")
 	}
 
+	// Create an effective merged configuration.
+	mergedConfiguration := MergeConfigurations(
+		session.Configuration,
+		session.GlobalConfiguration,
+	)
+
 	// Create the controller.
 	controller := &controller{
-		sessionPath: sessionPath,
-		archivePath: archivePath,
-		stateLock:   state.NewTrackingLock(tracker),
-		session:     session,
+		sessionPath:         sessionPath,
+		archivePath:         archivePath,
+		mergedConfiguration: mergedConfiguration,
+		stateLock:           state.NewTrackingLock(tracker),
+		session:             session,
 		state: &State{
 			Session: session,
 		},
@@ -286,8 +278,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Identifier,
 		c.session.Version,
 		c.session.Alpha,
-		c.session.Ignores,
-		c.session.SymlinkMode,
+		c.mergedConfiguration,
 		true,
 		prompter,
 	)
@@ -303,8 +294,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Identifier,
 		c.session.Version,
 		c.session.Beta,
-		c.session.Ignores,
-		c.session.SymlinkMode,
+		c.mergedConfiguration,
 		false,
 		prompter,
 	)
@@ -439,8 +429,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Identifier,
 					c.session.Version,
 					c.session.Alpha,
-					c.session.Ignores,
-					c.session.SymlinkMode,
+					c.mergedConfiguration,
 					true,
 				)
 			}
@@ -467,8 +456,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Identifier,
 					c.session.Version,
 					c.session.Beta,
-					c.session.Ignores,
-					c.session.SymlinkMode,
+					c.mergedConfiguration,
 					false,
 				)
 			}

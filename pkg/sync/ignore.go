@@ -98,6 +98,8 @@ func (i *ignorePattern) matches(path string, directory bool) (bool, bool) {
 	return false, false
 }
 
+// ValidIgnorePattern checks whether or not a given pattern is a valid ignore
+// specification.
 func ValidIgnorePattern(pattern string) bool {
 	// Verify that we can parse the ignore.
 	_, err := newIgnorePattern(pattern)

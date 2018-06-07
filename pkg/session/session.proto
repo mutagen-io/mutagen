@@ -4,11 +4,17 @@ package session;
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
+import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
 import "github.com/havoc-io/mutagen/pkg/url/url.proto";
 
+// Version specifies a session version, providing default behavior that can vary
+// without affecting existing sessions.
 enum Version {
-    Unknown = 0;
+    // Invalid is the default session version and represents an unspecfied and
+    // invalid version. It is used as a sanity check to ensure that version is
+    // set for a session.
+    Invalid = 0;
+    // Version1 represents session version 1.
     Version1 = 1;
 }
 
@@ -21,7 +27,7 @@ message Session {
     uint32 creatingVersionPatch = 6;
     url.URL alpha = 7;
     url.URL beta = 8;
-    repeated string ignores = 9;
-    bool paused = 10;
-    sync.SymlinkMode symlinkMode = 11;
+    Configuration configuration = 9;
+    Configuration globalConfiguration = 10;
+    bool paused = 11;
 }

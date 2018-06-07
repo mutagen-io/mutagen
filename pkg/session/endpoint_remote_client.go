@@ -30,27 +30,18 @@ type remoteEndpointClient struct {
 
 // newRemoteEndpoint constructs a new remote endpoint instance using the
 // specified connection.
-func newRemoteEndpoint(
-	connection net.Conn,
-	session string,
-	version Version,
-	root string,
-	ignores []string,
-	symlinkMode sync.SymlinkMode,
-	alpha bool,
-) (endpoint, error) {
+func newRemoteEndpoint(connection net.Conn, session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
 	// Create encoders and decoders.
 	encoder := gob.NewEncoder(connection)
 	decoder := gob.NewDecoder(connection)
 
 	// Create and send the initialize request.
 	request := initializeRequest{
-		Session:     session,
-		Version:     version,
-		Root:        root,
-		Ignores:     ignores,
-		SymlinkMode: symlinkMode,
-		Alpha:       alpha,
+		Session:       session,
+		Version:       version,
+		Root:          root,
+		Configuration: configuration,
+		Alpha:         alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
 		connection.Close()

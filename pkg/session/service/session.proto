@@ -3,16 +3,15 @@ syntax = "proto3";
 package service;
 
 import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
+import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
 import "github.com/havoc-io/mutagen/pkg/session/state.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
 import "github.com/havoc-io/mutagen/pkg/url/url.proto";
 
 message CreateRequest {
     url.URL alpha = 1;
     url.URL beta = 2;
-    repeated string ignores = 3;
-    sync.SymlinkMode symlinkMode = 4;
-    string response = 5;
+    session.Configuration configuration = 3;
+    string response = 4;
 }
 
 message CreateResponse {

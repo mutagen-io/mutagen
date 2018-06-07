@@ -13,6 +13,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 func printMonitorLine(state *sessionpkg.State) {
@@ -144,16 +145,42 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 
 		// Print session information the first time through the loop.
 		if !sessionInformationPrinted {
+			// Print the session identifier.
 			fmt.Println("Session:", state.Session.Identifier)
-			if len(state.Session.Ignores) > 0 {
-				fmt.Println("Ignored paths:")
-				for _, p := range state.Session.Ignores {
+
+			// Print default and per-session ignores.
+			if len(state.Session.GlobalConfiguration.Ignores) > 0 {
+				fmt.Println("Default ignores:")
+				for _, p := range state.Session.GlobalConfiguration.Ignores {
 					fmt.Printf("\t%s\n", p)
 				}
 			}
-			fmt.Println("Symlink Mode:", state.Session.SymlinkMode.Description())
+			if len(state.Session.Configuration.Ignores) > 0 {
+				fmt.Println("Ignores:")
+				for _, p := range state.Session.Configuration.Ignores {
+					fmt.Printf("\t%s\n", p)
+				}
+			}
+
+			// Compute the merged session configuration.
+			mergedConfiguration := sessionpkg.MergeConfigurations(
+				state.Session.Configuration,
+				state.Session.GlobalConfiguration,
+			)
+
+			// Compute and print symlink mode.
+			symlinkModeDescription := mergedConfiguration.SymlinkMode.Description()
+			if mergedConfiguration.SymlinkMode == sync.SymlinkMode_Default {
+				defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
+				symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
+			}
+			fmt.Println("Symlink Mode:", symlinkModeDescription)
+
+			// Print endpoint URLs.
 			fmt.Println("Alpha:", state.Session.Alpha.Format())
 			fmt.Println("Beta:", state.Session.Beta.Format())
+
+			// Mark session information as printed.
 			sessionInformationPrinted = true
 		}
 

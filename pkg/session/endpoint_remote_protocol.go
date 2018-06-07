@@ -6,12 +6,11 @@ import (
 )
 
 type initializeRequest struct {
-	Session     string
-	Version     Version
-	Root        string
-	Ignores     []string
-	SymlinkMode sync.SymlinkMode
-	Alpha       bool
+	Session       string
+	Version       Version
+	Root          string
+	Configuration *Configuration
+	Alpha         bool
 }
 
 type initializeResponse struct {

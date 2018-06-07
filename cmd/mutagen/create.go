@@ -11,6 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
@@ -48,18 +49,13 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
-	if createConfiguration.symlinkMode == "" {
-		// TODO: Remove this once we switch to session configuration, let it sit
-		// at default, and ensure we only throw an error if the specified mode
-		// is non-empty.
-		symlinkMode = sync.SymlinkMode_Portable
-	} else if createConfiguration.symlinkMode == "portable" {
+	if createConfiguration.symlinkMode == "portable" {
 		symlinkMode = sync.SymlinkMode_Portable
 	} else if createConfiguration.symlinkMode == "ignore" {
 		symlinkMode = sync.SymlinkMode_Ignore
 	} else if createConfiguration.symlinkMode == "posix-raw" {
 		symlinkMode = sync.SymlinkMode_POSIXRaw
-	} else {
+	} else if createConfiguration.symlinkMode != "" {
 		return errors.Errorf("unknown symlink mode: \"%s\"", createConfiguration.symlinkMode)
 	}
 
@@ -84,10 +80,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.CreateRequest{
-		Alpha:       alpha,
-		Beta:        beta,
-		Ignores:     createConfiguration.ignores,
-		SymlinkMode: symlinkMode,
+		Alpha: alpha,
+		Beta:  beta,
+		Configuration: &sessionpkg.Configuration{
+			Ignores:     createConfiguration.ignores,
+			SymlinkMode: symlinkMode,
+		},
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send create request")

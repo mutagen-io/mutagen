@@ -38,11 +38,11 @@ func (s *Server) Create(stream Session_CreateServer) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to receive request")
 	} else if err = request.Alpha.EnsureValid(); err != nil {
-		return errors.Wrap(err, "unable to validate alpha URL")
+		return errors.Wrap(err, "alpha URL invalid")
 	} else if err = request.Beta.EnsureValid(); err != nil {
-		return errors.Wrap(err, "unable to validate beta URL")
-	} else if !request.SymlinkMode.Supported() {
-		return errors.New("unknown or unsupported symlink mode")
+		return errors.Wrap(err, "beta URL invalid")
+	} else if err = request.Configuration.EnsureValid(); err != nil {
+		return errors.Wrap(err, "session configuration invalid")
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
@@ -56,8 +56,7 @@ func (s *Server) Create(stream Session_CreateServer) error {
 	session, err := s.manager.Create(
 		request.Alpha,
 		request.Beta,
-		request.Ignores,
-		request.SymlinkMode,
+		request.Configuration,
 		prompter,
 	)
 

@@ -21,7 +21,10 @@ func loadFromPath(path string) (*Configuration, error) {
 	// configuration file doesn't exist.
 	result := &Configuration{}
 
-	// Attempt to load the configuration from disk.
+	// Attempt to load the configuration from disk. If loading fails due to the
+	// path not existing, we return the blank configuration. We don't need to
+	// allocate a fresh one in that case since the loader won't have touched it
+	// if the file didn't exist.
 	// TODO: Should we implement a caching mechanism where we run a stat call
 	// and watch for filesystem modification?
 	if err := encoding.LoadAndUnmarshalTOML(path, result); err != nil {

@@ -36,31 +36,11 @@ type localEndpoint struct {
 	stager *stager
 }
 
-func newLocalEndpoint(
-	session string,
-	version Version,
-	root string,
-	ignores []string,
-	symlinkMode sync.SymlinkMode,
-	alpha bool,
-) (endpoint, error) {
-	// Validate session parameters.
-	if session == "" {
-		return nil, errors.New("empty session identifier")
-	} else if !version.supported() {
-		return nil, errors.New("unknown or unsupported session version")
-	}
-
-	// Validate root directory
-	if root == "" {
-		return nil, errors.New("empty root path")
-	}
-
-	// Compute and validate symlink mode.
+func newLocalEndpoint(session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
+	// Extract the effective symlink mode.
+	symlinkMode := configuration.SymlinkMode
 	if symlinkMode == sync.SymlinkMode_Default {
-		symlinkMode = version.defaultSymlinkMode()
-	} else if !symlinkMode.Supported() {
-		return nil, errors.New("unknown or unsupported symlink mode")
+		symlinkMode = version.DefaultSymlinkMode()
 	}
 
 	// Expand and normalize the root path.
@@ -104,7 +84,7 @@ func newLocalEndpoint(
 		root:        root,
 		watchCancel: watchCancel,
 		watchEvents: watchEvents,
-		ignores:     ignores,
+		ignores:     configuration.Ignores,
 		symlinkMode: symlinkMode,
 		cachePath:   cachePath,
 		cache:       cache,

@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -14,15 +13,14 @@ func connect(
 	session string,
 	version Version,
 	url *urlpkg.URL,
-	ignores []string,
-	symlinkMode sync.SymlinkMode,
+	configuration *Configuration,
 	alpha bool,
 	prompter string,
 ) (endpoint, error) {
 	// Handle based on protocol.
 	if url.Protocol == urlpkg.Protocol_Local {
 		// Create a local endpoint.
-		endpoint, err := newLocalEndpoint(session, version, url.Path, ignores, symlinkMode, alpha)
+		endpoint, err := newLocalEndpoint(session, version, url.Path, configuration, alpha)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create local endpoint")
 		}
@@ -37,7 +35,7 @@ func connect(
 		}
 
 		// Create a remote endpoint.
-		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, ignores, symlinkMode, alpha)
+		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create remote endpoint")
 		}
@@ -63,8 +61,7 @@ func reconnect(
 	session string,
 	version Version,
 	url *urlpkg.URL,
-	ignores []string,
-	symlinkMode sync.SymlinkMode,
+	configuration *Configuration,
 	alpha bool,
 ) (endpoint, error) {
 	// Create a channel to deliver the connection result.
@@ -73,7 +70,7 @@ func reconnect(
 	// Start a connection operation in the background.
 	go func() {
 		// Perform the connection.
-		endpoint, err := connect(session, version, url, ignores, symlinkMode, alpha, "")
+		endpoint, err := connect(session, version, url, configuration, alpha, "")
 
 		// If we can't transmit the resulting endpoint, shut it down.
 		select {

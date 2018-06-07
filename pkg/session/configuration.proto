@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package session;
+
+import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
+
+// Configuration encodes session configuration parameters. Each session has two
+// configuration components: the configuration due to parameters provided at
+// creation time and the snapshot of the global configuration at creation time.
+message Configuration {
+    // Ignores specifies the ignore patterns that should be used in
+    // synchronization.
+    repeated string ignores = 1;
+
+    // Fields 2-10 are reserved for future ignore-related configuration
+    // parameters.
+
+    // SymlinkMode specifies the symlink mode that should be used in
+    // synchronization.
+    sync.SymlinkMode symlinkMode = 11;
+
+    // Fields 12-20 are reserved for future symlink-related configuration
+    // parameters.
+}

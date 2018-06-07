@@ -23,16 +23,16 @@ func (v Version) hasher() hash.Hash {
 	case Version_Version1:
 		return sha1.New()
 	default:
-		panic("unsupported or unknown session version")
+		panic("unknown or unsupported session version")
 	}
 }
 
-func (v Version) defaultSymlinkMode() sync.SymlinkMode {
+func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {
 	case Version_Version1:
 		return sync.SymlinkMode_Portable
 	default:
-		panic("unsupported or unknown session version")
+		panic("unknown or unsupported session version")
 	}
 }
 
@@ -58,23 +58,24 @@ func (s *Session) EnsureValid() error {
 		return errors.New("missing creation time")
 	}
 
-	// Ensure that the alpha URL is present and valid.
-	if s.Alpha == nil {
-		return errors.New("nil alpha URL")
-	} else if err := s.Alpha.EnsureValid(); err != nil {
+	// Ensure that the alpha URL is valid.
+	if err := s.Alpha.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid alpha URL")
 	}
 
-	// Ensure that the beta URL is present and valid.
-	if s.Beta == nil {
-		return errors.New("nil beta URL")
-	} else if err := s.Beta.EnsureValid(); err != nil {
+	// Ensure that the beta URL is valid.
+	if err := s.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid beta URL")
 	}
 
-	// Ensure that the symlink mode is sane.
-	if !s.SymlinkMode.Supported() {
-		return errors.New("unknown or unsupported symlink mode")
+	// Ensure that the configuration is valid.
+	if err := s.Configuration.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid configuration")
+	}
+
+	// Ensure that the global configuration snapshot is valid.
+	if err := s.GlobalConfiguration.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid global configuration snapshot")
 	}
 
 	// Success.

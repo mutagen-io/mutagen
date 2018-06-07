@@ -34,16 +34,33 @@ func printSession(state *sessionpkg.State) {
 	}
 	fmt.Println("Status:", statusString)
 
-	// Printed ignore paths, if any.
-	if len(state.Session.Ignores) > 0 {
-		fmt.Println("Ignored paths:")
-		for _, p := range state.Session.Ignores {
+	// Print default and per-session ignores.
+	if len(state.Session.GlobalConfiguration.Ignores) > 0 {
+		fmt.Println("Default ignores:")
+		for _, p := range state.Session.GlobalConfiguration.Ignores {
+			fmt.Printf("\t%s\n", p)
+		}
+	}
+	if len(state.Session.Configuration.Ignores) > 0 {
+		fmt.Println("Ignores:")
+		for _, p := range state.Session.Configuration.Ignores {
 			fmt.Printf("\t%s\n", p)
 		}
 	}
 
-	// Print symlink mode.
-	fmt.Println("Symlink Mode:", state.Session.SymlinkMode.Description())
+	// Compute the merged session configuration.
+	mergedConfiguration := sessionpkg.MergeConfigurations(
+		state.Session.Configuration,
+		state.Session.GlobalConfiguration,
+	)
+
+	// Compute and print symlink mode.
+	symlinkModeDescription := mergedConfiguration.SymlinkMode.Description()
+	if mergedConfiguration.SymlinkMode == sync.SymlinkMode_Default {
+		defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
+		symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
+	}
+	fmt.Println("Symlink Mode:", symlinkModeDescription)
 
 	// Print the last error, if any.
 	if state.LastError != "" {

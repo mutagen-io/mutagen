@@ -53,7 +53,7 @@ var subdirectories = []struct {
 	},
 	{
 		"github.com/havoc-io/mutagen/pkg/session",
-		[]string{"session.proto", "state.proto"},
+		[]string{"configuration.proto", "session.proto", "state.proto"},
 	},
 	{
 		"github.com/havoc-io/mutagen/pkg/session/service",
