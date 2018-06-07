@@ -497,7 +497,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 
 	// If we're creating something at the root, then ensure that the parent of
 	// the root path exists and is a directory. We can assume that it's intended
-	// to be a directory since the root is intented to exist inside it.
+	// to be a directory since the root is intended to exist inside it.
 	if path == "" {
 		if err := os.MkdirAll(filepath.Dir(root), directoryBaseMode); err != nil {
 			return nil, []*Problem{newProblem(

@@ -8,7 +8,7 @@ import (
 )
 
 func TestArchiveConsistentSerialization(t *testing.T) {
-	// Create two entries. Although not strictly neccessary, make them distinct
+	// Create two entries. Although not strictly necessary, make them distinct
 	// values.
 	firstEntry := testDirectory1Entry
 	secondEntry := firstEntry.Copy()

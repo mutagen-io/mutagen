@@ -71,7 +71,7 @@ func normalizeSymlinkAndEnsureSane(path, target string) (string, error) {
 	// allowed to occur in filenames (and hence paths) (they aren't allowed in
 	// $PATH because ':' is used as the path separator). On Windows, colons are
 	// not allowed in filenames, but they are allowed in paths, where they have
-	// very different meanings. They can appear in absolue paths (i.e. those of
+	// very different meanings. They can appear in absolute paths (i.e. those of
 	// the form "C:\...") or working directory-relative paths (i.e. those of the
 	// form "C:File.txt" (which maps to "<working directory>\File.txt")). If we
 	// find a colon in a target path on POSIX, we can't reliably propagate it,
