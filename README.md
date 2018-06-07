@@ -25,7 +25,7 @@ remote systems. The more people who use it and report
 [mac-lin-badge]: https://travis-ci.org/havoc-io/mutagen.svg?branch=master "macOS/Linux build status"
 [mac-lin-link]:  https://travis-ci.org/havoc-io/mutagen "macOS/Linux build status"
 [cov-badge]: https://codecov.io/gh/havoc-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
-[cov-link]: https://codecov.io/gh/havoc-io/mutagen "Code coverage status"
+[cov-link]: https://codecov.io/gh/havoc-io/mutagen/tree/master/pkg "Code coverage status"
 [rc-badge]: https://goreportcard.com/badge/github.com/havoc-io/mutagen "Report card status"
 [rc-link]: https://goreportcard.com/report/github.com/havoc-io/mutagen "Report card status"
 
