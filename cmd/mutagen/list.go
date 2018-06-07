@@ -30,7 +30,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpoint(state *sessionpkg.State, alpha bool) {
+func printEndpointStatus(state *sessionpkg.State, alpha bool) {
 	// Print the header for this endpoint.
 	header := "Alpha:"
 	if !alpha {
@@ -165,8 +165,8 @@ func listMain(command *cobra.Command, arguments []string) error {
 			fmt.Println(delimiterLine)
 		}
 		printSession(state, listConfiguration.long)
-		printEndpoint(state, true)
-		printEndpoint(state, false)
+		printEndpointStatus(state, true)
+		printEndpointStatus(state, false)
 		printSessionStatus(state)
 		if len(state.Conflicts) > 0 {
 			printConflicts(state.Conflicts)
