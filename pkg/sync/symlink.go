@@ -89,10 +89,8 @@ func normalizeSymlinkAndEnsureSane(path, target string) (string, error) {
 	// them to a Windows system, so we have to avoid their presence.
 	if runtime.GOOS == "windows" {
 		target = strings.Replace(target, "\\", "/", -1)
-	} else {
-		if strings.Index(target, "\\") != -1 {
-			return "", errors.New("backslash in target")
-		}
+	} else if strings.Index(target, "\\") != -1 {
+		return "", errors.New("backslash in target")
 	}
 
 	// Watch for an absolute path specification. This may be either an absolute
