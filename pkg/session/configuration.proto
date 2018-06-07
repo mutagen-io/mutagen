@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package session;
 
+import "github.com/havoc-io/mutagen/pkg/filesystem/watch.proto";
 import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
 
 // Configuration encodes session configuration parameters. Each session has two
@@ -20,5 +21,16 @@ message Configuration {
     sync.SymlinkMode symlinkMode = 11;
 
     // Fields 12-20 are reserved for future symlink-related configuration
+    // parameters.
+
+    // WatchMode specifies the filesystem watching mode.
+    filesystem.WatchMode watchMode = 21;
+
+    // WatchPollingInterval specifies the interval (in seconds) for poll-based
+    // file monitoring. A value of 0 specifies that the default interval should
+    // be used.
+    uint32 watchPollingInterval = 22;
+
+    // Fields 23-30 are reserved for future watch-related configuration
     // parameters.
 }

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package filesystem;
+
+// WatchMode specifies the mode for filesystem watching.
+enum WatchMode {
+    // Default represents an unspecified watch mode. It should be converted to
+    // one of the following values based on the desired default behavior.
+    Default = 0;
+    // RecursiveHome specifies that native recursive watching should be used to
+    // monitor paths on systems that support it if those paths fall under the
+    // home directory. In these cases, a watch on the entire home directory is
+    // established and filtered for events pertaining to the specified path. On
+    // all other systems and for all other paths, poll-based watching is used.
+    RecursiveHome = 1;
+    // Poll specifies that only poll-based watching should be performed.
+    Poll = 2;
+}

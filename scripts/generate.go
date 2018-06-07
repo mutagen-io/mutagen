@@ -40,6 +40,10 @@ var subdirectories = []struct {
 		[]string{"daemon.proto"},
 	},
 	{
+		"github.com/havoc-io/mutagen/pkg/filesystem",
+		[]string{"watch.proto"},
+	},
+	{
 		"github.com/havoc-io/mutagen/pkg/prompt",
 		[]string{"prompt.proto"},
 	},

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -31,6 +32,15 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {
 	case Version_Version1:
 		return sync.SymlinkMode_Portable
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+func (v Version) DefaultWatchMode() filesystem.WatchMode {
+	switch v {
+	case Version_Version1:
+		return filesystem.WatchMode_RecursiveHome
 	default:
 		panic("unknown or unsupported session version")
 	}

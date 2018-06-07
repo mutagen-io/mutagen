@@ -43,6 +43,12 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 		symlinkMode = version.DefaultSymlinkMode()
 	}
 
+	// Extract the effective watch mode.
+	watchMode := configuration.WatchMode
+	if watchMode == filesystem.WatchMode_Default {
+		watchMode = version.DefaultWatchMode()
+	}
+
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(root)
 	if err != nil {
@@ -52,7 +58,13 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 	// Start file monitoring for the root.
 	watchContext, watchCancel := context.WithCancel(context.Background())
 	watchEvents := make(chan struct{}, 1)
-	go filesystem.Watch(watchContext, root, watchEvents)
+	go filesystem.Watch(
+		watchContext,
+		root,
+		watchEvents,
+		watchMode,
+		configuration.WatchPollingInterval,
+	)
 
 	// Compute the cache path.
 	cachePath, err := pathForCache(session, alpha)

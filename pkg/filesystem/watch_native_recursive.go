@@ -35,7 +35,7 @@ func isParentOrSelf(parent, child string) bool {
 	return true
 }
 
-func watchNative(context context.Context, root string, events chan struct{}) error {
+func watchRecursiveHome(context context.Context, root string, events chan struct{}) error {
 	// We only support watching for roots that are descendants of the home
 	// directory or the home directory itself.
 	if !isParentOrSelf(HomeDirectory, root) {

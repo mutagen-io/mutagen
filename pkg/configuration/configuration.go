@@ -7,10 +7,30 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
+// Configuration represents the global Mutagen configuration.
 type Configuration struct {
+	// Ignore contains parameters related to synchronization ignore
+	// specifications.
 	Ignore struct {
 		Default []string `toml:"default"`
 	} `toml:"ignore"`
+
+	// Symlink contains parameters related to symlink handling.
+	Symlink struct {
+		// Mode specifies the default symlink mode.
+		Mode string `toml:"mode"`
+	} `toml:"symlink"`
+
+	// Watch contains parameters related to filesystem monitoring.
+	Watch struct {
+		// Mode specifies the default watch mode.
+		Mode string `toml:"mode"`
+
+		// PollingInterval specifies the interval (in seconds) for poll-based
+		// file monitoring. A value of 0 specifies that the default interval
+		// should be used.
+		PollingInterval uint32 `toml:"pollingInterval"`
+	} `toml:"watch"`
 }
 
 // loadFromPath is the internal loading function. We keep it separate from Load

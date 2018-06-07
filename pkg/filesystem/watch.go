@@ -10,9 +10,48 @@ import (
 )
 
 const (
-	// TODO: Should we make this configurable?
-	watchPollInterval = 10 * time.Second
+	// DefaultPollingInterval is the default watch polling interval, in seconds.
+	DefaultPollingInterval = 10
 )
+
+// NewWatchModeFromString parses a watch mode specification string and returns a
+// WatchMode enumeration value.
+func NewWatchModeFromString(mode string) (WatchMode, error) {
+	switch mode {
+	case "recursive-home":
+		return WatchMode_RecursiveHome, nil
+	case "poll":
+		return WatchMode_Poll, nil
+	default:
+		return WatchMode_Default, errors.New("unknown mode specified")
+	}
+}
+
+// Supported indicates whether or not a particular watch mode is supported.
+func (m WatchMode) Supported() bool {
+	switch m {
+	case WatchMode_RecursiveHome:
+		return true
+	case WatchMode_Poll:
+		return true
+	default:
+		return false
+	}
+}
+
+// Description returns a human-readable description of a watch mode.
+func (m WatchMode) Description() string {
+	switch m {
+	case WatchMode_Default:
+		return "Default"
+	case WatchMode_RecursiveHome:
+		return "Recursive Home"
+	case WatchMode_Poll:
+		return "Poll"
+	default:
+		return "Unknown"
+	}
+}
 
 func fileInfoEqual(first, second os.FileInfo) bool {
 	return first.Size() == second.Size() &&
@@ -70,7 +109,7 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 // (it doesn't have any total failure modes) and won't exit until the associated
 // context is cancelled.
 // TODO: Document that the events channel must be buffered.
-func Watch(context context.Context, root string, events chan struct{}) {
+func Watch(context context.Context, root string, events chan struct{}, mode WatchMode, pollInterval uint32) {
 	// Ensure that the events channel is buffered.
 	if cap(events) < 1 {
 		panic("watch channel should be buffered")
@@ -79,9 +118,13 @@ func Watch(context context.Context, root string, events chan struct{}) {
 	// Ensure that the events channel is closed when we're cancelled.
 	defer close(events)
 
-	// Attempt to use native watching on this path. This will fail if the path
-	// can't be watched natively or if the watch is cancelled.
-	watchNative(context, root, events)
+	// If we're in a recurisve home watch mode, attempt to watch in that manner.
+	// This will be fail if we're on a system without native recursive watching,
+	// the root is not a subpath of the home directory, or the watch is
+	// cancelled.
+	if mode == WatchMode_RecursiveHome {
+		watchRecursiveHome(context, root, events)
+	}
 
 	// If native watching failed, check (in a non-blocking fashion) if it was
 	// due to cancellation. If so, then we don't want to fall back to polling
@@ -94,7 +137,11 @@ func Watch(context context.Context, root string, events chan struct{}) {
 	}
 
 	// Create a timer to regular polling.
-	timer := time.NewTimer(watchPollInterval)
+	if pollInterval == 0 {
+		pollInterval = DefaultPollingInterval
+	}
+	pollIntervalDuration := time.Duration(pollInterval) * time.Second
+	timer := time.NewTimer(pollIntervalDuration)
 
 	// Loop and poll for changes, but watch for cancellation.
 	var contents map[string]os.FileInfo
@@ -109,7 +156,7 @@ func Watch(context context.Context, root string, events chan struct{}) {
 			// fall back to a timer.
 			newContents, changed, err := poll(root, contents)
 			if err != nil || !changed {
-				timer.Reset(watchPollInterval)
+				timer.Reset(pollIntervalDuration)
 				continue
 			}
 
@@ -123,7 +170,7 @@ func Watch(context context.Context, root string, events chan struct{}) {
 			}
 
 			// Reset the timer and continue polling.
-			timer.Reset(watchPollInterval)
+			timer.Reset(pollIntervalDuration)
 		case <-context.Done():
 			return
 		}

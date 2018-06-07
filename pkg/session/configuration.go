@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/configuration"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -25,6 +26,11 @@ func (c *Configuration) EnsureValid() error {
 		return errors.New("unknown or unsupported symlink mode")
 	}
 
+	// Verify that the watch mode is unspecified or supported for usage.
+	if c.WatchMode != filesystem.WatchMode_Default && !c.WatchMode.Supported() {
+		return errors.New("unknown or unsupported watch mode")
+	}
+
 	// Success.
 	return nil
 }
@@ -44,6 +50,27 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 
 	// Propagate default ignores.
 	result.Ignores = configuration.Ignore.Default
+
+	// Propagate symlink mode.
+	if configuration.Symlink.Mode != "" {
+		if m, err := sync.NewSymlinkModeFromString(configuration.Symlink.Mode); err != nil {
+			return nil, errors.Wrap(err, "unable to parse symlink mode")
+		} else {
+			result.SymlinkMode = m
+		}
+	}
+
+	// Propagate watch mode.
+	if configuration.Watch.Mode != "" {
+		if m, err := filesystem.NewWatchModeFromString(configuration.Watch.Mode); err != nil {
+			return nil, errors.Wrap(err, "unable to parse watch mode")
+		} else {
+			result.WatchMode = m
+		}
+	}
+
+	// Propagate polling interval.
+	result.WatchPollingInterval = configuration.Watch.PollingInterval
 
 	// Verify that the resulting configuration is valid.
 	if err := result.EnsureValid(); err != nil {
@@ -70,6 +97,20 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 		result.SymlinkMode = session.SymlinkMode
 	} else {
 		result.SymlinkMode = global.SymlinkMode
+	}
+
+	// Merge watch mode.
+	if session.WatchMode != filesystem.WatchMode_Default {
+		result.WatchMode = session.WatchMode
+	} else {
+		result.WatchMode = global.WatchMode
+	}
+
+	// Merge polling interval.
+	if session.WatchPollingInterval != 0 {
+		result.WatchPollingInterval = session.WatchPollingInterval
+	} else {
+		result.WatchPollingInterval = global.WatchPollingInterval
 	}
 
 	// Done.

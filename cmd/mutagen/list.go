@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -60,7 +61,24 @@ func printSession(state *sessionpkg.State) {
 		defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 		symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 	}
-	fmt.Println("Symlink Mode:", symlinkModeDescription)
+	fmt.Println("Symlink mode:", symlinkModeDescription)
+
+	// Compute and print the watch mode.
+	watchModeDescription := mergedConfiguration.WatchMode.Description()
+	if mergedConfiguration.WatchMode == filesystem.WatchMode_Default {
+		defaultWatchMode := state.Session.Version.DefaultWatchMode()
+		watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
+	}
+	fmt.Println("Watch mode:", watchModeDescription)
+
+	// Compute and print the polling interval.
+	var watchPollingIntervalDescription string
+	if mergedConfiguration.WatchPollingInterval == 0 {
+		watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
+	} else {
+		watchPollingIntervalDescription = fmt.Sprintf("%d seconds", mergedConfiguration.WatchPollingInterval)
+	}
+	fmt.Println("Watch polling interval:", watchPollingIntervalDescription)
 
 	// Print the last error, if any.
 	if state.LastError != "" {

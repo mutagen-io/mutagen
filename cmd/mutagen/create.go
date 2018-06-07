@@ -49,14 +49,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
-	if createConfiguration.symlinkMode == "portable" {
-		symlinkMode = sync.SymlinkMode_Portable
-	} else if createConfiguration.symlinkMode == "ignore" {
-		symlinkMode = sync.SymlinkMode_Ignore
-	} else if createConfiguration.symlinkMode == "posix-raw" {
-		symlinkMode = sync.SymlinkMode_POSIXRaw
-	} else if createConfiguration.symlinkMode != "" {
-		return errors.Errorf("unknown symlink mode: \"%s\"", createConfiguration.symlinkMode)
+	if createConfiguration.symlinkMode != "" {
+		if m, err := sync.NewSymlinkModeFromString(createConfiguration.symlinkMode); err != nil {
+			return errors.Wrap(err, "unable to parse symlink mode")
+		} else {
+			symlinkMode = m
+		}
 	}
 
 	// Connect to the daemon and defer closure of the connection.

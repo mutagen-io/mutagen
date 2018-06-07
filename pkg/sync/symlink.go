@@ -7,6 +7,21 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NewSymlinkModeFromString parses a symlink mode specification string and
+// returns a SymlinkMode enumeration value.
+func NewSymlinkModeFromString(mode string) (SymlinkMode, error) {
+	switch mode {
+	case "portable":
+		return SymlinkMode_Portable, nil
+	case "ignore":
+		return SymlinkMode_Ignore, nil
+	case "posix-raw":
+		return SymlinkMode_POSIXRaw, nil
+	default:
+		return SymlinkMode_Default, errors.New("unknown mode specified")
+	}
+}
+
 // Supported indicates whether or not a particular symlink mode is supported for
 // use with Scan and Transition.
 func (m SymlinkMode) Supported() bool {
