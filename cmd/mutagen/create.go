@@ -47,6 +47,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// We don't need to validate ignores here, that will happen on the session
+	// service, so we'll save ourselves the time.
+
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
 	if createConfiguration.symlinkMode != "" {
@@ -56,6 +59,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 			symlinkMode = m
 		}
 	}
+
+	// Validate and convert the watch mode specification.
+	var watchMode filesystem.WatchMode
+	if createConfiguration.watchMode != "" {
+		if m, err := filesystem.NewWatchModeFromString(createConfiguration.watchMode); err != nil {
+			return errors.Wrap(err, "unable to parse watch mode")
+		} else {
+			watchMode = m
+		}
+	}
+
+	// There's no need to validate the watch polling mode - any uint32 value is
+	// valid.
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
@@ -81,8 +97,10 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Alpha: alpha,
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
-			Ignores:     createConfiguration.ignores,
-			SymlinkMode: symlinkMode,
+			Ignores:              createConfiguration.ignores,
+			SymlinkMode:          symlinkMode,
+			WatchMode:            watchMode,
+			WatchPollingInterval: createConfiguration.watchPollingInterval,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -123,9 +141,11 @@ var createCommand = &cobra.Command{
 }
 
 var createConfiguration struct {
-	help        bool
-	ignores     []string
-	symlinkMode string
+	help                 bool
+	ignores              []string
+	symlinkMode          string
+	watchMode            string
+	watchPollingInterval uint32
 }
 
 func init() {
@@ -134,5 +154,7 @@ func init() {
 	flags := createCommand.Flags()
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
-	flags.StringVarP(&createConfiguration.symlinkMode, "symlink-mode", "s", "", "Specify symlink mode (portable|ignore|posix-raw)")
+	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (portable|ignore|posix-raw)")
+	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (recursive-home|poll)")
+	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval")
 }
