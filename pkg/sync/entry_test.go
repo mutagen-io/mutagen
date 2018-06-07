@@ -68,7 +68,7 @@ func TestEntryDirectoryInvalidContentInvalid(t *testing.T) {
 	directory := &Entry{
 		Kind: EntryKind_Directory,
 		Contents: map[string]*Entry{
-			"file": &Entry{Kind: EntryKind_File},
+			"file": {Kind: EntryKind_File},
 		},
 	}
 	if directory.EnsureValid() == nil {
