@@ -44,13 +44,21 @@ func newLocalEndpoint(
 	symlinkMode sync.SymlinkMode,
 	alpha bool,
 ) (endpoint, error) {
-	// Validate endpoint parameters.
+	// Validate session parameters.
 	if session == "" {
 		return nil, errors.New("empty session identifier")
 	} else if !version.supported() {
 		return nil, errors.New("unknown or unsupported session version")
-	} else if root == "" {
+	}
+
+	// Validate root directory
+	if root == "" {
 		return nil, errors.New("empty root path")
+	}
+
+	// Compute and validate symlink mode.
+	if symlinkMode == sync.SymlinkMode_Default {
+		symlinkMode = version.defaultSymlinkMode()
 	} else if !symlinkMode.Supported() {
 		return nil, errors.New("unknown or unsupported symlink mode")
 	}

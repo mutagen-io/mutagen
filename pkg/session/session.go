@@ -5,6 +5,8 @@ import (
 	"hash"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 func (v Version) supported() bool {
@@ -20,6 +22,15 @@ func (v Version) hasher() hash.Hash {
 	switch v {
 	case Version_Version1:
 		return sha1.New()
+	default:
+		panic("unsupported or unknown session version")
+	}
+}
+
+func (v Version) defaultSymlinkMode() sync.SymlinkMode {
+	switch v {
+	case Version_Version1:
+		return sync.SymlinkMode_Portable
 	default:
 		panic("unsupported or unknown session version")
 	}

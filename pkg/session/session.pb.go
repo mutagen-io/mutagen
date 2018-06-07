@@ -159,7 +159,7 @@ func (m *Session) GetSymlinkMode() sync.SymlinkMode {
 	if m != nil {
 		return m.SymlinkMode
 	}
-	return sync.SymlinkMode_Sane
+	return sync.SymlinkMode_Default
 }
 
 func init() {

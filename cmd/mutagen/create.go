@@ -48,8 +48,13 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
-	if createConfiguration.symlinkMode == "sane" {
-		symlinkMode = sync.SymlinkMode_Sane
+	if createConfiguration.symlinkMode == "" {
+		// TODO: Remove this once we switch to session configuration, let it sit
+		// at default, and ensure we only throw an error if the specified mode
+		// is non-empty.
+		symlinkMode = sync.SymlinkMode_Portable
+	} else if createConfiguration.symlinkMode == "portable" {
+		symlinkMode = sync.SymlinkMode_Portable
 	} else if createConfiguration.symlinkMode == "ignore" {
 		symlinkMode = sync.SymlinkMode_Ignore
 	} else if createConfiguration.symlinkMode == "posix-raw" {
@@ -133,5 +138,5 @@ func init() {
 	flags := createCommand.Flags()
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
-	flags.StringVarP(&createConfiguration.symlinkMode, "symlink-mode", "s", "sane", "Specify symlink mode (sane|ignore|posix-raw)")
+	flags.StringVarP(&createConfiguration.symlinkMode, "symlink-mode", "s", "", "Specify symlink mode (portable|ignore|posix-raw)")
 }

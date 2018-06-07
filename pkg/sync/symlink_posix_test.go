@@ -7,7 +7,7 @@ import (
 )
 
 func TestSymlinkPOSIXBackslashInvalid(t *testing.T) {
-	if _, err := normalizeSymlinkAndEnsureSane("file", "target\\path"); err == nil {
+	if _, err := normalizeSymlinkAndEnsurePortable("file", "target\\path"); err == nil {
 		t.Fatal("symlink with backslash in target treated as sane")
 	}
 }

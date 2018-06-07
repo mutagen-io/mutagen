@@ -7,9 +7,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Supported indicates whether or not a particular symlink mode is supported for
+// use with Scan and Transition.
 func (m SymlinkMode) Supported() bool {
 	switch m {
-	case SymlinkMode_Sane:
+	case SymlinkMode_Portable:
 		return true
 	case SymlinkMode_Ignore:
 		return true
@@ -20,10 +22,13 @@ func (m SymlinkMode) Supported() bool {
 	}
 }
 
+// Description returns a human-readable description of a symlink mode.
 func (m SymlinkMode) Description() string {
 	switch m {
-	case SymlinkMode_Sane:
-		return "Sane"
+	case SymlinkMode_Default:
+		return "Default"
+	case SymlinkMode_Portable:
+		return "Portable"
 	case SymlinkMode_Ignore:
 		return "Ignore"
 	case SymlinkMode_POSIXRaw:
@@ -34,19 +39,22 @@ func (m SymlinkMode) Description() string {
 }
 
 const (
-	// maximumSymlinkTargetLength is the maximum symlink target length that we
-	// can synchronize. It is limited by Windows, where a path length of 248
-	// characters or longer will be converted to extended path format (i.e.
-	// prefixed with "\\?\"), thus not allowing us to reliably round-trip it to
-	// disk. For more information, see Go's src/os/path_windows.go (fixLongPath
-	// function). The length should be fine on all other modern systems.
-	maximumSymlinkTargetLength = 247
+	// maximumPortableSymlinkTargetLength is the maximum symlink target length
+	// that we can synchronize in a portable fashion. It is limited by Windows,
+	// where a path length of 248 characters or longer will be converted to
+	// extended path format (i.e. prefixed with "\\?\"), thus not allowing us to
+	// reliably round-trip it to disk. For more information, see
+	// Go's src/os/path_windows.go (fixLongPath function). The length should be
+	// fine on all other modern systems.
+	maximumPortableSymlinkTargetLength = 247
 )
 
-// normalizeSymlinkAndEnsureSane normalizes a symlink target and verifies that
-// it's valid for propagation. This requires that the symlink be relative and
-// that it not escape the synchronization root. These are the only types of
-// symlinks that we can safely (and sanely) synchronize between systems.
+// normalizeSymlinkAndEnsurePortable normalizes a symlink target and verifies
+// that it's valid safe for portable propagation. This requires that the symlink
+// be relative, not escape the synchronization root, and be composed of only
+// portable characters. These are the only types of symlinks that we can safely
+// (and sanely) synchronize between systems.
+//
 // Effectively this means that the target needs to be components of the form
 // "<name>", "..", or ".", separated by '/', and not an absolute path of any
 // form. On POSIX, verifying that the path is not absolute is relatively easy.
@@ -55,7 +63,7 @@ const (
 // https://msdn.microsoft.com/en-us/library/windows/desktop/aa363866(v=vs.85).aspx
 // It lists some of the possible Windows path formats accepted by
 // CreateSymbolicLinkW.
-func normalizeSymlinkAndEnsureSane(path, target string) (string, error) {
+func normalizeSymlinkAndEnsurePortable(path, target string) (string, error) {
 	// If the target is empty, it's invalid on most (all?) platforms.
 	if target == "" {
 		return "", errors.New("target empty")
@@ -63,7 +71,7 @@ func normalizeSymlinkAndEnsureSane(path, target string) (string, error) {
 
 	// If the target is longer than the maximum allowed symlink length, we can't
 	// propagate it.
-	if len(target) > maximumSymlinkTargetLength {
+	if len(target) > maximumPortableSymlinkTargetLength {
 		return "", errors.New("target too long")
 	}
 

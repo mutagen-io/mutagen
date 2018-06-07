@@ -108,17 +108,17 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	}, nil
 }
 
-func (s *scanner) symlink(path string, enforceSane bool) (*Entry, error) {
+func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	// Read the link target.
 	target, err := os.Readlink(filepath.Join(s.root, path))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read symlink target")
 	}
 
-	// If requested, enforce that the link is sane, otherwise just ensure that
-	// it's non-empty (this is required even in POSIX raw mode).
-	if enforceSane {
-		target, err = normalizeSymlinkAndEnsureSane(path, target)
+	// If requested, enforce that the link is portable, otherwise just ensure
+	// that it's non-empty (this is required even in POSIX raw mode).
+	if enforcePortable {
+		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("invalid symlink (%s)", path))
 		}
@@ -184,14 +184,14 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		if kind == EntryKind_File {
 			entry, err = s.file(contentPath, info)
 		} else if kind == EntryKind_Symlink {
-			if symlinkMode == SymlinkMode_Sane {
+			if symlinkMode == SymlinkMode_Portable {
 				entry, err = s.symlink(contentPath, true)
 			} else if symlinkMode == SymlinkMode_Ignore {
 				continue
 			} else if symlinkMode == SymlinkMode_POSIXRaw {
 				entry, err = s.symlink(contentPath, false)
 			} else {
-				panic("unknown symlink mode")
+				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
 			entry, err = s.directory(contentPath, symlinkMode)
@@ -232,7 +232,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 		return nil, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
-	// Verify that the symlink mode is sane for this platform.
+	// Verify that the symlink mode is valid for this platform.
 	if symlinkMode == SymlinkMode_POSIXRaw && runtime.GOOS == "windows" {
 		return nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
