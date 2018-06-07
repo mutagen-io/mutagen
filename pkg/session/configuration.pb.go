@@ -76,14 +76,14 @@ func (m *Configuration) GetSymlinkMode() sync.SymlinkMode {
 	if m != nil {
 		return m.SymlinkMode
 	}
-	return sync.SymlinkMode_Default
+	return sync.SymlinkMode_DefaultSymlinkMode
 }
 
 func (m *Configuration) GetWatchMode() filesystem.WatchMode {
 	if m != nil {
 		return m.WatchMode
 	}
-	return filesystem.WatchMode_Default
+	return filesystem.WatchMode_DefaultWatchMode
 }
 
 func (m *Configuration) GetWatchPollingInterval() uint32 {

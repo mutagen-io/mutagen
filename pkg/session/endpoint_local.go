@@ -39,13 +39,13 @@ type localEndpoint struct {
 func newLocalEndpoint(session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
 	// Extract the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
-	if symlinkMode == sync.SymlinkMode_Default {
+	if symlinkMode == sync.SymlinkMode_DefaultSymlinkMode {
 		symlinkMode = version.DefaultSymlinkMode()
 	}
 
 	// Extract the effective watch mode.
 	watchMode := configuration.WatchMode
-	if watchMode == filesystem.WatchMode_Default {
+	if watchMode == filesystem.WatchMode_DefaultWatchMode {
 		watchMode = version.DefaultWatchMode()
 	}
 

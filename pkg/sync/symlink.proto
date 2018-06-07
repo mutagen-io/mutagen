@@ -2,21 +2,22 @@ syntax = "proto3";
 
 package sync;
 
+// SymlinkMode specifies the mode for handling the propagation of symlinks.
 enum SymlinkMode {
-    // Default represents an unspecified symlink mode. It is not valid for use
-    // with Scan or Transition. It should be converted to one of the following
-    // values based on the desired default behavior.
-    Default = 0;
-    // Portable specifies that only portable symlinks should be synchronized. If
-    // a symlink is found during a scan operation that it is not portable, it
-    // halts the scan and synchronization. The reason for this is that it can't
-    // simply be ignored/unignored as desired without breaking the three-way
-    // merge.
+    // SymlinkMode_DefaultSymlinkMode represents an unspecified symlink mode. It
+    // is not valid for use with Scan or Transition. It should be converted to
+    // one of the following values based on the desired default behavior.
+    DefaultSymlinkMode = 0;
+    // SymlinkMode_Portable specifies that only portable symlinks should be
+    // synchronized. If a symlink is found during a scan operation that it is
+    // not portable, it halts the scan and synchronization. The reason for this
+    // is that it can't simply be ignored/unignored as desired without breaking
+    // the three-way merge.
     Portable = 1;
-    // Ignore specifies that all symlinks should be ignored.
+    // SymlinkMode_Ignore specifies that all symlinks should be ignored.
     Ignore = 2;
-    // POSIXRaw specifies that symlinks should be propagated in their raw form.
-    // it is only valid on POSIX systems and only makes sense in the context of
-    // POSIX-to-POSIX synchronization.
+    // SymlinkMode_POSIXRaw specifies that symlinks should be propagated in
+    // their raw form. It is only valid on POSIX systems and only makes sense in
+    // the context of POSIX-to-POSIX synchronization.
     POSIXRaw = 3;
 }

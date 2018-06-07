@@ -36,7 +36,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := mergedConfiguration.SymlinkMode.Description()
-		if mergedConfiguration.SymlinkMode == sync.SymlinkMode_Default {
+		if mergedConfiguration.SymlinkMode == sync.SymlinkMode_DefaultSymlinkMode {
 			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 		}
@@ -44,7 +44,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print the watch mode.
 		watchModeDescription := mergedConfiguration.WatchMode.Description()
-		if mergedConfiguration.WatchMode == filesystem.WatchMode_Default {
+		if mergedConfiguration.WatchMode == filesystem.WatchMode_DefaultWatchMode {
 			defaultWatchMode := state.Session.Version.DefaultWatchMode()
 			watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
 		}

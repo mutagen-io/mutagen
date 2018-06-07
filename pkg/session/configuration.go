@@ -22,12 +22,12 @@ func (c *Configuration) EnsureValid() error {
 	}
 
 	// Verify that the symlink mode is unspecified or supported for usage.
-	if c.SymlinkMode != sync.SymlinkMode_Default && !c.SymlinkMode.Supported() {
+	if c.SymlinkMode != sync.SymlinkMode_DefaultSymlinkMode && !c.SymlinkMode.Supported() {
 		return errors.New("unknown or unsupported symlink mode")
 	}
 
 	// Verify that the watch mode is unspecified or supported for usage.
-	if c.WatchMode != filesystem.WatchMode_Default && !c.WatchMode.Supported() {
+	if c.WatchMode != filesystem.WatchMode_DefaultWatchMode && !c.WatchMode.Supported() {
 		return errors.New("unknown or unsupported watch mode")
 	}
 
@@ -93,14 +93,14 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 	result.Ignores = append(result.Ignores, session.Ignores...)
 
 	// Merge symlink mode.
-	if session.SymlinkMode != sync.SymlinkMode_Default {
+	if session.SymlinkMode != sync.SymlinkMode_DefaultSymlinkMode {
 		result.SymlinkMode = session.SymlinkMode
 	} else {
 		result.SymlinkMode = global.SymlinkMode
 	}
 
 	// Merge watch mode.
-	if session.WatchMode != filesystem.WatchMode_Default {
+	if session.WatchMode != filesystem.WatchMode_DefaultWatchMode {
 		result.WatchMode = session.WatchMode
 	} else {
 		result.WatchMode = global.WatchMode

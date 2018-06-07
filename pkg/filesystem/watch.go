@@ -23,7 +23,7 @@ func NewWatchModeFromString(mode string) (WatchMode, error) {
 	case "poll":
 		return WatchMode_Poll, nil
 	default:
-		return WatchMode_Default, errors.Errorf("unknown mode specified: %s", mode)
+		return WatchMode_DefaultWatchMode, errors.Errorf("unknown mode specified: %s", mode)
 	}
 }
 
@@ -42,7 +42,7 @@ func (m WatchMode) Supported() bool {
 // Description returns a human-readable description of a watch mode.
 func (m WatchMode) Description() string {
 	switch m {
-	case WatchMode_Default:
+	case WatchMode_DefaultWatchMode:
 		return "Default"
 	case WatchMode_RecursiveHome:
 		return "Recursive Home"

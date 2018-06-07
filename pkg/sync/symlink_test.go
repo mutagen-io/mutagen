@@ -5,7 +5,7 @@ import (
 )
 
 func TestSymlinkModeSupportedForUsage(t *testing.T) {
-	if SymlinkMode_Default.Supported() {
+	if SymlinkMode_DefaultSymlinkMode.Supported() {
 		t.Error("default symlink mode considered supported")
 	}
 	if !SymlinkMode_Portable.Supported() {
@@ -23,7 +23,7 @@ func TestSymlinkModeSupportedForUsage(t *testing.T) {
 }
 
 func TestSymlinkModeDescription(t *testing.T) {
-	if description := SymlinkMode_Default.Description(); description != "Default" {
+	if description := SymlinkMode_DefaultSymlinkMode.Description(); description != "Default" {
 		t.Error("symlink mode sane description incorrect:", description, "!=", "Default")
 	}
 	if description := SymlinkMode_Portable.Description(); description != "Portable" {
