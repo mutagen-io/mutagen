@@ -127,8 +127,10 @@ func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
 		return nil, true, err
 	}
 
-	// Propagate executability from the ancestor to the result if necessary.
-	if !filesystem.PreservesExecutability {
+	// Propagate executability from the ancestor to the result if necessary. If
+	// we don't have an ancestor, just skip this, because PropagateExecutability
+	// won't have any effect other than making a copy of the result.
+	if !filesystem.PreservesExecutability && ancestor != nil {
 		result = sync.PropagateExecutability(ancestor, result)
 	}
 

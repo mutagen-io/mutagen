@@ -143,19 +143,31 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
-	// Marshal the ancestor in a deterministic fashion and compute its rsync
-	// signature. We'll use it as a base for an rsync transfer of the serialized
-	// snapshot.
+	// Compute the ancestor that we're going to use as a serialized base for
+	// efficiently transferring snapshots from the remote. If the remote
+	// endpoint doesn't preserve executability, then the snapshot it produces
+	// won't have any executable bits, but the provided ancestor might. This
+	// will make the rsync transfer of the snapshot less than optimal,
+	// especially if there are large numbers of executable files. To overcome
+	// this, strip executability from ancestor that we use as the base.
+	baseAncestor := ancestor
+	if !e.preservesExecutability {
+		baseAncestor = sync.StripExecutability(baseAncestor)
+	}
+
+	// Marshal the base ancestor in a deterministic fashion and compute its
+	// rsync signature. We'll use it as a base for an rsync transfer of the
+	// serialized snapshot.
 	buffer := proto.NewBuffer(nil)
 	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(&sync.Archive{Root: ancestor}); err != nil {
+	if err := buffer.Marshal(&sync.Archive{Root: baseAncestor}); err != nil {
 		return nil, false, errors.Wrap(err, "unable to marshal ancestor")
 	}
-	ancestorBytes := buffer.Bytes()
-	ancestorSignature := engine.BytesSignature(ancestorBytes, 0)
+	baseAncestorBytes := buffer.Bytes()
+	baseAncestorSignature := engine.BytesSignature(baseAncestorBytes, 0)
 
 	// Create and send the scan request.
-	request := endpointRequest{Scan: &scanRequest{ancestorSignature}}
+	request := endpointRequest{Scan: &scanRequest{baseAncestorSignature}}
 	if err := e.encoder.Encode(request); err != nil {
 		return nil, false, errors.Wrap(err, "unable to send scan request")
 	}
@@ -172,7 +184,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := engine.PatchBytes(ancestorBytes, ancestorSignature, response.SnapshotDelta)
+	snapshotBytes, err := engine.PatchBytes(baseAncestorBytes, baseAncestorSignature, response.SnapshotDelta)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "unable to patch base snapshot")
 	}
@@ -190,7 +202,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	}
 
 	// If the endpoint doesn't preserve executability, then propagate
-	// executability from the ancestor.
+	// executability from the actual ancestor.
 	if !e.preservesExecutability {
 		snapshot = sync.PropagateExecutability(ancestor, snapshot)
 	}

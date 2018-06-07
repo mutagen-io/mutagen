@@ -176,8 +176,9 @@ func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 
 func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	// Perform a scan. Passing a nil ancestor is fine - it just stops
-	// executability propagation, but that will happen in the remoteEndpointClient
-	// instance. If a retry is requested or an error occurs, send a response.
+	// executability propagation, but that will happen in the
+	// remoteEndpointClient instance. If a retry is requested or an error
+	// occurs, send a response.
 	snapshot, tryAgain, err := s.endpoint.scan(nil)
 	if tryAgain {
 		if err := s.encoder.Encode(scanResponse{TryAgain: true, Error: err.Error()}); err != nil {
