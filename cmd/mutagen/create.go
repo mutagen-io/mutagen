@@ -112,7 +112,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to receive response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "create failed")
 		} else if response.Session != "" {
 			if response.Prompt != nil {
 				return errors.New("invalid create response received (session with prompt)")

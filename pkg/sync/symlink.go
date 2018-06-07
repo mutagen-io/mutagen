@@ -18,7 +18,7 @@ func NewSymlinkModeFromString(mode string) (SymlinkMode, error) {
 	case "posix-raw":
 		return SymlinkMode_POSIXRaw, nil
 	default:
-		return SymlinkMode_Default, errors.New("unknown mode specified")
+		return SymlinkMode_Default, errors.Errorf("unknown mode specified: %s", mode)
 	}
 }
 

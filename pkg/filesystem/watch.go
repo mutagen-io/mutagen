@@ -23,7 +23,7 @@ func NewWatchModeFromString(mode string) (WatchMode, error) {
 	case "poll":
 		return WatchMode_Poll, nil
 	default:
-		return WatchMode_Default, errors.New("unknown mode specified")
+		return WatchMode_Default, errors.Errorf("unknown mode specified: %s", mode)
 	}
 }
 

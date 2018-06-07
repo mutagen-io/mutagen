@@ -38,7 +38,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 		Specifications: specifications,
 	}
 	if _, err := sessionService.Pause(context.Background(), request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "pause error")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "pause failed")
 	}
 
 	// Success.

@@ -56,7 +56,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		// Receive the next response, watching for completion or another prompt.
 		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to receive response")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "resume failed")
 		} else if response.Prompt == nil {
 			return nil
 		} else {

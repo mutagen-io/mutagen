@@ -104,7 +104,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			if monitorLinePrinted {
 				fmt.Println()
 			}
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "list error")
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "list failed")
 		}
 
 		// Validate the list response contents.

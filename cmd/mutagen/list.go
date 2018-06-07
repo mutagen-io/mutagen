@@ -146,7 +146,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 	}
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "list error")
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "list failed")
 	}
 
 	// Validate the list response contents.
@@ -156,14 +156,9 @@ func listMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Determine whether or not to print delimiters.
-	printDelimiters := len(response.SessionStates) > 1
-
 	// Loop through and print sessions.
 	for _, state := range response.SessionStates {
-		if printDelimiters {
-			fmt.Println(delimiterLine)
-		}
+		fmt.Println(delimiterLine)
 		printSession(state, listConfiguration.long)
 		printEndpointStatus(state, true)
 		printEndpointStatus(state, false)
@@ -172,9 +167,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 			printConflicts(state.Conflicts)
 		}
 	}
-	if printDelimiters {
-		fmt.Println(delimiterLine)
-	}
+	fmt.Println(delimiterLine)
 
 	// Success.
 	return nil
