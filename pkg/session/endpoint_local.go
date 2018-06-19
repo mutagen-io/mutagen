@@ -63,7 +63,7 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 
 	// Compute a combined ignore list.
 	var ignores []string
-	if ignoreVCSMode == sync.IgnoreVCSMode_PropagateVCS {
+	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCS {
 		ignores = append(ignores, sync.DefaultVCSIgnores...)
 	}
 	ignores = append(ignores, configuration.DefaultIgnores...)
