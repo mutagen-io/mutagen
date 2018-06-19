@@ -134,7 +134,7 @@ func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) 
 	// Compute the file mode.
 	mode := baseMode
 	if mode == 0 {
-		mode = ProviderBaseMode
+		mode = newFileBaseMode
 	}
 	if entry.Executable {
 		mode |= UserExecutablePermission
