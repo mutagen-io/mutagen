@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sync;
+
+// IgnoreVCSMode specifies the mode for ignoring VCS directories.
+enum IgnoreVCSMode {
+    // IgnoreVCSMode_IgnoreVCSDefault represents an unspecified VCS ignore
+    // mode. It is not valid for use with Scan. It should be converted to one of
+    // the following values based on the desired default behavior.
+    IgnoreVCSDefault = 0;
+    // IgnoreVCSMode_IgnoreVCS indicates that VCS directories should be ignored.
+    IgnoreVCS = 1;
+    // IgnoreVCSMode_PropagateVCS indicates that VCS directories should be
+    // propagated.
+    PropagateVCS = 2;
+}

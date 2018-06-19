@@ -5,6 +5,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 // Configuration represents the global Mutagen configuration.
@@ -12,19 +13,20 @@ type Configuration struct {
 	// Ignore contains parameters related to synchronization ignore
 	// specifications.
 	Ignore struct {
-		Default []string `toml:"default"`
+		Default []string           `toml:"default"`
+		VCS     sync.IgnoreVCSMode `toml:"vcs"`
 	} `toml:"ignore"`
 
 	// Symlink contains parameters related to symlink handling.
 	Symlink struct {
 		// Mode specifies the default symlink mode.
-		Mode string `toml:"mode"`
+		Mode sync.SymlinkMode `toml:"mode"`
 	} `toml:"symlink"`
 
 	// Watch contains parameters related to filesystem monitoring.
 	Watch struct {
 		// Mode specifies the default watch mode.
-		Mode string `toml:"mode"`
+		Mode filesystem.WatchMode `toml:"mode"`
 
 		// PollingInterval specifies the interval (in seconds) for poll-based
 		// file monitoring. A value of 0 specifies that the default interval

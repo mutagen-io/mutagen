@@ -9,6 +9,63 @@ import (
 	"github.com/bmatcuk/doublestar"
 )
 
+// UnmarshalText implements the text unmarshalling interface used when loading
+// from TOML files.
+func (m *IgnoreVCSMode) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a VCS mode.
+	switch text {
+	case "true":
+		*m = IgnoreVCSMode_IgnoreVCS
+	case "false":
+		*m = IgnoreVCSMode_PropagateVCS
+	default:
+		return errors.Errorf("unknown VCS ignore specification: %s", text)
+	}
+
+	// Success.
+	return nil
+}
+
+// Supported indicates whether or not a particular VCS ignore mode is a valid,
+// non-default value.
+func (m IgnoreVCSMode) Supported() bool {
+	switch m {
+	case IgnoreVCSMode_IgnoreVCS:
+		return true
+	case IgnoreVCSMode_PropagateVCS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Description returns a human-readable description of a VCS ignore mode.
+func (m IgnoreVCSMode) Description() string {
+	switch m {
+	case IgnoreVCSMode_IgnoreVCSDefault:
+		return "Default"
+	case IgnoreVCSMode_IgnoreVCS:
+		return "Ignore"
+	case IgnoreVCSMode_PropagateVCS:
+		return "Propagate"
+	default:
+		return "Unknown"
+	}
+}
+
+// DefaultVCSIgnores is the default set of ignores to use when ignoring VCS
+// directories.
+var DefaultVCSIgnores = []string{
+	".git/",
+	".svn/",
+	".hg/",
+	".bzr/",
+	"_darcs/",
+}
+
 type ignorePattern struct {
 	negated       bool
 	directoryOnly bool

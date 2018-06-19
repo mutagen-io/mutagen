@@ -8,7 +8,14 @@ import (
 
 const (
 	testConfigurationGibberish = "[a+1a4"
-	testConfigurationValid     = `[ignore]
+	testConfigurationValid     = `[symlink]
+mode = "portable"
+
+[watch]
+mode = "force-poll"
+pollingInterval = 5
+
+[ignore]
 default = ["ignore/this/**", "!ignore/this/that"]
 `
 )

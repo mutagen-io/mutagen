@@ -56,7 +56,7 @@ func ServeEndpoint(connection net.Conn) error {
 		validationErr = errors.New("unknown or unsupported session version")
 	} else if request.Root == "" {
 		validationErr = errors.New("empty root path")
-	} else if err := request.Configuration.EnsureValid(); err != nil {
+	} else if err := request.Configuration.EnsureValid(ConfigurationSourceSession); err != nil {
 		validationErr = errors.Wrap(err, "invalid session configuration")
 	}
 	if validationErr != nil {

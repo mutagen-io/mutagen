@@ -8,27 +8,65 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-func (c *Configuration) EnsureValid() error {
+// configurationSource represents the source of a configuration object.
+type ConfigurationSource uint8
+
+const (
+	// configurationSourceSession specifies that a configuration object came
+	// from a session object stored on disk.
+	ConfigurationSourceSession ConfigurationSource = iota
+	// configurationSourceGlobal specifies that a configuration object was
+	// loaded from the global configuration file.
+	ConfigurationSourceGlobal
+	// configurationSourceCreate specifies that a configuration object came from
+	// a create RPC request.
+	ConfigurationSourceCreate
+)
+
+func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 	// A nil configuration is not considered valid.
 	if c == nil {
 		return errors.New("nil configuration")
 	}
 
-	// Verify that all ignores specifications in the session are valid.
+	// Verify that the symlink mode is unspecified or supported for usage.
+	if c.SymlinkMode != sync.SymlinkMode_SymlinkDefault && !c.SymlinkMode.Supported() {
+		return errors.New("unknown or unsupported symlink mode")
+	}
+
+	// Verify that the watch mode is unspecified or supported for usage.
+	if c.WatchMode != filesystem.WatchMode_WatchDefault && !c.WatchMode.Supported() {
+		return errors.New("unknown or unsupported watch mode")
+	}
+
+	// The watch polling interval doesn't need to be validated - any of its
+	// values are technically valid.
+
+	// Verify that default ignores are allowed to be specified and that all
+	// specified default ignores are valid.
+	if source == ConfigurationSourceCreate && len(c.DefaultIgnores) > 0 {
+		return errors.New("create configuration with default ignores specified")
+	}
+	for _, ignore := range c.DefaultIgnores {
+		if !sync.ValidIgnorePattern(ignore) {
+			return errors.Errorf("invalid default ignore pattern: %s", ignore)
+		}
+	}
+
+	// Verify that ignores are allowed to be specified and that all specified
+	// ignores are valid.
+	if source == ConfigurationSourceGlobal && len(c.Ignores) > 0 {
+		return errors.New("global configuration with ignores specified")
+	}
 	for _, ignore := range c.Ignores {
 		if !sync.ValidIgnorePattern(ignore) {
 			return errors.Errorf("invalid ignore pattern: %s", ignore)
 		}
 	}
 
-	// Verify that the symlink mode is unspecified or supported for usage.
-	if c.SymlinkMode != sync.SymlinkMode_DefaultSymlinkMode && !c.SymlinkMode.Supported() {
-		return errors.New("unknown or unsupported symlink mode")
-	}
-
-	// Verify that the watch mode is unspecified or supported for usage.
-	if c.WatchMode != filesystem.WatchMode_DefaultWatchMode && !c.WatchMode.Supported() {
-		return errors.New("unknown or unsupported watch mode")
+	// Verify that the VCS ignore mode is unspecified or supported for usage.
+	if c.IgnoreVCSMode != sync.IgnoreVCSMode_IgnoreVCSDefault && !c.IgnoreVCSMode.Supported() {
+		return errors.New("unknown or unsupported VCS ignore mode")
 	}
 
 	// Success.
@@ -46,34 +84,16 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 	}
 
 	// Create a session configuration object.
-	result := &Configuration{}
-
-	// Propagate default ignores.
-	result.Ignores = configuration.Ignore.Default
-
-	// Propagate symlink mode.
-	if configuration.Symlink.Mode != "" {
-		if m, err := sync.NewSymlinkModeFromString(configuration.Symlink.Mode); err != nil {
-			return nil, errors.Wrap(err, "unable to parse symlink mode")
-		} else {
-			result.SymlinkMode = m
-		}
+	result := &Configuration{
+		SymlinkMode:          configuration.Symlink.Mode,
+		WatchMode:            configuration.Watch.Mode,
+		WatchPollingInterval: configuration.Watch.PollingInterval,
+		DefaultIgnores:       configuration.Ignore.Default,
+		IgnoreVCSMode:        configuration.Ignore.VCS,
 	}
-
-	// Propagate watch mode.
-	if configuration.Watch.Mode != "" {
-		if m, err := filesystem.NewWatchModeFromString(configuration.Watch.Mode); err != nil {
-			return nil, errors.Wrap(err, "unable to parse watch mode")
-		} else {
-			result.WatchMode = m
-		}
-	}
-
-	// Propagate polling interval.
-	result.WatchPollingInterval = configuration.Watch.PollingInterval
 
 	// Verify that the resulting configuration is valid.
-	if err := result.EnsureValid(); err != nil {
+	if err := result.EnsureValid(ConfigurationSourceGlobal); err != nil {
 		return nil, errors.Wrap(err, "global configuration invalid")
 	}
 
@@ -88,19 +108,15 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 	// Create the resulting configuration.
 	result := &Configuration{}
 
-	// Merge ignores.
-	result.Ignores = append(result.Ignores, global.Ignores...)
-	result.Ignores = append(result.Ignores, session.Ignores...)
-
 	// Merge symlink mode.
-	if session.SymlinkMode != sync.SymlinkMode_DefaultSymlinkMode {
+	if session.SymlinkMode != sync.SymlinkMode_SymlinkDefault {
 		result.SymlinkMode = session.SymlinkMode
 	} else {
 		result.SymlinkMode = global.SymlinkMode
 	}
 
 	// Merge watch mode.
-	if session.WatchMode != filesystem.WatchMode_DefaultWatchMode {
+	if session.WatchMode != filesystem.WatchMode_WatchDefault {
 		result.WatchMode = session.WatchMode
 	} else {
 		result.WatchMode = global.WatchMode
@@ -111,6 +127,19 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 		result.WatchPollingInterval = session.WatchPollingInterval
 	} else {
 		result.WatchPollingInterval = global.WatchPollingInterval
+	}
+
+	// Propagate default ignores.
+	result.DefaultIgnores = global.DefaultIgnores
+
+	// Propagate per-session ignores.
+	result.Ignores = session.Ignores
+
+	// Merge VCS ignore mode.
+	if session.IgnoreVCSMode != sync.IgnoreVCSMode_IgnoreVCSDefault {
+		result.IgnoreVCSMode = session.IgnoreVCSMode
+	} else {
+		result.IgnoreVCSMode = global.IgnoreVCSMode
 	}
 
 	// Done.

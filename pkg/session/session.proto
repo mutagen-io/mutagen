@@ -28,6 +28,5 @@ message Session {
     url.URL alpha = 7;
     url.URL beta = 8;
     Configuration configuration = 9;
-    Configuration globalConfiguration = 10;
-    bool paused = 11;
+    bool paused = 10;
 }

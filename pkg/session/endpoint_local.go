@@ -21,10 +21,10 @@ type localEndpoint struct {
 	watchCancel context.CancelFunc
 	// watchEvents is the filesystem monitoring channel. It is static.
 	watchEvents chan struct{}
-	// ignores is the list of ignored paths for the session. It is static.
-	ignores []string
 	// symlinkMode is the symlink mode for the session. It is static.
 	symlinkMode sync.SymlinkMode
+	// ignores is the list of ignored paths for the session. It is static.
+	ignores []string
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
@@ -37,23 +37,37 @@ type localEndpoint struct {
 }
 
 func newLocalEndpoint(session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
-	// Extract the effective symlink mode.
-	symlinkMode := configuration.SymlinkMode
-	if symlinkMode == sync.SymlinkMode_DefaultSymlinkMode {
-		symlinkMode = version.DefaultSymlinkMode()
-	}
-
-	// Extract the effective watch mode.
-	watchMode := configuration.WatchMode
-	if watchMode == filesystem.WatchMode_DefaultWatchMode {
-		watchMode = version.DefaultWatchMode()
-	}
-
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(root)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to normalize root path")
 	}
+
+	// Extract the effective symlink mode.
+	symlinkMode := configuration.SymlinkMode
+	if symlinkMode == sync.SymlinkMode_SymlinkDefault {
+		symlinkMode = version.DefaultSymlinkMode()
+	}
+
+	// Extract the effective watch mode.
+	watchMode := configuration.WatchMode
+	if watchMode == filesystem.WatchMode_WatchDefault {
+		watchMode = version.DefaultWatchMode()
+	}
+
+	// Extract the effective VCS ignore mode.
+	ignoreVCSMode := configuration.IgnoreVCSMode
+	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSDefault {
+		ignoreVCSMode = version.DefaultIgnoreVCSMode()
+	}
+
+	// Compute a combined ignore list.
+	var ignores []string
+	if ignoreVCSMode == sync.IgnoreVCSMode_PropagateVCS {
+		ignores = append(ignores, sync.DefaultVCSIgnores...)
+	}
+	ignores = append(ignores, configuration.DefaultIgnores...)
+	ignores = append(ignores, configuration.Ignores...)
 
 	// Start file monitoring for the root.
 	watchContext, watchCancel := context.WithCancel(context.Background())
@@ -96,8 +110,8 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 		root:        root,
 		watchCancel: watchCancel,
 		watchEvents: watchEvents,
-		ignores:     configuration.Ignores,
 		symlinkMode: symlinkMode,
+		ignores:     ignores,
 		cachePath:   cachePath,
 		cache:       cache,
 		scanHasher:  version.hasher(),

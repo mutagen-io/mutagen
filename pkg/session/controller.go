@@ -30,9 +30,6 @@ type controller struct {
 	sessionPath string
 	// archivePath is the path to the serialized archive.
 	archivePath string
-	// mergedConfiguration is the merged configuration resulting from
-	// per-session and global configurations.
-	mergedConfiguration *Configuration
 	// stateLock guards and tracks changes to the session member's Paused field
 	// and the state member. Code may access static members of the session
 	// without holding this lock, but any reads or writes to the Paused field
@@ -67,7 +64,7 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 
 	// Create an effective merged configuration.
-	mergedConfiguration := MergeConfigurations(configuration, globalConfiguration)
+	configuration = MergeConfigurations(configuration, globalConfiguration)
 
 	// Create a unique session identifier.
 	randomUUID, err := uuid.NewRandom()
@@ -87,11 +84,11 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(identifier, version, alpha, mergedConfiguration, true, prompter)
+	alphaEndpoint, err := connect(identifier, version, alpha, configuration, true, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(identifier, version, beta, mergedConfiguration, false, prompter)
+	betaEndpoint, err := connect(identifier, version, beta, configuration, false, prompter)
 	if err != nil {
 		alphaEndpoint.shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
@@ -108,7 +105,6 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 		Alpha:                alpha,
 		Beta:                 beta,
 		Configuration:        configuration,
-		GlobalConfiguration:  globalConfiguration,
 	}
 	archive := &sync.Archive{}
 
@@ -141,11 +137,10 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 
 	// Create the controller.
 	controller := &controller{
-		sessionPath:         sessionPath,
-		archivePath:         archivePath,
-		mergedConfiguration: mergedConfiguration,
-		stateLock:           state.NewTrackingLock(tracker),
-		session:             session,
+		sessionPath: sessionPath,
+		archivePath: archivePath,
+		stateLock:   state.NewTrackingLock(tracker),
+		session:     session,
 		state: &State{
 			Session: session,
 		},
@@ -180,19 +175,12 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "invalid session found on disk")
 	}
 
-	// Create an effective merged configuration.
-	mergedConfiguration := MergeConfigurations(
-		session.Configuration,
-		session.GlobalConfiguration,
-	)
-
 	// Create the controller.
 	controller := &controller{
-		sessionPath:         sessionPath,
-		archivePath:         archivePath,
-		mergedConfiguration: mergedConfiguration,
-		stateLock:           state.NewTrackingLock(tracker),
-		session:             session,
+		sessionPath: sessionPath,
+		archivePath: archivePath,
+		stateLock:   state.NewTrackingLock(tracker),
+		session:     session,
 		state: &State{
 			Session: session,
 		},
@@ -278,7 +266,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Identifier,
 		c.session.Version,
 		c.session.Alpha,
-		c.mergedConfiguration,
+		c.session.Configuration,
 		true,
 		prompter,
 	)
@@ -294,7 +282,7 @@ func (c *controller) resume(prompter string) error {
 		c.session.Identifier,
 		c.session.Version,
 		c.session.Beta,
-		c.mergedConfiguration,
+		c.session.Configuration,
 		false,
 		prompter,
 	)
@@ -429,7 +417,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Identifier,
 					c.session.Version,
 					c.session.Alpha,
-					c.mergedConfiguration,
+					c.session.Configuration,
 					true,
 				)
 			}
@@ -456,7 +444,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 					c.session.Identifier,
 					c.session.Version,
 					c.session.Beta,
-					c.mergedConfiguration,
+					c.session.Configuration,
 					false,
 				)
 			}

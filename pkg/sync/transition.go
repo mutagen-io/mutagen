@@ -132,7 +132,7 @@ func ensureExpectedSymlink(root, path string, expected *Entry, symlinkMode Symli
 	// If we're in portable symlink mode, then we need to normalize the target
 	// coming from disk, because some systems (e.g. Windows) won't round-trip
 	// the target correctly.
-	if symlinkMode == SymlinkMode_Portable {
+	if symlinkMode == SymlinkMode_SymlinkPortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
 			return errors.Wrap(err, "unable to normalize target in portable mode")

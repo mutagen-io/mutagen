@@ -20,7 +20,7 @@ func TestArchiveEmptyDifferentEmptyDirectory(t *testing.T) {
 	}
 
 	// Serialize an archive with an empty directory at the root.
-	archiveEmptyDirectory := &Archive{Root:&Entry{Kind: EntryKind_Directory}}
+	archiveEmptyDirectory := &Archive{Root: &Entry{Kind: EntryKind_Directory}}
 	archiveEmptyDirectoryBytes, err := proto.Marshal(archiveEmptyDirectory)
 	if err != nil {
 		t.Fatal("unable to marshal archive with empty directory:", err)

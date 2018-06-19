@@ -41,7 +41,7 @@ func (s *Server) Create(stream Session_CreateServer) error {
 		return errors.Wrap(err, "alpha URL invalid")
 	} else if err = request.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "beta URL invalid")
-	} else if err = request.Configuration.EnsureValid(); err != nil {
+	} else if err = request.Configuration.EnsureValid(session.ConfigurationSourceCreate); err != nil {
 		return errors.Wrap(err, "session configuration invalid")
 	}
 

@@ -4,18 +4,18 @@ package filesystem;
 
 // WatchMode specifies the mode for filesystem watching.
 enum WatchMode {
-    // WatchMode_DefaultWatchMode represents an unspecified watch mode. It
-    // should be converted to one of the following values based on the desired
-    // default behavior.
-    DefaultWatchMode = 0;
-    // WatchMode_RecursiveHome specifies that native recursive watching should
+    // WatchMode_WatchDefault represents an unspecified watch mode. It should be
+    // converted to one of the following values based on the desired default
+    // behavior.
+    WatchDefault = 0;
+    // WatchMode_WatchPortable specifies that native recursive watching should
     // be used to monitor paths on systems that support it if those paths fall
     // under the home directory. In these cases, a watch on the entire home
     // directory is established and filtered for events pertaining to the
     // specified path. On all other systems and for all other paths, poll-based
     // watching is used.
-    RecursiveHome = 1;
-    // WatchMode_Poll specifies that only poll-based watching should be
-    // performed.
-    Poll = 2;
+    WatchPortable = 1;
+    // WatchMode_WatchForcePoll specifies that only poll-based watching should
+    // be used.
+    WatchForcePoll = 2;
 }

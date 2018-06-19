@@ -7,30 +7,37 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewSymlinkModeFromString parses a symlink mode specification string and
-// returns a SymlinkMode enumeration value.
-func NewSymlinkModeFromString(mode string) (SymlinkMode, error) {
-	switch mode {
-	case "portable":
-		return SymlinkMode_Portable, nil
+// UnmarshalText implements the text unmarshalling interface used when loading
+// from TOML files.
+func (m *SymlinkMode) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a VCS mode.
+	switch text {
 	case "ignore":
-		return SymlinkMode_Ignore, nil
+		*m = SymlinkMode_SymlinkIgnore
+	case "portable":
+		*m = SymlinkMode_SymlinkPortable
 	case "posix-raw":
-		return SymlinkMode_POSIXRaw, nil
+		*m = SymlinkMode_SymlinkPOSIXRaw
 	default:
-		return SymlinkMode_DefaultSymlinkMode, errors.Errorf("unknown mode specified: %s", mode)
+		return errors.Errorf("unknown symlink mode specification: %s", text)
 	}
+
+	// Success.
+	return nil
 }
 
-// Supported indicates whether or not a particular symlink mode is supported for
-// use with Scan and Transition.
+// Supported indicates whether or not a particular symlink mode is a valid,
+// non-default value.
 func (m SymlinkMode) Supported() bool {
 	switch m {
-	case SymlinkMode_Portable:
+	case SymlinkMode_SymlinkIgnore:
 		return true
-	case SymlinkMode_Ignore:
+	case SymlinkMode_SymlinkPortable:
 		return true
-	case SymlinkMode_POSIXRaw:
+	case SymlinkMode_SymlinkPOSIXRaw:
 		return true
 	default:
 		return false
@@ -40,13 +47,13 @@ func (m SymlinkMode) Supported() bool {
 // Description returns a human-readable description of a symlink mode.
 func (m SymlinkMode) Description() string {
 	switch m {
-	case SymlinkMode_DefaultSymlinkMode:
+	case SymlinkMode_SymlinkDefault:
 		return "Default"
-	case SymlinkMode_Portable:
-		return "Portable"
-	case SymlinkMode_Ignore:
+	case SymlinkMode_SymlinkIgnore:
 		return "Ignore"
-	case SymlinkMode_POSIXRaw:
+	case SymlinkMode_SymlinkPortable:
+		return "Portable"
+	case SymlinkMode_SymlinkPOSIXRaw:
 		return "POSIX Raw"
 	default:
 		return "Unknown"

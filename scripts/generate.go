@@ -71,6 +71,7 @@ var subdirectories = []struct {
 			"change.proto",
 			"conflict.proto",
 			"entry.proto",
+			"ignore.proto",
 			"problem.proto",
 			"symlink.proto",
 		},

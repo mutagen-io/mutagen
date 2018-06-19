@@ -47,31 +47,37 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// We don't need to validate ignores here, that will happen on the session
-	// service, so we'll save ourselves the time.
-
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
 	if createConfiguration.symlinkMode != "" {
-		if m, err := sync.NewSymlinkModeFromString(createConfiguration.symlinkMode); err != nil {
+		if err := symlinkMode.UnmarshalText([]byte(createConfiguration.symlinkMode)); err != nil {
 			return errors.Wrap(err, "unable to parse symlink mode")
-		} else {
-			symlinkMode = m
 		}
 	}
 
 	// Validate and convert the watch mode specification.
 	var watchMode filesystem.WatchMode
 	if createConfiguration.watchMode != "" {
-		if m, err := filesystem.NewWatchModeFromString(createConfiguration.watchMode); err != nil {
+		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")
-		} else {
-			watchMode = m
 		}
 	}
 
-	// There's no need to validate the watch polling mode - any uint32 value is
-	// valid.
+	// There's no need to validate the watch polling interval - any uint32 value
+	// is valid.
+
+	// We don't need to validate ignores here, that will happen on the session
+	// service, so we'll save ourselves the time.
+
+	// Validate and convert the VCS ignore mode specification.
+	var ignoreVCSMode sync.IgnoreVCSMode
+	if createConfiguration.ignoreVCS && createConfiguration.noIgnoreVCS {
+		return errors.New("conflicting VCS ignore behavior specified")
+	} else if createConfiguration.ignoreVCS {
+		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCS
+	} else if createConfiguration.noIgnoreVCS {
+		ignoreVCSMode = sync.IgnoreVCSMode_PropagateVCS
+	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
@@ -97,10 +103,11 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Alpha: alpha,
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
-			Ignores:              createConfiguration.ignores,
 			SymlinkMode:          symlinkMode,
 			WatchMode:            watchMode,
 			WatchPollingInterval: createConfiguration.watchPollingInterval,
+			Ignores:              createConfiguration.ignores,
+			IgnoreVCSMode:        ignoreVCSMode,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -143,6 +150,8 @@ var createCommand = &cobra.Command{
 var createConfiguration struct {
 	help                 bool
 	ignores              []string
+	ignoreVCS            bool
+	noIgnoreVCS          bool
 	symlinkMode          string
 	watchMode            string
 	watchPollingInterval uint32
@@ -154,7 +163,9 @@ func init() {
 	flags := createCommand.Flags()
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
-	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (portable|ignore|posix-raw)")
-	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (recursive-home|poll)")
-	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval")
+	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
+	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")
+	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
+	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
+	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
 }

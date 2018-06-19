@@ -14,25 +14,33 @@ const (
 	DefaultPollingInterval = 10
 )
 
-// NewWatchModeFromString parses a watch mode specification string and returns a
-// WatchMode enumeration value.
-func NewWatchModeFromString(mode string) (WatchMode, error) {
-	switch mode {
-	case "recursive-home":
-		return WatchMode_RecursiveHome, nil
-	case "poll":
-		return WatchMode_Poll, nil
+// UnmarshalText implements the text unmarshalling interface used when loading
+// from TOML files.
+func (m *WatchMode) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a VCS mode.
+	switch text {
+	case "portable":
+		*m = WatchMode_WatchPortable
+	case "force-poll":
+		*m = WatchMode_WatchForcePoll
 	default:
-		return WatchMode_DefaultWatchMode, errors.Errorf("unknown mode specified: %s", mode)
+		return errors.Errorf("unknown watch mode specification: %s", text)
 	}
+
+	// Success.
+	return nil
 }
 
-// Supported indicates whether or not a particular watch mode is supported.
+// Supported indicates whether or not a particular watch mode is a valid,
+// non-default value.
 func (m WatchMode) Supported() bool {
 	switch m {
-	case WatchMode_RecursiveHome:
+	case WatchMode_WatchPortable:
 		return true
-	case WatchMode_Poll:
+	case WatchMode_WatchForcePoll:
 		return true
 	default:
 		return false
@@ -42,12 +50,12 @@ func (m WatchMode) Supported() bool {
 // Description returns a human-readable description of a watch mode.
 func (m WatchMode) Description() string {
 	switch m {
-	case WatchMode_DefaultWatchMode:
+	case WatchMode_WatchDefault:
 		return "Default"
-	case WatchMode_RecursiveHome:
-		return "Recursive Home"
-	case WatchMode_Poll:
-		return "Poll"
+	case WatchMode_WatchPortable:
+		return "Portable"
+	case WatchMode_WatchForcePoll:
+		return "Force Poll"
 	default:
 		return "Unknown"
 	}
@@ -122,7 +130,7 @@ func Watch(context context.Context, root string, events chan struct{}, mode Watc
 	// This will be fail if we're on a system without native recursive watching,
 	// the root is not a subpath of the home directory, or the watch is
 	// cancelled.
-	if mode == WatchMode_RecursiveHome {
+	if mode == WatchMode_WatchPortable {
 		watchRecursiveHome(context, root, events)
 	}
 

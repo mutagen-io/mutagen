@@ -188,7 +188,7 @@ func testTransitionCreate(entry *Entry, contentMap map[string][]byte, decompose 
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Portable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
 		os.RemoveAll(parent)
 		return "", "", errors.New("problems occurred during creation transition")
 	} else if len(entries) != len(transitions) {
@@ -265,7 +265,7 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	}
 
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Portable)
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
@@ -276,7 +276,7 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 
 	// Remove the test content. This will exercise the removal portion of
 	// Transition.
-	if err := testTransitionRemove(root, expected, cache, SymlinkMode_Portable, decompose); err != nil {
+	if err := testTransitionRemove(root, expected, cache, SymlinkMode_SymlinkPortable, decompose); err != nil {
 		return errors.Wrap(err, "unable to remove test content")
 	}
 
@@ -391,7 +391,7 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition and ensure that it encounters a problem.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Portable, provider); len(problems) != 1 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 1 {
 		t.Error("transition succeeded unexpectedly")
 	} else if len(entries) != 1 {
 		t.Error("transition returned invalid number of entries")
@@ -471,7 +471,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Portable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -487,7 +487,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	}
 
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Portable)
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
 	} else if cache == nil {
@@ -520,7 +520,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	defer createNewProvider.finalize()
 
 	// Perform the swap transition and ensure that it fails.
-	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_Portable, createNewProvider); len(problems) == 0 {
+	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_SymlinkPortable, createNewProvider); len(problems) == 0 {
 		t.Fatal("transition succeeded unexpectedly")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -552,7 +552,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_Portable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -568,7 +568,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	}
 
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_Portable)
+	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
 	} else if cache == nil {
@@ -588,7 +588,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer swapProvider.finalize()
 
 	// Perform the swap transition.
-	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_Portable, swapProvider); len(problems) != 0 {
+	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, swapProvider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")

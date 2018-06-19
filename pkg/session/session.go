@@ -31,7 +31,7 @@ func (v Version) hasher() hash.Hash {
 func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {
 	case Version_Version1:
-		return sync.SymlinkMode_Portable
+		return sync.SymlinkMode_SymlinkPortable
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -40,7 +40,16 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 func (v Version) DefaultWatchMode() filesystem.WatchMode {
 	switch v {
 	case Version_Version1:
-		return filesystem.WatchMode_RecursiveHome
+		return filesystem.WatchMode_WatchPortable
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
+	switch v {
+	case Version_Version1:
+		return sync.IgnoreVCSMode_IgnoreVCS
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -79,13 +88,8 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the configuration is valid.
-	if err := s.Configuration.EnsureValid(); err != nil {
+	if err := s.Configuration.EnsureValid(ConfigurationSourceSession); err != nil {
 		return errors.Wrap(err, "invalid configuration")
-	}
-
-	// Ensure that the global configuration snapshot is valid.
-	if err := s.GlobalConfiguration.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid global configuration snapshot")
 	}
 
 	// Success.

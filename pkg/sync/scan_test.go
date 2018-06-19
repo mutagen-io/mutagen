@@ -55,55 +55,55 @@ func testCreateScanCycle(
 }
 
 func TestScanNilRoot(t *testing.T) {
-	if err := testCreateScanCycle(testNilEntry, nil, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testNilEntry, nil, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanFile1Root(t *testing.T) {
-	if err := testCreateScanCycle(testFile1Entry, testFile1ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testFile1Entry, testFile1ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanFile2Root(t *testing.T) {
-	if err := testCreateScanCycle(testFile2Entry, testFile2ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testFile2Entry, testFile2ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanFile3Root(t *testing.T) {
-	if err := testCreateScanCycle(testFile3Entry, testFile3ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testFile3Entry, testFile3ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanDirectory1Root(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanDirectory2Root(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory2Entry, testDirectory2ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectory2Entry, testDirectory2ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanDirectory3Root(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory3Entry, testDirectory3ContentMap, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectory3Entry, testDirectory3ContentMap, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("creation/scan cycle failed:", err)
 	}
 }
 
 func TestScanDirectorySaneSymlinkSane(t *testing.T) {
-	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("sane symlink not allowed inside root with sane symlink mode:", err)
 	}
 }
 
 func TestScanDirectorySaneSymlinkIgnore(t *testing.T) {
-	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_Ignore, false); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_SymlinkIgnore, false); err != nil {
 		t.Error("sane symlink not allowed inside root with ignore symlink mode:", err)
 	}
 }
@@ -112,7 +112,7 @@ func TestScanDirectorySaneSymlinkPOSIXRaw(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_POSIXRaw, true); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_SymlinkPOSIXRaw, true); err != nil {
 		t.Error("sane symlink not allowed inside root with POSIX raw symlink mode:", err)
 	}
 }
@@ -121,7 +121,7 @@ func TestScanDirectoryInvalidSymlinkNotSane(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_Portable, true) == nil {
+	if testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_SymlinkPortable, true) == nil {
 		t.Error("invalid symlink allowed inside root with sane symlink mode")
 	}
 }
@@ -130,7 +130,7 @@ func TestScanDirectoryInvalidSymlinkIgnore(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_Ignore, false); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_SymlinkIgnore, false); err != nil {
 		t.Error("invalid symlink not allowed inside root with ignore symlink mode:", err)
 	}
 }
@@ -139,19 +139,19 @@ func TestScanDirectoryInvalidSymlinkPOSIXRaw(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_POSIXRaw, true); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithInvalidSymlink, nil, nil, SymlinkMode_SymlinkPOSIXRaw, true); err != nil {
 		t.Error("invalid symlink not allowed inside root with POSIX raw symlink mode:", err)
 	}
 }
 
 func TestScanDirectoryEscapingSymlinkSane(t *testing.T) {
-	if testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_Portable, true) == nil {
+	if testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_SymlinkPortable, true) == nil {
 		t.Error("escaping symlink allowed inside root with sane symlink mode")
 	}
 }
 
 func TestScanDirectoryEscapingSymlinkIgnore(t *testing.T) {
-	if err := testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_Ignore, false); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_SymlinkIgnore, false); err != nil {
 		t.Error("escaping symlink not allowed inside root with ignore symlink mode:", err)
 	}
 }
@@ -160,7 +160,7 @@ func TestScanDirectoryEscapingSymlinkPOSIXRaw(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_POSIXRaw, true); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithEscapingSymlink, nil, nil, SymlinkMode_SymlinkPOSIXRaw, true); err != nil {
 		t.Error("escaping symlink not allowed inside root with POSIX raw symlink mode:", err)
 	}
 }
@@ -169,7 +169,7 @@ func TestScanDirectoryAbsoluteSymlinkSane(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_Portable, true) == nil {
+	if testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_SymlinkPortable, true) == nil {
 		t.Error("escaping symlink allowed inside root with sane symlink mode")
 	}
 }
@@ -178,7 +178,7 @@ func TestScanDirectoryAbsoluteSymlinkIgnore(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_Ignore, false); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_SymlinkIgnore, false); err != nil {
 		t.Error("escaping symlink not allowed inside root with ignore symlink mode:", err)
 	}
 }
@@ -187,7 +187,7 @@ func TestScanDirectoryAbsoluteSymlinkPOSIXRaw(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
 	}
-	if err := testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_POSIXRaw, true); err != nil {
+	if err := testCreateScanCycle(testDirectoryWithAbsoluteSymlink, nil, nil, SymlinkMode_SymlinkPOSIXRaw, true); err != nil {
 		t.Error("escaping symlink not allowed inside root with POSIX raw symlink mode:", err)
 	}
 }
@@ -196,7 +196,7 @@ func TestScanPOSIXRawNotAllowedOnWindows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip()
 	}
-	if testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_POSIXRaw, true) == nil {
+	if testCreateScanCycle(testDirectoryWithSaneSymlink, nil, nil, SymlinkMode_SymlinkPOSIXRaw, true) == nil {
 		t.Error("POSIX raw symlink mode allowed for scan on Windows")
 	}
 }
@@ -218,37 +218,37 @@ func TestScanSymlinkRoot(t *testing.T) {
 	}
 
 	// Attempt a scan of the symlink.
-	if _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_Portable); err == nil {
+	if _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan of symlink root allowed")
 	}
 }
 
 func TestScanInvalidIgnores(t *testing.T) {
-	if testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{""}, SymlinkMode_Portable, true) == nil {
+	if testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{""}, SymlinkMode_SymlinkPortable, true) == nil {
 		t.Error("scan allowed with invalid ignore specification")
 	}
 }
 
 func TestScanIgnore(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"second directory"}, SymlinkMode_Portable, false); err != nil {
+	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"second directory"}, SymlinkMode_SymlinkPortable, false); err != nil {
 		t.Error("unexpected result when ignoring directory:", err)
 	}
 }
 
 func TestScanIgnoreDirectory(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"directory/"}, SymlinkMode_Portable, false); err != nil {
+	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"directory/"}, SymlinkMode_SymlinkPortable, false); err != nil {
 		t.Error("unexpected result when ignoring directory:", err)
 	}
 }
 
 func TestScanFileNotIgnoredOnDirectorySpecification(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"file/"}, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"file/"}, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("unexpected result when ignoring directory:", err)
 	}
 }
 
 func TestScanSubfileNotIgnoredOnRootSpecification(t *testing.T) {
-	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"/subfile.exe"}, SymlinkMode_Portable, true); err != nil {
+	if err := testCreateScanCycle(testDirectory1Entry, testDirectory1ContentMap, []string{"/subfile.exe"}, SymlinkMode_SymlinkPortable, true); err != nil {
 		t.Error("unexpected result when ignoring directory:", err)
 	}
 }
@@ -287,7 +287,7 @@ func TestEfficientRescan(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_Portable)
+	snapshot, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
 	if err != nil {
 		t.Fatal("unable to create snapshot:", err)
 	} else if cache == nil {
@@ -298,7 +298,7 @@ func TestEfficientRescan(t *testing.T) {
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	if snapshot, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_Portable); err != nil {
+	if snapshot, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable); err != nil {
 		t.Fatal("unable to rescan:", err)
 	} else if cache == nil {
 		t.Fatal("nil second cache returned")
