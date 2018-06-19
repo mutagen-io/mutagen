@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"bytes"
 	pathpkg "path"
 
 	"github.com/pkg/errors"
@@ -46,8 +47,21 @@ func TransitionDependencies(transitions []*Change) ([]string, []*Entry, error) {
 	finder := &stagingPathFinder{}
 
 	// Have it find paths for all the transitions.
-	for _, c := range transitions {
-		if err := finder.find(c.Path, c.New); err != nil {
+	for _, t := range transitions {
+		// If this is a file-to-file transition and only the executability bit
+		// is changing, then we don't need to stage, because transition will
+		// just modify the target on disk. We only need to watch for these cases
+		// when they exist at transition roots (they can't be deeper down in
+		// trees).
+		fileToFileSameContents := t.Old != nil && t.New != nil &&
+			t.Old.Kind == EntryKind_File && t.New.Kind == EntryKind_File &&
+			bytes.Equal(t.Old.Digest, t.New.Digest)
+		if fileToFileSameContents {
+			continue
+		}
+
+		// Otherwise we need to perform a full scan.
+		if err := finder.find(t.Path, t.New); err != nil {
 			return nil, nil, errors.Wrap(err, "unable to find staging paths")
 		}
 	}

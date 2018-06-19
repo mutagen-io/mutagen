@@ -20,8 +20,6 @@ type Provider interface {
 	// Provide returns a filesystem path to a file containing the contents for
 	// the path given as the first argument with the properties specified by the
 	// second argument and a mode based on the base mode and entry properties.
-	// If a zero base mode is provided, a base mode of ProviderBaseMode should
-	// be assumed.
 	Provide(path string, entry *Entry, baseMode os.FileMode) (string, error)
 }
 
@@ -350,6 +348,27 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
+	// If both files have the same contents (differing only in executability),
+	// then we won't have staged the file, and we just need to calculate the new
+	// mode, change permissions, and return.
+	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
+		// Compute the new mode.
+		mode := baseMode
+		if newEntry.Executable {
+			mode |= UserExecutablePermission
+		} else {
+			mode &^= AnyExecutablePermission
+		}
+
+		// Attempt to change file permissions.
+		if err := os.Chmod(fullPath, mode); err != nil {
+			return errors.Wrap(err, "unable to change file permissions")
+		}
+
+		// Success.
+		return nil
+	}
+
 	// Compute the path to the staged file.
 	stagedPath, err := provider.Provide(path, newEntry, baseMode)
 	if err != nil {
@@ -375,7 +394,7 @@ func createFile(root, path string, target *Entry, provider Provider) (*Entry, er
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, target, 0)
+	stagedPath, err := provider.Provide(path, target, newFileBaseMode)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to locate staged file")
 	}
@@ -420,7 +439,7 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	}
 
 	// Attempt to create the directory.
-	if err := os.Mkdir(fullPath, directoryBaseMode); err != nil {
+	if err := os.Mkdir(fullPath, newDirectoryBaseMode); err != nil {
 		return nil, []*Problem{newProblem(
 			path,
 			errors.Wrap(err, "unable to create directory"),
@@ -499,7 +518,7 @@ func create(root, path string, target *Entry, provider Provider) (*Entry, []*Pro
 	// the root path exists and is a directory. We can assume that it's intended
 	// to be a directory since the root is intended to exist inside it.
 	if path == "" {
-		if err := os.MkdirAll(filepath.Dir(root), directoryBaseMode); err != nil {
+		if err := os.MkdirAll(filepath.Dir(root), newDirectoryBaseMode); err != nil {
 			return nil, []*Problem{newProblem(
 				path,
 				errors.Wrap(err, "unable to create parent component of root path"),

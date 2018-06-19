@@ -5,9 +5,12 @@ import (
 )
 
 const (
-	// ProviderBaseMode is the base file mode that Provider implementations
-	// should use if they receive a zero value base mode.
-	ProviderBaseMode os.FileMode = 0600
+	// newDirectoryBaseMode is the base mode for directories created in
+	// transitions.
+	newDirectoryBaseMode os.FileMode = 0700
+
+	// newFileBaseMode is the base mode for files created in transitions.
+	newFileBaseMode os.FileMode = 0600
 
 	// AnyExecutablePermission is the collection of executability bits that
 	// indicate executability by the user. If any of these bits are set, the
@@ -19,8 +22,4 @@ const (
 	// execute a file. If a file's entry indicates it is executable, this bit
 	// should be set by providers.
 	UserExecutablePermission os.FileMode = 0100
-
-	// directoryBaseMode is the base mode for directories created in
-	// trannsitions.
-	directoryBaseMode os.FileMode = 0700
 )

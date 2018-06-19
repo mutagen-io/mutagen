@@ -170,9 +170,6 @@ func (s *stager) Provide(path string, entry *sync.Entry, baseMode os.FileMode) (
 
 	// Compute the file mode.
 	mode := baseMode
-	if mode == 0 {
-		mode = sync.ProviderBaseMode
-	}
 	if entry.Executable {
 		mode |= sync.UserExecutablePermission
 	} else {
