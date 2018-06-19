@@ -62,8 +62,20 @@ func (m WatchMode) Description() string {
 }
 
 func fileInfoEqual(first, second os.FileInfo) bool {
+	// Compare modes.
+	if first.Mode() != second.Mode() {
+		return false
+	}
+
+	// If we're dealing with directories, don't check size or time. Size doesn't
+	// really make sense and modification time will be affected by our
+	// executability preservation or Unicode decomposition probe file creation.
+	if first.IsDir() {
+		return true
+	}
+
+	// Compare size and time.
 	return first.Size() == second.Size() &&
-		first.Mode() == second.Mode() &&
 		first.ModTime().Equal(second.ModTime())
 }
 
