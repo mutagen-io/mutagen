@@ -1,30 +1,30 @@
 package sync
 
-func propagateExecutability(ancestor, snapshot *Entry) {
+func propagateExecutability(source, target *Entry) {
 	// If either entry is nil or their types don't match, then there's nothing
 	// to propagate.
-	if ancestor == nil || snapshot == nil || ancestor.Kind != snapshot.Kind {
+	if source == nil || target == nil || source.Kind != target.Kind {
 		return
 	}
 
 	// Handle the propagation based on entry kind.
-	if snapshot.Kind == EntryKind_Directory {
-		ancestorContents := ancestor.GetContents()
-		snapshotContents := snapshot.GetContents()
+	if target.Kind == EntryKind_Directory {
+		ancestorContents := source.GetContents()
+		snapshotContents := target.GetContents()
 		for name := range nameUnion(ancestorContents, snapshotContents) {
 			propagateExecutability(ancestorContents[name], snapshotContents[name])
 		}
-	} else if snapshot.Kind == EntryKind_File {
-		snapshot.Executable = ancestor.Executable
+	} else if target.Kind == EntryKind_File {
+		target.Executable = source.Executable
 	}
 }
 
-func PropagateExecutability(ancestor, snapshot *Entry) *Entry {
+func PropagateExecutability(source, target *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := snapshot.Copy()
+	result := target.Copy()
 
 	// Perform propagation.
-	propagateExecutability(ancestor, result)
+	propagateExecutability(source, result)
 
 	// Done.
 	return result

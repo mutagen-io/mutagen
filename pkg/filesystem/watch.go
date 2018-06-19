@@ -87,6 +87,12 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 			return err
 		}
 
+		// If this is an executability preservation or Unicode decomposition
+		// test path, ignore it.
+		if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
+			return nil
+		}
+
 		// Insert the entry for this path.
 		result[path] = info
 

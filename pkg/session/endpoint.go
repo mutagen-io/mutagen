@@ -28,7 +28,7 @@ type endpoint interface {
 	// non-nil/false. If all are nil, it indicates that the synchronization root
 	// doesn't exist on the endpoint, but that the scan otherwise completed
 	// successfully.
-	scan(ancestor *sync.Entry) (*sync.Entry, bool, error)
+	scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool)
 
 	// stage performs staging on the endpoint. It accepts a list of file paths
 	// and file entries for those paths. It will filter the list based on what

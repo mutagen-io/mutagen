@@ -9,7 +9,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
@@ -76,8 +75,7 @@ func ServeEndpoint(connection net.Conn) error {
 	defer endpoint.shutdown()
 
 	// Send a successful initialize response.
-	response := initializeResponse{PreservesExecutability: filesystem.PreservesExecutability}
-	if err = encoder.Encode(response); err != nil {
+	if err = encoder.Encode(initializeResponse{}); err != nil {
 		return errors.Wrap(err, "unable to send initialize response")
 	}
 
@@ -185,13 +183,12 @@ func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 }
 
 func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
-	// Perform a scan. Passing a nil ancestor is fine - it just stops
-	// executability propagation, but that will happen in the
-	// remoteEndpointClient instance. If a retry is requested or an error
-	// occurs, send a response.
-	snapshot, tryAgain, err := s.endpoint.scan(nil)
+	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
+	// endpoints anyway. If a retry is requested or an error occurs, send a
+	// response.
+	snapshot, preservesExecutability, err, tryAgain := s.endpoint.scan(nil)
 	if tryAgain {
-		if err := s.encoder.Encode(scanResponse{TryAgain: true, Error: err.Error()}); err != nil {
+		if err := s.encoder.Encode(scanResponse{Error: err.Error(), TryAgain: true}); err != nil {
 			return errors.Wrap(err, "unable to send scan retry response")
 		}
 		return nil
@@ -215,7 +212,10 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
 
 	// Send the response.
-	response := scanResponse{SnapshotDelta: delta}
+	response := scanResponse{
+		SnapshotDelta:          delta,
+		PreservesExecutability: preservesExecutability,
+	}
 	if err := s.encoder.Encode(response); err != nil {
 		return errors.Wrap(err, "unable to send scan response")
 	}

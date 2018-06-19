@@ -11,6 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"golang.org/x/text/unicode/norm"
+
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
@@ -32,12 +34,15 @@ const (
 )
 
 type scanner struct {
-	root     string
-	hasher   hash.Hash
-	cache    *Cache
-	ignorer  *ignorer
-	newCache *Cache
-	buffer   []byte
+	root                   string
+	hasher                 hash.Hash
+	cache                  *Cache
+	ignorer                *ignorer
+	newCache               *Cache
+	buffer                 []byte
+	deviceID               uint64
+	recomposeUnicode       bool
+	preservesExecutability bool
 }
 
 func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
@@ -47,7 +52,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	size := uint64(info.Size())
 
 	// Compute executability.
-	executable := (mode&AnyExecutablePermission != 0)
+	executable := s.preservesExecutability && mode&AnyExecutablePermission != 0
 
 	// Convert the timestamp to Protocol Buffers format.
 	modificationTimeProto, err := ptypes.TimestampProto(modificationTime)
@@ -134,10 +139,29 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 }
 
 func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error) {
+	// Compute the full path to the directory.
+	fullPath := filepath.Join(s.root, path)
+
+	// Verify that we haven't crossed a directory boundary (which might
+	// potentially change executability preservation or Unicode decomposition
+	// behavior).
+	if id, err := filesystem.DeviceID(fullPath); err != nil {
+		return nil, errors.Wrap(err, "unable to probe directory device ID")
+	} else if id != s.deviceID {
+		return nil, errors.New("scan crossed filesystem boundary")
+	}
+
 	// Read directory contents.
-	directoryContents, err := filesystem.DirectoryContents(filepath.Join(s.root, path))
+	directoryContents, err := filesystem.DirectoryContents(fullPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read directory contents")
+	}
+
+	// Recompose directory names if necessary.
+	if s.recomposeUnicode {
+		for i, name := range directoryContents {
+			directoryContents[i] = norm.NFC.String(name)
+		}
 	}
 
 	// Compute entries.
@@ -218,7 +242,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 // TODO: Note that the provided cache is assumed to be valid (i.e. that it
 // doesn't have any nil entries), so callers should run EnsureValid on anything
 // they pull from disk
-func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, bool, *Cache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the
 	// GetEntries accessor everywhere.
@@ -229,12 +253,12 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	// Create the ignorer.
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to create ignorer")
+		return nil, false, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
 	// Verify that the symlink mode is valid for this platform.
 	if symlinkMode == SymlinkMode_SymlinkPOSIXRaw && runtime.GOOS == "windows" {
-		return nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
+		return nil, false, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -261,25 +285,55 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	// Create the snapshot.
 	if info, err := os.Lstat(root); err != nil {
 		if os.IsNotExist(err) {
-			return nil, newCache, nil
+			return nil, false, newCache, nil
 		} else {
-			return nil, nil, errors.Wrap(err, "unable to probe scan root")
+			return nil, false, nil, errors.Wrap(err, "unable to probe scan root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
-		if rootEntry, err := s.directory("", symlinkMode); err != nil {
-			return nil, nil, err
+		// Grab and set the device ID for the root directory.
+		if id, err := filesystem.DeviceID(root); err != nil {
+			return nil, false, nil, errors.Wrap(err, "unable to probe root device ID")
 		} else {
-			return rootEntry, newCache, nil
+			s.deviceID = id
+		}
+
+		// Probe Unicode decomposition for the root directory.
+		if decomposes, err := filesystem.DecomposesUnicode(root); err != nil {
+			return nil, false, nil, errors.Wrap(err, "unable to probe root Unicode behavior")
+		} else {
+			s.recomposeUnicode = decomposes
+		}
+
+		// Probe executability for the root directory.
+		if preserves, err := filesystem.PreservesExecutability(root); err != nil {
+			return nil, false, nil, errors.Wrap(err, "unable to probe root executability behavior")
+		} else {
+			s.preservesExecutability = preserves
+		}
+
+		// Perform a recursive scan.
+		if rootEntry, err := s.directory("", symlinkMode); err != nil {
+			return nil, false, nil, err
+		} else {
+			return rootEntry, s.preservesExecutability, newCache, nil
 		}
 	} else if mode&os.ModeType != 0 {
-		// We explicitly disallow symlinks as synchronization roots because
-		// there's no easy way to propagate changes to them.
-		return nil, nil, errors.New("invalid scan root type")
+		// We disallow symlinks as synchronization roots because there's no easy
+		// way to propagate changes to them.
+		return nil, false, nil, errors.New("invalid scan root type")
 	} else {
-		if rootEntry, err := s.file("", info); err != nil {
-			return nil, nil, err
+		// Probe executability for the root directory.
+		if preserves, err := filesystem.PreservesExecutability(filepath.Dir(root)); err != nil {
+			return nil, false, nil, errors.Wrap(err, "unable to probe root parent executability behavior")
 		} else {
-			return rootEntry, newCache, nil
+			s.preservesExecutability = preserves
+		}
+
+		// Perform a scan of the root file.
+		if rootEntry, err := s.file("", info); err != nil {
+			return nil, false, nil, err
+		} else {
+			return rootEntry, s.preservesExecutability, newCache, nil
 		}
 	}
 }

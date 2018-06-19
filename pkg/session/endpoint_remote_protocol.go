@@ -14,8 +14,7 @@ type initializeRequest struct {
 }
 
 type initializeResponse struct {
-	PreservesExecutability bool
-	Error                  string
+	Error string
 }
 
 type pollRequest struct{}
@@ -31,9 +30,10 @@ type scanRequest struct {
 }
 
 type scanResponse struct {
-	TryAgain      bool
-	SnapshotDelta []rsync.Operation
-	Error         string
+	SnapshotDelta          []rsync.Operation
+	PreservesExecutability bool
+	Error                  string
+	TryAgain               bool
 }
 
 type stageRequest struct {

@@ -20,11 +20,6 @@ func DirectoryContents(path string) ([]string, error) {
 		return nil, errors.Wrap(err, "unable to read directory names")
 	}
 
-	// Normalize directory names if necessary.
-	if err := normalizeDirectoryNames(path, names); err != nil {
-		return nil, errors.Wrap(err, "unable to normalize directory names")
-	}
-
 	// Success.
 	return names, nil
 }

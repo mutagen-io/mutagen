@@ -575,7 +575,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_ScanningAlpha
 		c.stateLock.Unlock()
-		αSnapshot, αTryAgain, αScanErr := alpha.scan(ancestor)
+		αSnapshot, αPreservesExecutability, αScanErr, αTryAgain := alpha.scan(ancestor)
 		if αScanErr != nil {
 			αScanErr = errors.Wrap(αScanErr, "alpha scan error")
 			if !αTryAgain {
@@ -591,7 +591,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_ScanningBeta
 		c.stateLock.Unlock()
-		βSnapshot, βTryAgain, βScanErr := beta.scan(ancestor)
+		βSnapshot, βPreservesExecutability, βScanErr, βTryAgain := beta.scan(ancestor)
 		if βScanErr != nil {
 			βScanErr = errors.Wrap(βScanErr, "beta scan error")
 			if !βTryAgain {
@@ -622,6 +622,15 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			// Retry.
 			skipPolling = true
 			continue
+		}
+
+		// If one side preserves executability and the other does not, then
+		// propagate executability from the preserving side to the
+		// non-preserving side.
+		if αPreservesExecutability && !βPreservesExecutability {
+			βSnapshot = sync.PropagateExecutability(αSnapshot, βSnapshot)
+		} else if !αPreservesExecutability && βPreservesExecutability {
+			αSnapshot = sync.PropagateExecutability(βSnapshot, αSnapshot)
 		}
 
 		// Update status to reconciling.

@@ -67,7 +67,10 @@ func watchRecursiveHome(context context.Context, root string, events chan struct
 	for {
 		select {
 		case e := <-nativeEvents:
-			if isParentOrSelf(root, e.Path()) {
+			path := e.Path()
+			if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
+				continue
+			} else if isParentOrSelf(root, e.Path()) {
 				if !timer.Stop() {
 					// We have to do a non-blocking drain here because we don't
 					// know if a false return value from Stop indicates that we

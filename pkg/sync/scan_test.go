@@ -10,8 +10,6 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 func testCreateScanCycle(
@@ -28,25 +26,21 @@ func testCreateScanCycle(
 	}
 	defer os.RemoveAll(parent)
 
-	// Compute the expected scan result. If we're on a system that doesn't
-	// preserve executability, then strip executability from the expected value.
-	expected := entry
-	if !filesystem.PreservesExecutability {
-		expected = StripExecutability(expected)
-	}
-
 	// Create a hasher.
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
+	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(entry, snapshot)
+	}
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
-	} else if expectEqual && !snapshot.Equal(expected) {
+	} else if expectEqual && !snapshot.Equal(entry) {
 		return errors.New("snapshot not equal to expected")
-	} else if !expectEqual && snapshot.Equal(expected) {
+	} else if !expectEqual && snapshot.Equal(entry) {
 		return errors.New("snapshot should not have equaled original")
 	}
 
@@ -218,7 +212,7 @@ func TestScanSymlinkRoot(t *testing.T) {
 	}
 
 	// Attempt a scan of the symlink.
-	if _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan of symlink root allowed")
 	}
 }
@@ -276,33 +270,33 @@ func TestEfficientRescan(t *testing.T) {
 	}
 	defer os.RemoveAll(parent)
 
-	// Grab the expected entry. If we're on a system that doesn't support
-	// executability, then strip executability from the expected value.
-	expected := testDirectory1Entry
-	if !filesystem.PreservesExecutability {
-		expected = StripExecutability(expected)
-	}
-
 	// Create a hasher.
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+	}
 	if err != nil {
 		t.Fatal("unable to create snapshot:", err)
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
-	} else if !snapshot.Equal(expected) {
+	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("snapshot did not match expected")
 	}
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	if snapshot, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable); err != nil {
+	snapshot, preservesExecutability, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+	}
+	if err != nil {
 		t.Fatal("unable to rescan:", err)
 	} else if cache == nil {
 		t.Fatal("nil second cache returned")
-	} else if !snapshot.Equal(expected) {
+	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("second snapshot did not match expected")
 	}
 }

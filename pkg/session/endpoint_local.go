@@ -133,29 +133,22 @@ func (e *localEndpoint) poll(context context.Context) error {
 	return nil
 }
 
-func (e *localEndpoint) scan(ancestor *sync.Entry) (*sync.Entry, bool, error) {
+func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
-	result, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
+	result, preservesExecutability, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
 	if err != nil {
-		return nil, true, err
-	}
-
-	// Propagate executability from the ancestor to the result if necessary. If
-	// we don't have an ancestor, just skip this, because PropagateExecutability
-	// won't have any effect other than making a copy of the result.
-	if !filesystem.PreservesExecutability && ancestor != nil {
-		result = sync.PropagateExecutability(ancestor, result)
+		return nil, false, err, true
 	}
 
 	// Store the cache.
 	e.cache = newCache
 	if err = encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
-		return nil, false, errors.Wrap(err, "unable to save cache")
+		return nil, false, errors.Wrap(err, "unable to save cache"), false
 	}
 
 	// Done.
-	return result, false, nil
+	return result, preservesExecutability, nil, false
 }
 
 func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {

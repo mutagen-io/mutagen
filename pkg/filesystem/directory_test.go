@@ -36,6 +36,3 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 		t.Fatal("directory contents nil for GOROOT")
 	}
 }
-
-// TODO: If on Darwin, we should create and mount a virtual HFS+ volume to test
-// normalization.

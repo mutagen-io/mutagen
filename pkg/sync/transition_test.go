@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 // testEntryDecomposer provides the implementation for testDecomposeEntry.
@@ -247,12 +245,8 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	}
 	defer os.RemoveAll(parent)
 
-	// Compute the expected entry. If we're on a system that doesn't preserve
-	// executability, then strip executability from the expected value.
+	// Compute the expected entry.
 	expected := entry
-	if !filesystem.PreservesExecutability {
-		expected = StripExecutability(expected)
-	}
 
 	// If a modifier has been specified, allow it to modify the disk contents
 	// and expected result.
@@ -265,7 +259,10 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	}
 
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(expected, snapshot)
+	}
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
@@ -479,20 +476,16 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 		t.Fatal("created entry does not match expected")
 	}
 
-	// Compute the expected entry. If we're on a system that doesn't preserve
-	// executability, then strip executability from the expected value.
-	expected := testDirectory1Entry
-	if !filesystem.PreservesExecutability {
-		expected = StripExecutability(expected)
-	}
-
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
-	} else if !snapshot.Equal(expected) {
+	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Fatal("snapshot not equal to expected")
 	}
 
@@ -560,25 +553,21 @@ func TestTransitionSwapFile(t *testing.T) {
 		t.Fatal("created entry does not match expected")
 	}
 
-	// Compute the expected entry. If we're on a system that doesn't preserve
-	// executability, then strip executability from the expected value.
-	expected := testFile1Entry
-	if !filesystem.PreservesExecutability {
-		expected = StripExecutability(expected)
-	}
-
 	// Perform a scan.
-	snapshot, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	if !preservesExecutability {
+		snapshot = PropagateExecutability(testFile1Entry, snapshot)
+	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
-	} else if !snapshot.Equal(expected) {
+	} else if !snapshot.Equal(testFile1Entry) {
 		t.Fatal("snapshot not equal to expected")
 	}
 
 	// Set up the swap transitions.
-	swapTransitions := []*Change{{Old: expected, New: testFile2Entry}}
+	swapTransitions := []*Change{{Old: testFile1Entry, New: testFile2Entry}}
 
 	// Create a provider and ensure its cleanup.
 	swapProvider, err := newTestProvider(testFile2ContentMap, newTestHasher())
