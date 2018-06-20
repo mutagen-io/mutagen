@@ -332,3 +332,22 @@ func TestEfficientRescan(t *testing.T) {
 		t.Error("second snapshot did not match expected")
 	}
 }
+
+func TestScanCrossDeviceFail(t *testing.T) {
+	// Skip if we don't have the subroot.
+	subroot := os.Getenv("MUTAGEN_TEST_FAT32_SUBROOT")
+	if subroot == "" {
+		t.Skip()
+	}
+
+	// Compute the subroot parent.
+	parent := filepath.Dir(subroot)
+
+	// Create a hasher.
+	hasher := newTestHasher()
+
+	// Perform a scan and ensure that it fails.
+	if _, _, _, err := Scan(parent, hasher, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+		t.Error("scan across device boundary did not fail")
+	}
+}
