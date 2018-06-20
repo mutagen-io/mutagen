@@ -40,3 +40,7 @@ func TestWriteFileAtomic(t *testing.T) {
 		t.Error("file contents did not match expected")
 	}
 }
+
+// TODO: Add TestRenameFileAtomicSameDevice.
+
+// TODO: Add TestRenameFileAtomicDifferentDevice.
