@@ -71,6 +71,11 @@ func TestWatchModeDescription(t *testing.T) {
 	}
 }
 
+const (
+	testWatchEstablishWait = 5 * time.Second
+	testWatchTimeout       = 10 * time.Second
+)
+
 func TestWatchPortable(t *testing.T) {
 	// Create a temporary directory in a subpath of the home directory and defer
 	// its removal.
@@ -90,8 +95,9 @@ func TestWatchPortable(t *testing.T) {
 	go Watch(watchContext, directory, events, WatchMode_WatchPortable, 1)
 
 	// HACK: Wait long enough for the recursive watch to be established or the
-	// initial polling to occur.
-	time.Sleep(time.Second)
+	// initial polling to occur. The CI systems aren't as fast as things are
+	// locally, so we have to be a little conservative.
+	time.Sleep(testWatchEstablishWait)
 
 	// Create a file inside the directory.
 	if err := WriteFileAtomic(filepath.Join(directory, "file"), []byte{}, 0600); err != nil {
@@ -99,8 +105,12 @@ func TestWatchPortable(t *testing.T) {
 		t.Fatal("unable to create file")
 	}
 
-	// Ensure that an event was registered.
-	<-events
+	// Wait for an event or timeout.
+	select {
+	case <-events:
+	case <-time.After(testWatchTimeout):
+		t.Error("event not received in time")
+	}
 
 	// Cancel the watch.
 	watchCancel()
@@ -123,8 +133,10 @@ func TestWatchForcePoll(t *testing.T) {
 	// Start watching in a separate Goroutine, polling at 1 second intervals.
 	go Watch(watchContext, directory, events, WatchMode_WatchForcePoll, 1)
 
-	// HACK: Wait long enough for the initial polling to occur.
-	time.Sleep(time.Second)
+	// HACK: Wait long enough for the initial polling to occur. The CI systems
+	// aren't as fast as things are locally, so we have to be a little
+	// conservative.
+	time.Sleep(testWatchEstablishWait)
 
 	// Create a file inside the directory.
 	if err := WriteFileAtomic(filepath.Join(directory, "file"), []byte{}, 0600); err != nil {
@@ -132,8 +144,12 @@ func TestWatchForcePoll(t *testing.T) {
 		t.Fatal("unable to create file")
 	}
 
-	// Ensure that an event was registered.
-	<-events
+	// Wait for an event or timeout.
+	select {
+	case <-events:
+	case <-time.After(testWatchTimeout):
+		t.Error("event not received in time")
+	}
 
 	// Cancel the watch.
 	watchCancel()
