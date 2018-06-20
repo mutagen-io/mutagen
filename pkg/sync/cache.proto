@@ -4,6 +4,7 @@ package sync;
 
 import "google/protobuf/timestamp.proto";
 
+// CacheEntry represents cache data for a file on disk.
 message CacheEntry {
     // Mode stores the value of the Go os package's FileMode type. The meaning
     // of this value is defined to be stable (even if we'd have to implement its
@@ -24,11 +25,17 @@ message CacheEntry {
     // and I'm willing to live with this slightly "unclean" design, especially
     // given its potential and the relative ease of deprecating it if necessary.
     uint32 mode = 1;
+    // ModificationTime is the cached file modification time.
     google.protobuf.Timestamp modificationTime = 2;
+    // Size is the cached file size.
     uint64 size = 3;
+    // Digest is the cached digest.
     bytes digest = 4;
 }
 
+// Cache provides a store for file metadata and digets to allow for efficient
+// rescans.
 message Cache {
+    // Entries is a map from scan path to cache entry.
     map<string, CacheEntry> entries = 1;
 }

@@ -19,6 +19,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+// CacheEntry represents cache data for a file on disk.
 type CacheEntry struct {
 	// Mode stores the value of the Go os package's FileMode type. The meaning
 	// of this value is defined to be stable (even if we'd have to implement its
@@ -38,20 +39,23 @@ type CacheEntry struct {
 	// the moment though, it's highly unlikely that we'll switch away from Go,
 	// and I'm willing to live with this slightly "unclean" design, especially
 	// given its potential and the relative ease of deprecating it if necessary.
-	Mode                 uint32               `protobuf:"varint,1,opt,name=mode" json:"mode,omitempty"`
-	ModificationTime     *timestamp.Timestamp `protobuf:"bytes,2,opt,name=modificationTime" json:"modificationTime,omitempty"`
-	Size                 uint64               `protobuf:"varint,3,opt,name=size" json:"size,omitempty"`
-	Digest               []byte               `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	Mode uint32 `protobuf:"varint,1,opt,name=mode" json:"mode,omitempty"`
+	// ModificationTime is the cached file modification time.
+	ModificationTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=modificationTime" json:"modificationTime,omitempty"`
+	// Size is the cached file size.
+	Size uint64 `protobuf:"varint,3,opt,name=size" json:"size,omitempty"`
+	// Digest is the cached digest.
+	Digest               []byte   `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *CacheEntry) Reset()         { *m = CacheEntry{} }
 func (m *CacheEntry) String() string { return proto.CompactTextString(m) }
 func (*CacheEntry) ProtoMessage()    {}
 func (*CacheEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cache_82075f41e51ccc2d, []int{0}
+	return fileDescriptor_cache_25c79c9babef23de, []int{0}
 }
 func (m *CacheEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CacheEntry.Unmarshal(m, b)
@@ -99,7 +103,10 @@ func (m *CacheEntry) GetDigest() []byte {
 	return nil
 }
 
+// Cache provides a store for file metadata and digets to allow for efficient
+// rescans.
 type Cache struct {
+	// Entries is a map from scan path to cache entry.
 	Entries              map[string]*CacheEntry `protobuf:"bytes,1,rep,name=entries" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
@@ -110,7 +117,7 @@ func (m *Cache) Reset()         { *m = Cache{} }
 func (m *Cache) String() string { return proto.CompactTextString(m) }
 func (*Cache) ProtoMessage()    {}
 func (*Cache) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cache_82075f41e51ccc2d, []int{1}
+	return fileDescriptor_cache_25c79c9babef23de, []int{1}
 }
 func (m *Cache) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cache.Unmarshal(m, b)
@@ -144,10 +151,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("github.com/havoc-io/mutagen/pkg/sync/cache.proto", fileDescriptor_cache_82075f41e51ccc2d)
+	proto.RegisterFile("github.com/havoc-io/mutagen/pkg/sync/cache.proto", fileDescriptor_cache_25c79c9babef23de)
 }
 
-var fileDescriptor_cache_82075f41e51ccc2d = []byte{
+var fileDescriptor_cache_25c79c9babef23de = []byte{
 	// 279 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x8f, 0x31, 0x6b, 0xc3, 0x30,
 	0x10, 0x85, 0x51, 0xe2, 0xa4, 0x54, 0x49, 0xc1, 0x68, 0x28, 0xc2, 0x4b, 0x4d, 0x86, 0xe2, 0xa5,
