@@ -628,9 +628,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// propagate executability from the preserving side to the
 		// non-preserving side.
 		if αPreservesExecutability && !βPreservesExecutability {
-			βSnapshot = sync.PropagateExecutability(αSnapshot, βSnapshot)
-		} else if !αPreservesExecutability && βPreservesExecutability {
-			αSnapshot = sync.PropagateExecutability(βSnapshot, αSnapshot)
+			βSnapshot = sync.PropagateExecutability(ancestor, αSnapshot, βSnapshot)
+		} else if βPreservesExecutability && !αPreservesExecutability {
+			αSnapshot = sync.PropagateExecutability(ancestor, βSnapshot, αSnapshot)
 		}
 
 		// Update status to reconciling.

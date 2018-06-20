@@ -261,7 +261,7 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	// Perform a scan.
 	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(expected, snapshot)
+		snapshot = PropagateExecutability(nil, expected, snapshot)
 	}
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
@@ -479,7 +479,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	// Perform a scan.
 	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
@@ -556,7 +556,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	// Perform a scan.
 	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(testFile1Entry, snapshot)
+		snapshot = PropagateExecutability(nil, testFile1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)

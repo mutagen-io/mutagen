@@ -32,7 +32,7 @@ func testCreateScanCycle(
 	// Perform a scan.
 	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(entry, snapshot)
+		snapshot = PropagateExecutability(nil, entry, snapshot)
 	}
 	if err != nil {
 		return errors.Wrap(err, "unable to perform scan")
@@ -276,7 +276,7 @@ func TestEfficientRescan(t *testing.T) {
 	// Create an initial snapshot and validate the results.
 	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to create snapshot:", err)
@@ -290,7 +290,7 @@ func TestEfficientRescan(t *testing.T) {
 	hasher = &rescanHashProxy{hasher, t}
 	snapshot, preservesExecutability, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
-		snapshot = PropagateExecutability(testDirectory1Entry, snapshot)
+		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to rescan:", err)
