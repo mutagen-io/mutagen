@@ -26,8 +26,9 @@ func DecomposesUnicode(path string) (bool, error) {
 	file, err := ioutil.TempFile(path, composedFilenamePrefix)
 	if err != nil {
 		return false, errors.Wrap(err, "unable to create test file")
+	} else if err = file.Close(); err != nil {
+		return false, errors.Wrap(err, "unable to close test file")
 	}
-	file.Close()
 
 	// Grab the file's name. This is calculated from the parameters passed to
 	// TempFile, not by reading from the OS, so it will still be in a composed

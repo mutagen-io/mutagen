@@ -25,8 +25,9 @@ func TestLockerCycle(t *testing.T) {
 	lockfile, err := ioutil.TempFile("", "mutagen_filesystem_lock")
 	if err != nil {
 		t.Fatal("unable to create temporary lock file:", err)
+	} else if err = lockfile.Close(); err != nil {
+		t.Error("unable to close temporary lock file:", err)
 	}
-	lockfile.Close()
 	defer os.Remove(lockfile.Name())
 
 	// TODO: Add a test for cases where the file doesn't already exist. Need to
