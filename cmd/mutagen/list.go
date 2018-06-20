@@ -167,7 +167,11 @@ func listMain(command *cobra.Command, arguments []string) error {
 			printConflicts(state.Conflicts)
 		}
 	}
-	fmt.Println(delimiterLine)
+
+	// Print a final delimiter line if there were any sessions.
+	if len(response.SessionStates) > 0 {
+		fmt.Println(delimiterLine)
+	}
 
 	// Success.
 	return nil
