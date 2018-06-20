@@ -9,7 +9,7 @@ elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
 fi
 
 # Ensure our SSH configuration directory exists.
-mkdir ~/.ssh || exit $?
+mkdir -p ~/.ssh || exit $?
 
 # Generate an SSH key in quiet mode without a password.
 ssh-keygen -q -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa || exit $?
