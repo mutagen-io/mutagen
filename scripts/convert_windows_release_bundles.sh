@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+
+# Exit immediately on failure.
+set -e
 
 # Compute the version.
 MUTAGEN_VERSION=$(mutagen -V)
