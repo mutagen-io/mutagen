@@ -11,15 +11,38 @@ const (
 
 	// newFileBaseMode is the base mode for files created in transitions.
 	newFileBaseMode os.FileMode = 0600
-
-	// AnyExecutablePermission is the collection of executability bits that
-	// indicate executability by the user. If any of these bits are set, the
-	// file is considered executable. If a file's entry indicates that it is not
-	// executable, all of these permissions should be removed by providers.
-	AnyExecutablePermission os.FileMode = 0111
-
-	// UserExecutablePermission is the permission that indicates only a user can
-	// execute a file. If a file's entry indicates it is executable, this bit
-	// should be set by providers.
-	UserExecutablePermission os.FileMode = 0100
 )
+
+// AnyExecutableBitSet returns true if any executable bit is set on the file,
+// false otherwise.
+func AnyExecutableBitSet(mode os.FileMode) bool {
+	return mode&0111 != 0
+}
+
+// StripExecutableBits strips all executability bits from the specified file
+// mode.
+func StripExecutableBits(mode os.FileMode) os.FileMode {
+	return mode &^ 0111
+}
+
+// MarkExecutableForReaders sets the executable bit for the mode for any case
+// where the corresponding read bit is set.
+func MarkExecutableForReaders(mode os.FileMode) os.FileMode {
+	// Set the user executable bit if necessary.
+	if mode&0400 != 0 {
+		mode |= 0100
+	}
+
+	// Set the group executable bit if necessary.
+	if mode&0040 != 0 {
+		mode |= 0010
+	}
+
+	// Set the other executable bit if necessary.
+	if mode&0004 != 0 {
+		mode |= 0001
+	}
+
+	// Done.
+	return mode
+}

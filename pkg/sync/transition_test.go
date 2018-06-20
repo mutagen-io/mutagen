@@ -137,9 +137,9 @@ func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) 
 		mode = newFileBaseMode
 	}
 	if entry.Executable {
-		mode |= UserExecutablePermission
+		mode = MarkExecutableForReaders(mode)
 	} else {
-		mode &^= AnyExecutablePermission
+		mode = StripExecutableBits(mode)
 	}
 
 	// Set the file mode.

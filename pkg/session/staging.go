@@ -171,9 +171,9 @@ func (s *stager) Provide(path string, entry *sync.Entry, baseMode os.FileMode) (
 	// Compute the file mode.
 	mode := baseMode
 	if entry.Executable {
-		mode |= sync.UserExecutablePermission
+		mode = sync.MarkExecutableForReaders(mode)
 	} else {
-		mode &^= sync.AnyExecutablePermission
+		mode = sync.StripExecutableBits(mode)
 	}
 
 	// Ensure that it has the correct mode. This will fail if the file doesn't

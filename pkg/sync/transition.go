@@ -355,9 +355,9 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 		// Compute the new mode.
 		mode := baseMode
 		if newEntry.Executable {
-			mode |= UserExecutablePermission
+			mode = MarkExecutableForReaders(mode)
 		} else {
-			mode &^= AnyExecutablePermission
+			mode = StripExecutableBits(mode)
 		}
 
 		// Attempt to change file permissions.

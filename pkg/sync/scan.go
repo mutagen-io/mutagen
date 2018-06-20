@@ -52,7 +52,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	size := uint64(info.Size())
 
 	// Compute executability.
-	executable := s.preservesExecutability && mode&AnyExecutablePermission != 0
+	executable := s.preservesExecutability && AnyExecutableBitSet(mode)
 
 	// Convert the timestamp to Protocol Buffers format.
 	modificationTimeProto, err := ptypes.TimestampProto(modificationTime)
