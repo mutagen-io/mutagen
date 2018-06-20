@@ -162,12 +162,16 @@ func Watch(context context.Context, root string, events chan struct{}, mode Watc
 	default:
 	}
 
-	// Create a timer to regular polling.
+	// Compute the polling interval.
 	if pollInterval == 0 {
 		pollInterval = DefaultPollingInterval
 	}
 	pollIntervalDuration := time.Duration(pollInterval) * time.Second
-	timer := time.NewTimer(pollIntervalDuration)
+
+	// Create a timer to regulate polling. Start it with a 0 duration so that
+	// the first polling takes place immediately. Subsequent pollings will take
+	// place at the normal interval.
+	timer := time.NewTimer(0)
 
 	// Loop and poll for changes, but watch for cancellation.
 	var contents map[string]os.FileInfo

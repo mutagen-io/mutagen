@@ -68,7 +68,7 @@ func TestSymlinkModeDescription(t *testing.T) {
 		t.Error("default symlink mode description incorrect:", description, "!=", "Default")
 	}
 	if description := SymlinkMode_SymlinkPortable.Description(); description != "Portable" {
-		t.Error("symlink mode sane description incorrect:", description, "!=", "Portable")
+		t.Error("symlink mode portable description incorrect:", description, "!=", "Portable")
 	}
 	if description := SymlinkMode_SymlinkIgnore.Description(); description != "Ignore" {
 		t.Error("symlink mode ignore description incorrect:", description, "!=", "Ignore")

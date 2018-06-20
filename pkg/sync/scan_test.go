@@ -334,14 +334,15 @@ func TestEfficientRescan(t *testing.T) {
 }
 
 func TestScanCrossDeviceFail(t *testing.T) {
-	// Skip if we don't have the subroot.
-	subroot := os.Getenv("MUTAGEN_TEST_FAT32_SUBROOT")
-	if subroot == "" {
+	// If we don't have the separate FAT32 partition mounted at a subdirectory,
+	// skip this test.
+	fat32Subroot := os.Getenv("MUTAGEN_TEST_FAT32_SUBROOT")
+	if fat32Subroot == "" {
 		t.Skip()
 	}
 
 	// Compute the subroot parent.
-	parent := filepath.Dir(subroot)
+	parent := filepath.Dir(fat32Subroot)
 
 	// Create a hasher.
 	hasher := newTestHasher()
