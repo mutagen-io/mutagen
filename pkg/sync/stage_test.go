@@ -59,3 +59,22 @@ func TestTransitionDependenciesNewNonNil(t *testing.T) {
 		t.Error("unexpected number of entries")
 	}
 }
+
+func TestTransitionDependenciesOnlyExecutableBitChange(t *testing.T) {
+	old := testFile2Entry.Copy()
+	old.Executable = false
+	transitions := []*Change{
+		{
+			Path: "",
+			Old:  old,
+			New:  testFile2Entry,
+		},
+	}
+	if names, entries, err := TransitionDependencies(transitions); err != nil {
+		t.Error("transition dependency finding failed:", err)
+	} else if len(names) != 0 {
+		t.Error("unexpected number of names")
+	} else if len(entries) != 0 {
+		t.Error("unexpected number of entries")
+	}
+}
