@@ -4,10 +4,31 @@ import (
 	"testing"
 )
 
-func TestExecutabilityStripNil(t *testing.T) {
-	if StripExecutability(nil) != nil {
-		t.Fatal("executability stripping of nil entry did not return nil")
+func stripExecutabilityRecursive(snapshot *Entry) {
+	// If the entry is nil, then there's nothing to strip.
+	if snapshot == nil {
+		return
 	}
+
+	// Handle the stripping based on entry kind.
+	if snapshot.Kind == EntryKind_Directory {
+		for _, entry := range snapshot.Contents {
+			stripExecutabilityRecursive(entry)
+		}
+	} else if snapshot.Kind == EntryKind_File {
+		snapshot.Executable = false
+	}
+}
+
+func stripExecutability(snapshot *Entry) *Entry {
+	// Create a copy of the snapshot that we can mutate.
+	result := snapshot.Copy()
+
+	// Perform stripping.
+	stripExecutabilityRecursive(result)
+
+	// Done.
+	return result
 }
 
 func TestExecutabilityPropagateNil(t *testing.T) {
@@ -19,7 +40,7 @@ func TestExecutabilityPropagateNil(t *testing.T) {
 func TestExecutabilityPropagationCycle(t *testing.T) {
 	// Create a copy of the test directory entry with executability stripped and
 	// ensure that it differs.
-	stripped := StripExecutability(testDirectory1Entry)
+	stripped := stripExecutability(testDirectory1Entry)
 	if stripped == testDirectory1Entry {
 		t.Fatal("executability stripping did not make entry copy")
 	} else if stripped.Equal(testDirectory1Entry) {
