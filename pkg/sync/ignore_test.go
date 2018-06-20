@@ -4,6 +4,68 @@ import (
 	"testing"
 )
 
+func TestIgnoreVCSModeUnmarshalTrue(t *testing.T) {
+	var mode IgnoreVCSMode
+	if err := mode.UnmarshalText([]byte("true")); err != nil {
+		t.Fatal("unable to unmarshal text:", err)
+	} else if mode != IgnoreVCSMode_IgnoreVCS {
+		t.Error("unmarshalled mode does not match expected")
+	}
+}
+
+func TestIgnoreVCSModeUnmarshalFalse(t *testing.T) {
+	var mode IgnoreVCSMode
+	if err := mode.UnmarshalText([]byte("false")); err != nil {
+		t.Fatal("unable to unmarshal text:", err)
+	} else if mode != IgnoreVCSMode_PropagateVCS {
+		t.Error("unmarshalled mode does not match expected")
+	}
+}
+
+func TestIgnoreVCSModeUnmarshalEmpty(t *testing.T) {
+	var mode IgnoreVCSMode
+	if mode.UnmarshalText([]byte("")) == nil {
+		t.Error("empty VCS ignore mode successfully unmarshalled")
+	}
+}
+
+func TestIgnoreVCSModeUnmarshalInvalid(t *testing.T) {
+	var mode IgnoreVCSMode
+	if mode.UnmarshalText([]byte("invalid")) == nil {
+		t.Error("invalid VCS ignore mode successfully unmarshalled")
+	}
+}
+
+func TestIgnoreVCSModeSupported(t *testing.T) {
+	if IgnoreVCSMode_IgnoreVCSDefault.Supported() {
+		t.Error("default VCS ignore mode considered supported")
+	}
+	if !IgnoreVCSMode_IgnoreVCS.Supported() {
+		t.Error("ignore VCS mode considered unsupported")
+	}
+	if !IgnoreVCSMode_PropagateVCS.Supported() {
+		t.Error("propagate VCS mode considered unsupported")
+	}
+	if (IgnoreVCSMode_PropagateVCS + 1).Supported() {
+		t.Error("invalid VCS ignore mode considered supported")
+	}
+}
+
+func TestIgnoreVCSModeDescription(t *testing.T) {
+	if description := IgnoreVCSMode_IgnoreVCSDefault.Description(); description != "Default" {
+		t.Error("default VCS ignore mode description incorrect:", description, "!=", "Default")
+	}
+	if description := IgnoreVCSMode_IgnoreVCS.Description(); description != "Ignore" {
+		t.Error("ignore VCS mode description incorrect:", description, "!=", "Ignore")
+	}
+	if description := IgnoreVCSMode_PropagateVCS.Description(); description != "Propagate" {
+		t.Error("propagate VCS mode description incorrect:", description, "!=", "Propagate")
+	}
+	if description := (IgnoreVCSMode_PropagateVCS + 1).Description(); description != "Unknown" {
+		t.Error("invalid VCS ignore mode description incorrect:", description, "!=", "Unknown")
+	}
+}
+
 type ignoreTestValue struct {
 	path      string
 	directory bool

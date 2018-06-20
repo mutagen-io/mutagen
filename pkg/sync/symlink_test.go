@@ -4,7 +4,48 @@ import (
 	"testing"
 )
 
-func TestSymlinkModeSupportedForUsage(t *testing.T) {
+func TestSymlinkModeUnmarshalIgnore(t *testing.T) {
+	var mode SymlinkMode
+	if err := mode.UnmarshalText([]byte("ignore")); err != nil {
+		t.Fatal("unable to unmarshal text:", err)
+	} else if mode != SymlinkMode_SymlinkIgnore {
+		t.Error("unmarshalled mode does not match expected")
+	}
+}
+
+func TestSymlinkModeUnmarshalPortable(t *testing.T) {
+	var mode SymlinkMode
+	if err := mode.UnmarshalText([]byte("portable")); err != nil {
+		t.Fatal("unable to unmarshal text:", err)
+	} else if mode != SymlinkMode_SymlinkPortable {
+		t.Error("unmarshalled mode does not match expected")
+	}
+}
+
+func TestSymlinkModeUnmarshalPOSIXRaw(t *testing.T) {
+	var mode SymlinkMode
+	if err := mode.UnmarshalText([]byte("posix-raw")); err != nil {
+		t.Fatal("unable to unmarshal text:", err)
+	} else if mode != SymlinkMode_SymlinkPOSIXRaw {
+		t.Error("unmarshalled mode does not match expected")
+	}
+}
+
+func TestSymlinkModeUnmarshalEmpty(t *testing.T) {
+	var mode SymlinkMode
+	if mode.UnmarshalText([]byte("")) == nil {
+		t.Error("empty symlink mode successfully unmarshalled")
+	}
+}
+
+func TestSymlinkModeUnmarshalInvalid(t *testing.T) {
+	var mode SymlinkMode
+	if mode.UnmarshalText([]byte("invalid")) == nil {
+		t.Error("invalid symlink mode successfully unmarshalled")
+	}
+}
+
+func TestSymlinkModeSupported(t *testing.T) {
 	if SymlinkMode_SymlinkDefault.Supported() {
 		t.Error("default symlink mode considered supported")
 	}
@@ -24,7 +65,7 @@ func TestSymlinkModeSupportedForUsage(t *testing.T) {
 
 func TestSymlinkModeDescription(t *testing.T) {
 	if description := SymlinkMode_SymlinkDefault.Description(); description != "Default" {
-		t.Error("symlink mode sane description incorrect:", description, "!=", "Default")
+		t.Error("default symlink mode description incorrect:", description, "!=", "Default")
 	}
 	if description := SymlinkMode_SymlinkPortable.Description(); description != "Portable" {
 		t.Error("symlink mode sane description incorrect:", description, "!=", "Portable")
