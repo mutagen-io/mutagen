@@ -6,6 +6,12 @@ os:
   - osx
   - linux
 
+# Require use of sudo (we need this to set up SSH).
+sudo: required
+
+# Set our macOS version. We require 10.13+ because we create APFS test images.
+osx_image: xcode9.4
+
 # Set our Go version(s). Mutagen generally only supports a specific version of
 # Go at a time, usually the latest.
 # NOTE: When specifying versions with a trailing 0 (e.g. 1.10), you need to
@@ -14,9 +20,6 @@ os:
 # https://github.com/travis-ci/travis-ci/issues/9247
 go:
   - "1.10.3"
-
-# Set our macOS version. We require 10.13+ because we create APFS test images.
-osx_image: xcode9.4
 
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
