@@ -1,5 +1,9 @@
 package sync
 
+import (
+	"bytes"
+)
+
 func propagateExecutability(ancestor, source, target *Entry) {
 	// If target is nil, then we don't have anything to propagate to, so bail.
 	if target == nil {
@@ -15,9 +19,9 @@ func propagateExecutability(ancestor, source, target *Entry) {
 			propagateExecutability(ancestorContents[name], sourceContents[name], targetContents[name])
 		}
 	} else if target.Kind == EntryKind_File {
-		if source != nil && source.Kind == EntryKind_File {
+		if source != nil && source.Kind == EntryKind_File && bytes.Equal(source.Digest, target.Digest) {
 			target.Executable = source.Executable
-		} else if ancestor != nil && ancestor.Kind == EntryKind_File {
+		} else if ancestor != nil && ancestor.Kind == EntryKind_File && bytes.Equal(ancestor.Digest, target.Digest) {
 			target.Executable = ancestor.Executable
 		}
 	}
