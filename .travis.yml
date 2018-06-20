@@ -33,6 +33,7 @@ install: true
 # upload fails (which we want to do)).
 script:
   - go version
+  - source scripts/setup_ssh.sh
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - GOARCH=386 go test -v ./pkg/...

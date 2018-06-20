@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Create and mount a FAT32 partition.
 # NOTE: There seems to be a lower bound on the size here, though I haven't
