@@ -12,8 +12,5 @@ func addLocaleVariables(environment []string) []string {
 	// option. If for some reason we start needing Unicode support in the very
 	// few commands that we run (which I can't imagine we will), we can try to
 	// set this to en_US.UTF-8.
-	environment = append(environment, "LC_ALL=C")
-
-	// Done.
-	return environment
+	return append(environment, "LC_ALL=C")
 }
