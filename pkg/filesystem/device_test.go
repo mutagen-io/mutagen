@@ -3,11 +3,19 @@ package filesystem
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
-func TestDeviceIDNonExistentPath(t *testing.T) {
-	if _, err := DeviceID("path/does/not/exist"); err == nil {
+func TestDeviceIDFailOnNonExistentPath(t *testing.T) {
+	// If we're on Windows, the device ID is always 0, and the probing never
+	// fails, so skip this test in that case.
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	// Attempt to grab the device ID.
+	if _, err := DeviceID("/path/does/not/exist"); err == nil {
 		t.Error("device ID probe succeeded for non-existent path")
 	}
 }
