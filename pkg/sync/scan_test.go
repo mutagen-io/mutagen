@@ -12,7 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func testCreateScanCycle(
+func testCreateScanCycleWithTemporaryDirectory(
+	temporaryDirectory string,
 	entry *Entry,
 	contentMap map[string][]byte,
 	ignores []string,
@@ -20,7 +21,7 @@ func testCreateScanCycle(
 	expectEqual bool,
 ) error {
 	// Create test content on disk and defer its removal.
-	root, parent, err := testTransitionCreate(entry, contentMap, false)
+	root, parent, err := testTransitionCreate(temporaryDirectory, entry, contentMap, false)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test content")
 	}
@@ -42,6 +43,31 @@ func testCreateScanCycle(
 		return errors.New("snapshot not equal to expected")
 	} else if !expectEqual && snapshot.Equal(entry) {
 		return errors.New("snapshot should not have equaled original")
+	}
+
+	// Success.
+	return nil
+}
+
+func testCreateScanCycle(
+	entry *Entry,
+	contentMap map[string][]byte,
+	ignores []string,
+	symlinkMode SymlinkMode,
+	expectEqual bool,
+) error {
+	// Run the underlying test for each of our temporary directories.
+	for _, temporaryDirectory := range testingTemporaryDirectories() {
+		if err := testCreateScanCycleWithTemporaryDirectory(
+			temporaryDirectory,
+			entry,
+			contentMap,
+			ignores,
+			symlinkMode,
+			expectEqual,
+		); err != nil {
+			return err
+		}
 	}
 
 	// Success.
@@ -263,8 +289,14 @@ func (p *rescanHashProxy) Sum(b []byte) []byte {
 }
 
 func TestEfficientRescan(t *testing.T) {
-	// Create test content on disk and defer its removal.
-	root, parent, err := testTransitionCreate(testDirectory1Entry, testDirectory1ContentMap, false)
+	// Create test content on disk and defer its removal. We only test on the
+	// default temporary directory.
+	// TODO: Should we test with other temporary directories? We might want to
+	// be on the lookout for filesystems where (e.g.) modification times aren't
+	// consistent, but we already consider this an invariant, so I'm not sure we
+	// need to check other filesystems. This test is more about verifying our
+	// use of the cache.
+	root, parent, err := testTransitionCreate("", testDirectory1Entry, testDirectory1ContentMap, false)
 	if err != nil {
 		t.Fatal("unable to create test content on disk:", err)
 	}

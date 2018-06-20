@@ -15,6 +15,9 @@ os:
 go:
   - "1.10.3"
 
+# Set our macOS version. We require 10.13+ because we create APFS test images.
+osx_image: xcode9.4
+
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
 before_install:
@@ -30,6 +33,7 @@ install: true
 # upload fails (which we want to do)).
 script:
   - go version
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - GOARCH=386 go test -v ./pkg/...
   - bash <(curl -s https://codecov.io/bash)

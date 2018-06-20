@@ -160,9 +160,9 @@ func (p *testProvider) finalize() error {
 // testTransitionCreate creates test content on disk using Transition based on
 // the specified entry and content map. It can optionally decompose the entry
 // into individual node creations to stress-test Transition.
-func testTransitionCreate(entry *Entry, contentMap map[string][]byte, decompose bool) (string, string, error) {
+func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, decompose bool) (string, string, error) {
 	// Create temporary directory to act as the parent of our root.
-	parent, err := ioutil.TempDir("", "mutagen_simulated")
+	parent, err := ioutil.TempDir(temporaryDirectory, "mutagen_simulated")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to create temporary root parent")
 	}
@@ -236,10 +236,16 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 
 type testContentModifier func(string, *Entry) (*Entry, error)
 
-func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose bool, modifier testContentModifier) error {
+func testTransitionCycleWithTemporaryDirectory(
+	temporaryDirectory string,
+	entry *Entry,
+	contentMap map[string][]byte,
+	decompose bool,
+	modifier testContentModifier,
+) error {
 	// Create test content on disk and defer its removal. This will exercise
 	// the creation portion of Transition.
-	root, parent, err := testTransitionCreate(entry, contentMap, decompose)
+	root, parent, err := testTransitionCreate(temporaryDirectory, entry, contentMap, decompose)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test content")
 	}
@@ -275,6 +281,24 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	// Transition.
 	if err := testTransitionRemove(root, expected, cache, SymlinkMode_SymlinkPortable, decompose); err != nil {
 		return errors.Wrap(err, "unable to remove test content")
+	}
+
+	// Success.
+	return nil
+}
+
+func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose bool, modifier testContentModifier) error {
+	// Run the underlying test for each of our temporary directories.
+	for _, temporaryDirectory := range testingTemporaryDirectories() {
+		if err := testTransitionCycleWithTemporaryDirectory(
+			temporaryDirectory,
+			entry,
+			contentMap,
+			decompose,
+			modifier,
+		); err != nil {
+			return err
+		}
 	}
 
 	// Success.

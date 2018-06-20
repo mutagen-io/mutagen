@@ -3,7 +3,33 @@ package sync
 import (
 	"crypto/sha1"
 	"hash"
+	"os"
 )
+
+// testingTemporaryDirectories returns the list of paths that should be used as
+// temporary directories in testing.
+func testingTemporaryDirectories() []string {
+	// Create the initial result with the default temporary directory.
+	results := []string{""}
+
+	// If there's a FAT32 root to test in, then add that.
+	if root := os.Getenv("MUTAGEN_TEST_FAT32_ROOT"); root != "" {
+		results = append(results, root)
+	}
+
+	// If there's an HFS+ root to test in, then add that.
+	if root := os.Getenv("MUTAGEN_TEST_HFS_ROOT"); root != "" {
+		results = append(results, root)
+	}
+
+	// If there's an APFS root to test in, then add that.
+	if root := os.Getenv("MUTAGEN_TEST_APFS_ROOT"); root != "" {
+		results = append(results, root)
+	}
+
+	// Done.
+	return results
+}
 
 func newTestHasher() hash.Hash {
 	return sha1.New()
