@@ -27,6 +27,12 @@ func TestDeviceID(t *testing.T) {
 }
 
 func TestDeviceIDsDifferent(t *testing.T) {
+	// If we're on Windows, the device ID is always 0, so skip this test in that
+	// case.
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
 	// If we don't have the separate FAT32 partition, skip this test.
 	fat32Root := os.Getenv("MUTAGEN_TEST_FAT32_ROOT")
 	if fat32Root == "" {
@@ -52,6 +58,12 @@ func TestDeviceIDsDifferent(t *testing.T) {
 }
 
 func TestDeviceIDSubrootDifferent(t *testing.T) {
+	// If we're on Windows, the device ID is always 0, so skip this test in that
+	// case.
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
 	// If we don't have the separate FAT32 partition mounted at a subdirectory,
 	// skip this test.
 	fat32Subroot := os.Getenv("MUTAGEN_TEST_FAT32_SUBROOT")
