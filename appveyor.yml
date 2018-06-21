@@ -34,6 +34,7 @@ test_script:
   - go run scripts/build.go --mode=slim
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - set GOARCH=386
+  - go run scripts/build.go --mode=slim
   - go test -v ./pkg/...
   - set GOARCH=amd64
   - codecov -X gcov -f coverage.txt
