@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bytes"
+	"fmt"
 	"hash"
 	"io/ioutil"
 	"os"
@@ -258,13 +259,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 
 type testContentModifier func(string, *Entry) (*Entry, error)
 
-func testTransitionCycleWithTemporaryDirectory(
-	temporaryDirectory string,
-	entry *Entry,
-	contentMap map[string][]byte,
-	decompose bool,
-	modifier testContentModifier,
-) error {
+func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, decompose bool, modifier testContentModifier) error {
 	// Create test content on disk and defer its removal. This will exercise
 	// the creation portion of Transition.
 	root, parent, err := testTransitionCreate(temporaryDirectory, entry, contentMap, decompose)
@@ -279,7 +274,7 @@ func testTransitionCycleWithTemporaryDirectory(
 	// If a modifier has been specified, allow it to modify the disk contents
 	// and expected result.
 	if modifier != nil {
-		if e, err := modifier(root, expected); err != nil {
+		if e, err := modifier(root, expected.Copy()); err != nil {
 			return errors.Wrap(err, "modifier failed")
 		} else {
 			expected = e
@@ -309,17 +304,23 @@ func testTransitionCycleWithTemporaryDirectory(
 	return nil
 }
 
-func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose bool, modifier testContentModifier) error {
-	// Run the underlying test for each of our temporary directories.
-	for _, temporaryDirectory := range testingTemporaryDirectories() {
-		if err := testTransitionCycleWithTemporaryDirectory(
-			temporaryDirectory,
-			entry,
-			contentMap,
-			decompose,
-			modifier,
-		); err != nil {
-			return err
+func testTransitionCycleWithPermutations(entry *Entry, contentMap map[string][]byte, modifier testContentModifier, expectFailure bool) error {
+	// Loop over decomposition cases.
+	for _, decompose := range []bool{false, true} {
+		// Compute the composition case name.
+		caseName := "composed"
+		if decompose {
+			caseName = "decomposed"
+		}
+
+		// Loop over temporary directories.
+		for _, temporaryDirectory := range testingTemporaryDirectories() {
+			err := testTransitionCycle(temporaryDirectory.path, entry, contentMap, decompose, modifier)
+			if expectFailure && err == nil {
+				return errors.Errorf("transition cycle succeeded unexpectedly in %s case for %s temporary directory", caseName, temporaryDirectory.name)
+			} else if !expectFailure && err != nil {
+				return errors.Wrap(err, fmt.Sprintf("transition cycle failed in %s case for %s temporary directory", caseName, temporaryDirectory.name))
+			}
 		}
 	}
 
@@ -327,66 +328,135 @@ func testTransitionCycle(entry *Entry, contentMap map[string][]byte, decompose b
 	return nil
 }
 
-func testTransitionCycleBoth(entry *Entry, contentMap map[string][]byte, modifier testContentModifier, expectSuccess bool) error {
-	// Run the composed case.
-	err := testTransitionCycle(entry, contentMap, false, modifier)
-	if expectSuccess && err != nil {
-		return errors.Wrap(err, "composed case failed")
-	} else if !expectSuccess && err == nil {
-		return errors.Wrap(err, "composed case succeeded")
-	}
-
-	// Run the decomposed case.
-	err = testTransitionCycle(entry, contentMap, true, modifier)
-	if expectSuccess && err != nil {
-		return errors.Wrap(err, "decomposed case failed")
-	} else if !expectSuccess && err == nil {
-		return errors.Wrap(err, "decomposed case succeeded")
-	}
-
-	// Success.
-	return nil
-}
-
 func TestTransitionNilRoot(t *testing.T) {
-	if err := testTransitionCycleBoth(testNilEntry, nil, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testNilEntry, nil, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionFile1Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testFile1Entry, testFile1ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testFile1Entry, testFile1ContentMap, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionFile2Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testFile2Entry, testFile2ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testFile2Entry, testFile2ContentMap, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionFile3Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testFile3Entry, testFile3ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testFile3Entry, testFile3ContentMap, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionDirectory1Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testDirectory1Entry, testDirectory1ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionDirectory2Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testDirectory2Entry, testDirectory2ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testDirectory2Entry, testDirectory2ContentMap, nil, false); err != nil {
+		t.Error(err)
 	}
 }
 
 func TestTransitionDirectory3Root(t *testing.T) {
-	if err := testTransitionCycleBoth(testDirectory3Entry, testDirectory3ContentMap, nil, true); err != nil {
-		t.Error("transition cycle failed:", err)
+	if err := testTransitionCycleWithPermutations(testDirectory3Entry, testDirectory3ContentMap, nil, false); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTransitionSwapFile(t *testing.T) {
+	// Create a modifier function that will modify the case of a subpath and
+	// attempt an additional create transition.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		// Perform a scan to grab Unicode recomposition behavior and a cache.
+		_, _, recomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to perform scan")
+		} else if cache == nil {
+			return nil, errors.New("nil cache returned")
+		}
+
+		// Attempt to switch the content of a file.
+		transitions := []*Change{{Path: "file", New: testFile2Entry}}
+
+		// Set up a custom content map for this.
+		contentMap := map[string][]byte{
+			"file": testFile2Contents,
+		}
+
+		// Create a provider and ensure its cleanup.
+		provider, err := newTestProvider(contentMap, newTestHasher())
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create creation provider")
+		}
+		defer provider.finalize()
+
+		// Perform the swap transition, ensure that it succeeds, and update the
+		// expected contents.
+		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
+			return nil, errors.Wrap(err, "file swap transition failed")
+		} else if len(entries) != 1 {
+			return nil, errors.New("unexpected number of entries returned from swap transition")
+		} else if !entries[0].Equal(testFile2Entry) {
+			return nil, errors.New("file swap transition returned incorrect new file")
+		} else {
+			expected.Contents["file"] = entries[0]
+		}
+
+		// Success.
+		return expected, nil
+	}
+
+	// Ensure that the whole cycle succeeds.
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
+	// Create a modifier function that will modify the case of a subpath and
+	// attempt an additional create transition.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		// Perform a scan to grab Unicode recomposition behavior and a cache.
+		_, _, recomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to perform scan")
+		} else if cache == nil {
+			return nil, errors.New("nil cache returned")
+		}
+
+		// Create a copy of the current entry and mark it as executable.
+		executableEntry := testFile1Entry.Copy()
+		executableEntry.Executable = true
+
+		// Attempt to switch the content of a file.
+		transitions := []*Change{{Path: "file", New: executableEntry}}
+
+		// Perform the swap transition with a nil provider (since it shouldn't
+		// be used), ensure that it succeeds, and update the expected contents.
+		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, nil); len(problems) != 0 {
+			return nil, errors.Wrap(err, "file swap transition failed")
+		} else if len(entries) != 1 {
+			return nil, errors.New("unexpected number of entries returned from swap transition")
+		} else if !entries[0].Equal(executableEntry) {
+			return nil, errors.New("file swap transition returned incorrect new file")
+		} else {
+			expected.Contents["file"] = entries[0]
+		}
+
+		// Success.
+		return expected, nil
+	}
+
+	// Ensure that the whole cycle succeeds.
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
+		t.Error(err)
 	}
 }
 
@@ -397,18 +467,122 @@ func TestTransitionCaseConflict(t *testing.T) {
 	expectCaseConflict := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
 
 	// Check for case conflicts.
-	err := testTransitionCycleBoth(
-		testDirectoryWithCaseConflict,
-		testDirectoryWithCaseConflictContentMap,
-		nil,
-		!expectCaseConflict,
-	)
-	if err != nil {
+	if err := testTransitionCycleWithPermutations(testDirectoryWithCaseConflict, testDirectoryWithCaseConflictContentMap, nil, expectCaseConflict); err != nil {
 		t.Error("case conflict behavior not as expected:", err)
 	}
 }
 
-// TODO: We should modify this test to run on other filesystems.
+func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
+	// Create a modifier function that will modify subcontent.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		if err := ioutil.WriteFile(filepath.Join(root, "executable file"), []byte("wrong content"), 0600); err != nil {
+			return nil, errors.Wrap(err, "unable to modify file content")
+		}
+		return expected, nil
+	}
+
+	// Test that the removal fails.
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTransitionFailRemoveModifiedRootFile(t *testing.T) {
+	// Create a modifier function that will modify the root.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		if err := ioutil.WriteFile(root, []byte("wrong content"), 0600); err != nil {
+			return nil, errors.Wrap(err, "unable to modify file content")
+		}
+		return expected, nil
+	}
+
+	// Test that the removal fails.
+	if err := testTransitionCycleWithPermutations(testFile1Entry, testFile1ContentMap, modifier, true); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
+	// Create a modifier function that will modify the case of a subpath and
+	// attempt an additional create transition.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		// Perform a scan to grab Unicode recomposition behavior and a cache.
+		_, _, recomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to perform scan")
+		} else if cache == nil {
+			return nil, errors.New("nil cache returned")
+		}
+
+		// Change the directory case.
+		if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
+		}
+		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to different case name")
+		}
+
+		// Attempt to create content inside the directory.
+		transitions := []*Change{{Path: "directory/new", New: testFile1Entry}}
+
+		// Set up a custom content map for this.
+		contentMap := map[string][]byte{
+			"directory/new": testFile1Contents,
+		}
+
+		// Create a provider and ensure its cleanup.
+		provider, err := newTestProvider(contentMap, newTestHasher())
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create creation provider")
+		}
+		defer provider.finalize()
+
+		// Perform the create transition and ensure that it fails.
+		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) == 0 {
+			return nil, errors.New("transition succeeded unexpectedly")
+		} else if len(entries) != 1 {
+			return nil, errors.New("unexpected number of entries returned from creation transition")
+		} else if entries[0] != nil {
+			return nil, errors.New("failed creation transition returned non-nil entry")
+		}
+
+		// Change the directory case back to normal.
+		if err := os.Rename(filepath.Join(root, "DiRecTory"), filepath.Join(root, "directory-temp")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
+		}
+		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "directory")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to original name")
+		}
+
+		// Success.
+		return expected, nil
+	}
+
+	// Ensure that the whole cycle succeeds (since our create will have failed
+	// and we will have returned the directory to normal).
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
+	// Create a modifier function that will modify the case of a subpath.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
+		}
+		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
+			return nil, errors.Wrap(err, "unable to rename directory to different case name")
+		}
+		return expected, nil
+	}
+
+	// Test that the removal fails.
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	// Create a temporary file and defer its removal.
 	var parent string
@@ -441,205 +615,5 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 		t.Error("transition returned invalid number of entries")
 	} else if entries[0] != nil {
 		t.Error("failed creation transition returned non-nil entry")
-	}
-}
-
-func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
-	// Create a modifier function that will modify subcontent.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(filepath.Join(root, "executable file"), []byte("wrong content"), 0600); err != nil {
-			return nil, errors.Wrap(err, "unable to modify file content")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleBoth(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
-		t.Error("transition cycle succeeded:", err)
-	}
-}
-
-func TestTransitionFailRemoveModifiedRootFile(t *testing.T) {
-	// Create a modifier function that will modify the root.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(root, []byte("wrong content"), 0600); err != nil {
-			return nil, errors.Wrap(err, "unable to modify file content")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleBoth(testFile1Entry, testFile1ContentMap, modifier, false); err != nil {
-		t.Error("transition cycle succeeded:", err)
-	}
-}
-
-func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
-	// Create a modifier function that will modify the case of a subpath.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
-		}
-		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleBoth(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
-		t.Error("transition cycle succeeded:", err)
-	}
-}
-
-// TODO: We should modify this test to run on other filesystems.
-func TestTransitionCreateInvalidPathCase(t *testing.T) {
-	// Create temporary directory to act as the parent of our root and defer its
-	// removal.
-	parent, err := ioutil.TempDir("", "mutagen_simulated")
-	if err != nil {
-		t.Fatal("unable to create temporary root parent:", err)
-	}
-	defer os.RemoveAll(parent)
-
-	// Determine whether or not we need to recompose Unicode when transitioning
-	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
-	if err != nil {
-		t.Fatal("unable to determine Unicode decomposition behavior:", err)
-	}
-
-	// Compute the path to the root.
-	root := filepath.Join(parent, "root")
-
-	// Set up the creation transitions.
-	transitions := []*Change{{New: testDirectory1Entry}}
-
-	// Create a provider and ensure its cleanup.
-	provider, err := newTestProvider(testDirectory1ContentMap, newTestHasher())
-	if err != nil {
-		t.Fatal("unable to create creation provider:", err)
-	}
-	defer provider.finalize()
-
-	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
-		t.Fatal("problems occurred during creation transition")
-	} else if len(entries) != 1 {
-		t.Fatal("unexpected number of entries returned from creation transition")
-	} else if !entries[0].Equal(testDirectory1Entry) {
-		t.Fatal("created entry does not match expected")
-	}
-
-	// Perform a scan.
-	snapshot, preservesExecutability, scanRecomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
-	if !preservesExecutability {
-		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
-	}
-	if err != nil {
-		t.Fatal("unable to perform scan:", err)
-	} else if scanRecomposeUnicode != recomposeUnicode {
-		t.Fatal("scan had differing Unicode recomposition recommendation")
-	} else if cache == nil {
-		t.Fatal("nil cache returned")
-	} else if !snapshot.Equal(testDirectory1Entry) {
-		t.Fatal("snapshot not equal to expected")
-	}
-
-	// Modify the case of the "directory" path.
-	if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
-		t.Fatal("unable to rename directory to temporary name:", err)
-	}
-	if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
-		t.Fatal("unable to rename directory to temporary name:", err)
-	}
-
-	// Attempt to create content inside the directory.
-	createNewTransitions := []*Change{{Path: "directory/new", New: testFile1Entry}}
-
-	// Set up a custom content map for this.
-	contentMap := map[string][]byte{
-		"directory/new": testFile1Contents,
-	}
-
-	// Create a provider and ensure its cleanup.
-	createNewProvider, err := newTestProvider(contentMap, newTestHasher())
-	if err != nil {
-		t.Fatal("unable to create new creation provider:", err)
-	}
-	defer createNewProvider.finalize()
-
-	// Perform the swap transition and ensure that it fails.
-	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, createNewProvider); len(problems) == 0 {
-		t.Fatal("transition succeeded unexpectedly")
-	} else if len(entries) != 1 {
-		t.Fatal("unexpected number of entries returned from creation transition")
-	} else if entries[0] != nil {
-		t.Fatal("failed creation transition returned non-nil entry")
-	}
-}
-
-// TODO: We should modify this test to run on other filesystems.
-func TestTransitionSwapFile(t *testing.T) {
-	// Create temporary directory to act as the parent of our root and defer its
-	// removal.
-	parent, err := ioutil.TempDir("", "mutagen_simulated")
-	if err != nil {
-		t.Fatal("unable to create temporary root parent:", err)
-	}
-	defer os.RemoveAll(parent)
-
-	// Compute the path to the root.
-	root := filepath.Join(parent, "root")
-
-	// Set up the creation transitions.
-	transitions := []*Change{{New: testFile1Entry}}
-
-	// Create a provider and ensure its cleanup.
-	provider, err := newTestProvider(testFile1ContentMap, newTestHasher())
-	if err != nil {
-		t.Fatal("unable to create creation provider:", err)
-	}
-	defer provider.finalize()
-
-	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, false, provider); len(problems) != 0 {
-		t.Fatal("problems occurred during creation transition")
-	} else if len(entries) != 1 {
-		t.Fatal("unexpected number of entries returned from creation transition")
-	} else if !entries[0].Equal(testFile1Entry) {
-		t.Fatal("created entry does not match expected")
-	}
-
-	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
-	if !preservesExecutability {
-		snapshot = PropagateExecutability(nil, testFile1Entry, snapshot)
-	}
-	if err != nil {
-		t.Fatal("unable to perform scan:", err)
-	} else if cache == nil {
-		t.Fatal("nil cache returned")
-	} else if !snapshot.Equal(testFile1Entry) {
-		t.Fatal("snapshot not equal to expected")
-	}
-
-	// Set up the swap transitions.
-	swapTransitions := []*Change{{Old: testFile1Entry, New: testFile2Entry}}
-
-	// Create a provider and ensure its cleanup.
-	swapProvider, err := newTestProvider(testFile2ContentMap, newTestHasher())
-	if err != nil {
-		t.Fatal("unable to create swap provider:", err)
-	}
-	defer swapProvider.finalize()
-
-	// Perform the swap transition.
-	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, false, swapProvider); len(problems) != 0 {
-		t.Fatal("problems occurred during creation transition")
-	} else if len(entries) != 1 {
-		t.Fatal("unexpected number of entries returned from creation transition")
-	} else if !entries[0].Equal(testFile2Entry) {
-		t.Fatal("created entry does not match expected")
 	}
 }

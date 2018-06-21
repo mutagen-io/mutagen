@@ -6,25 +6,32 @@ import (
 	"os"
 )
 
+type temporaryDirectory struct {
+	name string
+	path string
+}
+
 // testingTemporaryDirectories returns the list of paths that should be used as
 // temporary directories in testing.
-func testingTemporaryDirectories() []string {
+func testingTemporaryDirectories() []temporaryDirectory {
 	// Create the initial result with the default temporary directory.
-	results := []string{""}
+	results := []temporaryDirectory{
+		{"OS", ""},
+	}
 
 	// If there's a FAT32 root to test in, then add that.
 	if root := os.Getenv("MUTAGEN_TEST_FAT32_ROOT"); root != "" {
-		results = append(results, root)
+		results = append(results, temporaryDirectory{"FAT32", root})
 	}
 
 	// If there's an HFS+ root to test in, then add that.
 	if root := os.Getenv("MUTAGEN_TEST_HFS_ROOT"); root != "" {
-		results = append(results, root)
+		results = append(results, temporaryDirectory{"HFS+", root})
 	}
 
 	// If there's an APFS root to test in, then add that.
 	if root := os.Getenv("MUTAGEN_TEST_APFS_ROOT"); root != "" {
-		results = append(results, root)
+		results = append(results, temporaryDirectory{"APFS", root})
 	}
 
 	// Done.
@@ -98,10 +105,7 @@ var testDirectory1Entry = &Entry{
 				"subdirectory": {
 					Kind: EntryKind_Directory,
 				},
-				"subfile": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"subfile": testFile3Entry,
 				"another symlink": {
 					Kind:   EntryKind_Symlink,
 					Target: "../executable file",
@@ -111,21 +115,11 @@ var testDirectory1Entry = &Entry{
 		"second directory": {
 			Kind: EntryKind_Directory,
 			Contents: map[string]*Entry{
-				"subfile.exe": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"subfile.exe": testFile3Entry,
 			},
 		},
-		"file": {
-			Kind:   EntryKind_File,
-			Digest: testFile1ContentsSHA1,
-		},
-		"executable file": {
-			Kind:       EntryKind_File,
-			Executable: true,
-			Digest:     testFile2ContentsSHA1,
-		},
+		"file":            testFile1Entry,
+		"executable file": testFile2Entry,
 		"symlink": {
 			Kind:   EntryKind_Symlink,
 			Target: "directory/subfile",
@@ -146,10 +140,7 @@ var testDirectory2Entry = &Entry{
 		"empty dir\xc3\xa9ctory": {
 			Kind: EntryKind_Directory,
 			Contents: map[string]*Entry{
-				"new subfile": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"new subfile": testFile3Entry,
 			},
 		},
 		"renamed directory": {
@@ -158,10 +149,7 @@ var testDirectory2Entry = &Entry{
 				"subdirectory": {
 					Kind: EntryKind_Directory,
 				},
-				"subfile": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"subfile": testFile3Entry,
 				"another symlink": {
 					Kind:   EntryKind_Symlink,
 					Target: "../executable file",
@@ -178,15 +166,8 @@ var testDirectory2Entry = &Entry{
 				},
 			},
 		},
-		"renamed_file": {
-			Kind:   EntryKind_File,
-			Digest: testFile1ContentsSHA1,
-		},
-		"executable file": {
-			Kind:       EntryKind_File,
-			Executable: true,
-			Digest:     testFile2ContentsSHA1,
-		},
+		"renamed_file":    testFile1Entry,
+		"executable file": testFile2Entry,
 		"new symlink": {
 			Kind:   EntryKind_Symlink,
 			Target: "renamed directory/subfile",
@@ -208,10 +189,7 @@ var testDirectory3Entry = &Entry{
 		"empty dir\xc3\xa9ctory": {
 			Kind: EntryKind_Directory,
 			Contents: map[string]*Entry{
-				"new subfile": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"new subfile": testFile3Entry,
 			},
 		},
 		"renamed directory": {
@@ -220,21 +198,14 @@ var testDirectory3Entry = &Entry{
 				"subdirectory": {
 					Kind: EntryKind_Directory,
 				},
-				"subfile": {
-					Kind:   EntryKind_File,
-					Digest: testFile3ContentsSHA1,
-				},
+				"subfile": testFile3Entry,
 				"another symlink": {
 					Kind:   EntryKind_Symlink,
 					Target: "../executable file",
 				},
 			},
 		},
-		"executable file": {
-			Kind:       EntryKind_File,
-			Executable: true,
-			Digest:     testFile2ContentsSHA1,
-		},
+		"executable file": testFile2Entry,
 		"new symlink": {
 			Kind:   EntryKind_Symlink,
 			Target: "renamed directory/subfile",
