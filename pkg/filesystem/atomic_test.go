@@ -67,6 +67,13 @@ func TestRenameFileAtomicSameDevice(t *testing.T) {
 	if err := RenameFileAtomic(source, target); err != nil {
 		t.Fatal("unable to rename file:", err)
 	}
+
+	// Read the contents back and ensure they match what's expected.
+	if data, err := ioutil.ReadFile(target); err != nil {
+		t.Fatal("unable to read back file:", err)
+	} else if !bytes.Equal(data, contents) {
+		t.Error("file contents did not match expected")
+	}
 }
 
 func TestRenameFileAtomicDifferentDevice(t *testing.T) {
@@ -107,5 +114,12 @@ func TestRenameFileAtomicDifferentDevice(t *testing.T) {
 	// Rename the file.
 	if err := RenameFileAtomic(source, target); err != nil {
 		t.Fatal("unable to rename file:", err)
+	}
+
+	// Read the contents back and ensure they match what's expected.
+	if data, err := ioutil.ReadFile(target); err != nil {
+		t.Fatal("unable to read back file:", err)
+	} else if !bytes.Equal(data, contents) {
+		t.Error("file contents did not match expected")
 	}
 }
