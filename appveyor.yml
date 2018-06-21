@@ -21,9 +21,12 @@ before_test:
   - git submodule update
   - pip install codecov
 
-# Run tests, upload the coverage report, and build bundles. We fold coverage
-# report uploading into test_script because after_test doesn't seem to fail the
-# build if an upload fails (which we want to do).
+# Run tests, upload the coverage report, and build bundles. We have to run a
+# quick build before running tests because the tests rely on the agent bundle
+# being available. We don't want to do a full build to start with though because
+# that can take a while. We fold coverage report uploading into test_script
+# because after_test doesn't seem to fail the build if an upload fails (which we
+# want to do).
 # TODO: I'd like to run tests for 386 on Windows as well, but it becomes a bit
 # more painful since the Windows shell doesn't readily support inline
 # environment variables. In any case, we run 386 on Linux and macOS, which
@@ -32,6 +35,7 @@ test_script:
   - go version
   - diskpart /s scripts/create_test_partitions_windows.txt
   - set MUTAGEN_TEST_FAT32_ROOT=V:\
+  - go run scripts/build.go --mode=slim
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing

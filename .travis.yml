@@ -30,14 +30,18 @@ before_install:
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
 
-# Run tests, upload the coverage report, and build bundles. We fold coverage
-# report uploading into the script section to mirror the behavior on AppVeyor
-# (which is necessary because AppVeyor's after_test doesn't seem to fail the
-# build if an upload fails (which we want to do)).
+# Run tests, upload the coverage report, and build bundles. We have to run a
+# quick build before running tests because the tests rely on the agent bundle
+# being available. We don't want to do a full build to start with though because
+# that can take a while. We fold coverage report uploading into the script
+# section to mirror the behavior on AppVeyor (which is necessary because
+# AppVeyor's after_test doesn't seem to fail the build if an upload fails (which
+# we want to do)).
 script:
   - go version
   - source scripts/setup_ssh.sh
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
+  - go run scripts/build.go --mode=slim
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - GOARCH=386 go test -v ./pkg/...
   - bash <(curl -s https://codecov.io/bash)
