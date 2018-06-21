@@ -73,7 +73,7 @@ func TestWatchModeDescription(t *testing.T) {
 
 const (
 	testWatchEstablishWait = 5 * time.Second
-	testWatchTimeout       = 10 * time.Second
+	testWatchTimeout       = 20 * time.Second
 )
 
 func TestWatchPortable(t *testing.T) {
