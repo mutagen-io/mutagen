@@ -49,7 +49,7 @@ func (v Version) DefaultWatchMode() filesystem.WatchMode {
 func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
 	switch v {
 	case Version_Version1:
-		return sync.IgnoreVCSMode_IgnoreVCS
+		return sync.IgnoreVCSMode_PropagateVCS
 	default:
 		panic("unknown or unsupported session version")
 	}
