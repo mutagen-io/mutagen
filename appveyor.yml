@@ -27,16 +27,15 @@ before_test:
 # that can take a while. We fold coverage report uploading into test_script
 # because after_test doesn't seem to fail the build if an upload fails (which we
 # want to do).
-# TODO: I'd like to run tests for 386 on Windows as well, but it becomes a bit
-# more painful since the Windows shell doesn't readily support inline
-# environment variables. In any case, we run 386 on Linux and macOS, which
-# should be sufficient for the time being.
 test_script:
   - go version
   - diskpart /s scripts/create_test_partitions_windows.txt
   - set MUTAGEN_TEST_FAT32_ROOT=V:\
   - go run scripts/build.go --mode=slim
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
+  - set GOARCH=386
+  - go test -v ./pkg/...
+  - set GOARCH=amd64
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
 
