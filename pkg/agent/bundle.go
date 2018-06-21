@@ -94,6 +94,7 @@ func executableForPlatform(goos, goarch string) (string, error) {
 
 	// Close the file.
 	if err := file.Close(); err != nil {
+		os.Remove(file.Name())
 		return "", errors.Wrap(err, "unable to close temporary file")
 	}
 
