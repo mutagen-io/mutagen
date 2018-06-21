@@ -31,9 +31,9 @@ before_install:
 install: true
 
 # Run tests, upload the coverage report, and build bundles. We fold coverage
-# report uploading into script to mirror the behavior on AppVeyor (which is
-# necessary because AppVeyor's after_test doesn't seem to fail the build if an
-# upload fails (which we want to do)).
+# report uploading into the script section to mirror the behavior on AppVeyor
+# (which is necessary because AppVeyor's after_test doesn't seem to fail the
+# build if an upload fails (which we want to do)).
 script:
   - go version
   - source scripts/setup_ssh.sh

@@ -30,6 +30,8 @@ before_test:
 # should be sufficient for the time being.
 test_script:
   - go version
+  - diskpart /s scripts/create_test_partitions_windows.txt
+  - set MUTAGEN_TEST_FAT32_ROOT=V:\
   - go test -v -race -coverprofile=coverage.txt ./pkg/...
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
