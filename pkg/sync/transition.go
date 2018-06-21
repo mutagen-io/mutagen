@@ -381,7 +381,7 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
-		return errors.Wrap(err, "conflicting path already exists")
+		return errors.Wrap(err, "unable to ensure path does not exist")
 	}
 
 	// Compute the path to the staged file.
@@ -403,7 +403,7 @@ func (t *transitioner) createSymlink(path string, target *Entry) error {
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
-		return errors.Wrap(err, "conflicting path already exists")
+		return errors.Wrap(err, "unable to ensure path does not exist")
 	}
 
 	// Create the symlink.
@@ -419,7 +419,7 @@ func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "conflicting path already exists"))
+		t.recordProblem(path, errors.Wrap(err, "unable to ensure path does not exist"))
 		return nil
 	}
 
