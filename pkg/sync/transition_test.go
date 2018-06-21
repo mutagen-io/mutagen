@@ -589,13 +589,6 @@ func TestTransitionSwapFile(t *testing.T) {
 	}
 	defer os.RemoveAll(parent)
 
-	// Determine whether or not we need to recompose Unicode when transitioning
-	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
-	if err != nil {
-		t.Fatal("unable to determine Unicode decomposition behavior:", err)
-	}
-
 	// Compute the path to the root.
 	root := filepath.Join(parent, "root")
 
@@ -610,7 +603,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, false, provider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -619,14 +612,12 @@ func TestTransitionSwapFile(t *testing.T) {
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, scanRecomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testFile1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
-	} else if scanRecomposeUnicode != recomposeUnicode {
-		t.Fatal("scan had differing Unicode recomposition recommendation")
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
 	} else if !snapshot.Equal(testFile1Entry) {
@@ -644,7 +635,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer swapProvider.finalize()
 
 	// Perform the swap transition.
-	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, swapProvider); len(problems) != 0 {
+	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, false, swapProvider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
