@@ -157,7 +157,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
 
-	// Recompose directory names if necessary.
+	// Recompose content names if necessary.
 	if s.recomposeUnicode {
 		for i, name := range directoryContents {
 			directoryContents[i] = norm.NFC.String(name)
@@ -242,7 +242,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 // TODO: Note that the provided cache is assumed to be valid (i.e. that it
 // doesn't have any nil entries), so callers should run EnsureValid on anything
 // they pull from disk
-func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, bool, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the
 	// GetEntries accessor everywhere.
@@ -253,12 +253,12 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	// Create the ignorer.
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
-		return nil, false, nil, errors.Wrap(err, "unable to create ignorer")
+		return nil, false, false, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
 	// Verify that the symlink mode is valid for this platform.
 	if symlinkMode == SymlinkMode_SymlinkPOSIXRaw && runtime.GOOS == "windows" {
-		return nil, false, nil, errors.New("raw POSIX symlinks not supported on Windows")
+		return nil, false, false, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -285,55 +285,55 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	// Create the snapshot.
 	if info, err := os.Lstat(root); err != nil {
 		if os.IsNotExist(err) {
-			return nil, false, newCache, nil
+			return nil, false, false, newCache, nil
 		} else {
-			return nil, false, nil, errors.Wrap(err, "unable to probe scan root")
+			return nil, false, false, nil, errors.Wrap(err, "unable to probe scan root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
 		// Grab and set the device ID for the root directory.
 		if id, err := filesystem.DeviceID(root); err != nil {
-			return nil, false, nil, errors.Wrap(err, "unable to probe root device ID")
+			return nil, false, false, nil, errors.Wrap(err, "unable to probe root device ID")
 		} else {
 			s.deviceID = id
 		}
 
-		// Probe Unicode decomposition for the root directory.
+		// Probe and set Unicode decomposition behavior for the root directory.
 		if decomposes, err := filesystem.DecomposesUnicode(root); err != nil {
-			return nil, false, nil, errors.Wrap(err, "unable to probe root Unicode behavior")
+			return nil, false, false, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
 		} else {
 			s.recomposeUnicode = decomposes
 		}
 
-		// Probe executability for the root directory.
+		// Probe and set executability preservation behavior for the root directory.
 		if preserves, err := filesystem.PreservesExecutability(root); err != nil {
-			return nil, false, nil, errors.Wrap(err, "unable to probe root executability behavior")
+			return nil, false, false, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
 		// Perform a recursive scan.
 		if rootEntry, err := s.directory("", symlinkMode); err != nil {
-			return nil, false, nil, err
+			return nil, false, false, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, newCache, nil
+			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, nil
 		}
 	} else if mode&os.ModeType != 0 {
 		// We disallow symlinks as synchronization roots because there's no easy
 		// way to propagate changes to them.
-		return nil, false, nil, errors.New("invalid scan root type")
+		return nil, false, false, nil, errors.New("invalid scan root type")
 	} else {
-		// Probe executability for the root directory.
+		// Probe and set executability preservation behavior for the parent of the root directory.
 		if preserves, err := filesystem.PreservesExecutability(filepath.Dir(root)); err != nil {
-			return nil, false, nil, errors.Wrap(err, "unable to probe root parent executability behavior")
+			return nil, false, false, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
 		// Perform a scan of the root file.
 		if rootEntry, err := s.file("", info); err != nil {
-			return nil, false, nil, err
+			return nil, false, false, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, newCache, nil
+			return rootEntry, s.preservesExecutability, false, newCache, nil
 		}
 	}
 }

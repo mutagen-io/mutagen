@@ -30,6 +30,9 @@ type localEndpoint struct {
 	cachePath string
 	// cache is the cache from the last successful scan on the endpoint.
 	cache *sync.Cache
+	// recomposeUnicode is the Unicode recomposition behavior recommended by the
+	// last successful scan on the endpoint.
+	recomposeUnicode bool
 	// scanHasher is the hasher used for scans.
 	scanHasher hash.Hash
 	// stager is the staging coordinator.
@@ -136,13 +139,16 @@ func (e *localEndpoint) poll(context context.Context) error {
 func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
-	result, preservesExecutability, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
+	result, preservesExecutability, recomposeUnicode, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
 	if err != nil {
 		return nil, false, err, true
 	}
 
-	// Store the cache.
+	// Store the cache and recommended Unicode recomposition behavior.
 	e.cache = newCache
+	e.recomposeUnicode = recomposeUnicode
+
+	// Save the cache to disk.
 	if err = encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
 		return nil, false, errors.Wrap(err, "unable to save cache"), false
 	}
@@ -197,7 +203,7 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 
 func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Perform the transition.
-	results, problems := sync.Transition(e.root, transitions, e.cache, e.symlinkMode, e.stager)
+	results, problems := sync.Transition(e.root, transitions, e.cache, e.symlinkMode, e.recomposeUnicode, e.stager)
 
 	// Wipe the staging directory. We don't monitor for errors here, because we
 	// need to return the results and problems no matter what, but if there's

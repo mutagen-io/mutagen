@@ -89,7 +89,7 @@ var testFile3ContentMap = map[string][]byte{
 var testDirectory1Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
-		"empty directory": {
+		"empty dir\xc3\xa9ctory": {
 			Kind: EntryKind_Directory,
 		},
 		"directory": {
@@ -143,7 +143,7 @@ var testDirectory1ContentMap = map[string][]byte{
 var testDirectory2Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
-		"empty directory": {
+		"empty dir\xc3\xa9ctory": {
 			Kind: EntryKind_Directory,
 			Contents: map[string]*Entry{
 				"new subfile": {
@@ -195,17 +195,17 @@ var testDirectory2Entry = &Entry{
 }
 
 var testDirectory2ContentMap = map[string][]byte{
-	"empty directory/new subfile":  testFile3Contents,
-	"renamed directory/subfile":    testFile3Contents,
-	"second directory/subfile.exe": testFile3Contents,
-	"renamed_file":                 testFile1Contents,
-	"executable file":              testFile2Contents,
+	"empty dir\xc3\xa9ctory/new subfile": testFile3Contents,
+	"renamed directory/subfile":          testFile3Contents,
+	"second directory/subfile.exe":       testFile3Contents,
+	"renamed_file":                       testFile1Contents,
+	"executable file":                    testFile2Contents,
 }
 
 var testDirectory3Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{
-		"empty directory": {
+		"empty dir\xc3\xa9ctory": {
 			Kind: EntryKind_Directory,
 			Contents: map[string]*Entry{
 				"new subfile": {
@@ -243,10 +243,10 @@ var testDirectory3Entry = &Entry{
 }
 
 var testDirectory3ContentMap = map[string][]byte{
-	"empty directory/new subfile":  testFile3Contents,
-	"renamed directory/subfile":    testFile3Contents,
-	"second directory/subfile.exe": testFile3Contents,
-	"executable file":              testFile2Contents,
+	"empty dir\xc3\xa9ctory/new subfile": testFile3Contents,
+	"renamed directory/subfile":          testFile3Contents,
+	"second directory/subfile.exe":       testFile3Contents,
+	"executable file":                    testFile2Contents,
 }
 
 var testDirectoryWithCaseConflict = &Entry{

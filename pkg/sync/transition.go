@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"golang.org/x/text/unicode/norm"
+
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
@@ -23,14 +25,27 @@ type Provider interface {
 	Provide(path string, entry *Entry, baseMode os.FileMode) (string, error)
 }
 
-func ensureRouteWithProperCase(root, path string, skipLast bool) error {
+type transitioner struct {
+	root             string
+	cache            *Cache
+	symlinkMode      SymlinkMode
+	recomposeUnicode bool
+	provider         Provider
+	problems         []*Problem
+}
+
+func (t *transitioner) recordProblem(path string, err error) {
+	t.problems = append(t.problems, &Problem{Path: path, Error: err.Error()})
+}
+
+func (t *transitioner) ensureRouteWithProperCase(path string, skipLast bool) error {
 	// If the path is empty, then there's nothing to check.
 	if path == "" {
 		return nil
 	}
 
 	// Set the initial parent.
-	parent := root
+	parent := t.root
 
 	// Decompose the path.
 	components := strings.Split(path, "/")
@@ -47,6 +62,13 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 		contents, err := filesystem.DirectoryContents(parent)
 		if err != nil {
 			return errors.Wrap(err, "unable to read directory contents")
+		}
+
+		// Recompose content names if necessary.
+		if t.recomposeUnicode {
+			for i, name := range contents {
+				contents[i] = norm.NFC.String(name)
+			}
 		}
 
 		// Check if this path component exists in the contents. It's important
@@ -73,19 +95,19 @@ func ensureRouteWithProperCase(root, path string, skipLast bool) error {
 	return nil
 }
 
-func ensureExpectedFile(fullPath, path string, expected *Entry, cache *Cache) (os.FileMode, error) {
+func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.FileMode, error) {
 	// Grab cache information for this path. If we can't find it, we treat this
 	// as an immediate fail. This is a bit of a heuristic/hack, because we could
 	// recompute the digest of what's on disk, but for our use case this is very
 	// expensive and we SHOULD already have this information cached from the
 	// last scan.
-	cacheEntry, ok := cache.Entries[path]
+	cacheEntry, ok := t.cache.Entries[path]
 	if !ok {
 		return 0, errors.New("unable to find cache information for path")
 	}
 
 	// Grab stat information for this path.
-	info, err := os.Lstat(fullPath)
+	info, err := os.Lstat(filepath.Join(t.root, path))
 	if err != nil {
 		return 0, errors.Wrap(err, "unable to grab file statistics")
 	}
@@ -120,9 +142,9 @@ func ensureExpectedFile(fullPath, path string, expected *Entry, cache *Cache) (o
 	return mode, nil
 }
 
-func ensureExpectedSymlink(root, path string, expected *Entry, symlinkMode SymlinkMode) error {
+func (t *transitioner) ensureExpectedSymlink(path string, expected *Entry) error {
 	// Grab the link target.
-	target, err := os.Readlink(filepath.Join(root, path))
+	target, err := os.Readlink(filepath.Join(t.root, path))
 	if err != nil {
 		return errors.Wrap(err, "unable to read symlink target")
 	}
@@ -130,7 +152,7 @@ func ensureExpectedSymlink(root, path string, expected *Entry, symlinkMode Symli
 	// If we're in portable symlink mode, then we need to normalize the target
 	// coming from disk, because some systems (e.g. Windows) won't round-trip
 	// the target correctly.
-	if symlinkMode == SymlinkMode_SymlinkPortable {
+	if t.symlinkMode == SymlinkMode_SymlinkPortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
 			return errors.Wrap(err, "unable to normalize target in portable mode")
@@ -146,9 +168,9 @@ func ensureExpectedSymlink(root, path string, expected *Entry, symlinkMode Symli
 	return nil
 }
 
-func ensureNotExists(fullPath string) error {
+func (t *transitioner) ensureNotExists(path string) error {
 	// Attempt to grab stat information for the path.
-	_, err := os.Lstat(fullPath)
+	_, err := os.Lstat(filepath.Join(t.root, path))
 
 	// Handle error cases (which may indicate success).
 	if err != nil {
@@ -162,39 +184,44 @@ func ensureNotExists(fullPath string) error {
 	return errors.New("path exists")
 }
 
-func removeFile(root, path string, target *Entry, cache *Cache) error {
-	// Compute the full path to this file.
-	fullPath := filepath.Join(root, path)
-
+func (t *transitioner) removeFile(path string, target *Entry) error {
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	if _, err := ensureExpectedFile(fullPath, path, target, cache); err != nil {
+	if _, err := t.ensureExpectedFile(path, target); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
 	// Remove the file.
-	return os.Remove(fullPath)
+	return os.Remove(filepath.Join(t.root, path))
 }
 
-func removeSymlink(root, path string, target *Entry, symlinkMode SymlinkMode) error {
+func (t *transitioner) removeSymlink(path string, target *Entry) error {
 	// Ensure that the existing symlink hasn't been modified from what we're
 	// expecting.
-	if err := ensureExpectedSymlink(root, path, target, symlinkMode); err != nil {
+	if err := t.ensureExpectedSymlink(path, target); err != nil {
 		return errors.Wrap(err, "unable to validate existing symlink")
 	}
 
 	// Remove the symlink.
-	return os.Remove(filepath.Join(root, path))
+	return os.Remove(filepath.Join(t.root, path))
 }
 
-func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode SymlinkMode) []*Problem {
+func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 	// Compute the full path to this directory.
-	fullPath := filepath.Join(root, path)
+	fullPath := filepath.Join(t.root, path)
 
 	// List the contents for this directory.
 	contentNames, err := filesystem.DirectoryContents(fullPath)
 	if err != nil {
-		return []*Problem{newProblem(path, errors.Wrap(err, "unable to read directory contents"))}
+		t.recordProblem(path, errors.Wrap(err, "unable to read directory contents"))
+		return false
+	}
+
+	// Recompose content names if necessary.
+	if t.recomposeUnicode {
+		for i, name := range contentNames {
+			contentNames[i] = norm.NFC.String(name)
+		}
 	}
 
 	// Loop through contents and remove them. We do this to ensure that what
@@ -204,7 +231,7 @@ func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode
 	// condition here between the time we grab the directory contents and the
 	// time we remove, but it is very small and we also compare file contents,
 	// so the chance of deleting something we shouldn't is very small.
-	var problems []*Problem
+	unknownContentEncountered := false
 	for _, name := range contentNames {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
@@ -213,137 +240,103 @@ func removeDirectory(root, path string, target *Entry, cache *Cache, symlinkMode
 		// entry, then mark that as a problem and ignore for now.
 		entry, ok := target.Contents[name]
 		if !ok {
-			problems = append(problems, newProblem(
-				contentPath,
-				errors.New("unknown content encountered on disk"),
-			))
+			t.recordProblem(contentPath, errors.New("unknown content encountered on disk"))
+			unknownContentEncountered = true
 			continue
 		}
 
-		// Handle its removal accordingly.
-		var contentProblems []*Problem
+		// Handle content removal based on type.
 		if entry.Kind == EntryKind_Directory {
-			contentProblems = removeDirectory(root, contentPath, entry, cache, symlinkMode)
+			if !t.removeDirectory(contentPath, entry) {
+				continue
+			}
 		} else if entry.Kind == EntryKind_File {
-			if err = removeFile(root, contentPath, entry, cache); err != nil {
-				contentProblems = append(contentProblems, newProblem(
-					contentPath,
-					errors.Wrap(err, "unable to remove file"),
-				))
+			if err = t.removeFile(contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove file"))
+				continue
 			}
 		} else if entry.Kind == EntryKind_Symlink {
-			if err = removeSymlink(root, contentPath, entry, symlinkMode); err != nil {
-				contentProblems = append(contentProblems, newProblem(
-					contentPath,
-					errors.Wrap(err, "unable to remove symlink"),
-				))
+			if err = t.removeSymlink(contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove symlink"))
+				continue
 			}
 		} else {
-			contentProblems = append(contentProblems, newProblem(
-				contentPath,
-				errors.New("unknown entry type found in removal target"),
-			))
+			t.recordProblem(contentPath, errors.New("unknown entry type found in removal target"))
+			continue
 		}
 
-		// If there weren't any problems, than removal succeeded, so remove this
-		// entry from the target. Otherwise add the problems to the complete
-		// list.
-		if len(contentProblems) == 0 {
-			delete(target.Contents, name)
-		} else {
-			problems = append(problems, contentProblems...)
-		}
+		// At this point the removal must have succeeded, so remove the entry
+		// from the target.
+		delete(target.Contents, name)
 	}
 
-	// Ensure that the target contents are now empty. This ensures that we saw
-	// each entry we expected to on disk and removed it ourselves. If we didn't,
-	// then we should abort and rescan, because there are concurrent
-	// modifications occurring that are removing files. Otherwise, so long as no
-	// problems occurred, attempt to remove the directory itself.
-	if len(target.Contents) != 0 {
-		problems = append(problems, newProblem(
-			path,
-			errors.New("concurrent deletion detected"),
-		))
-	} else if len(problems) == 0 {
+	// If we didn't encounter any unknown content and the target contents are
+	// empty, then we can attempt to remove the directory itself.
+	if !unknownContentEncountered && len(target.Contents) == 0 {
 		if err := os.Remove(fullPath); err != nil {
-			problems = append(problems, newProblem(
-				path,
-				errors.Wrap(err, "unable to remove directory"),
-			))
+			t.recordProblem(path, errors.Wrap(err, "unable to remove directory"))
+			return false
 		}
-	}
-
-	// Done.
-	return problems
-}
-
-func remove(root, path string, target *Entry, cache *Cache, symlinkMode SymlinkMode) (*Entry, []*Problem) {
-	// If the target is nil, we're done.
-	if target == nil {
-		return nil, nil
-	}
-
-	// Ensure that the path of the target exists (relative to the root) with the
-	// specificed casing.
-	if err := ensureRouteWithProperCase(root, path, false); err != nil {
-		return target, []*Problem{newProblem(
-			path,
-			errors.Wrap(err, "unable to verify path to target"),
-		)}
-	}
-
-	// Create a copy of target for mutation.
-	targetCopy := target.Copy()
-
-	// Check the target type and handle accordingly.
-	var problems []*Problem
-	if target.Kind == EntryKind_Directory {
-		problems = removeDirectory(root, path, targetCopy, cache, symlinkMode)
-	} else if target.Kind == EntryKind_File {
-		if err := removeFile(root, path, targetCopy, cache); err != nil {
-			problems = []*Problem{newProblem(
-				path,
-				errors.Wrap(err, "unable to remove file"),
-			)}
-		}
-	} else if target.Kind == EntryKind_Symlink {
-		if err := removeSymlink(root, path, targetCopy, symlinkMode); err != nil {
-			problems = []*Problem{newProblem(
-				path,
-				errors.Wrap(err, "unable to remove symlink"),
-			)}
-		}
-	} else {
-		problems = []*Problem{newProblem(
-			path,
-			errors.New("removal requested for unknown entry type"),
-		)}
-	}
-
-	// If there were any problems, then at least the root of the target will
-	// have failed to remove, so return the reduced target.
-	if len(problems) > 0 {
-		return targetCopy, problems
 	}
 
 	// Success.
-	return nil, nil
+	return true
 }
 
-func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provider Provider) error {
-	// Compute the full path to this file.
-	fullPath := filepath.Join(root, path)
+func (t *transitioner) remove(path string, target *Entry) *Entry {
+	// If the target is nil, we're done.
+	if target == nil {
+		return nil
+	}
 
 	// Ensure that the path of the target exists (relative to the root) with the
 	// specificed casing.
-	if err := ensureRouteWithProperCase(root, path, false); err != nil {
+	if err := t.ensureRouteWithProperCase(path, false); err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to verify path to target"))
+		return target
+	}
+
+	// Handle removal based on type.
+	if target.Kind == EntryKind_Directory {
+		// Create a copy of target for mutation.
+		targetCopy := target.Copy()
+
+		// Attempt to reduce it.
+		if !t.removeDirectory(path, targetCopy) {
+			return targetCopy
+		}
+	} else if target.Kind == EntryKind_File {
+		if err := t.removeFile(path, target); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to remove file"))
+			return target
+		}
+	} else if target.Kind == EntryKind_Symlink {
+		if err := t.removeSymlink(path, target); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to remove symlink"))
+			return target
+		}
+	} else {
+		t.recordProblem(path, errors.New("removal requested for unknown entry type"))
+		return target
+	}
+
+	// Success.
+	return nil
+}
+
+func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
+	// Compute the full path to this file.
+	fullPath := filepath.Join(t.root, path)
+
+	// Ensure that the path of the target exists (relative to the root) with the
+	// specificed casing.
+	if err := t.ensureRouteWithProperCase(path, false); err != nil {
 		return errors.Wrap(err, "unable to verify path to target")
 	}
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	baseMode, err := ensureExpectedFile(fullPath, path, oldEntry, cache)
+	baseMode, err := t.ensureExpectedFile(path, oldEntry)
 	if err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
@@ -370,7 +363,7 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, newEntry, baseMode)
+	stagedPath, err := t.provider.Provide(path, newEntry, baseMode)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
 	}
@@ -384,66 +377,56 @@ func swapFile(root, path string, oldEntry, newEntry *Entry, cache *Cache, provid
 	return nil
 }
 
-func createFile(root, path string, target *Entry, provider Provider) (*Entry, error) {
-	// Compute the full path to the target.
-	fullPath := filepath.Join(root, path)
-
-	// Ensure that the target path doesn't exist with a case conflict.
-	if err := ensureNotExists(fullPath); err != nil {
-		return nil, errors.Wrap(err, "case conflict")
+func (t *transitioner) createFile(path string, target *Entry) error {
+	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
+	// modification since the last scan.
+	if err := t.ensureNotExists(path); err != nil {
+		return errors.Wrap(err, "conflicting path already exists")
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := provider.Provide(path, target, newFileBaseMode)
+	stagedPath, err := t.provider.Provide(path, target, newFileBaseMode)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to locate staged file")
+		return errors.Wrap(err, "unable to locate staged file")
 	}
 
 	// Rename the staged file.
-	if err := filesystem.RenameFileAtomic(stagedPath, fullPath); err != nil {
-		return nil, errors.Wrap(err, "unable to relocate staged file")
+	if err := filesystem.RenameFileAtomic(stagedPath, filepath.Join(t.root, path)); err != nil {
+		return errors.Wrap(err, "unable to relocate staged file")
 	}
 
 	// Success.
-	return target, nil
+	return nil
 }
 
-func createSymlink(root, path string, target *Entry) (*Entry, error) {
-	// Compute the full path to the target.
-	fullPath := filepath.Join(root, path)
-
-	// Ensure that the target path doesn't exist with a case conflict.
-	if err := ensureNotExists(fullPath); err != nil {
-		return nil, errors.Wrap(err, "case conflict")
+func (t *transitioner) createSymlink(path string, target *Entry) error {
+	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
+	// modification since the last scan.
+	if err := t.ensureNotExists(path); err != nil {
+		return errors.Wrap(err, "conflicting path already exists")
 	}
 
 	// Create the symlink.
-	if err := os.Symlink(target.Target, fullPath); err != nil {
-		return nil, errors.Wrap(err, "unable to link to target")
+	if err := os.Symlink(target.Target, filepath.Join(t.root, path)); err != nil {
+		return errors.Wrap(err, "unable to link to target")
 	}
 
 	// Success.
-	return target, nil
+	return nil
 }
 
-func createDirectory(root, path string, target *Entry, provider Provider) (*Entry, []*Problem) {
-	// Compute the full path to the target.
-	fullPath := filepath.Join(root, path)
-
-	// Ensure that the target path doesn't exist with a case conflict.
-	if err := ensureNotExists(fullPath); err != nil {
-		return nil, []*Problem{newProblem(
-			path,
-			errors.Wrap(err, "case conflict"),
-		)}
+func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
+	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
+	// modification since the last scan.
+	if err := t.ensureNotExists(path); err != nil {
+		t.recordProblem(path, errors.Wrap(err, "conflicting path already exists"))
+		return nil
 	}
 
 	// Attempt to create the directory.
-	if err := os.Mkdir(fullPath, newDirectoryBaseMode); err != nil {
-		return nil, []*Problem{newProblem(
-			path,
-			errors.Wrap(err, "unable to create directory"),
-		)}
+	if err := os.Mkdir(filepath.Join(t.root, path), newDirectoryBaseMode); err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to create directory"))
+		return nil
 	}
 
 	// Create a shallow copy of the target that we'll populate as we create its
@@ -457,126 +440,103 @@ func createDirectory(root, path string, target *Entry, provider Provider) (*Entr
 	}
 
 	// Attempt to create the target contents. Track problems as we go.
-	var problems []*Problem
 	for name, entry := range target.Contents {
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 
 		// Handle content creation based on type.
-		var createdContent *Entry
-		var contentProblems []*Problem
 		if entry.Kind == EntryKind_Directory {
-			createdContent, contentProblems = createDirectory(root, contentPath, entry, provider)
+			if c := t.createDirectory(contentPath, entry); c != nil {
+				created.Contents[name] = c
+			}
 		} else if entry.Kind == EntryKind_File {
-			var err error
-			createdContent, err = createFile(root, contentPath, entry, provider)
-			if err != nil {
-				contentProblems = append(contentProblems, newProblem(
-					contentPath,
-					errors.Wrap(err, "unable to create file"),
-				))
+			if err := t.createFile(contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to create file"))
+			} else {
+				created.Contents[name] = entry
 			}
 		} else if entry.Kind == EntryKind_Symlink {
-			var err error
-			createdContent, err = createSymlink(root, contentPath, entry)
-			if err != nil {
-				contentProblems = append(contentProblems, newProblem(
-					contentPath,
-					errors.Wrap(err, "unable to create symlink"),
-				))
+			if err := t.createSymlink(contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to create symlink"))
+			} else {
+				created.Contents[name] = entry
 			}
 		} else {
-			contentProblems = append(contentProblems, newProblem(
-				contentPath,
-				errors.New("creation requested for unknown entry type"),
-			))
+			t.recordProblem(contentPath, errors.New("creation requested for unknown entry type"))
 		}
-
-		// If the created content is non-nil, then at least some portion of it
-		// was created successfully, so record that.
-		if createdContent != nil {
-			created.Contents[name] = createdContent
-		}
-
-		// Record any problems that occurred when attempting to create the
-		// content.
-		problems = append(problems, contentProblems...)
 	}
 
-	// Return the portion of the target that was created and any problems that
-	// occurred.
-	return created, problems
+	// Return the portion of the target that was created.
+	return created
 }
 
-func create(root, path string, target *Entry, provider Provider) (*Entry, []*Problem) {
+func (t *transitioner) create(path string, target *Entry) *Entry {
 	// If the target is nil, we're done.
 	if target == nil {
-		return nil, nil
+		return nil
 	}
 
 	// If we're creating something at the root, then ensure that the parent of
 	// the root path exists and is a directory. We can assume that it's intended
 	// to be a directory since the root is intended to exist inside it.
 	if path == "" {
-		if err := os.MkdirAll(filepath.Dir(root), newDirectoryBaseMode); err != nil {
-			return nil, []*Problem{newProblem(
-				path,
-				errors.Wrap(err, "unable to create parent component of root path"),
-			)}
+		if err := os.MkdirAll(filepath.Dir(t.root), newDirectoryBaseMode); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to create parent component of root path"))
+			return nil
 		}
 	}
 
 	// Ensure that the parent of the target path exists with the proper casing.
-	if err := ensureRouteWithProperCase(root, path, true); err != nil {
-		return nil, []*Problem{newProblem(
-			path,
-			errors.Wrap(err, "unable to verify path to target"),
-		)}
+	if err := t.ensureRouteWithProperCase(path, true); err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to verify path to target"))
+		return nil
 	}
 
-	// Check the target type and handle accordingly.
+	// Handle creation based on type.
 	if target.Kind == EntryKind_Directory {
-		return createDirectory(root, path, target, provider)
+		return t.createDirectory(path, target)
 	} else if target.Kind == EntryKind_File {
-		if created, err := createFile(root, path, target, provider); err != nil {
-			return created, []*Problem{newProblem(
-				path,
-				errors.Wrap(err, "unable to create file"),
-			)}
+		if err := t.createFile(path, target); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to create file"))
+			return nil
 		} else {
-			return created, nil
+			return target
 		}
 	} else if target.Kind == EntryKind_Symlink {
-		if created, err := createSymlink(root, path, target); err != nil {
-			return created, []*Problem{newProblem(
-				path,
-				errors.Wrap(err, "unable to create symlink"),
-			)}
+		if err := t.createSymlink(path, target); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to create symlink"))
+			return nil
 		} else {
-			return created, nil
+			return target
 		}
+	} else {
+		t.recordProblem(path, errors.New("creation requested for unknown entry type"))
+		return nil
 	}
-	return nil, []*Problem{newProblem(
-		path,
-		errors.New("creation requested for unknown entry type"),
-	)}
 }
 
-func Transition(root string, transitions []*Change, cache *Cache, symlinkMode SymlinkMode, provider Provider) ([]*Entry, []*Problem) {
+func Transition(
+	root string,
+	transitions []*Change,
+	cache *Cache,
+	symlinkMode SymlinkMode,
+	recomposeUnicode bool,
+	provider Provider,
+) ([]*Entry, []*Problem) {
+	// Create the transitioner.
+	transitioner := &transitioner{
+		root:             root,
+		cache:            cache,
+		symlinkMode:      symlinkMode,
+		recomposeUnicode: recomposeUnicode,
+		provider:         provider,
+	}
+
 	// Set up results.
 	var results []*Entry
-	var problems []*Problem
 
 	// Iterate through transitions.
 	for _, t := range transitions {
-		// TODO: Should we check for transitions here that don't make any sense
-		// but which aren't really logic errors? E.g. it doesn't make sense to
-		// have a nil-to-nil transition. Likewise, it doesn't make sense to have
-		// a directory-to-directory transition (although it might later on if
-		// we're implementing permissions changes). If we see these types of
-		// transitions, then there is an error in reconciliation or somewhere
-		// else in the synchronization pipeline.
-
 		// Handle the special case where both old and new are a file. In this
 		// case we can do a simple swap. It makes sense to handle this specially
 		// because it is a very common case and doing it with a swap will remove
@@ -585,12 +545,9 @@ func Transition(root string, transitions []*Change, cache *Cache, symlinkMode Sy
 			t.Old.Kind == EntryKind_File &&
 			t.New.Kind == EntryKind_File
 		if fileToFile {
-			if err := swapFile(root, t.Path, t.Old, t.New, cache, provider); err != nil {
+			if err := transitioner.swapFile(t.Path, t.Old, t.New); err != nil {
 				results = append(results, t.Old)
-				problems = append(problems, newProblem(
-					t.Path,
-					errors.Wrap(err, "unable to swap file"),
-				))
+				transitioner.recordProblem(t.Path, errors.Wrap(err, "unable to swap file"))
 			} else {
 				results = append(results, t.New)
 			}
@@ -599,23 +556,18 @@ func Transition(root string, transitions []*Change, cache *Cache, symlinkMode Sy
 
 		// Reduce whatever we expect to see on disk to nil (remove it). If we
 		// don't expect to see anything (t.Old == nil), this is a no-op. If this
-		// fails, record the reduced entry as well as any problems preventing
-		// full removal and continue to the next transition.
-		if r, p := remove(root, t.Path, t.Old, cache, symlinkMode); r != nil {
+		// fails, record the reduced entry and continue to the next transition.
+		if r := transitioner.remove(t.Path, t.Old); r != nil {
 			results = append(results, r)
-			problems = append(problems, p...)
 			continue
 		}
 
 		// At this point, we should have nil on disk. Transition to whatever the
-		// new entry is. If the new entry is nil, this is a no-op. Record
-		// whatever portion of the target we create as well as any problems
-		// preventing full creation.
-		c, p := create(root, t.Path, t.New, provider)
-		results = append(results, c)
-		problems = append(problems, p...)
+		// new entry is (or at least as much of it as we can create). If the new
+		// entry is nil, this is a no-op.
+		results = append(results, transitioner.create(t.Path, t.New))
 	}
 
 	// Done.
-	return results, problems
+	return results, transitioner.problems
 }

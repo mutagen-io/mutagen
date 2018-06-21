@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 // testEntryDecomposer provides the implementation for testDecomposeEntry.
@@ -167,6 +169,14 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 		return "", "", errors.Wrap(err, "unable to create temporary root parent")
 	}
 
+	// Determine whether or not we need to recompose Unicode when transitioning
+	// inside this directory.
+	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
+	if err != nil {
+		os.RemoveAll(parent)
+		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
+	}
+
 	// Compute the path to the root.
 	root := filepath.Join(parent, "root")
 
@@ -181,12 +191,13 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	// Create a provider and ensure its cleanup.
 	provider, err := newTestProvider(contentMap, newTestHasher())
 	if err != nil {
+		os.RemoveAll(parent)
 		return "", "", errors.Wrap(err, "unable to create test provider")
 	}
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
 		os.RemoveAll(parent)
 		return "", "", errors.New("problems occurred during creation transition")
 	} else if len(entries) != len(transitions) {
@@ -217,8 +228,19 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 		transitions = []*Change{{Old: expected}}
 	}
 
+	// If we're expecting to remove a directory, then determine the necessary
+	// Unicode recomposition behavior.
+	var recomposeUnicode bool
+	if expected != nil && expected.Kind == EntryKind_Directory {
+		if r, err := filesystem.DecomposesUnicode(root); err != nil {
+			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
+		} else {
+			recomposeUnicode = r
+		}
+	}
+
 	// Perform the removal transition.
-	if entries, problems := Transition(root, transitions, cache, symlinkMode, nil); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, cache, symlinkMode, recomposeUnicode, nil); len(problems) != 0 {
 		return errors.New("problems occurred during removal transition")
 	} else if len(entries) != len(transitions) {
 		return errors.New("unexpected number of entries returned from removal transition")
@@ -265,7 +287,7 @@ func testTransitionCycleWithTemporaryDirectory(
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, expected, snapshot)
 	}
@@ -386,6 +408,7 @@ func TestTransitionCaseConflict(t *testing.T) {
 	}
 }
 
+// TODO: We should modify this test to run on other filesystems.
 func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	// Create a temporary file and defer its removal.
 	var parent string
@@ -412,7 +435,7 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition and ensure that it encounters a problem.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 1 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, false, provider); len(problems) != 1 {
 		t.Error("transition succeeded unexpectedly")
 	} else if len(entries) != 1 {
 		t.Error("transition returned invalid number of entries")
@@ -469,6 +492,7 @@ func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
 	}
 }
 
+// TODO: We should modify this test to run on other filesystems.
 func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	// Create temporary directory to act as the parent of our root and defer its
 	// removal.
@@ -477,6 +501,13 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 		t.Fatal("unable to create temporary root parent:", err)
 	}
 	defer os.RemoveAll(parent)
+
+	// Determine whether or not we need to recompose Unicode when transitioning
+	// inside this directory.
+	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
+	if err != nil {
+		t.Fatal("unable to determine Unicode decomposition behavior:", err)
+	}
 
 	// Compute the path to the root.
 	root := filepath.Join(parent, "root")
@@ -492,7 +523,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -501,12 +532,14 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, scanRecomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
+	} else if scanRecomposeUnicode != recomposeUnicode {
+		t.Fatal("scan had differing Unicode recomposition recommendation")
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
@@ -537,7 +570,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	defer createNewProvider.finalize()
 
 	// Perform the swap transition and ensure that it fails.
-	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_SymlinkPortable, createNewProvider); len(problems) == 0 {
+	if entries, problems := Transition(root, createNewTransitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, createNewProvider); len(problems) == 0 {
 		t.Fatal("transition succeeded unexpectedly")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -546,6 +579,7 @@ func TestTransitionCreateInvalidPathCase(t *testing.T) {
 	}
 }
 
+// TODO: We should modify this test to run on other filesystems.
 func TestTransitionSwapFile(t *testing.T) {
 	// Create temporary directory to act as the parent of our root and defer its
 	// removal.
@@ -554,6 +588,13 @@ func TestTransitionSwapFile(t *testing.T) {
 		t.Fatal("unable to create temporary root parent:", err)
 	}
 	defer os.RemoveAll(parent)
+
+	// Determine whether or not we need to recompose Unicode when transitioning
+	// inside this directory.
+	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
+	if err != nil {
+		t.Fatal("unable to determine Unicode decomposition behavior:", err)
+	}
 
 	// Compute the path to the root.
 	root := filepath.Join(parent, "root")
@@ -569,7 +610,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, provider); len(problems) != 0 {
+	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")
@@ -578,12 +619,14 @@ func TestTransitionSwapFile(t *testing.T) {
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, scanRecomposeUnicode, cache, err := Scan(root, newTestHasher(), nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testFile1Entry, snapshot)
 	}
 	if err != nil {
 		t.Fatal("unable to perform scan:", err)
+	} else if scanRecomposeUnicode != recomposeUnicode {
+		t.Fatal("scan had differing Unicode recomposition recommendation")
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
 	} else if !snapshot.Equal(testFile1Entry) {
@@ -601,7 +644,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	defer swapProvider.finalize()
 
 	// Perform the swap transition.
-	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, swapProvider); len(problems) != 0 {
+	if entries, problems := Transition(root, swapTransitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, swapProvider); len(problems) != 0 {
 		t.Fatal("problems occurred during creation transition")
 	} else if len(entries) != 1 {
 		t.Fatal("unexpected number of entries returned from creation transition")

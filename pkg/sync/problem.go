@@ -4,13 +4,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func newProblem(path string, err error) *Problem {
-	return &Problem{
-		Path:  path,
-		Error: err.Error(),
-	}
-}
-
 func (p *Problem) EnsureValid() error {
 	// A nil problem is not valid.
 	if p == nil {

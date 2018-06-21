@@ -31,7 +31,7 @@ func testCreateScanCycleWithTemporaryDirectory(
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
+	snapshot, preservesExecutability, _, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, entry, snapshot)
 	}
@@ -238,7 +238,7 @@ func TestScanSymlinkRoot(t *testing.T) {
 	}
 
 	// Attempt a scan of the symlink.
-	if _, _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan of symlink root allowed")
 	}
 }
@@ -306,7 +306,7 @@ func TestEfficientRescan(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, preservesExecutability, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -320,7 +320,7 @@ func TestEfficientRescan(t *testing.T) {
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	snapshot, preservesExecutability, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -348,7 +348,7 @@ func TestScanCrossDeviceFail(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Perform a scan and ensure that it fails.
-	if _, _, _, err := Scan(parent, hasher, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, err := Scan(parent, hasher, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan across device boundary did not fail")
 	}
 }

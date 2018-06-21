@@ -61,7 +61,7 @@ func main() {
 		}
 	}
 	start := time.Now()
-	snapshot, preservesExecutability, cache, err := sync.Scan(path, sha1.New(), nil, ignores, sync.SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, recomposeUnicode, cache, err := sync.Scan(path, sha1.New(), nil, ignores, sync.SymlinkMode_SymlinkPortable)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -76,6 +76,7 @@ func main() {
 	}
 	fmt.Println("Cold scan took", stop.Sub(start))
 	fmt.Println("Root preserves executability:", preservesExecutability)
+	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
 
 	// Create a snapshot with a cache. If requested, enable CPU and memory
 	// profiling.
@@ -85,7 +86,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	snapshot, preservesExecutability, _, err = sync.Scan(path, sha1.New(), cache, ignores, sync.SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, recomposeUnicode, _, err = sync.Scan(path, sha1.New(), cache, ignores, sync.SymlinkMode_SymlinkPortable)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -100,6 +101,7 @@ func main() {
 	}
 	fmt.Println("Warm scan took", stop.Sub(start))
 	fmt.Println("Root preserves executability:", preservesExecutability)
+	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
 
 	// Serialize it.
 	start = time.Now()
