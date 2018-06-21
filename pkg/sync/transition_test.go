@@ -290,7 +290,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
-	} else if modifier == nil && !snapshot.Equal(expected) {
+	} else if !snapshot.Equal(expected) {
 		return errors.New("snapshot not equal to expected")
 	}
 
@@ -383,7 +383,11 @@ func TestTransitionSwapFile(t *testing.T) {
 		}
 
 		// Attempt to switch the content of a file.
-		transitions := []*Change{{Path: "file", New: testFile2Entry}}
+		transitions := []*Change{{
+			Path: "file",
+			Old:  testFile1Entry,
+			New:  testFile2Entry,
+		}}
 
 		// Set up a custom content map for this.
 		contentMap := map[string][]byte{
@@ -400,7 +404,7 @@ func TestTransitionSwapFile(t *testing.T) {
 		// Perform the swap transition, ensure that it succeeds, and update the
 		// expected contents.
 		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
-			return nil, errors.Wrap(err, "file swap transition failed")
+			return nil, errors.New("file swap transition failed")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from swap transition")
 		} else if !entries[0].Equal(testFile2Entry) {
@@ -436,12 +440,16 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 		executableEntry.Executable = true
 
 		// Attempt to switch the content of a file.
-		transitions := []*Change{{Path: "file", New: executableEntry}}
+		transitions := []*Change{{
+			Path: "file",
+			Old:  testFile1Entry,
+			New:  executableEntry,
+		}}
 
 		// Perform the swap transition with a nil provider (since it shouldn't
 		// be used), ensure that it succeeds, and update the expected contents.
 		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, nil); len(problems) != 0 {
-			return nil, errors.Wrap(err, "file swap transition failed")
+			return nil, errors.New("file swap transition failed")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from swap transition")
 		} else if !entries[0].Equal(executableEntry) {
