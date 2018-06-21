@@ -290,7 +290,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
-	} else if !snapshot.Equal(expected) {
+	} else if modifier == nil && !snapshot.Equal(expected) {
 		return errors.New("snapshot not equal to expected")
 	}
 
@@ -483,7 +483,7 @@ func TestTransitionCaseConflict(t *testing.T) {
 func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
 	// Create a modifier function that will modify subcontent.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(filepath.Join(root, "executable file"), []byte("wrong content"), 0600); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(root, "file"), testFile3Contents, 0600); err != nil {
 			return nil, errors.Wrap(err, "unable to modify file content")
 		}
 		return expected, nil
@@ -498,7 +498,7 @@ func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
 func TestTransitionFailRemoveModifiedRootFile(t *testing.T) {
 	// Create a modifier function that will modify the root.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(root, []byte("wrong content"), 0600); err != nil {
+		if err := ioutil.WriteFile(root, testFile3Contents, 0600); err != nil {
 			return nil, errors.Wrap(err, "unable to modify file content")
 		}
 		return expected, nil
