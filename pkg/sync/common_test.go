@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"hash"
 	"os"
+	"runtime"
 )
 
 type temporaryDirectory struct {
@@ -19,9 +20,18 @@ func testingTemporaryDirectories() []temporaryDirectory {
 		{"OS", ""},
 	}
 
-	// If there's a FAT32 root to test in, then add that.
-	if root := os.Getenv("MUTAGEN_TEST_FAT32_ROOT"); root != "" {
-		results = append(results, temporaryDirectory{"FAT32", root})
+	// If we're not on Windows, and there's a FAT32 root to test in, then add
+	// that. The reason we skip this on Windows is because FAT32 on Windows
+	// doesn't allow for symlinks, which we attempt to create extensively in our
+	// tests. It's not that Mutagen doesn't behave correctly in this case (it
+	// will still safely synchronize and just indicate an inability to propagate
+	// symlinks in that case), but our tests assume that we can freely create
+	// symlinks. We still use this partition in other places on Windows though,
+	// e.g. in filesystem tests.
+	if runtime.GOOS != "windows" {
+		if root := os.Getenv("MUTAGEN_TEST_FAT32_ROOT"); root != "" {
+			results = append(results, temporaryDirectory{"FAT32", root})
+		}
 	}
 
 	// If there's an HFS+ root to test in, then add that.
