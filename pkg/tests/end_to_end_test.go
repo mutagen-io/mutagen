@@ -167,7 +167,7 @@ func TestSessionBothRootsNil(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTToBeta(t *testing.T) {
+func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -181,7 +181,7 @@ func TestSessionGOROOTToBeta(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := runtime.GOROOT()
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
 	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs.
@@ -202,7 +202,7 @@ func TestSessionGOROOTToBeta(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTToAlpha(t *testing.T) {
+func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -217,7 +217,7 @@ func TestSessionGOROOTToAlpha(t *testing.T) {
 
 	// Calculate alpha and beta paths.
 	alphaRoot := filepath.Join(directory, "alpha")
-	betaRoot := runtime.GOROOT()
+	betaRoot := filepath.Join(runtime.GOROOT(), "src")
 
 	// Compute alpha and beta URLs.
 	alphaURL := &url.URL{Path: alphaRoot}
@@ -237,7 +237,7 @@ func TestSessionGOROOTToAlpha(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTToBetaOverSSH(t *testing.T) {
+func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -256,7 +256,7 @@ func TestSessionGOROOTToBetaOverSSH(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := runtime.GOROOT()
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
 	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs.
@@ -281,7 +281,7 @@ func TestSessionGOROOTToBetaOverSSH(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTToAlphaOverSSH(t *testing.T) {
+func TestSessionGOROOTSrcToAlphaOverSSH(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -301,7 +301,7 @@ func TestSessionGOROOTToAlphaOverSSH(t *testing.T) {
 
 	// Calculate alpha and beta paths.
 	alphaRoot := filepath.Join(directory, "alpha")
-	betaRoot := runtime.GOROOT()
+	betaRoot := filepath.Join(runtime.GOROOT(), "src")
 
 	// Compute alpha and beta URLs.
 	alphaURL := &url.URL{
