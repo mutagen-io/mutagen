@@ -21,6 +21,10 @@ osx_image: xcode9.4
 go:
   - "1.10.3"
 
+# Set environment variables.
+env:
+  - MUTAGEN_TEST_END_TO_END=true
+
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
 before_install:

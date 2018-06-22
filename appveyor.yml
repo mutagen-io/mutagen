@@ -4,10 +4,11 @@ version: "{build}"
 # Set the clone folder so that Mutagen ends up in the GOPATH.
 clone_folder: C:\gopath\src\github.com\havoc-io\mutagen
 
-# Set Go versions.
+# Set Go versions and environment variables.
 environment:
   GOPATH: C:\gopath
   GOROOT: C:\go110
+  MUTAGEN_TEST_END_TO_END: "true"
 init:
   - set PATH=%GOROOT%\bin;%GOPATH%\bin;%PATH%
 
