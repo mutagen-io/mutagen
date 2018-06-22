@@ -364,7 +364,7 @@ func TestSessionGOROOTSrcToBetaOverSSHInMemory(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToAlphaOverSSHInMemory(t *testing.T) {
+func TestSessionGOROOTSrcFromAlphaOverSSHInMemory(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -378,8 +378,8 @@ func TestSessionGOROOTSrcToAlphaOverSSHInMemory(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(directory, "alpha")
-	betaRoot := filepath.Join(runtime.GOROOT(), "src")
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs. We use a special (and invalid) SSH URL (with
 	// an empty hostname) to indicate an in-memory connection.
