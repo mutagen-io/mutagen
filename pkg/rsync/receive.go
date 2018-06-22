@@ -17,12 +17,10 @@ func (s *ReceiverStatus) EnsureValid() error {
 		return nil
 	}
 
-	// Sanity check counts. All of these conditions should be caught by error
+	// Sanity check counts. Any conditions here should be caught by error
 	// handling in the receivers and not passed back to any monitoring
 	// callbacks.
-	if s.Total == 0 {
-		return errors.New("receiver status indicates 0 total files")
-	} else if s.Received > s.Total {
+	if s.Received > s.Total {
 		return errors.New("receiver status indicates too many files received")
 	}
 
@@ -108,8 +106,6 @@ func NewReceiver(root string, paths []string, signatures []Signature, sinker Sin
 	// Ensure that the receiving request is sane.
 	if len(paths) != len(signatures) {
 		return nil, errors.New("number of paths does not match number of signatures")
-	} else if len(paths) == 0 {
-		return nil, errors.New("no paths provided to receiver")
 	}
 
 	// Create the receiver.
