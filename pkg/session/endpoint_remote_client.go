@@ -206,6 +206,14 @@ func (e *remoteEndpointClient) stage(paths []string, entries []*sync.Entry) ([]s
 		return nil, nil, nil, errors.Wrap(err, "unable to receive stage response")
 	} else if response.Error != "" {
 		return nil, nil, nil, errors.Errorf("remote error: %s", response.Error)
+	} else if len(response.Paths) != len(response.Signatures) {
+		return nil, nil, nil, errors.New("number of signatures returned does not match number of paths")
+	}
+
+	// If everything was already staged, then we can abort the staging
+	// operation.
+	if len(response.Paths) == 0 {
+		return nil, nil, nil, nil
 	}
 
 	// Create an encoding receiver that can transmit rsync operations to the

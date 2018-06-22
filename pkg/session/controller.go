@@ -702,10 +702,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on alpha")
 			}
-			receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
-			receiver = rsync.NewPreemptableReceiver(receiver, context)
-			if err = beta.supply(paths, signatures, receiver); err != nil {
-				return errors.Wrap(err, "unable to stage files on alpha")
+			if len(paths) > 0 {
+				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+				receiver = rsync.NewPreemptableReceiver(receiver, context)
+				if err = beta.supply(paths, signatures, receiver); err != nil {
+					return errors.Wrap(err, "unable to stage files on alpha")
+				}
 			}
 		}
 
@@ -720,10 +722,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on beta")
 			}
-			receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
-			receiver = rsync.NewPreemptableReceiver(receiver, context)
-			if err = alpha.supply(paths, signatures, receiver); err != nil {
-				return errors.Wrap(err, "unable to stage files on beta")
+			if len(paths) > 0 {
+				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+				receiver = rsync.NewPreemptableReceiver(receiver, context)
+				if err = alpha.supply(paths, signatures, receiver); err != nil {
+					return errors.Wrap(err, "unable to stage files on beta")
+				}
 			}
 		}
 

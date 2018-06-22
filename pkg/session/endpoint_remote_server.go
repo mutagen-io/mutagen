@@ -246,6 +246,11 @@ func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 		return errors.Wrap(err, "unable to send stage response")
 	}
 
+	// If there weren't any paths requiring staging, then we're done.
+	if len(paths) == 0 {
+		return nil
+	}
+
 	// The remote side of the connection should now forward rsync operations, so
 	// we need to decode and forward them to the receiver. If this operation
 	// completes successfully, staging is complete and successful.

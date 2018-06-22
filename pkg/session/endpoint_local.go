@@ -168,6 +168,12 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 		}
 	}
 
+	// If everything was already staged, then we can abort the staging
+	// operation.
+	if len(unstagedPaths) == 0 {
+		return nil, nil, nil, nil
+	}
+
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
