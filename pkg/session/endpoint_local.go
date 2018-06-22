@@ -163,7 +163,7 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	// already provide them.
 	unstagedPaths := make([]string, 0, len(paths))
 	for i, p := range paths {
-		if _, err := e.stager.Provide(p, entries[i], 0); err != nil {
+		if _, err := e.stager.Provide(p, entries[i].Digest); err != nil {
 			unstagedPaths = append(unstagedPaths, p)
 		}
 	}

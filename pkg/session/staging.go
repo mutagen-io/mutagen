@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
 const (
