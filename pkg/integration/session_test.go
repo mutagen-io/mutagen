@@ -325,6 +325,84 @@ func TestSessionGOROOTSrcToAlphaOverSSH(t *testing.T) {
 	}
 }
 
+func TestSessionGOROOTSrcToBetaOverSSHInMemory(t *testing.T) {
+	// If end-to-end tests haven't been enabled, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+		t.Skip()
+	}
+
+	// Create a temporary directory and defer its cleanup.
+	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(directory)
+
+	// Calculate alpha and beta paths.
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	betaRoot := filepath.Join(directory, "beta")
+
+	// Compute alpha and beta URLs. We use a special (and invalid) SSH URL (with
+	// an empty hostname) to indicate an in-memory connection.
+	alphaURL := &url.URL{Path: alphaRoot}
+	betaURL := &url.URL{
+		Protocol: url.Protocol_SSH,
+		Path:     betaRoot,
+	}
+
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
+	// Test the session lifecycle.
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+		t.Fatal("session lifecycle test failed:", err)
+	}
+}
+
+func TestSessionGOROOTSrcToAlphaOverSSHInMemory(t *testing.T) {
+	// If end-to-end tests haven't been enabled, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+		t.Skip()
+	}
+
+	// Create a temporary directory and defer its cleanup.
+	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(directory)
+
+	// Calculate alpha and beta paths.
+	alphaRoot := filepath.Join(directory, "alpha")
+	betaRoot := filepath.Join(runtime.GOROOT(), "src")
+
+	// Compute alpha and beta URLs. We use a special (and invalid) SSH URL (with
+	// an empty hostname) to indicate an in-memory connection.
+	alphaURL := &url.URL{
+		Protocol: url.Protocol_SSH,
+		Path:     alphaRoot,
+	}
+	betaURL := &url.URL{Path: betaRoot}
+
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
+	// Test the session lifecycle.
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+		t.Fatal("session lifecycle test failed:", err)
+	}
+}
+
 // TODO: Implement end-to-end tests that work via the gRPC service endpoints.
 // This will obviously require setting up the whole service architecture. Maybe
 // we can modify the session service to take a session manager as an argument

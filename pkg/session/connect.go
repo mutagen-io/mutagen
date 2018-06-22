@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"net"
 
 	"github.com/pkg/errors"
 
@@ -28,20 +29,43 @@ func connect(
 		// Success.
 		return endpoint, nil
 	} else if url.Protocol == urlpkg.Protocol_SSH {
-		// Dial using the agent package, watching for errors
-		connection, err := agent.DialSSH(url, prompter, agent.ModeEndpoint)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to connect to SSH remote")
-		}
+		if url.Hostname != "" {
+			// Dial using the agent package, watching for errors
+			connection, err := agent.DialSSH(url, prompter, agent.ModeEndpoint)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to connect to SSH remote")
+			}
 
-		// Create a remote endpoint.
-		endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to create remote endpoint")
-		}
+			// Create a remote endpoint.
+			endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to create remote endpoint")
+			}
 
-		// Success.
-		return endpoint, nil
+			// Success.
+			return endpoint, nil
+		} else {
+			// This is a special case that we use for internal testing. An SSH URL
+			// with an empty hostname is invalid, and will be rejected at any points
+			// of ingress outside of Mutagen, but if it is provided internally, it
+			// means to use a net.Pipe so that we can test remote endpoint
+			// implementations in-memory.
+
+			// Create a pipe.
+			connection, serverConnection := net.Pipe()
+
+			// Start an endpoint server in a seperate Goroutine.
+			go ServeEndpoint(serverConnection)
+
+			// Create a new remote endpoint.
+			endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to create in-memory remote endpoint")
+			}
+
+			// Success.
+			return endpoint, nil
+		}
 	} else {
 		// Handle unknown protocols.
 		return nil, errors.Errorf("unknown protocol: %s", url.Protocol)
