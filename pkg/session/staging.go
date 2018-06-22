@@ -166,6 +166,15 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 		return "", errors.Wrap(err, "unable to compute staging path")
 	}
 
+	// Ensure that the path exists (i.e. that it staged successfully with the
+	// expected contents (the digest of which are encoded in the location)).
+	if _, err := os.Lstat(expectedLocation); err != nil {
+		if os.IsNotExist(err) {
+			return "", errors.New("file does not exist at expected location")
+		}
+		return "", errors.Wrap(err, "unable to query staged file metadata")
+	}
+
 	// Success.
 	return expectedLocation, nil
 }
