@@ -1,4 +1,4 @@
-package session
+package tests
 
 import (
 	"io/ioutil"
@@ -12,6 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -19,7 +20,7 @@ import (
 var daemonLock *daemon.Lock
 
 // sessionManager is the session manager.
-var sessionManager *Manager
+var sessionManager *session.Manager
 
 func init() {
 	// Copy the agent bundle for testing.
@@ -37,7 +38,7 @@ func init() {
 	}
 
 	// Create a session manager.
-	if m, err := NewManager(); err != nil {
+	if m, err := session.NewManager(); err != nil {
 		panic(errors.Wrap(err, "unable to create session manager"))
 	} else {
 		sessionManager = m
@@ -45,8 +46,8 @@ func init() {
 
 	// Perform housekeeping.
 	agent.Housekeep()
-	HousekeepCaches()
-	HousekeepStaging()
+	session.HousekeepCaches()
+	session.HousekeepStaging()
 }
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
@@ -55,7 +56,7 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 
 	// Perform waiting.
 	var previousStateIndex uint64
-	var states []*State
+	var states []*session.State
 	var err error
 	for {
 		previousStateIndex, states, err = sessionManager.List(previousStateIndex, specification)
@@ -74,7 +75,7 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 	}
 }
 
-func testSessionLifecycle(alpha, beta *url.URL, configuration *Configuration, allowConflicts, allowProblems bool) error {
+func testSessionLifecycle(alpha, beta *url.URL, configuration *session.Configuration, allowConflicts, allowProblems bool) error {
 	// Create a session.
 	sessionId, err := sessionManager.Create(alpha, beta, configuration, "")
 	if err != nil {
@@ -131,7 +132,7 @@ func testSessionLifecycle(alpha, beta *url.URL, configuration *Configuration, al
 	return nil
 }
 
-func TestEndToEndBothRootsNil(t *testing.T) {
+func TestSessionBothRootsNil(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -155,7 +156,7 @@ func TestEndToEndBothRootsNil(t *testing.T) {
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
 	// detector catches, so force polling there for now during tests.
-	configuration := &Configuration{}
+	configuration := &session.Configuration{}
 	if runtime.GOOS == "windows" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
@@ -166,7 +167,7 @@ func TestEndToEndBothRootsNil(t *testing.T) {
 	}
 }
 
-func TestEndToEndGOROOTSrcToBeta(t *testing.T) {
+func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -190,7 +191,7 @@ func TestEndToEndGOROOTSrcToBeta(t *testing.T) {
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
 	// detector catches, so force polling there for now during tests.
-	configuration := &Configuration{}
+	configuration := &session.Configuration{}
 	if runtime.GOOS == "windows" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
@@ -201,7 +202,7 @@ func TestEndToEndGOROOTSrcToBeta(t *testing.T) {
 	}
 }
 
-func TestEndToEndGOROOTSrcToAlpha(t *testing.T) {
+func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -225,7 +226,7 @@ func TestEndToEndGOROOTSrcToAlpha(t *testing.T) {
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
 	// detector catches, so force polling there for now during tests.
-	configuration := &Configuration{}
+	configuration := &session.Configuration{}
 	if runtime.GOOS == "windows" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
@@ -236,7 +237,7 @@ func TestEndToEndGOROOTSrcToAlpha(t *testing.T) {
 	}
 }
 
-func TestEndToEndGOROOTSrcToBetaOverSSH(t *testing.T) {
+func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -269,7 +270,7 @@ func TestEndToEndGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
 	// detector catches, so force polling there for now during tests.
-	configuration := &Configuration{}
+	configuration := &session.Configuration{}
 	if runtime.GOOS == "windows" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
@@ -280,7 +281,7 @@ func TestEndToEndGOROOTSrcToBetaOverSSH(t *testing.T) {
 	}
 }
 
-func TestEndToEndGOROOTSrcToAlphaOverSSH(t *testing.T) {
+func TestSessionGOROOTSrcToAlphaOverSSH(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -313,7 +314,7 @@ func TestEndToEndGOROOTSrcToAlphaOverSSH(t *testing.T) {
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
 	// detector catches, so force polling there for now during tests.
-	configuration := &Configuration{}
+	configuration := &session.Configuration{}
 	if runtime.GOOS == "windows" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
