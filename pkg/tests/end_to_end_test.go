@@ -11,6 +11,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
@@ -152,8 +153,16 @@ func TestSessionBothRootsNil(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, &session.Configuration{}, false, false); err != nil {
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -179,8 +188,16 @@ func TestSessionGOROOTToBeta(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, &session.Configuration{}, false, false); err != nil {
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -206,8 +223,16 @@ func TestSessionGOROOTToAlpha(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, &session.Configuration{}, false, false); err != nil {
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -242,8 +267,16 @@ func TestSessionGOROOTToBetaOverSSH(t *testing.T) {
 		Path:     betaRoot,
 	}
 
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, &session.Configuration{}, false, false); err != nil {
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -278,8 +311,16 @@ func TestSessionGOROOTToAlphaOverSSH(t *testing.T) {
 	}
 	betaURL := &url.URL{Path: betaRoot}
 
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, &session.Configuration{}, false, false); err != nil {
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
