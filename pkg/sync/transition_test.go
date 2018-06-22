@@ -101,12 +101,7 @@ func newTestProvider(contentMap map[string][]byte, hasher hash.Hash) (*testProvi
 }
 
 // Provide implements the Provider interface for testProvider.
-func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) (string, error) {
-	// Ensure the entry is a file type.
-	if entry.Kind != EntryKind_File {
-		return "", errors.New("invalid entry kind provision requested")
-	}
-
+func (p *testProvider) Provide(path string, digest []byte) (string, error) {
 	// Grab the content for this path.
 	content, ok := p.contentMap[path]
 	if !ok {
@@ -116,7 +111,7 @@ func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) 
 	// Ensure it matches the requested hash.
 	p.hasher.Reset()
 	p.hasher.Write(content)
-	if !bytes.Equal(entry.Digest, p.hasher.Sum(nil)) {
+	if !bytes.Equal(p.hasher.Sum(nil), digest) {
 		return "", errors.New("requested entry digest does not match expected")
 	}
 
@@ -132,23 +127,6 @@ func (p *testProvider) Provide(path string, entry *Entry, baseMode os.FileMode) 
 	if err != nil {
 		os.Remove(temporaryFile.Name())
 		return "", errors.Wrap(err, "unable to write file contents")
-	}
-
-	// Compute the file mode.
-	mode := baseMode
-	if mode == 0 {
-		mode = newFileBaseMode
-	}
-	if entry.Executable {
-		mode = MarkExecutableForReaders(mode)
-	} else {
-		mode = StripExecutableBits(mode)
-	}
-
-	// Set the file mode.
-	if err := os.Chmod(temporaryFile.Name(), mode); err != nil {
-		os.Remove(temporaryFile.Name())
-		return "", errors.Wrap(err, "unable to set file mode")
 	}
 
 	// Success.

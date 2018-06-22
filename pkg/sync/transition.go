@@ -20,9 +20,9 @@ import (
 // files to transition algorithms.
 type Provider interface {
 	// Provide returns a filesystem path to a file containing the contents for
-	// the path given as the first argument with the properties specified by the
-	// second argument and a mode based on the base mode and entry properties.
-	Provide(path string, entry *Entry, baseMode os.FileMode) (string, error)
+	// the path given as the first argument with the digest specified by the
+	// second argument.
+	Provide(path string, digest []byte) (string, error)
 }
 
 type transitioner struct {
@@ -95,7 +95,7 @@ func (t *transitioner) ensureRouteWithProperCase(path string, skipLast bool) err
 	return nil
 }
 
-func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.FileMode, error) {
+func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.FileMode, int, int, error) {
 	// Grab cache information for this path. If we can't find it, we treat this
 	// as an immediate fail. This is a bit of a heuristic/hack, because we could
 	// recompute the digest of what's on disk, but for our use case this is very
@@ -103,13 +103,13 @@ func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.File
 	// last scan.
 	cacheEntry, ok := t.cache.Entries[path]
 	if !ok {
-		return 0, errors.New("unable to find cache information for path")
+		return 0, 0, 0, errors.New("unable to find cache information for path")
 	}
 
 	// Grab stat information for this path.
 	info, err := os.Lstat(filepath.Join(t.root, path))
 	if err != nil {
-		return 0, errors.Wrap(err, "unable to grab file statistics")
+		return 0, 0, 0, errors.Wrap(err, "unable to grab file statistics")
 	}
 
 	// Grab the model.
@@ -121,7 +121,7 @@ func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.File
 	// Grab the cached modification time and convert it to a Go format.
 	cachedModificationTime, err := ptypes.Timestamp(cacheEntry.ModificationTime)
 	if err != nil {
-		return 0, errors.Wrap(err, "unable to convert cached modification time format")
+		return 0, 0, 0, errors.Wrap(err, "unable to convert cached modification time format")
 	}
 
 	// If stat information doesn't match, don't bother re-hashing, just abort.
@@ -135,11 +135,17 @@ func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.File
 		cacheEntry.Size == uint64(info.Size()) &&
 		bytes.Equal(cacheEntry.Digest, expected.Digest)
 	if !match {
-		return 0, errors.New("modification detected")
+		return 0, 0, 0, errors.New("modification detected")
+	}
+
+	// Extract ownership.
+	uid, gid, err := getOwnership(info)
+	if err != nil {
+		return 0, 0, 0, errors.Wrap(err, "unable to compute file ownership")
 	}
 
 	// Success.
-	return mode, nil
+	return mode, uid, gid, nil
 }
 
 func (t *transitioner) ensureExpectedSymlink(path string, expected *Entry) error {
@@ -187,7 +193,7 @@ func (t *transitioner) ensureNotExists(path string) error {
 func (t *transitioner) removeFile(path string, target *Entry) error {
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	if _, err := t.ensureExpectedFile(path, target); err != nil {
+	if _, _, _, err := t.ensureExpectedFile(path, target); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
@@ -336,23 +342,22 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	baseMode, err := t.ensureExpectedFile(path, oldEntry)
+	mode, uid, gid, err := t.ensureExpectedFile(path, oldEntry)
 	if err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
-	// If both files have the same contents (differing only in executability),
-	// then we won't have staged the file, and we just need to calculate the new
-	// mode, change permissions, and return.
-	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
-		// Compute the new mode.
-		mode := baseMode
-		if newEntry.Executable {
-			mode = MarkExecutableForReaders(mode)
-		} else {
-			mode = StripExecutableBits(mode)
-		}
+	// Compute the new file mode based on the new entry's executability.
+	if newEntry.Executable {
+		mode = MarkExecutableForReaders(mode)
+	} else {
+		mode = StripExecutableBits(mode)
+	}
 
+	// If both files have the same contents (differing only in permissions),
+	// then we won't have staged the file, so we just change the permissions on
+	// the existing file.
+	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
 		// Attempt to change file permissions.
 		if err := os.Chmod(fullPath, mode); err != nil {
 			return errors.Wrap(err, "unable to change file permissions")
@@ -363,9 +368,19 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := t.provider.Provide(path, newEntry, baseMode)
+	stagedPath, err := t.provider.Provide(path, newEntry.Digest)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
+	}
+
+	// Set the mode for the staged file.
+	if err := os.Chmod(stagedPath, mode); err != nil {
+		return errors.Wrap(err, "unable to set staged file mode")
+	}
+
+	// Set the ownership for the staged file.
+	if err := setOwnership(stagedPath, uid, gid); err != nil {
+		return errors.Wrap(err, "unable to set staged file ownership")
 	}
 
 	// Rename the staged file.
@@ -385,9 +400,22 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 	}
 
 	// Compute the path to the staged file.
-	stagedPath, err := t.provider.Provide(path, target, newFileBaseMode)
+	stagedPath, err := t.provider.Provide(path, target.Digest)
 	if err != nil {
 		return errors.Wrap(err, "unable to locate staged file")
+	}
+
+	// Compute the new file mode based on the new entry's executability.
+	mode := newFileBaseMode
+	if target.Executable {
+		mode = MarkExecutableForReaders(mode)
+	} else {
+		mode = StripExecutableBits(mode)
+	}
+
+	// Set the mode for the staged file.
+	if err := os.Chmod(stagedPath, mode); err != nil {
+		return errors.Wrap(err, "unable to set staged file mode")
 	}
 
 	// Rename the staged file.
