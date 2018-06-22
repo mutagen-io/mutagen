@@ -30,8 +30,9 @@ message State {
     bool alphaConnected = 3;
     bool betaConnected = 4;
     string lastError = 5;
-    rsync.ReceiverStatus stagingStatus = 6;
-    repeated sync.Conflict conflicts = 7;
-    repeated sync.Problem alphaProblems = 8;
-    repeated sync.Problem betaProblems = 9;
+    uint64 successfulSynchronizationCycles = 6;
+    rsync.ReceiverStatus stagingStatus = 7;
+    repeated sync.Conflict conflicts = 8;
+    repeated sync.Problem alphaProblems = 9;
+    repeated sync.Problem betaProblems = 10;
 }

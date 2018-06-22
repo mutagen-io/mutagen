@@ -805,9 +805,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			return errors.Wrap(βTransitionErr, "unable to apply changes to beta")
 		}
 
-		// After a successful synchronization cycle, clear any synchronization
-		// error.
+		// After a successful synchronization cycle, increment the cycle count
+		// and clear any synchronization error.
 		c.stateLock.Lock()
+		c.state.SuccessfulSynchronizationCycles++
 		c.state.LastError = ""
 		c.stateLock.Unlock()
 	}
