@@ -297,6 +297,12 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 	// Confirm that the process started correctly by performing a version
 	// handshake.
 	if versionMatch, err := mutagen.ReceiveAndCompareVersion(connection); err != nil {
+		// Wait for the process to complete. We need to do this before touching
+		// the error buffer because it isn't safe for concurrent usage, and
+		// until Wait completes, the I/O forwarding Goroutines can still be
+		// running.
+		processErr := process.Wait()
+
 		// Extract error output and ensure it's UTF-8.
 		errorOutput := errorBuffer.String()
 		if !utf8.ValidString(errorOutput) {
@@ -310,7 +316,7 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 		// misbehaves. We wouldn't be able to see this returned as an error from
 		// the Start method because it just starts the SSH client itself, not
 		// the remote command.
-		if isPOSIXCommandNotFound(process.Wait()) {
+		if isPOSIXCommandNotFound(processErr) {
 			return nil, true, false, errors.New("command not found")
 		} else if strings.Index(errorOutput, windowsInvalidCommandFragment) != -1 {
 			return nil, true, true, errors.New("invalid command")
