@@ -54,7 +54,7 @@ func connect(
 			// Create a pipe.
 			connection, serverConnection := net.Pipe()
 
-			// Start an endpoint server in a seperate Goroutine.
+			// Start an endpoint server in a separate Goroutine.
 			go ServeEndpoint(serverConnection)
 
 			// Create a new remote endpoint.
