@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/url"
@@ -262,5 +263,7 @@ func TestOutput(t *testing.T) {
 		t.Fatal("unable to run command")
 	} else if !strings.Contains(string(output), content) {
 		t.Error("output does not contain expected content")
+	} else if !utf8.Valid(output) {
+		t.Error("output not in UTF-8 encoding")
 	}
 }
