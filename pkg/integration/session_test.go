@@ -155,9 +155,10 @@ func TestSessionBothRootsNil(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -190,9 +191,10 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -225,9 +227,10 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -269,9 +272,10 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -313,9 +317,10 @@ func TestSessionGOROOTSrcToAlphaOverSSH(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -352,9 +357,10 @@ func TestSessionGOROOTSrcToBetaOverSSHInMemory(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
@@ -391,9 +397,10 @@ func TestSessionGOROOTSrcFromAlphaOverSSHInMemory(t *testing.T) {
 
 	// Compute configuration.
 	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests.
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
 	}
 
