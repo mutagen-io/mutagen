@@ -23,27 +23,77 @@ func TestProtocolSupported(t *testing.T) {
 	}
 }
 
-func TestURLEnsureValid(t *testing.T) {
-	// Ensure that a nil URL is invalid.
+func TestURLEnsureValidNilInvalid(t *testing.T) {
 	var invalid *URL
 	if invalid.EnsureValid() == nil {
 		t.Error("nil URL marked as valid")
 	}
+}
 
-	// Ensure that a URL with an unsupported protocol is invalid. This should
-	// also keep enumeration values and test code in sync.
-	invalid = &URL{
-		Protocol: (Protocol_SSH + 1),
+func TestURLEnsureValidLocalUsernameInvalid(t *testing.T) {
+	invalid := &URL{
 		Username: "george",
-		Hostname: "washington",
-		Port:     22,
-		Path:     "~/path",
+		Path:     "some/path",
 	}
 	if invalid.EnsureValid() == nil {
-		t.Error("nil URL marked as valid")
+		t.Error("invalid URL classified as valid")
 	}
+}
 
-	// Ensure that a sane URL is valid.
+func TestURLEnsureValidLocalHostnameInvalid(t *testing.T) {
+	invalid := &URL{
+		Hostname: "somehost",
+		Path:     "some/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidLocalPortInvalid(t *testing.T) {
+	invalid := &URL{
+		Port: 22,
+		Path: "some/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidLocalEmptyPathInvalid(t *testing.T) {
+	invalid := &URL{}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidLocal(t *testing.T) {
+	valid := &URL{Path: "some/path"}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidSSHEmptyHostnameInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_SSH,
+		Path:     "some/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidSSHEmptyPathInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_SSH,
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidSSH(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_SSH,
 		Username: "george",
@@ -52,6 +102,6 @@ func TestURLEnsureValid(t *testing.T) {
 		Path:     "~/path",
 	}
 	if err := valid.EnsureValid(); err != nil {
-		t.Error("valid URL marked as invalid:", err)
+		t.Error("valid URL classified as invalid")
 	}
 }
