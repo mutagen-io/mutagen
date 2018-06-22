@@ -21,7 +21,7 @@ func DeviceID(path string) (uint64, error) {
 	// Grab the system-specific stat type.
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
-		return 0, errors.Wrap(err, "unable to extract raw filesystem information")
+		return 0, errors.New("unable to extract raw filesystem information")
 	}
 
 	// Success.
