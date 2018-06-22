@@ -125,6 +125,12 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 		return nil, false, errors.Wrap(err, "unable to perform filesystem walk")
 	}
 
+	// If the length of the result map has changed, then there's been a change.
+	// This could be due to files being deleted.
+	if len(result) != len(existing) {
+		changed = true
+	}
+
 	// Done.
 	return result, changed, nil
 }
