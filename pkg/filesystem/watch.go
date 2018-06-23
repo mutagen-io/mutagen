@@ -87,15 +87,27 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 	changed := false
 	rootDoesNotExist := false
 	visitor := func(path string, info os.FileInfo, err error) error {
-		// If there's an error, then halt walking by returning it. Before doing
-		// that though, determine if the error is due to the root not existing.
-		// If that's the case, then we can create a valid result (an empty map)
-		// as well as determine whether or not there's been a change.
+		// Handle walk error cases.
 		if err != nil {
+			// If we're at the root and this is a non-existence error, then we
+			// can create a valid result (and empty map) as well as determine
+			// whether or not there's been a change.
 			if path == root && os.IsNotExist(err) {
 				changed = len(existing) > 0
 				rootDoesNotExist = true
+				return err
 			}
+
+			// If this is a non-root non-existence error, then something was
+			// seen during the directory listing and then failed the stat call.
+			// This is a sign of concurrent deletion, so just ignore this file.
+			// Our later checks will determine if this was concurent deletion of
+			// a file we're meant to be watching or one of our probe files.
+			if os.IsNotExist(err) {
+				return nil
+			}
+
+			// Other errors are more problematic.
 			return err
 		}
 
