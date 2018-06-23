@@ -76,18 +76,9 @@ func TestWatchModeDescription(t *testing.T) {
 
 const (
 	testWatchEstablishWait = 5 * time.Second
-	testWatchTimeout       = 20 * time.Second
 )
 
 func testWatchCycle(path string, mode WatchMode) error {
-	// Create a temporary directory in a subpath of the home directory and defer
-	// its removal.
-	directory, err := ioutil.TempDir(HomeDirectory, "mutagen_filesystem_watch")
-	if err != nil {
-		return errors.Wrap(err, "unable to create temporary directory")
-	}
-	defer os.RemoveAll(directory)
-
 	// Create a cancellable watch context and defer its cancellation.
 	watchContext, watchCancel := context.WithCancel(context.Background())
 	defer watchCancel()
@@ -96,7 +87,7 @@ func testWatchCycle(path string, mode WatchMode) error {
 	events := make(chan struct{}, 1)
 
 	// Start watching in a separate Goroutine.
-	go Watch(watchContext, directory, events, WatchMode_WatchPortable, 1)
+	go Watch(watchContext, path, events, mode, 1)
 
 	// HACK: Wait long enough for the recursive watch to be established or the
 	// initial polling to occur. The CI systems aren't as fast as things are
@@ -104,37 +95,25 @@ func testWatchCycle(path string, mode WatchMode) error {
 	time.Sleep(testWatchEstablishWait)
 
 	// Compute the test file path.
-	testFilePath := filepath.Join(directory, "file")
+	testFilePath := filepath.Join(path, "file")
 
-	// Create a file inside the directory and wait for an event or timeout.
+	// Create a file inside the directory and wait for an event.
 	if err := WriteFileAtomic(testFilePath, []byte{}, 0600); err != nil {
 		return errors.New("unable to create file")
 	}
-	select {
-	case <-events:
-	case <-time.After(testWatchTimeout):
-		return errors.New("create event not received in time")
-	}
+	<-events
 
-	// Modify a file inside the directory and wait for an event or timeout.
+	// Modify a file inside the directory and wait for an event.
 	if err := WriteFileAtomic(testFilePath, []byte{0, 0}, 0600); err != nil {
 		return errors.New("unable to modify file")
 	}
-	select {
-	case <-events:
-	case <-time.After(testWatchTimeout):
-		return errors.New("modify event not received in time")
-	}
+	<-events
 
-	// Remove a file inside the directory and wait for an event or timeout.
+	// Remove a file inside the directory and wait for an event.
 	if err := os.Remove(testFilePath); err != nil {
 		return errors.New("unable to remove file")
 	}
-	select {
-	case <-events:
-	case <-time.After(testWatchTimeout):
-		return errors.New("remove event not received in time")
-	}
+	<-events
 
 	// Success.
 	return nil
