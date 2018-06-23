@@ -25,12 +25,17 @@ message CacheEntry {
     // and I'm willing to live with this slightly "unclean" design, especially
     // given its potential and the relative ease of deprecating it if necessary.
     uint32 mode = 1;
-    // ModificationTime is the cached file modification time.
+
+    // ModificationTime is the cached modification time.
     google.protobuf.Timestamp modificationTime = 2;
-    // Size is the cached file size.
+
+    // Size is the cached size.
     uint64 size = 3;
-    // Digest is the cached digest.
-    bytes digest = 4;
+
+    // Fields 4-8 are reserved for future common metadata.
+
+    // Digest is the cached digest for file entries.
+    bytes digest = 9;
 }
 
 // Cache provides a store for file metadata and digets to allow for efficient
