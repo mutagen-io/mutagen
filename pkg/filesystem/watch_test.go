@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func TestWatchModeUnmarshalPortable(t *testing.T) {
@@ -77,6 +79,67 @@ const (
 	testWatchTimeout       = 20 * time.Second
 )
 
+func testWatchCycle(path string, mode WatchMode) error {
+	// Create a temporary directory in a subpath of the home directory and defer
+	// its removal.
+	directory, err := ioutil.TempDir(HomeDirectory, "mutagen_filesystem_watch")
+	if err != nil {
+		return errors.Wrap(err, "unable to create temporary directory")
+	}
+	defer os.RemoveAll(directory)
+
+	// Create a cancellable watch context and defer its cancellation.
+	watchContext, watchCancel := context.WithCancel(context.Background())
+	defer watchCancel()
+
+	// Create a watch event channel.
+	events := make(chan struct{}, 1)
+
+	// Start watching in a separate Goroutine.
+	go Watch(watchContext, directory, events, WatchMode_WatchPortable, 1)
+
+	// HACK: Wait long enough for the recursive watch to be established or the
+	// initial polling to occur. The CI systems aren't as fast as things are
+	// locally, so we have to be a little conservative.
+	time.Sleep(testWatchEstablishWait)
+
+	// Compute the test file path.
+	testFilePath := filepath.Join(directory, "file")
+
+	// Create a file inside the directory and wait for an event or timeout.
+	if err := WriteFileAtomic(testFilePath, []byte{}, 0600); err != nil {
+		return errors.New("unable to create file")
+	}
+	select {
+	case <-events:
+	case <-time.After(testWatchTimeout):
+		return errors.New("create event not received in time")
+	}
+
+	// Modify a file inside the directory and wait for an event or timeout.
+	if err := WriteFileAtomic(testFilePath, []byte{0, 0}, 0600); err != nil {
+		return errors.New("unable to modify file")
+	}
+	select {
+	case <-events:
+	case <-time.After(testWatchTimeout):
+		return errors.New("modify event not received in time")
+	}
+
+	// Remove a file inside the directory and wait for an event or timeout.
+	if err := os.Remove(testFilePath); err != nil {
+		return errors.New("unable to remove file")
+	}
+	select {
+	case <-events:
+	case <-time.After(testWatchTimeout):
+		return errors.New("remove event not received in time")
+	}
+
+	// Success.
+	return nil
+}
+
 func TestWatchPortable(t *testing.T) {
 	// Skip this test on Windows for now, because the notify package seems to
 	// have a data race there that the race detector catches.
@@ -92,35 +155,10 @@ func TestWatchPortable(t *testing.T) {
 	}
 	defer os.RemoveAll(directory)
 
-	// Create a cancellable watch context.
-	watchContext, watchCancel := context.WithCancel(context.Background())
-
-	// Create a watch event channel.
-	events := make(chan struct{}, 1)
-
-	// Start watching in a separate Goroutine.
-	go Watch(watchContext, directory, events, WatchMode_WatchPortable, 1)
-
-	// HACK: Wait long enough for the recursive watch to be established or the
-	// initial polling to occur. The CI systems aren't as fast as things are
-	// locally, so we have to be a little conservative.
-	time.Sleep(testWatchEstablishWait)
-
-	// Create a file inside the directory.
-	if err := WriteFileAtomic(filepath.Join(directory, "file"), []byte{}, 0600); err != nil {
-		watchCancel()
-		t.Fatal("unable to create file")
+	// Run the test cycle.
+	if err := testWatchCycle(directory, WatchMode_WatchPortable); err != nil {
+		t.Fatal("watch cycle test failed:", err)
 	}
-
-	// Wait for an event or timeout.
-	select {
-	case <-events:
-	case <-time.After(testWatchTimeout):
-		t.Error("event not received in time")
-	}
-
-	// Cancel the watch.
-	watchCancel()
 }
 
 func TestWatchForcePoll(t *testing.T) {
@@ -131,33 +169,8 @@ func TestWatchForcePoll(t *testing.T) {
 	}
 	defer os.RemoveAll(directory)
 
-	// Create a cancellable watch context.
-	watchContext, watchCancel := context.WithCancel(context.Background())
-
-	// Create a watch event channel.
-	events := make(chan struct{}, 1)
-
-	// Start watching in a separate Goroutine, polling at 1 second intervals.
-	go Watch(watchContext, directory, events, WatchMode_WatchForcePoll, 1)
-
-	// HACK: Wait long enough for the initial polling to occur. The CI systems
-	// aren't as fast as things are locally, so we have to be a little
-	// conservative.
-	time.Sleep(testWatchEstablishWait)
-
-	// Create a file inside the directory.
-	if err := WriteFileAtomic(filepath.Join(directory, "file"), []byte{}, 0600); err != nil {
-		watchCancel()
-		t.Fatal("unable to create file")
+	// Run the test cycle.
+	if err := testWatchCycle(directory, WatchMode_WatchForcePoll); err != nil {
+		t.Fatal("watch cycle test failed:", err)
 	}
-
-	// Wait for an event or timeout.
-	select {
-	case <-events:
-	case <-time.After(testWatchTimeout):
-		t.Error("event not received in time")
-	}
-
-	// Cancel the watch.
-	watchCancel()
 }
