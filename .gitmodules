@@ -61,3 +61,6 @@
 [submodule "vendor/github.com/mattn/go-isatty"]
 	path = vendor/github.com/mattn/go-isatty
 	url = https://github.com/mattn/go-isatty.git
+[submodule "vendor/github.com/Microsoft/go-winio"]
+	path = vendor/github.com/Microsoft/go-winio
+	url = https://github.com/Microsoft/go-winio.git
