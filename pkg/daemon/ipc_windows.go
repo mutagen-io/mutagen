@@ -93,7 +93,7 @@ func NewListener() (net.Listener, error) {
 	// inherited permissions. The ACE string in this case grants "Generic All"
 	// (GA) permissions to its associated SID. More information can be found
 	// here:
-	//	SDDL: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379570(v=vs.85).aspx
+	//  SDDL: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379570(v=vs.85).aspx
 	//  ACEs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa374928(v=vs.85).aspx
 	//  SIDs: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379602(v=vs.85).aspx
 	securityDescriptor := fmt.Sprintf("D:P(A;;GA;;;%s)", sid)
