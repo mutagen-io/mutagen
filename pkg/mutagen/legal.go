@@ -154,9 +154,9 @@ found online at https://opensource.org/licenses/BSD-3-Clause.
 
 --------------------------------------------------------------------------------
 
-npipe (https://github.com/natefinch/npipe)
+go-winio (https://github.com/Microsoft/go-winio)
 
-Copyright (c) 2013 npipe authors
+Copyright (c) 2015 Microsoft
 
 Used under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.
