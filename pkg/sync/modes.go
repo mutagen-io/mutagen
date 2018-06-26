@@ -13,21 +13,21 @@ const (
 	newFileBaseMode os.FileMode = 0600
 )
 
-// AnyExecutableBitSet returns true if any executable bit is set on the file,
+// anyExecutableBitSet returns true if any executable bit is set on the file,
 // false otherwise.
-func AnyExecutableBitSet(mode os.FileMode) bool {
+func anyExecutableBitSet(mode os.FileMode) bool {
 	return mode&0111 != 0
 }
 
-// StripExecutableBits strips all executability bits from the specified file
+// stripExecutableBits strips all executability bits from the specified file
 // mode.
-func StripExecutableBits(mode os.FileMode) os.FileMode {
+func stripExecutableBits(mode os.FileMode) os.FileMode {
 	return mode &^ 0111
 }
 
-// MarkExecutableForReaders sets the executable bit for the mode for any case
+// markExecutableForReaders sets the executable bit for the mode for any case
 // where the corresponding read bit is set.
-func MarkExecutableForReaders(mode os.FileMode) os.FileMode {
+func markExecutableForReaders(mode os.FileMode) os.FileMode {
 	// Set the user executable bit if necessary.
 	if mode&0400 != 0 {
 		mode |= 0100

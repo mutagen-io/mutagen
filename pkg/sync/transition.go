@@ -352,9 +352,9 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 
 	// Compute the new file mode based on the new entry's executability.
 	if newEntry.Executable {
-		mode = MarkExecutableForReaders(mode)
+		mode = markExecutableForReaders(mode)
 	} else {
-		mode = StripExecutableBits(mode)
+		mode = stripExecutableBits(mode)
 	}
 
 	// If both files have the same contents (differing only in permissions),
@@ -411,9 +411,9 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 	// Compute the new file mode based on the new entry's executability.
 	mode := newFileBaseMode
 	if target.Executable {
-		mode = MarkExecutableForReaders(mode)
+		mode = markExecutableForReaders(mode)
 	} else {
-		mode = StripExecutableBits(mode)
+		mode = stripExecutableBits(mode)
 	}
 
 	// Set the mode for the staged file.
