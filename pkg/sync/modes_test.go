@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestanyExecutableBitSet(t *testing.T) {
+func TestAnyExecutableBitSet(t *testing.T) {
 	if anyExecutableBitSet(0666) {
 		t.Error("executable bits detected")
 	}
@@ -19,7 +19,7 @@ func TestanyExecutableBitSet(t *testing.T) {
 	}
 }
 
-func TeststripExecutableBits(t *testing.T) {
+func TestStripExecutableBits(t *testing.T) {
 	if stripExecutableBits(0777) != 0666 {
 		t.Error("executable bits not stripped")
 	}
@@ -34,7 +34,7 @@ func TeststripExecutableBits(t *testing.T) {
 	}
 }
 
-func TestmarkExecutableForReaders(t *testing.T) {
+func TestMarkExecutableForReaders(t *testing.T) {
 	if markExecutableForReaders(0222) != 0222 {
 		t.Error("erroneous executable bits added")
 	}
