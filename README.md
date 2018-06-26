@@ -98,7 +98,7 @@ getting.
   corollary, Mutagen can even synchronize between two remote endpoints without
   ever needing a local copy of the files.
 - Mutagen can display dynamic synchronization status in the terminal.
-- **Mutagen does not propagate (most) permissions**, but it does preserve
+- Mutagen does not propagate (most) permissions, but it does preserve
   permissions when updating files. The only permission propagated by Mutagen is
   executability or lack thereof. Any other permissions are left untouched for
   existing files and set to user-only access for newly created files. This is by
