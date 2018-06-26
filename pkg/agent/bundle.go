@@ -83,7 +83,10 @@ func executableForPlatform(goos, goarch string) (string, error) {
 
 	// If we're not on Windows and our target system is not Windows, mark the
 	// file as executable. This will save us an additional "chmod +x" command
-	// during agent installation.
+	// during agent installation. Note that the mechanism we use here
+	// (os.File.Chmod) does not work on Windows (only the path-based os.Chmod is
+	// supported there), but this is fine because this code wouldn't make sense
+	// to use on Windows in any scenario (where executability bits don't exist).
 	if runtime.GOOS != "windows" && goos != "windows" {
 		if err := file.Chmod(0700); err != nil {
 			file.Close()
