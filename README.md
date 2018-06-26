@@ -32,8 +32,8 @@ remote systems. The more people who use it and report
 
 ## Usage
 
-For a quick usage guide that will cover 99% of your needs, please see the
-[documentation site](https://mutagen.io).
+**For a quick usage guide that will cover 99% of your needs, please see the
+[documentation site](https://mutagen.io).**
 
 For information about Mutagen's configuration system, please see the
 [configuration documentation](doc/configuration.md).
