@@ -35,13 +35,23 @@ remote systems. The more people who use it and report
 For a quick usage guide that will cover 99% of your needs, please see the
 [documentation site](https://mutagen.io).
 
+For detailed information about Mutagen's configuration system, please see the
+[configuration documentation](doc/configuration.md).
+
+For detailed information about symlink support, please see the
+[symlink documentation](doc/symlinks.md).
+
+For detailed information about ignoring files, please see the
+[ignore documentation](doc/ignores.md).
+
+For detailed information about filesystem watching, please see the
+[watching documentation](doc/watching.md).
+
+For detailed information about Mutagen's usage of SSH, please see the
+[SSH documentation](doc/ssh.md).
+
 For platform-specific instructions and known issues, please see the
-[platform guide](doc/PLATFORMS.md).
-
-
-## FAQs
-
-Please see the [FAQ](doc/FAQ.md).
+[platform guide](doc/platforms.md).
 
 
 ## Unique features
@@ -60,7 +70,7 @@ getting.
   necessary. Most major platforms and architectures are supported.
 - Mutagen propagates changes bidirectionally. Any conflicts that arise will be
   flagged for resolution. Automatic conflict resolution is performed if doing so
-  does not result in destruction of unsynchronized changes. Manual conflict
+  does not result in destruction of unsynchronized data. Manual conflict
   resolution is performed by manually deleting the undesired side of the
   conflict. Conflicts won't stop non-conflicting changes from propagating.
 - Mutagen uses the [rsync](https://rsync.samba.org/tech_report/) algorithm to
@@ -72,7 +82,9 @@ getting.
   that snapshot transfer time doesn't scale linearly with directory size.
 - Mutagen is robust to connection drop-outs. It will attempt to reconnect
   automatically to endpoints and will resume synchronization safely. It will
-  also resume staging files where it left off.
+  also resume staging files where it left off. In the mean time, your local copy
+  of a synchronization root continues to exist on the filesystem for you to edit
+  like any other files.
 - Mutagen identifies changes to file contents rather than just modification
   times.
 - On systems that support recursive file monitoring (Windows and macOS), Mutagen
@@ -121,4 +133,4 @@ support on more obscure platforms and architectures).
 
 ## Building
 
-Please see the [build instructions](doc/BUILDING.md).
+Please see the [build instructions](doc/building.md).

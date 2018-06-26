@@ -6,8 +6,8 @@ caveats listed below.
 
 ## Windows
 
-- If using a mintty environment (e.g. Cygwin, MinGW, MSYS2, etc.), the `mutagen`
-  command needs to be wrapped in a
+- If using a mintty shell (e.g. one provided by Cygwin, MinGW, MSYS2, etc.), the
+  `mutagen` command needs to be wrapped in a
   [`winpty`](https://github.com/rprichard/winpty) command in order to function
   properly. If run directly inside a mintty console, both
   [daemonization](https://github.com/havoc-io/mutagen/issues/3) and
@@ -48,8 +48,8 @@ caveats listed below.
 
 - Android is currently not supported, but may be supported in the future as a
   synchronization destination (i.e. a system capable of running
-  `mutagen-agent`). If you're interested in testing support for Android (I don't
-  have an Android device), then please contact me.
+  `mutagen-agent`). Please contact me if you're interested in testing support
+  for Android.
 
 
 ## iOS
