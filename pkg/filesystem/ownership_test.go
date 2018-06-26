@@ -1,3 +1,3 @@
-package sync
+package filesystem
 
 // TODO: Implement.

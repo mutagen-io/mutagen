@@ -69,13 +69,18 @@ func RenameFileAtomic(oldPath, newPath string) error {
 		return errors.Wrap(err, "unable to open source file")
 	}
 
-	// Grab the source file's mode.
+	// Grab the source file's mode and ownership information.
 	metadata, err := source.Stat()
 	if err != nil {
 		source.Close()
 		return errors.Wrap(err, "unable to grab source file metadata")
 	}
 	mode := metadata.Mode()
+	uid, gid, err := GetOwnership(metadata)
+	if err != nil {
+		source.Close()
+		return errors.Wrap(err, "unable to grab source file ownership")
+	}
 
 	// Create a temporary file next to the destination.
 	dirname, basename := filepath.Split(newPath)
@@ -102,9 +107,15 @@ func RenameFileAtomic(oldPath, newPath string) error {
 	// Set the file mode on the destination. Note that we can't do this using
 	// os.File.Chmod because that's not supported on Windows - only path-based
 	// Chmod is supported.
-	if err = os.Chmod(temporaryPath, mode); err != nil {
+	if err := os.Chmod(temporaryPath, mode); err != nil {
 		os.Remove(temporaryPath)
 		return errors.Wrap(err, "unable to set file mode")
+	}
+
+	// Set the file ownership on the destination.
+	if err := SetOwnership(temporaryPath, uid, gid); err != nil {
+		os.Remove(temporaryPath)
+		return errors.Wrap(err, "unable to set file ownership")
 	}
 
 	// Move the temporary file into place.

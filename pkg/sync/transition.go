@@ -139,7 +139,7 @@ func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.File
 	}
 
 	// Extract ownership.
-	uid, gid, err := getOwnership(info)
+	uid, gid, err := filesystem.GetOwnership(info)
 	if err != nil {
 		return 0, 0, 0, errors.Wrap(err, "unable to compute file ownership")
 	}
@@ -382,7 +382,7 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	}
 
 	// Set the ownership for the staged file.
-	if err := setOwnership(stagedPath, uid, gid); err != nil {
+	if err := filesystem.SetOwnership(stagedPath, uid, gid); err != nil {
 		return errors.Wrap(err, "unable to set staged file ownership")
 	}
 
