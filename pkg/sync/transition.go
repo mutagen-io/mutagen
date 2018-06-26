@@ -51,7 +51,7 @@ func (t *transitioner) ensureRouteWithProperCase(path string, skipLast bool) err
 	components := strings.Split(path, "/")
 
 	// Exclude the last component from checking if requested.
-	if skipLast && len(components) > 0 {
+	if skipLast {
 		components = components[:len(components)-1]
 	}
 
