@@ -1,9 +1,9 @@
 # Configuration
 
-Mutagen is designed to have sane but conservative defaults, with as little
-manual configuration as possible. That being said, sane defaults only go so far,
-and regular users will most likely want to tweak Mutagen's behavior in one way
-or another.
+Mutagen is designed to have sane, conservative defaults, with as little manual
+configuration as possible. That being said, sane defaults only go so far, and
+regular users will most likely want to tweak Mutagen's behavior in one way or
+another.
 
 Mutagen has three levels of configuration: its own default behavior, the global
 configuration file (`~/.mutagen.toml`), and per-session configuration.
@@ -14,7 +14,8 @@ behavior is designed to be sane, safe, and portable.
 The global configuration file allows users to override Mutagen's default
 behavior with their own defaults that will apply to all newly created sessions.
 The file is a [TOML](https://github.com/toml-lang/toml) file with sections
-affecting various aspects of Mutagen's behavior.
+affecting various aspects of Mutagen's behavior. Existence of the global
+configuration file is *not* required.
 
 Per-session configuration is provided by flags passed to the `create` command
 

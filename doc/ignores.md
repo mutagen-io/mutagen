@@ -13,20 +13,19 @@ Mutagen also provides a rich syntax for specifying ignores, which should be
 familiar to Git users.
 
 
-## Default ignores
+## Global ignores
 
-Default ignores affect all newly created sessions. These should be used for
-files that should always be ignored, e.g. those pesky `.DS_Store` files on
-macOS.
+Global ignores affect all newly created sessions. These should be used for files
+that should always be ignored, e.g. those pesky `.DS_Store` files on macOS.
 
-When a new session is created, default ignores are "locked in" to the session
-configuration, meaning that subsequent changes to default ignores will only be
+When a new session is created, global ignores are "locked in" to the session
+configuration, meaning that subsequent changes to global ignores will only be
 reflected in subsequently created sessions. This is for simplicity (no need to
 think through the effects of changing ignores in one place) and safety (no files
 will suddenly become unignored and propagated (causing conflicts or security
 risks) or silently ignored).
 
-Default ignores are specified in the `~/.mutagen.toml` as follows:
+Global ignores are specified in the `~/.mutagen.toml` as follows:
 
     [ignore]
     default = [
@@ -45,8 +44,8 @@ Obviously you'll want to put whatever ignores in here that *you* want.
 ## Per-session ignores
 
 Per-session ignores only affect the session to which they are attached. They are
-processed after default ignores, meaning that they can extend or cancel out
-default ignores.
+processed after global ignores, meaning that they can extend or cancel out
+global ignores.
 
 To specify ignores on a per-session basis, use the `--ignore` flag of the
 `create` command.
@@ -60,6 +59,9 @@ Mutagen, which ignores VCS directories (e.g. `.git`, `.svn`, etc.), though
 additional ignore groups (e.g. for Python object code files, `node_modules`
 directories, etc.) will be coming in future versions.
 
+Ignore groups are processed before both global and per-session ignores, so they
+can be extended or cancelled out by global and per-session ignores.
+
 
 ### VCS
 
@@ -70,8 +72,8 @@ the following configuration in `~/.mutagen.toml`:
     [ignore]
     vcs = true
 
-A default VCS ignore can be overridden on a per-session basis by passing the
-`--no-ignore-vcs` flag to the `create` command.
+A default VCS ignore setting can be overridden on a per-session basis by passing
+the `--no-ignore-vcs` flag to the `create` command.
 
 
 ## Format and behavior
@@ -103,12 +105,5 @@ Suffixing a pattern with `/` will cause it to match only directories.
 Prefixing a pattern with `!` will cause it to negate previously matching
 ignores. E.g. specifying an ignore list like `["hot*", "!hotel"]` will ignore
 any content whose name begins with "hot", unless the full content name is
-"hotel". This can be a useful mechanism for overriding default ignores on a
+"hotel". This can be a useful mechanism for overriding global ignores on a
 per-session basis.
-
-
-## Parent deletion
-
-Because Mutagen refuses to touch ignored paths, it means that if a parent path
-of ignored content is deleted, Mutagen will treat the ignored as "unknown" and
-refuse to remove it. This is by design.

@@ -25,7 +25,13 @@ maximum compatibility:
   synchronization mode when either endpoint is a Windows system will stop
   synchronization from starting.
 
-TODO: Document how to set global and per-session mode.
+These modes can be specified on a per-session basis by passing the
+`--symlink-mode=<mode>` flag to the `create` command (where `<mode>` is
+`ignore`, `portable`, or `posix-raw`) and on a default basis by including the
+following configuration in `~/.mutagen.toml`:
+
+    [symlink]
+    mode = "<mode>"
 
 
 ## Windows permissions
@@ -34,7 +40,7 @@ On Windows, the `SeCreateSymbolicLinkPrivilege` permission is required to create
 symlinks. By default, this permission is usually only granted to administrators.
 This has changed a bit in Windows 10, where anyone can create symlinks if
 Developer Mode has been enabled and the
-`SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE` is passed to
+`SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE` flag is passed to
 `CreateSymbolicLinkW`. Go has
 [implemented](https://github.com/golang/go/commit/c23afa9ddb1180b929ba09a7d96710677a2a4b45)
 support for passing this flag, but it won't land until Go 1.11. Mutagen will
@@ -49,7 +55,4 @@ Go 1.11, then you have two choices:
    won't hurt anything, and it won't stop other files from synchronizing. The
    only downside is that you'll see problems indicated when listing or
    monitoring the session.
-2. Switch to ignoring symlinks. This can be accomplished by passing the
-   `--symlink-mode=ignore` flag to the `create` command to ignore symlinks for a
-   single session or by setting `mode = "ignore"` in the `[symlink]` section of
-   `~/.mutagen.toml` to ignore symlinks for all sessions.
+2. Switch to ignoring symlinks.

@@ -21,8 +21,8 @@ that supports efficient recursive watching, and the synchronization root is a
 subdirectory of the user's home directory, then a watch is established on the
 home directory and events are filtered to only those originating from the
 synchronization root. This side-steps the issue of the watch root being deleted
-(if your home directory is deleted, you have other problems). In all other cases
-a regular polling mechanism is used to avoid exhausting watch/file descriptors.
+(if your home directory is deleted, you have other problems). In all other
+cases, a polling mechanism is used to avoid exhausting watch/file descriptors.
 
 Obviously watching one's home directory is a matter of taste. If you want to
 review this behavior, the code is in

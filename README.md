@@ -35,19 +35,19 @@ remote systems. The more people who use it and report
 For a quick usage guide that will cover 99% of your needs, please see the
 [documentation site](https://mutagen.io).
 
-For detailed information about Mutagen's configuration system, please see the
+For information about Mutagen's configuration system, please see the
 [configuration documentation](doc/configuration.md).
 
-For detailed information about symlink support, please see the
+For information about symlink support, please see the
 [symlink documentation](doc/symlinks.md).
 
-For detailed information about ignoring files, please see the
+For information about ignoring files, please see the
 [ignore documentation](doc/ignores.md).
 
-For detailed information about filesystem watching, please see the
+For information about filesystem watching, please see the
 [watching documentation](doc/watching.md).
 
-For detailed information about Mutagen's usage of SSH, please see the
+For information about Mutagen's usage of SSH, please see the
 [SSH documentation](doc/ssh.md).
 
 For platform-specific instructions and known issues, please see the
@@ -73,18 +73,18 @@ getting.
   does not result in destruction of unsynchronized data. Manual conflict
   resolution is performed by manually deleting the undesired side of the
   conflict. Conflicts won't stop non-conflicting changes from propagating.
-- Mutagen uses the [rsync](https://rsync.samba.org/tech_report/) algorithm to
-  perform differential file transfers. These transfers are pipelined to mitigate
-  the effects of latency. It stages files outside of the synchronization root
-  and relocates them atomically.
 - Mutagen is designed to handle very large directory hierarchies efficiently. It
-  uses rsync to transfer directory snapshots when performing reconciliation so
-  that snapshot transfer time doesn't scale linearly with directory size.
+  uses a filesystem cache to allow quick re-scans and uses the
+  [rsync algorithm](https://rsync.samba.org/tech_report/) to transfer filesystem
+  scans and files themselves. File transfers are pipelined to mitigate the
+  effects of latency. Mutagen won't break a sweat on a GB-sized directory
+  containing 100,000 files.
 - Mutagen is robust to connection drop-outs. It will attempt to reconnect
-  automatically to endpoints and will resume synchronization safely. It will
-  also resume staging files where it left off. In the mean time, your local copy
-  of a synchronization root continues to exist on the filesystem for you to edit
-  like any other files.
+  automatically to endpoints and will resume synchronization safely. In the mean
+  time, your local copy of a synchronization root continues to exist on the
+  filesystem for you to edit like any other files. Once synchronization resumes,
+  Mutagen will continue right where it left off, even resuming partially
+  completed file staging.
 - Mutagen identifies changes to file contents rather than just modification
   times.
 - On systems that support recursive file monitoring (Windows and macOS), Mutagen
