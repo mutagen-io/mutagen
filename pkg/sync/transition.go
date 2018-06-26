@@ -281,12 +281,15 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 	if !unknownContentEncountered && len(target.Contents) == 0 {
 		if err := os.Remove(fullPath); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove directory"))
-			return false
+		} else {
+			return true
 		}
 	}
 
-	// Success.
-	return true
+	// At this point, we must have encountered some sort of problem earlier, but
+	// it will already have been recorded, so we just need to make the removal
+	// as failed.
+	return false
 }
 
 func (t *transitioner) remove(path string, target *Entry) *Entry {

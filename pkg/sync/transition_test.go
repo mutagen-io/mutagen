@@ -569,6 +569,21 @@ func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
 	}
 }
 
+func TestTransitionFailRemoveUnknownContent(t *testing.T) {
+	// Create a modifier function that will create unknown content.
+	modifier := func(root string, expected *Entry) (*Entry, error) {
+		if err := filesystem.WriteFileAtomic(filepath.Join(root, "new test file"), []byte{0}, 0600); err != nil {
+			return nil, errors.Wrap(err, "unable to create unknown content")
+		}
+		return expected, nil
+	}
+
+	// Test that the removal fails.
+	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	// Create a temporary file and defer its removal.
 	var parent string
