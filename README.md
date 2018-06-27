@@ -110,7 +110,7 @@ getting.
   permissions when updating files. The only permission propagated by Mutagen is
   executability or lack thereof. Any other permissions are left untouched for
   existing files and set to user-only access for newly created files. This is by
-  design, since Mutagen's raison d'être is remote development. Nothing in the
+  design, since Mutagen's main purpose is remote development. Nothing in the
   current design precludes adding more extensive permission propagation in the
   future.
 - Mutagen has a **best-effort** safety mechanism that prevents propagation of
