@@ -73,8 +73,8 @@ getting.
   streams.
 - Mutagen is a user-space utility, not requiring any kernel extensions or
   administrative permissions to use.
-- Mutagen only needs to be installed on the computer where you want to control
-  synchronization. Mutagen comes with a broad range of small, cross-compiled
+- **Mutagen only needs to be installed on the computer where you want to control
+  synchronization.** Mutagen comes with a broad range of small, cross-compiled
   "agent" binaries that it automatically copies to remote endpoints as
   necessary. Most major platforms and architectures are supported.
 - Mutagen is designed to handle very large directory hierarchies efficiently. It
