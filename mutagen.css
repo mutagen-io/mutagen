@@ -54,6 +54,9 @@ a:hover {
 
 #github-buttons {
     margin-top: 18px;
+
+    /* HACK: The star IFrame doesn't seem to load centered, so shift it. */
+    padding-left: 33px;
 }
 
 .lead {
