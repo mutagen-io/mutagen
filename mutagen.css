@@ -136,12 +136,18 @@ footer, .footer-push {
 
 /* Code style overrides */
 
-code {
+code, pre code {
     /* Use a nicer color for inline code */
     color: #333;
 
+    /* Set up a consistent background color */
+    background-color: #f5f5f5;
+
     /* Don't add a border radius */
     border-radius: 0;
+
+    /* Font settings */
+    font-size: 16px;
 }
 
 pre {
@@ -162,5 +168,4 @@ pre code {
     /* Override bootstrap's wrapping of code */
     overflow-wrap: normal;
     white-space: pre;
-    font-size: 14px;
 }

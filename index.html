@@ -149,7 +149,7 @@ $ mutagen daemon start
                     </p>
 <pre>
 <code>
-$ mutagen create Projects/my_project user@remotehost:~/my_project_mirror
+$ mutagen create Projects/my_project user@hostname:~/my_project_copy
 </code>
 </pre>
                     <p>
@@ -195,7 +195,7 @@ Alpha:
     URL: /Users/me/Projects/my_project
     Status: Connected
 Beta:
-    URL: user@remotehost:~/my_project_mirror
+    URL: user@hostname:~/my_project_copy
     Status: Connected
 Status: Watching for changes
 </code>
@@ -216,7 +216,7 @@ Status: Watching for changes
 $ mutagen monitor my_project
 Session: 7bb4a56b-f4be-4083-be24-7f590beda02e
 Alpha: /Users/me/Projects/my_project
-Beta: user@remotehost:~/my_project_mirror
+Beta: user@hostname:~/my_project_copy
 Status: Staging files on beta: 75% (8942/11782)
 </code>
 </pre>
