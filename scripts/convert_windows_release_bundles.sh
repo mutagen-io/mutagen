@@ -4,7 +4,7 @@
 set -e
 
 # Compute the version.
-MUTAGEN_VERSION=$(mutagen -V)
+MUTAGEN_VERSION=$(mutagen version)
 
 # Convert the 386 bundle.
 tar xzf build/mutagen_windows_386_v${MUTAGEN_VERSION}.tar.gz
