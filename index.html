@@ -125,9 +125,7 @@ $ brew install havoc-io/mutagen/mutagen
                         as a per-user process and manages synchronization
                         sessions. If a session becomes disconnected from a
                         remote endpoint, the daemon will automatically attempt
-                        to reconnect the session in the background. Mutagen is
-                        highly resilient to connection dropouts and will pick up
-                        synchronization right where it left off.
+                        to reconnect the session in the background.
                     </p>
                     <p>
                         The Mutagen daemon is started using the
@@ -162,9 +160,9 @@ $ mutagen create Projects/my_project user@remotehost:~/my_project_mirror
 </code>
 </pre>
                     <p>
-                        Endpoints can be local paths or SCP-style URLs. The
-                        order of the endpoint URLs is not important &mdash; it
-                        only determines which will be referred to as
+                        The locations specified can be local paths or SCP-style
+                        URLs. The order of the locations is not important
+                        &mdash; it only determines which will be referred to as
                         &quot;alpha&quot; and which will be referred to as
                         &quot;beta&quot;.
                     </p>
