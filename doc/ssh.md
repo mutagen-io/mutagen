@@ -4,14 +4,14 @@ Mutagen's SSH support is provided by the OpenSSH installation on your system.
 This design has a number of advantages:
 
 - OpenSSH installations are nearly universal in the POSIX world, and
-  [OpenSSH is now making its way to Windows](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/)
-- Mutagen automatically uses all existing SSH configuration, aliases, and keys
+  [OpenSSH is now making its way to Windows](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/).
+- Mutagen automatically uses all existing SSH configuration, keys, and aliases.
 - There's no risk of baking in an SSH library that might be found to have
-  security vulnerabilities
+  security vulnerabilities.
 - As the *de facto* SSH implementation, SSH servers are far more likely to
-  aim for compatibility with OpenSSH
+  aim for compatibility with OpenSSH.
 - OpenSSH has a much longer develoment and security track record than any SSH
-  library implementation
+  library implementation.
 
 Mutagen may eventually support other SSH clients or embed the
 [Go SSH library](https://godoc.org/golang.org/x/crypto/ssh), but these will
