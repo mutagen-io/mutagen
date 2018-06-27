@@ -1,8 +1,10 @@
 # Mutagen
 
 Mutagen is a cross-platform, continuous, bidirectional file synchronization
-utility designed to be simple, robust, and performant. It is designed for use in
-remote development. It can synchronize locally or over SSH.
+utility designed to be simple, robust, and performant. It is designed to replace
+tools like SSHFS, Unison, and SFTP editor plugins. Its raison d'être is remote
+development through code synchronization, though it can efficiently synchronize
+any type of content.
 
 
 ## Status
@@ -32,8 +34,8 @@ remote systems. The more people who use it and report
 
 ## Usage
 
-**For a quick usage guide that will cover 99% of your needs, please see the
-[documentation site](https://mutagen.io).**
+**For a quick summary and usage guide that will cover most of your needs, please
+see the [documentation site](https://mutagen.io).**
 
 For information about Mutagen's configuration system, please see the
 [configuration documentation](doc/configuration.md).
@@ -76,7 +78,7 @@ getting.
   "agent" binaries that it automatically copies to remote endpoints as
   necessary. Most major platforms and architectures are supported.
 - Mutagen is designed to handle very large directory hierarchies efficiently. It
-  uses a filesystem cache to allow quick re-scans and uses the
+  maintains a filesystem cache to allow quick re-scans and uses the
   [rsync algorithm](https://rsync.samba.org/tech_report/) to transfer filesystem
   scans and files themselves. File transfers are also pipelined to mitigate the
   effects of latency. Mutagen won't break a sweat on a GB-sized directory
