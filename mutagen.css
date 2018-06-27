@@ -39,6 +39,9 @@ body {
 a {
     /* Color settings */
     color: #ff3002;
+
+    /* Font settings */
+    font-weight: 500;
 }
 
 a:hover {
@@ -132,7 +135,7 @@ footer, .footer-push {
 
 code {
     /* Use a nicer color for inline code */
-    color: #ff3002;
+    color: #333;
 
     /* Don't add a border radius */
     border-radius: 0;

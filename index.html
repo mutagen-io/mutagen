@@ -165,12 +165,14 @@ $ mutagen create Projects/my_project user@remotehost:~/my_project_mirror
                         URLs. The order of the locations is not important
                         &mdash; it only determines which will be referred to as
                         &quot;alpha&quot; and which will be referred to as
-                        &quot;beta&quot;.
+                        &quot;beta.&quot;
                     </p>
                     <p>
-                        If authentication is required to connect to a remote
-                        endpoint, then the <code>create</code> command will ask
-                        for credentials.
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ssh.md">Mutagen uses OpenSSH under the hood</a>,
+                        so all of your configuration, keys, and aliases will be
+                        automatically available. If authentication is required
+                        to connect to a remote endpoint, then the
+                        <code>create</code> command will ask for credentials.
                     </p>
                     <p>
                         The <code>create</code> command supports a number of
