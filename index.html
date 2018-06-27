@@ -28,12 +28,13 @@
     <body>
         <div class="container wrapper">
             <div class="row">
-                <div class="col-xs-10 col-xs-offset-1 col-md-8 col-md-offset-2">
+                <div class="col-xs-12 col-md-8 col-md-offset-2">
                     <img src="mutagen_medium.svg" class="img-responsive center-block" alt="Mutagen logo" style="width:25%;">
                     <h1 class="text-center" style="margin-top:0;">Mutagen</h1>
-                    <p class="text-center lead">
-                        Mutagen is a fast file synchronization tool designed for remote development.<br/>
-                        It can synchronize locally or over SSH.
+                    <p class="lead">
+                        Mutagen is a fast file synchronization tool designed for
+                        remote development. It is designed to replace tools like
+                        SSHFS, Unison, and SFTP editor plugins.
                     </p>
                     <p id="github-buttons" class="text-center">
                         <a class="github-button" href="https://github.com/havoc-io/mutagen" data-size="large" data-show-count="true" aria-label="View Mutagen on GitHub">
@@ -43,36 +44,50 @@
                             Download
                         </a>
                     </p>
-                    <h2>Design</h2>
+                    <h2>Design and features</h2>
                     <p>
-                        Mutagen is built around the concept of a synchronization
-                        <b>session</b>. A session synchronizes the filesystem
-                        contents at two <b>endpoints</b> (<b>alpha</b> and
-                        <b>beta</b>) in a continuous, bidirectional fashion. An
-                        endpoint is simply a URL that points to either a local
-                        or remote file location. A session will monitor both
-                        endpoints for changes and automatically propagate any
-                        non-conflicting changes (<u>including deletions!</u>)
-                        from one endpoint to the other. Any conflicts that arise
-                        can be resolved by deleting the copy of the conflicting
-                        files on the side that should be overwritten.
+                        Mutagen uses a <b>bidirectional</b> version of the
+                        <a href="https://rsync.samba.org/tech_report/">rsync algorithm</a>
+                        to synchronize the filesystem contents at two locations.
+                        Each location can be either a local filesystem location
+                        or a remote location accessible via SSH. Filesystem
+                        contents are monitored for changes, which are
+                        propagated automatically.
                     </p>
                     <p>
-                        Mutagen relies on a <b>daemon</b> that runs in the
-                        background as a per-user process and manages sessions.
-                        If a session becomes disconnected from a remote
-                        endpoint, the daemon will automatically attempt to
-                        reconnect the session in the background. Mutagen is
-                        highly resilient to connection dropouts and will pick up
+                        Mutagen is unique amongst synchronizers in that <b>it
+                        does not need to be installed on remote systems</b>, has
+                        no dependencies, and runs completely in user space (no
+                        pesky kernel extensions necessary).
+                    </p>
+                    <p>
+                        Although it can synchronize any content efficiently,
+                        Mutagen is tailored for synchronizing code for remote
+                        development. It handles cross-platform quirks by
+                        default, manages conflicts safely, and provides powerful
+                        configuration options for handling things like
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/symlinks.md">symlinks</a>
+                        and
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ignores.md">ignores</a>
+                        in a portable fashion.
+                    </p>
+                    <p>
+                        Mutagen is also <b>extremely robust to connection
+                        dropouts</b>. Since the contents it deals with exist on
+                        the actual filesystem, they won't disappear or become
+                        unavailable if the connection drops, and they can
+                        continue to be accessed and edited offline. As soon as
+                        Mutagen can reconnect, it will automatically resume
                         synchronization right where it left off.
                     </p>
                     <p>
-                        Mutagen provides a number of subcommands that allow for
-                        the creation and management of sessions, as well as
-                        management of the daemon lifecycle. The following
-                        sections outline usage of these commands. Additional
-                        usage information is available through the built-in
-                        help:
+                        Mutagen can manage any number of active synchronization
+                        sessions at once. It provides a number of subcommands
+                        that allow for the creation and management of sessions,
+                        as well as management of Mutagen's daemon component. The
+                        following sections outline usage of these commands.
+                        Additional usage information is available through the
+                        built-in help:
                     </p>
 <pre>
 <code>
@@ -82,7 +97,7 @@ $ mutagen --help
                     <p>
                         More detailed information about Mutagen's design can be
                         found in the
-                        <a href="https://github.com/havoc-io/mutagen/blob/master/README.md#unique-features">README</a>.
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/README.md">README</a>.
                     </p>
                     <h2>Installation</h2>
                     <p>
@@ -105,6 +120,15 @@ $ brew install havoc-io/mutagen/mutagen
                         There is no need to install Mutagen on remote systems.
                     </p>
                     <h2>Starting the daemon</h2>
+                    <p>
+                        Mutagen relies on a daemon that runs in the background
+                        as a per-user process and manages synchronization
+                        sessions. If a session becomes disconnected from a
+                        remote endpoint, the daemon will automatically attempt
+                        to reconnect the session in the background. Mutagen is
+                        highly resilient to connection dropouts and will pick up
+                        synchronization right where it left off.
+                    </p>
                     <p>
                         The Mutagen daemon is started using the
                         <code>daemon</code> command:
@@ -139,8 +163,8 @@ $ mutagen create Projects/my_project user@remotehost:~/my_project_mirror
 </pre>
                     <p>
                         Endpoints can be local paths or SCP-style URLs. The
-                        order of the endpoints is not important &mdash; it only
-                        determines which will be referred to as
+                        order of the endpoint URLs is not important &mdash; it
+                        only determines which will be referred to as
                         &quot;alpha&quot; and which will be referred to as
                         &quot;beta&quot;.
                     </p>

@@ -53,6 +53,10 @@ a:hover {
     margin-top: 18px;
 }
 
+.lead {
+    font-size: 21px;
+}
+
 h1 {
     /* Font settings */
     font-size: 60px;
@@ -70,7 +74,7 @@ h2 {
     margin-top: 30px;
 
     /* Font settings */
-    font-size: 22px;
+    font-size: 30px;
 }
 
 p {
