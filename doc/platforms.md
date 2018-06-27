@@ -21,8 +21,9 @@ caveats listed below.
 
 - There are outstanding FreeBSD issues in the Go runtime which are not fully
   understood. These are documented in the
-  [Go 1.9 release notes](https://golang.org/doc/go1.9#known_issues), and may
-  affect the functionality and/or stability of Mutagen on FreeBSD.
+  [Go 1.9 release notes](https://golang.org/doc/go1.9#known_issues) and
+  [Go 1.10 release notes](https://golang.org/doc/go1.10#ports), and may affect
+  the functionality and/or stability of Mutagen on FreeBSD.
 
 
 ## NetBSD
@@ -30,8 +31,9 @@ caveats listed below.
 - NetBSD is not currently well-supported by Go due to instabilities on the
   platform and a number of outstanding issues in the Go runtime. These problems
   are documented in the
-  [Go 1.9 release notes](https://golang.org/doc/go1.9#known_issues), and may
-  affect the functionality and/or stability of Mutagen on NetBSD.
+  [Go 1.9 release notes](https://golang.org/doc/go1.9#known_issues) and
+  [Go 1.10 release notes](https://golang.org/doc/go1.10#ports), and may affect
+  the functionality and/or stability of Mutagen on NetBSD.
 
 
 ## Plan 9

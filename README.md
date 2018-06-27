@@ -56,29 +56,36 @@ For platform-specific instructions and known issues, please see the
 
 ## Unique features
 
-Rather than provide a heavily biased feature comparison table, I'll just point
+Instead of providing a heavily biased feature comparison table, I'll just point
 out what I consider to be the unique and compelling features of Mutagen. Astute
 readers with knowledge of the file synchronization landscape can draw their own
 conclusions. I'd recommend users read this list so they know what they're
 getting.
 
+- Mutagen is truly cross-platform, treating Linux, macOS, Windows, and other
+  systems as first class citizens. Differences in OS and filesystem behavior are
+  addressed head-on, not ignored until an edge case causes breakage. Mutagen
+  attempts to handle quirks by default, e.g. dealing with case-(in)sensitivity,
+  HFS's pseudo-NFD Unicode normalization, filesystems that don't support
+  executability bits, or file names that might create NTFS alternate data
+  streams.
 - Mutagen is a user-space utility, not requiring any kernel extensions or
   administrative permissions to use.
 - Mutagen only needs to be installed on the computer where you want to control
   synchronization. Mutagen comes with a broad range of small, cross-compiled
   "agent" binaries that it automatically copies to remote endpoints as
   necessary. Most major platforms and architectures are supported.
-- Mutagen propagates changes bidirectionally. Any conflicts that arise will be
-  flagged for resolution. Automatic conflict resolution is performed if doing so
-  does not result in destruction of unsynchronized data. Manual conflict
-  resolution is performed by manually deleting the undesired side of the
-  conflict. Conflicts won't stop non-conflicting changes from propagating.
 - Mutagen is designed to handle very large directory hierarchies efficiently. It
   uses a filesystem cache to allow quick re-scans and uses the
   [rsync algorithm](https://rsync.samba.org/tech_report/) to transfer filesystem
-  scans and files themselves. File transfers are pipelined to mitigate the
+  scans and files themselves. File transfers are also pipelined to mitigate the
   effects of latency. Mutagen won't break a sweat on a GB-sized directory
-  containing 100,000 files.
+  hierarchy containing 100,000 files.
+- Mutagen propagates changes bidirectionally. Any conflicts that arise will be
+  flagged for resolution. Automatic conflict resolution is performed if doing so
+  does not result in the destruction of unsynchronized data. Manual conflict
+  resolution is performed by manually deleting the undesired side of the
+  conflict. Conflicts won't stop non-conflicting changes from propagating.
 - Mutagen is robust to connection drop-outs. It will attempt to reconnect
   automatically to endpoints and will resume synchronization safely. In the mean
   time, your local copy of a synchronization root continues to exist on the
@@ -87,11 +94,10 @@ getting.
   completed file staging.
 - Mutagen identifies changes to file contents rather than just modification
   times.
-- On systems that support recursive file monitoring (Windows and macOS), Mutagen
-  effeciently watches synchronization roots for changes. Other systems currently
-  use regular and efficient polling out of a desire to support very large
-  directory hierarchies that might exhaust watch and file descriptors, but
-  support for watching small directories on these systems isn't ruled out.
+- On systems that support recursive filesystem watching (macOS and Windows),
+  Mutagen effeciently watches synchronization roots for changes. Other systems
+  currently use regular and efficient polling out of a desire to support very
+  large directory hierarchies that might exhaust watch and file descriptors.
 - Mutagen is agnostic of the transport to endpoints - all it requires is a byte
   stream to each endpoint. Support is currently built-in for local and SSH-based
   synchronization, but support for other remote types can easily be added. As a
@@ -102,17 +108,13 @@ getting.
   permissions when updating files. The only permission propagated by Mutagen is
   executability or lack thereof. Any other permissions are left untouched for
   existing files and set to user-only access for newly created files. This is by
-  design, since Mutagen's raison d'être is remote code editing and mirroring.
-  Nothing in the current Mutagen design precludes adding permission propagation
-  in the future.
-- Mutagen attempts to handle quirks by default, e.g. dealing with
-  case-(in)sensitivity, HFS's pseudo-NFD Unicode normalization, systems that
-  don't support executability bits, or file names that might create NTFS
-  alternate data streams.
+  design, since Mutagen's raison d'être is remote development. Nothing in the
+  current design precludes adding more extensive permission propagation in the
+  future.
 - Mutagen has a **best-effort** safety mechanism that prevents propagation of
   synchronization *root* deletions. If Mutagen detects that one side of the
   synchronization session has been completely deleted, it will halt and refuse
-  to propagate the removal, requiring the user to manually remove file on the
+  to propagate the removal, requiring the user to manually remove files on the
   other side and then use `mutagen resume` to continue the session. This
   detection is not perfect for directories since their deletion is non-atomic
   and Mutagen may see a large portion of the directory deleted while deletion is
@@ -120,7 +122,7 @@ getting.
   effort to avoid synchronizing while concurrent changes are ongoing, instead
   waiting for the filesystem to stabilize.
 
-You might have surmised that Mutagen's closest cousin is the
+You might have guessed that Mutagen's closest cousin is the
 [Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
 This tool has existed for ages, and while it is *very* good at what it does, it
 didn't quite fit my needs. In particular, it has a *lot* of knobs to turn, puts

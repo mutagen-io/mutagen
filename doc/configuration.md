@@ -24,8 +24,8 @@ configuration takes precedence over both. When a session is created, global and
 per-session configuration are read-in and merged. The merged configuration is
 "locked in" to the session so that subsequent changes to the `~/.mutagen.toml`
 file will not affect the behavior of existing sessions. This increases safety
-while reducing the cognitive load of having to understand how configuration
-changes would propagate.
+while removing the cognitive load of having to understand how global
+configuration changes would propagate.
 
 Mutagen's configuration options are minimal at the moment and the goal is to
 keep them that way. Configuration parameters are available for

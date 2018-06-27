@@ -22,7 +22,7 @@ always be fallback options.
 
 Mutagen uses the OpenSSH suite's `scp` and `ssh` commands to copy agent binaries
 to remote systems and execute them. Communication with the agent happens over
-the standard input/output channels.
+standard input/output streams.
 
 Mutagen redirects SSH prompts to its `create` and `resume` commands via the
 `SSH_ASKPASS` environment variable.

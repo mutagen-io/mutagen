@@ -13,7 +13,7 @@ or lifetime of the watched location. Other systems (e.g. Linux and BSD systems)
 provide mechanisms that require a watch descriptor or file descriptor to be open
 for *every* file being watched in a directory hierarchy, which can quickly
 exhaust system quotas for directories that might be used in development (e.g.
-imagine a synchroization root containing a `node_modules` directory).
+imagine a synchronization root containing a `node_modules` directory).
 
 Mutagen takes a pragmatic but potentially controversial approach to filesystem
 watching that deserves documenting. If a synchronization root is on a system

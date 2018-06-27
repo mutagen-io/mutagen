@@ -25,7 +25,7 @@ think through the effects of changing ignores in one place) and safety (no files
 will suddenly become unignored and propagated (causing conflicts or security
 risks) or silently ignored).
 
-Global ignores are specified in the `~/.mutagen.toml` as follows:
+Global ignores are specified in the `~/.mutagen.toml` file as follows:
 
     [ignore]
     default = [
