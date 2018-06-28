@@ -3,8 +3,8 @@
 Mutagen is a cross-platform, continuous, bidirectional file synchronization
 utility designed to be simple, robust, and performant. It is designed to replace
 tools like SSHFS, Unison, and SFTP editor plugins. Its *raison d'être* is remote
-development through code synchronization, though it can efficiently synchronize
-any type of content.
+development via code synchronization, though it can efficiently synchronize any
+type of content.
 
 
 ## Status
