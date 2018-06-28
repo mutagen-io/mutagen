@@ -2,7 +2,7 @@
 
 Mutagen is a cross-platform, continuous, bidirectional file synchronization
 utility designed to be simple, robust, and performant. It is designed to replace
-tools like SSHFS, Unison, and SFTP editor plugins. Its raison d'être is remote
+tools like SSHFS, Unison, and SFTP editor plugins. Its *raison d'être* is remote
 development through code synchronization, though it can efficiently synchronize
 any type of content.
 
@@ -49,7 +49,7 @@ For information about ignoring files, please see the
 For information about filesystem watching, please see the
 [watching documentation](doc/watching.md).
 
-For information about Mutagen's usage of SSH, please see the
+For information about Mutagen's use of SSH, please see the
 [SSH documentation](doc/ssh.md).
 
 For platform-specific instructions and known issues, please see the
@@ -61,7 +61,7 @@ For platform-specific instructions and known issues, please see the
 Instead of providing a heavily biased feature comparison table, I'll just point
 out what I consider to be the unique and compelling features of Mutagen. Astute
 readers with knowledge of the file synchronization landscape can draw their own
-conclusions. I'd recommend users read this list so they know what they're
+conclusions. I'd recommend that users read this list so they know what they're
 getting.
 
 - Mutagen is truly cross-platform, treating Linux, macOS, Windows, and other
@@ -91,9 +91,9 @@ getting.
 - Mutagen is robust to connection drop-outs. It will attempt to reconnect
   automatically to endpoints and will resume synchronization safely. In the mean
   time, your local copy of a synchronization root continues to exist on the
-  filesystem for you to edit like any other files. Once synchronization resumes,
-  Mutagen will continue right where it left off, even resuming partially
-  completed file staging.
+  filesystem for you to access and edit like any other files. Once
+  synchronization resumes, Mutagen will continue right where it left off, even
+  resuming partially completed file staging.
 - Mutagen identifies changes to file contents rather than just modification
   times.
 - On systems that support recursive filesystem watching (macOS and Windows),
@@ -107,12 +107,12 @@ getting.
   ever needing a local copy of the files.
 - Mutagen can display dynamic synchronization status in the terminal.
 - Mutagen does not propagate (most) permissions, but it does preserve
-  permissions when updating files. The only permission propagated by Mutagen is
-  executability or lack thereof. Any other permissions are left untouched for
-  existing files and set to user-only access for newly created files. This is by
-  design, since Mutagen's main purpose is remote development. Nothing in the
-  current design precludes adding more extensive permission propagation in the
-  future.
+  permissions when updating files<sup>1</sup>. The only permission propagated
+  by Mutagen is executability or lack thereof. Any other permissions are left
+  untouched for existing files and set to user-only access for newly created
+  files. This is by design, since Mutagen's main purpose is remote development.
+  Nothing in the current design precludes adding more extensive permission
+  propagation in the future.
 - Mutagen has a **best-effort** safety mechanism that prevents propagation of
   synchronization *root* deletions. If Mutagen detects that one side of the
   synchronization session has been completely deleted, it will halt and refuse
@@ -123,6 +123,9 @@ getting.
   ongoing and propagate that deletion. That being said, Mutagen makes every
   effort to avoid synchronizing while concurrent changes are ongoing, instead
   waiting for the filesystem to stabilize.
+
+<sup>1</sup> This behavior is currently limited to POSIX systems, but should be
+coming to Windows systems soon.
 
 You might have guessed that Mutagen's closest cousin is the
 [Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
