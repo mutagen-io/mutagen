@@ -99,19 +99,27 @@ func testWatchCycle(path string, mode WatchMode) error {
 
 	// Create a file inside the directory and wait for an event.
 	if err := WriteFileAtomic(testFilePath, []byte{}, 0600); err != nil {
-		return errors.New("unable to create file")
+		return errors.Wrap(err, "unable to create file")
 	}
 	<-events
 
 	// Modify a file inside the directory and wait for an event.
 	if err := WriteFileAtomic(testFilePath, []byte{0, 0}, 0600); err != nil {
-		return errors.New("unable to modify file")
+		return errors.Wrap(err, "unable to modify file")
 	}
 	<-events
 
+	// If we're not on Windows, test that we detect permissions changes.
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(testFilePath, 0700); err != nil {
+			return errors.Wrap(err, "unable to change file permissions")
+		}
+		<-events
+	}
+
 	// Remove a file inside the directory and wait for an event.
 	if err := os.Remove(testFilePath); err != nil {
-		return errors.New("unable to remove file")
+		return errors.Wrap(err, "unable to remove file")
 	}
 	<-events
 

@@ -55,7 +55,7 @@ func watchRecursiveHome(context context.Context, root string, events chan struct
 	// Create a recursive watch on the home directory. Ensure that it's stopped
 	// when we're done.
 	watchPath := fmt.Sprintf("%s/...", HomeDirectory)
-	if err := notify.Watch(watchPath, nativeEvents, notify.All); err != nil {
+	if err := notify.Watch(watchPath, nativeEvents, recursiveWatchFlags); err != nil {
 		return errors.Wrap(err, "unable to create watcher")
 	}
 	defer notify.Stop(nativeEvents)
