@@ -12,14 +12,12 @@ language: go
 matrix:
   include:
     - os: osx
+      osx_image: xcode9.4
     - os: linux
       env: MUTAGEN_TEST_END_TO_END=true
 
 # Require use of sudo (we need this to set up SSH).
 sudo: required
-
-# Set our macOS version. We require 10.13+ because we create APFS test images.
-osx_image: xcode9.4
 
 # Set our Go version(s). Mutagen generally only supports a specific version of
 # Go at a time, usually the latest.
