@@ -39,16 +39,16 @@ func isParentOrSelf(parent, child string) bool {
 }
 
 func watchNative(context context.Context, root string, events chan struct{}) error {
-	// Compute the watch root. This is going to be the parent directory of the
-	// root itself.
-	// TODO: If there's a device boundary between root and watchRoot, watching
-	// won't work. This is really only a concern on macOS. I'm not sure if
-	// there's a way to determine whether or not root is a mount point, and
-	// certainly there's no general way to know if it WILL be a mount point. I
-	// think we'll just have to add a caveat about this case to the filesystem
-	// watch documentation, but perhaps we can at least detect it in some cases.
-	watchRoot := filepath.Dir(root)
-	watchRootSpecification := fmt.Sprintf("%s/...", watchRoot)
+	// Compute the watch root. If we're on macOS, this will be the root itself.
+	// If we're on Windows, this will be the parent directory of the root.
+	var watchRoot string
+	if runtime.GOOS == "darwin" {
+		watchRoot = root
+	} else if runtime.GOOS == "windows" {
+		watchRoot = filepath.Dir(root)
+	} else {
+		panic("unhandled platform case")
+	}
 
 	// HACK: If we're on Windows and the watch root is a device root, then we
 	// can't natively watch due to rjeczalik/notify#148. As soon as this issue
@@ -58,6 +58,9 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 	if runtime.GOOS == "windows" && len(watchRoot) <= 3 {
 		return errors.New("unable to watch direct descendants of device root")
 	}
+
+	// Compute the watch root specification.
+	watchRootSpecification := fmt.Sprintf("%s/...", watchRoot)
 
 	// Set up initial watch root parameters.
 	var exists bool
