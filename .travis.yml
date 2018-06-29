@@ -1,10 +1,19 @@
 # Set the language.
 language: go
 
-# Set test platforms.
-os:
-  - osx
-  - linux
+# Set up the build matrix. The Travis macOS builders are really slow when
+# performing integration tests (I suspect due to the underlying hardware), and
+# they often go more than 10 minutes without any output while copying files
+# (which Travis treats as failure). Even if Travis allows this, the macOS
+# builders still have to do a full release build after testing, which takes a
+# long time by itself, and it makes waiting for test and build results painful.
+# We still get full integration test coverage on Linux and Windows, and all
+# internals are tested on macOS, so this isn't a huge loss to coverage.
+matrix:
+  include:
+    - os: osx
+    - os: linux
+      env: MUTAGEN_TEST_END_TO_END=true
 
 # Require use of sudo (we need this to set up SSH).
 sudo: required
@@ -20,10 +29,6 @@ osx_image: xcode9.4
 # https://github.com/travis-ci/travis-ci/issues/9247
 go:
   - "1.10.3"
-
-# Set environment variables.
-env:
-  - MUTAGEN_TEST_END_TO_END=true
 
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
