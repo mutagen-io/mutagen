@@ -75,7 +75,8 @@ func TestWatchModeDescription(t *testing.T) {
 }
 
 const (
-	testWatchEstablishWait = 5 * time.Second
+	testWatchEstablishWait  = 5 * time.Second
+	testWatchChangeInterval = 2 * time.Second
 )
 
 func testWatchCycle(path string, mode WatchMode) error {
@@ -103,11 +104,17 @@ func testWatchCycle(path string, mode WatchMode) error {
 	}
 	<-events
 
+	// HACK: Wait before making another modification.
+	time.Sleep(testWatchChangeInterval)
+
 	// Modify a file inside the directory and wait for an event.
 	if err := WriteFileAtomic(testFilePath, []byte{0, 0}, 0600); err != nil {
 		return errors.Wrap(err, "unable to modify file")
 	}
 	<-events
+
+	// HACK: Wait before making another modification.
+	time.Sleep(testWatchChangeInterval)
 
 	// If we're not on Windows, test that we detect permissions changes.
 	if runtime.GOOS != "windows" {
@@ -116,6 +123,9 @@ func testWatchCycle(path string, mode WatchMode) error {
 		}
 		<-events
 	}
+
+	// HACK: Wait before making another modification.
+	time.Sleep(testWatchChangeInterval)
 
 	// Remove a file inside the directory and wait for an event.
 	if err := os.Remove(testFilePath); err != nil {
