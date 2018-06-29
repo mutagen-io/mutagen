@@ -162,12 +162,10 @@ func Watch(context context.Context, root string, events chan struct{}, mode Watc
 	// Ensure that the events channel is closed when we're cancelled.
 	defer close(events)
 
-	// If we're in a recurisve home watch mode, attempt to watch in that manner.
-	// This will be fail if we're on a system without native recursive watching,
-	// the root is not a subpath of the home directory, or the watch is
-	// cancelled.
+	// If we're in portable watch mode, attempt to watch using a native
+	// mechanism.
 	if mode == WatchMode_WatchPortable {
-		watchRecursiveHome(context, root, events)
+		watchNative(context, root, events)
 	}
 
 	// If native watching failed, check (in a non-blocking fashion) if it was
