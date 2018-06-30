@@ -1,8 +1,9 @@
 // Windows filesystem monitoring implementation based on
 // golang.org/x/exp/winfsnotify
 // (https://github.com/golang/exp/tree/master/winfsnotify) but modified to
-// remove import path enforcement, support recursive watching, use more
-// idiomatic filesystem path joins, and remove test logging.
+// remove import path enforcement, increase ReadDirectoryChangesW buffer size,
+// support recursive watching, use more idiomatic filesystem path joins, and
+// remove test logging.
 //
 // The original code license:
 //
@@ -93,7 +94,7 @@ type watch struct {
 	mask   uint64            // Directory itself is being watched with these notify flags
 	names  map[string]uint64 // Map of names being watched and their notify flags
 	rename string            // Remembers the old name while renaming a file
-	buf    [4096]byte
+	buf    [16384]byte
 }
 
 type indexMap map[uint64]*watch
