@@ -75,7 +75,7 @@ func TestNotifyEvents(t *testing.T) {
 	}
 
 	testDir := "TestNotifyEvents.testdirectory"
-	testFile := testDir + "/TestNotifyEvents.testfile"
+	testFile := filepath.Join(testDir, "TestNotifyEvents.testfile")
 	testFile2 := testFile + ".new"
 	const mask = FS_ALL_EVENTS & ^(FS_ATTRIB|FS_CLOSE) | FS_IGNORED
 
