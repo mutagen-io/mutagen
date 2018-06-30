@@ -662,14 +662,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		// mechanism.
 		rootDeletion := false
 		for _, t := range αTransitions {
-			if t.Path == "" && t.New == nil {
+			if isRootDeletion(t) {
 				rootDeletion = true
 				break
 			}
 		}
 		if !rootDeletion {
 			for _, t := range βTransitions {
-				if t.Path == "" && t.New == nil {
+				if isRootDeletion(t) {
 					rootDeletion = true
 					break
 				}
@@ -681,6 +681,30 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			c.stateLock.Unlock()
 			<-context.Done()
 			return errors.New("cancelled while halted on root deletion")
+		}
+
+		// Check if a root type change is being propagated and halt if so.
+		rootTypeChange := false
+		for _, t := range αTransitions {
+			if isRootTypeChange(t) {
+				rootTypeChange = true
+				break
+			}
+		}
+		if !rootTypeChange {
+			for _, t := range βTransitions {
+				if isRootTypeChange(t) {
+					rootTypeChange = true
+					break
+				}
+			}
+		}
+		if rootTypeChange {
+			c.stateLock.Lock()
+			c.state.Status = Status_HaltedOnRootTypeChange
+			c.stateLock.Unlock()
+			<-context.Done()
+			return errors.New("cancelled while halted on root type change")
 		}
 
 		// Create a monitoring callback for rsync staging.

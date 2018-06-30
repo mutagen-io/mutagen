@@ -10,6 +10,8 @@ func (s Status) Description() string {
 		return "Disconnected"
 	case Status_HaltedOnRootDeletion:
 		return "Halted due to root deletion"
+	case Status_HaltedOnRootTypeChange:
+		return "Halted due to root type change"
 	case Status_ConnectingAlpha:
 		return "Connecting to alpha"
 	case Status_ConnectingBeta:
