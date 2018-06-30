@@ -74,7 +74,10 @@ func newRecursiveWatch(path string) (*recursiveWatch, error) {
 			select {
 			case <-forwardingContext.Done():
 				break Forwarding
-			case e := <-watcher.Event:
+			case e, ok := <-watcher.Event:
+				if !ok {
+					break Forwarding
+				}
 				select {
 				case eventPaths <- e.Name:
 				default:
