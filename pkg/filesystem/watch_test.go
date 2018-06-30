@@ -144,9 +144,8 @@ func TestWatchPortable(t *testing.T) {
 		t.Skip()
 	}
 
-	// Create a temporary directory in a subpath of the home directory and defer
-	// its removal.
-	directory, err := ioutil.TempDir(HomeDirectory, "mutagen_filesystem_watch")
+	// Create a temporary directory and defer its removal.
+	directory, err := ioutil.TempDir("", "mutagen_filesystem_watch")
 	if err != nil {
 		t.Fatal("unable to create temporary directory:", err)
 	}
