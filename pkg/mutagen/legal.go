@@ -163,6 +163,20 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
+fsevents (https://github.com/fsnotify/fsevents)
+
+Copyright (c) 2014 The fsevents Authors. All rights reserved.
+
+Used under the terms of the 3-Clause BSD License (Google version). A copy of
+this license can be found later in this text and a templated version can be
+found online at https://opensource.org/licenses/BSD-3-Clause.
+
+N.B.: The LICENSE file provided with this repository does indeed use the exact
+same text of the Google version, i.e. it names Google, Inc. in the copyright
+holder position of the license.
+
+--------------------------------------------------------------------------------
+
 notify (https://github.com/rjeczalik/notify)
 
 Copyright (c) 2014-2015 The Notify Authors

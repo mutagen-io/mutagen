@@ -61,3 +61,6 @@
 [submodule "vendor/github.com/Microsoft/go-winio"]
 	path = vendor/github.com/Microsoft/go-winio
 	url = https://github.com/Microsoft/go-winio.git
+[submodule "vendor/github.com/fsnotify/fsevents"]
+	path = vendor/github.com/fsnotify/fsevents
+	url = https://github.com/fsnotify/fsevents.git
