@@ -47,6 +47,7 @@ package winfsnotify
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
