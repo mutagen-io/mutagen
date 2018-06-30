@@ -31,6 +31,8 @@ func printSession(state *sessionpkg.State, long bool) {
 			for _, p := range configuration.DefaultIgnores {
 				fmt.Printf("\t%s\n", p)
 			}
+		} else {
+			fmt.Println("Default ignores: None")
 		}
 
 		// Print per-session ignores.
@@ -39,6 +41,8 @@ func printSession(state *sessionpkg.State, long bool) {
 			for _, p := range configuration.Ignores {
 				fmt.Printf("\t%s\n", p)
 			}
+		} else {
+			fmt.Println("Ignores: None")
 		}
 
 		// Compute and print symlink mode.
