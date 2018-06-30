@@ -94,7 +94,10 @@ func newRecursiveWatch(path string) (*recursiveWatch, error) {
 			select {
 			case <-forwardingContext.Done():
 				break Forwarding
-			case es := <-rawEvents:
+			case es, ok := <-rawEvents:
+				if !ok {
+					break Forwarding
+				}
 				for _, e := range es {
 					select {
 					case eventPaths <- e.Path:
@@ -103,6 +106,7 @@ func newRecursiveWatch(path string) (*recursiveWatch, error) {
 				}
 			}
 		}
+		close(eventPaths)
 	}()
 
 	// Start watching.

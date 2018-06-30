@@ -16,6 +16,7 @@ const (
 	watchEventsBufferSize             = 25
 	watchCoalescingWindow             = 100 * time.Millisecond
 	watchRootParameterPollingInterval = 5 * time.Second
+	watchRestartWait                  = 1 * time.Second
 )
 
 // isParentOrSelf returns true if and only if parent is a parent path of child
@@ -50,6 +51,7 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 	// Set up initial watch root parameters.
 	var exists bool
 	var parameters watchRootParameters
+	var forceRecreate bool
 
 	// Set up our initial event paths channel.
 	dummyEventPaths := make(chan string)
@@ -84,15 +86,45 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 		rootCheckTimer.Stop()
 	}()
 
-	// Poll for the next event, coalesced event, or cancellation. When we
-	// receive an event that matches our watch root, we reset the coalescing
-	// timer. When the coalescing timer fires, we send an event in a
-	// non-blocking fashion. If we're cancelled, we return.
+	// Poll for cancellation, the next raw event, the coalescing timer, or the
+	// root check timer.
 	for {
 		select {
 		case <-context.Done():
+			// Abort the watch.
 			return errors.New("watch cancelled")
-		case path := <-eventPaths:
+		case path, ok := <-eventPaths:
+			// If the event channel has been closed, then something's gone wrong
+			// with the watch (e.g. a buffer overflow in ReadDirectoryChangesW),
+			// but it should be a recoverable error, so we need to recreate the
+			// watch.
+			if !ok {
+				// Close out the watch and clear the event channel. We know that
+				// the watch is non-nil here because it's set at the same time
+				// as eventPaths, from which we just read (the dummy event
+				// channel never closes).
+				watch.stop()
+				watch = nil
+				eventPaths = dummyEventPaths
+
+				// Mark forced recreation.
+				forceRecreate = true
+
+				// Trigger the root check timer to re-run after a short delay.
+				// We could set it to run immediately, but if the error is due
+				// to rapid disk events causing a read buffer overflow, then
+				// we're better off just waiting until that's done, otherwise
+				// we'll just burn CPU cycles recreating over and over again.
+				if !rootCheckTimer.Stop() {
+					<-rootCheckTimer.C
+				}
+				rootCheckTimer.Reset(watchRestartWait)
+
+				// Continue polling.
+				continue
+			}
+
+			// Handle the path appropriately.
 			// NOTE: When using FSEvents, event paths are (a) relative to the
 			// device root and (b) fully resolved in terms of symlinks. This
 			// means that the isExecutabilityTestPath and
@@ -100,10 +132,16 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			// will not. Fortunately isParentOrSelf isn't necessary when using
 			// FSEvents since we watch the root itself.
 			if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
+				// Ignore any probe files created by Mutagen.
 				continue
 			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {
+				// If we're on Windows, then we're monitoring the parent
+				// directory of the synchronization root, so if the notification
+				// is for a path outside that root, ignore it.
 				continue
 			} else {
+				// Otherwise we're looking at a relevant event, so reset the
+				// coalescing timer.
 				if !coalescingTimer.Stop() {
 					// We have to do a non-blocking drain here because we don't
 					// know if a false return value from Stop indicates that we
@@ -125,6 +163,7 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 				coalescingTimer.Reset(watchCoalescingWindow)
 			}
 		case <-coalescingTimer.C:
+			// Forward a coalesced event.
 			select {
 			case events <- struct{}{}:
 			default:
@@ -143,8 +182,12 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			}
 
 			// Check if we need to recreate the watcher.
-			recreate := exists != currentlyExists ||
+			recreate := forceRecreate ||
+				exists != currentlyExists ||
 				!watchRootParametersEqual(parameters, currentParameters)
+
+			// Unmark forced recreation.
+			forceRecreate = false
 
 			// Recreate the watcher if necessary.
 			if recreate {
@@ -178,9 +221,9 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 					}
 				}
 
-				// Since the root changed, we'll also want to send a change
-				// notification, because the change may not have been caught by
-				// the watcher.
+				// Since the root changed (or we're in a forced recreate,
+				// probably due to or resulting in missed events), we'll also
+				// want to send an event.
 				select {
 				case events <- struct{}{}:
 				default:

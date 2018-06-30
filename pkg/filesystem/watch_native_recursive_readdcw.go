@@ -75,7 +75,7 @@ func newRecursiveWatch(path string) (*recursiveWatch, error) {
 			case <-forwardingContext.Done():
 				break Forwarding
 			case e, ok := <-watcher.Event:
-				if !ok {
+				if !ok || e.Mask == winfsnotify.FS_Q_OVERFLOW {
 					break Forwarding
 				}
 				select {
@@ -84,6 +84,7 @@ func newRecursiveWatch(path string) (*recursiveWatch, error) {
 				}
 			}
 		}
+		close(eventPaths)
 	}()
 
 	// Start watching.
