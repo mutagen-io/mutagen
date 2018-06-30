@@ -58,12 +58,3 @@ seconds) and on a default basis by including the following configuration in
 
     [watch]
     pollingInterval = <interval>
-
-
-## Windows caveats
-
-Mutagen is currently unable to use native recursive filesystem watching on
-Windows paths that are *direct* descendants of a drive (e.g. `C:\code`) due to
-[rjeczalik/notify#148](https://github.com/rjeczalik/notify/issues/148). As soon
-as this bug is resolved, this limitation will be lifted. In the mean time,
-watching will fall back to polling for these case.
