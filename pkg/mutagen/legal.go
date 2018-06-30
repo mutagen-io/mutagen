@@ -177,15 +177,6 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
-notify (https://github.com/rjeczalik/notify)
-
-Copyright (c) 2014-2015 The Notify Authors
-
-Used under the terms of the MIT License. A copy of this license can be found
-later in this text or online at https://opensource.org/licenses/MIT.
-
---------------------------------------------------------------------------------
-
 gopass (https://github.com/howeyc/gopass)
 
 Copyright (c) 2012 Chris Howey
