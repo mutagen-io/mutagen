@@ -14,7 +14,7 @@ import (
 
 const (
 	watchEventsBufferSize             = 25
-	watchCoalescingWindow             = 100 * time.Millisecond
+	watchCoalescingWindow             = 25 * time.Millisecond
 	watchRootParameterPollingInterval = 5 * time.Second
 	watchRestartWait                  = 1 * time.Second
 )
