@@ -52,6 +52,9 @@ For information about filesystem watching, please see the
 For information about Mutagen's use of SSH, please see the
 [SSH documentation](doc/ssh.md).
 
+For information about Mutagen's safety mechanisms, please see the
+[safety documentation](doc/safety.md).
+
 For platform-specific instructions and known issues, please see the
 [platform guide](doc/platforms.md).
 
@@ -113,16 +116,8 @@ getting.
   files. This is by design, since Mutagen's main purpose is remote development.
   Nothing in the current design precludes adding more extensive permission
   propagation in the future.
-- Mutagen has a **best-effort** safety mechanism that prevents propagation of
-  synchronization *root* deletions. If Mutagen detects that one side of the
-  synchronization session has been completely deleted, it will halt and refuse
-  to propagate the removal, requiring the user to manually remove files on the
-  other side and then use `mutagen resume` to continue the session. This
-  detection is not perfect for directories since their deletion is non-atomic
-  and Mutagen may see a large portion of the directory deleted while deletion is
-  ongoing and propagate that deletion. That being said, Mutagen makes every
-  effort to avoid synchronizing while concurrent changes are ongoing, instead
-  waiting for the filesystem to stabilize.
+- Mutagen has (**best-effort**) [safety mechanisms](doc/safety.md) to avoid
+  accidental data loss.
 
 <sup>1</sup> This behavior is currently limited to POSIX systems, but should be
 coming to Windows systems soon.
