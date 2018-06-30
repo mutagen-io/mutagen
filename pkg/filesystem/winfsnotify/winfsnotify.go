@@ -1,8 +1,8 @@
 // Windows filesystem monitoring implementation based on
 // golang.org/x/exp/winfsnotify
 // (https://github.com/golang/exp/tree/master/winfsnotify) but modified to
-// remove import path enforcement, support recursive watching, and use more
-// idiomatic filesystem path joins.
+// remove import path enforcement, support recursive watching, use more
+// idiomatic filesystem path joins, and remove test logging.
 //
 // The original code license:
 //

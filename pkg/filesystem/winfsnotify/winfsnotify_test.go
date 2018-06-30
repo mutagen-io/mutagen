@@ -1,8 +1,8 @@
 // Windows filesystem monitoring implementation based on
 // golang.org/x/exp/winfsnotify
 // (https://github.com/golang/exp/tree/master/winfsnotify) but modified to
-// remove import path enforcement, support recursive watching, and use more
-// idiomatic filesystem path joins.
+// remove import path enforcement, support recursive watching, use more
+// idiomatic filesystem path joins, and remove test logging.
 //
 // The original code license:
 //
@@ -54,13 +54,11 @@ import (
 )
 
 func expect(t *testing.T, eventstream <-chan *Event, name string, mask uint32) {
-	t.Logf(`expected: "%s": 0x%x`, name, mask)
 	select {
 	case event := <-eventstream:
 		if event == nil {
 			t.Fatal("nil event received")
 		}
-		t.Logf("received: %s", event)
 		if event.Name != name || event.Mask != mask {
 			t.Fatal("did not receive expected event")
 		}
@@ -135,7 +133,6 @@ func TestNotifyEvents(t *testing.T) {
 	expect(t, watcher.Event, testDir, FS_DELETE_SELF)
 	expect(t, watcher.Event, testDir, FS_IGNORED)
 
-	t.Log("calling Close()")
 	if err = watcher.Close(); err != nil {
 		t.Fatalf("failed to close watcher: %s", err)
 	}
