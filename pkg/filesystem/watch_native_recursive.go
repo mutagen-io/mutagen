@@ -4,20 +4,17 @@ package filesystem
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/rjeczalik/notify"
 )
 
 const (
 	watchEventsBufferSize             = 25
-	watchCoalescingWindow             = 250 * time.Millisecond
+	watchCoalescingWindow             = 100 * time.Millisecond
 	watchRootParameterPollingInterval = 5 * time.Second
 )
 
@@ -50,27 +47,16 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 		panic("unhandled platform case")
 	}
 
-	// HACK: If we're on Windows and the watch root is a device root, then we
-	// can't natively watch due to rjeczalik/notify#148. As soon as this issue
-	// is fixed, we can remove this artificial restriction.
-	// TODO: If we remove this restriction, does the <root>/... syntax work for
-	// device roots on Windows? I know it works for subdirectories.
-	if runtime.GOOS == "windows" && len(watchRoot) <= 3 {
-		return errors.New("unable to watch direct descendants of device root")
-	}
-
-	// Compute the watch root specification.
-	watchRootSpecification := fmt.Sprintf("%s/...", watchRoot)
-
 	// Set up initial watch root parameters.
 	var exists bool
 	var parameters watchRootParameters
 
-	// Create a watch events channel.
-	nativeEvents := make(chan notify.EventInfo, watchEventsBufferSize)
+	// Set up our initial event paths channel.
+	dummyEventPaths := make(chan string)
+	eventPaths := dummyEventPaths
 
-	// Track our watching status.
-	watching := false
+	// Create a placeholder for the watch.
+	var watch *recursiveWatch
 
 	// Create a timer that we can use to coalesce events. It will be created
 	// running, so make sure to stop it and consume its first event, if any.
@@ -87,8 +73,8 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 	// Create a function to clean up after ourselves.
 	defer func() {
 		// Cancel any watch.
-		if watching {
-			notify.Stop(nativeEvents)
+		if watch != nil {
+			watch.stop()
 		}
 
 		// Cancel the coalescing timer.
@@ -106,11 +92,16 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 		select {
 		case <-context.Done():
 			return errors.New("watch cancelled")
-		case e := <-nativeEvents:
-			path := e.Path()
+		case path := <-eventPaths:
+			// NOTE: When using FSEvents, event paths are (a) relative to the
+			// device root and (b) fully resolved in terms of symlinks. This
+			// means that the isExecutabilityTestPath and
+			// isDecompositionTestPath checks will still work but isParentOrSelf
+			// will not. Fortunately isParentOrSelf isn't necessary when using
+			// FSEvents since we watch the root itself.
 			if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
 				continue
-			} else if !isParentOrSelf(root, e.Path()) {
+			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {
 				continue
 			} else {
 				if !coalescingTimer.Stop() {
@@ -157,10 +148,12 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 
 			// Recreate the watcher if necessary.
 			if recreate {
-				// Close out any existing watcher.
-				if watching {
-					notify.Stop(nativeEvents)
-					watching = false
+				// Close out any existing watcher and reset the event paths
+				// channel.
+				if watch != nil {
+					watch.stop()
+					watch = nil
+					eventPaths = dummyEventPaths
 				}
 
 				// If the watch root exists, then attempt to start watching. If
@@ -172,11 +165,16 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 				// os.IsNotExist. In any case, if there's an error, then just
 				// treat things as if we never saw the watch root existing.
 				if currentlyExists {
-					if err := notify.Watch(watchRootSpecification, nativeEvents, recursiveWatchFlags); err != nil {
-						currentlyExists = false
-						currentParameters = watchRootParameters{}
+					if w, err := newRecursiveWatch(watchRoot); err != nil {
+						if os.IsNotExist(err) {
+							currentlyExists = false
+							currentParameters = watchRootParameters{}
+						} else {
+							return errors.Wrap(err, "unable to create recursive watch")
+						}
 					} else {
-						watching = true
+						watch = w
+						eventPaths = w.eventPaths
 					}
 				}
 

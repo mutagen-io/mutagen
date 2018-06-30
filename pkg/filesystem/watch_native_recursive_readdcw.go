@@ -3,17 +3,18 @@
 package filesystem
 
 import (
+	"context"
 	"os"
 	"syscall"
 
 	"github.com/pkg/errors"
 
-	"github.com/rjeczalik/notify"
+	"github.com/havoc-io/mutagen/pkg/filesystem/winfsnotify"
 )
 
 const (
-	// recursiveWatchFlags are the flags to use for recursive file watches.
-	recursiveWatchFlags = notify.All
+	// winfsnotifyFlags are the flags to use for recursive winfsnotify watches.
+	winfsnotifyFlags = winfsnotify.FS_ALL_EVENTS & ^(winfsnotify.FS_ACCESS | winfsnotify.FS_CLOSE)
 )
 
 // watchRootParameters specifies the parameters that should be monitored for
@@ -47,4 +48,64 @@ func probeWatchRoot(root string) (watchRootParameters, error) {
 func watchRootParametersEqual(first, second watchRootParameters) bool {
 	return first.fileAttributes == second.fileAttributes &&
 		first.creationTime == second.creationTime
+}
+
+type recursiveWatch struct {
+	watcher          *winfsnotify.Watcher
+	forwardingCancel context.CancelFunc
+	eventPaths       chan string
+}
+
+func newRecursiveWatch(path string) (*recursiveWatch, error) {
+	// Create the watcher.
+	watcher, err := winfsnotify.NewWatcher()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create watcher")
+	}
+
+	// Create the event paths channel.
+	eventPaths := make(chan string, watchEventsBufferSize)
+
+	// Start a cancellable Goroutine to extract and forward paths.
+	forwardingContext, forwardingCancel := context.WithCancel(context.Background())
+	go func() {
+	Forwarding:
+		for {
+			select {
+			case <-forwardingContext.Done():
+				break Forwarding
+			case e := <-watcher.Event:
+				select {
+				case eventPaths <- e.Name:
+				default:
+				}
+			}
+		}
+	}()
+
+	// Start watching.
+	if err := watcher.AddWatch(path, winfsnotifyFlags); err != nil {
+		forwardingCancel()
+		if os.IsNotExist(err) {
+			return nil, err
+		}
+		return nil, errors.Wrap(err, "unable to start watching")
+	}
+
+	// Done.
+	return &recursiveWatch{
+		watcher:          watcher,
+		forwardingCancel: forwardingCancel,
+		eventPaths:       eventPaths,
+	}, nil
+}
+
+func (w *recursiveWatch) stop() {
+	// Stop the underlying event stream.
+	// TODO: Should we handle errors here? There's not really anything sane that
+	// we can do.
+	w.watcher.Close()
+
+	// Cancel forwarding.
+	w.forwardingCancel()
 }

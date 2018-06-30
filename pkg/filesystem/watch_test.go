@@ -138,12 +138,6 @@ func testWatchCycle(path string, mode WatchMode) error {
 }
 
 func TestWatchPortable(t *testing.T) {
-	// Skip this test on Windows for now, because the notify package seems to
-	// have a data race there that the race detector catches.
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-
 	// Create a temporary directory and defer its removal.
 	directory, err := ioutil.TempDir("", "mutagen_filesystem_watch")
 	if err != nil {
