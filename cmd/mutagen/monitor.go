@@ -61,7 +61,7 @@ func printMonitorLine(state *sessionpkg.State) {
 	// wipes to work (if it's the same width, the next carriage return overflows
 	// to the next line, behaving exactly like a newline).
 	// TODO: We should probably try to detect the console width.
-	fmt.Printf(monitorLineFormat, status)
+	fmt.Fprintf(color.Output, monitorLineFormat, status)
 }
 
 func monitorMain(command *cobra.Command, arguments []string) error {

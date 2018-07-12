@@ -71,7 +71,7 @@ func printSessionStatus(state *sessionpkg.State) {
 	if state.Session.Paused {
 		statusString = color.YellowString("[Paused]")
 	}
-	fmt.Println("Status:", statusString)
+	fmt.Fprintln(color.Output, "Status:", statusString)
 
 	// Print the last error, if any.
 	if state.LastError != "" {
