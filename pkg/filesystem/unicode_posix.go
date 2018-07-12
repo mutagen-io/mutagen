@@ -57,7 +57,8 @@ func DecomposesUnicode(path string) (bool, error) {
 
 	// Loop through contents and see if we find a match for the decomposed file
 	// name. It doesn't even need to be our file, though it probably will be.
-	for _, name := range contents {
+	for _, c := range contents {
+		name := c.Name()
 		if name == decomposedFilename {
 			return true, nil
 		} else if name == composedFilename {

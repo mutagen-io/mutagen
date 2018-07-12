@@ -157,40 +157,21 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
 
-	// Recompose content names if necessary.
-	if s.recomposeUnicode {
-		for i, name := range directoryContents {
-			directoryContents[i] = norm.NFC.String(name)
-		}
-	}
-
 	// Compute entries.
 	contents := make(map[string]*Entry, len(directoryContents))
-	for _, name := range directoryContents {
+	for _, c := range directoryContents {
+		// Compute the content name, recomposing Unicode if necessary.
+		name := c.Name()
+		if s.recomposeUnicode {
+			name = norm.NFC.String(name)
+		}
+
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 
-		// Grab stat information for this path. If the path has disappeared
-		// between list time and stat time, then concurrent modifications
-		// (deletions or renames) are likely occurring and we should abort. We
-		// could do what something like filepath.Walk does and check the error
-		// using os.IsNotExist and just ignore the file if it's been removed,
-		// but in order for our root deletion safety check to be more effective,
-		// we don't want to take snapshots in the middle of a deletion
-		// operation. It wouldn't stop the snapshot from being correct in the
-		// context of our synchronization algorithm, but we really want to get a
-		// picture once the deletion has stopped. Again, this doesn't guarantee
-		// we'll catch all concurrent deletions - there's a race there, but it
-		// will astronomically increase our chances, and also probably minimize
-		// the number of resynchronizations that we need to do.
-		info, err := os.Lstat(filepath.Join(s.root, contentPath))
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to stat directory content")
-		}
-
 		// Compute the kind for this content, skipping if unsupported.
 		kind := EntryKind_File
-		if mode := info.Mode(); mode&os.ModeDir != 0 {
+		if mode := c.Mode(); mode&os.ModeDir != 0 {
 			kind = EntryKind_Directory
 		} else if mode&os.ModeSymlink != 0 {
 			kind = EntryKind_Symlink
@@ -206,7 +187,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		// Handle based on kind.
 		var entry *Entry
 		if kind == EntryKind_File {
-			entry, err = s.file(contentPath, info)
+			entry, err = s.file(contentPath, c)
 		} else if kind == EntryKind_Symlink {
 			if symlinkMode == SymlinkMode_SymlinkPortable {
 				entry, err = s.symlink(contentPath, true)

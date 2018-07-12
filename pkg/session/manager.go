@@ -36,11 +36,13 @@ func NewManager() (*Manager, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute sessions directory")
 	}
-	identifiers, err := filesystem.DirectoryContents(sessionsDirectory)
+	sessionsDirectoryContents, err := filesystem.DirectoryContents(sessionsDirectory)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read contents of sessions directory")
 	}
-	for _, identifier := range identifiers {
+	for _, c := range sessionsDirectoryContents {
+		// TODO: Ensure that the name matches the expected format.
+		identifier := c.Name()
 		if controller, err := loadSession(tracker, identifier); err != nil {
 			continue
 		} else {

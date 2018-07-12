@@ -26,7 +26,7 @@ func HousekeepCaches() {
 	}
 
 	// Get the list of caches. If we fail, just abort.
-	cacheNames, err := filesystem.DirectoryContents(cachesDirectoryPath)
+	cachesDirectoryContents, err := filesystem.DirectoryContents(cachesDirectoryPath)
 	if err != nil {
 		return
 	}
@@ -36,8 +36,10 @@ func HousekeepCaches() {
 
 	// Loop through each cache and remove those older than a certain age. Ignore
 	// any failures.
-	for _, n := range cacheNames {
-		fullPath := filepath.Join(cachesDirectoryPath, n)
+	for _, c := range cachesDirectoryContents {
+		// TODO: Ensure that the name matches the expected format.
+		cacheName := c.Name()
+		fullPath := filepath.Join(cachesDirectoryPath, cacheName)
 		if stat, err := os.Stat(fullPath); err != nil {
 			continue
 		} else if now.Sub(stat.ModTime()) > maximumCacheAge {
@@ -60,7 +62,7 @@ func HousekeepStaging() {
 	}
 
 	// Get the list of staging roots. If we fail, just abort.
-	stagingRootNames, err := filesystem.DirectoryContents(stagingDirectoryPath)
+	stagingDirectoryContents, err := filesystem.DirectoryContents(stagingDirectoryPath)
 	if err != nil {
 		return
 	}
@@ -80,8 +82,10 @@ func HousekeepStaging() {
 	// synchronization cycle and there might be a conflict. But even in that
 	// statistically unlikely case, the worst case scenario would be triggering
 	// an additional synchronization cycle.
-	for _, n := range stagingRootNames {
-		fullPath := filepath.Join(stagingDirectoryPath, n)
+	for _, c := range stagingDirectoryContents {
+		// TODO: Ensure that the name matches the expected format.
+		stagingRootName := c.Name()
+		fullPath := filepath.Join(stagingDirectoryPath, stagingRootName)
 		if stat, err := os.Stat(fullPath); err != nil {
 			continue
 		} else if now.Sub(stat.ModTime()) > maximumStagingRootAge {

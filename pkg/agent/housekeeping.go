@@ -27,7 +27,7 @@ func Housekeep() {
 	}
 
 	// Get the list of locally installed agent versions. If we fail, just abort.
-	agentVersions, err := filesystem.DirectoryContents(agentsDirectoryPath)
+	agentDirectoryContents, err := filesystem.DirectoryContents(agentsDirectoryPath)
 	if err != nil {
 		return
 	}
@@ -39,13 +39,15 @@ func Housekeep() {
 	now := time.Now()
 
 	// Loop through each agent version, compute the time it was last launched,
-	// and remove it if longer than the maximum allowed period. Ignore any
-	// failures.
-	for _, v := range agentVersions {
-		if stat, err := extstat.NewFromFileName(filepath.Join(agentsDirectoryPath, v, agentName)); err != nil {
+	// and remove it if longer than the maximum allowed period. Skip contents
+	// where failures are encountered.
+	for _, c := range agentDirectoryContents {
+		// TODO: Ensure that the name matches the expected format.
+		agentVersion := c.Name()
+		if stat, err := extstat.NewFromFileName(filepath.Join(agentsDirectoryPath, agentVersion, agentName)); err != nil {
 			continue
 		} else if now.Sub(stat.AccessTime) > maximumAgentIdlePeriod {
-			os.RemoveAll(filepath.Join(agentsDirectoryPath, v))
+			os.RemoveAll(filepath.Join(agentsDirectoryPath, agentVersion))
 		}
 	}
 }

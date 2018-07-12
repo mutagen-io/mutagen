@@ -64,19 +64,19 @@ func (t *transitioner) ensureRouteWithProperCase(path string, skipLast bool) err
 			return errors.Wrap(err, "unable to read directory contents")
 		}
 
-		// Recompose content names if necessary.
-		if t.recomposeUnicode {
-			for i, name := range contents {
-				contents[i] = norm.NFC.String(name)
-			}
-		}
-
 		// Check if this path component exists in the contents. It's important
-		// to note that the contents are not guaranteed to be ordered, so we
-		// can't do a binary search here.
+		// to note that the contents are not guaranteed to be ordered, and we
+		// may need to recompose Unicode, so we can't do a binary search here.
 		found := false
-		for _, content := range contents {
-			if content == component {
+		for _, c := range contents {
+			// Extract the content name, recomposing Unicode if necessary.
+			name := c.Name()
+			if t.recomposeUnicode {
+				name = norm.NFC.String(name)
+			}
+
+			// Check if it's a match.
+			if name == component {
 				found = true
 				break
 			}
@@ -217,17 +217,10 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 	fullPath := filepath.Join(t.root, path)
 
 	// List the contents for this directory.
-	contentNames, err := filesystem.DirectoryContents(fullPath)
+	contents, err := filesystem.DirectoryContents(fullPath)
 	if err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to read directory contents"))
 		return false
-	}
-
-	// Recompose content names if necessary.
-	if t.recomposeUnicode {
-		for i, name := range contentNames {
-			contentNames[i] = norm.NFC.String(name)
-		}
 	}
 
 	// Loop through contents and remove them. We do this to ensure that what
@@ -238,7 +231,13 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 	// time we remove, but it is very small and we also compare file contents,
 	// so the chance of deleting something we shouldn't is very small.
 	unknownContentEncountered := false
-	for _, name := range contentNames {
+	for _, c := range contents {
+		// Compute the content name, renormalizing Unicode if necessary.
+		name := c.Name()
+		if t.recomposeUnicode {
+			name = norm.NFC.String(name)
+		}
+
 		// Compute the content path.
 		contentPath := pathpkg.Join(path, name)
 

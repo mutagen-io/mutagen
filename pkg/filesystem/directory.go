@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DirectoryContents(path string) ([]string, error) {
+func DirectoryContents(path string) ([]os.FileInfo, error) {
 	// Open the directory and ensure its closure.
 	directory, err := os.Open(path)
 	if err != nil {
@@ -14,12 +14,12 @@ func DirectoryContents(path string) ([]string, error) {
 	}
 	defer directory.Close()
 
-	// Grab the directory names.
-	names, err := directory.Readdirnames(0)
+	// Grab the directory contents.
+	contents, err := directory.Readdir(0)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read directory names")
+		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
 
 	// Success.
-	return names, nil
+	return contents, nil
 }
