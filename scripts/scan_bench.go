@@ -110,10 +110,12 @@ func main() {
 		}
 	}
 	start = time.Now()
-	serializedSnapshot, err := proto.Marshal(snapshot)
-	if err != nil {
+	buffer := proto.NewBuffer(nil)
+	buffer.SetDeterministic(true)
+	if err := buffer.Marshal(snapshot); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
+	serializedSnapshot := buffer.Bytes()
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
