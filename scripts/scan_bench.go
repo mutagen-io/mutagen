@@ -104,21 +104,43 @@ func main() {
 	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
 
 	// Serialize it.
+	if enableProfile {
+		if profiler, err = profile.New("serialize_snapshot"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start = time.Now()
 	serializedSnapshot, err := proto.Marshal(snapshot)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
 	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Snapshot serialization took", stop.Sub(start))
 
 	// Deserialize it.
+	if enableProfile {
+		if profiler, err = profile.New("deserialize_snapshot"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start = time.Now()
 	deserializedSnapshot := &sync.Entry{}
 	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
 	}
 	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Snapshot deserialization took", stop.Sub(start))
 
 	// Validate the deserialized snapshot.
@@ -172,21 +194,43 @@ func main() {
 	// function publicly.
 
 	// Serialize the cache.
+	if enableProfile {
+		if profiler, err = profile.New("serialize_cache"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start = time.Now()
 	serializedCache, err := proto.Marshal(cache)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize cache"))
 	}
 	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Cache serialization took", stop.Sub(start))
 
 	// Deserialize the cache.
+	if enableProfile {
+		if profiler, err = profile.New("deserialize_cache"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
 	start = time.Now()
 	deserializedCache := &sync.Cache{}
 	if err = proto.Unmarshal(serializedCache, deserializedCache); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize cache"))
 	}
 	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
 	fmt.Println("Cache deserialization took", stop.Sub(start))
 
 	// Write the serialized cache to disk.
