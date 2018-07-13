@@ -16,7 +16,7 @@ import (
 const (
 	// fseventsCoalescingLatency is the coalescing latency to use with FSEvents
 	// itself.
-	fseventsCoalescingLatency = 25 * time.Millisecond
+	fseventsCoalescingLatency = 10 * time.Millisecond
 
 	// fseventsFlags are the flags to use for recursive FSEvents watchers.
 	fseventsFlags = fsevents.WatchRoot | fsevents.FileEvents
