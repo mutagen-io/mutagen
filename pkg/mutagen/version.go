@@ -14,7 +14,7 @@ const (
 	// VersionMinor represents the current minor version of Mutagen.
 	VersionMinor = 4
 	// VersionPatch represents the current patch version of Mutagen.
-	VersionPatch = 1
+	VersionPatch = 2
 )
 
 var Version string
