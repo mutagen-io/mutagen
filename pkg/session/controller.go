@@ -571,11 +571,25 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			skipPolling = false
 		}
 
-		// Scan alpha.
+		// Scan both endpoints in parallel and check for errors.
 		c.stateLock.Lock()
-		c.state.Status = Status_ScanningAlpha
+		c.state.Status = Status_Scanning
 		c.stateLock.Unlock()
-		αSnapshot, αPreservesExecutability, αScanErr, αTryAgain := alpha.scan(ancestor)
+		var αSnapshot, βSnapshot *sync.Entry
+		var αPreservesExecutability, βPreservesExecutability bool
+		var αScanErr, βScanErr error
+		var αTryAgain, βTryAgain bool
+		scanDone := &syncpkg.WaitGroup{}
+		scanDone.Add(2)
+		go func() {
+			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.scan(ancestor)
+			scanDone.Done()
+		}()
+		go func() {
+			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.scan(ancestor)
+			scanDone.Done()
+		}()
+		scanDone.Wait()
 		if αScanErr != nil {
 			αScanErr = errors.Wrap(αScanErr, "alpha scan error")
 			if !αTryAgain {
@@ -586,12 +600,6 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 				c.stateLock.Unlock()
 			}
 		}
-
-		// Scan beta.
-		c.stateLock.Lock()
-		c.state.Status = Status_ScanningBeta
-		c.stateLock.Unlock()
-		βSnapshot, βPreservesExecutability, βScanErr, βTryAgain := beta.scan(ancestor)
 		if βScanErr != nil {
 			βScanErr = errors.Wrap(βScanErr, "beta scan error")
 			if !βTryAgain {

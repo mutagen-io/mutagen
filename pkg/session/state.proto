@@ -14,15 +14,14 @@ enum Status {
     ConnectingAlpha = 3;
     ConnectingBeta = 4;
     Watching = 5;
-    ScanningAlpha = 6;
-    ScanningBeta = 7;
-    WaitingForRescan = 8;
-    Reconciling = 9;
-    StagingAlpha = 10;
-    StagingBeta = 11;
-    TransitioningAlpha = 12;
-    TransitioningBeta = 13;
-    Saving = 14;
+    Scanning = 6;
+    WaitingForRescan = 7;
+    Reconciling = 8;
+    StagingAlpha = 9;
+    StagingBeta = 10;
+    TransitioningAlpha = 11;
+    TransitioningBeta = 12;
+    Saving = 13;
 }
 
 message State {

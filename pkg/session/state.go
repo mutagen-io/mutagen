@@ -18,10 +18,8 @@ func (s Status) Description() string {
 		return "Connecting to beta"
 	case Status_Watching:
 		return "Watching for changes"
-	case Status_ScanningAlpha:
-		return "Scanning files on alpha"
-	case Status_ScanningBeta:
-		return "Scanning files on beta"
+	case Status_Scanning:
+		return "Scanning files"
 	case Status_WaitingForRescan:
 		return "Waiting for rescan"
 	case Status_Reconciling:
