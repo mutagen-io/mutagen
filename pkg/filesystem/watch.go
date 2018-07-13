@@ -198,8 +198,6 @@ func Watch(context context.Context, root string, events chan struct{}, mode Watc
 			// timer and try again. We have to assume that errors here are due
 			// to concurrent modifications, so there's not much we can do to
 			// handle them.
-			// TODO: If we see a certain number of failed polls, we could just
-			// fall back to a timer.
 			newContents, changed, err := poll(root, contents)
 			if err != nil || !changed {
 				timer.Reset(pollIntervalDuration)
