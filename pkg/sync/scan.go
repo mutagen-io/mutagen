@@ -137,21 +137,18 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	}, nil
 }
 
-func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error) {
-	// Compute the full path to the directory.
-	fullPath := filepath.Join(s.root, path)
-
+func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMode) (*Entry, error) {
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
-	if id, err := filesystem.DeviceID(fullPath); err != nil {
-		return nil, errors.Wrap(err, "unable to probe directory device ID")
+	if id, err := filesystem.DeviceID(info); err != nil {
+		return nil, errors.Wrap(err, "unable to extract directory device ID")
 	} else if id != s.deviceID {
 		return nil, errors.New("scan crossed filesystem boundary")
 	}
 
 	// Read directory contents.
-	directoryContents, err := filesystem.DirectoryContents(fullPath)
+	directoryContents, err := filesystem.DirectoryContents(filepath.Join(s.root, path))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
@@ -198,7 +195,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, symlinkMode)
+			entry, err = s.directory(contentPath, c, symlinkMode)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -271,7 +268,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
 		// Grab and set the device ID for the root directory.
-		if id, err := filesystem.DeviceID(root); err != nil {
+		if id, err := filesystem.DeviceID(info); err != nil {
 			return nil, false, false, nil, errors.Wrap(err, "unable to probe root device ID")
 		} else {
 			s.deviceID = id
@@ -292,7 +289,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 		}
 
 		// Perform a recursive scan.
-		if rootEntry, err := s.directory("", symlinkMode); err != nil {
+		if rootEntry, err := s.directory("", info, symlinkMode); err != nil {
 			return nil, false, false, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, nil

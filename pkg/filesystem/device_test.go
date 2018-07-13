@@ -7,25 +7,6 @@ import (
 	"testing"
 )
 
-func TestDeviceIDFailOnNonExistentPath(t *testing.T) {
-	// If we're on Windows, the device ID is always 0, and the probing never
-	// fails, so skip this test in that case.
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-
-	// Attempt to grab the device ID.
-	if _, err := DeviceID("/path/does/not/exist"); err == nil {
-		t.Error("device ID probe succeeded for non-existent path")
-	}
-}
-
-func TestDeviceID(t *testing.T) {
-	if _, err := DeviceID("."); err != nil {
-		t.Error("device ID probe failed for current path:", err)
-	}
-}
-
 func TestDeviceIDsDifferent(t *testing.T) {
 	// If we're on Windows, the device ID is always 0, so skip this test in that
 	// case.
@@ -40,13 +21,21 @@ func TestDeviceIDsDifferent(t *testing.T) {
 	}
 
 	// Grab the device ID for the current path.
-	deviceID, err := DeviceID(".")
+	info, err := os.Lstat(".")
+	if err != nil {
+		t.Fatal("lstat failed for current path:", err)
+	}
+	deviceID, err := DeviceID(info)
 	if err != nil {
 		t.Fatal("device ID probe failed for current path:", err)
 	}
 
 	// Grab the device ID for the FAT32 partition.
-	fat32DeviceID, err := DeviceID(fat32Root)
+	fat32Info, err := os.Lstat(fat32Root)
+	if err != nil {
+		t.Fatal("lstat failed for FAT32 partition:", err)
+	}
+	fat32DeviceID, err := DeviceID(fat32Info)
 	if err != nil {
 		t.Fatal("device ID probe failed for FAT32 partition:", err)
 	}
@@ -75,13 +64,21 @@ func TestDeviceIDSubrootDifferent(t *testing.T) {
 	parent := filepath.Dir(fat32Subroot)
 
 	// Grab the device ID for the parent path.
-	parentDeviceID, err := DeviceID(parent)
+	parentInfo, err := os.Lstat(parent)
+	if err != nil {
+		t.Fatal("lstat failed for parent path:", err)
+	}
+	parentDeviceID, err := DeviceID(parentInfo)
 	if err != nil {
 		t.Fatal("device ID probe failed for parent path:", err)
 	}
 
 	// Grab the device ID for the FAT32 partition.
-	fat32SubrootDeviceID, err := DeviceID(fat32Subroot)
+	fat32SubrootInfo, err := os.Lstat(fat32Subroot)
+	if err != nil {
+		t.Fatal("lstat failed for FAT32 subpath:", err)
+	}
+	fat32SubrootDeviceID, err := DeviceID(fat32SubrootInfo)
 	if err != nil {
 		t.Fatal("device ID probe failed for FAT32 subpath:", err)
 	}

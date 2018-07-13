@@ -11,16 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func DeviceID(path string) (uint64, error) {
-	// Perform a stat on the path.
-	info, err := os.Lstat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, err
-		}
-		return 0, errors.Wrap(err, "unable to query filesystem information")
-	}
-
+// DeviceID extracts the device ID from a stat result.
+func DeviceID(info os.FileInfo) (uint64, error) {
 	// Grab the system-specific stat type.
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
