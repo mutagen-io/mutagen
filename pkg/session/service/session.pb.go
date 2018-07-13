@@ -27,10 +27,10 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type CreateRequest struct {
-	Alpha                *url.URL               `protobuf:"bytes,1,opt,name=alpha" json:"alpha,omitempty"`
-	Beta                 *url.URL               `protobuf:"bytes,2,opt,name=beta" json:"beta,omitempty"`
-	Configuration        *session.Configuration `protobuf:"bytes,3,opt,name=configuration" json:"configuration,omitempty"`
-	Response             string                 `protobuf:"bytes,4,opt,name=response" json:"response,omitempty"`
+	Alpha                *url.URL               `protobuf:"bytes,1,opt,name=alpha,proto3" json:"alpha,omitempty"`
+	Beta                 *url.URL               `protobuf:"bytes,2,opt,name=beta,proto3" json:"beta,omitempty"`
+	Configuration        *session.Configuration `protobuf:"bytes,3,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	Response             string                 `protobuf:"bytes,4,opt,name=response,proto3" json:"response,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
@@ -89,8 +89,8 @@ func (m *CreateRequest) GetResponse() string {
 }
 
 type CreateResponse struct {
-	Session              string         `protobuf:"bytes,1,opt,name=session" json:"session,omitempty"`
-	Prompt               *prompt.Prompt `protobuf:"bytes,2,opt,name=prompt" json:"prompt,omitempty"`
+	Session              string         `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	Prompt               *prompt.Prompt `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -135,8 +135,8 @@ func (m *CreateResponse) GetPrompt() *prompt.Prompt {
 }
 
 type ListRequest struct {
-	PreviousStateIndex   uint64   `protobuf:"varint,1,opt,name=previousStateIndex" json:"previousStateIndex,omitempty"`
-	Specifications       []string `protobuf:"bytes,2,rep,name=specifications" json:"specifications,omitempty"`
+	PreviousStateIndex   uint64   `protobuf:"varint,1,opt,name=previousStateIndex,proto3" json:"previousStateIndex,omitempty"`
+	Specifications       []string `protobuf:"bytes,2,rep,name=specifications,proto3" json:"specifications,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -181,8 +181,8 @@ func (m *ListRequest) GetSpecifications() []string {
 }
 
 type ListResponse struct {
-	StateIndex           uint64           `protobuf:"varint,1,opt,name=stateIndex" json:"stateIndex,omitempty"`
-	SessionStates        []*session.State `protobuf:"bytes,2,rep,name=sessionStates" json:"sessionStates,omitempty"`
+	StateIndex           uint64           `protobuf:"varint,1,opt,name=stateIndex,proto3" json:"stateIndex,omitempty"`
+	SessionStates        []*session.State `protobuf:"bytes,2,rep,name=sessionStates,proto3" json:"sessionStates,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -227,7 +227,7 @@ func (m *ListResponse) GetSessionStates() []*session.State {
 }
 
 type PauseRequest struct {
-	Specifications       []string `protobuf:"bytes,1,rep,name=specifications" json:"specifications,omitempty"`
+	Specifications       []string `protobuf:"bytes,1,rep,name=specifications,proto3" json:"specifications,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -295,8 +295,8 @@ func (m *PauseResponse) XXX_DiscardUnknown() {
 var xxx_messageInfo_PauseResponse proto.InternalMessageInfo
 
 type ResumeRequest struct {
-	Specifications       []string `protobuf:"bytes,1,rep,name=specifications" json:"specifications,omitempty"`
-	Response             string   `protobuf:"bytes,2,opt,name=response" json:"response,omitempty"`
+	Specifications       []string `protobuf:"bytes,1,rep,name=specifications,proto3" json:"specifications,omitempty"`
+	Response             string   `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -341,7 +341,7 @@ func (m *ResumeRequest) GetResponse() string {
 }
 
 type ResumeResponse struct {
-	Prompt               *prompt.Prompt `protobuf:"bytes,1,opt,name=prompt" json:"prompt,omitempty"`
+	Prompt               *prompt.Prompt `protobuf:"bytes,1,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -379,7 +379,7 @@ func (m *ResumeResponse) GetPrompt() *prompt.Prompt {
 }
 
 type TerminateRequest struct {
-	Specifications       []string `protobuf:"bytes,1,rep,name=specifications" json:"specifications,omitempty"`
+	Specifications       []string `protobuf:"bytes,1,rep,name=specifications,proto3" json:"specifications,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -467,8 +467,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Session service
-
+// SessionClient is the client API for Session service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SessionClient interface {
 	Create(ctx context.Context, opts ...grpc.CallOption) (Session_CreateClient, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
@@ -486,7 +487,7 @@ func NewSessionClient(cc *grpc.ClientConn) SessionClient {
 }
 
 func (c *sessionClient) Create(ctx context.Context, opts ...grpc.CallOption) (Session_CreateClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Session_serviceDesc.Streams[0], c.cc, "/service.Session/Create", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Session_serviceDesc.Streams[0], "/service.Session/Create", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +519,7 @@ func (x *sessionCreateClient) Recv() (*CreateResponse, error) {
 
 func (c *sessionClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
 	out := new(ListResponse)
-	err := grpc.Invoke(ctx, "/service.Session/List", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Session/List", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +528,7 @@ func (c *sessionClient) List(ctx context.Context, in *ListRequest, opts ...grpc.
 
 func (c *sessionClient) Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error) {
 	out := new(PauseResponse)
-	err := grpc.Invoke(ctx, "/service.Session/Pause", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Session/Pause", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +536,7 @@ func (c *sessionClient) Pause(ctx context.Context, in *PauseRequest, opts ...grp
 }
 
 func (c *sessionClient) Resume(ctx context.Context, opts ...grpc.CallOption) (Session_ResumeClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Session_serviceDesc.Streams[1], c.cc, "/service.Session/Resume", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Session_serviceDesc.Streams[1], "/service.Session/Resume", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -567,15 +568,14 @@ func (x *sessionResumeClient) Recv() (*ResumeResponse, error) {
 
 func (c *sessionClient) Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error) {
 	out := new(TerminateResponse)
-	err := grpc.Invoke(ctx, "/service.Session/Terminate", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Session/Terminate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Session service
-
+// SessionServer is the server API for Session service.
 type SessionServer interface {
 	Create(Session_CreateServer) error
 	List(context.Context, *ListRequest) (*ListResponse, error)

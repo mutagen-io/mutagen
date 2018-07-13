@@ -19,8 +19,8 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Conflict struct {
-	AlphaChanges         []*Change `protobuf:"bytes,1,rep,name=alphaChanges" json:"alphaChanges,omitempty"`
-	BetaChanges          []*Change `protobuf:"bytes,2,rep,name=betaChanges" json:"betaChanges,omitempty"`
+	AlphaChanges         []*Change `protobuf:"bytes,1,rep,name=alphaChanges,proto3" json:"alphaChanges,omitempty"`
+	BetaChanges          []*Change `protobuf:"bytes,2,rep,name=betaChanges,proto3" json:"betaChanges,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`

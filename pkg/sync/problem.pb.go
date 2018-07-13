@@ -19,8 +19,8 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Problem struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path" json:"path,omitempty"`
-	Error                string   `protobuf:"bytes,2,opt,name=error" json:"error,omitempty"`
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Error                string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

@@ -26,21 +26,21 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type Configuration struct {
 	// SymlinkMode specifies the symlink mode that should be used in
 	// synchronization.
-	SymlinkMode sync.SymlinkMode `protobuf:"varint,1,opt,name=symlinkMode,enum=sync.SymlinkMode" json:"symlinkMode,omitempty"`
+	SymlinkMode sync.SymlinkMode `protobuf:"varint,1,opt,name=symlinkMode,proto3,enum=sync.SymlinkMode" json:"symlinkMode,omitempty"`
 	// WatchMode specifies the filesystem watching mode.
-	WatchMode filesystem.WatchMode `protobuf:"varint,21,opt,name=watchMode,enum=filesystem.WatchMode" json:"watchMode,omitempty"`
+	WatchMode filesystem.WatchMode `protobuf:"varint,21,opt,name=watchMode,proto3,enum=filesystem.WatchMode" json:"watchMode,omitempty"`
 	// WatchPollingInterval specifies the interval (in seconds) for poll-based
 	// file monitoring. A value of 0 specifies that the default interval should
 	// be used.
-	WatchPollingInterval uint32 `protobuf:"varint,22,opt,name=watchPollingInterval" json:"watchPollingInterval,omitempty"`
+	WatchPollingInterval uint32 `protobuf:"varint,22,opt,name=watchPollingInterval,proto3" json:"watchPollingInterval,omitempty"`
 	// DefaultIgnores specifies the ignore patterns brought in from the global
 	// configuration.
-	DefaultIgnores []string `protobuf:"bytes,31,rep,name=defaultIgnores" json:"defaultIgnores,omitempty"`
+	DefaultIgnores []string `protobuf:"bytes,31,rep,name=defaultIgnores,proto3" json:"defaultIgnores,omitempty"`
 	// Ignores specifies the ignore patterns brought in from the create request.
-	Ignores []string `protobuf:"bytes,32,rep,name=ignores" json:"ignores,omitempty"`
+	Ignores []string `protobuf:"bytes,32,rep,name=ignores,proto3" json:"ignores,omitempty"`
 	// IgnoreVCSMode specifies the VCS ignore mode that should be used in
 	// synchronization.
-	IgnoreVCSMode        sync.IgnoreVCSMode `protobuf:"varint,33,opt,name=ignoreVCSMode,enum=sync.IgnoreVCSMode" json:"ignoreVCSMode,omitempty"`
+	IgnoreVCSMode        sync.IgnoreVCSMode `protobuf:"varint,33,opt,name=ignoreVCSMode,proto3,enum=sync.IgnoreVCSMode" json:"ignoreVCSMode,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`

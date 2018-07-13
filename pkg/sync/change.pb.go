@@ -19,9 +19,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Change struct {
-	Path                 string   `protobuf:"bytes,1,opt,name=path" json:"path,omitempty"`
-	Old                  *Entry   `protobuf:"bytes,2,opt,name=old" json:"old,omitempty"`
-	New                  *Entry   `protobuf:"bytes,3,opt,name=new" json:"new,omitempty"`
+	Path                 string   `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Old                  *Entry   `protobuf:"bytes,2,opt,name=old,proto3" json:"old,omitempty"`
+	New                  *Entry   `protobuf:"bytes,3,opt,name=new,proto3" json:"new,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

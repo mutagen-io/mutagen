@@ -56,9 +56,9 @@ var xxx_messageInfo_VersionRequest proto.InternalMessageInfo
 type VersionResponse struct {
 	// TODO: Should we encapsulate these inside a Version message type, perhaps
 	// in the mutagen package?
-	Major                uint64   `protobuf:"varint,1,opt,name=major" json:"major,omitempty"`
-	Minor                uint64   `protobuf:"varint,2,opt,name=minor" json:"minor,omitempty"`
-	Patch                uint64   `protobuf:"varint,3,opt,name=patch" json:"patch,omitempty"`
+	Major                uint64   `protobuf:"varint,1,opt,name=major,proto3" json:"major,omitempty"`
+	Minor                uint64   `protobuf:"varint,2,opt,name=minor,proto3" json:"minor,omitempty"`
+	Patch                uint64   `protobuf:"varint,3,opt,name=patch,proto3" json:"patch,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -184,8 +184,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Daemon service
-
+// DaemonClient is the client API for Daemon service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type DaemonClient interface {
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
@@ -201,7 +202,7 @@ func NewDaemonClient(cc *grpc.ClientConn) DaemonClient {
 
 func (c *daemonClient) Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error) {
 	out := new(VersionResponse)
-	err := grpc.Invoke(ctx, "/service.Daemon/Version", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Daemon/Version", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -210,15 +211,14 @@ func (c *daemonClient) Version(ctx context.Context, in *VersionRequest, opts ...
 
 func (c *daemonClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
 	out := new(ShutdownResponse)
-	err := grpc.Invoke(ctx, "/service.Daemon/Shutdown", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Daemon/Shutdown", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Daemon service
-
+// DaemonServer is the server API for Daemon service.
 type DaemonServer interface {
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)

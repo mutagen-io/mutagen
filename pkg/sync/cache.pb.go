@@ -39,11 +39,11 @@ type CacheEntry struct {
 	// the moment though, it's highly unlikely that we'll switch away from Go,
 	// and I'm willing to live with this slightly "unclean" design, especially
 	// given its potential and the relative ease of deprecating it if necessary.
-	Mode uint32 `protobuf:"varint,1,opt,name=mode" json:"mode,omitempty"`
+	Mode uint32 `protobuf:"varint,1,opt,name=mode,proto3" json:"mode,omitempty"`
 	// ModificationTime is the cached modification time.
-	ModificationTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=modificationTime" json:"modificationTime,omitempty"`
+	ModificationTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=modificationTime,proto3" json:"modificationTime,omitempty"`
 	// Size is the cached size.
-	Size uint64 `protobuf:"varint,3,opt,name=size" json:"size,omitempty"`
+	Size uint64 `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
 	// Digest is the cached digest for file entries.
 	Digest               []byte   `protobuf:"bytes,9,opt,name=digest,proto3" json:"digest,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -107,7 +107,7 @@ func (m *CacheEntry) GetDigest() []byte {
 // rescans.
 type Cache struct {
 	// Entries is a map from scan path to cache entry.
-	Entries              map[string]*CacheEntry `protobuf:"bytes,1,rep,name=entries" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Entries              map[string]*CacheEntry `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`

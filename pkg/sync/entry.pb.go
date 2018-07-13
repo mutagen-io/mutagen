@@ -51,15 +51,15 @@ func (EntryKind) EnumDescriptor() ([]byte, []int) {
 // Entry represents a filesystem node (e.g. a directory, a file, or a symlink).
 type Entry struct {
 	// Kind encodes the type of filesystem entry being represented.
-	Kind EntryKind `protobuf:"varint,1,opt,name=kind,enum=sync.EntryKind" json:"kind,omitempty"`
+	Kind EntryKind `protobuf:"varint,1,opt,name=kind,proto3,enum=sync.EntryKind" json:"kind,omitempty"`
 	// Contents represents a directory entry's contents.
-	Contents map[string]*Entry `protobuf:"bytes,5,rep,name=contents" json:"contents,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Contents map[string]*Entry `protobuf:"bytes,5,rep,name=contents,proto3" json:"contents,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// Digest represents the hash of a file entry's contents.
 	Digest []byte `protobuf:"bytes,8,opt,name=digest,proto3" json:"digest,omitempty"`
 	// Executable indicates whether or not a file entry is marked as executable.
-	Executable bool `protobuf:"varint,9,opt,name=executable" json:"executable,omitempty"`
+	Executable bool `protobuf:"varint,9,opt,name=executable,proto3" json:"executable,omitempty"`
 	// Target is the symlink target for symlink entries.
-	Target               string   `protobuf:"bytes,12,opt,name=target" json:"target,omitempty"`
+	Target               string   `protobuf:"bytes,12,opt,name=target,proto3" json:"target,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

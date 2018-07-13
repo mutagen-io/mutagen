@@ -26,7 +26,7 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // indirection that allows for an unset root entry, we can encode Entry messages
 // in a way that allows us to represent absence.
 type Archive struct {
-	Root                 *Entry   `protobuf:"bytes,1,opt,name=root" json:"root,omitempty"`
+	Root                 *Entry   `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

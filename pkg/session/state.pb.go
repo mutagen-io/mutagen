@@ -83,16 +83,16 @@ func (Status) EnumDescriptor() ([]byte, []int) {
 }
 
 type State struct {
-	Session                         *Session              `protobuf:"bytes,1,opt,name=session" json:"session,omitempty"`
-	Status                          Status                `protobuf:"varint,2,opt,name=status,enum=session.Status" json:"status,omitempty"`
-	AlphaConnected                  bool                  `protobuf:"varint,3,opt,name=alphaConnected" json:"alphaConnected,omitempty"`
-	BetaConnected                   bool                  `protobuf:"varint,4,opt,name=betaConnected" json:"betaConnected,omitempty"`
-	LastError                       string                `protobuf:"bytes,5,opt,name=lastError" json:"lastError,omitempty"`
-	SuccessfulSynchronizationCycles uint64                `protobuf:"varint,6,opt,name=successfulSynchronizationCycles" json:"successfulSynchronizationCycles,omitempty"`
-	StagingStatus                   *rsync.ReceiverStatus `protobuf:"bytes,7,opt,name=stagingStatus" json:"stagingStatus,omitempty"`
-	Conflicts                       []*sync.Conflict      `protobuf:"bytes,8,rep,name=conflicts" json:"conflicts,omitempty"`
-	AlphaProblems                   []*sync.Problem       `protobuf:"bytes,9,rep,name=alphaProblems" json:"alphaProblems,omitempty"`
-	BetaProblems                    []*sync.Problem       `protobuf:"bytes,10,rep,name=betaProblems" json:"betaProblems,omitempty"`
+	Session                         *Session              `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	Status                          Status                `protobuf:"varint,2,opt,name=status,proto3,enum=session.Status" json:"status,omitempty"`
+	AlphaConnected                  bool                  `protobuf:"varint,3,opt,name=alphaConnected,proto3" json:"alphaConnected,omitempty"`
+	BetaConnected                   bool                  `protobuf:"varint,4,opt,name=betaConnected,proto3" json:"betaConnected,omitempty"`
+	LastError                       string                `protobuf:"bytes,5,opt,name=lastError,proto3" json:"lastError,omitempty"`
+	SuccessfulSynchronizationCycles uint64                `protobuf:"varint,6,opt,name=successfulSynchronizationCycles,proto3" json:"successfulSynchronizationCycles,omitempty"`
+	StagingStatus                   *rsync.ReceiverStatus `protobuf:"bytes,7,opt,name=stagingStatus,proto3" json:"stagingStatus,omitempty"`
+	Conflicts                       []*sync.Conflict      `protobuf:"bytes,8,rep,name=conflicts,proto3" json:"conflicts,omitempty"`
+	AlphaProblems                   []*sync.Problem       `protobuf:"bytes,9,rep,name=alphaProblems,proto3" json:"alphaProblems,omitempty"`
+	BetaProblems                    []*sync.Problem       `protobuf:"bytes,10,rep,name=betaProblems,proto3" json:"betaProblems,omitempty"`
 	XXX_NoUnkeyedLiteral            struct{}              `json:"-"`
 	XXX_unrecognized                []byte                `json:"-"`
 	XXX_sizecache                   int32                 `json:"-"`

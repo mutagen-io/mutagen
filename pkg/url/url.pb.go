@@ -42,11 +42,11 @@ func (Protocol) EnumDescriptor() ([]byte, []int) {
 }
 
 type URL struct {
-	Protocol             Protocol `protobuf:"varint,1,opt,name=protocol,enum=url.Protocol" json:"protocol,omitempty"`
-	Username             string   `protobuf:"bytes,2,opt,name=username" json:"username,omitempty"`
-	Hostname             string   `protobuf:"bytes,3,opt,name=hostname" json:"hostname,omitempty"`
-	Port                 uint32   `protobuf:"varint,4,opt,name=port" json:"port,omitempty"`
-	Path                 string   `protobuf:"bytes,5,opt,name=path" json:"path,omitempty"`
+	Protocol             Protocol `protobuf:"varint,1,opt,name=protocol,proto3,enum=url.Protocol" json:"protocol,omitempty"`
+	Username             string   `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Hostname             string   `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Port                 uint32   `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
+	Path                 string   `protobuf:"bytes,5,opt,name=path,proto3" json:"path,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

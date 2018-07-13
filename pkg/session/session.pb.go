@@ -50,16 +50,16 @@ func (Version) EnumDescriptor() ([]byte, []int) {
 }
 
 type Session struct {
-	Identifier           string               `protobuf:"bytes,1,opt,name=identifier" json:"identifier,omitempty"`
-	Version              Version              `protobuf:"varint,2,opt,name=version,enum=session.Version" json:"version,omitempty"`
-	CreationTime         *timestamp.Timestamp `protobuf:"bytes,3,opt,name=creationTime" json:"creationTime,omitempty"`
-	CreatingVersionMajor uint32               `protobuf:"varint,4,opt,name=creatingVersionMajor" json:"creatingVersionMajor,omitempty"`
-	CreatingVersionMinor uint32               `protobuf:"varint,5,opt,name=creatingVersionMinor" json:"creatingVersionMinor,omitempty"`
-	CreatingVersionPatch uint32               `protobuf:"varint,6,opt,name=creatingVersionPatch" json:"creatingVersionPatch,omitempty"`
-	Alpha                *url.URL             `protobuf:"bytes,7,opt,name=alpha" json:"alpha,omitempty"`
-	Beta                 *url.URL             `protobuf:"bytes,8,opt,name=beta" json:"beta,omitempty"`
-	Configuration        *Configuration       `protobuf:"bytes,9,opt,name=configuration" json:"configuration,omitempty"`
-	Paused               bool                 `protobuf:"varint,10,opt,name=paused" json:"paused,omitempty"`
+	Identifier           string               `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	Version              Version              `protobuf:"varint,2,opt,name=version,proto3,enum=session.Version" json:"version,omitempty"`
+	CreationTime         *timestamp.Timestamp `protobuf:"bytes,3,opt,name=creationTime,proto3" json:"creationTime,omitempty"`
+	CreatingVersionMajor uint32               `protobuf:"varint,4,opt,name=creatingVersionMajor,proto3" json:"creatingVersionMajor,omitempty"`
+	CreatingVersionMinor uint32               `protobuf:"varint,5,opt,name=creatingVersionMinor,proto3" json:"creatingVersionMinor,omitempty"`
+	CreatingVersionPatch uint32               `protobuf:"varint,6,opt,name=creatingVersionPatch,proto3" json:"creatingVersionPatch,omitempty"`
+	Alpha                *url.URL             `protobuf:"bytes,7,opt,name=alpha,proto3" json:"alpha,omitempty"`
+	Beta                 *url.URL             `protobuf:"bytes,8,opt,name=beta,proto3" json:"beta,omitempty"`
+	Configuration        *Configuration       `protobuf:"bytes,9,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	Paused               bool                 `protobuf:"varint,10,opt,name=paused,proto3" json:"paused,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`

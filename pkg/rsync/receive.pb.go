@@ -21,11 +21,11 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 // ReceivingStatus encodes that status of an rsync receiver.
 type ReceiverStatus struct {
 	// Path is the path currently being received.
-	Path string `protobuf:"bytes,1,opt,name=path" json:"path,omitempty"`
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	// Received is the number of paths that have already been received.
-	Received uint64 `protobuf:"varint,2,opt,name=received" json:"received,omitempty"`
+	Received uint64 `protobuf:"varint,2,opt,name=received,proto3" json:"received,omitempty"`
 	// Total is the total number of paths expected.
-	Total                uint64   `protobuf:"varint,3,opt,name=total" json:"total,omitempty"`
+	Total                uint64   `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

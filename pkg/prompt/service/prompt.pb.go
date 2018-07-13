@@ -25,8 +25,8 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type PromptRequest struct {
-	Prompter             string         `protobuf:"bytes,1,opt,name=prompter" json:"prompter,omitempty"`
-	Prompt               *prompt.Prompt `protobuf:"bytes,2,opt,name=prompt" json:"prompt,omitempty"`
+	Prompter             string         `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	Prompt               *prompt.Prompt `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -71,7 +71,7 @@ func (m *PromptRequest) GetPrompt() *prompt.Prompt {
 }
 
 type PromptResponse struct {
-	Response             string   `protobuf:"bytes,1,opt,name=response" json:"response,omitempty"`
+	Response             string   `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -121,8 +121,9 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Prompt service
-
+// PromptClient is the client API for Prompt service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type PromptClient interface {
 	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
@@ -137,15 +138,14 @@ func NewPromptClient(cc *grpc.ClientConn) PromptClient {
 
 func (c *promptClient) Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error) {
 	out := new(PromptResponse)
-	err := grpc.Invoke(ctx, "/service.Prompt/Prompt", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/service.Prompt/Prompt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Prompt service
-
+// PromptServer is the server API for Prompt service.
 type PromptServer interface {
 	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 }
