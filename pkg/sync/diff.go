@@ -1,9 +1,5 @@
 package sync
 
-import (
-	pathpkg "path"
-)
-
 type differ struct {
 	changes []*Change
 }
@@ -23,7 +19,7 @@ func (d *differ) diff(path string, base, target *Entry) {
 	baseContents := base.GetContents()
 	targetContents := target.GetContents()
 	for name := range nameUnion(baseContents, targetContents) {
-		d.diff(pathpkg.Join(path, name), baseContents[name], targetContents[name])
+		d.diff(pathJoin(path, name), baseContents[name], targetContents[name])
 	}
 }
 

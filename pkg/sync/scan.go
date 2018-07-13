@@ -5,7 +5,6 @@ import (
 	"hash"
 	"io"
 	"os"
-	pathpkg "path"
 	"path/filepath"
 	"runtime"
 
@@ -167,7 +166,7 @@ func (s *scanner) directory(path string, symlinkMode SymlinkMode) (*Entry, error
 		}
 
 		// Compute the content path.
-		contentPath := pathpkg.Join(path, name)
+		contentPath := pathJoin(path, name)
 
 		// Compute the kind for this content, skipping if unsupported.
 		kind := EntryKind_File

@@ -1,9 +1,5 @@
 package sync
 
-import (
-	pathpkg "path"
-)
-
 func nonDeletionChangesOnly(changes []*Change) []*Change {
 	var result []*Change
 	for _, c := range changes {
@@ -47,7 +43,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		// Recursively handle contents.
 		for name := range nameUnion(ancestorContents, alphaContents, betaContents) {
 			r.reconcile(
-				pathpkg.Join(path, name),
+				pathJoin(path, name),
 				ancestorContents[name],
 				alphaContents[name],
 				betaContents[name],

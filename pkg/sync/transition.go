@@ -3,7 +3,6 @@ package sync
 import (
 	"bytes"
 	"os"
-	pathpkg "path"
 	"path/filepath"
 	"strings"
 
@@ -239,7 +238,7 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 		}
 
 		// Compute the content path.
-		contentPath := pathpkg.Join(path, name)
+		contentPath := pathJoin(path, name)
 
 		// Grab the corresponding entry. If we don't know anything about this
 		// entry, then mark that as a problem and ignore for now.
@@ -472,7 +471,7 @@ func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
 	// Attempt to create the target contents. Track problems as we go.
 	for name, entry := range target.Contents {
 		// Compute the content path.
-		contentPath := pathpkg.Join(path, name)
+		contentPath := pathJoin(path, name)
 
 		// Handle content creation based on type.
 		if entry.Kind == EntryKind_Directory {

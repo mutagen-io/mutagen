@@ -6,7 +6,6 @@ import (
 	"hash"
 	"io/ioutil"
 	"os"
-	pathpkg "path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -44,7 +43,7 @@ func (d *testEntryDecomposer) decompose(path string, entry *Entry) {
 	// If this is a directory, handle its contents.
 	if entry.Kind == EntryKind_Directory {
 		for name, entry := range entry.Contents {
-			d.decompose(pathpkg.Join(path, name), entry)
+			d.decompose(pathJoin(path, name), entry)
 		}
 	}
 

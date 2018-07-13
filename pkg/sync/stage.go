@@ -2,7 +2,6 @@ package sync
 
 import (
 	"bytes"
-	pathpkg "path"
 
 	"github.com/pkg/errors"
 )
@@ -21,7 +20,7 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 	// Handle based on type.
 	if entry.Kind == EntryKind_Directory {
 		for name, entry := range entry.Contents {
-			if err := f.find(pathpkg.Join(path, name), entry); err != nil {
+			if err := f.find(pathJoin(path, name), entry); err != nil {
 				return err
 			}
 		}
