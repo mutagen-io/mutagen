@@ -25,7 +25,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, err := Scan(root, hasher, nil, ignores, symlinkMode)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(root, hasher, nil, ignores, nil, symlinkMode)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, entry, snapshot)
 	}
@@ -33,6 +33,8 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
+	} else if ignoreCache == nil {
+		return errors.New("nil ignore cache returned")
 	} else if expectEqual && !snapshot.Equal(entry) {
 		return errors.New("snapshot not equal to expected")
 	} else if !expectEqual && snapshot.Equal(entry) {
@@ -249,7 +251,7 @@ func TestScanSymlinkRoot(t *testing.T) {
 	}
 
 	// Attempt a scan of the symlink.
-	if _, _, _, _, err := Scan(root, sha1.New(), nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, _, err := Scan(root, sha1.New(), nil, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan of symlink root allowed")
 	}
 }
@@ -282,7 +284,7 @@ func TestEfficientRescan(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, preservesExecutability, _, cache, err := Scan(root, hasher, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(root, hasher, nil, nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -290,13 +292,15 @@ func TestEfficientRescan(t *testing.T) {
 		t.Fatal("unable to create snapshot:", err)
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
+	} else if ignoreCache == nil {
+		t.Fatal("nil ignore cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("snapshot did not match expected")
 	}
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	snapshot, preservesExecutability, _, cache, err = Scan(root, hasher, cache, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(root, hasher, cache, nil, nil, SymlinkMode_SymlinkPortable)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -304,6 +308,8 @@ func TestEfficientRescan(t *testing.T) {
 		t.Fatal("unable to rescan:", err)
 	} else if cache == nil {
 		t.Fatal("nil second cache returned")
+	} else if ignoreCache == nil {
+		t.Fatal("nil second ignore cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("second snapshot did not match expected")
 	}
@@ -324,7 +330,7 @@ func TestScanCrossDeviceFail(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Perform a scan and ensure that it fails.
-	if _, _, _, _, err := Scan(parent, hasher, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, _, err := Scan(parent, hasher, nil, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
 		t.Error("scan across device boundary did not fail")
 	}
 }

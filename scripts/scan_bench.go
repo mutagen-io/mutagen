@@ -61,7 +61,9 @@ func main() {
 		}
 	}
 	start := time.Now()
-	snapshot, preservesExecutability, recomposeUnicode, cache, err := sync.Scan(path, sha1.New(), nil, ignores, sync.SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, recomposeUnicode, cache, ignoreCache, err := sync.Scan(
+		path, sha1.New(), nil, ignores, nil, sync.SymlinkMode_SymlinkPortable,
+	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {
@@ -86,7 +88,9 @@ func main() {
 		}
 	}
 	start = time.Now()
-	snapshot, preservesExecutability, recomposeUnicode, _, err = sync.Scan(path, sha1.New(), cache, ignores, sync.SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, recomposeUnicode, _, _, err = sync.Scan(
+		path, sha1.New(), cache, ignores, ignoreCache, sync.SymlinkMode_SymlinkPortable,
+	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
 	} else if snapshot == nil {

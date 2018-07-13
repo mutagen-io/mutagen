@@ -25,10 +25,11 @@ const (
 	// buffer if none is provided.
 	scannerCopyBufferSize = 32 * 1024
 
-	// defaultInitialCacheCapacity specifies the default capacity for new caches
-	// when the existing cache is nil or empty. It is designed to save several
-	// rounds of cache capacity doubling on insert without always allocating a
-	// huge cache. Its value is somewhat arbitrary.
+	// defaultInitialCacheCapacity specifies the default capacity for new
+	// filesystem and ignore caches when the corresponding existing cache is nil
+	// or empty. It is designed to save several rounds of cache capacity
+	// doubling on insert without always allocating a huge cache. Its value is
+	// somewhat arbitrary.
 	defaultInitialCacheCapacity = 1024
 )
 
@@ -37,7 +38,9 @@ type scanner struct {
 	hasher                 hash.Hash
 	cache                  *Cache
 	ignorer                *ignorer
+	ignoreCache            map[string]bool
 	newCache               *Cache
+	newIgnoreCache         map[string]bool
 	buffer                 []byte
 	deviceID               uint64
 	recomposeUnicode       bool
@@ -175,8 +178,14 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 			continue
 		}
 
-		// If this path is ignored, then skip it.
-		if s.ignorer.ignored(contentPath, kind == EntryKind_Directory) {
+		// Determine whether or not this path is ignored and update the new
+		// ignore cache.
+		ignored, ok := s.ignoreCache[contentPath]
+		if !ok {
+			ignored = s.ignorer.ignored(contentPath, kind == EntryKind_Directory)
+		}
+		s.newIgnoreCache[contentPath] = ignored
+		if ignored {
 			continue
 		}
 
@@ -219,7 +228,7 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 // TODO: Note that the provided cache is assumed to be valid (i.e. that it
 // doesn't have any nil entries), so callers should run EnsureValid on anything
 // they pull from disk
-func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreCache map[string]bool, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, map[string]bool, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the
 	// GetEntries accessor everywhere.
@@ -230,12 +239,12 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 	// Create the ignorer.
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
-		return nil, false, false, nil, errors.Wrap(err, "unable to create ignorer")
+		return nil, false, false, nil, nil, errors.Wrap(err, "unable to create ignorer")
 	}
 
 	// Verify that the symlink mode is valid for this platform.
 	if symlinkMode == SymlinkMode_SymlinkPOSIXRaw && runtime.GOOS == "windows" {
-		return nil, false, false, nil, errors.New("raw POSIX symlinks not supported on Windows")
+		return nil, false, false, nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -249,68 +258,79 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, symlink
 		Entries: make(map[string]*CacheEntry, initialCacheCapacity),
 	}
 
+	// Create a new ignore cache to populate. Estimate its capacity based on the
+	// existing ignore cache length. If the existing cache is empty, create one
+	// with the default capacity.
+	initialIgnoreCacheCapacity := defaultInitialCacheCapacity
+	if ignoreCacheLength := len(ignoreCache); ignoreCacheLength != 0 {
+		initialIgnoreCacheCapacity = ignoreCacheLength
+	}
+	newIgnoreCache := make(map[string]bool, initialIgnoreCacheCapacity)
+
 	// Create a scanner.
 	s := &scanner{
-		root:     root,
-		hasher:   hasher,
-		cache:    cache,
-		ignorer:  ignorer,
-		newCache: newCache,
-		buffer:   make([]byte, scannerCopyBufferSize),
+		root:           root,
+		hasher:         hasher,
+		cache:          cache,
+		ignorer:        ignorer,
+		ignoreCache:    ignoreCache,
+		newCache:       newCache,
+		newIgnoreCache: newIgnoreCache,
+		buffer:         make([]byte, scannerCopyBufferSize),
 	}
 
 	// Create the snapshot.
 	if info, err := os.Lstat(root); err != nil {
 		if os.IsNotExist(err) {
-			return nil, false, false, newCache, nil
+			return nil, false, false, newCache, newIgnoreCache, nil
 		} else {
-			return nil, false, false, nil, errors.Wrap(err, "unable to probe scan root")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe scan root")
 		}
 	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
 		// Grab and set the device ID for the root directory.
 		if id, err := filesystem.DeviceID(info); err != nil {
-			return nil, false, false, nil, errors.Wrap(err, "unable to probe root device ID")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root device ID")
 		} else {
 			s.deviceID = id
 		}
 
 		// Probe and set Unicode decomposition behavior for the root directory.
 		if decomposes, err := filesystem.DecomposesUnicode(root); err != nil {
-			return nil, false, false, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
 		} else {
 			s.recomposeUnicode = decomposes
 		}
 
 		// Probe and set executability preservation behavior for the root directory.
 		if preserves, err := filesystem.PreservesExecutability(root); err != nil {
-			return nil, false, false, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
 		// Perform a recursive scan.
 		if rootEntry, err := s.directory("", info, symlinkMode); err != nil {
-			return nil, false, false, nil, err
+			return nil, false, false, nil, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, nil
+			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
 		}
 	} else if mode&os.ModeType != 0 {
 		// We disallow symlinks as synchronization roots because there's no easy
 		// way to propagate changes to them.
-		return nil, false, false, nil, errors.New("invalid scan root type")
+		return nil, false, false, nil, nil, errors.New("invalid scan root type")
 	} else {
 		// Probe and set executability preservation behavior for the parent of the root directory.
 		if preserves, err := filesystem.PreservesExecutability(filepath.Dir(root)); err != nil {
-			return nil, false, false, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
 		// Perform a scan of the root file.
 		if rootEntry, err := s.file("", info); err != nil {
-			return nil, false, false, nil, err
+			return nil, false, false, nil, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, false, newCache, nil
+			return rootEntry, s.preservesExecutability, false, newCache, newIgnoreCache, nil
 		}
 	}
 }

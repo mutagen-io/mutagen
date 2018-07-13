@@ -30,6 +30,9 @@ type localEndpoint struct {
 	cachePath string
 	// cache is the cache from the last successful scan on the endpoint.
 	cache *sync.Cache
+	// ignoreCache is the ignore cache from the last successful scan on the
+	// endpoint.
+	ignoreCache map[string]bool
 	// recomposeUnicode is the Unicode recomposition behavior recommended by the
 	// last successful scan on the endpoint.
 	recomposeUnicode bool
@@ -139,13 +142,17 @@ func (e *localEndpoint) poll(context context.Context) error {
 func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
-	result, preservesExecutability, recomposeUnicode, newCache, err := sync.Scan(e.root, e.scanHasher, e.cache, e.ignores, e.symlinkMode)
+	result, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
+		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.symlinkMode,
+	)
 	if err != nil {
 		return nil, false, err, true
 	}
 
-	// Store the cache and recommended Unicode recomposition behavior.
+	// Store the cache, ignore cache, and recommended Unicode recomposition
+	// behavior.
 	e.cache = newCache
+	e.ignoreCache = newIgnoreCache
 	e.recomposeUnicode = recomposeUnicode
 
 	// Save the cache to disk.
