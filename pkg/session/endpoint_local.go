@@ -5,6 +5,7 @@ import (
 	"hash"
 	"os"
 	"path/filepath"
+	syncpkg "sync"
 
 	"github.com/pkg/errors"
 
@@ -28,6 +29,15 @@ type localEndpoint struct {
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
+	// scanLock serializes access to the scan-related fields below (those that
+	// are updated during scans). Even though we enforce that an endpoint's scan
+	// method can't be called concurrently, we perform asynchronous cache disk
+	// writes, and thus we need to be sure that we don't re-enter scan and start
+	// mutating the following fields while the write Goroutine is still running.
+	scanLock syncpkg.Mutex
+	// cacheWriteError is the last error encountered when trying to write the
+	// cache to disk, if any.
+	cacheWriteError error
 	// cache is the cache from the last successful scan on the endpoint.
 	cache *sync.Cache
 	// ignoreCache is the ignore cache from the last successful scan on the
@@ -140,12 +150,25 @@ func (e *localEndpoint) poll(context context.Context) error {
 }
 
 func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
+	// Grab the scan lock.
+	e.scanLock.Lock()
+
+	// Check for asynchronous cache write errors. If we've encountered one, we
+	// don't proceed. Note that we use a defer to unlock since we're grabbing
+	// the cacheWriteError on the next line (this avoids an intermediate
+	// assignment).
+	if e.cacheWriteError != nil {
+		defer e.scanLock.Unlock()
+		return nil, false, errors.Wrap(e.cacheWriteError, "unable to save cache to disk"), false
+	}
+
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
 	result, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
 		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.symlinkMode,
 	)
 	if err != nil {
+		e.scanLock.Unlock()
 		return nil, false, err, true
 	}
 
@@ -155,10 +178,14 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	e.ignoreCache = newIgnoreCache
 	e.recomposeUnicode = recomposeUnicode
 
-	// Save the cache to disk.
-	if err = encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
-		return nil, false, errors.Wrap(err, "unable to save cache"), false
-	}
+	// Save the cache to disk in a background Goroutine, allowing this Goroutine
+	// to unlock the scan lock once the write is complete.
+	go func() {
+		if err := encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
+			e.cacheWriteError = err
+		}
+		e.scanLock.Unlock()
+	}()
 
 	// Done.
 	return result, preservesExecutability, nil, false
