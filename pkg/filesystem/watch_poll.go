@@ -1,0 +1,144 @@
+package filesystem
+
+import (
+	"context"
+	"os"
+	"time"
+
+	"github.com/pkg/errors"
+)
+
+const (
+	// DefaultPollingInterval is the default watch polling interval, in seconds.
+	DefaultPollingInterval = 10
+)
+
+func fileInfoEqual(first, second os.FileInfo) bool {
+	// Compare modes.
+	if first.Mode() != second.Mode() {
+		return false
+	}
+
+	// If we're dealing with directories, don't check size or time. Size doesn't
+	// really make sense and modification time will be affected by our
+	// executability preservation or Unicode decomposition probe file creation.
+	if first.IsDir() {
+		return true
+	}
+
+	// Compare size and time.
+	return first.Size() == second.Size() &&
+		first.ModTime().Equal(second.ModTime())
+}
+
+func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo, bool, error) {
+	// Create our result map.
+	result := make(map[string]os.FileInfo, len(existing))
+
+	// Create a walk visitor.
+	changed := false
+	rootDoesNotExist := false
+	visitor := func(path string, info os.FileInfo, err error) error {
+		// Handle walk error cases.
+		if err != nil {
+			// If we're at the root and this is a non-existence error, then we
+			// can create a valid result (and empty map) as well as determine
+			// whether or not there's been a change.
+			if path == root && os.IsNotExist(err) {
+				changed = len(existing) > 0
+				rootDoesNotExist = true
+				return err
+			}
+
+			// If this is a non-root non-existence error, then something was
+			// seen during the directory listing and then failed the stat call.
+			// This is a sign of concurrent deletion, so just ignore this file.
+			// Our later checks will determine if this was concurent deletion of
+			// a file we're meant to be watching or one of our probe files.
+			if os.IsNotExist(err) {
+				return nil
+			}
+
+			// Other errors are more problematic.
+			return err
+		}
+
+		// If this is an executability preservation or Unicode decomposition
+		// test path, ignore it.
+		if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
+			return nil
+		}
+
+		// Insert the entry for this path.
+		result[path] = info
+
+		// Compare the entry for this path.
+		if previous, ok := existing[path]; !ok {
+			changed = true
+		} else if !fileInfoEqual(info, previous) {
+			changed = true
+		}
+
+		// Success.
+		return nil
+	}
+
+	// Perform the walk. If it fails, and it's not due to the root not existing,
+	// then we can't return a valid result and need to abort.
+	if err := Walk(root, visitor); err != nil && !rootDoesNotExist {
+		return nil, false, errors.Wrap(err, "unable to perform filesystem walk")
+	}
+
+	// If the length of the result map has changed, then there's been a change.
+	// This could be due to files being deleted.
+	if len(result) != len(existing) {
+		changed = true
+	}
+
+	// Done.
+	return result, changed, nil
+}
+
+func watchPoll(context context.Context, root string, events chan struct{}, pollInterval uint32) error {
+	// Compute the polling interval.
+	if pollInterval == 0 {
+		pollInterval = DefaultPollingInterval
+	}
+	pollIntervalDuration := time.Duration(pollInterval) * time.Second
+
+	// Create a timer to regulate polling. Start it with a 0 duration so that
+	// the first polling takes place immediately. Subsequent pollings will take
+	// place at the normal interval.
+	timer := time.NewTimer(0)
+
+	// Loop and poll for changes, but watch for cancellation.
+	var contents map[string]os.FileInfo
+	for {
+		select {
+		case <-timer.C:
+			// Perform a scan. If there's an error or no change, then reset the
+			// timer and try again. We have to assume that errors here are due
+			// to concurrent modifications, so there's not much we can do to
+			// handle them.
+			newContents, changed, err := poll(root, contents)
+			if err != nil || !changed {
+				timer.Reset(pollIntervalDuration)
+				continue
+			}
+
+			// Store the new contents.
+			contents = newContents
+
+			// Forward the event in a non-blocking fashion.
+			select {
+			case events <- struct{}{}:
+			default:
+			}
+
+			// Reset the timer and continue polling.
+			timer.Reset(pollIntervalDuration)
+		case <-context.Done():
+			return errors.New("watch cancelled")
+		}
+	}
+}
