@@ -49,8 +49,8 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 	}
 
 	// Set up initial watch root parameters.
-	var exists bool
-	var parameters watchRootParameters
+	var watchRootExists bool
+	var watchRootMetadata os.FileInfo
 	var forceRecreate bool
 
 	// Set up our initial event paths channel.
@@ -169,22 +169,22 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			default:
 			}
 		case <-rootCheckTimer.C:
-			// Grab watch root parameters.
-			var currentlyExists bool
-			var currentParameters watchRootParameters
-			if p, err := probeWatchRoot(watchRoot); err != nil {
+			// Grab current watch root parameters.
+			var watchRootCurrentlyExists bool
+			var currentWatchRootMetadata os.FileInfo
+			if p, err := os.Lstat(watchRoot); err != nil {
 				if !os.IsNotExist(err) {
 					return errors.Wrap(err, "unable to probe root device ID and inode")
 				}
 			} else {
-				currentlyExists = true
-				currentParameters = p
+				watchRootCurrentlyExists = true
+				currentWatchRootMetadata = p
 			}
 
 			// Check if we need to recreate the watcher.
 			recreate := forceRecreate ||
-				exists != currentlyExists ||
-				!watchRootParametersEqual(parameters, currentParameters)
+				watchRootCurrentlyExists != watchRootExists ||
+				!os.SameFile(currentWatchRootMetadata, watchRootMetadata)
 
 			// Unmark forced recreation.
 			forceRecreate = false
@@ -207,11 +207,11 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 				// the notify package returns something checkable with
 				// os.IsNotExist. In any case, if there's an error, then just
 				// treat things as if we never saw the watch root existing.
-				if currentlyExists {
+				if watchRootCurrentlyExists {
 					if w, err := newRecursiveWatch(watchRoot); err != nil {
 						if os.IsNotExist(err) {
-							currentlyExists = false
-							currentParameters = watchRootParameters{}
+							watchRootCurrentlyExists = false
+							currentWatchRootMetadata = nil
 						} else {
 							return errors.Wrap(err, "unable to create recursive watch")
 						}
@@ -231,8 +231,8 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			}
 
 			// Update parameters.
-			exists = currentlyExists
-			parameters = currentParameters
+			watchRootExists = watchRootCurrentlyExists
+			watchRootMetadata = currentWatchRootMetadata
 
 			// Reset the timer and continue polling.
 			rootCheckTimer.Reset(watchRootParameterPollingInterval)
