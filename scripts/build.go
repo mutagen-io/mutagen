@@ -287,10 +287,8 @@ func buildAgentForTargetInTesting(target Target) bool {
 	return !target.Cross() ||
 		target.GOOS == "darwin" ||
 		target.GOOS == "windows" ||
-		(target.GOOS == "linux" &&
-			(target.GOARCH == "amd64" ||
-				target.GOARCH == "386" ||
-				target.GOARCH == "arm"))
+		(target.GOOS == "linux" && (target.GOARCH == "amd64" || target.GOARCH == "arm")) ||
+		(target.GOOS == "freebsd" && target.GOARCH == "amd64")
 }
 
 var usage = `usage: build [-h|--help] [-m|--mode=<mode>] [-s|--skip-bundles]
