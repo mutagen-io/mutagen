@@ -3,7 +3,6 @@ package filesystem
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -133,7 +132,7 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 
 	// Perform the walk. If it fails, and it's not due to the root not existing,
 	// then we can't return a valid result and need to abort.
-	if err := filepath.Walk(root, visitor); err != nil && !rootDoesNotExist {
+	if err := Walk(root, visitor); err != nil && !rootDoesNotExist {
 		return nil, false, errors.Wrap(err, "unable to perform filesystem walk")
 	}
 

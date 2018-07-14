@@ -15,8 +15,11 @@ Mutagen makes use of the following third-party software:
 ================================================================================
 
 Go, the Go standard library, the Go crypto, net, sys, and text subrepositories,
-and modified code from the Go build and exp subrepositories.
-(https://golang.org/)
+modified code from the Go standard library, and modified code from the build and
+exp subrepositories.
+
+https://golang.org/
+https://github.com/golang/
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -29,7 +32,9 @@ rights grant can be found later in this text.
 
 --------------------------------------------------------------------------------
 
-errors (https://github.com/pkg/errors)
+errors
+
+https://github.com/pkg/errors
 
 Copyright (c) 2015, Dave Cheney <dave@cheney.net>
 All rights reserved.
@@ -40,7 +45,9 @@ https://opensource.org/licenses/BSD-2-Clause.
 
 --------------------------------------------------------------------------------
 
-Cobra (https://github.com/spf13/cobra)
+Cobra
+
+https://github.com/spf13/cobra
 
 Copyright 2013 Steve Francia <spf@spf13.com>
 
@@ -50,7 +57,9 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-pflag (https://github.com/spf13/pflag)
+pflag
+
+https://github.com/spf13/pflag
 
 Original version available at https://github.com/ogier/pflag.
 
@@ -67,7 +76,9 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
-mousestrap (https://github.com/inconshreveable/mousetrap)
+mousestrap
+
+https://github.com/inconshreveable/mousetrap
 
 Copyright 2014 Alan Shreve
 
@@ -77,7 +88,9 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-color (https://github.com/fatih/color)
+color
+
+https://github.com/fatih/color
 
 Copyright (c) 2013 Fatih Arslan
 
@@ -86,7 +99,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-go-colorable (https://github.com/mattn/go-colorable)
+go-colorable
+
+https://github.com/mattn/go-colorable
 
 Copyright (c) 2016 Yasuhiro Matsumoto
 
@@ -95,7 +110,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-go-isatty (https://github.com/mattn/go-isatty)
+go-isatty
+
+https://github.com/mattn/go-isatty
 
 Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>
 
@@ -104,10 +121,11 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-Go support for Protocol Buffers (https://github.com/golang/protobuf)
+Go support for Protocol Buffers
+
+https://github.com/golang/protobuf
 
 Copyright 2010 The Go Authors.  All rights reserved.
-https://github.com/golang/protobuf
 
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
 this license can be found later in this text and a templated version can be
@@ -115,7 +133,9 @@ found online at https://opensource.org/licenses/BSD-3-Clause.
 
 --------------------------------------------------------------------------------
 
-Go support for gRPC (https://github.com/grpc/grpc-go)
+Go support for gRPC
+
+https://github.com/grpc/grpc-go
 
 Copyright 2014-2018 gRPC authors
 
@@ -125,7 +145,9 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-Go-generated Protocol Buffers Packages (https://github.com/google/go-genproto)
+Go-generated Protocol Buffers Packages
+
+https://github.com/google/go-genproto
 
 Copyright 2016 Google Inc.
 
@@ -135,7 +157,9 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-toml (https://github.com/BurntSushi/toml)
+toml
+
+https://github.com/BurntSushi/toml
 
 Copyright (c) 2013 TOML authors
 
@@ -144,7 +168,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-uuid (https://github.com/google/uuid)
+uuid
+
+https://github.com/google/uuid
 
 Copyright (c) 2009,2014 Google Inc. All rights reserved.
 
@@ -154,7 +180,9 @@ found online at https://opensource.org/licenses/BSD-3-Clause.
 
 --------------------------------------------------------------------------------
 
-go-winio (https://github.com/Microsoft/go-winio)
+go-winio
+
+https://github.com/Microsoft/go-winio
 
 Copyright (c) 2015 Microsoft
 
@@ -163,11 +191,13 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-fsevents (https://github.com/fsnotify/fsevents)
+fsevents
 
-Copyright (c) 2014 The fsevents Authors. All rights reserved.
+https://github.com/fsnotify/fsevents
 
 Forked and modified at https://github.com/havoc-io/fsevents
+
+Copyright (c) 2014 The fsevents Authors. All rights reserved.
 
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
 this license can be found later in this text and a templated version can be
@@ -179,11 +209,13 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
-gopass (https://github.com/howeyc/gopass)
+gopass
 
-Copyright (c) 2012 Chris Howey
+https://github.com/howeyc/gopass
 
 Forked and modified at https://github.com/havoc-io/gopass
+
+Copyright (c) 2012 Chris Howey
 
 Portions of this package are derived from Solaris sources distributed under the
 Common Development and Distribution License, Version 1.0. These portions are
@@ -196,7 +228,9 @@ https://opensource.org/licenses/ISC.
 
 --------------------------------------------------------------------------------
 
-doublestar (https://github.com/bmatcuk/doublestar)
+doublestar
+
+https://github.com/bmatcuk/doublestar
 
 Copyright (c) 2014 Bob Matcuk
 
@@ -205,7 +239,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-extstat (https://github.com/shibukawa/extstat)
+extstat
+
+https://github.com/shibukawa/extstat
 
 Copyright (c) 2015 Yoshiki Shibukawa
 
