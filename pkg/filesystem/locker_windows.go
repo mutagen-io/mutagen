@@ -1,6 +1,5 @@
 // Windows file locking implementation based on (but heavily modified from)
-// https://github.com/golang/build/blob/master/cmd/builder/filemutex_windows.go,
-// revision 4821e1d4e1dd5d386f53f1e869ced293dd18f44a.
+// https://github.com/golang/build/blob/4821e1d4e1dd5d386f53f1e869ced293dd18f44a/cmd/builder/filemutex_windows.go.
 //
 // The original code license:
 //
