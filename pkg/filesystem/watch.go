@@ -71,7 +71,7 @@ func Watch(context context.Context, root string, events chan struct{}, mode Watc
 	// If we're in portable watch mode, attempt to watch using a native
 	// mechanism.
 	if mode == WatchMode_WatchPortable {
-		watchNative(context, root, events)
+		watchNative(context, root, events, pollInterval)
 	}
 
 	// If native watching failed, check (in a non-blocking fashion) if it was

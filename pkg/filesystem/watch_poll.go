@@ -115,6 +115,9 @@ func watchPoll(context context.Context, root string, events chan struct{}, pollI
 	var contents map[string]os.FileInfo
 	for {
 		select {
+		case <-context.Done():
+			// Abort the watch.
+			return errors.New("watch cancelled")
 		case <-timer.C:
 			// Perform a scan. If there's an error or no change, then reset the
 			// timer and try again. We have to assume that errors here are due
@@ -137,8 +140,6 @@ func watchPoll(context context.Context, root string, events chan struct{}, pollI
 
 			// Reset the timer and continue polling.
 			timer.Reset(pollIntervalDuration)
-		case <-context.Done():
-			return errors.New("watch cancelled")
 		}
 	}
 }

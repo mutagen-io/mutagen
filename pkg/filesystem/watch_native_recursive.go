@@ -14,7 +14,6 @@ import (
 
 const (
 	watchEventsBufferSize             = 25
-	watchCoalescingWindow             = 10 * time.Millisecond
 	watchRootParameterPollingInterval = 5 * time.Second
 	watchRestartWait                  = 1 * time.Second
 )
@@ -36,7 +35,7 @@ func isParentOrSelf(parent, child string) bool {
 	return true
 }
 
-func watchNative(context context.Context, root string, events chan struct{}) error {
+func watchNative(context context.Context, root string, events chan struct{}, _ uint32) error {
 	// Compute the watch root. If we're on macOS, this will be the root itself.
 	// If we're on Windows, this will be the parent directory of the root.
 	var watchRoot string
@@ -49,8 +48,8 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 	}
 
 	// Set up initial watch root parameters.
-	var exists bool
-	var parameters watchRootParameters
+	var watchRootExists bool
+	var watchRootMetadata os.FileInfo
 	var forceRecreate bool
 
 	// Set up our initial event paths channel.
@@ -62,7 +61,7 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 
 	// Create a timer that we can use to coalesce events. It will be created
 	// running, so make sure to stop it and consume its first event, if any.
-	coalescingTimer := time.NewTimer(watchCoalescingWindow)
+	coalescingTimer := time.NewTimer(watchNativeCoalescingWindow)
 	if !coalescingTimer.Stop() {
 		<-coalescingTimer.C
 	}
@@ -141,26 +140,15 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 				continue
 			} else {
 				// Otherwise we're looking at a relevant event, so reset the
-				// coalescing timer.
+				// coalescing timer. Perform a non-blocking drain since we don't
+				// know if the timer was running or not.
 				if !coalescingTimer.Stop() {
-					// We have to do a non-blocking drain here because we don't
-					// know if a false return value from Stop indicates that we
-					// didn't stop the timer before it expired or that the timer
-					// simply wasn't running (see the definition of Stop's
-					// return value in the Go documentation). This differs from
-					// above where we know the timer was running and that there
-					// will be a value to drain if it's expired. What we're
-					// doing here is fine, it just differs from the
-					// documentation's example that's designed for cases where
-					// you know the timer was running, but it'll still drain any
-					// value that's present, there's no race condition or
-					// anything.
 					select {
 					case <-coalescingTimer.C:
 					default:
 					}
 				}
-				coalescingTimer.Reset(watchCoalescingWindow)
+				coalescingTimer.Reset(watchNativeCoalescingWindow)
 			}
 		case <-coalescingTimer.C:
 			// Forward a coalesced event.
@@ -169,22 +157,22 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			default:
 			}
 		case <-rootCheckTimer.C:
-			// Grab watch root parameters.
-			var currentlyExists bool
-			var currentParameters watchRootParameters
-			if p, err := probeWatchRoot(watchRoot); err != nil {
+			// Grab current watch root parameters.
+			var watchRootCurrentlyExists bool
+			var currentWatchRootMetadata os.FileInfo
+			if p, err := os.Lstat(watchRoot); err != nil {
 				if !os.IsNotExist(err) {
 					return errors.Wrap(err, "unable to probe root device ID and inode")
 				}
 			} else {
-				currentlyExists = true
-				currentParameters = p
+				watchRootCurrentlyExists = true
+				currentWatchRootMetadata = p
 			}
 
 			// Check if we need to recreate the watcher.
 			recreate := forceRecreate ||
-				exists != currentlyExists ||
-				!watchRootParametersEqual(parameters, currentParameters)
+				watchRootCurrentlyExists != watchRootExists ||
+				!watchRootParametersEqual(currentWatchRootMetadata, watchRootMetadata)
 
 			// Unmark forced recreation.
 			forceRecreate = false
@@ -207,11 +195,11 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 				// the notify package returns something checkable with
 				// os.IsNotExist. In any case, if there's an error, then just
 				// treat things as if we never saw the watch root existing.
-				if currentlyExists {
+				if watchRootCurrentlyExists {
 					if w, err := newRecursiveWatch(watchRoot); err != nil {
 						if os.IsNotExist(err) {
-							currentlyExists = false
-							currentParameters = watchRootParameters{}
+							watchRootCurrentlyExists = false
+							currentWatchRootMetadata = nil
 						} else {
 							return errors.Wrap(err, "unable to create recursive watch")
 						}
@@ -231,8 +219,8 @@ func watchNative(context context.Context, root string, events chan struct{}) err
 			}
 
 			// Update parameters.
-			exists = currentlyExists
-			parameters = currentParameters
+			watchRootExists = watchRootCurrentlyExists
+			watchRootMetadata = currentWatchRootMetadata
 
 			// Reset the timer and continue polling.
 			rootCheckTimer.Reset(watchRootParameterPollingInterval)

@@ -8,6 +8,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func watchNative(_ context.Context, _ string, _ chan struct{}) error {
-	return errors.New("native recursive watching not supported")
+func watchNative(_ context.Context, _ string, _ chan struct{}, _ uint32) error {
+	return errors.New("native watching not supported on this platform")
 }
