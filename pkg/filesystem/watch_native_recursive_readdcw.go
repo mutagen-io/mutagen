@@ -22,7 +22,7 @@ type recursiveWatch struct {
 	eventPaths       chan string
 }
 
-func newRecursiveWatch(path string) (*recursiveWatch, error) {
+func newRecursiveWatch(path string, _ os.FileInfo) (*recursiveWatch, error) {
 	// Create the watcher.
 	watcher, err := winfsnotify.NewWatcher()
 	if err != nil {

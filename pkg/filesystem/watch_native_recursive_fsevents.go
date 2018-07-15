@@ -27,15 +27,8 @@ type recursiveWatch struct {
 	eventPaths       chan string
 }
 
-func newRecursiveWatch(path string) (*recursiveWatch, error) {
+func newRecursiveWatch(path string, info os.FileInfo) (*recursiveWatch, error) {
 	// Compute the device ID for the path.
-	info, err := os.Lstat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, err
-		}
-		return nil, errors.Wrap(err, "unable to get watch root metadata")
-	}
 	deviceID, err := DeviceID(info)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to extract watch root device ID")

@@ -151,7 +151,7 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 				coalescingTimer.Reset(watchNativeCoalescingWindow)
 			}
 		case <-coalescingTimer.C:
-			// Forward a coalesced event.
+			// Forward a coalesced event in a non-blocking fashion.
 			select {
 			case events <- struct{}{}:
 			default:
@@ -160,13 +160,13 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			// Grab current watch root parameters.
 			var watchRootCurrentlyExists bool
 			var currentWatchRootMetadata os.FileInfo
-			if p, err := os.Lstat(watchRoot); err != nil {
+			if m, err := os.Lstat(watchRoot); err != nil {
 				if !os.IsNotExist(err) {
-					return errors.Wrap(err, "unable to probe root device ID and inode")
+					return errors.Wrap(err, "unable to probe root metadata")
 				}
 			} else {
 				watchRootCurrentlyExists = true
-				currentWatchRootMetadata = p
+				currentWatchRootMetadata = m
 			}
 
 			// Check if we need to recreate the watcher.
@@ -187,22 +187,10 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 					eventPaths = dummyEventPaths
 				}
 
-				// If the watch root exists, then attempt to start watching. If
-				// watching fails, then it's entirely possible that the watch
-				// root was deleted between the time we saw it and the time we
-				// tried to start watching. Unfortunately, we have to assume
-				// that's what went wrong, since there's no way to ensure that
-				// the notify package returns something checkable with
-				// os.IsNotExist. In any case, if there's an error, then just
-				// treat things as if we never saw the watch root existing.
+				// If the watch root exists, then attempt to start watching.
 				if watchRootCurrentlyExists {
-					if w, err := newRecursiveWatch(watchRoot); err != nil {
-						if os.IsNotExist(err) {
-							watchRootCurrentlyExists = false
-							currentWatchRootMetadata = nil
-						} else {
-							return errors.Wrap(err, "unable to create recursive watch")
-						}
+					if w, err := newRecursiveWatch(watchRoot, currentWatchRootMetadata); err != nil {
+						return errors.Wrap(err, "unable to create recursive watch")
 					} else {
 						watch = w
 						eventPaths = w.eventPaths
