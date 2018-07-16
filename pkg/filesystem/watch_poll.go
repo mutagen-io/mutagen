@@ -92,9 +92,7 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 		contents[path] = info
 
 		// Compare the entry for this path.
-		if previous, ok := existing[path]; !ok {
-			changed = true
-		} else if !fileInfoEqual(info, previous) {
+		if previous, ok := existing[path]; !ok || !fileInfoEqual(info, previous) {
 			changed = true
 		}
 

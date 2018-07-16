@@ -168,9 +168,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				// Remove any existing watch.
 				if rootParentWatched {
 					if err := rootParentWatcher.unwatch(rootParentPath); err != nil {
-						if !os.IsNotExist(err) {
-							return errors.Wrap(err, "unable to remove stale root parent watch")
-						}
+						return errors.Wrap(err, "unable to remove stale root parent watch")
 					}
 					rootParentWatched = false
 				}
@@ -191,8 +189,8 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				}
 
 				// Unlike the recursive case, we don't send a notification here
-				// because the poll check will see any changes and report them
-				// below.
+				// because the poll check will have seen any changes and
+				// reported them above.
 			}
 
 			// Update root parent parameters.
@@ -207,9 +205,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 					continue
 				}
 				if err := watcher.unwatch(p); err != nil {
-					if !os.IsNotExist(err) {
-						return errors.Wrap(err, "unable to remove stale watch")
-					}
+					return errors.Wrap(err, "unable to remove stale watch")
 				}
 				delete(watchedPaths, p)
 			}
@@ -222,7 +218,8 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			}
 
 			// If the new changes are too numerous to watch on their own, then
-			// just ignore them.
+			// just ignore them. This generally happens on massive bulk creates,
+			// where we wouldn't want to watch all the new files anyway.
 			if len(changes) > watchNativeNonRecursiveMaximumWatches {
 				changes = nil
 			}
@@ -232,9 +229,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			if len(changes)+len(watchedPaths) > watchNativeNonRecursiveMaximumWatches {
 				for p := range watchedPaths {
 					if err := watcher.unwatch(p); err != nil {
-						if !os.IsNotExist(err) {
-							return errors.Wrap(err, "unable to remove stale watch")
-						}
+						return errors.Wrap(err, "unable to remove stale watch")
 					}
 					delete(watchedPaths, p)
 				}
