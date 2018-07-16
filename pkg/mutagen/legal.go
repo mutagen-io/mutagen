@@ -195,7 +195,7 @@ fsevents
 
 https://github.com/fsnotify/fsevents
 
-Forked and modified at https://github.com/havoc-io/fsevents
+Forked and modified at https://github.com/havoc-io/fsevents.
 
 Copyright (c) 2014 The fsevents Authors. All rights reserved.
 
@@ -209,11 +209,25 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
+notify
+
+https://github.com/rjeczalik/notify
+
+A subset of this library has been extracted, modified, and vendored inside
+Mutagen at https://github.com/havoc-io/mutagen.
+
+Copyright (c) 2014-2015 The Notify Authors
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
 gopass
 
 https://github.com/howeyc/gopass
 
-Forked and modified at https://github.com/havoc-io/gopass
+Forked and modified at https://github.com/havoc-io/gopass.
 
 Copyright (c) 2012 Chris Howey
 

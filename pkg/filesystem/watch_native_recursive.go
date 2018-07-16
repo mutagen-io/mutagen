@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	watchEventsBufferSize             = 25
 	watchRootParameterPollingInterval = 5 * time.Second
 	watchRestartWait                  = 1 * time.Second
 )

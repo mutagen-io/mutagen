@@ -30,7 +30,7 @@ func newRecursiveWatch(path string, _ os.FileInfo) (*recursiveWatch, error) {
 	}
 
 	// Create the event paths channel.
-	eventPaths := make(chan string, watchEventsBufferSize)
+	eventPaths := make(chan string, watchNativeEventsBufferSize)
 
 	// Start a cancellable Goroutine to extract and forward paths.
 	forwardingContext, forwardingCancel := context.WithCancel(context.Background())

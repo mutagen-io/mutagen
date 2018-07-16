@@ -3,6 +3,7 @@ package filesystem
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -11,6 +12,9 @@ import (
 const (
 	// DefaultPollingInterval is the default watch polling interval, in seconds.
 	DefaultPollingInterval = 10
+	// defaultInitialContentMapCapacity is the default content map capacity if
+	// the existing content map is empty.
+	defaultInitialContentMapCapacity = 1024
 )
 
 func fileInfoEqual(first, second os.FileInfo) bool {
@@ -31,9 +35,24 @@ func fileInfoEqual(first, second os.FileInfo) bool {
 		first.ModTime().Equal(second.ModTime())
 }
 
-func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo, bool, error) {
+func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[string]os.FileInfo, bool, map[string]bool, error) {
 	// Create our result map.
-	result := make(map[string]os.FileInfo, len(existing))
+	initialContentMapCapacity := len(existing)
+	if initialContentMapCapacity == 0 {
+		initialContentMapCapacity = defaultInitialContentMapCapacity
+	}
+	contents := make(map[string]os.FileInfo, initialContentMapCapacity)
+
+	// Create our change tracking map (only allocating if we're actually
+	// tracking changes).
+	var changes map[string]bool
+	if trackChanges {
+		// TODO: Should we use an initial capacity here? It'll be small or empty
+		// most of the time, but we'll have a large allocation penalty on the
+		// first scan. Perhaps we can use a non-zero initial capacity if
+		// len(existing) == 0?
+		changes = make(map[string]bool)
+	}
 
 	// Create a walk visitor.
 	changed := false
@@ -70,13 +89,26 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 		}
 
 		// Insert the entry for this path.
-		result[path] = info
+		contents[path] = info
 
 		// Compare the entry for this path.
 		if previous, ok := existing[path]; !ok {
 			changed = true
 		} else if !fileInfoEqual(info, previous) {
 			changed = true
+		}
+
+		// If we're tracking changes and this path changed, register it. We
+		// always track the parent of the path, and for directories we also
+		// track the path itself, since these are where changes are going to be
+		// visible.
+		if trackChanges && changed {
+			if info.IsDir() {
+				changes[path] = true
+			}
+			if path != root {
+				changes[filepath.Dir(path)] = true
+			}
 		}
 
 		// Success.
@@ -86,17 +118,17 @@ func poll(root string, existing map[string]os.FileInfo) (map[string]os.FileInfo,
 	// Perform the walk. If it fails, and it's not due to the root not existing,
 	// then we can't return a valid result and need to abort.
 	if err := Walk(root, visitor); err != nil && !rootDoesNotExist {
-		return nil, false, errors.Wrap(err, "unable to perform filesystem walk")
+		return nil, false, nil, errors.Wrap(err, "unable to perform filesystem walk")
 	}
 
 	// If the length of the result map has changed, then there's been a change.
 	// This could be due to files being deleted.
-	if len(result) != len(existing) {
+	if len(contents) != len(existing) {
 		changed = true
 	}
 
 	// Done.
-	return result, changed, nil
+	return contents, changed, changes, nil
 }
 
 func watchPoll(context context.Context, root string, events chan struct{}, pollInterval uint32) error {
@@ -123,7 +155,7 @@ func watchPoll(context context.Context, root string, events chan struct{}, pollI
 			// timer and try again. We have to assume that errors here are due
 			// to concurrent modifications, so there's not much we can do to
 			// handle them.
-			newContents, changed, err := poll(root, contents)
+			newContents, changed, _, err := poll(root, contents, false)
 			if err != nil || !changed {
 				timer.Reset(pollIntervalDuration)
 				continue
