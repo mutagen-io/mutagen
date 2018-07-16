@@ -51,6 +51,8 @@
 // - not2nat, nat2not maps.
 // Required manual operations on filesystem can lead to loss of precision.
 
+// +build darwin,!cgo dragonfly freebsd netbsd openbsd
+
 package notify
 
 import (
