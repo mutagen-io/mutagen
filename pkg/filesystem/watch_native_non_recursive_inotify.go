@@ -47,20 +47,20 @@ func newNonRecursiveWatcher() (*nonRecursiveWatcher, error) {
 
 	// Done.
 	return &nonRecursiveWatcher{
-		watcher: watcher,
+		watcher:          watcher,
 		forwardingCancel: forwardingCancel,
-		eventPaths: eventPaths,
+		eventPaths:       eventPaths,
 	}, nil
 }
 
 func (w *nonRecursiveWatcher) watch(path string) error {
 	return w.watcher.Watch(
 		path,
-		notify.InModify | notify.InAttrib |
-		notify.InCloseWrite |
-		notify.InMovedFrom | notify.InMovedTo |
-		notify.InCreate | notify.InDelete |
-		notify.InDeleteSelf | notify.InMoveSelf,
+		notify.InModify|notify.InAttrib|
+			notify.InCloseWrite|
+			notify.InMovedFrom|notify.InMovedTo|
+			notify.InCreate|notify.InDelete|
+			notify.InDeleteSelf|notify.InMoveSelf,
 	)
 }
 
