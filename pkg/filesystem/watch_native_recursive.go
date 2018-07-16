@@ -186,10 +186,14 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 					eventPaths = dummyEventPaths
 				}
 
-				// If the watch root exists, then attempt to start watching.
+				// If the watch root exists, then attempt to start watching. If
+				// the restart attempt fails, then just mark a forced
+				// recreation and try again after a delay.
 				if watchRootCurrentlyExists {
 					if w, err := newRecursiveWatch(watchRoot, currentWatchRootMetadata); err != nil {
-						return errors.Wrap(err, "unable to create recursive watch")
+						forceRecreate = true
+						rootCheckTimer.Reset(watchRestartWait)
+						continue
 					} else {
 						watch = w
 						eventPaths = w.eventPaths
