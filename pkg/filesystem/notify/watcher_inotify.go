@@ -386,7 +386,7 @@ func (i *inotify) Unwatch(path string) (err error) {
 	}
 	i.RUnlock()
 	if iwd == invalidDescriptor {
-		return errors.New("notify: path " + path + " is already watched")
+		return errors.New("notify: path " + path + " is not watched")
 	}
 	fd := atomic.LoadInt32(&i.fd)
 	if err = removeInotifyWatch(fd, iwd); err != nil {

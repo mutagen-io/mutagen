@@ -1,4 +1,4 @@
-// +build solaris plan9
+// +build !windows,!linux,!darwin darwin,!cgo
 
 package filesystem
 

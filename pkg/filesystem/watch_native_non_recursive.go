@@ -1,4 +1,4 @@
-// +build linux darwin,!cgo dragonfly freebsd netbsd openbsd
+// +build linux
 
 package filesystem
 
@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/filesystem/notify"
 )
 
 const (
@@ -44,9 +42,11 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 
 	// Create a watcher for the root path (by watching its parent directory) and
 	// defer its shutdown.
-	rootParentWatcherEvents := make(chan notify.EventInfo, watchNativeEventsBufferSize)
-	rootParentWatcher := notify.NewWatcher(rootParentWatcherEvents)
-	defer rootParentWatcher.Close()
+	rootParentWatcher, err := newNonRecursiveWatcher()
+	if err != nil {
+		return errors.Wrap(err, "unable to create root parent watcher")
+	}
+	defer rootParentWatcher.stop()
 
 	// Create parameters to track the state of the root parent directory.
 	var rootParentExists bool
@@ -54,9 +54,11 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 	var rootParentWatched bool
 
 	// Create a watcher for paths at or beneath the root and defer its shutdown.
-	watcherEvents := make(chan notify.EventInfo, watchNativeEventsBufferSize)
-	watcher := notify.NewWatcher(watcherEvents)
-	defer watcher.Close()
+	watcher, err := newNonRecursiveWatcher()
+	if err != nil {
+		return errors.Wrap(err, "unable to create watcher")
+	}
+	defer watcher.stop()
 
 	// Create a map to track those paths that are currently watched.
 	watchedPaths := make(map[string]os.FileInfo, watchNativeNonRecursiveMaximumWatches)
@@ -75,18 +77,18 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			case <-monitoringContext.Done():
 				monitoringErrors <- errors.New("monitoring cancelled")
 				return
-			case e, ok := <-rootParentWatcherEvents:
+			case p, ok := <-rootParentWatcher.eventPaths:
 				if !ok {
 					monitoringErrors <- errors.New("root parent watcher event stream closed")
 					return
-				} else if filepath.Base(e.Path()) == rootLeafName {
+				} else if filepath.Base(p) == rootLeafName {
 					resetCoalescingTimer = true
 				}
-			case e, ok := <-watcherEvents:
+			case p, ok := <-watcher.eventPaths:
 				if !ok {
 					monitoringErrors <- errors.New("watcher event stream closed")
 					return
-				} else if p := e.Path(); !isExecutabilityTestPath(p) && !isDecompositionTestPath(p) {
+				} else if !isExecutabilityTestPath(p) && !isDecompositionTestPath(p) {
 					resetCoalescingTimer = true
 				}
 			}
@@ -165,7 +167,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			if reestablishRootParentWatch {
 				// Remove any existing watch.
 				if rootParentWatched {
-					if err := rootParentWatcher.Unwatch(rootParentPath); err != nil {
+					if err := rootParentWatcher.unwatch(rootParentPath); err != nil {
 						if !os.IsNotExist(err) {
 							return errors.Wrap(err, "unable to remove stale root parent watch")
 						}
@@ -176,7 +178,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				// If the root parent currently exists, then attempt to start
 				// watching.
 				if rootParentCurrentlyExists {
-					if err := rootParentWatcher.Watch(rootParentPath, watchEventMask()); err != nil {
+					if err := rootParentWatcher.watch(rootParentPath); err != nil {
 						if os.IsNotExist(err) {
 							rootParentCurrentlyExists = false
 							currentRootParentMetadata = nil
@@ -204,7 +206,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				if ok && watchRootParametersEqual(currentMetadata, m) {
 					continue
 				}
-				if err := watcher.Unwatch(p); err != nil {
+				if err := watcher.unwatch(p); err != nil {
 					if !os.IsNotExist(err) {
 						return errors.Wrap(err, "unable to remove stale watch")
 					}
@@ -229,7 +231,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			// purge any existing watches.
 			if len(changes)+len(watchedPaths) > watchNativeNonRecursiveMaximumWatches {
 				for p := range watchedPaths {
-					if err := watcher.Unwatch(p); err != nil {
+					if err := watcher.unwatch(p); err != nil {
 						if !os.IsNotExist(err) {
 							return errors.Wrap(err, "unable to remove stale watch")
 						}
@@ -240,7 +242,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 
 			// Add new watches.
 			for p := range changes {
-				if err := watcher.Watch(p, watchEventMask()); err != nil {
+				if err := watcher.watch(p); err != nil {
 					if os.IsNotExist(err) {
 						continue
 					}
