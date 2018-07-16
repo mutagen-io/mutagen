@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	watchRootParameterPollingInterval = 5 * time.Second
+	watchRootParameterPollingInterval = 1 * time.Second
 	watchRestartWait                  = 1 * time.Second
 )
 
