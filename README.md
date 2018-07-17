@@ -112,18 +112,18 @@ getting.
   corollary, Mutagen can even synchronize between two remote endpoints without
   ever needing a local copy of the files.
 - Mutagen can display dynamic synchronization status in the terminal.
-- Mutagen does not propagate (most) permissions, but it does preserve
-  permissions when updating files<sup>1</sup>. The only permission propagated
-  by Mutagen is executability or lack thereof. Any other permissions are left
-  untouched for existing files and set to user-only access for newly created
-  files. This is by design, since Mutagen's main purpose is remote development.
-  Nothing in the current design precludes adding more extensive permission
-  propagation in the future.
+- Mutagen does not propagate (most) permissions, but it does
+  preserve<sup>1</sup> permissions when updating files. The only permission
+  propagated by Mutagen is executability or lack thereof. Any other permissions
+  are left untouched for existing files and set to user-only access for newly
+  created files. This is by design, since Mutagen's main purpose is remote
+  development. Nothing in the current design precludes adding more extensive
+  permission propagation in the future.
 - Mutagen has (**best-effort**) [safety mechanisms](doc/safety.md) to avoid
   accidental data loss.
 
-<sup>1</sup> This behavior is currently limited to POSIX systems, but should be
-coming to Windows systems soon.
+<sup>1</sup> This preservation behavior is currently limited to POSIX systems,
+but should be coming to Windows systems soon.
 
 You might have guessed that Mutagen's closest cousin is the
 [Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
