@@ -102,7 +102,10 @@ getting.
 - On systems that support recursive filesystem watching (macOS and Windows),
   Mutagen effeciently watches synchronization roots for changes. Other systems
   currently use regular and efficient polling out of a desire to support very
-  large directory hierarchies that might exhaust watch and file descriptors.
+  large directory hierarchies that might exhaust watch and file descriptors. On
+  Linux, Mutagen couples this polling with a restricted set of native watches on
+  the most recently updated contnets in order to maintain low-latency change
+  notifications.
 - Mutagen is agnostic of the transport to endpoints - all it requires is a byte
   stream to each endpoint. Support is currently built-in for local and SSH-based
   synchronization, but support for other remote types can easily be added. As a
