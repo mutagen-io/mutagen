@@ -28,10 +28,8 @@ func (s Status) Description() string {
 		return "Staging files on alpha"
 	case Status_StagingBeta:
 		return "Staging files on beta"
-	case Status_TransitioningAlpha:
-		return "Applying changes on alpha"
-	case Status_TransitioningBeta:
-		return "Applying changes on beta"
+	case Status_Transitioning:
+		return "Applying changes"
 	case Status_Saving:
 		return "Saving archive"
 	default:

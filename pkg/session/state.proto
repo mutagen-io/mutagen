@@ -19,9 +19,8 @@ enum Status {
     Reconciling = 8;
     StagingAlpha = 9;
     StagingBeta = 10;
-    TransitioningAlpha = 11;
-    TransitioningBeta = 12;
-    Saving = 13;
+    Transitioning = 11;
+    Saving = 12;
 }
 
 message State {
