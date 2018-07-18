@@ -37,8 +37,7 @@ type scanResponse struct {
 }
 
 type stageRequest struct {
-	Paths   []string
-	Entries []*sync.Entry
+	Entries map[string]*sync.Entry
 }
 
 type stageResponse struct {

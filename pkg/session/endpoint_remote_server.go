@@ -235,7 +235,7 @@ func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 	}
 
 	// Begin staging.
-	paths, signatures, receiver, err := s.endpoint.stage(request.Paths, request.Entries)
+	paths, signatures, receiver, err := s.endpoint.stage(request.Entries)
 	if err != nil {
 		s.encoder.Encode(stageResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to begin staging")

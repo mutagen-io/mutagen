@@ -3,9 +3,12 @@ package session
 import (
 	"context"
 	"hash"
+	"io"
 	"os"
 	"path/filepath"
 	syncpkg "sync"
+
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -193,32 +196,87 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	return result, preservesExecutability, nil, false
 }
 
-func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
-	// It's possible that a previous staging was interrupted, so look for paths
-	// that are already staged by checking if our staging coordinator can
-	// already provide them.
-	unstagedPaths := make([]string, 0, len(paths))
-	for i, p := range paths {
-		if _, err := e.stager.Provide(p, entries[i].Digest); err != nil {
-			unstagedPaths = append(unstagedPaths, p)
-		}
+func (e *localEndpoint) stageFromRoot(path string, entry *sync.Entry, reverseLookupMap *sync.ReverseLookupMap) bool {
+	// See if we can find a path within the root that has a matching digest.
+	sourcePath, sourcePathOk := reverseLookupMap.Lookup(entry.Digest)
+	if !sourcePathOk {
+		return false
 	}
 
-	// If everything was already staged, then we can abort the staging
+	// Open the source file and defer its closure.
+	source, err := os.Open(filepath.Join(e.root, sourcePath))
+	if err != nil {
+		return false
+	}
+	defer source.Close()
+
+	// Create a staging sink. We explicitly manage its closure below.
+	sink, err := e.stager.Sink(path)
+	if err != nil {
+		return false
+	}
+
+	// Copy data to the sink and close it, then check for copy errors.
+	_, err = io.Copy(sink, source)
+	sink.Close()
+	if err != nil {
+		return false
+	}
+
+	// Ensure that everything staged correctly.
+	_, err = e.stager.Provide(path, entry.Digest)
+	return err == nil
+}
+
+func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
+	// It's possible that a previous staging was interrupted, so look for paths
+	// that are already staged by checking if our staging coordinator can
+	// already provide them. If everything was already staged, then we can abort
+	// the staging operation.
+	for path, entry := range entries {
+		if _, err := e.stager.Provide(path, entry.Digest); err == nil {
+			delete(entries, path)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, nil, nil, nil
+	}
+
+	// It's possible that we're dealing with renames or copies, so generate a
+	// reverse lookup map from the cache and see if we can find any files
+	// locally. If we manage to handle all files, then we can abort the staging
 	// operation.
-	if len(unstagedPaths) == 0 {
+	e.scanParametersLock.Lock()
+	reverseLookupMap, err := e.cache.GenerateReverseLookupMap()
+	e.scanParametersLock.Unlock()
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
+	}
+	for path, entry := range entries {
+		if e.stageFromRoot(path, entry, reverseLookupMap) {
+			fmt.Println("staged", path)
+			delete(entries, path)
+		}
+	}
+	if len(entries) == 0 {
 		return nil, nil, nil, nil
 	}
 
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
+	// Extract paths.
+	paths := make([]string, 0, len(entries))
+	for path := range entries {
+		paths = append(paths, path)
+	}
+
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltafying/patching.
-	signatures := make([]rsync.Signature, len(unstagedPaths))
-	for i, p := range unstagedPaths {
-		if base, err := os.Open(filepath.Join(e.root, p)); err != nil {
+	signatures := make([]rsync.Signature, len(paths))
+	for i, path := range paths {
+		if base, err := os.Open(filepath.Join(e.root, path)); err != nil {
 			continue
 		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
@@ -230,13 +288,13 @@ func (e *localEndpoint) stage(paths []string, entries []*sync.Entry) ([]string, 
 	}
 
 	// Create a receiver.
-	receiver, err := rsync.NewReceiver(e.root, unstagedPaths, signatures, e.stager)
+	receiver, err := rsync.NewReceiver(e.root, paths, signatures, e.stager)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to create rsync receiver")
 	}
 
 	// Done.
-	return unstagedPaths, signatures, receiver, nil
+	return paths, signatures, receiver, nil
 }
 
 func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {

@@ -7,8 +7,7 @@ import (
 )
 
 type stagingPathFinder struct {
-	paths   []string
-	entries []*Entry
+	entries map[string]*Entry
 }
 
 func (f *stagingPathFinder) find(path string, entry *Entry) error {
@@ -25,8 +24,7 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 			}
 		}
 	} else if entry.Kind == EntryKind_File {
-		f.paths = append(f.paths, path)
-		f.entries = append(f.entries, entry)
+		f.entries[path] = entry
 	} else if entry.Kind == EntryKind_Symlink {
 		return nil
 	} else {
@@ -39,11 +37,12 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 
 // TransitionDependencies analyzes a list of transitions and determines the file
 // paths and their corresponding entries that will need to be provided in order
-// to apply the transitions using Transition. It guarantees that both returned
-// slices will have the same length.
-func TransitionDependencies(transitions []*Change) ([]string, []*Entry, error) {
+// to apply the transitions using Transition.
+func TransitionDependencies(transitions []*Change) (map[string]*Entry, error) {
 	// Create a path finder.
-	finder := &stagingPathFinder{}
+	finder := &stagingPathFinder{
+		entries: make(map[string]*Entry, len(transitions)),
+	}
 
 	// Have it find paths for all the transitions.
 	for _, t := range transitions {
@@ -61,10 +60,10 @@ func TransitionDependencies(transitions []*Change) ([]string, []*Entry, error) {
 
 		// Otherwise we need to perform a full scan.
 		if err := finder.find(t.Path, t.New); err != nil {
-			return nil, nil, errors.Wrap(err, "unable to find staging paths")
+			return nil, errors.Wrap(err, "unable to find staging paths")
 		}
 	}
 
 	// Success.
-	return finder.paths, finder.entries, nil
+	return finder.entries, nil
 }

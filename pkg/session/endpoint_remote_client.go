@@ -193,9 +193,9 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	return snapshot, response.PreservesExecutability, nil, false
 }
 
-func (e *remoteEndpointClient) stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
+func (e *remoteEndpointClient) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// Create and send the stage request.
-	request := endpointRequest{Stage: &stageRequest{paths, entries}}
+	request := endpointRequest{Stage: &stageRequest{entries}}
 	if err := e.encoder.Encode(request); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to send stage request")
 	}

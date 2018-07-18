@@ -182,8 +182,10 @@ func main() {
 	// we really care about (especially since it has to copy the entire entry
 	// tree), but I also don't want to expose that machinery publicly.
 
-	// Print other information.
+	// Print serialized snapshot size.
 	fmt.Println("Serialized snapshot size is", len(serializedSnapshot), "bytes")
+
+	// Print whether or not snapshots are equivalent.
 	fmt.Println(
 		"Original/deserialized snapshots equivalent?",
 		deserializedSnapshot.Equal(snapshot),
@@ -260,6 +262,14 @@ func main() {
 		cmd.Fatal(errors.Wrap(err, "unable to remove cache"))
 	}
 
-	// Print other information.
+	// Print serialized cache size.
 	fmt.Println("Serialized cache size is", len(serializedCache), "bytes")
+
+	// Generate a reverse lookup map for the cache.
+	start = time.Now()
+	if _, err = cache.GenerateReverseLookupMap(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to generate reverse lookup map"))
+	}
+	stop = time.Now()
+	fmt.Println("Reverse lookup map generation took", stop.Sub(start))
 }

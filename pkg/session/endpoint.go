@@ -38,7 +38,7 @@ type endpoint interface {
 	// subsequent methods can be invoked on the endpoint. If the receiver fails,
 	// the endpoint should be considered contaminated and not used (though
 	// shutdown can and should still be invoked).
-	stage(paths []string, entries []*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error)
+	stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error)
 
 	// supply transmits files in a streaming fashion using the rsync algorithm
 	// to the specified receiver.

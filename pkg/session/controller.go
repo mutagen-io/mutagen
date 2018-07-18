@@ -727,10 +727,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
-		if paths, entries, err := sync.TransitionDependencies(αTransitions); err != nil {
+		if entries, err := sync.TransitionDependencies(αTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on alpha")
-		} else if len(paths) > 0 {
-			paths, signatures, receiver, err := alpha.stage(paths, entries)
+		} else if len(entries) > 0 {
+			paths, signatures, receiver, err := alpha.stage(entries)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on alpha")
 			}
@@ -747,10 +747,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
-		if paths, entries, err := sync.TransitionDependencies(βTransitions); err != nil {
+		if entries, err := sync.TransitionDependencies(βTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on beta")
-		} else if len(paths) > 0 {
-			paths, signatures, receiver, err := beta.stage(paths, entries)
+		} else if len(entries) > 0 {
+			paths, signatures, receiver, err := beta.stage(entries)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on beta")
 			}

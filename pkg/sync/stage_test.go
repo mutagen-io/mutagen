@@ -5,10 +5,8 @@ import (
 )
 
 func TestTransitionDependenciesEmtpy(t *testing.T) {
-	if names, entries, err := TransitionDependencies(nil); err != nil {
+	if entries, err := TransitionDependencies(nil); err != nil {
 		t.Error("transition dependency finding failed for no transitions:", err)
-	} else if len(names) != 0 {
-		t.Error("unexpected number of names for no transitions")
 	} else if len(entries) != 0 {
 		t.Error("unexpected number of entries for no transitions")
 	}
@@ -35,10 +33,8 @@ func TestTransitionDependenciesNewNil(t *testing.T) {
 			New:  nil,
 		},
 	}
-	if names, entries, err := TransitionDependencies(transitions); err != nil {
+	if entries, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(names) != 0 {
-		t.Error("unexpected number of names")
 	} else if len(entries) != 0 {
 		t.Error("unexpected number of entries")
 	}
@@ -51,10 +47,8 @@ func TestTransitionDependenciesNewNonNil(t *testing.T) {
 			New:  testDirectory1Entry,
 		},
 	}
-	if names, entries, err := TransitionDependencies(transitions); err != nil {
+	if entries, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(names) != 4 {
-		t.Error("unexpected number of names")
 	} else if len(entries) != 4 {
 		t.Error("unexpected number of entries")
 	}
@@ -70,10 +64,8 @@ func TestTransitionDependenciesOnlyExecutableBitChange(t *testing.T) {
 			New:  testFile2Entry,
 		},
 	}
-	if names, entries, err := TransitionDependencies(transitions); err != nil {
+	if entries, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(names) != 0 {
-		t.Error("unexpected number of names")
 	} else if len(entries) != 0 {
 		t.Error("unexpected number of entries")
 	}
