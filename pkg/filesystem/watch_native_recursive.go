@@ -65,10 +65,10 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 		<-coalescingTimer.C
 	}
 
-	// Create a timer to watch for changes to the root device ID and/or inode.
-	// Start it with a 0 duration so that the first check takes place
+	// Create a timer to watch for changes to the watch root device ID and/or
+	// inode. Start it with a 0 duration so that the first check takes place
 	// immediately. Subsequent checks will take place at the normal interval.
-	rootCheckTimer := time.NewTimer(0)
+	watchRootCheckTimer := time.NewTimer(0)
 
 	// Create a function to clean up after ourselves.
 	defer func() {
@@ -81,7 +81,7 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 		coalescingTimer.Stop()
 
 		// Cancel the root check timer.
-		rootCheckTimer.Stop()
+		watchRootCheckTimer.Stop()
 	}()
 
 	// Poll for cancellation, the next raw event, the coalescing timer, or the
@@ -113,10 +113,10 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 				// to rapid disk events causing a read buffer overflow, then
 				// we're better off just waiting until that's done, otherwise
 				// we'll just burn CPU cycles recreating over and over again.
-				if !rootCheckTimer.Stop() {
-					<-rootCheckTimer.C
+				if !watchRootCheckTimer.Stop() {
+					<-watchRootCheckTimer.C
 				}
-				rootCheckTimer.Reset(watchRestartWait)
+				watchRootCheckTimer.Reset(watchRestartWait)
 
 				// Continue polling.
 				continue
@@ -155,7 +155,7 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			case events <- struct{}{}:
 			default:
 			}
-		case <-rootCheckTimer.C:
+		case <-watchRootCheckTimer.C:
 			// Grab current watch root parameters.
 			var watchRootCurrentlyExists bool
 			var currentWatchRootMetadata os.FileInfo
@@ -192,7 +192,7 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 				if watchRootCurrentlyExists {
 					if w, err := newRecursiveWatch(watchRoot, currentWatchRootMetadata); err != nil {
 						forceRecreate = true
-						rootCheckTimer.Reset(watchRestartWait)
+						watchRootCheckTimer.Reset(watchRestartWait)
 						continue
 					} else {
 						watch = w
@@ -214,7 +214,7 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			watchRootMetadata = currentWatchRootMetadata
 
 			// Reset the timer and continue polling.
-			rootCheckTimer.Reset(watchRootParameterPollingInterval)
+			watchRootCheckTimer.Reset(watchRootParameterPollingInterval)
 		}
 	}
 }
