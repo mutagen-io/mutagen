@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	syncpkg "sync"
 
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
@@ -254,7 +252,6 @@ func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync
 	}
 	for path, entry := range entries {
 		if e.stageFromRoot(path, entry, reverseLookupMap) {
-			fmt.Println("staged", path)
 			delete(entries, path)
 		}
 	}
