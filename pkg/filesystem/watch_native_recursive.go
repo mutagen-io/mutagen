@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -34,8 +35,16 @@ func isParentOrSelf(parent, child string) bool {
 }
 
 func watchNative(context context.Context, root string, events chan struct{}, _ uint32) error {
-	// Compute the watch root. This will be the parent directory of the root.
-	watchRoot := filepath.Dir(root)
+	// Compute the watch root. If we're on macOS, this will be the root itself.
+	// If we're on Windows, this will be the parent directory of the root.
+	var watchRoot string
+	if runtime.GOOS == "darwin" {
+		watchRoot = root
+	} else if runtime.GOOS == "windows" {
+		watchRoot = filepath.Dir(root)
+	} else {
+		panic("unhandled platform case")
+	}
 
 	// Set up initial watch root parameters.
 	var watchRootExists bool
@@ -123,10 +132,10 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
 				// Ignore any probe files created by Mutagen.
 				continue
-			} else if !isParentOrSelf(root, path) {
-				// Since we're monitoring the root's parent directory, we need
-				// to make sure that the notification originates from the root
-				// or a location inside it.
+			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {
+				// If we're on Windows, then we're monitoring the parent
+				// directory of the synchronization root, so if the notification
+				// is for a path outside that root, ignore it.
 				continue
 			} else {
 				// Otherwise we're looking at a relevant event, so reset the

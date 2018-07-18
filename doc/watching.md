@@ -18,11 +18,12 @@ watching that attempts to maximize reliability and responsiveness while avoiding
 exhaustion of system resources or problematic behavior.
 
 On systems that natively support recursive filesystem watching, a watch is
-established on the parent directory of the synchronization root and events are
-filtered to only those originating from the synchronization root. Because these
-systems can behave strangely if the root of a watch is deleted, a regular (but
-very cheap) polling mechanism is used to ensure that the watch root hasn't been
-deleted or recreated. If a change to the watch root is detected, the watch is
+established on either the synchronization root itself (on macOS) or the parent
+directory of the synchronization root (on Windows) and events are filtered to
+only those originating from the synchronization root. Because these systems can
+behave strangely if the root of a watch is deleted, a regular (but very cheap)
+polling mechanism is used to ensure that the watch root hasn't been deleted or
+recreated. If a change to the watch root is detected, the watch is
 re-established.
 
 On all other systems, a polling mechanism is used to avoid exhausting watch/file
