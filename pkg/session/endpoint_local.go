@@ -29,12 +29,14 @@ type localEndpoint struct {
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
-	// scanLock serializes access to the scan-related fields below (those that
-	// are updated during scans). Even though we enforce that an endpoint's scan
-	// method can't be called concurrently, we perform asynchronous cache disk
-	// writes, and thus we need to be sure that we don't re-enter scan and start
-	// mutating the following fields while the write Goroutine is still running.
-	scanLock syncpkg.Mutex
+	// scanParametersLock serializes access to the scan-related fields below
+	// (those that are updated during scans). Even though we enforce that an
+	// endpoint's scan method can't be called concurrently, we perform
+	// asynchronous cache disk writes, and thus we need to be sure that we don't
+	// re-enter scan and start mutating the following fields while the write
+	// Goroutine is still running. We also acquire this lock during transitions
+	// since they re-use scan parameters.
+	scanParametersLock syncpkg.Mutex
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
@@ -151,14 +153,14 @@ func (e *localEndpoint) poll(context context.Context) error {
 
 func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Grab the scan lock.
-	e.scanLock.Lock()
+	e.scanParametersLock.Lock()
 
 	// Check for asynchronous cache write errors. If we've encountered one, we
 	// don't proceed. Note that we use a defer to unlock since we're grabbing
 	// the cacheWriteError on the next line (this avoids an intermediate
 	// assignment).
 	if e.cacheWriteError != nil {
-		defer e.scanLock.Unlock()
+		defer e.scanParametersLock.Unlock()
 		return nil, false, errors.Wrap(e.cacheWriteError, "unable to save cache to disk"), false
 	}
 
@@ -168,7 +170,7 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.symlinkMode,
 	)
 	if err != nil {
-		e.scanLock.Unlock()
+		e.scanParametersLock.Unlock()
 		return nil, false, err, true
 	}
 
@@ -184,7 +186,7 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 		if err := encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
 			e.cacheWriteError = err
 		}
-		e.scanLock.Unlock()
+		e.scanParametersLock.Unlock()
 	}()
 
 	// Done.
@@ -242,6 +244,10 @@ func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, rec
 }
 
 func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+	// Lock and defer release of the scan parameters lock.
+	e.scanParametersLock.Lock()
+	defer e.scanParametersLock.Unlock()
+
 	// Perform the transition.
 	results, problems := sync.Transition(e.root, transitions, e.cache, e.symlinkMode, e.recomposeUnicode, e.stager)
 
