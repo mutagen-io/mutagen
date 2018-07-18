@@ -7,8 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/fsnotify/fsevents"
 )
 
@@ -28,12 +26,6 @@ type recursiveWatch struct {
 }
 
 func newRecursiveWatch(path string, info os.FileInfo) (*recursiveWatch, error) {
-	// Compute the device ID for the path.
-	deviceID, err := DeviceID(info)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to extract watch root device ID")
-	}
-
 	// Create the raw event channel.
 	rawEvents := make(chan []fsevents.Event, watchNativeEventsBufferSize)
 
@@ -42,7 +34,6 @@ func newRecursiveWatch(path string, info os.FileInfo) (*recursiveWatch, error) {
 		Events:  rawEvents,
 		Paths:   []string{path},
 		Latency: fseventsCoalescingLatency,
-		Device:  int32(deviceID),
 		Flags:   fseventsFlags,
 	}
 
