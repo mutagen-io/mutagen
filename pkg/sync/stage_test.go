@@ -21,7 +21,7 @@ func TestTransitionDependenciesInvalid(t *testing.T) {
 			New:  root,
 		},
 	}
-	if _, _, err := TransitionDependencies(transitions); err == nil {
+	if _, err := TransitionDependencies(transitions); err == nil {
 		t.Error("transition dependency finding succeeded for invalid transition")
 	}
 }
