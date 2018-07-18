@@ -1,7 +1,7 @@
 # Ignores
 
 By default, Mutagen attempts to propagate all files that it sees within a
-synchronization root. This isn't always desired, so Mutagen supports ignoring
+synchronization root. This isn't always desirable, so Mutagen supports ignoring
 paths within a synchronization root and excluding them from synchronization.
 When a path is ignored, it won't be scanned, it won't be propagated, and it
 won't be deleted.
