@@ -92,7 +92,13 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 		contents[path] = info
 
 		// Compare the entry for this path.
+		pathChanged := false
 		if previous, ok := existing[path]; !ok || !fileInfoEqual(info, previous) {
+			pathChanged = true
+		}
+
+		// Update change tracker.
+		if pathChanged {
 			changed = true
 		}
 
@@ -100,7 +106,7 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 		// always track the parent of the path, and for directories we also
 		// track the path itself, since these are where changes are going to be
 		// visible.
-		if trackChanges && changed {
+		if trackChanges && pathChanged {
 			if info.IsDir() {
 				changes[path] = true
 			}
