@@ -7,7 +7,9 @@ import (
 
 func watchRootParametersEqual(first, second os.FileInfo) bool {
 	// Watch out for nil file information.
-	if first == nil || second == nil {
+	if first == nil && second == nil {
+		return true
+	} else if first == nil || second == nil {
 		return false
 	}
 
