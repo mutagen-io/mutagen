@@ -173,6 +173,18 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 				watchRootCurrentlyExists != watchRootExists ||
 				!watchRootParametersEqual(currentWatchRootMetadata, watchRootMetadata)
 
+			// HACK: On macOS, it's not necessary to recreate a watcher for a
+			// file root, even if the file itself has changed.
+			if recreate && runtime.GOOS == "darwin" {
+				overrideRecreate := !forceRecreate &&
+					watchRootExists && watchRootCurrentlyExists &&
+					currentWatchRootMetadata.Mode() == watchRootMetadata.Mode() &&
+					currentWatchRootMetadata.Mode()&os.ModeType == 0
+				if overrideRecreate {
+					recreate = false
+				}
+			}
+
 			// Unmark forced recreation.
 			forceRecreate = false
 
