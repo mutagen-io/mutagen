@@ -775,29 +775,34 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		var αTransitionErr, βTransitionErr error
 		var αChanges, βChanges []*sync.Change
 		transitionDone := &syncpkg.WaitGroup{}
-		transitionDone.Add(2)
-		go func() {
-			if len(αTransitions) > 0 {
+		if len(αTransitions) > 0 {
+			transitionDone.Add(1)
+		}
+		if len(βTransitions) > 0 {
+			transitionDone.Add(1)
+		}
+		if len(αTransitions) > 0 {
+			go func() {
 				αResults, αProblems, αTransitionErr = alpha.transition(αTransitions)
 				if αTransitionErr == nil {
 					for t, transition := range αTransitions {
 						αChanges = append(αChanges, &sync.Change{Path: transition.Path, New: αResults[t]})
 					}
 				}
-			}
-			transitionDone.Done()
-		}()
-		go func() {
-			if len(βTransitions) > 0 {
+				transitionDone.Done()
+			}()
+		}
+		if len(βTransitions) > 0 {
+			go func() {
 				βResults, βProblems, βTransitionErr = beta.transition(βTransitions)
 				if βTransitionErr == nil {
 					for t, transition := range βTransitions {
 						βChanges = append(βChanges, &sync.Change{Path: transition.Path, New: βResults[t]})
 					}
 				}
-			}
-			transitionDone.Done()
-		}()
+				transitionDone.Done()
+			}()
+		}
 		transitionDone.Wait()
 
 		// Record problems and then combine changes and propagate them to the
