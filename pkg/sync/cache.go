@@ -72,12 +72,10 @@ func (c *Cache) GenerateReverseLookupMap() (*ReverseLookupMap, error) {
 			return nil, errors.New("inconsistent digest sizes")
 		}
 
-		// Create a key.
-		var key [20]byte
-		copy(key[:], e.Digest)
-
-		// Store the entry.
+		// Handle the entry based on digest size.
 		if digestSize == 20 {
+			var key [20]byte
+			copy(key[:], e.Digest)
 			result.map20[key] = p
 		} else {
 			panic("invalid digest size allowed")
