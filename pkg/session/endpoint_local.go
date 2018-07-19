@@ -194,9 +194,9 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	return result, preservesExecutability, nil, false
 }
 
-func (e *localEndpoint) stageFromRoot(path string, entry *sync.Entry, reverseLookupMap *sync.ReverseLookupMap) bool {
+func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *sync.ReverseLookupMap) bool {
 	// See if we can find a path within the root that has a matching digest.
-	sourcePath, sourcePathOk := reverseLookupMap.Lookup(entry.Digest)
+	sourcePath, sourcePathOk := reverseLookupMap.Lookup(digest)
 	if !sourcePathOk {
 		return false
 	}
@@ -222,7 +222,7 @@ func (e *localEndpoint) stageFromRoot(path string, entry *sync.Entry, reverseLoo
 	}
 
 	// Ensure that everything staged correctly.
-	_, err = e.stager.Provide(path, entry.Digest)
+	_, err = e.stager.Provide(path, digest)
 	return err == nil
 }
 
@@ -251,7 +251,7 @@ func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync
 		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
 	}
 	for path, entry := range entries {
-		if e.stageFromRoot(path, entry, reverseLookupMap) {
+		if e.stageFromRoot(path, entry.Digest, reverseLookupMap) {
 			delete(entries, path)
 		}
 	}
