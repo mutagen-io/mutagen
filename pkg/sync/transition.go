@@ -190,6 +190,11 @@ func (t *transitioner) ensureNotExists(path string) error {
 }
 
 func (t *transitioner) removeFile(path string, target *Entry) error {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		return errors.New("path contains invalid characters")
+	}
+
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
 	if _, _, _, err := t.ensureExpectedFile(path, target); err != nil {
@@ -201,6 +206,11 @@ func (t *transitioner) removeFile(path string, target *Entry) error {
 }
 
 func (t *transitioner) removeSymlink(path string, target *Entry) error {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		return errors.New("path contains invalid characters")
+	}
+
 	// Ensure that the existing symlink hasn't been modified from what we're
 	// expecting.
 	if err := t.ensureExpectedSymlink(path, target); err != nil {
@@ -212,6 +222,12 @@ func (t *transitioner) removeSymlink(path string, target *Entry) error {
 }
 
 func (t *transitioner) removeDirectory(path string, target *Entry) bool {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		t.recordProblem(path, errors.New("path contains invalid characters"))
+		return false
+	}
+
 	// Compute the full path to this directory.
 	fullPath := filepath.Join(t.root, path)
 
@@ -332,6 +348,11 @@ func (t *transitioner) remove(path string, target *Entry) *Entry {
 }
 
 func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		return errors.New("path contains invalid characters")
+	}
+
 	// Compute the full path to this file.
 	fullPath := filepath.Join(t.root, path)
 
@@ -394,6 +415,11 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 }
 
 func (t *transitioner) createFile(path string, target *Entry) error {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		return errors.New("path contains invalid characters")
+	}
+
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
@@ -429,6 +455,11 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 }
 
 func (t *transitioner) createSymlink(path string, target *Entry) error {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		return errors.New("path contains invalid characters")
+	}
+
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
@@ -445,6 +476,12 @@ func (t *transitioner) createSymlink(path string, target *Entry) error {
 }
 
 func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
+	// Watch for special characters.
+	if pathContainsInvalidCharacters(path) {
+		t.recordProblem(path, errors.New("path contains invalid characters"))
+		return nil
+	}
+
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
 	if err := t.ensureNotExists(path); err != nil {
