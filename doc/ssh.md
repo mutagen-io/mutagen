@@ -41,10 +41,13 @@ for the first time.
 ## Windows
 
 Windows is fully supported by Mutagen, though you'll need to bring your own
-OpenSSH client. Unfortunately the official Windows OpenSSH client has a few
-blocking issues (primarily
+OpenSSH client. Unfortunately the
+[official Windows OpenSSH client](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/)
+is still in beta and has a few blocking issues (primarily
 [1152](https://github.com/PowerShell/Win32-OpenSSH/issues/1152)) that disallow
-its use in Mutagen at the moment.
+its use in Mutagen at the moment. As soon as these issues are resolved, this
+will become Mutagen's recommended client (though others will continue to be
+supported).
 
 Mutagen has a hardcoded set of OpenSSH clients that it will look for and use at
 the moment, including those from
@@ -69,10 +72,13 @@ please see the note about mintty shells in the
 
 ### SSH servers
 
-[Bitvise SSH Server](https://www.bitvise.com/ssh-server) is currently the only
-supported Windows SSH server. As soon as a stable, non-beta release of the
-official Windows OpenSSH server is available, it will also be supported, though
-it is also not quite ready for prime time.
+Mutagen works with both the
+[official Windows OpenSSH server](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/) and
+[Bitvise SSH Server](https://www.bitvise.com/ssh-server). Please be aware that
+the former is still in beta.
+
+There is no reason that Mutagen won't work with other Windows SSH servers (e.g.
+Cygwin's OpenSSH server), so please report your findings if you try them out.
 
 
 ### PuTTY
