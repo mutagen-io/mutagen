@@ -83,10 +83,13 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 		}
 
 		// If this is an executability preservation or Unicode decomposition
-		// probe file, then ignore it.
+		// probe file, then ignore it. Also ignore intermediate files generated
+		// by atomic operations.
 		if name := filepath.Base(path); IsExecutabilityProbeFileName(name) {
 			return nil
 		} else if IsUnicodeProbeFileName(name) {
+			return nil
+		} else if IsAtomicOperationFileName(name) {
 			return nil
 		}
 

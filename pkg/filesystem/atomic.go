@@ -5,16 +5,36 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 )
 
+const (
+	// atomicWriteTemporaryNamePrefix is the file name prefix to use for
+	// intermediate temporary files used in atomic writes.
+	atomicWriteTemporaryNamePrefix = ".mutagen-atomic-write"
+	// atomicRenameTemporaryNamePrefix is the file name prefix to use for
+	// intermediate temporary files used in atomic rename emulation.
+	atomicRenameTemporaryNamePrefix = ".mutagen-atomic-rename"
+)
+
+// IsAtomicOperationFileName determines whether or not a file name (not a file
+// path) is the name of an intermediate temporary file used in an atomic
+// operation.
+func IsAtomicOperationFileName(name string) bool {
+	return strings.HasPrefix(name, atomicWriteTemporaryNamePrefix) ||
+		strings.HasPrefix(name, atomicRenameTemporaryNamePrefix)
+}
+
+// WriteFileAtomic writes a file to disk in an atomic fashion by using an
+// intermediate temporary file that is swapped in place using a rename
+// operation.
 func WriteFileAtomic(path string, data []byte, permissions os.FileMode) error {
 	// Create a temporary file. The ioutil module already uses secure
 	// permissions for creating the temporary file, so we don't need to specify
 	// any.
-	dirname, basename := filepath.Split(path)
-	temporary, err := ioutil.TempFile(dirname, basename)
+	temporary, err := ioutil.TempFile(filepath.Dir(path), atomicWriteTemporaryNamePrefix)
 	if err != nil {
 		return errors.Wrap(err, "unable to create temporary file")
 	}
@@ -83,8 +103,7 @@ func RenameFileAtomic(oldPath, newPath string) error {
 	}
 
 	// Create a temporary file next to the destination.
-	dirname, basename := filepath.Split(newPath)
-	temporary, err := ioutil.TempFile(dirname, basename)
+	temporary, err := ioutil.TempFile(filepath.Dir(newPath), atomicRenameTemporaryNamePrefix)
 	if err != nil {
 		source.Close()
 		return errors.Wrap(err, "unable to create temporary file")

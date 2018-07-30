@@ -134,6 +134,9 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			} else if IsUnicodeProbeFileName(name) {
 				// Ignore Unicode decomposition probe files.
 				continue
+			} else if IsAtomicOperationFileName(name) {
+				// Ignore atomic operation intermediate files.
+				continue
 			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {
 				// If we're on Windows, then we're monitoring the parent
 				// directory of the synchronization root, so if the notification
