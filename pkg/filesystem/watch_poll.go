@@ -83,8 +83,10 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 		}
 
 		// If this is an executability preservation or Unicode decomposition
-		// test path, ignore it.
-		if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
+		// probe file, then ignore it.
+		if name := filepath.Base(path); IsExecutabilityTestFileName(name) {
+			return nil
+		} else if IsUnicodeTestFileName(name) {
 			return nil
 		}
 

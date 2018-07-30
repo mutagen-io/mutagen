@@ -159,8 +159,19 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 	// Compute entries.
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, c := range directoryContents {
-		// Compute the content name, recomposing Unicode if necessary.
+		// Extract the content name.
 		name := c.Name()
+
+		// Determine whether or not this is a test file, and if so skip it. It's
+		// possible to see other sessions' test files when session roots
+		// overlap.
+		if filesystem.IsExecutabilityTestFileName(name) {
+			continue
+		} else if filesystem.IsUnicodeTestFileName(name) {
+			continue
+		}
+
+		// Recompose Unicode in the content name if necessary.
 		if s.recomposeUnicode {
 			name = norm.NFC.String(name)
 		}

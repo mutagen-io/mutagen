@@ -1,6 +1,6 @@
 package filesystem
 
-func isDecompositionTestPath(_ string) bool {
+func IsUnicodeTestFileName(_ string) bool {
 	return false
 }
 

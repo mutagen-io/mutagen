@@ -12,15 +12,26 @@ import (
 )
 
 const (
+	// decompositionTestFilenamePrefix is the prefix used for temporary files
+	// created by the executability preservation test. It is not the complete
+	// prefix, but enough to confidently identify these files without relying on
+	// a particular Unicode decomposition behavior.
 	decompositionTestFilenamePrefix = ".mutagen-decomposition-test-"
-	composedFilenamePrefix          = ".mutagen-decomposition-test-\xc3\xa9ntry"
-	decomposedFilenamePrefix        = ".mutagen-decomposition-test-\x65\xcc\x81ntry"
+	// composedFilenamePrefix is the prefix used for temporary files created by
+	// the Unicode decomposition test. It is in NFC form.
+	composedFilenamePrefix = ".mutagen-decomposition-test-\xc3\xa9ntry"
+	// decomposedFilenamePrefix is the NFD equivalent of composedFilenamePrefix.
+	decomposedFilenamePrefix = ".mutagen-decomposition-test-\x65\xcc\x81ntry"
 )
 
-func isDecompositionTestPath(path string) bool {
-	return strings.HasPrefix(filepath.Base(path), decompositionTestFilenamePrefix)
+// IsUnicodeTestFileName determines whether or not a file name (not a file path)
+// is the name of an Unicode decomposition probe file.
+func IsUnicodeTestFileName(name string) bool {
+	return strings.HasPrefix(name, decompositionTestFilenamePrefix)
 }
 
+// DecomposesUnicode determines whether or not the filesystem on which the
+// directory at the specified path resides decomposes Unicode filenames.
 func DecomposesUnicode(path string) (bool, error) {
 	// Create and close a temporary file using the composed filename.
 	file, err := ioutil.TempFile(path, composedFilenamePrefix)

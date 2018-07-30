@@ -125,12 +125,14 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			// Handle the path appropriately.
 			// NOTE: When using FSEvents, event paths are (a) relative to the
 			// device root and (b) fully resolved in terms of symlinks. This
-			// means that the isExecutabilityTestPath and
-			// isDecompositionTestPath checks will still work but isParentOrSelf
-			// will not. Fortunately isParentOrSelf isn't necessary when using
-			// FSEvents since we watch the root itself.
-			if isExecutabilityTestPath(path) || isDecompositionTestPath(path) {
-				// Ignore any probe files created by Mutagen.
+			// means that isParentOrSelf will not work. Fortunately,
+			// isParentOrSelf isn't necessary when using FSEvents since we watch
+			// the root itself.
+			if name := filepath.Base(path); IsExecutabilityTestFileName(name) {
+				// Ignore executability preservation probe files.
+				continue
+			} else if IsUnicodeTestFileName(name) {
+				// Ignore Unicode decomposition probe files.
 				continue
 			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {
 				// If we're on Windows, then we're monitoring the parent

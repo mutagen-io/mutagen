@@ -5,20 +5,25 @@ package filesystem
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
 const (
+	// executabilityTestFilenamePrefix is the prefix used for temporary files
+	// created by the executability preservation test.
 	executabilityTestFilenamePrefix = ".mutagen-executability-test"
 )
 
-func isExecutabilityTestPath(path string) bool {
-	return strings.HasPrefix(filepath.Base(path), executabilityTestFilenamePrefix)
+// IsExecutabilityTestFileName determines whether or not a file name (not a file
+// path) is the name of an executability preservation probe file.
+func IsExecutabilityTestFileName(name string) bool {
+	return strings.HasPrefix(name, executabilityTestFilenamePrefix)
 }
 
+// PreservesExecutability determines whether or not the filesystem on which the
+// directory at the specified path resides preserves POSIX executability bits.
 func PreservesExecutability(path string) (bool, error) {
 	// Create a temporary file.
 	file, err := ioutil.TempFile(path, executabilityTestFilenamePrefix)

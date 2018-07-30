@@ -77,20 +77,21 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			case <-monitoringContext.Done():
 				monitoringErrors <- errors.New("monitoring cancelled")
 				return
-			case p, ok := <-rootParentWatcher.eventPaths:
+			case path, ok := <-rootParentWatcher.eventPaths:
 				if !ok {
 					monitoringErrors <- errors.New("root parent watcher event stream closed")
 					return
-				} else if filepath.Base(p) == rootLeafName {
+				} else if filepath.Base(path) == rootLeafName {
 					resetCoalescingTimer = true
 				}
-			case p, ok := <-watcher.eventPaths:
+			case path, ok := <-watcher.eventPaths:
 				if !ok {
 					monitoringErrors <- errors.New("watcher event stream closed")
 					return
-				} else if !isExecutabilityTestPath(p) && !isDecompositionTestPath(p) {
-					resetCoalescingTimer = true
 				}
+				name := filepath.Base(path)
+				resetCoalescingTimer = !IsExecutabilityTestFileName(name) &&
+					!IsUnicodeTestFileName(name)
 			}
 
 			// Reset the coalescing timer if necessary. Perform a non-blocking
