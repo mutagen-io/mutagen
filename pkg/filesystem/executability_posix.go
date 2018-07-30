@@ -16,9 +16,9 @@ const (
 	executabilityTestFilenamePrefix = ".mutagen-executability-test"
 )
 
-// IsExecutabilityTestFileName determines whether or not a file name (not a file
-// path) is the name of an executability preservation probe file.
-func IsExecutabilityTestFileName(name string) bool {
+// IsExecutabilityProbeFileName determines whether or not a file name (not a
+// file path) is the name of an executability preservation probe file.
+func IsExecutabilityProbeFileName(name string) bool {
 	return strings.HasPrefix(name, executabilityTestFilenamePrefix)
 }
 

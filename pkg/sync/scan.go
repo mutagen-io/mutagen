@@ -165,9 +165,9 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 		// Determine whether or not this is a test file, and if so skip it. It's
 		// possible to see other sessions' test files when session roots
 		// overlap.
-		if filesystem.IsExecutabilityTestFileName(name) {
+		if filesystem.IsExecutabilityProbeFileName(name) {
 			continue
-		} else if filesystem.IsUnicodeTestFileName(name) {
+		} else if filesystem.IsUnicodeProbeFileName(name) {
 			continue
 		}
 

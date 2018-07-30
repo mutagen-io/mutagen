@@ -1,9 +1,10 @@
 package filesystem
 
-// IsExecutabilityTestFileName determines whether or not a file name (not a file
-// path) is the name of an executability preservation probe file. On Windows
-// this function always returns false since probe files are not used.
-func IsExecutabilityTestFileName(_ string) bool {
+// IsExecutabilityProbeFileName determines whether or not a file name (not a
+// file path) is the name of an executability preservation probe file. On
+// Windows this function always returns false since executability probe files
+// are not used.
+func IsExecutabilityProbeFileName(_ string) bool {
 	return false
 }
 

@@ -128,10 +128,10 @@ func watchNative(context context.Context, root string, events chan struct{}, _ u
 			// means that isParentOrSelf will not work. Fortunately,
 			// isParentOrSelf isn't necessary when using FSEvents since we watch
 			// the root itself.
-			if name := filepath.Base(path); IsExecutabilityTestFileName(name) {
+			if name := filepath.Base(path); IsExecutabilityProbeFileName(name) {
 				// Ignore executability preservation probe files.
 				continue
-			} else if IsUnicodeTestFileName(name) {
+			} else if IsUnicodeProbeFileName(name) {
 				// Ignore Unicode decomposition probe files.
 				continue
 			} else if runtime.GOOS == "windows" && !isParentOrSelf(root, path) {

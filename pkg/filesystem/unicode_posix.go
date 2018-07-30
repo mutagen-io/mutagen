@@ -24,9 +24,9 @@ const (
 	decomposedFilenamePrefix = ".mutagen-decomposition-test-\x65\xcc\x81ntry"
 )
 
-// IsUnicodeTestFileName determines whether or not a file name (not a file path)
-// is the name of an Unicode decomposition probe file.
-func IsUnicodeTestFileName(name string) bool {
+// IsUnicodeProbeFileName determines whether or not a file name (not a file
+// path) is the name of an Unicode decomposition probe file.
+func IsUnicodeProbeFileName(name string) bool {
 	return strings.HasPrefix(name, decompositionTestFilenamePrefix)
 }
 
