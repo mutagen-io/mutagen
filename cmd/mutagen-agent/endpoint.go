@@ -1,19 +1,65 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
+const (
+	// housekeepingInterval is the interval at which housekeeping will be
+	// invoked by the agent.
+	housekeepingInterval = 24 * time.Hour
+)
+
+// housekeep performs a combined housekeeping operation.
+func housekeep() {
+	// Perform agent housekeeping.
+	agent.Housekeep()
+
+	// Perform cache housekeeping.
+	session.HousekeepCaches()
+
+	// Perform staging directory housekeeping.
+	session.HousekeepStaging()
+}
+
+func housekeepRegularly(context context.Context) {
+	// Perform an initial housekeeping operation since the ticker won't fire
+	// straight away.
+	housekeep()
+
+	// Create a ticker to regulate housekeeping and defer its shutdown.
+	ticker := time.NewTicker(housekeepingInterval)
+	defer ticker.Stop()
+
+	// Loop and wait for the ticker or cancellation.
+	for {
+		select {
+		case <-context.Done():
+			return
+		case <-ticker.C:
+			housekeep()
+		}
+	}
+}
+
 func endpointMain(command *cobra.Command, arguments []string) error {
+	// Set up regular housekeeping and defer its shutdown.
+	housekeepingContext, housekeepingCancel := context.WithCancel(context.Background())
+	defer housekeepingCancel()
+	go housekeepRegularly(housekeepingContext)
+
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
 

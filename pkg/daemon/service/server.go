@@ -15,6 +15,18 @@ const (
 	housekeepingInterval = 24 * time.Hour
 )
 
+// housekeep performs a combined housekeeping operation.
+func housekeep() {
+	// Perform agent housekeeping.
+	agent.Housekeep()
+
+	// Perform cache housekeeping.
+	session.HousekeepCaches()
+
+	// Perform staging directory housekeeping.
+	session.HousekeepStaging()
+}
+
 type Server struct {
 	// Termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
@@ -24,49 +36,54 @@ type Server struct {
 	// just bounce off once the channel is populated. We do this, instead of
 	// closing the channel, because we can't close the channel multiple times.
 	Termination chan struct{}
-	// housekeepingTicker is a ticker that regulates housekeeping.
-	housekeepingTicker *time.Ticker
-	// housekeepingCancel is a context cancellation function used to stop the
-	// housekeeping Goroutine. This is necessary because tickers don't close
-	// their internal channels when stopped.
-	housekeepingCancel context.CancelFunc
+	// context is the context regulating the server's internal operations.
+	context context.Context
+	// shutdown is the context cancellation function for the server's internal
+	// operation context.
+	shutdown context.CancelFunc
 }
 
 func New() *Server {
-	// Create the housekeeping ticker.
-	housekeepingTicker := time.NewTicker(housekeepingInterval)
-
-	// Create the housekeeping context.
-	housekeepingContext, housekeepingCancel := context.WithCancel(context.Background())
-
-	// Start housekeeping in a separate Goroutine.
-	go func() {
-		for {
-			select {
-			case <-housekeepingContext.Done():
-				return
-			case <-housekeepingTicker.C:
-				agent.Housekeep()
-				session.HousekeepCaches()
-				session.HousekeepStaging()
-			}
-		}
-	}()
+	// Create the internal context.
+	context, shutdown := context.WithCancel(context.Background())
 
 	// Create the server.
-	return &Server{
-		Termination:        make(chan struct{}, 1),
-		housekeepingTicker: housekeepingTicker,
-		housekeepingCancel: housekeepingCancel,
+	server := &Server{
+		Termination: make(chan struct{}, 1),
+		context:     context,
+		shutdown:    shutdown,
+	}
+
+	// Start the housekeeping Goroutine.
+	go server.housekeep()
+
+	// Done.
+	return server
+}
+
+func (s *Server) housekeep() {
+	// Perform an initial housekeeping operation since the ticker won't fire
+	// straight away.
+	housekeep()
+
+	// Create a ticker to regulate housekeeping and defer its shutdown.
+	ticker := time.NewTicker(housekeepingInterval)
+	defer ticker.Stop()
+
+	// Loop and wait for the ticker or cancellation.
+	for {
+		select {
+		case <-s.context.Done():
+			return
+		case <-ticker.C:
+			housekeep()
+		}
 	}
 }
 
 func (s *Server) Shutdown() {
-	// Stop the housekeeping ticker.
-	s.housekeepingTicker.Stop()
-
-	// Cancel housekeeping.
-	s.housekeepingCancel()
+	// Cancel all internal operations.
+	s.shutdown()
 }
 
 func (s *Server) Version(_ context.Context, _ *VersionRequest) (*VersionResponse, error) {

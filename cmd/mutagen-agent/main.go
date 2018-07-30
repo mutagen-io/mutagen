@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -57,11 +55,6 @@ func init() {
 }
 
 func main() {
-	// Perform housekeeping.
-	agent.Housekeep()
-	session.HousekeepCaches()
-	session.HousekeepStaging()
-
 	// Execute the root command.
 	if err := rootCommand.Execute(); err != nil {
 		os.Exit(1)
