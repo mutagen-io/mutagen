@@ -12,11 +12,11 @@ message VersionResponse {
     uint64 patch = 3;
 }
 
-message ShutdownRequest{}
+message TerminateRequest{}
 
-message ShutdownResponse{}
+message TerminateResponse{}
 
 service Daemon {
     rpc Version(VersionRequest) returns (VersionResponse) {}
-    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
 }

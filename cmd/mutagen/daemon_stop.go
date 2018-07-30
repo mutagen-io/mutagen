@@ -38,7 +38,7 @@ func daemonStopMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke shutdown. We don't check the response or error, because the daemon
 	// may terminate before it has a chance to send the response.
-	daemonService.Shutdown(context.Background(), &daemonsvcpkg.ShutdownRequest{})
+	daemonService.Terminate(context.Background(), &daemonsvcpkg.TerminateRequest{})
 
 	// Success.
 	return nil

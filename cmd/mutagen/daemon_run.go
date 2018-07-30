@@ -11,11 +11,9 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
 	promptsvcpkg "github.com/havoc-io/mutagen/pkg/prompt/service"
-	"github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
@@ -35,25 +33,19 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	}
 	defer lock.Unlock()
 
-	// Perform housekeeping.
-	agent.Housekeep()
-	session.HousekeepCaches()
-	session.HousekeepStaging()
-
 	// Create the gRPC server.
 	server := grpc.NewServer()
 
-	// Create and register the daemon service.
+	// Create and register the daemon service and defer its shutdown.
 	daemonService := daemonsvcpkg.New()
 	daemonsvcpkg.RegisterDaemonServer(server, daemonService)
+	defer daemonService.Shutdown()
 
 	// Create and register the prompt service.
 	promptService := promptsvcpkg.New()
 	promptsvcpkg.RegisterPromptServer(server, promptService)
 
-	// Create and register the session service and defer its shutdown. We want
-	// to do a clean shutdown because we don't want to lose information
-	// generated during a synchronization cycle.
+	// Create and register the session service and defer its shutdown.
 	sessionService, err := sessionsvcpkg.New(promptService)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session service")
