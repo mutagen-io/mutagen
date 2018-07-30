@@ -12,29 +12,29 @@ import (
 )
 
 const (
-	// decompositionTestFilenamePrefix is the prefix used for temporary files
+	// decompositionProbeFileNamePrefix is the prefix used for temporary files
 	// created by the executability preservation test. It is not the complete
 	// prefix, but enough to confidently identify these files without relying on
 	// a particular Unicode decomposition behavior.
-	decompositionTestFilenamePrefix = ".mutagen-decomposition-test-"
-	// composedFilenamePrefix is the prefix used for temporary files created by
+	decompositionProbeFileNamePrefix = ".mutagen-decomposition-test-"
+	// composedFileNamePrefix is the prefix used for temporary files created by
 	// the Unicode decomposition test. It is in NFC form.
-	composedFilenamePrefix = ".mutagen-decomposition-test-\xc3\xa9ntry"
-	// decomposedFilenamePrefix is the NFD equivalent of composedFilenamePrefix.
-	decomposedFilenamePrefix = ".mutagen-decomposition-test-\x65\xcc\x81ntry"
+	composedFileNamePrefix = ".mutagen-decomposition-test-\xc3\xa9ntry"
+	// decomposedFileNamePrefix is the NFD equivalent of composedFileNamePrefix.
+	decomposedFileNamePrefix = ".mutagen-decomposition-test-\x65\xcc\x81ntry"
 )
 
 // IsUnicodeProbeFileName determines whether or not a file name (not a file
 // path) is the name of an Unicode decomposition probe file.
 func IsUnicodeProbeFileName(name string) bool {
-	return strings.HasPrefix(name, decompositionTestFilenamePrefix)
+	return strings.HasPrefix(name, decompositionProbeFileNamePrefix)
 }
 
 // DecomposesUnicode determines whether or not the filesystem on which the
 // directory at the specified path resides decomposes Unicode filenames.
 func DecomposesUnicode(path string) (bool, error) {
 	// Create and close a temporary file using the composed filename.
-	file, err := ioutil.TempFile(path, composedFilenamePrefix)
+	file, err := ioutil.TempFile(path, composedFileNamePrefix)
 	if err != nil {
 		return false, errors.Wrap(err, "unable to create test file")
 	} else if err = file.Close(); err != nil {
@@ -47,8 +47,8 @@ func DecomposesUnicode(path string) (bool, error) {
 	composedFilename := filepath.Base(file.Name())
 	decomposedFilename := strings.Replace(
 		composedFilename,
-		composedFilenamePrefix,
-		decomposedFilenamePrefix,
+		composedFileNamePrefix,
+		decomposedFileNamePrefix,
 		1,
 	)
 

@@ -11,22 +11,22 @@ import (
 )
 
 const (
-	// executabilityTestFilenamePrefix is the prefix used for temporary files
+	// executabilityProbeFileNamePrefix is the prefix used for temporary files
 	// created by the executability preservation test.
-	executabilityTestFilenamePrefix = ".mutagen-executability-test"
+	executabilityProbeFileNamePrefix = ".mutagen-executability-test"
 )
 
 // IsExecutabilityProbeFileName determines whether or not a file name (not a
 // file path) is the name of an executability preservation probe file.
 func IsExecutabilityProbeFileName(name string) bool {
-	return strings.HasPrefix(name, executabilityTestFilenamePrefix)
+	return strings.HasPrefix(name, executabilityProbeFileNamePrefix)
 }
 
 // PreservesExecutability determines whether or not the filesystem on which the
 // directory at the specified path resides preserves POSIX executability bits.
 func PreservesExecutability(path string) (bool, error) {
 	// Create a temporary file.
-	file, err := ioutil.TempFile(path, executabilityTestFilenamePrefix)
+	file, err := ioutil.TempFile(path, executabilityProbeFileNamePrefix)
 	if err != nil {
 		return false, errors.Wrap(err, "unable to create test file")
 	}
