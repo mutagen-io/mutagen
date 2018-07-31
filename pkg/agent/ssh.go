@@ -42,10 +42,8 @@ func isPOSIXCommandNotFound(err error) bool {
 
 func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
-	if prompter != "" {
-		if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (POSIX)"); err != nil {
-			return "", "", errors.Wrap(err, "unable to message prompter")
-		}
+	if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (POSIX)"); err != nil {
+		return "", "", errors.Wrap(err, "unable to message prompter")
 	}
 	unameSMBytes, err := ssh.Output(prompter, remote, "uname -s -m")
 	if err != nil {
@@ -84,10 +82,8 @@ func probeSSHPOSIX(remote *url.URL, prompter string) (string, string, error) {
 
 func probeSSHWindows(remote *url.URL, prompter string) (string, string, error) {
 	// Attempt to dump the remote environment.
-	if prompter != "" {
-		if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (Windows)"); err != nil {
-			return "", "", errors.Wrap(err, "unable to message prompter")
-		}
+	if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (Windows)"); err != nil {
+		return "", "", errors.Wrap(err, "unable to message prompter")
 	}
 	outputBytes, err := ssh.Output(prompter, remote, "cmd /c set")
 	if err != nil {
@@ -189,12 +185,9 @@ func installSSH(remote *url.URL, prompter string) error {
 		Port:     remote.Port,
 		Path:     destination,
 	}
-	if prompter != "" {
-		if err := promptsvc.DefaultServer().Message(prompter, "Copying agent"); err != nil {
-			return errors.Wrap(err, "unable to message prompter")
-		}
-	}
-	if err := ssh.Copy(prompter, agent, destinationURL); err != nil {
+	if err := promptsvc.DefaultServer().Message(prompter, "Copying agent"); err != nil {
+		return errors.Wrap(err, "unable to message prompter")
+	} else if err = ssh.Copy(prompter, agent, destinationURL); err != nil {
 		return errors.Wrap(err, "unable to copy agent binary")
 	}
 
@@ -213,12 +206,9 @@ func installSSH(remote *url.URL, prompter string) error {
 	// probe information to handle this more carefully.
 	if runtime.GOOS == "windows" && posix {
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
-		if prompter != "" {
-			if err := promptsvc.DefaultServer().Message(prompter, "Setting agent executability"); err != nil {
-				return errors.Wrap(err, "unable to message prompter")
-			}
-		}
-		if err := ssh.Run(prompter, remote, executabilityCommand); err != nil {
+		if err := promptsvc.DefaultServer().Message(prompter, "Setting agent executability"); err != nil {
+			return errors.Wrap(err, "unable to message prompter")
+		} else if err = ssh.Run(prompter, remote, executabilityCommand); err != nil {
 			return errors.Wrap(err, "unable to set agent executability")
 		}
 	}
@@ -233,12 +223,9 @@ func installSSH(remote *url.URL, prompter string) error {
 	} else {
 		installCommand = fmt.Sprintf("%s install", destination)
 	}
-	if prompter != "" {
-		if err := promptsvc.DefaultServer().Message(prompter, "Installing agent"); err != nil {
-			return errors.Wrap(err, "unable to message prompter")
-		}
-	}
-	if err := ssh.Run(prompter, remote, installCommand); err != nil {
+	if err := promptsvc.DefaultServer().Message(prompter, "Installing agent"); err != nil {
+		return errors.Wrap(err, "unable to message prompter")
+	} else if err = ssh.Run(prompter, remote, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke agent installation")
 	}
 
@@ -286,10 +273,8 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 	command := fmt.Sprintf("%s %s", sshAgentPath, mode)
 
 	// Create an SSH process.
-	if prompter != "" {
-		if err := promptsvc.DefaultServer().Message(prompter, "Connecting to agent"); err != nil {
-			return nil, false, false, errors.Wrap(err, "unable to message prompter")
-		}
+	if err := promptsvc.DefaultServer().Message(prompter, "Connecting to agent"); err != nil {
+		return nil, false, false, errors.Wrap(err, "unable to message prompter")
 	}
 	process, err := ssh.Command(prompter, remote, command)
 	if err != nil {

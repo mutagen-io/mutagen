@@ -112,11 +112,18 @@ func (s *Server) UnregisterPrompter(identifier string) {
 	close(holder)
 }
 
-// Message provides a messaging utility for internal code. It is not accessible
-// over gRPC, though this may change in the future if we delegate custom
-// protocol support to separate handlers. In that case, we'll want to follow the
-// same asynchronous, cancellable implementation used by Prompt.
+// Message provides a messaging utility for internal code. If the provided
+// prompter identifier is an empty string, then this message is a no-op and will
+// return a nil error. This method is not accessible over gRPC, though this may
+// change in the future if we delegate custom protocol support to separate
+// handlers. In that case, we'll want to follow the same asynchronous,
+// cancellable implementation used by Prompt.
 func (s *Server) Message(identifier, message string) error {
+	// If the prompter identifier is empty, don't do anything.
+	if identifier == "" {
+		return nil
+	}
+
 	// Grab the holder for the specified prompter.
 	s.holdersLock.Lock()
 	holder, ok := s.holders[identifier]
