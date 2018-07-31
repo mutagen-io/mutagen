@@ -33,12 +33,41 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
-	// Invoke terminate.
+	// Invoke the session terminate method. The stream will close when the
+	// associated context is cancelled.
+	terminateContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := sessionService.Terminate(terminateContext)
+	if err != nil {
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke terminate")
+	}
+
+	// Send the initial request.
 	request := &sessionsvcpkg.TerminateRequest{
 		Specifications: specifications,
 	}
-	if _, err := sessionService.Terminate(context.Background(), request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "terminate failed")
+	if err := stream.Send(request); err != nil {
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send terminate request")
+	}
+
+	// Create a status line printer.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+
+	// Receive and process responses until we're done.
+	for {
+		if response, err := stream.Recv(); err != nil {
+			statusLinePrinter.BreakIfNonEmpty()
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "terminate failed")
+		} else if response.Message == "" {
+			statusLinePrinter.Clear()
+			return nil
+		} else if response.Message != "" {
+			statusLinePrinter.Print(response.Message)
+			if err := stream.Send(&sessionsvcpkg.TerminateRequest{}); err != nil {
+				statusLinePrinter.BreakIfNonEmpty()
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		}
 	}
 
 	// Success.

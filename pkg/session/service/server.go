@@ -72,7 +72,7 @@ func (s *Server) Create(stream Sessions_CreateServer) error {
 		return err
 	}
 
-	// Signal creation completion.
+	// Signal completion.
 	if err := stream.Send(&CreateResponse{Session: session}); err != nil {
 		return errors.Wrap(err, "unable to send response")
 	}
@@ -98,15 +98,38 @@ func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, e
 }
 
 // Pause pauses existing sessions.
-func (s *Server) Pause(_ context.Context, request *PauseRequest) (*PauseResponse, error) {
-	// Perform pausing.
+func (s *Server) Pause(stream Sessions_PauseServer) error {
+	// Receive the first request.
+	request, err := stream.Recv()
+	if err != nil {
+		return errors.Wrap(err, "unable to receive request")
+	}
+
+	// Wrap the stream in a prompter and register it with the prompt server.
+	prompter, err := prompt.RegisterPrompter(&pauseStreamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
+
+	// Perform termination.
 	// TODO: Figure out a way to monitor for cancellation.
-	if err := s.manager.Pause(request.Specifications); err != nil {
-		return nil, err
+	err = s.manager.Pause(request.Specifications, prompter)
+
+	// Unregister the prompter.
+	prompt.UnregisterPrompter(prompter)
+
+	// Handle any errors.
+	if err != nil {
+		return err
+	}
+
+	// Signal completion.
+	if err := stream.Send(&PauseResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send response")
 	}
 
 	// Success.
-	return &PauseResponse{}, nil
+	return nil
 }
 
 // Resume resumes existing sessions.
@@ -135,7 +158,7 @@ func (s *Server) Resume(stream Sessions_ResumeServer) error {
 		return err
 	}
 
-	// Signal resume completion.
+	// Signal completion.
 	if err := stream.Send(&ResumeResponse{}); err != nil {
 		return errors.Wrap(err, "unable to send response")
 	}
@@ -145,13 +168,36 @@ func (s *Server) Resume(stream Sessions_ResumeServer) error {
 }
 
 // Terminate terminates existing sessions.
-func (s *Server) Terminate(_ context.Context, request *TerminateRequest) (*TerminateResponse, error) {
+func (s *Server) Terminate(stream Sessions_TerminateServer) error {
+	// Receive the first request.
+	request, err := stream.Recv()
+	if err != nil {
+		return errors.Wrap(err, "unable to receive request")
+	}
+
+	// Wrap the stream in a prompter and register it with the prompt server.
+	prompter, err := prompt.RegisterPrompter(&terminateStreamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
+
 	// Perform termination.
 	// TODO: Figure out a way to monitor for cancellation.
-	if err := s.manager.Terminate(request.Specifications); err != nil {
-		return nil, err
+	err = s.manager.Terminate(request.Specifications, prompter)
+
+	// Unregister the prompter.
+	prompt.UnregisterPrompter(prompter)
+
+	// Handle any errors.
+	if err != nil {
+		return err
+	}
+
+	// Signal completion.
+	if err := stream.Send(&TerminateResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send response")
 	}
 
 	// Success.
-	return &TerminateResponse{}, nil
+	return nil
 }

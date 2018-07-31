@@ -39,7 +39,7 @@ func (m *CreateRequest) Reset()         { *m = CreateRequest{} }
 func (m *CreateRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()    {}
 func (*CreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{0}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{0}
 }
 func (m *CreateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateRequest.Unmarshal(m, b)
@@ -100,7 +100,7 @@ func (m *CreateResponse) Reset()         { *m = CreateResponse{} }
 func (m *CreateResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()    {}
 func (*CreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{1}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{1}
 }
 func (m *CreateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateResponse.Unmarshal(m, b)
@@ -153,7 +153,7 @@ func (m *ListRequest) Reset()         { *m = ListRequest{} }
 func (m *ListRequest) String() string { return proto.CompactTextString(m) }
 func (*ListRequest) ProtoMessage()    {}
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{2}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{2}
 }
 func (m *ListRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListRequest.Unmarshal(m, b)
@@ -199,7 +199,7 @@ func (m *ListResponse) Reset()         { *m = ListResponse{} }
 func (m *ListResponse) String() string { return proto.CompactTextString(m) }
 func (*ListResponse) ProtoMessage()    {}
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{3}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{3}
 }
 func (m *ListResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListResponse.Unmarshal(m, b)
@@ -244,7 +244,7 @@ func (m *PauseRequest) Reset()         { *m = PauseRequest{} }
 func (m *PauseRequest) String() string { return proto.CompactTextString(m) }
 func (*PauseRequest) ProtoMessage()    {}
 func (*PauseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{4}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{4}
 }
 func (m *PauseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PauseRequest.Unmarshal(m, b)
@@ -272,6 +272,7 @@ func (m *PauseRequest) GetSpecifications() []string {
 }
 
 type PauseResponse struct {
+	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -281,7 +282,7 @@ func (m *PauseResponse) Reset()         { *m = PauseResponse{} }
 func (m *PauseResponse) String() string { return proto.CompactTextString(m) }
 func (*PauseResponse) ProtoMessage()    {}
 func (*PauseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{5}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{5}
 }
 func (m *PauseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PauseResponse.Unmarshal(m, b)
@@ -301,6 +302,13 @@ func (m *PauseResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PauseResponse proto.InternalMessageInfo
 
+func (m *PauseResponse) GetMessage() string {
+	if m != nil {
+		return m.Message
+	}
+	return ""
+}
+
 type ResumeRequest struct {
 	Specifications       []string `protobuf:"bytes,1,rep,name=specifications,proto3" json:"specifications,omitempty"`
 	Response             string   `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
@@ -313,7 +321,7 @@ func (m *ResumeRequest) Reset()         { *m = ResumeRequest{} }
 func (m *ResumeRequest) String() string { return proto.CompactTextString(m) }
 func (*ResumeRequest) ProtoMessage()    {}
 func (*ResumeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{6}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{6}
 }
 func (m *ResumeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResumeRequest.Unmarshal(m, b)
@@ -359,7 +367,7 @@ func (m *ResumeResponse) Reset()         { *m = ResumeResponse{} }
 func (m *ResumeResponse) String() string { return proto.CompactTextString(m) }
 func (*ResumeResponse) ProtoMessage()    {}
 func (*ResumeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{7}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{7}
 }
 func (m *ResumeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResumeResponse.Unmarshal(m, b)
@@ -404,7 +412,7 @@ func (m *TerminateRequest) Reset()         { *m = TerminateRequest{} }
 func (m *TerminateRequest) String() string { return proto.CompactTextString(m) }
 func (*TerminateRequest) ProtoMessage()    {}
 func (*TerminateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{8}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{8}
 }
 func (m *TerminateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateRequest.Unmarshal(m, b)
@@ -432,6 +440,7 @@ func (m *TerminateRequest) GetSpecifications() []string {
 }
 
 type TerminateResponse struct {
+	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -441,7 +450,7 @@ func (m *TerminateResponse) Reset()         { *m = TerminateResponse{} }
 func (m *TerminateResponse) String() string { return proto.CompactTextString(m) }
 func (*TerminateResponse) ProtoMessage()    {}
 func (*TerminateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_efc6a16830e659cf, []int{9}
+	return fileDescriptor_session_004cdd49a5f4cc5f, []int{9}
 }
 func (m *TerminateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateResponse.Unmarshal(m, b)
@@ -460,6 +469,13 @@ func (m *TerminateResponse) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_TerminateResponse proto.InternalMessageInfo
+
+func (m *TerminateResponse) GetMessage() string {
+	if m != nil {
+		return m.Message
+	}
+	return ""
+}
 
 func init() {
 	proto.RegisterType((*CreateRequest)(nil), "session.CreateRequest")
@@ -488,9 +504,9 @@ const _ = grpc.SupportPackageIsVersion4
 type SessionsClient interface {
 	Create(ctx context.Context, opts ...grpc.CallOption) (Sessions_CreateClient, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error)
+	Pause(ctx context.Context, opts ...grpc.CallOption) (Sessions_PauseClient, error)
 	Resume(ctx context.Context, opts ...grpc.CallOption) (Sessions_ResumeClient, error)
-	Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error)
+	Terminate(ctx context.Context, opts ...grpc.CallOption) (Sessions_TerminateClient, error)
 }
 
 type sessionsClient struct {
@@ -541,17 +557,39 @@ func (c *sessionsClient) List(ctx context.Context, in *ListRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *sessionsClient) Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error) {
-	out := new(PauseResponse)
-	err := c.cc.Invoke(ctx, "/session.Sessions/Pause", in, out, opts...)
+func (c *sessionsClient) Pause(ctx context.Context, opts ...grpc.CallOption) (Sessions_PauseClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Sessions_serviceDesc.Streams[1], "/session.Sessions/Pause", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &sessionsPauseClient{stream}
+	return x, nil
+}
+
+type Sessions_PauseClient interface {
+	Send(*PauseRequest) error
+	Recv() (*PauseResponse, error)
+	grpc.ClientStream
+}
+
+type sessionsPauseClient struct {
+	grpc.ClientStream
+}
+
+func (x *sessionsPauseClient) Send(m *PauseRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *sessionsPauseClient) Recv() (*PauseResponse, error) {
+	m := new(PauseResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *sessionsClient) Resume(ctx context.Context, opts ...grpc.CallOption) (Sessions_ResumeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Sessions_serviceDesc.Streams[1], "/session.Sessions/Resume", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Sessions_serviceDesc.Streams[2], "/session.Sessions/Resume", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -581,22 +619,44 @@ func (x *sessionsResumeClient) Recv() (*ResumeResponse, error) {
 	return m, nil
 }
 
-func (c *sessionsClient) Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error) {
-	out := new(TerminateResponse)
-	err := c.cc.Invoke(ctx, "/session.Sessions/Terminate", in, out, opts...)
+func (c *sessionsClient) Terminate(ctx context.Context, opts ...grpc.CallOption) (Sessions_TerminateClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Sessions_serviceDesc.Streams[3], "/session.Sessions/Terminate", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &sessionsTerminateClient{stream}
+	return x, nil
+}
+
+type Sessions_TerminateClient interface {
+	Send(*TerminateRequest) error
+	Recv() (*TerminateResponse, error)
+	grpc.ClientStream
+}
+
+type sessionsTerminateClient struct {
+	grpc.ClientStream
+}
+
+func (x *sessionsTerminateClient) Send(m *TerminateRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *sessionsTerminateClient) Recv() (*TerminateResponse, error) {
+	m := new(TerminateResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // SessionsServer is the server API for Sessions service.
 type SessionsServer interface {
 	Create(Sessions_CreateServer) error
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	Pause(context.Context, *PauseRequest) (*PauseResponse, error)
+	Pause(Sessions_PauseServer) error
 	Resume(Sessions_ResumeServer) error
-	Terminate(context.Context, *TerminateRequest) (*TerminateResponse, error)
+	Terminate(Sessions_TerminateServer) error
 }
 
 func RegisterSessionsServer(s *grpc.Server, srv SessionsServer) {
@@ -647,22 +707,30 @@ func _Sessions_List_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Sessions_Pause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PauseRequest)
-	if err := dec(in); err != nil {
+func _Sessions_Pause_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SessionsServer).Pause(&sessionsPauseServer{stream})
+}
+
+type Sessions_PauseServer interface {
+	Send(*PauseResponse) error
+	Recv() (*PauseRequest, error)
+	grpc.ServerStream
+}
+
+type sessionsPauseServer struct {
+	grpc.ServerStream
+}
+
+func (x *sessionsPauseServer) Send(m *PauseResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *sessionsPauseServer) Recv() (*PauseRequest, error) {
+	m := new(PauseRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(SessionsServer).Pause(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/session.Sessions/Pause",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionsServer).Pause(ctx, req.(*PauseRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 func _Sessions_Resume_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -691,22 +759,30 @@ func (x *sessionsResumeServer) Recv() (*ResumeRequest, error) {
 	return m, nil
 }
 
-func _Sessions_Terminate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TerminateRequest)
-	if err := dec(in); err != nil {
+func _Sessions_Terminate_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SessionsServer).Terminate(&sessionsTerminateServer{stream})
+}
+
+type Sessions_TerminateServer interface {
+	Send(*TerminateResponse) error
+	Recv() (*TerminateRequest, error)
+	grpc.ServerStream
+}
+
+type sessionsTerminateServer struct {
+	grpc.ServerStream
+}
+
+func (x *sessionsTerminateServer) Send(m *TerminateResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *sessionsTerminateServer) Recv() (*TerminateRequest, error) {
+	m := new(TerminateRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(SessionsServer).Terminate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/session.Sessions/Terminate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionsServer).Terminate(ctx, req.(*TerminateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 var _Sessions_serviceDesc = grpc.ServiceDesc{
@@ -717,14 +793,6 @@ var _Sessions_serviceDesc = grpc.ServiceDesc{
 			MethodName: "List",
 			Handler:    _Sessions_List_Handler,
 		},
-		{
-			MethodName: "Pause",
-			Handler:    _Sessions_Pause_Handler,
-		},
-		{
-			MethodName: "Terminate",
-			Handler:    _Sessions_Terminate_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -734,8 +802,20 @@ var _Sessions_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
+			StreamName:    "Pause",
+			Handler:       _Sessions_Pause_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
 			StreamName:    "Resume",
 			Handler:       _Sessions_Resume_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Terminate",
+			Handler:       _Sessions_Terminate_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
@@ -744,42 +824,42 @@ var _Sessions_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("github.com/havoc-io/mutagen/pkg/session/service/session.proto", fileDescriptor_session_efc6a16830e659cf)
+	proto.RegisterFile("github.com/havoc-io/mutagen/pkg/session/service/session.proto", fileDescriptor_session_004cdd49a5f4cc5f)
 }
 
-var fileDescriptor_session_efc6a16830e659cf = []byte{
-	// 520 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
-	0x14, 0xfd, 0x9c, 0xa6, 0xf9, 0xe2, 0x9b, 0x26, 0xc0, 0x00, 0xc1, 0x58, 0xa8, 0x8a, 0xb2, 0x40,
-	0xd9, 0xd4, 0x46, 0x29, 0x20, 0xc4, 0x8f, 0x2a, 0x51, 0x36, 0x48, 0x5d, 0xa0, 0x09, 0xec, 0xd8,
-	0x4c, 0xdc, 0x5b, 0x67, 0x44, 0xed, 0x31, 0x9e, 0x71, 0xc4, 0x1b, 0xf1, 0x20, 0xbc, 0x18, 0xf2,
-	0xd8, 0xe3, 0x8e, 0xdd, 0x20, 0xc2, 0x22, 0x8b, 0x7b, 0xee, 0xcf, 0x9c, 0x7b, 0xce, 0x8d, 0xe1,
-	0x5d, 0xcc, 0xd5, 0xa6, 0x58, 0x07, 0x91, 0x48, 0xc2, 0x0d, 0xdb, 0x8a, 0xe8, 0x84, 0x8b, 0x30,
-	0x29, 0x14, 0x8b, 0x31, 0x0d, 0xb3, 0x6f, 0x71, 0x28, 0x51, 0x4a, 0x2e, 0xd2, 0x50, 0x62, 0xbe,
-	0xe5, 0x11, 0x9a, 0x38, 0xc8, 0x72, 0xa1, 0x04, 0xf9, 0xbf, 0x0e, 0xfd, 0x37, 0xfb, 0xce, 0x89,
-	0x44, 0x7a, 0xc5, 0xe3, 0x22, 0x67, 0xaa, 0x99, 0xe2, 0x9f, 0xee, 0x4d, 0x42, 0x31, 0x85, 0x75,
-	0xd3, 0xc9, 0xdf, 0x9a, 0x8a, 0xfc, 0xba, 0xfc, 0x55, 0xe5, 0xf3, 0x9f, 0x0e, 0x8c, 0xcf, 0x73,
-	0x64, 0x0a, 0x29, 0x7e, 0x2f, 0x50, 0x2a, 0x72, 0x0c, 0x87, 0xec, 0x3a, 0xdb, 0x30, 0xcf, 0x99,
-	0x39, 0x8b, 0xd1, 0x72, 0x18, 0x94, 0xc5, 0x5f, 0xe8, 0x05, 0xad, 0x60, 0xf2, 0x04, 0xfa, 0x6b,
-	0x54, 0xcc, 0xeb, 0x75, 0xd2, 0x1a, 0x25, 0x6f, 0x61, 0xdc, 0x5a, 0xc5, 0x3b, 0xd0, 0x65, 0xd3,
-	0xc0, 0x08, 0x74, 0x6e, 0x67, 0x69, 0xbb, 0x98, 0xf8, 0x30, 0xcc, 0x51, 0x66, 0x22, 0x95, 0xe8,
-	0xf5, 0x67, 0xce, 0xc2, 0xa5, 0x4d, 0x3c, 0xff, 0x0a, 0x13, 0x43, 0xb4, 0x42, 0x88, 0x07, 0x46,
-	0x67, 0xcd, 0xd5, 0xa5, 0x26, 0x2c, 0x33, 0x09, 0x4a, 0xc9, 0x62, 0xd4, 0x34, 0x5d, 0x6a, 0x42,
-	0x32, 0x85, 0x41, 0x96, 0x8b, 0x24, 0x53, 0x9a, 0x98, 0x4b, 0xeb, 0x68, 0x8e, 0x30, 0xba, 0xe0,
-	0x52, 0x19, 0x11, 0x02, 0x20, 0x59, 0x8e, 0x5b, 0x2e, 0x0a, 0xb9, 0x2a, 0xc5, 0xfd, 0x98, 0x5e,
-	0xe2, 0x0f, 0xfd, 0x4a, 0x9f, 0xee, 0xc8, 0x90, 0xa7, 0x30, 0x91, 0x19, 0x46, 0xfc, 0x8a, 0x47,
-	0x7a, 0x13, 0xe9, 0xf5, 0x66, 0x07, 0x0b, 0x97, 0x76, 0xd0, 0xf9, 0x25, 0x1c, 0x55, 0xcf, 0xd4,
-	0x2b, 0x1c, 0x03, 0xc8, 0xee, 0x7c, 0x0b, 0x21, 0xcf, 0x61, 0x5c, 0xef, 0xa4, 0x1f, 0xab, 0xc6,
-	0x8e, 0x96, 0x93, 0x46, 0x4e, 0x0d, 0xd3, 0x76, 0xd1, 0xfc, 0x25, 0x1c, 0x7d, 0x62, 0x85, 0x6c,
-	0x2c, 0xbd, 0xcd, 0xce, 0xd9, 0xc9, 0xee, 0x0e, 0x8c, 0xeb, 0xbe, 0x5a, 0xf3, 0x15, 0x8c, 0x29,
-	0xca, 0x22, 0xf9, 0xd7, 0x49, 0x2d, 0x23, 0x7b, 0x1d, 0x23, 0xdf, 0xc3, 0xc4, 0x0c, 0xbd, 0x31,
-	0xd2, 0xd8, 0xe5, 0xfc, 0xc9, 0xae, 0x5e, 0xcb, 0xae, 0xd7, 0x70, 0xf7, 0x33, 0xe6, 0x09, 0x4f,
-	0xad, 0xc3, 0xdd, 0x77, 0xcb, 0xfb, 0x70, 0xcf, 0xea, 0xad, 0x28, 0x2c, 0x7f, 0xf5, 0x60, 0xb8,
-	0xaa, 0x44, 0x94, 0xe4, 0x0c, 0x06, 0xd5, 0xa9, 0x11, 0xeb, 0x6e, 0xed, 0x3f, 0x89, 0xff, 0xe8,
-	0x16, 0x5e, 0x2f, 0xf7, 0xdf, 0xc2, 0x79, 0xe6, 0x90, 0x17, 0xd0, 0x2f, 0x6d, 0x26, 0x0f, 0x9a,
-	0x32, 0xeb, 0xb8, 0xfc, 0x87, 0x1d, 0xd4, 0xb4, 0x92, 0x57, 0x70, 0xa8, 0xf5, 0x27, 0x37, 0x15,
-	0xb6, 0x8f, 0xfe, 0xb4, 0x0b, 0x37, 0x9d, 0x67, 0x30, 0xa8, 0x34, 0xb5, 0x18, 0xb7, 0x9c, 0xb3,
-	0x18, 0xb7, 0xc5, 0xaf, 0x19, 0x7f, 0x00, 0xb7, 0x11, 0x85, 0x3c, 0x6e, 0x6a, 0xbb, 0x22, 0xfb,
-	0xfe, 0xae, 0x94, 0x99, 0xb4, 0x1e, 0xe8, 0x8f, 0xca, 0xe9, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0x01, 0xd3, 0x31, 0x88, 0x3f, 0x05, 0x00, 0x00,
+var fileDescriptor_session_004cdd49a5f4cc5f = []byte{
+	// 522 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0xc5, 0x69, 0x1a, 0xe2, 0x49, 0x13, 0xc1, 0x0a, 0x82, 0xb1, 0x50, 0x15, 0xf9, 0x80, 0xc2,
+	0x21, 0x09, 0x4a, 0x81, 0x03, 0x14, 0x55, 0xa2, 0x17, 0x90, 0x7a, 0x40, 0x1b, 0xb8, 0x71, 0xd9,
+	0xb8, 0x53, 0x67, 0x45, 0xed, 0x35, 0xde, 0x75, 0xc4, 0x3f, 0xe2, 0xc7, 0xf0, 0xa7, 0x90, 0xd7,
+	0x5e, 0x77, 0xed, 0x46, 0x4a, 0x38, 0xe4, 0x30, 0x6f, 0xe7, 0xe3, 0xcd, 0x7b, 0x13, 0xc3, 0xc7,
+	0x88, 0xab, 0x4d, 0xbe, 0x9e, 0x87, 0x22, 0x5e, 0x6c, 0xd8, 0x56, 0x84, 0x33, 0x2e, 0x16, 0x71,
+	0xae, 0x58, 0x84, 0xc9, 0x22, 0xfd, 0x19, 0x2d, 0x24, 0x4a, 0xc9, 0x45, 0xb2, 0x90, 0x98, 0x6d,
+	0x79, 0x88, 0x26, 0x9e, 0xa7, 0x99, 0x50, 0x82, 0x3c, 0xac, 0x42, 0xff, 0xc3, 0xa1, 0x7d, 0x42,
+	0x91, 0xdc, 0xf0, 0x28, 0xcf, 0x98, 0xaa, 0xbb, 0xf8, 0x67, 0x07, 0x93, 0x50, 0x4c, 0x61, 0x55,
+	0x34, 0xdb, 0x57, 0x94, 0x67, 0xb7, 0xc5, 0xaf, 0x4c, 0x0f, 0xfe, 0x38, 0x30, 0xbc, 0xcc, 0x90,
+	0x29, 0xa4, 0xf8, 0x2b, 0x47, 0xa9, 0xc8, 0x29, 0x1c, 0xb3, 0xdb, 0x74, 0xc3, 0x3c, 0x67, 0xe2,
+	0x4c, 0x07, 0xcb, 0xfe, 0xbc, 0x48, 0xfe, 0x4e, 0xaf, 0x68, 0x09, 0x93, 0x17, 0xd0, 0x5d, 0xa3,
+	0x62, 0x5e, 0xa7, 0xf5, 0xac, 0x51, 0x72, 0x0e, 0xc3, 0xc6, 0x2a, 0xde, 0x91, 0x4e, 0x1b, 0xcf,
+	0x8d, 0x40, 0x97, 0xf6, 0x2b, 0x6d, 0x26, 0x13, 0x1f, 0xfa, 0x19, 0xca, 0x54, 0x24, 0x12, 0xbd,
+	0xee, 0xc4, 0x99, 0xba, 0xb4, 0x8e, 0x83, 0x1f, 0x30, 0x32, 0x44, 0x4b, 0x84, 0x78, 0x60, 0x74,
+	0xd6, 0x5c, 0x5d, 0x6a, 0xc2, 0xe2, 0x25, 0x46, 0x29, 0x59, 0x84, 0x9a, 0xa6, 0x4b, 0x4d, 0x48,
+	0xc6, 0xd0, 0x4b, 0x33, 0x11, 0xa7, 0x4a, 0x13, 0x73, 0x69, 0x15, 0x05, 0x08, 0x83, 0x2b, 0x2e,
+	0x95, 0x11, 0x61, 0x0e, 0x24, 0xcd, 0x70, 0xcb, 0x45, 0x2e, 0x57, 0x85, 0xb8, 0x5f, 0x92, 0x6b,
+	0xfc, 0xad, 0xa7, 0x74, 0xe9, 0x8e, 0x17, 0xf2, 0x12, 0x46, 0x32, 0xc5, 0x90, 0xdf, 0xf0, 0x50,
+	0x6f, 0x22, 0xbd, 0xce, 0xe4, 0x68, 0xea, 0xd2, 0x16, 0x1a, 0x5c, 0xc3, 0x49, 0x39, 0xa6, 0x5a,
+	0xe1, 0x14, 0x40, 0xb6, 0xfb, 0x5b, 0x08, 0x79, 0x03, 0xc3, 0x6a, 0x27, 0x3d, 0xac, 0x6c, 0x3b,
+	0x58, 0x8e, 0x6a, 0x39, 0x35, 0x4c, 0x9b, 0x49, 0xc1, 0x3b, 0x38, 0xf9, 0xca, 0x72, 0x59, 0x5b,
+	0x7a, 0x9f, 0x9d, 0xb3, 0x93, 0xdd, 0x2b, 0x18, 0x56, 0x75, 0x77, 0x0a, 0x1b, 0x1d, 0x9d, 0x86,
+	0x8e, 0xc1, 0x0a, 0x86, 0x14, 0x65, 0x1e, 0xff, 0xef, 0x8c, 0x86, 0xc5, 0x9d, 0x96, 0xc5, 0x9f,
+	0x60, 0x64, 0x9a, 0xee, 0x23, 0x60, 0x19, 0xd9, 0x69, 0x18, 0xf9, 0x1e, 0x1e, 0x7d, 0xc3, 0x2c,
+	0xe6, 0x89, 0x75, 0xd2, 0x87, 0xee, 0x3f, 0x83, 0xc7, 0x56, 0xed, 0x3e, 0x0a, 0xcb, 0xbf, 0x1d,
+	0xe8, 0xaf, 0x4a, 0xe1, 0x25, 0xb9, 0x80, 0x5e, 0x79, 0x9e, 0xc4, 0xba, 0x75, 0xfb, 0x8f, 0xe5,
+	0x3f, 0xbb, 0x87, 0x57, 0x6b, 0x3f, 0x98, 0x3a, 0xaf, 0x1d, 0xf2, 0x16, 0xba, 0xc5, 0x69, 0x90,
+	0x27, 0x75, 0x9a, 0x75, 0x90, 0xfe, 0xd3, 0x16, 0x6a, 0x4a, 0xc9, 0x39, 0x1c, 0x6b, 0xcf, 0xc8,
+	0x5d, 0x86, 0xed, 0xbd, 0x3f, 0x6e, 0xc3, 0x8d, 0xa1, 0x17, 0xd0, 0x2b, 0x15, 0xb7, 0x58, 0x37,
+	0x7c, 0xb5, 0x58, 0x37, 0xad, 0xa9, 0x1a, 0x7c, 0x06, 0xb7, 0x96, 0x8c, 0x3c, 0xaf, 0x73, 0xdb,
+	0x16, 0xf8, 0xfe, 0xae, 0x27, 0xbb, 0xd3, 0xba, 0xa7, 0x3f, 0x48, 0x67, 0xff, 0x02, 0x00, 0x00,
+	0xff, 0xff, 0xa6, 0x62, 0xfb, 0x15, 0x7b, 0x05, 0x00, 0x00,
 }

@@ -329,7 +329,23 @@ const (
 	haltModeTerminate
 )
 
-func (c *controller) halt(mode haltMode) error {
+func (m haltMode) description() string {
+	switch m {
+	case haltModePause:
+		return "Pausing"
+	case haltModeShutdown:
+		return "Shutting down"
+	case haltModeTerminate:
+		return "Terminating"
+	default:
+		panic("unhandled halt mode")
+	}
+}
+
+func (c *controller) halt(mode haltMode, prompter string) error {
+	// Update status.
+	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
+
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
 	defer c.lifecycleLock.Unlock()

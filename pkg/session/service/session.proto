@@ -33,7 +33,9 @@ message PauseRequest {
     repeated string specifications = 1;
 }
 
-message PauseResponse{}
+message PauseResponse{
+    string message = 1;
+}
 
 message ResumeRequest {
     repeated string specifications = 1;
@@ -49,12 +51,14 @@ message TerminateRequest {
     repeated string specifications = 1;
 }
 
-message TerminateResponse{}
+message TerminateResponse{
+    string message = 1;
+}
 
 service Sessions {
     rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
     rpc List(ListRequest) returns (ListResponse) {}
-    rpc Pause(PauseRequest) returns (PauseResponse) {}
+    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
-    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
+    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
 }

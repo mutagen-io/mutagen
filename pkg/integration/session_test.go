@@ -100,7 +100,7 @@ func testSessionLifecycle(alpha, beta *url.URL, configuration *session.Configura
 	// relevant state).
 
 	// Pause the session.
-	if err := sessionManager.Pause(specification); err != nil {
+	if err := sessionManager.Pause(specification, ""); err != nil {
 		return errors.Wrap(err, "unable to pause session")
 	}
 
@@ -122,7 +122,7 @@ func testSessionLifecycle(alpha, beta *url.URL, configuration *session.Configura
 	}
 
 	// Terminate the session.
-	if err := sessionManager.Terminate(specification); err != nil {
+	if err := sessionManager.Terminate(specification, ""); err != nil {
 		return errors.Wrap(err, "unable to terminate session")
 	}
 

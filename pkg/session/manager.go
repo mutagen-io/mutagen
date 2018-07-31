@@ -138,7 +138,7 @@ func (m *Manager) Shutdown() {
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
-		if err := controller.halt(haltModeShutdown); err != nil {
+		if err := controller.halt(haltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}
 	}
@@ -195,7 +195,7 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 	return stateIndex, states, nil
 }
 
-func (m *Manager) Pause(specifications []string) error {
+func (m *Manager) Pause(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
 	if len(specifications) == 0 {
@@ -208,7 +208,7 @@ func (m *Manager) Pause(specifications []string) error {
 
 	// Attempt to pause the sessions.
 	for _, controller := range controllers {
-		if err := controller.halt(haltModePause); err != nil {
+		if err := controller.halt(haltModePause, prompter); err != nil {
 			return errors.Wrap(err, "unable to pause session")
 		}
 	}
@@ -239,7 +239,7 @@ func (m *Manager) Resume(specifications []string, prompter string) error {
 	return nil
 }
 
-func (m *Manager) Terminate(specifications []string) error {
+func (m *Manager) Terminate(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
 	if len(specifications) == 0 {
@@ -253,7 +253,7 @@ func (m *Manager) Terminate(specifications []string) error {
 	// Attempt to terminate the sessions. Since we're terminating them, we're
 	// responsible for removing them from the session map.
 	for _, controller := range controllers {
-		if err := controller.halt(haltModeTerminate); err != nil {
+		if err := controller.halt(haltModeTerminate, prompter); err != nil {
 			return errors.Wrap(err, "unable to terminate session")
 		}
 		m.sessionsLock.Lock()

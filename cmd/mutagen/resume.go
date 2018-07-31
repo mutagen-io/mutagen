@@ -51,7 +51,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
-	// Create a status line printer and defer its clearing.
+	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
 
 	// Receive and process responses until we're done.

@@ -33,12 +33,41 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
-	// Invoke pause.
+	// Invoke the session pause method. The stream will close when the
+	// associated context is cancelled.
+	pauseContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := sessionService.Pause(pauseContext)
+	if err != nil {
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke pause")
+	}
+
+	// Send the initial request.
 	request := &sessionsvcpkg.PauseRequest{
 		Specifications: specifications,
 	}
-	if _, err := sessionService.Pause(context.Background(), request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "pause failed")
+	if err := stream.Send(request); err != nil {
+		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send pause request")
+	}
+
+	// Create a status line printer.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+
+	// Receive and process responses until we're done.
+	for {
+		if response, err := stream.Recv(); err != nil {
+			statusLinePrinter.BreakIfNonEmpty()
+			return errors.Wrap(peelAwayRPCErrorLayer(err), "pause failed")
+		} else if response.Message == "" {
+			statusLinePrinter.Clear()
+			return nil
+		} else if response.Message != "" {
+			statusLinePrinter.Print(response.Message)
+			if err := stream.Send(&sessionsvcpkg.PauseRequest{}); err != nil {
+				statusLinePrinter.BreakIfNonEmpty()
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		}
 	}
 
 	// Success.
