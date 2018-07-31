@@ -15,7 +15,7 @@ import (
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
-func printMonitorLine(state *sessionpkg.State) {
+func computeMonitorStatusLine(state *sessionpkg.State) string {
 	// Build the status line.
 	status := "Status: "
 	if state.Session.Paused {
@@ -52,16 +52,8 @@ func printMonitorLine(state *sessionpkg.State) {
 		}
 	}
 
-	// Print the status, prefixed with a carriage return to wipe out the
-	// previous line. Ensure that the status prints as a specified width,
-	// truncating or right-padding with space as necessary. On POSIX systems,
-	// this width is 80 characters and on Windows it's 79. The reason for 79 on
-	// Windows is that for cmd.exe consoles the line width needs to be narrower
-	// than the console (which is 80 columns by default) for carriage return
-	// wipes to work (if it's the same width, the next carriage return overflows
-	// to the next line, behaving exactly like a newline).
-	// TODO: We should probably try to detect the console width.
-	fmt.Fprintf(color.Output, monitorLineFormat, status)
+	// Done.
+	return status
 }
 
 func monitorMain(command *cobra.Command, arguments []string) error {
@@ -85,10 +77,13 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
+	// Create a status line printer and defer a break.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+	defer statusLinePrinter.BreakIfNonEmpty()
+
 	// Loop and print monitoring information indefinitely.
 	var previousStateIndex uint64
 	sessionInformationPrinted := false
-	monitorLinePrinted := false
 	for {
 		// Create the list request. If there's no session specified, then we
 		// need to grab all sessions and identify the most recently created one
@@ -101,18 +96,12 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// Invoke list.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
-			if monitorLinePrinted {
-				fmt.Println()
-			}
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "list failed")
 		}
 
 		// Validate the list response contents.
 		for _, s := range response.SessionStates {
 			if err = s.EnsureValid(); err != nil {
-				if monitorLinePrinted {
-					fmt.Println()
-				}
 				return errors.Wrap(err, "invalid session state detected in response")
 			}
 		}
@@ -136,9 +125,6 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			state = response.SessionStates[0]
 		}
 		if err != nil {
-			if monitorLinePrinted {
-				fmt.Println()
-			}
 			return err
 		}
 
@@ -155,9 +141,11 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			sessionInformationPrinted = true
 		}
 
-		// Print the monitoring line and record that we've done so.
-		printMonitorLine(state)
-		monitorLinePrinted = true
+		// Compute the status line.
+		statusLine := computeMonitorStatusLine(state)
+
+		// Print the status line.
+		statusLinePrinter.Print(statusLine)
 	}
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -52,20 +51,28 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
+	// Create a status line printer and defer its clearing.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+
 	// Receive and process responses until we're done.
 	for {
 		if response, err := stream.Recv(); err != nil {
+			statusLinePrinter.BreakIfNonEmpty()
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "resume failed")
 		} else if err = response.EnsureValid(); err != nil {
+			statusLinePrinter.BreakIfNonEmpty()
 			return errors.Wrap(err, "invalid response received")
 		} else if response.Message == "" && response.Prompt == "" {
+			statusLinePrinter.Clear()
 			return nil
 		} else if response.Message != "" {
-			fmt.Println(response.Message)
+			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.ResumeRequest{}); err != nil {
+				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
+			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {

@@ -114,6 +114,10 @@ func createMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send create request")
 	}
 
+	// Create a status line printer and defer a break.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+	defer statusLinePrinter.BreakIfNonEmpty()
+
 	// Receive and process responses until we're done.
 	for {
 		if response, err := stream.Recv(); err != nil {
@@ -121,14 +125,15 @@ func createMain(command *cobra.Command, arguments []string) error {
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid response received")
 		} else if response.Session != "" {
-			fmt.Println("Created session", response.Session)
+			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
 			return nil
 		} else if response.Message != "" {
-			fmt.Println(response.Message)
+			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.CreateRequest{}); err != nil {
 				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
+			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
