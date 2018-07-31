@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -53,21 +54,23 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 
 	// Receive and process responses until we're done.
 	for {
-		// Receive the next response, watching for completion or another prompt.
-		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "resume failed")
-		} else if response.Prompt == nil {
+		} else if err = response.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid response received")
+		} else if response.Message == "" && response.Prompt == "" {
 			return nil
-		} else {
-			prompt = response.Prompt
-		}
-
-		// Process the prompt.
-		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
-			return errors.Wrap(err, "unable to perform prompting")
-		} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+		} else if response.Message != "" {
+			fmt.Println(response.Message)
+			if err := stream.Send(&sessionsvcpkg.ResumeRequest{}); err != nil {
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		} else if response.Prompt != "" {
+			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+				return errors.Wrap(err, "unable to perform prompting")
+			} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+			}
 		}
 	}
 }

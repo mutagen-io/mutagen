@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package prompt;
-
-message Prompt {
-    string message = 1;
-    string prompt = 2;
-}

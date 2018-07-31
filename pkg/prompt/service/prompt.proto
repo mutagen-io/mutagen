@@ -2,11 +2,9 @@ syntax = "proto3";
 
 package prompt;
 
-import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
-
 message PromptRequest{
     string prompter = 1;
-    prompt.Prompt prompt = 2;
+    string prompt = 2;
 }
 
 message PromptResponse{

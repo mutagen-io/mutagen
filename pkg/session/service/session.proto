@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package session;
 
-import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
 import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
 import "github.com/havoc-io/mutagen/pkg/session/state.proto";
 import "github.com/havoc-io/mutagen/pkg/url/url.proto";
@@ -16,7 +15,8 @@ message CreateRequest {
 
 message CreateResponse {
     string session = 1;
-    prompt.Prompt prompt = 2;
+    string message = 2;
+    string prompt = 3;
 }
 
 message ListRequest {
@@ -41,7 +41,8 @@ message ResumeRequest {
 }
 
 message ResumeResponse {
-    prompt.Prompt prompt = 1;
+    string message = 1;
+    string prompt = 2;
 }
 
 message TerminateRequest {

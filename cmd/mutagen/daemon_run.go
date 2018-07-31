@@ -12,9 +12,9 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
-	promptsvcpkg "github.com/havoc-io/mutagen/pkg/prompt/service"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	daemonsvc "github.com/havoc-io/mutagen/pkg/daemon/service"
+	promptsvc "github.com/havoc-io/mutagen/pkg/prompt/service"
+	sessionsvc "github.com/havoc-io/mutagen/pkg/session/service"
 )
 
 func daemonRunMain(command *cobra.Command, arguments []string) error {
@@ -37,21 +37,20 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	server := grpc.NewServer()
 
 	// Create and register the daemon service and defer its shutdown.
-	daemonService := daemonsvcpkg.New()
-	daemonsvcpkg.RegisterDaemonServer(server, daemonService)
-	defer daemonService.Shutdown()
+	daemonServer := daemonsvc.DefaultServer()
+	daemonsvc.RegisterDaemonServer(server, daemonServer)
+	defer daemonServer.Shutdown()
 
 	// Create and register the prompt service.
-	promptService := promptsvcpkg.New()
-	promptsvcpkg.RegisterPromptingServer(server, promptService)
+	promptsvc.RegisterPromptingServer(server, promptsvc.DefaultServer())
 
 	// Create and register the session service and defer its shutdown.
-	sessionService, err := sessionsvcpkg.New(promptService)
+	sessionsServer, err := sessionsvc.DefaultServer()
 	if err != nil {
-		return errors.Wrap(err, "unable to create session service")
+		return errors.Wrap(err, "unable to create sessions service")
 	}
-	sessionsvcpkg.RegisterSessionsServer(server, sessionService)
-	defer sessionService.Shutdown()
+	sessionsvc.RegisterSessionsServer(server, sessionsServer)
+	defer sessionsServer.Shutdown()
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
@@ -74,7 +73,7 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	select {
 	case sig := <-signalTermination:
 		return errors.Errorf("terminated by signal: %s", sig)
-	case <-daemonService.Termination:
+	case <-daemonServer.Termination:
 		return nil
 	case err = <-serverErrors:
 		return errors.Wrap(err, "premature server termination")

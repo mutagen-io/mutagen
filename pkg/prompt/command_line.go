@@ -8,7 +8,7 @@ import (
 	"github.com/howeyc/gopass"
 )
 
-func PromptCommandLine(message, prompt string) (string, error) {
+func PromptCommandLine(prompt string) (string, error) {
 	// Classify the prompt.
 	class := Classify(prompt)
 
@@ -20,10 +20,7 @@ func PromptCommandLine(message, prompt string) (string, error) {
 		getter = gopass.GetPasswd
 	}
 
-	// Print the message (if any) and the prompt.
-	if message != "" {
-		fmt.Println(message)
-	}
+	// Print the prompt.
 	fmt.Print(prompt)
 
 	// Get the result.

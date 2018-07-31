@@ -116,27 +116,24 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Receive and process responses until we're done.
 	for {
-		// Receive the next response, watching for completion or another prompt.
-		var prompt *promptpkg.Prompt
 		if response, err := stream.Recv(); err != nil {
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "create failed")
+		} else if err = response.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid response received")
 		} else if response.Session != "" {
-			if response.Prompt != nil {
-				return errors.New("invalid create response received (session with prompt)")
-			}
 			fmt.Println("Created session", response.Session)
 			return nil
-		} else if response.Prompt == nil {
-			return errors.New("invalid create response received (empty)")
-		} else {
-			prompt = response.Prompt
-		}
-
-		// Process the prompt.
-		if response, err := promptpkg.PromptCommandLine(prompt.Message, prompt.Prompt); err != nil {
-			return errors.Wrap(err, "unable to perform prompting")
-		} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+		} else if response.Message != "" {
+			fmt.Println(response.Message)
+			if err := stream.Send(&sessionsvcpkg.CreateRequest{}); err != nil {
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		} else if response.Prompt != "" {
+			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+				return errors.Wrap(err, "unable to perform prompting")
+			} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
+				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+			}
 		}
 	}
 }

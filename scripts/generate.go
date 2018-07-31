@@ -44,10 +44,6 @@ var subdirectories = []struct {
 		[]string{"watch.proto"},
 	},
 	{
-		"github.com/havoc-io/mutagen/pkg/prompt",
-		[]string{"prompt.proto"},
-	},
-	{
 		"github.com/havoc-io/mutagen/pkg/prompt/service",
 		[]string{"prompt.proto"},
 	},

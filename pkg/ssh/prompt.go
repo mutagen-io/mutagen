@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -10,11 +9,10 @@ import (
 )
 
 const (
-	PrompterEnvironmentVariable              = "MUTAGEN_SSH_PROMPTER"
-	PrompterMessageBase64EnvironmentVariable = "MUTAGEN_SSH_PROMPTER_MESSAGE_BASE64"
+	PrompterEnvironmentVariable = "MUTAGEN_SSH_PROMPTER"
 )
 
-func addPrompterVariables(environment []string, prompter, message string) ([]string, error) {
+func addPrompterVariables(environment []string, prompter string) ([]string, error) {
 	// Handle based on whether or not there's a prompter.
 	if prompter == "" {
 		// If there is no prompter, then enforce that SSH_ASKPASS is not set,
@@ -29,10 +27,6 @@ func addPrompterVariables(environment []string, prompter, message string) ([]str
 		}
 		environment = filteredEnvironment
 	} else {
-		// Convert message to base64 encoding so that we can pass it through the
-		// environment safely.
-		messageBase64 := base64.StdEncoding.EncodeToString([]byte(message))
-
 		// Compute the path to the current (mutagen) executable and set it in
 		// the SSH_ASKPASS variable.
 		if mutagenPath, err := os.Executable(); err != nil {
@@ -47,7 +41,6 @@ func addPrompterVariables(environment []string, prompter, message string) ([]str
 		// Add environment variables to make Mutagen recognize an SSH prompting
 		// invocation.
 		environment = append(environment, fmt.Sprintf("%s=%s", PrompterEnvironmentVariable, prompter))
-		environment = append(environment, fmt.Sprintf("%s=%s", PrompterMessageBase64EnvironmentVariable, messageBase64))
 	}
 
 	// Done.
