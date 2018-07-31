@@ -16,7 +16,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/process"
-	promptsvc "github.com/havoc-io/mutagen/pkg/prompt/service"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
@@ -124,7 +124,7 @@ func probeSSHWindows(remote *url.URL, prompter string) (string, string, error) {
 func probeSSHPlatform(remote *url.URL, prompter string) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
-	if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
+	if err := prompt.Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
 	if goos, goarch, err := probeSSHPOSIX(remote, prompter); err == nil {
@@ -132,7 +132,7 @@ func probeSSHPlatform(remote *url.URL, prompter string) (string, string, bool, e
 	}
 
 	// If that fails, attempt a Windows fallback.
-	if err := promptsvc.DefaultServer().Message(prompter, "Probing endpoint (Windows)..."); err != nil {
+	if err := prompt.Message(prompter, "Probing endpoint (Windows)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
 	if goos, goarch, err := probeSSHWindows(remote, prompter); err == nil {
@@ -152,7 +152,7 @@ func installSSH(remote *url.URL, prompter string) error {
 
 	// Find the appropriate agent binary. Ensure that it's cleaned up when we're
 	// done with it.
-	if err := promptsvc.DefaultServer().Message(prompter, "Extracting agent..."); err != nil {
+	if err := prompt.Message(prompter, "Extracting agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	agent, err := executableForPlatform(goos, goarch)
@@ -170,7 +170,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// default destination directory for SCP copies. That should be true in
 	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
 	// probe information to handle this more carefully.
-	if err := promptsvc.DefaultServer().Message(prompter, "Copying agent..."); err != nil {
+	if err := prompt.Message(prompter, "Copying agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	randomUUID, err := uuid.NewRandom()
@@ -209,7 +209,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
 	// probe information to handle this more carefully.
 	if runtime.GOOS == "windows" && posix {
-		if err := promptsvc.DefaultServer().Message(prompter, "Setting agent executability..."); err != nil {
+		if err := prompt.Message(prompter, "Setting agent executability..."); err != nil {
 			return errors.Wrap(err, "unable to message prompter")
 		}
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
@@ -222,7 +222,7 @@ func installSSH(remote *url.URL, prompter string) error {
 	// HACK: This assumes that the SSH user's home directory is used as the
 	// default working directory for SSH commands. The reasons for assuming this
 	// are outlined above.
-	if err := promptsvc.DefaultServer().Message(prompter, "Installing agent..."); err != nil {
+	if err := prompt.Message(prompter, "Installing agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	var installCommand string
@@ -279,7 +279,7 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 	command := fmt.Sprintf("%s %s", sshAgentPath, mode)
 
 	// Create an SSH process.
-	if err := promptsvc.DefaultServer().Message(prompter, "Connecting to agent..."); err != nil {
+	if err := prompt.Message(prompter, "Connecting to agent..."); err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to message prompter")
 	}
 	process, err := ssh.Command(prompter, remote, command)

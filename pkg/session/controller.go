@@ -15,7 +15,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	promptsvc "github.com/havoc-io/mutagen/pkg/prompt/service"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/state"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -59,8 +59,8 @@ type controller struct {
 }
 
 func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Configuration, prompter string) (*controller, error) {
-	// Pass status to the prompter.
-	promptsvc.DefaultServer().Message(prompter, "Creating session...")
+	// Update status.
+	prompt.Message(prompter, "Creating session...")
 
 	// Create a snapshot of the global configuration.
 	globalConfiguration, err := snapshotGlobalConfiguration()
@@ -215,8 +215,8 @@ func (c *controller) currentState() *State {
 }
 
 func (c *controller) resume(prompter string) error {
-	// Pass status to the prompter.
-	promptsvc.DefaultServer().Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
+	// Update status.
+	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()

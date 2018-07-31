@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/havoc-io/mutagen/pkg/agent"
@@ -28,9 +27,7 @@ func housekeep() {
 	session.HousekeepStaging()
 }
 
-// Server provides an implementation of the Daemon service, providing methods
-// for managing the daemon lifecycle. This Server is designed to operate as a
-// singleton and can be accessed via the global DefaultServer variable.
+// Server provides an implementation of the Daemon service.
 type Server struct {
 	// Termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
@@ -47,48 +44,23 @@ type Server struct {
 	shutdown context.CancelFunc
 }
 
-// defaultServerLock controls access to the defaultServer variable.
-var defaultServerLock sync.RWMutex
-
-// defaultServer is the default daemon server.
-var defaultServer *Server
-
-// DefaultServer provides the default daemon server, creating it if necessary.
-func DefaultServer() *Server {
-	// Optimistically attempt to grab the server.
-	defaultServerLock.RLock()
-	if defaultServer != nil {
-		defer defaultServerLock.RUnlock()
-		return defaultServer
-	}
-	defaultServerLock.RUnlock()
-
-	// Otherwise we need to create the server, so we'll need to get a write
-	// lock on the server.
-	defaultServerLock.Lock()
-	defer defaultServerLock.Unlock()
-
-	// It's possible that the server was created by someone else between our two
-	// lockings, so see if we can just return it.
-	if defaultServer != nil {
-		return defaultServer
-	}
-
-	// Create the default daemon context.
+// New creates an instance of the daemon server.
+func New() *Server {
+	// Create a cancellable context for daemon background operations.
 	context, shutdown := context.WithCancel(context.Background())
 
-	// Create the default daemon server.
-	defaultServer = &Server{
+	// Create the server.
+	server := &Server{
 		Termination: make(chan struct{}, 1),
 		context:     context,
 		shutdown:    shutdown,
 	}
 
 	// Start the housekeeping Goroutine.
-	go defaultServer.housekeep()
+	go server.housekeep()
 
 	// Done.
-	return defaultServer
+	return server
 }
 
 // housekeep provides regular housekeeping facilities for the daemon.

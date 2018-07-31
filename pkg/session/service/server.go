@@ -2,62 +2,31 @@ package session
 
 import (
 	"context"
-	"sync"
 
 	"github.com/pkg/errors"
 
-	promptsvc "github.com/havoc-io/mutagen/pkg/prompt/service"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
-// Server provides an implementation of the Sessions service, providing methods
-// for managing sessions. This Server is designed to operate as a singleton and
-// can be accessed via the global DefaultServer variable.
+// Server provides an implementation of the Sessions service.
 type Server struct {
 	// manager is the underlying session manager.
 	manager *session.Manager
 }
 
-// defaultServerLock controls access to the defaultServer variable.
-var defaultServerLock sync.RWMutex
-
-// defaultServer is the default sessions server.
-var defaultServer *Server
-
-// DefaultServer provides the default sessions server, creating it if necessary.
-func DefaultServer() (*Server, error) {
-	// Optimistically attempt to grab the server.
-	defaultServerLock.RLock()
-	if defaultServer != nil {
-		defer defaultServerLock.RUnlock()
-		return defaultServer, nil
-	}
-	defaultServerLock.RUnlock()
-
-	// Otherwise we need to create the server, so we'll need to get a write
-	// lock on the server.
-	defaultServerLock.Lock()
-	defer defaultServerLock.Unlock()
-
-	// It's possible that the server was created by someone else between our two
-	// lockings, so see if we can just return it.
-	if defaultServer != nil {
-		return defaultServer, nil
-	}
-
-	// Create the default session manager.
+// New creates an instances of the sessions server.
+func New() (*Server, error) {
+	// Create the session manager.
 	manager, err := session.NewManager()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create session manager")
 	}
 
-	// Create the default sessions server.
-	defaultServer = &Server{
+	// Create the server.
+	return &Server{
 		manager: manager,
-	}
-
-	// Done.
-	return defaultServer, nil
+	}, nil
 }
 
 // Shutdown gracefully shuts down server resources.
@@ -80,11 +49,8 @@ func (s *Server) Create(stream Sessions_CreateServer) error {
 		return errors.Wrap(err, "session configuration invalid")
 	}
 
-	// Grab the prompt server.
-	promptServer := promptsvc.DefaultServer()
-
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := promptServer.RegisterPrompter(&createStreamPrompter{stream})
+	prompter, err := prompt.RegisterPrompter(&createStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -99,7 +65,7 @@ func (s *Server) Create(stream Sessions_CreateServer) error {
 	)
 
 	// Unregister the prompter.
-	promptServer.UnregisterPrompter(prompter)
+	prompt.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -151,11 +117,8 @@ func (s *Server) Resume(stream Sessions_ResumeServer) error {
 		return errors.Wrap(err, "unable to receive request")
 	}
 
-	// Grab the prompt server.
-	promptServer := promptsvc.DefaultServer()
-
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := promptServer.RegisterPrompter(&resumeStreamPrompter{stream})
+	prompter, err := prompt.RegisterPrompter(&resumeStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -165,7 +128,7 @@ func (s *Server) Resume(stream Sessions_ResumeServer) error {
 	err = s.manager.Resume(request.Specifications, prompter)
 
 	// Unregister the prompter.
-	promptServer.UnregisterPrompter(prompter)
+	prompt.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
