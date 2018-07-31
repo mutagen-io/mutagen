@@ -31,7 +31,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
+	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
 	// Invoke terminate.
 	request := &sessionsvcpkg.TerminateRequest{

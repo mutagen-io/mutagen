@@ -43,7 +43,7 @@ func promptSSH(arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a prompt service client.
-	promptService := promptsvcpkg.NewPromptClient(daemonConnection)
+	promptService := promptsvcpkg.NewPromptingClient(daemonConnection)
 
 	// Invoke prompt.
 	request := &promptsvcpkg.PromptRequest{

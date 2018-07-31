@@ -1,4 +1,4 @@
-package service
+package session
 
 import (
 	"github.com/pkg/errors"
@@ -7,7 +7,7 @@ import (
 )
 
 type createStreamPrompter struct {
-	stream Session_CreateServer
+	stream Sessions_CreateServer
 }
 
 func (p *createStreamPrompter) Prompt(message, prompt string) (string, error) {
@@ -33,7 +33,7 @@ func (p *createStreamPrompter) Prompt(message, prompt string) (string, error) {
 }
 
 type resumeStreamPrompter struct {
-	stream Session_ResumeServer
+	stream Sessions_ResumeServer
 }
 
 func (p *resumeStreamPrompter) Prompt(message, prompt string) (string, error) {

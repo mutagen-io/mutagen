@@ -83,7 +83,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
+	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
 	// Loop and print monitoring information indefinitely.
 	var previousStateIndex uint64

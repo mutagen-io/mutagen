@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package service;
+package prompt;
 
 import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
 
@@ -13,6 +13,6 @@ message PromptResponse{
     string response = 1;
 }
 
-service Prompt {
+service Prompting {
     rpc Prompt(PromptRequest) returns (PromptResponse) {}
 }

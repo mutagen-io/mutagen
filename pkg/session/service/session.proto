@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package service;
+package session;
 
 import "github.com/havoc-io/mutagen/pkg/prompt/prompt.proto";
 import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
@@ -50,7 +50,7 @@ message TerminateRequest {
 
 message TerminateResponse{}
 
-service Session {
+service Sessions {
     rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
     rpc List(ListRequest) returns (ListResponse) {}
     rpc Pause(PauseRequest) returns (PauseResponse) {}

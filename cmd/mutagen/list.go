@@ -138,7 +138,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionClient(daemonConnection)
+	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
 	// Invoke list.
 	request := &sessionsvcpkg.ListRequest{

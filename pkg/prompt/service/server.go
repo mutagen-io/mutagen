@@ -1,4 +1,4 @@
-package service
+package prompt
 
 import (
 	"context"

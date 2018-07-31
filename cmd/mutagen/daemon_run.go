@@ -43,14 +43,14 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 
 	// Create and register the prompt service.
 	promptService := promptsvcpkg.New()
-	promptsvcpkg.RegisterPromptServer(server, promptService)
+	promptsvcpkg.RegisterPromptingServer(server, promptService)
 
 	// Create and register the session service and defer its shutdown.
 	sessionService, err := sessionsvcpkg.New(promptService)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session service")
 	}
-	sessionsvcpkg.RegisterSessionServer(server, sessionService)
+	sessionsvcpkg.RegisterSessionsServer(server, sessionService)
 	defer sessionService.Shutdown()
 
 	// Create the daemon listener and defer its closure.

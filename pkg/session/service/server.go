@@ -1,4 +1,4 @@
-package service
+package session
 
 import (
 	"context"
@@ -32,7 +32,7 @@ func (s *Server) Shutdown() {
 	s.manager.Shutdown()
 }
 
-func (s *Server) Create(stream Session_CreateServer) error {
+func (s *Server) Create(stream Sessions_CreateServer) error {
 	// Receive and validate the request.
 	request, err := stream.Recv()
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Server) Pause(_ context.Context, request *PauseRequest) (*PauseResponse
 	return &PauseResponse{}, nil
 }
 
-func (s *Server) Resume(stream Session_ResumeServer) error {
+func (s *Server) Resume(stream Sessions_ResumeServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()
 	if err != nil {
