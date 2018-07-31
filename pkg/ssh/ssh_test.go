@@ -62,7 +62,7 @@ func TestCopyNonSSHURL(t *testing.T) {
 	}
 
 	// Ensure the copy fails.
-	if Copy("", "Copying file", source, target) == nil {
+	if Copy("", source, target) == nil {
 		t.Fatal("copy succeeded for non-SSH URL")
 	}
 }
@@ -113,7 +113,7 @@ func TestCopyRelativePath(t *testing.T) {
 	}
 
 	// Ensure the copy fails.
-	if Copy("", "Copying file", source, target) == nil {
+	if Copy("", source, target) == nil {
 		t.Fatal("copy succeeded for relative source path")
 	}
 }
@@ -158,7 +158,7 @@ func TestCopy(t *testing.T) {
 	}
 
 	// Copy the file.
-	if err := Copy("", "Copying file", source, target); err != nil {
+	if err := Copy("", source, target); err != nil {
 		t.Fatal("unable to copy file:", err)
 	}
 
@@ -176,7 +176,7 @@ func TestRunNonSSHURL(t *testing.T) {
 	}
 
 	// Attempt to run.
-	if Run("", "Running command", &url.URL{}, command) == nil {
+	if Run("", &url.URL{}, command) == nil {
 		t.Fatal("run succeeded for non-SSH URL")
 	}
 }
@@ -208,7 +208,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// Attempt to execute the command.
-	if err := Run("", "Running command", remote, command); err != nil {
+	if err := Run("", remote, command); err != nil {
 		t.Fatal("unable to run command")
 	}
 }
@@ -221,7 +221,7 @@ func TestOutputNonSSHURL(t *testing.T) {
 	}
 
 	// Attempt to capture output.
-	if _, err := Output("", "Running command", &url.URL{}, command); err == nil {
+	if _, err := Output("", &url.URL{}, command); err == nil {
 		t.Fatal("output succeeded for non-SSH URL")
 	}
 }
@@ -259,7 +259,7 @@ func TestOutput(t *testing.T) {
 	}
 
 	// Attempt to execute the command.
-	if output, err := Output("", "Grabbing output", remote, command); err != nil {
+	if output, err := Output("", remote, command); err != nil {
 		t.Fatal("unable to run command")
 	} else if !strings.Contains(string(output), content) {
 		t.Error("output does not contain expected content")
