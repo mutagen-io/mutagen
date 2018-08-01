@@ -45,7 +45,7 @@ type localEndpoint struct {
 	cache *sync.Cache
 	// ignoreCache is the ignore cache from the last successful scan on the
 	// endpoint.
-	ignoreCache map[string]bool
+	ignoreCache sync.IgnoreCache
 	// recomposeUnicode is the Unicode recomposition behavior recommended by the
 	// last successful scan on the endpoint.
 	recomposeUnicode bool

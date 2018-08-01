@@ -215,3 +215,14 @@ func (i *ignorer) ignored(path string, directory bool) bool {
 	// Done.
 	return ignored
 }
+
+// IgnoreCacheKey represents a key in an ignore cache.
+type IgnoreCacheKey struct {
+	// path is the path used for testing ignore status.
+	path string
+	// directory is whether or not that path was a directory.
+	directory bool
+}
+
+// IgnoreCache provides an efficient mechanism to avoid recomputing ignores.
+type IgnoreCache map[IgnoreCacheKey]bool

@@ -44,11 +44,11 @@ type scanner struct {
 	// ignorer is the ignorer identifying ignored paths.
 	ignorer *ignorer
 	// ignoreCache is the cache of ignored path behavior.
-	ignoreCache map[string]bool
+	ignoreCache IgnoreCache
 	// newCache is the new file digest cache to populate.
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
-	newIgnoreCache map[string]bool
+	newIgnoreCache IgnoreCache
 	// buffer is the read buffer used for computing file digests.
 	buffer []byte
 	// deviceID is the device ID of the synchronization root filesystem.
@@ -213,11 +213,13 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 
 		// Determine whether or not this path is ignored and update the new
 		// ignore cache.
-		ignored, ok := s.ignoreCache[contentPath]
+		isDirectory := kind == EntryKind_Directory
+		ignoreCacheKey := IgnoreCacheKey{contentPath, isDirectory}
+		ignored, ok := s.ignoreCache[ignoreCacheKey]
 		if !ok {
-			ignored = s.ignorer.ignored(contentPath, kind == EntryKind_Directory)
+			ignored = s.ignorer.ignored(contentPath, isDirectory)
 		}
-		s.newIgnoreCache[contentPath] = ignored
+		s.newIgnoreCache[ignoreCacheKey] = ignored
 		if ignored {
 			continue
 		}
@@ -260,7 +262,7 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 
 // Scan provides recursive filesystem scanning facilities for synchronization
 // roots.
-func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreCache map[string]bool, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, map[string]bool, error) {
+func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreCache IgnoreCache, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the
 	// GetEntries accessor everywhere.
@@ -297,7 +299,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreC
 	if ignoreCacheLength := len(ignoreCache); ignoreCacheLength != 0 {
 		initialIgnoreCacheCapacity = ignoreCacheLength
 	}
-	newIgnoreCache := make(map[string]bool, initialIgnoreCacheCapacity)
+	newIgnoreCache := make(IgnoreCache, initialIgnoreCacheCapacity)
 
 	// Create a scanner.
 	s := &scanner{
