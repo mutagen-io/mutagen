@@ -36,9 +36,9 @@ func TestLockCycle(t *testing.T) {
 	}
 }
 
-// TestLockDuplicate tests that an additional attempt to acquire the daemon lock
-// by a separate process will fail.
-func TestLockDuplicate(t *testing.T) {
+// TestLockDuplicateFail tests that an additional attempt to acquire the daemon
+// lock by a separate process will fail.
+func TestLockDuplicateFail(t *testing.T) {
 	// Create a temporary directory in which to build the lock test executable
 	// and defer its removal.
 	buildDirectory, err := ioutil.TempDir("", "mutagen_daemon_lock_test")
