@@ -32,7 +32,7 @@ func HandleTerminalCompatibility() {
 	// Compute the path to the current executable.
 	executable, err := os.Executable()
 	if err != nil {
-		Fatal(errors.New("unable to locate path to current executable"))
+		Fatal(errors.Wrap(err, "running inside mintty terminal and unable to locate current executable"))
 	}
 
 	// Build the argument list for winpty.
@@ -53,7 +53,7 @@ func HandleTerminalCompatibility() {
 		if exitCode, exitCodeErr := process.ExitCodeForError(err); exitCodeErr == nil {
 			os.Exit(exitCode)
 		}
-		Fatal(errors.Wrap(err, "unable to restart process"))
+		Fatal(errors.Wrap(err, "running inside mintty terminal and unable to restart process"))
 	} else {
 		os.Exit(0)
 	}
