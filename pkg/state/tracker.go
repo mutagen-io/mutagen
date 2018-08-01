@@ -4,12 +4,17 @@ import (
 	"sync"
 )
 
+// Tracker provides index-based state tracking using a condition variable.
 type Tracker struct {
-	change   *sync.Cond
-	index    uint64
+	// change is the condition variable used to track changes.
+	change *sync.Cond
+	// index is the current state index.
+	index uint64
+	// poisoned indicates whether or not tracking has been terminated.
 	poisoned bool
 }
 
+// NewTracker creates a new tracker instance with state index 1.
 func NewTracker() *Tracker {
 	return &Tracker{
 		change: sync.NewCond(&sync.Mutex{}),
@@ -17,6 +22,7 @@ func NewTracker() *Tracker {
 	}
 }
 
+// Poison terminates tracking.
 func (t *Tracker) Poison() {
 	// Acquire the state lock and ensure its release.
 	t.change.L.Lock()
@@ -27,6 +33,7 @@ func (t *Tracker) Poison() {
 	t.change.Broadcast()
 }
 
+// NotifyOfChange indicates the state index and notifies waiters.
 func (t *Tracker) NotifyOfChange() {
 	// Acquire the state lock and ensure its release.
 	t.change.L.Lock()
@@ -37,6 +44,7 @@ func (t *Tracker) NotifyOfChange() {
 	t.change.Broadcast()
 }
 
+// WaitForChange waits for a state index change from the previous index.
 func (t *Tracker) WaitForChange(previousIndex uint64) (uint64, bool) {
 	// Acquire the state lock and ensure its release.
 	t.change.L.Lock()
