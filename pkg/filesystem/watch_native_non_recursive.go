@@ -18,6 +18,8 @@ const (
 	watchNativeNonRecursiveMaximumWatches = 50
 )
 
+// watchNative attempts to perform efficient watching using the operating
+// system's native filesystem watching facilities.
 func watchNative(context contextpkg.Context, root string, events chan struct{}, pollInterval uint32) error {
 	// Compute the polling interval.
 	if pollInterval == 0 {

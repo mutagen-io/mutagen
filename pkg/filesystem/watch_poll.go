@@ -17,6 +17,8 @@ const (
 	defaultInitialContentMapCapacity = 1024
 )
 
+// fileInfoEqual determines whether or not file metadata is equivalent (i.e.
+// whether or not a change notification is warranted).
 func fileInfoEqual(first, second os.FileInfo) bool {
 	// Compare modes.
 	if first.Mode() != second.Mode() {
@@ -35,6 +37,8 @@ func fileInfoEqual(first, second os.FileInfo) bool {
 		first.ModTime().Equal(second.ModTime())
 }
 
+// poll creates a simple snapshot of a synchronization root, detecting (and
+// optionally tracking) changes from an existing snapshot.
 func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[string]os.FileInfo, bool, map[string]bool, error) {
 	// Create our result map.
 	initialContentMapCapacity := len(existing)
@@ -140,6 +144,7 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 	return contents, changed, changes, nil
 }
 
+// watchPoll performs poll-based filesystem watching.
 func watchPoll(context context.Context, root string, events chan struct{}, pollInterval uint32) error {
 	// Compute the polling interval.
 	if pollInterval == 0 {

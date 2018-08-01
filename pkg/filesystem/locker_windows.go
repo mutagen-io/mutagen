@@ -110,6 +110,7 @@ func callunlockFileEx(
 	return
 }
 
+// Lock attempts to acquire the file lock.
 func (l *Locker) Lock(block bool) error {
 	var ol syscall.Overlapped
 	flags := uint32(LOCKFILE_EXCLUSIVE_LOCK)
@@ -119,6 +120,7 @@ func (l *Locker) Lock(block bool) error {
 	return callLockFileEx(syscall.Handle(l.file.Fd()), flags, 0, 1, 0, &ol)
 }
 
+// Unlock releases the file lock.
 func (l *Locker) Unlock() error {
 	var ol syscall.Overlapped
 	return callunlockFileEx(syscall.Handle(l.file.Fd()), 0, 1, 0, &ol)

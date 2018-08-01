@@ -19,12 +19,19 @@ const (
 	fseventsFlags = fsevents.WatchRoot | fsevents.FileEvents
 )
 
+// recursiveWatch represents a recursive native watch.
 type recursiveWatch struct {
-	eventStream      *fsevents.EventStream
+	// eventStream is the underlying event stream.
+	eventStream *fsevents.EventStream
+	// forwardingCancel cancels event path forwarding from the underlying
+	// event stream.
 	forwardingCancel context.CancelFunc
-	eventPaths       chan string
+	// eventPaths is a channel to which event paths are forwarded from the
+	// watcher.
+	eventPaths chan string
 }
 
+// newRecursiveWatch establishes a new recursive watch.
 func newRecursiveWatch(path string, info os.FileInfo) (*recursiveWatch, error) {
 	// Create the raw event channel.
 	rawEvents := make(chan []fsevents.Event, watchNativeEventsBufferSize)
@@ -74,6 +81,7 @@ func newRecursiveWatch(path string, info os.FileInfo) (*recursiveWatch, error) {
 	}, nil
 }
 
+// stop terminates the watch.
 func (w *recursiveWatch) stop() {
 	// Stop the underlying event stream.
 	w.eventStream.Stop()

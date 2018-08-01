@@ -16,12 +16,19 @@ const (
 	winfsnotifyFlags = winfsnotify.FS_ALL_EVENTS & ^(winfsnotify.FS_ACCESS | winfsnotify.FS_CLOSE)
 )
 
+// recursiveWatch represents a recursive native watch.
 type recursiveWatch struct {
-	watcher          *winfsnotify.Watcher
+	// watcher is the underlying watcher.
+	watcher *winfsnotify.Watcher
+	// forwardingCancel cancels event path forwarding from the underlying
+	// watcher.
 	forwardingCancel context.CancelFunc
-	eventPaths       chan string
+	// eventPaths is a channel to which event paths are forwarded from the
+	// watcher.
+	eventPaths chan string
 }
 
+// newRecursiveWatch establishes a new recursive watch.
 func newRecursiveWatch(path string, _ os.FileInfo) (*recursiveWatch, error) {
 	// Create the watcher.
 	watcher, err := winfsnotify.NewWatcher()
@@ -70,6 +77,7 @@ func newRecursiveWatch(path string, _ os.FileInfo) (*recursiveWatch, error) {
 	}, nil
 }
 
+// stop terminates the watch.
 func (w *recursiveWatch) stop() {
 	// Stop the underlying event stream.
 	// TODO: Should we handle errors here? There's not really anything sane that

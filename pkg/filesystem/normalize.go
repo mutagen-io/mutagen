@@ -7,6 +7,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// tildeExpand attempts tilde expansion (into the user's home directory) of
+// tildes occuring at the start of a path. It does not support ~username-style
+// expansion.
 func tildeExpand(path string) (string, error) {
 	// Only process relevant paths.
 	if path == "" || path[0] != '~' {
@@ -24,6 +27,8 @@ func tildeExpand(path string) (string, error) {
 	return filepath.Join(HomeDirectory, path[1:]), nil
 }
 
+// Normalize normalizes a path, expanding home directory tildes, converting it
+// to an absolute path, and cleaning the result.
 func Normalize(path string) (string, error) {
 	// Expand any leading tilde.
 	path, err := tildeExpand(path)

@@ -49,6 +49,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// walkRecursive is the recursive entry point underlying Walk.
 func walkRecursive(path string, info os.FileInfo, visitor filepath.WalkFunc) error {
 	// If this isn't a directory, then just visit it directly.
 	if !info.IsDir() {

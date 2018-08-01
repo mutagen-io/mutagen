@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// markHidden ensures that a path is hidden.
 func markHidden(path string) error {
 	// Convert the path to UTF-16 encoding for the system call.
 	path16, err := syscall.UTF16PtrFromString(path)

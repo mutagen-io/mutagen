@@ -5,6 +5,9 @@ import (
 	"syscall"
 )
 
+// watchRootParametersEqual determines whether or not the metadata for a path
+// being used as a watch root has changed sufficiently to warrant recreating the
+// watch.
 func watchRootParametersEqual(first, second os.FileInfo) bool {
 	// Watch out for nil file information.
 	if first == nil && second == nil {

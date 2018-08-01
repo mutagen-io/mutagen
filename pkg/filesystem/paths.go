@@ -28,6 +28,7 @@ var HomeDirectory string
 // MutagenConfigurationPath is the path to the Mutagen configuration file.
 var MutagenConfigurationPath string
 
+// init performs global initialization.
 func init() {
 	// Grab the current user's home directory. Check that it isn't empty,
 	// because when compiling without cgo the $HOME environment variable is used
@@ -46,6 +47,8 @@ func init() {
 	MutagenConfigurationPath = filepath.Join(HomeDirectory, mutagenConfigurationName)
 }
 
+// Mutagen computes (and optionally creates) subdirectories inside the Mutagen
+// directory (~/.mutagen).
 func Mutagen(create bool, subpath ...string) (string, error) {
 	// Collect path components and compute the result.
 	components := make([]string, 0, 2+len(subpath))

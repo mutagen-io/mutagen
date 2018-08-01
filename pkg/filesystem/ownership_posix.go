@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GetOwnership returns the owning user and group IDs from file metadata.
 func GetOwnership(info os.FileInfo) (int, int, error) {
 	if stat, ok := info.Sys().(*syscall.Stat_t); !ok {
 		return 0, 0, errors.New("unable to extract raw stat information")
@@ -19,6 +20,7 @@ func GetOwnership(info os.FileInfo) (int, int, error) {
 	}
 }
 
+// SetOwnership sets the owning user and group IDs for the specified path.
 func SetOwnership(path string, uid, gid int) error {
 	return os.Lchown(path, uid, gid)
 }

@@ -8,12 +8,20 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/notify"
 )
 
+// nonRecursiveWatcher represents a non-recursive native watcher that can watch
+// multiple paths.
 type nonRecursiveWatcher struct {
-	watcher          notify.Watcher
+	// watcher is the underlying watcher.
+	watcher notify.Watcher
+	// forwardingCancel cancels event path forwarding from the underlying
+	// watcher.
 	forwardingCancel context.CancelFunc
-	eventPaths       chan string
+	// eventPaths is a channel to which event paths are forwarded from the
+	// watcher.
+	eventPaths chan string
 }
 
+// newNonRecursiveWatcher creates a new non-recursive watcher.
 func newNonRecursiveWatcher() (*nonRecursiveWatcher, error) {
 	// Create the raw event channel.
 	rawEvents := make(chan notify.EventInfo, watchNativeEventsBufferSize)
@@ -53,6 +61,7 @@ func newNonRecursiveWatcher() (*nonRecursiveWatcher, error) {
 	}, nil
 }
 
+// watch adds a watch path to the watcher.
 func (w *nonRecursiveWatcher) watch(path string) error {
 	return w.watcher.Watch(
 		path,
@@ -64,10 +73,12 @@ func (w *nonRecursiveWatcher) watch(path string) error {
 	)
 }
 
+// unwatch removes a watch path from the watcher.
 func (w *nonRecursiveWatcher) unwatch(path string) error {
 	return w.watcher.Unwatch(path)
 }
 
+// stop terminates all watches.
 func (w *nonRecursiveWatcher) stop() {
 	// Stop the underlying event stream.
 	// TODO: Should we handle errors here? There's not really anything sane that

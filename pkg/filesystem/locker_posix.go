@@ -11,6 +11,7 @@ import (
 	"syscall"
 )
 
+// Lock attempts to acquire the file lock.
 func (l *Locker) Lock(block bool) error {
 	lockSpec := syscall.Flock_t{
 		Type:   syscall.F_WRLCK,
@@ -25,6 +26,7 @@ func (l *Locker) Lock(block bool) error {
 	return syscall.FcntlFlock(l.file.Fd(), operation, &lockSpec)
 }
 
+// Unlock releases the file lock.
 func (l *Locker) Unlock() error {
 	unlockSpec := syscall.Flock_t{
 		Type:   syscall.F_UNLCK,

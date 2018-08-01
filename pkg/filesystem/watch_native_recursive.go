@@ -34,6 +34,8 @@ func isParentOrSelf(parent, child string) bool {
 	return true
 }
 
+// watchNative attempts to perform efficient watching using the operating
+// system's native filesystem watching facilities.
 func watchNative(context context.Context, root string, events chan struct{}, _ uint32) error {
 	// Compute the watch root. If we're on macOS, this will be the root itself.
 	// If we're on Windows, this will be the parent directory of the root.
