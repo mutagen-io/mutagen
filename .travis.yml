@@ -4,11 +4,12 @@ language: go
 # Set up the build matrix. The Travis macOS builders are really slow when
 # performing integration tests (I suspect due to the underlying hardware), and
 # they often go more than 10 minutes without any output while copying files
-# (which Travis treats as failure). Even if Travis allows this, the macOS
-# builders still have to do a full release build after testing, which takes a
-# long time by itself, and it makes waiting for test and build results painful.
-# We still get full integration test coverage on Linux and Windows, and all
-# internals are tested on macOS, so this isn't a huge loss to coverage.
+# (which Travis treats as failure), so we disable end-to-end integration tests
+# on macOS builders. Even if Travis were to allow long periods without output,
+# the macOS builders still have to do a full release build after testing, which
+# takes a long time by itself, and it makes waiting for test and build results
+# painful. We still get full integration test coverage on Linux and Windows, and
+# all internals are tested on macOS, so this isn't a huge loss to coverage.
 matrix:
   include:
     - os: osx
