@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Parse parses a raw URL string into a URL type.
 func Parse(raw string) (*URL, error) {
 	// Don't allow empty raw URLs.
 	if raw == "" {
@@ -39,6 +40,7 @@ func Parse(raw string) (*URL, error) {
 	}, nil
 }
 
+// parseSSH parses an SCP-style SSH URL.
 func parseSSH(raw string) (*URL, error) {
 	// Parse off the username. If we hit a colon, then we've reached the end of
 	// a hostname specification and there was no username. Ideally we'd want to

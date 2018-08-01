@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Format formats a URL into a human-readable (and reparsable) format.
 func (u *URL) Format() string {
 	if u.Protocol == Protocol_Local {
 		return u.formatLocal()
@@ -13,10 +14,12 @@ func (u *URL) Format() string {
 	panic("unknown URL protocol")
 }
 
+// formatLocal formats a local URL.
 func (u *URL) formatLocal() string {
 	return u.Path
 }
 
+// formatSSH formats an SSH URL into an SCP-style URL.
 func (u *URL) formatSSH() string {
 	// Create the base result.
 	result := u.Hostname
