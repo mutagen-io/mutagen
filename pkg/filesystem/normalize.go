@@ -8,7 +8,7 @@ import (
 )
 
 // tildeExpand attempts tilde expansion (into the user's home directory) of
-// tildes occuring at the start of a path. It does not support ~username-style
+// tildes occurring at the start of a path. It does not support ~username-style
 // expansion.
 func tildeExpand(path string) (string, error) {
 	// Only process relevant paths.
