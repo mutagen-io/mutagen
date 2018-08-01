@@ -2,6 +2,6 @@
 
 package sync
 
-func pathContainsInvalidCharacters(path string) bool {
+func containsAlternatePathSeparator(_ string) bool {
 	return false
 }

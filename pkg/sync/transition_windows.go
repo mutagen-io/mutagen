@@ -4,6 +4,6 @@ import (
 	"strings"
 )
 
-func pathContainsInvalidCharacters(path string) bool {
-	return strings.Contains(path, "\\")
+func containsAlternatePathSeparator(name string) bool {
+	return strings.IndexByte(name, '\\') >= 0
 }
