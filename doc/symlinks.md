@@ -6,9 +6,9 @@ provides a few different symlink synchronization modes aimed at providing
 maximum compatibility:
 
 - **Ignore**: In this mode, Mutagen simply ignores any symlinks that it
-  encounters within a synchronization root. This means that it won't delete them
-  and it won't propagate them. This mode is supported on both POSIX and Windows
-  systems.
+  encounters within a synchronization root. This means that it won't propagate
+  them and it won't delete them. This mode is supported on both POSIX and
+  Windows systems.
 - **Portable** (default): In this mode, Mutagen restricts itself to propagating
   only symlinks that it defines as "portable". Portable symlinks are those which
   are relative paths, containing only safe characters, which do point outside
@@ -22,7 +22,7 @@ maximum compatibility:
 - **POSIX Raw**: In this mode, which is only supported for synchronization
   sessions between two POSIX endpoints, Mutagen will propagate raw symlink
   targets without any analysis or modification. Trying to use the POSIX Raw
-  synchronization mode when either endpoint is a Windows system will stop
+  synchronization mode when either endpoint is a Windows system will prevent
   synchronization from starting.
 
 These modes can be specified on a per-session basis by passing the
