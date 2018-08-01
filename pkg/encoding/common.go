@@ -9,6 +9,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
+// loadAndUnmarshal provides the underlying loading and unmarshaling
+// functionality for the encoding package.
 func loadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 	// Grab the file contents.
 	data, err := ioutil.ReadFile(path)
@@ -28,6 +30,8 @@ func loadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 	return nil
 }
 
+// marshalAndSave provide the underlying marshaling and saving functionality for
+// the encoding package.
 func marshalAndSave(path string, marshal func() ([]byte, error)) error {
 	// Marshal the message.
 	data, err := marshal()

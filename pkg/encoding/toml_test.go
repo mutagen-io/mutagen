@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// testMessageTOML is a test structure to use for encoding tests using TOML.
 type testMessageTOML struct {
 	Section struct {
 		Name string
@@ -14,11 +15,16 @@ type testMessageTOML struct {
 }
 
 const (
+	// testMessageTOMLString is the TOML-encoded form of the TOML test data.
 	testMessageTOMLString = "[section]\nname=\"Abraham\"\nage=56\n"
-	testMessageTOMLName   = "Abraham"
-	testMessageTOMLAge    = 56
+	// testMessageTOMLName is the TOML test name.
+	testMessageTOMLName = "Abraham"
+	// testMessageTOMLAge is the TOML test age.
+	testMessageTOMLAge = 56
 )
 
+// TestLoadAndUnmarshalTOML tests that loading and unmarshaling TOML data
+// succeeds.
 func TestLoadAndUnmarshalTOML(t *testing.T) {
 	// Write the test TOML to a temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_encoding")

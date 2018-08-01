@@ -8,6 +8,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
+// TestProtocolBuffersCycle tests a Protocol Buffers marshal/save/load/unmarshal
+// cycle.
 func TestProtocolBuffersCycle(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_encoding")
