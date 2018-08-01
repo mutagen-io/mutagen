@@ -111,7 +111,7 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	}
 
 	// Determine whether or not the pattern contains a slash.
-	containsSlash := strings.Contains(pattern, "/")
+	containsSlash := strings.IndexByte(pattern, '/') >= 0
 
 	// Attempt to do a match with the pattern to ensure validity. We have to
 	// match against a non-empty path (we choose something simple), otherwise
