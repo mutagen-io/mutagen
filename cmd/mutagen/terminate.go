@@ -69,9 +69,6 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
-
-	// Success.
-	return nil
 }
 
 var terminateCommand = &cobra.Command{
