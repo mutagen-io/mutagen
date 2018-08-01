@@ -14,7 +14,7 @@ func installMain(command *cobra.Command, arguments []string) error {
 }
 
 var installCommand = &cobra.Command{
-	Use:   "install",
+	Use:   agent.ModeInstall,
 	Short: "Perform agent installation",
 	Run:   cmd.Mainify(installMain),
 }

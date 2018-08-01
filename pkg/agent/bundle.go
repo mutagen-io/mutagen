@@ -16,9 +16,16 @@ import (
 )
 
 const (
+	// agentBundleName is the base name of the agent bundle.
 	agentBundleName = "mutagen-agents.tar.gz"
 )
 
+// executableForPlatform attempts to locate the agent bundle and extract an
+// agent executable for the specified target platform. The extracted file will
+// be in a temporary location accessible to only the user, and will have the
+// executability bit set if it makes sense. The path to the extracted file will
+// be returned, and the caller is responsible for cleaning up the file if this
+// function returns a nil error.
 func executableForPlatform(goos, goarch string) (string, error) {
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()

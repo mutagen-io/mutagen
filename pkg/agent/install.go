@@ -13,10 +13,17 @@ import (
 )
 
 const (
+	// agentsDirectoryName is the subdirectory of the Mutagen directory in which
+	// agents should be stored.
 	agentsDirectoryName = "agents"
-	agentBaseName       = "mutagen-agent"
+	// agentBaseName is the base name for agent executables (sans any
+	// platform-specific suffix like ".exe").
+	agentBaseName = "mutagen-agent"
 )
 
+// installPath computes and creates the parent directories of the path where the
+// current executable should be installed if it is an agent binary with the
+// current Mutagen version.
 func installPath() (string, error) {
 	// Compute (and create) the path to the agent parent directory.
 	parent, err := filesystem.Mutagen(true, agentsDirectoryName, mutagen.Version)
@@ -31,6 +38,8 @@ func installPath() (string, error) {
 	return filepath.Join(parent, executableName), nil
 }
 
+// Install installs the current binary to the appropriate location for an agent
+// binary with the current Mutagen version.
 func Install() error {
 	// Compute the destination.
 	destination, err := installPath()

@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// unameSToGOOS maps uname -s output values to the corresponding GOOS value.
+// unameSToGOOS maps uname -s output values to their corresponding GOOS values.
 // Although some Windows environments (Cygwin, MSYS, and MinGW) support uname,
 // their values are handled by unameSIsWindowsPosix because they are so varied
 // (their value depends on the POSIX environment and its version, the system
@@ -22,12 +22,16 @@ var unameSToGOOS = map[string]string{
 	// debian/kFreeBSD, which returns "GNU/kFreeBSD".
 }
 
+// unameSIsWindowsPosix determines whether or not a uname -s output value
+// represents a Windows POSIX environment.
 func unameSIsWindowsPosix(unameS string) bool {
 	return strings.HasPrefix(unameS, "CYGWIN") ||
 		strings.HasPrefix(unameS, "MINGW") ||
 		strings.HasPrefix(unameS, "MSYS")
 }
 
+// unameMToGOARCH maps uname -m output values to their corresponding GOARCH
+// values.
 var unameMToGOARCH = map[string]string{
 	"i386":     "386",
 	"i486":     "386",

@@ -86,10 +86,12 @@ func newAgentConnection(url *url.URL, process *exec.Cmd) (net.Conn, error) {
 	}, nil
 }
 
+// Read reads from the agent connection.
 func (c *agentConnection) Read(buffer []byte) (int, error) {
 	return c.decompressor.Read(buffer)
 }
 
+// Write writes to the agent connection.
 func (c *agentConnection) Write(buffer []byte) (int, error) {
 	if count, err := c.compressor.Write(buffer); err != nil {
 		return count, err

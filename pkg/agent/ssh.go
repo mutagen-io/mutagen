@@ -227,9 +227,9 @@ func installSSH(remote *url.URL, prompter string) error {
 	}
 	var installCommand string
 	if posix {
-		installCommand = fmt.Sprintf("./%s install", destination)
+		installCommand = fmt.Sprintf("./%s %s", destination, ModeInstall)
 	} else {
-		installCommand = fmt.Sprintf("%s install", destination)
+		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}
 	if err := ssh.Run(prompter, remote, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke agent installation")

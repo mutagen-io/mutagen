@@ -13,9 +13,12 @@ import (
 )
 
 const (
+	// maximumAgentIdlePeriod is the maximum period of time that an agent binary
+	// is allowed to sit on disk without being executed before being deleted.
 	maximumAgentIdlePeriod = 30 * 24 * time.Hour
 )
 
+// Housekeep performs housekeeping of agent binaries.
 func Housekeep() {
 	// Compute the path to the agents directory. If we fail, just abort. We
 	// don't attempt to create the directory, because if it doesn't exist, then
