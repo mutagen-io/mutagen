@@ -8,6 +8,7 @@ import (
 	"github.com/howeyc/gopass"
 )
 
+// PromptCommandLine performs prompting on the command line.
 func PromptCommandLine(prompt string) (string, error) {
 	// Classify the prompt.
 	class := Classify(prompt)
