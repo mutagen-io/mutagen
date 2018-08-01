@@ -7,12 +7,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TestExitCodeForNilError tests that ExitCodeForError fails for a nil error.
 func TestExitCodeForNilError(t *testing.T) {
 	if _, err := ExitCodeForError(nil); err == nil {
 		t.Error("exit code was returned for nil error")
 	}
 }
 
+// TestExitCodeForInvalidError tests that ExitCodeForError fails for an error
+// that is not of the required type.
 func TestExitCodeForInvalidError(t *testing.T) {
 	if _, err := ExitCodeForError(errors.New("not an exec error")); err == nil {
 		t.Error("exit code was returned for invalid error")
@@ -24,6 +27,8 @@ func TestExitCodeForInvalidError(t *testing.T) {
 // os.ProcessState (and it's not documented that we can rely on its zero value).
 // Maybe look into this further?
 
+// TestExitCode tests that ExitCodeForError works correctly for an error
+// returned on failed command execution.
 func TestExitCode(t *testing.T) {
 	// Run "go mutagen-test-invalid", which should return an error code of 2,
 	// and verify its exit code.

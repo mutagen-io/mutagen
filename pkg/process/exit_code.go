@@ -11,6 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ExitCodeForError extracts the process exit code from an error returned by
+// os/exec.Process.Wait/Run. The error must be of type *os/exec.ExitError in
+// order for this function to succeed.
 func ExitCodeForError(err error) (int, error) {
 	// Attempt to extract the error.
 	exitErr, ok := err.(*exec.ExitError)
