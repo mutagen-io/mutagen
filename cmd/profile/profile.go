@@ -9,11 +9,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Profile manages a CPU and heap profile.
 type Profile struct {
-	name       string
+	// name is the name of the profile.
+	name string
+	// cpuProfile is the output file for the CPU profile.
 	cpuProfile *os.File
 }
 
+// New creates a new profile instance. The profiling begins immediately.
 func New(name string) (*Profile, error) {
 	// Open the CPU profile output.
 	cpuProfile, err := os.Create(fmt.Sprintf("%s_cpu.prof", name))
@@ -34,6 +38,8 @@ func New(name string) (*Profile, error) {
 	}, nil
 }
 
+// Finalize terminates a profile and writes its measurements to disk in the
+// current working directory.
 func (p *Profile) Finalize() error {
 	// Close out the CPU profile.
 	pprof.StopCPUProfile()
