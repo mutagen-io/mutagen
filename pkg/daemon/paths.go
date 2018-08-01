@@ -9,9 +9,13 @@ import (
 )
 
 const (
+	// daemonDirectoryName is the name of the daemon subdirectory within the
+	// Mutagen directory.
 	daemonDirectoryName = "daemon"
 )
 
+// subpath computes a subpath of the daemon subdirectory, creating the daemon
+// subdirectory in the process.
 func subpath(name string) (string, error) {
 	// Compute the daemon root directory path and ensure it exists.
 	daemonRoot, err := filesystem.Mutagen(true, daemonDirectoryName)

@@ -16,6 +16,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
+// RegistrationSupported indicates whether or not daemon registration is
+// supported on this platform.
 const RegistrationSupported = true
 
 const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
@@ -39,16 +41,29 @@ const launchdPlistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 `
 
 const (
-	libraryDirectoryName        = "Library"
+	// libraryDirectoryName is the name of the Library directory inside the
+	// user's home directory.
+	libraryDirectoryName = "Library"
+	// libraryDirectoryPermissions are the permissions to use for Library
+	// directory creation in the event that it does not exist.
 	libraryDirectoryPermissions = 0700
 
-	launchAgentsDirectoryName        = "LaunchAgents"
+	// launchAgentsDirectoryName is the name of the LaunchAgents directory
+	// inside the Library directory.
+	launchAgentsDirectoryName = "LaunchAgents"
+	// launchAgentsDirectoryPermissions are the permissions to use for
+	// LaunchAgents directory creation in the event that it does not exist.
 	launchAgentsDirectoryPermissions = 0755
 
-	launchdPlistName        = "io.mutagen.mutagen.plist"
+	// launchdPlistName is the name of the launchd property list file to create
+	// to register the daemon for automatic startup.
+	launchdPlistName = "io.mutagen.mutagen.plist"
+	// launchdPlistPermissions are the permissions to use for the launchd
+	// property list file.
 	launchdPlistPermissions = 0644
 )
 
+// Register performs automatic daemon startup registration.
 func Register() error {
 	// If we're already registered, don't do anything.
 	if registered, err := registered(); err != nil {
@@ -98,6 +113,7 @@ func Register() error {
 	return nil
 }
 
+// Unregister performs automatic daemon startup de-registration.
 func Unregister() error {
 	// If we're not registered, don't do anything.
 	if registered, err := registered(); err != nil {
@@ -135,6 +151,8 @@ func Unregister() error {
 	return nil
 }
 
+// registered determines whether or not automatic daemon startup is currently
+// registered.
 func registered() (bool, error) {
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
@@ -158,6 +176,9 @@ func registered() (bool, error) {
 	return true, nil
 }
 
+// RegisteredStart potentially handles daemon start operations if the daemon is
+// registered for automatic start with the system. It returns false if the start
+// operation was not handled and should be handled by the normal start command.
 func RegisteredStart() (bool, error) {
 	// Check if we're registered. If not, we don't handle the start request.
 	if registered, err := registered(); err != nil {
@@ -186,6 +207,9 @@ func RegisteredStart() (bool, error) {
 	return true, nil
 }
 
+// RegisteredStop potentially handles stop start operations if the daemon is
+// registered for automatic start with the system. It returns false if the stop
+// operation was not handled and should be handled by the normal stop command.
 func RegisteredStop() (bool, error) {
 	// Check if we're registered. If not, we don't handle the stop request.
 	if registered, err := registered(); err != nil {

@@ -11,9 +11,13 @@ import (
 )
 
 const (
+	// socketName is the name of the UNIX domain socket used for daemon IPC. It
+	// resides within the daemon subdirectory of the Mutagen directory.
 	socketName = "daemon.sock"
 )
 
+// DialTimeout attempts to establish a daemon IPC connection, timing out after
+// the specified duration.
 func DialTimeout(timeout time.Duration) (net.Conn, error) {
 	// Compute the socket path.
 	socketPath, err := subpath(socketName)
@@ -25,6 +29,7 @@ func DialTimeout(timeout time.Duration) (net.Conn, error) {
 	return net.DialTimeout("unix", socketPath, timeout)
 }
 
+// NewListener creates a new daemon IPC listener.
 func NewListener() (net.Listener, error) {
 	// Compute the socket path.
 	socketPath, err := subpath(socketName)

@@ -7,9 +7,12 @@ import (
 )
 
 const (
+	// lockName is the name of the daemon lock file. It resides within the
+	// daemon subdirectory of the Mutagen directory.
 	lockName = "daemon.lock"
 )
 
+// Lock represents a daemon lock instance.
 type Lock struct {
 	// locker is the daemon file lock, uniquely held by a single daemon
 	// instance. Because the locking semantics vary by platform, hosting
@@ -17,6 +20,8 @@ type Lock struct {
 	locker *filesystem.Locker
 }
 
+// AcquireLock attempts to acquire the daemon lock. It is the only way to
+// acquire a Lock instance.
 func AcquireLock() (*Lock, error) {
 	// Compute the lock path.
 	lockPath, err := subpath(lockName)
@@ -38,6 +43,7 @@ func AcquireLock() (*Lock, error) {
 	}, nil
 }
 
+// Unlock releases the daemon lock.
 func (l *Lock) Unlock() error {
 	return l.locker.Unlock()
 }

@@ -9,14 +9,20 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+// RegistrationSupported indicates whether or not daemon registration is
+// supported on this platform.
 const RegistrationSupported = true
 
 const (
-	rootKey    = registry.CURRENT_USER
-	runPath    = "Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+	// rootKey is the registry root for daemon registration.
+	rootKey = registry.CURRENT_USER
+	// runPath is the path to the registry entries for automatic startup.
+	runPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+	// runKeyName is the key used to register Mutagen for automatic startup.
 	runKeyName = "Mutagen"
 )
 
+// Register performs automatic daemon startup registration.
 func Register() error {
 	// Attempt to open the relevant registry path and ensure it's cleaned up
 	// when we're done.
@@ -44,6 +50,7 @@ func Register() error {
 	return nil
 }
 
+// Unregister performs automatic daemon startup de-registration.
 func Unregister() error {
 	// Attempt to open the relevant registry path and ensure it's cleaned up
 	// when we're done.
@@ -62,10 +69,16 @@ func Unregister() error {
 	return nil
 }
 
+// RegisteredStart potentially handles daemon start operations if the daemon is
+// registered for automatic start with the system. It returns false if the start
+// operation was not handled and should be handled by the normal start command.
 func RegisteredStart() (bool, error) {
 	return false, nil
 }
 
+// RegisteredStop potentially handles stop start operations if the daemon is
+// registered for automatic start with the system. It returns false if the stop
+// operation was not handled and should be handled by the normal stop command.
 func RegisteredStop() (bool, error) {
 	return false, nil
 }
