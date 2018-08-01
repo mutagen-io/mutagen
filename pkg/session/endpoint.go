@@ -19,25 +19,27 @@ type endpoint interface {
 	poll(context context.Context) error
 
 	// scan performs a scan of the endpoint's synchronization root. It requires
-	// the ancestor to be passed in for executability propagation and for
-	// optimized transfers if the endpoint is remote. The ancestor may be nil,
-	// in which case executability propagation will not occur and transfers from
-	// endpoints may be less than optimal. It returns the scan result, a bool
-	// indicating whether or not to re-try the scan, and any error that occurred
-	// while trying to create the scan. Only one of these values will be
-	// non-nil/false. If all are nil, it indicates that the synchronization root
-	// doesn't exist on the endpoint, but that the scan otherwise completed
+	// the ancestor to be passed in for optimized snapshot transfers if the
+	// endpoint is remote. The ancestor may be nil, in which transfers from
+	// remote endpoints may be less than optimal. It returns the scan result, a
+	// bool indicating whether or not to re-try the scan, and any error that
+	// occurred while trying to create the scan. Only one of these values will
+	// be non-nil/false. If all are nil, it indicates that the synchronization
+	// root doesn't exist on the endpoint, but that the scan otherwise completed
 	// successfully.
 	scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool)
 
 	// stage performs staging on the endpoint. It accepts a list of file paths
 	// and file entries for those paths. It will filter the list based on what
-	// it already has staged from previously interrupted stagings, and then
-	// return a list of paths, their signatures, and a receiver to receive them.
-	// The returned receiver must be finalized (i.e. transmitted to) before
-	// subsequent methods can be invoked on the endpoint. If the receiver fails,
-	// the endpoint should be considered contaminated and not used (though
-	// shutdown can and should still be invoked).
+	// it already has staged from previously interrupted stagings and what can
+	// be staged from local contents (e.g. in cases of renames and copies), and
+	// then return a list of paths, their signatures, and a receiver to receive
+	// them. If the list of paths is empty, then all paths were either already
+	// staged or able to be staged from local data, and the receiver will be
+	// nil. Otherwise, the receiver will be non-nil and must be finalized (i.e.
+	// transmitted to) before subsequent methods can be invoked on the endpoint.
+	// If the receiver fails, the endpoint should be considered contaminated and
+	// not used (though shutdown can and should still be invoked).
 	stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error)
 
 	// supply transmits files in a streaming fashion using the rsync algorithm

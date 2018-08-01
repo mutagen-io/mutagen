@@ -23,6 +23,7 @@ type Manager struct {
 	sessions map[string]*controller
 }
 
+// NewManager creates a new manager instance.
 func NewManager() (*Manager, error) {
 	// Create a tracker and corresponding lock to watch for state changes.
 	tracker := state.NewTracker()

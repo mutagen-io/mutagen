@@ -10,6 +10,7 @@ import (
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
+// connect attempts to establish a connection to an endpoint.
 func connect(
 	session string,
 	version Version,
@@ -72,9 +73,12 @@ func connect(
 	}
 }
 
-type connectResult struct {
+// asyncConnectResult provides asynchronous connection results.
+type asyncConnectResult struct {
+	// endpoint is the endpoint returned by connect.
 	endpoint endpoint
-	error    error
+	// error is the error returned by connect.
+	error error
 }
 
 // reconnect is a version of connect that accepts a context for cancellation. It
@@ -89,7 +93,7 @@ func reconnect(
 	alpha bool,
 ) (endpoint, error) {
 	// Create a channel to deliver the connection result.
-	results := make(chan connectResult)
+	results := make(chan asyncConnectResult)
 
 	// Start a connection operation in the background.
 	go func() {
@@ -102,7 +106,7 @@ func reconnect(
 			if endpoint != nil {
 				endpoint.shutdown()
 			}
-		case results <- connectResult{endpoint, err}:
+		case results <- asyncConnectResult{endpoint, err}:
 		}
 	}()
 

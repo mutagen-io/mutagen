@@ -8,21 +8,22 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// configurationSource represents the source of a configuration object.
+// ConfigurationSource represents the source of a configuration object.
 type ConfigurationSource uint8
 
 const (
-	// configurationSourceSession specifies that a configuration object came
+	// ConfigurationSourceSession specifies that a configuration object came
 	// from a session object stored on disk.
 	ConfigurationSourceSession ConfigurationSource = iota
-	// configurationSourceGlobal specifies that a configuration object was
+	// ConfigurationSourceGlobal specifies that a configuration object was
 	// loaded from the global configuration file.
 	ConfigurationSourceGlobal
-	// configurationSourceCreate specifies that a configuration object came from
+	// ConfigurationSourceCreate specifies that a configuration object came from
 	// a create RPC request.
 	ConfigurationSourceCreate
 )
 
+// EnsureValid ensures that Configuration's invariants are respected.
 func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 	// A nil configuration is not considered valid.
 	if c == nil {

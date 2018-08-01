@@ -23,10 +23,15 @@ import (
 )
 
 const (
+	// autoReconnectInterval is the period of time to wait before attempting an
+	// automatic reconnect after disconnection or a failed reconnect.
 	autoReconnectInterval = 30 * time.Second
-	rescanWaitDuration    = 5 * time.Second
+	// rescanWaitDuration is the period of time to wait before attempting to
+	// rescan after an ephemeral scan failure.
+	rescanWaitDuration = 5 * time.Second
 )
 
+// controller manages and executes a single session.
 type controller struct {
 	// sessionPath is the path to the serialized session.
 	sessionPath string
@@ -58,6 +63,7 @@ type controller struct {
 	done chan struct{}
 }
 
+// newSession creates a new session and corresponding controller.
 func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Configuration, prompter string) (*controller, error) {
 	// Update status.
 	prompt.Message(prompter, "Creating session...")
@@ -161,6 +167,7 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	return controller, nil
 }
 
+// loadSession loads an existing session and creates a corresponding controller.
 func loadSession(tracker *state.Tracker, identifier string) (*controller, error) {
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(identifier)
@@ -203,6 +210,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 	return controller, nil
 }
 
+// currentState creates a snapshot of the current session state.
 func (c *controller) currentState() *State {
 	// Lock the session state and defer its release. It's very important that we
 	// unlock without a notification here, otherwise we'd trigger an infinite
@@ -214,6 +222,8 @@ func (c *controller) currentState() *State {
 	return c.state.Copy()
 }
 
+// resume attempts to reconnect and resume the session if it isn't currently
+// connected and synchronizing.
 func (c *controller) resume(prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
@@ -321,14 +331,21 @@ func (c *controller) resume(prompter string) error {
 	return nil
 }
 
+// haltMode represents the behavior to use when halting a session.
 type haltMode uint8
 
 const (
+	// haltModePause indicates that a session should be halted and marked as
+	// paused.
 	haltModePause haltMode = iota
+	// haltModeShutdown indicates that a session should be halted.
 	haltModeShutdown
+	// haltModeShutdown indicates that a session should be halted and then
+	// deleted.
 	haltModeTerminate
 )
 
+// description returns a human-readable description of a halt mode.
 func (m haltMode) description() string {
 	switch m {
 	case haltModePause:
@@ -342,6 +359,7 @@ func (m haltMode) description() string {
 	}
 }
 
+// halt halts the session with the specified behavior.
 func (c *controller) halt(mode haltMode, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
@@ -401,6 +419,8 @@ func (c *controller) halt(mode haltMode, prompter string) error {
 	return nil
 }
 
+// run is the main runloop for the controller, managing connectivity and
+// synchronization.
 func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
@@ -522,6 +542,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 	}
 }
 
+// synchronize is the main synchronization loop for the controller.
 func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoint) error {
 	// Load the archive and extract the ancestor.
 	archive := &sync.Archive{}
