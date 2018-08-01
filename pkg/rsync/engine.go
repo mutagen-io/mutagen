@@ -66,6 +66,8 @@ func (s Signature) ensureValid() error {
 	return nil
 }
 
+// Operation represents an rsync operation, which can be either a data operation
+// or a block operation.
 type Operation struct {
 	// Data contains data for data operations. If its length is 0, the operation
 	// is assumed to be a non-data operation. Operation transmitters and
@@ -247,10 +249,15 @@ func (e *Engine) rollWeakHash(r1, r2 uint32, out, in byte, blockSize uint64) (ui
 	return result, r1, r2
 }
 
+// strongHash computes a slow but strong hash for a block of data.
 func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
 	return sha1.Sum(data)
 }
 
+// Signature computes the signature for a base stream. If the provided block
+// size is 0, this method will attempt to compute the optimal block size (which
+// requires that base implement io.Seeker), and failing that will fall back to a
+// default block size.
 func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) {
 	// Choose a block size if none is specified. If the base also implements
 	// io.Seeker (which most will since they need to for Patch), then use the
@@ -317,6 +324,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) 
 	return result, nil
 }
 
+// BytesSignature computes the signature for a byte slice.
 func (e *Engine) BytesSignature(base []byte, blockSize uint64) Signature {
 	// Perform the signature and watch for errors (which shouldn't be able to
 	// occur in-memory).
@@ -345,6 +353,9 @@ func min(a, b uint64) uint64 {
 	return b
 }
 
+// chunkAndTransmitAll is a fast-path routine for simply transmitting all data
+// in a target stream. This is used when there are no blocks to match because
+// the base stream is empty.
 func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, transmit OperationTransmitter) error {
 	// Verify that maxDataOpSize is sane.
 	if maxDataOpSize == 0 {
@@ -371,9 +382,14 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 	}
 }
 
-// TODO: We should document that the internal engine buffer will be resized to
-// greater than maxDataOpSize and retained for the lifetime of the engine, so a
-// reasonable value should be provided.
+// Deltafy computes delta operations to reconstitute the target data stream
+// using the base stream (based on the provided base signature). It streams
+// operations to the provided transmission function. The internal engine buffer
+// will be resized to the sum of the maximum data operation size plus the block
+// size, and retained for the lifetime of the engine, so a reasonable value
+// should be provided. The data buffer passed to the transmission function is
+// reused, so the transmission function should transmit or make a copy of the
+// data before returning.
 func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
 	// Verify that the signature is sane. We don't control its value, and if its
 	// invariants are broken it can cause this method to behave strangely.
@@ -607,6 +623,9 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	return nil
 }
 
+// DeltafyBytes computes delta operations for a byte slice. Unlike the streaming
+// Deltafy method, it returns a slice of operations, which should be reasonable
+// since the target data can already fit into memory.
 func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint64) []Operation {
 	// Create an empty result.
 	var delta []Operation
@@ -641,6 +660,8 @@ func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint6
 	return delta
 }
 
+// Patch applies a single operation against a base stream to reconstitute the
+// target into the destination stream.
 func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Signature, operation Operation) error {
 	// Verify that the signature is sane. The caller probably does control its
 	// value (i.e. it's most likely not coming from the network), but if its
@@ -693,6 +714,8 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Sign
 	return nil
 }
 
+// Patch applies a series of operations against a base byte slice to
+// reconstitute the target byte slice.
 func (e *Engine) PatchBytes(base []byte, signature Signature, delta []Operation) ([]byte, error) {
 	// Wrap up the base bytes in a reader.
 	baseReader := bytes.NewReader(base)

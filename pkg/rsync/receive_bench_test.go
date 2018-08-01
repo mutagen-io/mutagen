@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// BenchmarkPreemptionCheckOverhead benchmarks the overhead associated with a
+// preemption check operation.
 func BenchmarkPreemptionCheckOverhead(b *testing.B) {
 	// Grab the background context.
 	ctx := context.Background()
@@ -23,6 +25,8 @@ func BenchmarkPreemptionCheckOverhead(b *testing.B) {
 	}
 }
 
+// newBenchmarkCallback generates a callback that won't be inlined and simulates
+// the overhead of monitoring.
 func newBenchmarkCallback() func() {
 	// Create a mutex.
 	mutex := &sync.Mutex{}
@@ -34,6 +38,8 @@ func newBenchmarkCallback() func() {
 	}
 }
 
+// BenchmarkMonitoringCallbackOverhead benchmarks the overhead associated with a
+// monitoring callback operation.
 func BenchmarkMonitoringCallbackOverhead(b *testing.B) {
 	// Create a sample monitoring callback. We dynamically allocate this
 	// function to avoid the possibility of inlining and thus more realistically

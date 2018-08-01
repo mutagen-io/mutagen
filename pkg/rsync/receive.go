@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that ReceiverStatus' invariants are respected.
 func (s *ReceiverStatus) EnsureValid() error {
 	// A nil receiver status is valid - it just represents not currently
 	// receiving.
