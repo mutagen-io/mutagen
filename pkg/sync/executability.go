@@ -4,6 +4,7 @@ import (
 	"bytes"
 )
 
+// propagateExecutabilityRecursive propagates executability recursively.
 func propagateExecutabilityRecursive(ancestor, source, target *Entry) {
 	// If target is nil, then we don't have anything to propagate to, so bail.
 	if target == nil {
@@ -27,6 +28,10 @@ func propagateExecutabilityRecursive(ancestor, source, target *Entry) {
 	}
 }
 
+// PropagateExecutability propagates file executability from the ancestor and
+// source to the target in a recursive fashion. Executability information is
+// only propagated if entry paths, types, and contents match, with source taking
+// precedent over ancestor.
 func PropagateExecutability(ancestor, source, target *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
 	result := target.Copy()

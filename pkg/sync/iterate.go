@@ -1,5 +1,6 @@
 package sync
 
+// nameUnion generates a unified list of content map names.
 func nameUnion(contentMaps ...map[string]*Entry) map[string]bool {
 	// Create the result. As a very rough but fast heuristic, we use the size of
 	// the first map as an estimate of the required capacity. For most cases,

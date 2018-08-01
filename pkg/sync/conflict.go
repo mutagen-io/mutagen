@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that Conflict's invariants are respected.
 func (c *Conflict) EnsureValid() error {
 	// A nil conflict is not valid.
 	if c == nil {

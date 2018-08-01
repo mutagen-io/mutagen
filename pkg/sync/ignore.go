@@ -66,13 +66,21 @@ var DefaultVCSIgnores = []string{
 	"_darcs/",
 }
 
+// ignorePattern represents a single parsed ignore pattern.
 type ignorePattern struct {
-	negated       bool
+	// negated indicates whether or not the pattern is negated.
+	negated bool
+	// directoryOnly indicates whether or not the pattern should only match
+	// directories.
 	directoryOnly bool
-	matchLeaf     bool
-	pattern       string
+	// matchLeaf indicates whether or not the pattern should be matched against
+	// a path's base name in addition to the whole path.
+	matchLeaf bool
+	// pattern is the pattern to use in matching.
+	pattern string
 }
 
+// newIgnorePattern validates and parses a user-provided ignore pattern.
 func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	// Check for invalid patterns, or at least those that would leave us with an
 	// empty string after parsing. Obviously we can't perform general complete
@@ -129,6 +137,8 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	}, nil
 }
 
+// matches indicates whether or not the ignore pattern matches the specified
+// path and metadata.
 func (i *ignorePattern) matches(path string, directory bool) (bool, bool) {
 	// If this pattern only applies to directories and this is not a directory,
 	// then this is not a match.
@@ -163,10 +173,14 @@ func ValidIgnorePattern(pattern string) bool {
 	return err == nil
 }
 
+// ignorer is a collection of parsed ignore patterns.
 type ignorer struct {
+	// patterns are the underlying ignore patterns.
 	patterns []*ignorePattern
 }
 
+// newIgnorer creates a new ignorer given a list of user-provided ignore
+// patterns.
 func newIgnorer(patterns []string) (*ignorer, error) {
 	// Parse patterns.
 	ignorePatterns := make([]*ignorePattern, len(patterns))
@@ -182,6 +196,8 @@ func newIgnorer(patterns []string) (*ignorer, error) {
 	return &ignorer{ignorePatterns}, nil
 }
 
+// ignored determines whether or not the specified path should be ignored based
+// on all provided ignore patterns and their order.
 func (i *ignorer) ignored(path string, directory bool) bool {
 	// Nothing is initially ignored.
 	ignored := false

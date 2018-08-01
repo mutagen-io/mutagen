@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that Change's invariants are respected.
 func (c *Change) EnsureValid() error {
 	// A nil change is not valid.
 	if c == nil {

@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that Problem's invariants are respected.
 func (p *Problem) EnsureValid() error {
 	// A nil problem is not valid.
 	if p == nil {

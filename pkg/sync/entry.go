@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that Entry's invariants are respected.
 func (e *Entry) EnsureValid() error {
 	// If the entry is nil, it's technically valid, though only for roots.
 	if e == nil {
@@ -91,6 +92,8 @@ func (e *Entry) equalShallow(other *Entry) bool {
 		e.Target == other.Target
 }
 
+// Equal determines whether or not another entry is entirely (recursively) equal
+// to this one.
 func (e *Entry) Equal(other *Entry) bool {
 	// Verify that the entries are shallow equal first.
 	if !e.equalShallow(other) {
@@ -117,6 +120,8 @@ func (e *Entry) Equal(other *Entry) bool {
 	return true
 }
 
+// CopyShallow creates a shallow copy of the entry (excluding directory
+// contents, if any).
 func (e *Entry) CopyShallow() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
@@ -132,6 +137,7 @@ func (e *Entry) CopyShallow() *Entry {
 	}
 }
 
+// Copy creates a deep copy of the entry.
 func (e *Entry) Copy() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {

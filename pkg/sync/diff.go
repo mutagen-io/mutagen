@@ -1,9 +1,12 @@
 package sync
 
+// differ provides recursive diffing infrastructure.
 type differ struct {
+	// changes is the list of changes being tracked by the diff.
 	changes []*Change
 }
 
+// diff is the recursive diff entry point.
 func (d *differ) diff(path string, base, target *Entry) {
 	// If the nodes at this path aren't equal, then do a complete replacement.
 	if !target.equalShallow(base) {
@@ -23,6 +26,8 @@ func (d *differ) diff(path string, base, target *Entry) {
 	}
 }
 
+// diff performs a diff operation from the base to the target entry (with both
+// rooted at path), generating a list of changes.
 func diff(path string, base, target *Entry) []*Change {
 	// Create the differ.
 	d := &differ{}

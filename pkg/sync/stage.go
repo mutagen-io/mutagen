@@ -6,10 +6,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// stagingPathFinder recursively identifies paths/entries that need be staged in
+// order to perform transitioning.
 type stagingPathFinder struct {
+	// entries is a map from path to entry of all encountered file entries.
 	entries map[string]*Entry
 }
 
+// find recursively searches for file entries that need staging.
 func (f *stagingPathFinder) find(path string, entry *Entry) error {
 	// If the entry is non-existent, nothing needs to be staged.
 	if entry == nil {

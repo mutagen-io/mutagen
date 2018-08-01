@@ -33,20 +33,36 @@ const (
 	defaultInitialCacheCapacity = 1024
 )
 
+// scanner provides the recursive implementation of scanning.
 type scanner struct {
-	root                   string
-	hasher                 hash.Hash
-	cache                  *Cache
-	ignorer                *ignorer
-	ignoreCache            map[string]bool
-	newCache               *Cache
-	newIgnoreCache         map[string]bool
-	buffer                 []byte
-	deviceID               uint64
-	recomposeUnicode       bool
+	// root is the path to the synchronization root.
+	root string
+	// hasher is the hashing function to use for computing file digests.
+	hasher hash.Hash
+	// cache is the existing cache to use for fast digest lookups.
+	cache *Cache
+	// ignorer is the ignorer identifying ignored paths.
+	ignorer *ignorer
+	// ignoreCache is the cache of ignored path behavior.
+	ignoreCache map[string]bool
+	// newCache is the new file digest cache to populate.
+	newCache *Cache
+	// newIgnoreCache is the new ignored path behavior cache to populate.
+	newIgnoreCache map[string]bool
+	// buffer is the read buffer used for computing file digests.
+	buffer []byte
+	// deviceID is the device ID of the synchronization root filesystem.
+	deviceID uint64
+	// recomposeUnicode indicates whether or not filenames need to be recomposed
+	// due to Unicode decomposition behavior on the synchronization root
+	// filesystem.
+	recomposeUnicode bool
+	// preservesExecutability indicates whether or not the synchronization root
+	// filesystem preserves POSIX executability bits.
 	preservesExecutability bool
 }
 
+// file performs processing of a file filesystem entry.
 func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	// Extract metadata.
 	mode := info.Mode()
@@ -115,6 +131,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	}, nil
 }
 
+// symlink performs processing of a symlink filesystem entry.
 func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	// Read the link target.
 	target, err := os.Readlink(filepath.Join(s.root, path))
@@ -140,6 +157,7 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	}, nil
 }
 
+// directory performs processing of a directory filesystem entry.
 func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMode) (*Entry, error) {
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
@@ -240,9 +258,8 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 	}, nil
 }
 
-// TODO: Note that the provided cache is assumed to be valid (i.e. that it
-// doesn't have any nil entries), so callers should run EnsureValid on anything
-// they pull from disk
+// Scan provides recursive filesystem scanning facilities for synchronization
+// roots.
 func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreCache map[string]bool, symlinkMode SymlinkMode) (*Entry, bool, bool, *Cache, map[string]bool, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
 	// replace it with an empty one, that way we don't have to use the

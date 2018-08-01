@@ -1,22 +1,37 @@
 package sync
 
+// nonDeletionChangesOnly filters a list of changes to only those which are
+// non-deletion changes.
 func nonDeletionChangesOnly(changes []*Change) []*Change {
+	// Create the result.
+	// TODO: Should we preallocate here?
 	var result []*Change
+
+	// Populate the result.
 	for _, c := range changes {
 		if c.New != nil {
 			result = append(result, c)
 		}
 	}
+
+	// Done.
 	return result
 }
 
+// reconciler provides the recursive implementation of reconciliation.
 type reconciler struct {
+	// ancestorChanges are the changes to the ancestor that are currently being
+	// tracked.
 	ancestorChanges []*Change
-	alphaChanges    []*Change
-	betaChanges     []*Change
-	conflicts       []*Conflict
+	// alphaChanges are the changes to alpha that are currently being tracked.
+	alphaChanges []*Change
+	// betaChanges are the changes to beta that are currently being tracked.
+	betaChanges []*Change
+	// conflicts are the conflicts currently being tracked.
+	conflicts []*Conflict
 }
 
+// reconcile performs a recursive three-way merge.
 func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// Check if alpha and beta agree on the contents of this node.
 	if alpha.equalShallow(beta) {
@@ -141,6 +156,8 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	})
 }
 
+// Reconcile performs a recursive three-way merge and generates a list of
+// changes for the ancestor, alpha, and beta, as well as a list of conflicts.
 func Reconcile(ancestor, alpha, beta *Entry) ([]*Change, []*Change, []*Change, []*Conflict) {
 	// Create the reconciler.
 	r := &reconciler{}

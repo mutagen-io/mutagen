@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// EnsureValid ensures that Cache's invariants are respected.
 func (c *Cache) EnsureValid() error {
 	// A nil cache is considered valid (though obviously that requires using
 	// the GetEntries accessor).
@@ -28,11 +29,14 @@ func (c *Cache) EnsureValid() error {
 	return nil
 }
 
+// ReverseLookupMap provides facilities for doing reverse lookups to avoid
+// expensive staging operations in the case of renames and copies.
 type ReverseLookupMap struct {
 	// map20 provides mappings for SHA-1 hashes.
 	map20 map[[20]byte]string
 }
 
+// Lookup attempts a lookup in the map.
 func (m *ReverseLookupMap) Lookup(digest []byte) (string, bool) {
 	// Handle based on digest length.
 	if len(digest) == 20 {
@@ -51,6 +55,7 @@ func (m *ReverseLookupMap) Lookup(digest []byte) (string, bool) {
 	return "", false
 }
 
+// GenerateReverseLookupMap creates a reverse lookup map from a cache.
 func (c *Cache) GenerateReverseLookupMap() (*ReverseLookupMap, error) {
 	// Create the map.
 	result := &ReverseLookupMap{}
