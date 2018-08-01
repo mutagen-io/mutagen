@@ -531,7 +531,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 	// Ensure that the target base name doesn't contain an alternate path
 	// separator.
 	// NOTE: Technically we only need to test the base name of the path because
-	// all preceeding components will have been "tested" by
+	// all preceding components will have been "tested" by
 	// ensureRouteWithProperCase. However, since we know all of those are valid,
 	// it's faster just to test the whole path than to compute the base name.
 	if containsAlternatePathSeparator(path) {
