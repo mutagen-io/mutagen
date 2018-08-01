@@ -45,6 +45,8 @@ type scanner struct {
 	ignorer *ignorer
 	// ignoreCache is the cache of ignored path behavior.
 	ignoreCache IgnoreCache
+	// symlinkMode is the symlink mode to use for synchronization.
+	symlinkMode SymlinkMode
 	// newCache is the new file digest cache to populate.
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
@@ -158,7 +160,7 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 }
 
 // directory performs processing of a directory filesystem entry.
-func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMode) (*Entry, error) {
+func (s *scanner) directory(path string, info os.FileInfo) (*Entry, error) {
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
@@ -229,17 +231,17 @@ func (s *scanner) directory(path string, info os.FileInfo, symlinkMode SymlinkMo
 		if kind == EntryKind_File {
 			entry, err = s.file(contentPath, c)
 		} else if kind == EntryKind_Symlink {
-			if symlinkMode == SymlinkMode_SymlinkPortable {
+			if s.symlinkMode == SymlinkMode_SymlinkPortable {
 				entry, err = s.symlink(contentPath, true)
-			} else if symlinkMode == SymlinkMode_SymlinkIgnore {
+			} else if s.symlinkMode == SymlinkMode_SymlinkIgnore {
 				continue
-			} else if symlinkMode == SymlinkMode_SymlinkPOSIXRaw {
+			} else if s.symlinkMode == SymlinkMode_SymlinkPOSIXRaw {
 				entry, err = s.symlink(contentPath, false)
 			} else {
 				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, c, symlinkMode)
+			entry, err = s.directory(contentPath, c)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -308,6 +310,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreC
 		cache:          cache,
 		ignorer:        ignorer,
 		ignoreCache:    ignoreCache,
+		symlinkMode:    symlinkMode,
 		newCache:       newCache,
 		newIgnoreCache: newIgnoreCache,
 		buffer:         make([]byte, scannerCopyBufferSize),
@@ -343,7 +346,7 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreC
 		}
 
 		// Perform a recursive scan.
-		if rootEntry, err := s.directory("", info, symlinkMode); err != nil {
+		if rootEntry, err := s.directory("", info); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
