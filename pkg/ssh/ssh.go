@@ -87,8 +87,8 @@ func Copy(prompter, local string, remote *url.URL) error {
 	// Add locale environment variables.
 	environment = addLocaleVariables(environment)
 
-	// Add prompting environment variables
-	environment, err = addPrompterVariables(environment, prompter)
+	// Set prompting environment variables
+	environment, err = setPrompterVariables(environment, prompter)
 	if err != nil {
 		return errors.Wrap(err, "unable to create prompter environment")
 	}
@@ -154,8 +154,8 @@ func Command(prompter string, remote *url.URL, command string) (*exec.Cmd, error
 	// Add locale environment variables.
 	environment = addLocaleVariables(environment)
 
-	// Add prompting environment variables
-	environment, err = addPrompterVariables(environment, prompter)
+	// Set prompting environment variables
+	environment, err = setPrompterVariables(environment, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create prompter environment")
 	}

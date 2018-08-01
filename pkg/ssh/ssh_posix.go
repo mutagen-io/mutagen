@@ -8,14 +8,18 @@ import (
 	"syscall"
 )
 
+// scpCommand returns the name of or path to the scp command.
 func scpCommand() (string, error) {
 	return "scp", nil
 }
 
+// sshCommand returns the name of or path to the ssh command.
 func sshCommand() (string, error) {
 	return "ssh", nil
 }
 
+// processAttributes returns the process attributes to use for starting ssh or
+// scp.
 func processAttributes() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
 		// There's also a Noctty field, but it only detaches standard input from

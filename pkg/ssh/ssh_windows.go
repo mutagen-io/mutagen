@@ -11,8 +11,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/process"
 )
 
-// commandSearchPaths specifies additional locations on Windows where we might
-// find ssh.exe and scp.exe binaries.
+// commandSearchPaths specifies locations on Windows where we might find ssh.exe
+// and scp.exe binaries.
 var commandSearchPaths = []string{
 	// TODO: Add the PowerShell OpenSSH paths at the top of this list once
 	// there's a usable release.
@@ -24,6 +24,8 @@ var commandSearchPaths = []string{
 	`C:\cygwin64\bin`,
 }
 
+// commandNamed searches for a command with the specified name in a special set
+// of whitelisted directories.
 func commandNamed(name string) (string, error) {
 	// TODO: When the OpenSSH landscape on Windows eventually stablizes (i.e.
 	// once the PowerShell team releases a stable and usable OpenSSH version),
@@ -46,14 +48,18 @@ func commandNamed(name string) (string, error) {
 	return "", errors.New("unable to locate command")
 }
 
+// scpCommand returns the name of or path to the scp command.
 func scpCommand() (string, error) {
 	return commandNamed("scp")
 }
 
+// sshCommand returns the name of or path to the ssh command.
 func sshCommand() (string, error) {
 	return commandNamed("ssh")
 }
 
+// processAttributes returns the process attributes to use for starting ssh or
+// scp.
 func processAttributes() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
 		CreationFlags: process.DETACHED_PROCESS,
