@@ -4,19 +4,6 @@ Mutagen fully supports almost all platforms supported by Go, with exceptions and
 caveats listed below.
 
 
-## Windows
-
-- If using a mintty shell (e.g. one provided by Cygwin, MinGW, MSYS2, etc.), the
-  `mutagen` command needs to be wrapped in a
-  [`winpty`](https://github.com/rprichard/winpty) command in order to function
-  properly. If run directly inside a mintty console, both
-  [daemonization](https://github.com/havoc-io/mutagen/issues/3) and
-  [command line prompting](https://github.com/howeyc/gopass/issues/34) will
-  fail to function properly. Since the `winpty` command is present in most
-  mintty environments, the best option is simply to add a shell alias, e.g.
-  `alias mutagen="winpty mutagen"`.
-
-
 ## FreeBSD
 
 - There are outstanding FreeBSD issues in the Go runtime which are not fully

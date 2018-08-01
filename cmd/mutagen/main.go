@@ -73,6 +73,10 @@ func main() {
 		return
 	}
 
+	// Handle terminal compatibility issues. If this call returns, it means that
+	// we should proceed normally.
+	cmd.HandleTerminalCompatibility()
+
 	// Execute the root command.
 	if err := rootCommand.Execute(); err != nil {
 		os.Exit(1)
