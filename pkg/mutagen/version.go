@@ -17,14 +17,20 @@ const (
 	VersionPatch = 0
 )
 
+// Version provides a stringified version of the current Mutagen version.
 var Version string
 
+// init performs global initialization.
 func init() {
+	// Compute the stringified version.
 	Version = fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
 }
 
+// versionBytes is a type that can be used to send and receive version
+// information over the wire.
 type versionBytes [12]byte
 
+// SendVersion writes the current Mutagen version to the specified writer.
 func SendVersion(writer io.Writer) error {
 	// Compute the version bytes.
 	var data versionBytes
@@ -37,6 +43,7 @@ func SendVersion(writer io.Writer) error {
 	return err
 }
 
+// ReceiveVersion reads version information from the specified reader.
 func ReceiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 	// Read the bytes.
 	var data versionBytes
@@ -53,6 +60,8 @@ func ReceiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 	return major, minor, patch, nil
 }
 
+// ReceiveAndCompareVersion reads version information from the specified reader
+// and ensures that it matches the current Mutagen version.
 func ReceiveAndCompareVersion(reader io.Reader) (bool, error) {
 	// Receive the version.
 	major, minor, patch, err := ReceiveVersion(reader)

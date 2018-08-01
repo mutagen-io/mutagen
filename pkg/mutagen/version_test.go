@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestVersionSendReceiveAndCompare tests a version send/receive cycle.
 func TestVersionSendReceiveAndCompare(t *testing.T) {
 	// Create an intermediate buffer.
 	buffer := &bytes.Buffer{}
@@ -27,6 +28,8 @@ func TestVersionSendReceiveAndCompare(t *testing.T) {
 	}
 }
 
+// TestVersionReceiveAndCompareEmptyBuffer tests that receiving a version fails
+// when reading from an empty buffer.
 func TestVersionReceiveAndCompareEmptyBuffer(t *testing.T) {
 	// Create an empty buffer.
 	buffer := &bytes.Buffer{}
