@@ -279,7 +279,11 @@ func connectSSH(remote *url.URL, prompter, mode string, windows bool) (net.Conn,
 	command := fmt.Sprintf("%s %s", sshAgentPath, mode)
 
 	// Create an SSH process.
-	if err := prompt.Message(prompter, "Connecting to agent..."); err != nil {
+	message := "Connecting to agent (POSIX)..."
+	if windows {
+		message = "Connecting to agent (Windows)..."
+	}
+	if err := prompt.Message(prompter, message); err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to message prompter")
 	}
 	process, err := ssh.Command(prompter, remote, command)
