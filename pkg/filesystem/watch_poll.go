@@ -77,7 +77,7 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 			// seen during the directory listing and then failed the stat call.
 			// This is a sign of concurrent deletion, so just ignore this file.
 			// Our later checks will determine if this was concurent deletion of
-			// a file we're meant to be watching or one of our probe files.
+			// a file we're meant to be watching.
 			if os.IsNotExist(err) {
 				return nil
 			}
