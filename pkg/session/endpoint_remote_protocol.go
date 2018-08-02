@@ -62,8 +62,8 @@ type scanResponse struct {
 
 // stageRequest encodes a request for staging.
 type stageRequest struct {
-	// Entries maps the paths that need to be staged to their target entries.
-	Entries map[string]*sync.Entry
+	// Entries maps the paths that need to be staged to their target digests.
+	Entries map[string][]byte
 }
 
 // stageRespone encodes the results of staging initialization.

@@ -9,8 +9,8 @@ import (
 // stagingPathFinder recursively identifies paths/entries that need be staged in
 // order to perform transitioning.
 type stagingPathFinder struct {
-	// entries is a map from path to entry of all encountered file entries.
-	entries map[string]*Entry
+	// entries is a map from path to digest of all encountered file entries.
+	entries map[string][]byte
 }
 
 // find recursively searches for file entries that need staging.
@@ -28,7 +28,7 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 			}
 		}
 	} else if entry.Kind == EntryKind_File {
-		f.entries[path] = entry
+		f.entries[path] = entry.Digest
 	} else if entry.Kind == EntryKind_Symlink {
 		return nil
 	} else {
@@ -40,12 +40,12 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 }
 
 // TransitionDependencies analyzes a list of transitions and determines the file
-// paths and their corresponding entries that will need to be provided in order
-// to apply the transitions using Transition.
-func TransitionDependencies(transitions []*Change) (map[string]*Entry, error) {
+// paths (and their corresponding digests) that will need to be provided in
+// order to apply the transitions using Transition.
+func TransitionDependencies(transitions []*Change) (map[string][]byte, error) {
 	// Create a path finder.
 	finder := &stagingPathFinder{
-		entries: make(map[string]*Entry, len(transitions)),
+		entries: make(map[string][]byte, len(transitions)),
 	}
 
 	// Have it find paths for all the transitions.

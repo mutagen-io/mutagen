@@ -225,15 +225,6 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 
 // serveStage serves a stage request.
 func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
-	// Validate the request internals since they came over the wire.
-	for _, e := range request.Entries {
-		if err := e.EnsureValid(); err != nil {
-			err = errors.Wrap(err, "received invalid entry")
-			s.encoder.Encode(stageResponse{Error: err.Error()})
-			return err
-		}
-	}
-
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.stage(request.Entries)
 	if err != nil {

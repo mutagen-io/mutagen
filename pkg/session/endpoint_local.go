@@ -235,13 +235,13 @@ func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupM
 }
 
 // stage implements the stage method for local endpoints.
-func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
+func (e *localEndpoint) stage(entries map[string][]byte) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// It's possible that a previous staging was interrupted, so look for paths
 	// that are already staged by checking if our staging coordinator can
 	// already provide them. If everything was already staged, then we can abort
 	// the staging operation.
-	for path, entry := range entries {
-		if _, err := e.stager.Provide(path, entry.Digest); err == nil {
+	for path, digest := range entries {
+		if _, err := e.stager.Provide(path, digest); err == nil {
 			delete(entries, path)
 		}
 	}
@@ -259,8 +259,8 @@ func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
 	}
-	for path, entry := range entries {
-		if e.stageFromRoot(path, entry.Digest, reverseLookupMap) {
+	for path, digest := range entries {
+		if e.stageFromRoot(path, digest, reverseLookupMap) {
 			delete(entries, path)
 		}
 	}

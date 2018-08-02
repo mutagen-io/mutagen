@@ -30,9 +30,9 @@ type endpoint interface {
 	scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool)
 
 	// stage performs staging on the endpoint. It accepts a list of file paths
-	// and file entries for those paths. It will filter the list based on what
-	// it already has staged from previously interrupted stagings and what can
-	// be staged from local contents (e.g. in cases of renames and copies), and
+	// and digests for those paths. It will filter the list based on what it
+	// already has staged from previously interrupted stagings and what can be
+	// staged from local contents (e.g. in cases of renames and copies), and
 	// then return a list of paths, their signatures, and a receiver to receive
 	// them. If the list of paths is empty, then all paths were either already
 	// staged or able to be staged from local data, and the receiver will be
@@ -40,7 +40,7 @@ type endpoint interface {
 	// transmitted to) before subsequent methods can be invoked on the endpoint.
 	// If the receiver fails, the endpoint should be considered contaminated and
 	// not used (though shutdown can and should still be invoked).
-	stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error)
+	stage(entries map[string][]byte) ([]string, []rsync.Signature, rsync.Receiver, error)
 
 	// supply transmits files in a streaming fashion using the rsync algorithm
 	// to the specified receiver.

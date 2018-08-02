@@ -196,7 +196,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 }
 
 // stage implements the stage method for remote endpoints.
-func (e *remoteEndpointClient) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
+func (e *remoteEndpointClient) stage(entries map[string][]byte) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// Create and send the stage request.
 	request := endpointRequest{Stage: &stageRequest{entries}}
 	if err := e.encoder.Encode(request); err != nil {
