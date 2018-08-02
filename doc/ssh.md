@@ -72,10 +72,16 @@ please see the note about mintty shells in the
 
 ### SSH servers
 
-Mutagen works with both the
-[official Windows OpenSSH server](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/) and
-[Bitvise SSH Server](https://www.bitvise.com/ssh-server). Please be aware that
-the former is still in beta.
+Mutagen is currently only known to work reliably with
+[Bitvise SSH Server](https://www.bitvise.com/ssh-server) on Windows.
+
+The
+[official Windows OpenSSH server](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/)
+is still in beta and has a few performance issues and other kinks that need to
+be ironed out before Mutagen can reliably support it. Mutagen will connect to
+this server and mostly work, but the performance is not great at the moment due
+to the server's stream handling. Issues have also been experienced with stalled
+data streams.
 
 There is no reason that Mutagen won't work with other Windows SSH servers (e.g.
 Cygwin's OpenSSH server), so please report your findings if you try them out.
