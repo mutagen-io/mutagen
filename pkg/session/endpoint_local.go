@@ -16,6 +16,9 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
+// localEndpoint provides a local, in-memory implementation of endpoint for
+// local files. Its implementation is also used on remote endpoints, proxied by
+// the remote endpoint client/server infrastructure.
 type localEndpoint struct {
 	// root is the synchronization root for the endpoint. It is static.
 	root string
@@ -55,6 +58,7 @@ type localEndpoint struct {
 	stager *stager
 }
 
+// newLocalEndpoint creates a new local endpoint instance.
 func newLocalEndpoint(session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(root)
@@ -138,6 +142,7 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 	}, nil
 }
 
+// poll implements the poll method for local endpoints.
 func (e *localEndpoint) poll(context context.Context) error {
 	// Wait for either cancellation or an event.
 	select {
@@ -152,6 +157,7 @@ func (e *localEndpoint) poll(context context.Context) error {
 	return nil
 }
 
+// scan implements the scan method for local endpoints.
 func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Grab the scan lock.
 	e.scanParametersLock.Lock()
@@ -194,6 +200,8 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	return result, preservesExecutability, nil, false
 }
 
+// stageFromRoot attempts to perform staging from local files by using a reverse
+// lookup map.
 func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *sync.ReverseLookupMap) bool {
 	// See if we can find a path within the root that has a matching digest.
 	sourcePath, sourcePathOk := reverseLookupMap.Lookup(digest)
@@ -226,6 +234,7 @@ func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupM
 	return err == nil
 }
 
+// stage implements the stage method for local endpoints.
 func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// It's possible that a previous staging was interrupted, so look for paths
 	// that are already staged by checking if our staging coordinator can
@@ -294,10 +303,12 @@ func (e *localEndpoint) stage(entries map[string]*sync.Entry) ([]string, []rsync
 	return paths, signatures, receiver, nil
 }
 
+// supply implements the supply method for local endpoints.
 func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
 	return rsync.Transmit(e.root, paths, signatures, receiver)
 }
 
+// transition implements the transition method for local endpoints.
 func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Lock and defer release of the scan parameters lock.
 	e.scanParametersLock.Lock()
@@ -319,6 +330,7 @@ func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, [
 	return results, problems, nil
 }
 
+// shutdown implements the shutdown method for local endpoints.
 func (e *localEndpoint) shutdown() error {
 	// Terminate filesystem watching. This will result in the associated events
 	// channel being closed.

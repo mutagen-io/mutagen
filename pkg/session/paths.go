@@ -11,18 +11,31 @@ import (
 )
 
 const (
+	// sessionsDirectoryName is the name of the sessions subdirectory within the
+	// Mutagen directory.
 	sessionsDirectoryName = "sessions"
+	// archivesDirectoryName is the name of the archives subdirectory within the
+	// Mutagen directory.
 	archivesDirectoryName = "archives"
-	cachesDirectoryName   = "caches"
-	stagingDirectoryName  = "staging"
+	// cachesDirectoryName is the name of the caches subdirectory within the
+	// Mutagen directory.
+	cachesDirectoryName = "caches"
+	// stagingDirectoryName is the name of the staging subdirectory within the
+	// Mutagen directory.
+	stagingDirectoryName = "staging"
 
+	// alphaName is the name to use for alpha when distinguishing endpoints.
 	alphaName = "alpha"
-	betaName  = "beta"
+	// betaName is the name to use for beta when distinguishing endpoints.
+	betaName = "beta"
 
+	// stagingPrefixLength is the byte length to use for prefix directories when
+	// load-balancing staged files.
 	stagingPrefixLength = 1
 )
 
-// TODO: Note that an empty session identifier will return the sessions
+// pathForSession computes the path to the serialized session for the given
+// session identifier. An empty session identifier will return the sessions
 // directory path.
 func pathForSession(sessionIdentifier string) (string, error) {
 	// Compute/create the sessions directory.
@@ -35,6 +48,8 @@ func pathForSession(sessionIdentifier string) (string, error) {
 	return filepath.Join(sessionsDirectoryPath, sessionIdentifier), nil
 }
 
+// pathForArchive computes the path to the serialized archive for the given
+// session identifier.
 func pathForArchive(session string) (string, error) {
 	// Compute/create the archives directory.
 	archivesDirectoryPath, err := filesystem.Mutagen(true, archivesDirectoryName)
@@ -46,6 +61,8 @@ func pathForArchive(session string) (string, error) {
 	return filepath.Join(archivesDirectoryPath, session), nil
 }
 
+// pathForCache computes the path to the serialized cache for the given
+// session identifier and endpoint.
 func pathForCache(session string, alpha bool) (string, error) {
 	// Compute/create the caches directory.
 	cachesDirectoryPath, err := filesystem.Mutagen(true, cachesDirectoryName)
@@ -66,6 +83,8 @@ func pathForCache(session string, alpha bool) (string, error) {
 	return filepath.Join(cachesDirectoryPath, cacheName), nil
 }
 
+// pathForStagingRoot computes and creates the path to the staging root for the
+// given session identifier and endpoint.
 func pathForStagingRoot(session string, alpha bool) (string, error) {
 	// Compute the endpoint name.
 	endpointName := alphaName
@@ -80,6 +99,8 @@ func pathForStagingRoot(session string, alpha bool) (string, error) {
 	return filesystem.Mutagen(false, stagingDirectoryName, stagingRootName)
 }
 
+// pathForStaging computes the staging path for the specified path/digest. It
+// returns the prefix directory name but does not ensure that it's been created.
 func pathForStaging(root, path string, digest []byte) (string, string, error) {
 	// Compute the prefix for the entry.
 	if len(digest) == 0 {

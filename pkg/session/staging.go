@@ -15,15 +15,20 @@ const (
 	numberOfByteValues = 1 << 8
 )
 
+// stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
+	// stager is the parent stager.
 	stager *stager
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
-	path     string
-	storage  *os.File
+	path string
+	// storage is the temporary storage for the data.
+	storage *os.File
+	// digester is the hash of the data already written.
 	digester hash.Hash
 }
 
+// Write writes data to the sink.
 func (s *stagingSink) Write(data []byte) (int, error) {
 	// Write to the underlying storage.
 	n, err := s.storage.Write(data)
@@ -36,6 +41,7 @@ func (s *stagingSink) Write(data []byte) (int, error) {
 	return n, err
 }
 
+// Close closes the sink and moves the file into place.
 func (s *stagingSink) Close() error {
 	// Close the underlying storage.
 	if err := s.storage.Close(); err != nil {
@@ -86,6 +92,7 @@ type stager struct {
 	prefixCreated map[string]bool
 }
 
+// newStager creates a new stager instance.
 func newStager(session string, version Version, alpha bool) (*stager, error) {
 	// Compute the staging root.
 	root, err := pathForStagingRoot(session, alpha)
@@ -101,6 +108,8 @@ func newStager(session string, version Version, alpha bool) (*stager, error) {
 	}, nil
 }
 
+// ensurePrefixExists ensures that the specified prefix directory exists within
+// the staging root, using a cache to avoid inefficient recreation.
 func (s *stager) ensurePrefixExists(prefix string) error {
 	// Check if we've already created that prefix.
 	if s.prefixCreated[prefix] {
@@ -119,6 +128,7 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 	return nil
 }
 
+// wipe removes the staging root.
 func (s *stager) wipe() error {
 	// Reset the prefix creation tracker.
 	s.prefixCreated = make(map[string]bool, numberOfByteValues)
@@ -135,6 +145,7 @@ func (s *stager) wipe() error {
 	return nil
 }
 
+// Sink implements the Sink method of rsync.Sinker.
 func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	// Create the staging root if we haven't already.
 	if !s.rootCreated {
@@ -159,6 +170,7 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	}, nil
 }
 
+// Provide implements the Provide method of sync.Provider.
 func (s *stager) Provide(path string, digest []byte) (string, error) {
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, digest)

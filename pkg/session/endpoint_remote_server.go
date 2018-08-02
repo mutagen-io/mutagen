@@ -13,6 +13,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
+// remoteEndpointServer wraps a local endpoint and dispatches requests to this
+// endpoint from a remote endpoint client.
 type remoteEndpointServer struct {
 	// encoder is the control stream encoder.
 	encoder *gob.Encoder
@@ -22,14 +24,8 @@ type remoteEndpointServer struct {
 	endpoint endpoint
 }
 
-// TODO: Document that the provided streams should be closed (in a manner that
-// unblocks them) when the function returns in order to ensure that all
-// Goroutines have exited (they could be blocked in encodes/decodes - we only
-// exit after the first fails). We could try to pass in a io.Closer here, but in
-// the agent it would have to be closing standard input/output/error, and OS
-// pipes can (depending on the platform) block on close if you try to close
-// while in a read or write, so it's better that the caller just ensures the
-// streams are closed, in this case by exiting the process.
+// ServeEndpoint creates and serves a remote endpoint server on the specified
+// connection.
 func ServeEndpoint(connection net.Conn) error {
 	// Defer closure of the connection.
 	defer connection.Close()
@@ -90,6 +86,7 @@ func ServeEndpoint(connection net.Conn) error {
 	return server.serve()
 }
 
+// serve is the main request handling loop.
 func (s *remoteEndpointServer) serve() error {
 	// Receive and process control requests until there's an error.
 	for {
@@ -126,6 +123,7 @@ func (s *remoteEndpointServer) serve() error {
 	}
 }
 
+// servePoll serves a poll request.
 func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 	// Create a cancellable context for executing the poll. The context may be
 	// cancelled to force a response, but in case the response comes naturally,
@@ -182,6 +180,7 @@ func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 	return nil
 }
 
+// serveScan serves a scan request.
 func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
 	// endpoints anyway. If a retry is requested or an error occurs, send a
@@ -224,6 +223,7 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 	return nil
 }
 
+// serveStage serves a stage request.
 func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 	// Validate the request internals since they came over the wire.
 	for _, e := range request.Entries {
@@ -262,6 +262,7 @@ func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 	return nil
 }
 
+// serveSupply serves a supply request.
 func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
@@ -276,6 +277,7 @@ func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
 	return nil
 }
 
+// serveTransitino serves a transition request.
 func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error {
 	// Validate the request internals since they came over the wire.
 	for _, t := range request.Transitions {

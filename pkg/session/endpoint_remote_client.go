@@ -66,6 +66,7 @@ func newRemoteEndpoint(connection net.Conn, session string, version Version, roo
 	}, nil
 }
 
+// poll implements the poll method for remote endpoints.
 func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 	// Create and send the poll request.
 	request := endpointRequest{Poll: &pollRequest{}}
@@ -129,6 +130,7 @@ func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 	return nil
 }
 
+// scan implements the scan method for remote endpoints.
 func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
@@ -193,6 +195,7 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	return snapshot, response.PreservesExecutability, nil, false
 }
 
+// stage implements the stage method for remote endpoints.
 func (e *remoteEndpointClient) stage(entries map[string]*sync.Entry) ([]string, []rsync.Signature, rsync.Receiver, error) {
 	// Create and send the stage request.
 	request := endpointRequest{Stage: &stageRequest{entries}}
@@ -224,6 +227,7 @@ func (e *remoteEndpointClient) stage(entries map[string]*sync.Entry) ([]string, 
 	return response.Paths, response.Signatures, receiver, nil
 }
 
+// supply implements the supply method for remote endpoints.
 func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
 	// Create and send the supply request.
 	request := endpointRequest{Supply: &supplyRequest{paths, signatures}}
@@ -253,6 +257,7 @@ func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signatu
 	return nil
 }
 
+// transition implements the transition method for remote endpoints.
 func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Create and send the transition request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
@@ -296,6 +301,7 @@ func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.E
 	return results, response.Problems, nil
 }
 
+// shutdown implements the shutdown method for remote endpoints.
 func (e *remoteEndpointClient) shutdown() error {
 	// Close the underlying connection. This will cause all stream reads/writes
 	// to unblock.

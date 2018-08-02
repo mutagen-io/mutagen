@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Description returns a human-readable description of the session status.
 func (s Status) Description() string {
 	switch s {
 	case Status_Disconnected:
@@ -37,6 +38,7 @@ func (s Status) Description() string {
 	}
 }
 
+// EnsureValid ensures that State's invariants are respected.
 func (s *State) EnsureValid() error {
 	// A nil state is not valid.
 	if s == nil {
@@ -83,6 +85,8 @@ func (s *State) EnsureValid() error {
 	return nil
 }
 
+// Copy creates a copy of the state, deep-copying those members which are
+// mutable.
 func (s *State) Copy() *State {
 	// Create a shallow copy of the state.
 	result := &State{}

@@ -10,6 +10,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
+// Version indicates whether or not the session version is supported.
 func (v Version) supported() bool {
 	switch v {
 	case Version_Version1:
@@ -19,6 +20,7 @@ func (v Version) supported() bool {
 	}
 }
 
+// hasher creates an appropriate hash function for the session version.
 func (v Version) hasher() hash.Hash {
 	switch v {
 	case Version_Version1:
@@ -28,6 +30,7 @@ func (v Version) hasher() hash.Hash {
 	}
 }
 
+// DefaultSymlinkMode returns the default symlink mode for the session version.
 func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {
 	case Version_Version1:
@@ -37,6 +40,7 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	}
 }
 
+// DefaultWatchMode returns the default watch mode for the session version.
 func (v Version) DefaultWatchMode() filesystem.WatchMode {
 	switch v {
 	case Version_Version1:
@@ -46,6 +50,8 @@ func (v Version) DefaultWatchMode() filesystem.WatchMode {
 	}
 }
 
+// DefaultIgnoreVCSMode returns the default VCS ignore mode for the session
+// version.
 func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
 	switch v {
 	case Version_Version1:
@@ -55,6 +61,7 @@ func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
 	}
 }
 
+// EnsureValid ensures that Session's invariants are respected.
 func (s *Session) EnsureValid() error {
 	// A nil session is not valid.
 	if s == nil {

@@ -59,6 +59,7 @@ func NewManager() (*Manager, error) {
 	}, nil
 }
 
+// allControllers creates a list of all controllers managed by the manager.
 func (m *Manager) allControllers() []*controller {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
@@ -75,9 +76,13 @@ func (m *Manager) allControllers() []*controller {
 }
 
 const (
+	// minimumSessionSpecificationLength is the minimum session specification
+	// length needed for a fuzzy match.
 	minimumSessionSpecificationLength = 5
 )
 
+// findControllers generates a list of controllers matching the given
+// specifications.
 func (m *Manager) findControllers(specifications []string) ([]*controller, error) {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
@@ -128,6 +133,7 @@ func (m *Manager) findControllers(specifications []string) ([]*controller, error
 	return controllers, nil
 }
 
+// Shutdown tells the manager to gracefully halt sessions.
 func (m *Manager) Shutdown() {
 	// Poison state tracking to terminate monitoring.
 	m.tracker.Poison()
@@ -145,6 +151,7 @@ func (m *Manager) Shutdown() {
 	}
 }
 
+// Create tells the manager to create a new session.
 func (m *Manager) Create(alpha, beta *url.URL, configuration *Configuration, prompter string) (string, error) {
 	// Attempt to create a session.
 	controller, err := newSession(m.tracker, alpha, beta, configuration, prompter)
@@ -161,6 +168,7 @@ func (m *Manager) Create(alpha, beta *url.URL, configuration *Configuration, pro
 	return controller.session.Identifier, nil
 }
 
+// List requests a state snapshot for the specified sessions.
 func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
@@ -196,6 +204,7 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 	return stateIndex, states, nil
 }
 
+// Pause tells the manager to pause sessions matching the given specifications.
 func (m *Manager) Pause(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
@@ -218,6 +227,8 @@ func (m *Manager) Pause(specifications []string, prompter string) error {
 	return nil
 }
 
+// Resume tells the manager to resume sessions matching the given
+// specifications.
 func (m *Manager) Resume(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
@@ -240,6 +251,8 @@ func (m *Manager) Resume(specifications []string, prompter string) error {
 	return nil
 }
 
+// Terminate tells the manager to terminate sessions matching the given
+// specifications.
 func (m *Manager) Terminate(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
