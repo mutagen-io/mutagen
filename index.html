@@ -113,10 +113,6 @@ $ brew install havoc-io/mutagen/mutagen
 </code>
 </pre>
                     <p>
-                        Make sure to stop the Mutagen daemon before upgrading
-                        Mutagen.
-                    </p>
-                    <p>
                         There is no need to install Mutagen on remote systems.
                     </p>
                     <h2>Starting the daemon</h2>
@@ -139,9 +135,14 @@ $ mutagen daemon start
                     <p>
                         This command is fast and idempotent, so it can safely be
                         added to your shell initialization script
-                        (<code>.bashrc</code>, etc). The daemon will
-                        automatically stop at shutdown, but you can also
-                        manually stop it using <code>mutagen daemon stop</code>.
+                        (e.g. <code>.bashrc</code>, etc).
+                    </p>
+                    <p>
+                        The daemon will automatically stop at shutdown, but you
+                        can also manually stop it using
+                        <code>mutagen daemon stop</code>. Make sure to stop the
+                        daemon before upgrading Mutagen and to restart it
+                        afterwards.
                     </p>
                     <p>
                         Experimental support for registering the daemon to start
