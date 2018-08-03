@@ -28,16 +28,6 @@ Mutagen redirects SSH prompts to its `create` and `resume` commands via the
 `SSH_ASKPASS` environment variable.
 
 
-## Recommended settings
-
-Although not required, you might find it useful to enable OpenSSH's
-[`ControlMaster` support](https://developer.rackspace.com/blog/speeding-up-ssh-session-creation/).
-This speeds up SSH session creation (for all programs using OpenSSH) and, if
-you're using password-based authentication, will reduce the number of times that
-you'll need to type your password, especially when Mutagen connects to a system
-for the first time.
-
-
 ## Windows
 
 Windows is fully supported by Mutagen, though you'll need to bring your own
