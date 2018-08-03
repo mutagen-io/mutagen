@@ -17,5 +17,5 @@ of a different type (e.g. replacing a directory root with a file root) on one
 side of the connection.
 
 In both cases, the user is required to delete the synchronization root on the
-side that they want to delete or replace, and then use `mutagen resume` to
-continue synchronization for the session.
+side to which the deletion or replacement should propagate, and then use
+`mutagen resume` to continue synchronization for the session.

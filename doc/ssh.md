@@ -8,8 +8,9 @@ This design has a number of advantages:
 - Mutagen automatically uses all existing SSH configuration, keys, and aliases.
 - There's no risk of baking in an SSH library that might be found to have
   security vulnerabilities.
-- As the *de facto* SSH implementation, SSH servers are far more likely to
-  aim for compatibility with OpenSSH.
+- With OpenSSH being the *de facto* SSH implementation, other SSH server
+  implementations are far more likely to aim for compatibility with OpenSSH
+  clients.
 - OpenSSH has a much longer develoment and security track record than any SSH
   library implementation.
 
@@ -35,7 +36,7 @@ OpenSSH client. Unfortunately the
 [official Windows OpenSSH client](https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/)
 is still in beta and has a few blocking issues (primarily
 [1152](https://github.com/PowerShell/Win32-OpenSSH/issues/1152)) that disallow
-its use in Mutagen at the moment. As soon as these issues are resolved, this
+its use by Mutagen at the moment. As soon as these issues are resolved, this
 will become Mutagen's recommended client (though others will continue to be
 supported).
 
@@ -52,12 +53,6 @@ configuration (`~/.mutagen.toml`) in the user's actual home directory (i.e. that
 specified by `%USERPROFILE%`). The Git for Windows OpenSSH implementation will
 look for SSH configuration in the actual home directory as well, which is why
 Mutagen will give it priority if found.
-
-Although Mutagen will work fine from inside a `cmd.exe`-based shell, even when
-using one of these Cygwin-based OpenSSH implementations, you may wish to use
-Mutagen from inside the corresponding mintty-based shell. That is also fine, but
-please see the note about mintty shells in the
-[platform guide](platforms.md#windows).
 
 
 ### SSH servers
@@ -80,9 +75,9 @@ Cygwin's OpenSSH server), so please report your findings if you try them out.
 ### PuTTY
 
 Mutagen does not support [PuTTY](https://www.putty.org/). I like PuTTY, and I
-tried to implement this, but it doesn't seem like PuTTY provides the same
-mechanisms for forwarding prompts and streaming standard input/output that
-OpenSSH provides. This isn't too surprising, as the "TTY" in its name clearly
-aligns with its focus on interactive terminal usage. I know that PuTTY is widely
-used, but I'm hoping that the offical Windows OpenSSH implementation will
-provide an easy migration path in the very near future.
+tried to implement this, but it doesn't seem like PuTTY provides comparable
+mechanisms for forwarding prompts and streaming standard input/output. This
+isn't too surprising, as the "TTY" in its name clearly aligns with its focus on
+interactive terminal usage. I know that PuTTY is widely used, but I'm hoping
+that the offical Windows OpenSSH implementation will provide an easy migration
+path in the very near future.

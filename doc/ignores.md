@@ -100,7 +100,19 @@ prefix the ignore with `/`. For example, `build` will ignore content named
 `build` at any subdirectory, but `/build` will only ignore content at
 `<root>/build`.
 
-Suffixing a pattern with `/` will cause it to match only directories.
+Suffixing a pattern with `/` will cause it to match only directories. It's
+important to note that this is the only way that a path can "become" ignored or
+unignored, and the way that this behaves with a three-way merge might be
+non-intuitive. For example, imagine that an ignore of `name/` is specified, and
+that both endpoints of the connection have a copy of a synchronized file (not a
+directory) called `name`. Imagine that one endpoint then replaces the file
+`name` with a directory called `name`. This directory will now be ignored. Since
+Mutagen will ignore a directory called `name` in its scans, it will appear to
+Mutagen's three-way merge algorithm that the content at this path has been
+deleted on the side where the type has changed to a directory, and it will thus
+propagate deletion of the file called `name` to the other endpoint. This is
+still technically correct behavior, but it's worth understanding before using
+this type of ignore pattern.
 
 Prefixing a pattern with `!` will cause it to negate previously matching
 ignores. E.g. specifying an ignore list like `["hot*", "!hotel"]` will ignore

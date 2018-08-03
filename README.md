@@ -12,7 +12,7 @@ type of content.
 Mutagen is a very powerful tool that is still in early beta. It will almost
 certainly have unknown issues. It should not be used on production or
 mission-critical systems. Use on *any* system is at your own risk (please see
-the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE.md)).
+the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE)).
 
 That being said, Mutagen is a very useful tool and I use it daily for work on
 remote systems. The more people who use it and report
@@ -129,11 +129,11 @@ You might have guessed that Mutagen's closest cousin is the
 [Unison](http://www.cis.upenn.edu/~bcpierce/unison) file synchronization tool.
 This tool has existed for ages, and while it is *very* good at what it does, it
 didn't quite fit my needs. In particular, it has a *lot* of knobs to turn, puts
-a lot of focus on transferring permissions (which can cause even more headache),
-and requires installation on both ends of the connection. I wanted something
-simpler, a bit more performant, and just a bit more modern (the fact that Unison
-is written in rather terse OCaml also makes it a bit difficult to extend or
-support on more obscure platforms and architectures).
+a lot of focus on transferring permissions (which can cause even more
+headaches), and requires installation on both ends of the connection. I wanted
+something simpler, a bit more performant, and just a bit more modern (the fact
+that Unison is written in rather terse OCaml also makes it a bit difficult to
+extend or support on more obscure platforms and architectures).
 
 
 ## Building
