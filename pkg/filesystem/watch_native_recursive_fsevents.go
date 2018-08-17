@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fsnotify/fsevents"
+	"github.com/havoc-io/fsevents"
 )
 
 const (

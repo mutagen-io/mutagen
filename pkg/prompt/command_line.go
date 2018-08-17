@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/howeyc/gopass"
+	"github.com/havoc-io/gopass"
 )
 
 // PromptCommandLine performs prompting on the command line.
