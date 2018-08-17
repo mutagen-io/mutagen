@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,12 +22,41 @@ import (
 )
 
 const (
-	agentPackage   = "github.com/havoc-io/mutagen/cmd/mutagen-agent"
-	cliPackage     = "github.com/havoc-io/mutagen/cmd/mutagen"
-	agentBaseName  = "mutagen-agent"
-	cliBaseName    = "mutagen"
-	bundleBaseName = "mutagen-agents.tar.gz"
-	// If we're compiling for arm, then specify support for ARMv5. This will
+	// agentPackage is the Go package URL to use for building Mutagen agent
+	// binaries.
+	agentPackage = "github.com/havoc-io/mutagen/cmd/mutagen-agent"
+	// cliPackage is the Go package URL to use for building Mutagen binaries.
+	cliPackage = "github.com/havoc-io/mutagen/cmd/mutagen"
+
+	// buildDirectoryName is the name of the build directory to create (relative
+	// to the current working directory).
+	buildDirectoryName = "build"
+	// moduleBuildSubdirectoryName is the name of the build subdirectory where
+	// module dependencies are stored. It is set up as a faux GOPATH to avoid
+	// polluting the user's GOPATH.
+	moduleBuildSubdirectoryName = "modules"
+	// agentBuildSubdirectoryName is the name of the build subdirectory where
+	// agent binaries are built.
+	agentBuildSubdirectoryName = "agent"
+	// cliBuildSubdirectoryName is the name of the build subdirectory where CLI
+	// binaries are built.
+	cliBuildSubdirectoryName = "cli"
+	// releaseBuildSubdirectoryName is the name of the build subdirectory where
+	// release bundles are built.
+	releaseBuildSubdirectoryName = "release"
+
+	// agentBaseName is the name of the Mutagen agent binary without any path or
+	// extension.
+	agentBaseName = "mutagen-agent"
+	// cliBaseName is the name of the Mutagen binary without any path or
+	// extension.
+	cliBaseName = "mutagen"
+	// agentBundleBaseName is the name of the resulting Mutagen agent binary
+	// bundle.
+	agentBundleBaseName = "mutagen-agents.tar.gz"
+
+	// minimumARMSupport is the value to pass to the GOARM environment variable
+	// when building binaries. We currently specify support for ARMv5. This will
 	// enable software-based floating point. For our use case, this is totally
 	// fine, because we don't have any numeric code, and the resulting binary
 	// bloat is very minimal. This won't apply for arm64, which always has
@@ -35,94 +65,104 @@ const (
 	minimumARMSupport = "5"
 )
 
-var GOPATH, GOBIN string
-
-func init() {
-	// Compute the GOPATH.
-	if gopath, ok := os.LookupEnv("GOPATH"); !ok {
-		panic("unable to determine GOPATH")
-	} else {
-		GOPATH = gopath
-	}
-
-	// Compute the GOPATH bin directory and ensure it exists.
-	GOBIN = filepath.Join(GOPATH, "bin")
-	if err := os.MkdirAll(GOBIN, 0700); err != nil {
-		panic(errors.Wrap(err, "unable to ensure GOPATH bin directory exists"))
-	}
-}
-
+// Target specifies a GOOS/GOARCH combination.
 type Target struct {
-	GOOS   string
+	// GOOS is the GOOS environment variable specification for the target.
+	GOOS string
+	// GOARCH is the GOARCH environment variable specification for the target.
 	GOARCH string
 }
 
+// String generates a human-readable representation of the target.
 func (t Target) String() string {
 	return fmt.Sprintf("%s/%s", t.GOOS, t.GOARCH)
 }
 
+// Name generates a representation of the target that is suitable for paths and
+// file names.
 func (t Target) Name() string {
 	return fmt.Sprintf("%s_%s", t.GOOS, t.GOARCH)
 }
 
+// ExecutableName formats executable names for the target.
 func (t Target) ExecutableName(base string) string {
+	// If we're on Windows, append a ".exe" extension.
 	if t.GOOS == "windows" {
 		return fmt.Sprintf("%s.exe", base)
 	}
+
+	// Otherwise return the base name unmodified.
 	return base
 }
 
-func (t Target) goEnv() []string {
+// goEnv generates an environment that can be used when invoking the Go
+// toolchain to generate output for the target.
+func (t Target) goEnv() ([]string, error) {
 	// Duplicate the existing environment.
 	result := os.Environ()
+
+	// Override GOPATH. This isn't strictly necessary, but because Go will
+	// (currently) cache downloaded modules into $GOPATH/mod, and because we
+	// want Mutagen's build behavior to be completely clean outside the source
+	// tree, we need to control this.
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get working directory")
+	}
+	result = append(result, fmt.Sprintf("GOPATH=%s", filepath.Join(
+		workingDirectory,
+		buildDirectoryName,
+		moduleBuildSubdirectoryName,
+	)))
+
+	// Force use of Go modules.
+	result = append(result, "GO111MODULE=on")
 
 	// Override GOOS/GOARCH.
 	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
 	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
+	// We don't need to unset any existing GOARM variables since they simply
+	// won't be used if we're not targeting (non-64-bit) ARM systems.
 	if t.GOOS == "arm" {
 		result = append(result, fmt.Sprintf("GOARM=%s", minimumARMSupport))
 	}
 
 	// Done.
-	return result
+	return result, nil
 }
 
-func (t Target) Get(url string) error {
-	// Execute the build. We use the "-s -w" linker flags to omit the symbol
-	// table and debugging information. This shaves off about 25% of the binary
-	// size and only disables debugging (stack traces are still intact). For
-	// more information, see:
-	// https://blog.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick
-	getter := exec.Command("go", "get", "-v", "-ldflags=-s -w", url)
-	getter.Env = t.goEnv()
-	getter.Stdin = os.Stdin
-	getter.Stdout = os.Stdout
-	getter.Stderr = os.Stderr
-	if err := getter.Run(); err != nil {
-		return errors.Wrap(err, "compilation failed")
-	}
-
-	// Success.
-	return nil
-}
-
+// Cross determines whether or not this target represents a cross-compilation
+// target (i.e. not the native target for the current Go toolchain).
 func (t Target) Cross() bool {
 	return t.GOOS != runtime.GOOS || t.GOARCH != runtime.GOARCH
 }
 
-func (t Target) ExecutableBuildPath() string {
-	// Compute the path to the Go bin directory.
-	result := filepath.Join(GOPATH, "bin")
+// Build executes a module-aware build of the specified package URL, storing the
+// output of the build at the specified path.
+func (t Target) Build(url, output string) error {
+	// Create the build command. We use the "-s -w" linker flags to omit the
+	// symbol table and debugging information. This shaves off about 25% of the
+	// binary size and only disables debugging (stack traces are still intact).
+	// For more information, see:
+	// https://blog.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick
+	builder := exec.Command("go", "build", "-o", output, "-ldflags=-s -w", url)
 
-	// If we're cross-compiling, then add the target subdirectory.
-	if t.Cross() {
-		result = filepath.Join(result, t.Name())
+	// Set the environment.
+	environment, err := t.goEnv()
+	if err != nil {
+		return errors.Wrap(err, "unable to create build environment")
 	}
+	builder.Env = environment
 
-	// Done.
-	return result
+	// Forward input, output, and error streams.
+	builder.Stdin = os.Stdin
+	builder.Stdout = os.Stdout
+	builder.Stderr = os.Stderr
+
+	// Run the build.
+	return errors.Wrap(builder.Run(), "compilation failed")
 }
 
 // targets encodes which combinations of GOOS and GOARCH we want to use for
@@ -191,6 +231,8 @@ var targets = []Target{
 	{"windows", "amd64"},
 }
 
+// archiveBuilderCopyBufferSize determines the size of the copy buffer used when
+// generating archive files.
 // TODO: Figure out if we should set this on a per-machine basis. This value is
 // taken from Go's io.Copy method, which defaults to allocating a 32k buffer if
 // none is provided.
@@ -338,49 +380,35 @@ func main() {
 		}
 	}
 
-	// Verify that this script is being run from the Mutagen source directory
-	// located inside the user's GOPATH. This is just a sanity check to ensure
-	// that people know what they're building.
-	_, scriptPath, _, ok := runtime.Caller(0)
-	if !ok {
-		cmd.Fatal(errors.New("unable to compute script path"))
+	// Create the build directory hierarchy. Technically we don't need to create
+	// the agent and CLI build subdirectories since the Go toolchain will do
+	// that for us automatically, but we do need to create the release bundle
+	// directory (if we need it), so it's best just to do all of these.
+	agentBuildSubdirectoryPath := filepath.Join(buildDirectoryName, agentBuildSubdirectoryName)
+	cliBuildSubdirectoryPath := filepath.Join(buildDirectoryName, cliBuildSubdirectoryName)
+	releaseBuildSubdirectoryPath := filepath.Join(buildDirectoryName, releaseBuildSubdirectoryName)
+	if err := os.MkdirAll(buildDirectoryName, 0700); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create build directory"))
 	}
-	sourcePath, err := filepath.Abs(filepath.Dir(filepath.Dir(scriptPath)))
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to determine source path"))
+	if err := os.MkdirAll(agentBuildSubdirectoryPath, 0700); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create agent build subdirectory"))
 	}
-	expectedSourcePath, err := filepath.Abs(filepath.Join(
-		GOPATH,
-		"src",
-		"github.com",
-		"havoc-io",
-		"mutagen",
-	))
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to determine expected source path"))
+	if err := os.MkdirAll(cliBuildSubdirectoryPath, 0700); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create CLI build subdirectory"))
 	}
-	if sourcePath != expectedSourcePath {
-		cmd.Fatal(errors.New("script not invoked from target source path"))
-	}
-
-	// Compute the release build path and ensure it exists if we're in release
-	// mode.
-	var releasePath string
-	if mode == "release" {
-		releasePath = filepath.Join(sourcePath, "build")
-		if err := os.MkdirAll(releasePath, 0700); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create release directory"))
+	if mode == "release" && !skipBundles {
+		if err := os.MkdirAll(releaseBuildSubdirectoryPath, 0700); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create release build subdirectory"))
 		}
 	}
 
-	// Create the agent bundle builder
-	agentBundlePath := filepath.Join(GOBIN, bundleBaseName)
+	// Build agent binaries and the combined agent bundle.
+	log.Println("Building agent bundle...")
+	agentBundlePath := filepath.Join(buildDirectoryName, agentBundleBaseName)
 	agentBundle, err := NewArchiveBuilder(agentBundlePath)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create agent bundle builder"))
+		cmd.Fatal(errors.Wrap(err, "unable to create agent archive builder"))
 	}
-
-	// Build and add agent binaries.
 	for _, target := range targets {
 		// Skip agent targets that aren't appropriate for this build mode.
 		if mode == "slim" && target.Cross() {
@@ -390,24 +418,23 @@ func main() {
 		}
 
 		// Print information.
-		fmt.Println("Building agent for", target)
+		log.Println("Building agent for", target)
 
-		// Build.
-		if err := target.Get(agentPackage); err != nil {
+		// Compute the output path for the agent.
+		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
+
+		// Build the agent.
+		if err := target.Build(agentPackage, agentBuildPath); err != nil {
+			agentBundle.Close()
 			cmd.Fatal(errors.Wrap(err, "unable to build agent"))
 		}
 
-		// Add to bundle.
-		agentBuildPath := filepath.Join(
-			target.ExecutableBuildPath(),
-			target.ExecutableName(agentBaseName),
-		)
+		// Add it to the bundle.
 		if err := agentBundle.Add(target.Name(), agentBuildPath, 0700); err != nil {
+			agentBundle.Close()
 			cmd.Fatal(errors.Wrap(err, "unable to add agent to bundle"))
 		}
 	}
-
-	// Close the agent bundle.
 	if err := agentBundle.Close(); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to finalize agent bundle"))
 	}
@@ -420,10 +447,13 @@ func main() {
 		}
 
 		// Print information.
-		fmt.Println("Building CLI components for", target)
+		log.Println("Building CLI for", target)
+
+		// Compute the output path for the CLI.
+		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
 
 		// Build.
-		if err := target.Get(cliPackage); err != nil {
+		if err := target.Build(cliPackage, cliBuildPath); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to build CLI"))
 		}
 
@@ -431,17 +461,11 @@ func main() {
 		// explicitly requested not to.
 		if mode == "release" && !skipBundles {
 			// Print information.
-			fmt.Println("Building release bundle for", target)
-
-			// Compute CLI component paths.
-			cliBuildPath := filepath.Join(
-				target.ExecutableBuildPath(),
-				target.ExecutableName(cliBaseName),
-			)
+			log.Println("Building release bundle for", target)
 
 			// Compute the bundle path.
 			bundlePath := filepath.Join(
-				releasePath,
+				releaseBuildSubdirectoryPath,
 				fmt.Sprintf("mutagen_%s_v%s.tar.gz", target.Name(), mutagen.Version),
 			)
 
@@ -452,16 +476,31 @@ func main() {
 			}
 
 			// Add contents.
-			if err := bundle.Add("", cliBuildPath, 0700); err != nil {
+			if err := bundle.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0700); err != nil {
+				bundle.Close()
 				cmd.Fatal(errors.Wrap(err, "unable to bundle CLI"))
 			}
 			if err := bundle.Add("", agentBundlePath, 0600); err != nil {
+				bundle.Close()
 				cmd.Fatal(errors.Wrap(err, "unable to bundle agent bundle"))
 			}
 
 			// Close the bundle.
 			if err := bundle.Close(); err != nil {
 				cmd.Fatal(errors.Wrap(err, "unable to finalize release bundle"))
+			}
+		}
+
+		// If the CLI is for the current platform, move it into the build
+		// directory root for testing.
+		if !target.Cross() {
+			// Print information.
+			log.Println("Relocating binary for testing")
+
+			// Relocate.
+			targetPath := filepath.Join(buildDirectoryName, target.ExecutableName(cliBaseName))
+			if err := os.Rename(cliBuildPath, targetPath); err != nil {
+				cmd.Fatal(errors.Wrap(err, "unable to relocate platform CLI"))
 			}
 		}
 	}
