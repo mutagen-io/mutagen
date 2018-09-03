@@ -2,24 +2,21 @@
 version: "{build}"
 
 # Set the clone folder so that Mutagen ends up in the GOPATH.
-clone_folder: C:\gopath\src\github.com\havoc-io\mutagen
+clone_folder: C:\mutagen
 
 # Set Go versions and environment variables.
 environment:
-  GOPATH: C:\gopath
-  GOROOT: C:\go110
+  GOROOT: C:\go111
+  GO111MODULE: "on"
   MUTAGEN_TEST_END_TO_END: "true"
 init:
-  - set PATH=%GOROOT%\bin;%GOPATH%\bin;%PATH%
+  - set PATH=%GOROOT%\bin;%PATH%
 
 # Disable AppVeyor's default Visual Studio build system.
 build: off
 
-# Fetch vendored third-party dependencies, install a tool for merging coverage
-# profiles, and install the codecov.io Python-based upload tool.
+# Install the codecov.io Python-based upload tool.
 before_test:
-  - git submodule init
-  - git submodule update
   - pip install codecov
 
 # Run tests, upload the coverage report, and build bundles. We have to run a

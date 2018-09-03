@@ -14,8 +14,9 @@ matrix:
   include:
     - os: osx
       osx_image: xcode9.4
+      env: GO111MODULE=on
     - os: linux
-      env: MUTAGEN_TEST_END_TO_END=true
+      env: MUTAGEN_TEST_END_TO_END=true GO111MODULE=on
 
 # Require use of sudo (we need this to set up SSH).
 sudo: required
@@ -28,12 +29,6 @@ sudo: required
 # https://github.com/travis-ci/travis-ci/issues/9247
 go:
   - "1.11"
-
-# Fetch vendored third-party dependencies and install a tool for merging
-# coverage profiles.
-before_install:
-  - git submodule init
-  - git submodule update
 
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
@@ -71,7 +66,7 @@ deploy:
     secure: oGoH8k4iqfXizSDUNaFRMqG+q0hYjJcPQBkCSlDWC/enMtn2HyT4UI+vRCksastjNS6ltGrwlebKVyOzkWQCvN/apiteDHgcwPvaJr4ioEZ/UdNobbD2sRyQ6mntXZoQLmTCouDpj47xQA/8bpWSsKNJscIrWuzBr1IUCnDWGPR27ninXX7eueIB9W2BCiuaXvRcvOmLOQslQ+sZEsUjZ2tJ1IB2gQiQdE0yIeHR3A6WsEKkkQWecCnNvuuhtAJZ0bcvR/aKGm3NPPzmvNHu05whvb55qpWjVBdxExatHNXFal4xvesgmFGzlbxkTOHl6QMauuVPJ0ctAEsWMjeNGYHVtmjR7d9+bpgMhpTtxFz6j/HEVs1hzLcsE96LUkxsK6Mc6xpOVI41rsTMLNYIPqjcfBa4/VNUEBFbX8J68BhJ9Ou3zV1f1N1b4nm6PO3asfVgCbYQNTg0Yx3/27KlNzymccui/LmR3l9jbNdQ/KaH689ZFi6+kTL1U8/i/cPo3rv1goQM0vSbuUe9zoydlfCmn5mnFH85PV2/oW55NrTDoHOD6OMUMAma7c48I4+unVSdg4k3IM+YE0uXHJ/OyPifNUXgp+TMQRb5LerMfjvf7HMyMnPjZZsV4COb55hsdH3dx6Yp8BIUxtRV1yzWlBzRo3DIZ5QqYNydc4Cirok=
   skip_cleanup: true
   file_glob: true
-  file: build/mutagen_*_*v*
+  file: build/release/mutagen_*_*v*
   on:
     repo: havoc-io/mutagen
     condition: '"$TRAVIS_OS_NAME" == "osx"'
