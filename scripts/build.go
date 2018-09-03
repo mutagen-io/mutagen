@@ -55,6 +55,10 @@ const (
 	// bundle.
 	agentBundleBaseName = "mutagen-agents.tar.gz"
 
+	// minimumMacOSVersion is the minimum version of macOS that we'll support
+	// (currently pegged to the oldest version of macOS that Go supports).
+	minimumMacOSVersion = "10.10"
+
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will
 	// enable software-based floating point. For our use case, this is totally
@@ -121,6 +125,18 @@ func (t Target) goEnv() ([]string, error) {
 	// Override GOOS/GOARCH.
 	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
 	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
+
+	// If we're on macOS, we're going to use cgo to access the FSEvents API, so
+	// we need to ensure that we compile with flags that tell the C compiler and
+	// external linker to support older versions of macOS. These flags will tell
+	// the C compiler to generate code compatible with the target version of
+	// macOS and tell the external linker what value to embed for the
+	// LC_VERSION_MIN_MACOSX flag in the resulting Mach-O binaries. Go's
+	// internal linker automatically defaults to a relatively liberal (old)
+	// value for this flag, but since we're using an external linker, it
+	// defaults to the current SDK version.
+	result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+	result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
 	// We don't need to unset any existing GOARM variables since they simply
