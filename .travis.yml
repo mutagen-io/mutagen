@@ -27,7 +27,7 @@ sudo: required
 # than a float to be truncated:
 # https://github.com/travis-ci/travis-ci/issues/9247
 go:
-  - "1.10.3"
+  - "1.11"
 
 # Fetch vendored third-party dependencies and install a tool for merging
 # coverage profiles.
