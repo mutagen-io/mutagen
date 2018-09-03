@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-package session;
+package service;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/session/service";
 
 import "session/configuration.proto";
 import "session/state.proto";

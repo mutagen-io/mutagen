@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-package prompt;
+package service;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/prompt/service";
 
 message PromptRequest{
     string prompter = 1;

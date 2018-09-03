@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sync;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
 // SymlinkMode specifies the mode for handling the propagation of symlinks.
 enum SymlinkMode {
     // SymlinkMode_SymlinkDefault represents an unspecified symlink mode. It is

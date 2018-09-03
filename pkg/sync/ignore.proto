@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sync;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
 // IgnoreVCSMode specifies the mode for ignoring VCS directories.
 enum IgnoreVCSMode {
     // IgnoreVCSMode_IgnoreVCSDefault represents an unspecified VCS ignore

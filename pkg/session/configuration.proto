@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package session;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
 import "filesystem/watch.proto";
 import "sync/ignore.proto";
 import "sync/symlink.proto";

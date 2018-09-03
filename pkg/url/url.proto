@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package url;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/url";
+
 enum Protocol {
     Local = 0;
     SSH = 1;

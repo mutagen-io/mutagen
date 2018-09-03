@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rsync;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/rsync";
+
 // ReceivingStatus encodes that status of an rsync receiver.
 message ReceiverStatus {
     // Path is the path currently being received.

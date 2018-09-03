@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package filesystem;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/filesystem";
+
 // WatchMode specifies the mode for filesystem watching.
 enum WatchMode {
     // WatchMode_WatchDefault represents an unspecified watch mode. It should be

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sync;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
 import "google/protobuf/timestamp.proto";
 
 // CacheEntry represents cache data for a file on disk.

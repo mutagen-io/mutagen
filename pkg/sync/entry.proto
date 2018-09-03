@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sync;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
 // EntryKind encodes the type of entry represented by an Entry object.
 enum EntryKind {
     // EntryKind_Directory represents a directory entry.

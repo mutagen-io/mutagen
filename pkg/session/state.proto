@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package session;
 
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
 import "rsync/receive.proto";
 import "session/session.proto";
 import "sync/conflict.proto";
