@@ -5,9 +5,19 @@ version: "{build}"
 clone_folder: C:\mutagen
 
 # Set Go versions and environment variables.
+# HACK: Disable the use of cgo. When using Go modules in Go 1.11, pre-compiled
+# packages are not available (golang/go#26988), and Go will try to invoke gcc to
+# compile those requiring C code. We could theoretically use the Mingw-w64
+# toolchain available on AppVeyor, but that's a can of worms that I don't want
+# to open. These packages are not essential to Mutagen's functioning, and they
+# aren't used in Mutagen's release builds anyway. We can revisit enabling the
+# pre-compiled C versions when Go 1.12 arrives, if it supports that with
+# modules, but actually, since we use pure-Go alternatives in release builds,
+# it's probably better to continue testing with those.
 environment:
   GOROOT: C:\go111
   GO111MODULE: "on"
+  CGO_ENABLED: "0"
   MUTAGEN_TEST_END_TO_END: "true"
 init:
   - set PATH=%GOROOT%\bin;%PATH%
