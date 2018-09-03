@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -28,13 +29,10 @@ const (
 	// cliPackage is the Go package URL to use for building Mutagen binaries.
 	cliPackage = "github.com/havoc-io/mutagen/cmd/mutagen"
 
-	// buildDirectoryName is the name of the build directory to create (relative
-	// to the current working directory).
+	// buildDirectoryName is the name of the build directory to create inside
+	// the root of the Mutagen source tree.
 	buildDirectoryName = "build"
-	// moduleBuildSubdirectoryName is the name of the build subdirectory where
-	// module dependencies are stored. It is set up as a faux GOPATH to avoid
-	// polluting the user's GOPATH.
-	moduleBuildSubdirectoryName = "modules"
+
 	// agentBuildSubdirectoryName is the name of the build subdirectory where
 	// agent binaries are built.
 	agentBuildSubdirectoryName = "agent"
@@ -68,6 +66,18 @@ const (
 	// https://github.com/golang/go/wiki/GoArm.
 	minimumARMSupport = "5"
 )
+
+// mutagenSourceTreePath computes the path to the Mutagen source directory.
+func mutagenSourceTreePath() (string, error) {
+	// Compute the path to this script.
+	_, scriptPath, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", errors.New("unable to compute script path")
+	}
+
+	// Compute the path to the Mutagen source directory.
+	return filepath.Dir(filepath.Dir(scriptPath)), nil
+}
 
 // Target specifies a GOOS/GOARCH combination.
 type Target struct {
@@ -104,20 +114,6 @@ func (t Target) ExecutableName(base string) string {
 func (t Target) goEnv() ([]string, error) {
 	// Duplicate the existing environment.
 	result := os.Environ()
-
-	// Override GOPATH. This isn't strictly necessary, but because Go will
-	// (currently) cache downloaded modules into $GOPATH/mod, and because we
-	// want Mutagen's build behavior to be completely clean outside the source
-	// tree, we need to control this.
-	workingDirectory, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get working directory")
-	}
-	result = append(result, fmt.Sprintf("GOPATH=%s", filepath.Join(
-		workingDirectory,
-		buildDirectoryName,
-		moduleBuildSubdirectoryName,
-	)))
 
 	// Force use of Go modules.
 	result = append(result, "GO111MODULE=on")
@@ -396,16 +392,36 @@ func main() {
 		}
 	}
 
-	// Create the build directory hierarchy. Technically we don't need to create
-	// the agent and CLI build subdirectories since the Go toolchain will do
-	// that for us automatically, but we do need to create the release bundle
-	// directory (if we need it), so it's best just to do all of these.
-	agentBuildSubdirectoryPath := filepath.Join(buildDirectoryName, agentBuildSubdirectoryName)
-	cliBuildSubdirectoryPath := filepath.Join(buildDirectoryName, cliBuildSubdirectoryName)
-	releaseBuildSubdirectoryPath := filepath.Join(buildDirectoryName, releaseBuildSubdirectoryName)
-	if err := os.MkdirAll(buildDirectoryName, 0700); err != nil {
+	// Compute the path to the Mutagen source directory.
+	mutagenSourcePath, err := mutagenSourceTreePath()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to compute Mutagen source tree path"))
+	}
+
+	// Verify that we're running inside the Mutagen source directory, otherwise
+	// we can't rely on Go modules working.
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to compute working directory"))
+	}
+	workingDirectoryRelativePath, err := filepath.Rel(mutagenSourcePath, workingDirectory)
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to determine working directory relative path"))
+	}
+	if strings.Contains(workingDirectoryRelativePath, "..") {
+		cmd.Fatal(errors.Wrap(err, "build script run outside Mutagen source tree"))
+	}
+
+	// Compute the path to the build directory and ensure that it exists.
+	buildPath := filepath.Join(mutagenSourcePath, buildDirectoryName)
+	if err := os.MkdirAll(buildPath, 0700); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create build directory"))
 	}
+
+	// Create the necessary build directory hierarchy.
+	agentBuildSubdirectoryPath := filepath.Join(buildPath, agentBuildSubdirectoryName)
+	cliBuildSubdirectoryPath := filepath.Join(buildPath, cliBuildSubdirectoryName)
+	releaseBuildSubdirectoryPath := filepath.Join(buildPath, releaseBuildSubdirectoryName)
 	if err := os.MkdirAll(agentBuildSubdirectoryPath, 0700); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create agent build subdirectory"))
 	}
@@ -420,7 +436,7 @@ func main() {
 
 	// Build agent binaries and the combined agent bundle.
 	log.Println("Building agent bundle...")
-	agentBundlePath := filepath.Join(buildDirectoryName, agentBundleBaseName)
+	agentBundlePath := filepath.Join(buildPath, agentBundleBaseName)
 	agentBundle, err := NewArchiveBuilder(agentBundlePath)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create agent archive builder"))
@@ -514,7 +530,7 @@ func main() {
 			log.Println("Relocating binary for testing")
 
 			// Relocate.
-			targetPath := filepath.Join(buildDirectoryName, target.ExecutableName(cliBaseName))
+			targetPath := filepath.Join(buildPath, target.ExecutableName(cliBaseName))
 			if err := os.Rename(cliBuildPath, targetPath); err != nil {
 				cmd.Fatal(errors.Wrap(err, "unable to relocate platform CLI"))
 			}
