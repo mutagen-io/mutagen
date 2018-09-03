@@ -12,7 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )

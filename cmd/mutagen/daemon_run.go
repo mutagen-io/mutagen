@@ -12,9 +12,9 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	daemonsvc "github.com/havoc-io/mutagen/pkg/daemon/service"
-	promptsvc "github.com/havoc-io/mutagen/pkg/prompt/service"
-	sessionsvc "github.com/havoc-io/mutagen/pkg/session/service"
+	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
+	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
+	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
 )
 
 func daemonRunMain(command *cobra.Command, arguments []string) error {

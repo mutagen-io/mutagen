@@ -9,7 +9,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {

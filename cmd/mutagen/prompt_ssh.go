@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	promptsvcpkg "github.com/havoc-io/mutagen/pkg/prompt/service"
+	promptsvcpkg "github.com/havoc-io/mutagen/pkg/service/prompt"
 	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 

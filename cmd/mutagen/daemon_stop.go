@@ -9,7 +9,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/daemon/service"
+	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
 
 func daemonStopMain(command *cobra.Command, arguments []string) error {

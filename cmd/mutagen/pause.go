@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/session/service"
+	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 )
 
 func pauseMain(command *cobra.Command, arguments []string) error {
