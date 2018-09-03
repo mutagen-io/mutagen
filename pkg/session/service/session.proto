@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package session;
 
-import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
-import "github.com/havoc-io/mutagen/pkg/session/state.proto";
-import "github.com/havoc-io/mutagen/pkg/url/url.proto";
+import "session/configuration.proto";
+import "session/state.proto";
+import "url/url.proto";
 
 message CreateRequest {
     url.URL alpha = 1;

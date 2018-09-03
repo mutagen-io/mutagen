@@ -4,8 +4,8 @@ package session;
 
 import "google/protobuf/timestamp.proto";
 
-import "github.com/havoc-io/mutagen/pkg/session/configuration.proto";
-import "github.com/havoc-io/mutagen/pkg/url/url.proto";
+import "session/configuration.proto";
+import "url/url.proto";
 
 // Version specifies a session version, providing default behavior that can vary
 // without affecting existing sessions.

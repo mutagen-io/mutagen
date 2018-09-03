@@ -19,48 +19,50 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/cmd"
 )
 
+const (
+	// buildDirectoryName is the name of the build directory to create inside
+	// the root of the Mutagen source tree.
+	buildDirectoryName = "build"
+
+	// generatorBuildSubdirectoryName is the name of the build subdirectory
+	// where the Protocol Buffers generator should be built.
+	generatorBuildSubdirectoryName = "generator"
+
+	// pkgDirectoryName is the name of the pkg directory in the Mutagen source
+	// tree.
+	pkgDirectoryName = "pkg"
+
+	// generatorName is the name of the Protocol Buffers generator to use.
+	generatorName = "go"
+
+	// generatorPath is the path to use to build the Protocol Buffers generator.
+	generatorPath = "github.com/golang/protobuf/protoc-gen-go"
+)
+
 var subdirectories = []struct {
 	path  string
 	files []string
 }{
+	{"daemon/service", []string{"daemon.proto"}},
+	{"filesystem", []string{"watch.proto"}},
+	{"prompt/service", []string{"prompt.proto"}},
+	{"rsync", []string{"receive.proto"}},
+	{"session", []string{"configuration.proto", "session.proto", "state.proto"}},
+	{"session/service", []string{"session.proto"}},
 	{
-		"github.com/havoc-io/mutagen/pkg/daemon/service",
-		[]string{"daemon.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/filesystem",
-		[]string{"watch.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/prompt/service",
-		[]string{"prompt.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/rsync",
-		[]string{"receive.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/session",
-		[]string{"configuration.proto", "session.proto", "state.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/session/service",
-		[]string{"session.proto"},
-	},
-	{
-		"github.com/havoc-io/mutagen/pkg/sync",
+		"sync",
 		[]string{
 			"archive.proto",
 			"cache.proto",
@@ -72,31 +74,66 @@ var subdirectories = []struct {
 			"symlink.proto",
 		},
 	},
-	{
-		"github.com/havoc-io/mutagen/pkg/url",
-		[]string{"url.proto"},
-	},
+	{"url", []string{"url.proto"}},
+}
+
+// mutagenSourceDirectoryPath computes the path to the Mutagen source directory.
+func mutagenSourceDirectoryPath() (string, error) {
+	// Compute the path to this script.
+	_, scriptPath, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", errors.New("unable to compute script path")
+	}
+
+	// Compute the path to the Mutagen source directory.
+	return filepath.Dir(filepath.Dir(scriptPath)), nil
 }
 
 func main() {
-	// Create a temporary directory in which we can build the generator and
-	// defer its removal.
-	generatorPath, err := ioutil.TempDir("", "mutagen_generate")
+	// Compute the path to the Mutagen source directory.
+	mutagenSourcePath, err := mutagenSourceDirectoryPath()
 	if err != nil {
-		cmd.Fatal(errors.New("unable to create directory for generator build"))
+		cmd.Fatal(errors.Wrap(err, "unable to compute Mutagen source path"))
 	}
-	defer os.RemoveAll(generatorPath)
+
+	// Verify that we're running inside the Mutagen source directory, otherwise
+	// we can't rely on Go modules working.
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to compute working directory"))
+	}
+	workingDirectoryRelativePath, err := filepath.Rel(mutagenSourcePath, workingDirectory)
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to determine working directory relative path"))
+	}
+	if strings.Contains(workingDirectoryRelativePath, "..") {
+		cmd.Fatal(errors.Wrap(err, "build script run outside Mutagen source tree"))
+	}
+
+	// Compute the path to the build directory and ensure that it exists.
+	buildPath := filepath.Join(mutagenSourcePath, buildDirectoryName)
+	if err := os.MkdirAll(buildPath, 0700); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create build directory"))
+	}
+
+	// Create the necessary build directory hierarchy.
+	generatorBuildSubdirectoryPath := filepath.Join(buildPath, generatorBuildSubdirectoryName)
+	if err := os.MkdirAll(generatorBuildSubdirectoryPath, 0700); err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create generator build subdirectory"))
+	}
 
 	// Print status.
 	fmt.Println("Building generator")
 
+	// Set up an environment for building the generator which forces the use of
+	// Go modules.
+	generatorBuildEnvironment := os.Environ()
+	generatorBuildEnvironment = append(generatorBuildEnvironment, "GO111MODULE=on")
+
 	// Build the generator.
-	generatorBuild := exec.Command(
-		"go",
-		"build",
-		"github.com/havoc-io/mutagen/vendor/github.com/golang/protobuf/protoc-gen-go",
-	)
-	generatorBuild.Dir = generatorPath
+	generatorBuild := exec.Command("go", "build", generatorPath)
+	generatorBuild.Dir = generatorBuildSubdirectoryPath
+	generatorBuild.Env = generatorBuildEnvironment
 	generatorBuild.Stdin = os.Stdin
 	generatorBuild.Stdout = os.Stdout
 	generatorBuild.Stderr = os.Stderr
@@ -109,26 +146,19 @@ func main() {
 	if existingPath := os.Getenv("PATH"); existingPath != "" {
 		protocEnvironment = append(protocEnvironment, fmt.Sprintf(
 			"PATH=%s%s%s",
-			generatorPath,
+			generatorBuildSubdirectoryPath,
 			string(os.PathListSeparator),
 			existingPath,
 		))
 	} else {
 		protocEnvironment = append(protocEnvironment, fmt.Sprintf(
 			"PATH=%s",
-			generatorPath,
+			generatorBuildSubdirectoryPath,
 		))
 	}
 
-	// Compute the path to the Mutagen source directory.
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		cmd.Fatal(errors.New("unable to compute script path"))
-	}
-	mutagenSource := filepath.Dir(filepath.Dir(file))
-
-	// Compute the $GOPATH/src directory.
-	gopathSrc := filepath.Dir(filepath.Dir(filepath.Dir(mutagenSource)))
+	// Compute the path to the Mutagen pkg directory.
+	pkgDirectoryPath := filepath.Join(mutagenSourcePath, pkgDirectoryName)
 
 	// Process subdirectories.
 	for _, s := range subdirectories {
@@ -137,13 +167,13 @@ func main() {
 
 		// Execute the Protocol Buffers compiler using the Go code generator.
 		var arguments []string
-		arguments = append(arguments, fmt.Sprintf("-I%s", gopathSrc))
-		arguments = append(arguments, fmt.Sprintf("--go_out=plugins=grpc:."))
+		arguments = append(arguments, fmt.Sprintf("-I%s", pkgDirectoryPath))
+		arguments = append(arguments, fmt.Sprintf("--%s_out=plugins=grpc:.", generatorName))
 		for _, f := range s.files {
 			arguments = append(arguments, path.Join(s.path, f))
 		}
 		protoc := exec.Command("protoc", arguments...)
-		protoc.Dir = gopathSrc
+		protoc.Dir = pkgDirectoryPath
 		protoc.Env = protocEnvironment
 		protoc.Stdin = os.Stdin
 		protoc.Stdout = os.Stdout

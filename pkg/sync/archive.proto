@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sync;
 
-import "github.com/havoc-io/mutagen/pkg/sync/entry.proto";
+import "sync/entry.proto";
 
 // Archive is a wrapper around Entry that allows identification of non-existent
 // roots when serializing. In-memory, a nil-Entry (that arrives without any

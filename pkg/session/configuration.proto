@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package session;
 
-import "github.com/havoc-io/mutagen/pkg/filesystem/watch.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/ignore.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/symlink.proto";
+import "filesystem/watch.proto";
+import "sync/ignore.proto";
+import "sync/symlink.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration

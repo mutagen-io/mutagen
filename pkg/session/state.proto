@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package session;
 
-import "github.com/havoc-io/mutagen/pkg/rsync/receive.proto";
-import "github.com/havoc-io/mutagen/pkg/session/session.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/conflict.proto";
-import "github.com/havoc-io/mutagen/pkg/sync/problem.proto";
+import "rsync/receive.proto";
+import "session/session.proto";
+import "sync/conflict.proto";
+import "sync/problem.proto";
 
 enum Status {
     Disconnected = 0;
