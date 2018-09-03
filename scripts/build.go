@@ -117,8 +117,12 @@ func (t Target) goEnv() ([]string, error) {
 	// internal linker automatically defaults to a relatively liberal (old)
 	// value for this flag, but since we're using an external linker, it
 	// defaults to the current SDK version.
-	result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
-	result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+	// TODO: If we ever decide to build for iOS, we should set the corresponding
+	// flags for that platform.
+	if t.GOOS == "darwin" && t.GOARCH == "amd64" {
+		result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+		result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+	}
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
 	// We don't need to unset any existing GOARM variables since they simply
