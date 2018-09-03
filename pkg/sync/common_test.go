@@ -140,8 +140,8 @@ var testDirectory1Entry = &Entry{
 var testDirectory1ContentMap = map[string][]byte{
 	"directory/subfile":            testFile3Contents,
 	"second directory/subfile.exe": testFile3Contents,
-	"file":            testFile1Contents,
-	"executable file": testFile2Contents,
+	"file":                         testFile1Contents,
+	"executable file":              testFile2Contents,
 }
 
 var testDirectory2Entry = &Entry{

@@ -1,15 +1,12 @@
 package daemon
 
 import (
-	"io/ioutil"
-	"os"
+	"bytes"
 	"os/exec"
-	"path"
-	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
 const (
@@ -17,9 +14,11 @@ const (
 	// concurrent lock tests.
 	lockTestExecutablePackage = "github.com/havoc-io/mutagen/pkg/daemon/locktest"
 
-	// lockTestFailExitCode is a sentinel exit code used to indicate lock
-	// acquisition failure in the test executable.
-	lockTestFailExitCode = 64
+	// lockTestFailMessage is a sentinel message used to indicate lock
+	// acquisition failure in the test executable. We could use an exit code,
+	// but "go run" doesn't forward them and different systems might handle them
+	// differently.
+	lockTestFailMessage = "Mutagen lock acquisition failed"
 )
 
 // TestLockCycle tests an acquisition/release cycle of the daemon lock.
@@ -39,19 +38,10 @@ func TestLockCycle(t *testing.T) {
 // TestLockDuplicateFail tests that an additional attempt to acquire the daemon
 // lock by a separate process will fail.
 func TestLockDuplicateFail(t *testing.T) {
-	// Create a temporary directory in which to build the lock test executable
-	// and defer its removal.
-	buildDirectory, err := ioutil.TempDir("", "mutagen_daemon_lock_test")
+	// Compute the path to the Mutagen source tree.
+	mutagenSourcePath, err := mutagen.SourceTreePath()
 	if err != nil {
-		t.Fatal("unable to create temporary build directory:", err)
-	}
-	defer os.RemoveAll(buildDirectory)
-
-	// Build the test executable.
-	buildCommand := exec.Command("go", "build", lockTestExecutablePackage)
-	buildCommand.Dir = buildDirectory
-	if err := buildCommand.Run(); err != nil {
-		t.Fatal("unable to build test command:", err)
+		t.Fatal("unable to compute path to Mutagen source tree:", err)
 	}
 
 	// Acquire the daemon lock and defer its release.
@@ -61,20 +51,15 @@ func TestLockDuplicateFail(t *testing.T) {
 	}
 	defer lock.Unlock()
 
-	// Compute the full path to the test executable.
-	executablePath := filepath.Join(
-		buildDirectory,
-		process.ExecutableName(path.Base(lockTestExecutablePackage), runtime.GOOS),
-	)
-
 	// Attempt to run the test executable and ensure that it fails with the
 	// proper error code (indicating failed lock acquisition).
-	testCommand := exec.Command(executablePath)
+	testCommand := exec.Command("go", "run", lockTestExecutablePackage)
+	testCommand.Dir = mutagenSourcePath
+	errorBuffer := &bytes.Buffer{}
+	testCommand.Stderr = errorBuffer
 	if err := testCommand.Run(); err == nil {
 		t.Error("test command succeeded unexpectedly")
-	} else if code, codeErr := process.ExitCodeForError(err); codeErr != nil {
-		t.Error("unable to extract exit code from error:", codeErr)
-	} else if code != lockTestFailExitCode {
-		t.Error("unexpected exit code from test process:", code)
+	} else if !strings.Contains(errorBuffer.String(), lockTestFailMessage) {
+		t.Error("test command error output did not contain failure message")
 	}
 }

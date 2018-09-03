@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
@@ -49,9 +50,6 @@ const (
 	// cliBaseName is the name of the Mutagen binary without any path or
 	// extension.
 	cliBaseName = "mutagen"
-	// agentBundleBaseName is the name of the resulting Mutagen agent binary
-	// bundle.
-	agentBundleBaseName = "mutagen-agents.tar.gz"
 
 	// minimumMacOSVersion is the minimum version of macOS that we'll support
 	// (currently pegged to the oldest version of macOS that Go supports).
@@ -66,18 +64,6 @@ const (
 	// https://github.com/golang/go/wiki/GoArm.
 	minimumARMSupport = "5"
 )
-
-// mutagenSourceTreePath computes the path to the Mutagen source directory.
-func mutagenSourceTreePath() (string, error) {
-	// Compute the path to this script.
-	_, scriptPath, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("unable to compute script path")
-	}
-
-	// Compute the path to the Mutagen source directory.
-	return filepath.Dir(filepath.Dir(scriptPath)), nil
-}
 
 // Target specifies a GOOS/GOARCH combination.
 type Target struct {
@@ -393,7 +379,7 @@ func main() {
 	}
 
 	// Compute the path to the Mutagen source directory.
-	mutagenSourcePath, err := mutagenSourceTreePath()
+	mutagenSourcePath, err := mutagen.SourceTreePath()
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to compute Mutagen source tree path"))
 	}
@@ -436,7 +422,7 @@ func main() {
 
 	// Build agent binaries and the combined agent bundle.
 	log.Println("Building agent bundle...")
-	agentBundlePath := filepath.Join(buildPath, agentBundleBaseName)
+	agentBundlePath := filepath.Join(buildPath, agent.BundleName)
 	agentBundle, err := NewArchiveBuilder(agentBundlePath)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create agent archive builder"))
