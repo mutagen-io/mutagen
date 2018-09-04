@@ -8,8 +8,9 @@ import (
 )
 
 // Transmit performs streaming transmission of files (in rsync deltafied form)
-// to the specified receiver.
-func Transmit(root string, paths []string, signatures []Signature, receiver Receiver) error {
+// to the specified receiver. It is the responsibility of the caller to ensure
+// that the provided signatures are valid by invoking their EnsureValid method.
+func Transmit(root string, paths []string, signatures []*Signature, receiver Receiver) error {
 	// Ensure that the receiver is finalized when we're done.
 	defer receiver.finalize()
 
@@ -21,6 +22,9 @@ func Transmit(root string, paths []string, signatures []Signature, receiver Rece
 	// Create an rsync engine.
 	engine := NewEngine()
 
+	// Create a transmission object that we can re-use to avoid allocating.
+	transmission := &Transmission{}
+
 	// Handle the requested files.
 	for i, p := range paths {
 		// Open the file. If this fails, it's a non-terminal error, but we
@@ -28,12 +32,12 @@ func Transmit(root string, paths []string, signatures []Signature, receiver Rece
 		// a terminal error.
 		file, err := os.Open(filepath.Join(root, p))
 		if err != nil {
-			message := Transmission{
+			*transmission = Transmission{
 				Done:  true,
 				Error: errors.Wrap(err, "unable to open file").Error(),
 			}
-			if err = receiver.Receive(message); err != nil {
-				return errors.Wrap(err, "unable to send error message")
+			if err = receiver.Receive(transmission); err != nil {
+				return errors.Wrap(err, "unable to send error transmission")
 			}
 			continue
 		}
@@ -43,8 +47,9 @@ func Transmit(root string, paths []string, signatures []Signature, receiver Rece
 		// as it's returned non-nil, the transmit function won't be called
 		// again.
 		var transmitError error
-		transmit := func(o Operation) error {
-			transmitError = receiver.Receive(Transmission{Operation: o})
+		transmit := func(o *Operation) error {
+			*transmission = Transmission{Operation: o}
+			transmitError = receiver.Receive(transmission)
 			return transmitError
 		}
 
@@ -62,11 +67,11 @@ func Transmit(root string, paths []string, signatures []Signature, receiver Rece
 		// Inform the client the operation stream for this file is complete. Any
 		// internal (non-transmission) errors are non-terminal but should be
 		// reported to the receiver.
-		message := Transmission{Done: true}
+		*transmission = Transmission{Done: true}
 		if err != nil {
-			message.Error = errors.Wrap(err, "engine error").Error()
+			transmission.Error = errors.Wrap(err, "engine error").Error()
 		}
-		if err = receiver.Receive(message); err != nil {
+		if err = receiver.Receive(transmission); err != nil {
 			return errors.Wrap(err, "unable to send done message")
 		}
 	}

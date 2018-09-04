@@ -4,39 +4,43 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha1"
+	"hash"
 	"io"
 	"math"
 
 	"github.com/pkg/errors"
 )
 
-// BlockHash represents a pair of weak and strong hash for a base block.
-type BlockHash struct {
-	// Weak is the weak hash for the block.
-	Weak uint32
-	// Strong is the strong hash for the block.
-	Strong [sha1.Size]byte
+// EnsureValid verifies that block hash invariants are respected.
+func (h *BlockHash) EnsureValid() error {
+	// A nil block hash is not valid.
+	if h == nil {
+		return errors.New("nil block hash")
+	}
+
+	// Ensure that the strong signature is valid.
+	if len(h.Strong) == 0 {
+		return errors.New("empty strong signature")
+	}
+
+	// Success.
+	return nil
 }
 
-// Signature represents an rsync base signature. It encodes the block size used
-// to generate the signature, the size of the last block in the signature (which
-// may be smaller than a full block), and the hashes for the blocks of the file.
-type Signature struct {
-	// BlockSize is the block size used to compute the signature.
-	BlockSize uint64
-	// LastBlockSize is the size of the last block in the signature.
-	LastBlockSize uint64
-	// Hashes are the hashes of the blocks in the base.
-	Hashes []BlockHash
-}
+// EnsureValid verifies that signature invariants are respected.
+func (s *Signature) EnsureValid() error {
+	// A nil signature is not valid.
+	if s == nil {
+		return errors.New("nil signature")
+	}
 
-// isZeroValue indicates whether or not the Operation has its zero value.
-func (s Signature) isZeroValue() bool {
-	return s.BlockSize == 0 && s.LastBlockSize == 0 && len(s.Hashes) == 0
-}
+	// Ensure that all block hashes are valid.
+	for _, h := range s.Hashes {
+		if err := h.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid block hash")
+		}
+	}
 
-// ensureValid verifies that signature invariants are respected.
-func (s Signature) ensureValid() error {
 	// If the block size is 0, then the last block size should also be 0 and
 	// there shouldn't be any hashes.
 	if s.BlockSize == 0 {
@@ -66,28 +70,22 @@ func (s Signature) ensureValid() error {
 	return nil
 }
 
-// Operation represents an rsync operation, which can be either a data operation
-// or a block operation.
-type Operation struct {
-	// Data contains data for data operations. If its length is 0, the operation
-	// is assumed to be a non-data operation. Operation transmitters and
-	// receivers may thus treat a length-0 buffer as semantically equivalent to
-	// a nil buffer and utilize that fact to efficiently re-use buffer capacity,
-	// e.g. by truncating the buffer and doing a gob receive into it.
-	Data []byte
-	// Start is the 0-indexed starting block for block operations.
-	Start uint64
-	// Count is the number of blocks for block operations.
-	Count uint64
+// isEmpty return true if the signature represents an empty file.
+func (s *Signature) isEmpty() bool {
+	// In theory, we might also want to test that LastBlockSize == 0 and that
+	// there aren't any hashes, but so long as the invariants of signature are
+	// maintained, this check if sufficient.
+	return s.BlockSize == 0
 }
 
-// isZeroValue indicates whether or not the Operation has its zero value.
-func (o Operation) isZeroValue() bool {
-	return len(o.Data) == 0 && o.Start == 0 && o.Count == 0
-}
+// EnsureValid verifies that operation invariants are respected.
+func (o *Operation) EnsureValid() error {
+	// A nil operation is not valid.
+	if o == nil {
+		return errors.New("nil operation")
+	}
 
-// ensureValid verifies that operation invariants are respected.
-func (o Operation) ensureValid() error {
+	// Ensure that the operation parameters are valid.
 	if len(o.Data) > 0 {
 		if o.Start != 0 {
 			return errors.New("data operation with non-0 block start index")
@@ -97,7 +95,26 @@ func (o Operation) ensureValid() error {
 	} else if o.Count == 0 {
 		return errors.New("block operation with 0 block count")
 	}
+
+	// Success.
 	return nil
+}
+
+// Copy creates a deep copy of an operation.
+func (o *Operation) Copy() *Operation {
+	// Make a copy of the operation's data buffer if necessary.
+	var data []byte
+	if len(o.Data) > 0 {
+		data = make([]byte, len(o.Data))
+		copy(data, o.Data)
+	}
+
+	// Create the copy.
+	return &Operation{
+		Data:  data,
+		Start: o.Start,
+		Count: o.Count,
+	}
 }
 
 const (
@@ -118,9 +135,9 @@ const (
 	// permitted per operation. The optimal value for this isn't at all
 	// correlated with block size - it's just what's reasonable to hold
 	// in-memory and pass over the wire in a single transmission. This value
-	// will be used if a zero value is passed into Engine.Deltafy for the
-	// maxDataOpSize parameter.
-	DefaultMaximumDataOperationSize = 1 << 16
+	// will be used if a zero value is passed into Engine.Deltafy or
+	// Engine.DeltafyBytes for the maxDataOpSize parameter.
+	DefaultMaximumDataOperationSize = 1 << 14
 )
 
 // OptimalBlockSizeForBaseLength uses a simpler heuristic to choose a block
@@ -165,11 +182,11 @@ func OptimalBlockSizeForBase(base io.Seeker) (uint64, error) {
 	}
 }
 
-// OperationTransmitter transmits an operation. Operation data buffers are
-// re-used between calls to the transmitter, so the transmitter should not
-// return until it has either transmitted the data buffer (if any) or copied it
+// OperationTransmitter transmits an operation. Operation objects and their data
+// buffers are re-used between calls to the transmitter, so the transmitter
+// should not return until it has either transmitted the operation or copied it
 // for later transmission.
-type OperationTransmitter func(Operation) error
+type OperationTransmitter func(*Operation) error
 
 // Engine provides rsync functionality without any notion of transport. It is
 // designed to be re-used to avoid heavy buffer allocation.
@@ -177,15 +194,34 @@ type Engine struct {
 	// buffer is a re-usable buffer that will be used for reading data and
 	// setting up operations.
 	buffer []byte
+	// strongHasher is the strong hash function to use for the engine.
+	strongHasher hash.Hash
+	// strongHashBuffer is a re-usable buffer that can be used by methods to
+	// receive digests.
+	strongHashBuffer []byte
 	// targetReader is a re-usable bufio.Reader that will be used for delta
 	// creation operations.
 	targetReader *bufio.Reader
+	// operation is a re-usable operation object used for transmissions to avoid
+	// allocations.
+	operation *Operation
 }
 
 // NewEngine creates a new rsync engine.
 func NewEngine() *Engine {
+	// Create the strong hash function.
+	// TODO: We might want to allow users to specify other strong hash functions
+	// for the engine to use (e.g. BLAKE2 functions), but for now we just use
+	// SHA-1 since it's a good balance of speed and robustness for rsync
+	// purposes.
+	strongHasher := sha1.New()
+
+	// Create the engine.
 	return &Engine{
-		targetReader: bufio.NewReader(nil),
+		strongHasher:     strongHasher,
+		strongHashBuffer: make([]byte, strongHasher.Size()),
+		targetReader:     bufio.NewReader(nil),
+		operation:        &Operation{},
 	}
 }
 
@@ -249,16 +285,32 @@ func (e *Engine) rollWeakHash(r1, r2 uint32, out, in byte, blockSize uint64) (ui
 	return result, r1, r2
 }
 
-// strongHash computes a slow but strong hash for a block of data.
-func (e *Engine) strongHash(data []byte) [sha1.Size]byte {
-	return sha1.Sum(data)
+// strongHash computes a slow but strong hash for a block of data. If allocate
+// is true, then a new byte slice will be allocated to receive the digest,
+// otherwise the engine's internal digest buffer will be used, but then the
+// digest will only be valid until the next call to strongHash.
+func (e *Engine) strongHash(data []byte, allocate bool) []byte {
+	// Reset the hasher.
+	e.strongHasher.Reset()
+
+	// Digest the data. The Hash interface guarantees that writes succeed.
+	e.strongHasher.Write(data)
+
+	// Compute the output location.
+	var output []byte
+	if !allocate {
+		output = e.strongHashBuffer[:0]
+	}
+
+	// Compute the digest.
+	return e.strongHasher.Sum(output)
 }
 
 // Signature computes the signature for a base stream. If the provided block
 // size is 0, this method will attempt to compute the optimal block size (which
 // requires that base implement io.Seeker), and failing that will fall back to a
 // default block size.
-func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) {
+func (e *Engine) Signature(base io.Reader, blockSize uint64) (*Signature, error) {
 	// Choose a block size if none is specified. If the base also implements
 	// io.Seeker (which most will since they need to for Patch), then use the
 	// optimal block size, otherwise use the default.
@@ -275,7 +327,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) 
 	}
 
 	// Create the result.
-	result := Signature{
+	result := &Signature{
 		BlockSize: blockSize,
 	}
 
@@ -299,7 +351,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) 
 			result.LastBlockSize = uint64(n)
 			eof = true
 		} else if err != nil {
-			return Signature{}, errors.Wrap(err, "unable to read data block")
+			return nil, errors.Wrap(err, "unable to read data block")
 		}
 
 		// Compute hashes for the the block that was read. For short blocks, we
@@ -308,10 +360,13 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) 
 		// that matters is that we keep consistency when we compute the short
 		// block weak hash when searching in Deltafy.
 		weak, _, _ := e.weakHash(buffer[:n], blockSize)
-		strong := e.strongHash(buffer[:n])
+		strong := e.strongHash(buffer[:n], true)
 
 		// Add the block hash.
-		result.Hashes = append(result.Hashes, BlockHash{weak, strong})
+		result.Hashes = append(result.Hashes, &BlockHash{
+			Weak:   weak,
+			Strong: strong,
+		})
 	}
 
 	// If there are no hashes, then clear out the block sizes.
@@ -325,7 +380,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (Signature, error) 
 }
 
 // BytesSignature computes the signature for a byte slice.
-func (e *Engine) BytesSignature(base []byte, blockSize uint64) Signature {
+func (e *Engine) BytesSignature(base []byte, blockSize uint64) *Signature {
 	// Perform the signature and watch for errors (which shouldn't be able to
 	// occur in-memory).
 	result, err := e.Signature(bytes.NewReader(base), blockSize)
@@ -353,6 +408,31 @@ func min(a, b uint64) uint64 {
 	return b
 }
 
+// transmitData transmits a data operation using the engine's internal operation
+// object.
+func (e *Engine) transmitData(data []byte, transmit OperationTransmitter) error {
+	// Set the operation parameters.
+	*e.operation = Operation{
+		Data: data,
+	}
+
+	// Transmit.
+	return transmit(e.operation)
+}
+
+// transmitBlock transmits a block operation using the engine's internal
+// operation object.
+func (e *Engine) transmitBlock(start, count uint64, transmit OperationTransmitter) error {
+	// Set the operation parameters.
+	*e.operation = Operation{
+		Start: start,
+		Count: count,
+	}
+
+	// Transmit.
+	return transmit(e.operation)
+}
+
 // chunkAndTransmitAll is a fast-path routine for simply transmitting all data
 // in a target stream. This is used when there are no blocks to match because
 // the base stream is empty.
@@ -370,13 +450,13 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 		if n, err := io.ReadFull(target, buffer); err == io.EOF {
 			return nil
 		} else if err == io.ErrUnexpectedEOF {
-			if err = transmit(Operation{Data: buffer[:n]}); err != nil {
+			if err = e.transmitData(buffer[:n], transmit); err != nil {
 				return errors.Wrap(err, "unable to transmit data operation")
 			}
 			return nil
 		} else if err != nil {
 			return errors.Wrap(err, "unable to read target")
-		} else if err = transmit(Operation{Data: buffer}); err != nil {
+		} else if err = e.transmitData(buffer, transmit); err != nil {
 			return errors.Wrap(err, "unable to transmit data operation")
 		}
 	}
@@ -387,16 +467,14 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 // operations to the provided transmission function. The internal engine buffer
 // will be resized to the sum of the maximum data operation size plus the block
 // size, and retained for the lifetime of the engine, so a reasonable value
-// should be provided. The data buffer passed to the transmission function is
-// reused, so the transmission function should transmit or make a copy of the
-// data before returning.
-func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
-	// Verify that the signature is sane. We don't control its value, and if its
-	// invariants are broken it can cause this method to behave strangely.
-	if err := base.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid signature")
-	}
-
+// for the maximum data operation size should be provided. For performance
+// reasons, this method does not validate that the provided signature satisfies
+// expected invariants. It is the responsibility of the caller to verify that
+// the signature is valid by calling its EnsureValid method. This is not
+// necessary for signatures generated in the same process, but should be done
+// for signatures received from untrusted locations (e.g. over the network). An
+// invalid signature can result in undefined behavior.
+func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
 	// Verify that the maximum data operation size is sane.
 	if maxDataOpSize == 0 {
 		maxDataOpSize = DefaultMaximumDataOperationSize
@@ -417,7 +495,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 			if coalescedStart+coalescedCount == index {
 				coalescedCount += 1
 				return nil
-			} else if err := transmit(Operation{Start: coalescedStart, Count: coalescedCount}); err != nil {
+			} else if err := e.transmitBlock(coalescedStart, coalescedCount, transmit); err != nil {
 				return nil
 			}
 		}
@@ -427,7 +505,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	}
 	sendData := func(data []byte) error {
 		if len(data) > 0 && coalescedCount > 0 {
-			if err := transmit(Operation{Start: coalescedStart, Count: coalescedCount}); err != nil {
+			if err := e.transmitBlock(coalescedStart, coalescedCount, transmit); err != nil {
 				return err
 			}
 			coalescedStart = 0
@@ -435,7 +513,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 		}
 		for len(data) > 0 {
 			sendSize := min(uint64(len(data)), maxDataOpSize)
-			if err := transmit(Operation{Data: data[:sendSize]}); err != nil {
+			if err := e.transmitData(data[:sendSize], transmit); err != nil {
 				return err
 			}
 			data = data[sendSize:]
@@ -480,7 +558,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	hashes := base.Hashes
 	haveShortLastBlock := false
 	var lastBlockIndex uint64
-	var shortLastBlock BlockHash
+	var shortLastBlock *BlockHash
 	if base.LastBlockSize != base.BlockSize {
 		haveShortLastBlock = true
 		lastBlockIndex = uint64(len(hashes) - 1)
@@ -557,9 +635,9 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 		match := false
 		var matchIndex uint64
 		if len(potentials) > 0 {
-			strong := e.strongHash(buffer[occupancy-base.BlockSize : occupancy])
+			strong := e.strongHash(buffer[occupancy-base.BlockSize:occupancy], false)
 			for _, p := range potentials {
-				if base.Hashes[p].Strong == strong {
+				if bytes.Equal(base.Hashes[p].Strong, strong) {
 					match = true
 					matchIndex = p
 					break
@@ -595,7 +673,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 		// doesn't matter - all that matters is that we keep consistency when we
 		// compute the short block weak hash in Signature.
 		if w, _, _ := e.weakHash(potentialLastBlockMatch, base.BlockSize); w == shortLastBlock.Weak {
-			if e.strongHash(potentialLastBlockMatch) == shortLastBlock.Strong {
+			if bytes.Equal(e.strongHash(potentialLastBlockMatch, false), shortLastBlock.Strong) {
 				if err := sendData(buffer[:occupancy-base.LastBlockSize]); err != nil {
 					return errors.Wrap(err, "unable to transmit data")
 				} else if err = sendBlock(lastBlockIndex); err != nil {
@@ -614,7 +692,7 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 	// Send any final pending coalesced operation. This can't be done as a defer
 	// because we need to watch for errors.
 	if coalescedCount > 0 {
-		if err := transmit(Operation{Start: coalescedStart, Count: coalescedCount}); err != nil {
+		if err := e.transmitBlock(coalescedStart, coalescedCount, transmit); err != nil {
 			return errors.Wrap(err, "unable to send final block operation")
 		}
 	}
@@ -625,25 +703,23 @@ func (e *Engine) Deltafy(target io.Reader, base Signature, maxDataOpSize uint64,
 
 // DeltafyBytes computes delta operations for a byte slice. Unlike the streaming
 // Deltafy method, it returns a slice of operations, which should be reasonable
-// since the target data can already fit into memory.
-func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint64) []Operation {
+// since the target data can already fit into memory. The internal engine buffer
+// will be resized to the sum of the maximum data operation size plus the block
+// size, and retained for the lifetime of the engine, so a reasonable value
+// for the maximum data operation size should be provided. For performance
+// reasons, this method does not validate that the provided signature satisfies
+// expected invariants. It is the responsibility of the caller to verify that
+// the signature is valid by calling its EnsureValid method. This is not
+// necessary for signatures generated in the same process, but should be done
+// for signatures received from untrusted locations (e.g. over the network). An
+// invalid signature can result in undefined behavior.
+func (e *Engine) DeltafyBytes(target []byte, base *Signature, maxDataOpSize uint64) []*Operation {
 	// Create an empty result.
-	var delta []Operation
+	var delta []*Operation
 
-	// Create an operation transmitter to populate the result. Note that we copy
-	// any operation data buffers because they are re-used.
-	transmit := func(operation Operation) error {
-		// Copy the operation's data buffer if necessary.
-		if len(operation.Data) > 0 {
-			dataCopy := make([]byte, len(operation.Data))
-			copy(dataCopy, operation.Data)
-			operation.Data = dataCopy
-		}
-
-		// Record the operation.
-		delta = append(delta, operation)
-
-		// Success.
+	// Create an operation transmitter to populate the result.
+	transmit := func(o *Operation) error {
+		delta = append(delta, o.Copy())
 		return nil
 	}
 
@@ -661,20 +737,15 @@ func (e *Engine) DeltafyBytes(target []byte, base Signature, maxDataOpSize uint6
 }
 
 // Patch applies a single operation against a base stream to reconstitute the
-// target into the destination stream.
-func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Signature, operation Operation) error {
-	// Verify that the signature is sane. The caller probably does control its
-	// value (i.e. it's most likely not coming from the network), but if its
-	// invariants are broken it can cause this method to behave strangely.
-	if err := signature.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid signature")
-	}
-
-	// Verify that the operation is sane.
-	if err := operation.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid operation")
-	}
-
+// target into the destination stream. For performance reasons, this method does
+// not validate that the provided signature and operation satisfy expected
+// invariants. It is the responsibility of the caller to verify that the
+// signature and operation are valid by calling their respective EnsureValid
+// methods. This is not necessary for signatures and operations generated in the
+// same process, but should be done for signatures and operations received from
+// untrusted locations (e.g. over the network). An invalid signature or
+// operation can result in undefined behavior.
+func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature *Signature, operation *Operation) error {
 	// Handle the operation based on type.
 	if len(operation.Data) > 0 {
 		// Write data operations directly to the destination.
@@ -715,8 +786,15 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature Sign
 }
 
 // Patch applies a series of operations against a base byte slice to
-// reconstitute the target byte slice.
-func (e *Engine) PatchBytes(base []byte, signature Signature, delta []Operation) ([]byte, error) {
+// reconstitute the target byte slice. For performance reasons, this method does
+// not validate that the provided signature and operation satisfy expected
+// invariants. It is the responsibility of the caller to verify that the
+// signature and operation are valid by calling their respective EnsureValid
+// methods. This is not necessary for signatures and operations generated in the
+// same process, but should be done for signatures and operations received from
+// untrusted locations (e.g. over the network). An invalid signature or
+// operation can result in undefined behavior.
+func (e *Engine) PatchBytes(base []byte, signature *Signature, delta []*Operation) ([]byte, error) {
 	// Wrap up the base bytes in a reader.
 	baseReader := bytes.NewReader(base)
 

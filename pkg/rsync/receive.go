@@ -33,7 +33,7 @@ func (s *ReceiverStatus) EnsureValid() error {
 // in conjunction with the Transmit function.
 type Receiver interface {
 	// Receive processes a single message in a transmission stream.
-	Receive(message Transmission) error
+	Receive(*Transmission) error
 	// finalize tells the receiver to abort reception (if still receiving) and
 	// close all internal resources. If called after reception is complete, it
 	// should be a no-op. Calling Receive or finalize after finalize results in
@@ -80,7 +80,7 @@ type receiver struct {
 	paths []string
 	// signatures is the list of signatures corresponding to the bases for these
 	// paths.
-	signatures []Signature
+	signatures []*Signature
 	// sinker is the Sinker to use for staging files.
 	sinker Sinker
 	// engine is the rsync Engine.
@@ -102,8 +102,10 @@ type receiver struct {
 	target io.WriteCloser
 }
 
-// NewReceiver creates a new receiver that stores files on disk.
-func NewReceiver(root string, paths []string, signatures []Signature, sinker Sinker) (Receiver, error) {
+// NewReceiver creates a new receiver that stores files on disk. It is the
+// responsibility of the caller to ensure that the provided signatures are valid
+// by invoking their EnsureValid method.
+func NewReceiver(root string, paths []string, signatures []*Signature, sinker Sinker) (Receiver, error) {
 	// Ensure that the receiving request is sane.
 	if len(paths) != len(signatures) {
 		return nil, errors.New("number of paths does not match number of signatures")
@@ -121,7 +123,7 @@ func NewReceiver(root string, paths []string, signatures []Signature, sinker Sin
 }
 
 // Receive processes incoming messages by storing files to disk.
-func (r *receiver) Receive(message Transmission) error {
+func (r *receiver) Receive(transmission *Transmission) error {
 	// Check that we haven't been finalized.
 	if r.finalized {
 		panic("receive called on finalized receiver")
@@ -133,15 +135,15 @@ func (r *receiver) Receive(message Transmission) error {
 		return errors.New("unexpected file transmission")
 	}
 
-	// Check if we need to skip this message due to burning.
+	// Check if we need to skip this transmission due to burning.
 	skip := r.burning
 
-	// Check if this is a done message.
-	if message.Done {
-		// TODO: The message may have error information here. Should we expose
-		// that to whatever is doing the file sinking? It doesn't matter for our
-		// application since we have independent hash validation, but it might
-		// be useful for some cases.
+	// Check if this is a done transmission.
+	if transmission.Done {
+		// TODO: The transmission may have error information here. Should we
+		// expose that to whatever is doing the file sinking? It doesn't matter
+		// for our application since we have independent hash validation, but it
+		// might be useful for some cases.
 
 		// Close out base and target if they're open, because we're done with
 		// this file. If they're not open, and we're not burning, it means that
@@ -166,12 +168,12 @@ func (r *receiver) Receive(message Transmission) error {
 		// Reset burning status.
 		r.burning = false
 
-		// Skip the message (since it doesn't contain any operation).
+		// Skip the transmission (since it doesn't contain any operation).
 		skip = true
 	}
 
-	// Skip the message if necessary, either due to burning or the fact that
-	// it's a done message (or both).
+	// Skip the transmission if necessary, either due to burning or the fact
+	// that it's a done transmission (or both).
 	if skip {
 		return nil
 	}
@@ -189,7 +191,7 @@ func (r *receiver) Receive(message Transmission) error {
 		// empty base. If it's not, then we need to try to open the base. If
 		// that fails, then we need to burn this file stream, but it's not a
 		// terminal error.
-		if signature.isZeroValue() {
+		if signature.isEmpty() {
 			r.base = newEmptyReadSeekCloser()
 		} else if base, err := os.Open(filepath.Join(r.root, path)); err != nil {
 			r.burning = true
@@ -212,7 +214,7 @@ func (r *receiver) Receive(message Transmission) error {
 
 	// Apply the operation. If that fails, then we need to close out the base,
 	// target, and burn this file stream, but it's not a terminal error.
-	if err := r.engine.Patch(r.target, r.base, signature, message.Operation); err != nil {
+	if err := r.engine.Patch(r.target, r.base, signature, transmission.Operation); err != nil {
 		r.base.Close()
 		r.base = nil
 		r.target.Close()
@@ -286,9 +288,9 @@ func NewMonitoringReceiver(receiver Receiver, paths []string, monitor Monitor) R
 
 // Receive forwards messages to its underlying receiver and performs status
 // updates by invoking the specified monitor.
-func (r *monitoringReceiver) Receive(message Transmission) error {
-	// Forward the message to the underlying receiver.
-	if err := r.receiver.Receive(message); err != nil {
+func (r *monitoringReceiver) Receive(transmission *Transmission) error {
+	// Forward the transmission to the underlying receiver.
+	if err := r.receiver.Receive(transmission); err != nil {
 		return err
 	}
 
@@ -311,7 +313,7 @@ func (r *monitoringReceiver) Receive(message Transmission) error {
 
 	// If we're at the end of a file stream, update the receive count and ensure
 	// that we send a status update.
-	if message.Done {
+	if transmission.Done {
 		r.received++
 		sendStatusUpdate = true
 	}
@@ -372,9 +374,9 @@ func NewPreemptableReceiver(receiver Receiver, run context.Context) Receiver {
 }
 
 // Receive performs a check for preemption, aborting if the receiver has been
-// preempted. If no preemption has occurred, the message is forwarded to the
-// underlying receiver.
-func (r *preemptableReceiver) Receive(message Transmission) error {
+// preempted. If no preemption has occurred, the transmission is forwarded to
+// the underlying receiver.
+func (r *preemptableReceiver) Receive(transmission *Transmission) error {
 	// Check for preemption in a non-blocking fashion.
 	select {
 	case <-r.run.Done():
@@ -382,8 +384,8 @@ func (r *preemptableReceiver) Receive(message Transmission) error {
 	default:
 	}
 
-	// Forward the message.
-	return r.receiver.Receive(message)
+	// Forward the transmission.
+	return r.receiver.Receive(transmission)
 }
 
 // finalize invokes finalize on the underlying receiver.
@@ -391,14 +393,12 @@ func (r *preemptableReceiver) finalize() {
 	r.receiver.finalize()
 }
 
-// Encoder is the encoding interface used by encoding receivers. It should
-// adhere to gob semantics.
-type Encoder interface {
-	// Encode encodes a value and should adhere to gob semantics. It should not
-	// retain the value across calls because the value's internal buffers will
-	// be re-used.
-	Encode(value interface{}) error
-}
+// Encoder is a function that will encode and transmit a transmission. The
+// provided transmission will never be nil. The transmission passed to the
+// encoder may be re-used and modified, so the encoder should not hold on to the
+// transmission between calls (it should either transmit it or copy it if
+// transmission is going to be delayed).
+type Encoder func(*Transmission) error
 
 // encodingReceiver is a Receiver implementation that encodes messages to an
 // arbitrary encoder.
@@ -418,15 +418,15 @@ func NewEncodingReceiver(encoder Encoder) Receiver {
 	}
 }
 
-// Receive encodes the specified message using the underlying encoder.
-func (r *encodingReceiver) Receive(message Transmission) error {
-	return errors.Wrap(r.encoder.Encode(message), "unable to encode message")
+// Receive encodes the specified transmission using the underlying encoder.
+func (r *encodingReceiver) Receive(transmission *Transmission) error {
+	return errors.Wrap(r.encoder(transmission), "unable to encode transmission")
 }
 
 // finalize is a no-op for encoding receivers, because there is no reliable way
-// to encode a finalization message and finalization exists precisely because of
-// this uncertainty. To compensate for this inability, DecodeToReceiver
-// automatically finalizes the receiver that it's provided.
+// to encode a finalization transmission and finalization exists precisely
+// because of this uncertainty. To compensate for this inability,
+// DecodeToReceiver automatically finalizes the receiver that it's provided.
 func (r *encodingReceiver) finalize() {
 	if r.finalized {
 		panic("receiver finalized multiple times")
@@ -435,12 +435,11 @@ func (r *encodingReceiver) finalize() {
 	}
 }
 
-// Decoder is the decoding interface used by DecodeToReceiver. It should adhere
-// to gob semantics.
-type Decoder interface {
-	// Decode decodes a value and should adhere to gob semantics.
-	Decode(value interface{}) error
-}
+// Decoder decodes a transmission encoded by an encoder. The decoder is
+// responsible for validating that the transmission is valid before returning it
+// by calling its EnsureValid method to verify its invariants. The decoder may
+// re-use the transmission object that it returns across calls.
+type Decoder func() (*Transmission, error)
 
 // DecodeToReceiver decodes messages from the specified Decoder and forwards
 // them to the specified receiver. It must be passed the number of files to be
@@ -455,22 +454,20 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 	for count > 0 {
 		// Loop, decode, and forward until we see a done message.
 		for {
-			// Receive the next message and ensure that it's sane.
-			var message Transmission
-			if err := decoder.Decode(&message); err != nil {
-				return errors.Wrap(err, "unable to decode message")
-			} else if err = message.ensureValid(); err != nil {
-				return errors.Wrap(err, "decoded message invalid")
+			// Receive the next message.
+			transmission, err := decoder()
+			if err != nil {
+				return errors.Wrap(err, "unable to decode transmission")
 			}
 
 			// Forward the message.
-			if err := receiver.Receive(message); err != nil {
+			if err := receiver.Receive(transmission); err != nil {
 				return errors.Wrap(err, "unable to forward message to receiver")
 			}
 
 			// If the message indicates completion, we're done receiving
 			// messages for this file.
-			if message.Done {
+			if transmission.Done {
 				break
 			}
 		}
