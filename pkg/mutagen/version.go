@@ -14,7 +14,7 @@ const (
 	// VersionMinor represents the current minor version of Mutagen.
 	VersionMinor = 6
 	// VersionPatch represents the current patch version of Mutagen.
-	VersionPatch = 0
+	VersionPatch = 1
 )
 
 // Version provides a stringified version of the current Mutagen version.
