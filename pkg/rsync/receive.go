@@ -393,12 +393,19 @@ func (r *preemptableReceiver) finalize() {
 	r.receiver.finalize()
 }
 
-// Encoder is a function that will encode and transmit a transmission. The
-// provided transmission will never be nil. The transmission passed to the
-// encoder may be re-used and modified, so the encoder should not hold on to the
-// transmission between calls (it should either transmit it or fully copy it if
-// transmission is going to be delayed).
-type Encoder func(*Transmission) error
+// Encoder is the interface used by an encoding receiver to forward
+// transmissions, usually across a network.
+type Encoder interface {
+	// Encode encodes and transmits a transmission. The provided transmission
+	// will never be nil. The transmission passed to the encoder may be re-used
+	// and modified, so the encoder should not hold on to the transmission
+	// between calls (it should either transmit it or fully copy it if
+	// transmission is going to be delayed).
+	Encode(*Transmission) error
+	// Finalize is called when the transmission stream is finished. The Encoder
+	// can use this call to close any underlying transmission resources.
+	Finalize()
+}
 
 // encodingReceiver is a Receiver implementation that encodes messages to an
 // arbitrary encoder.
@@ -420,29 +427,35 @@ func NewEncodingReceiver(encoder Encoder) Receiver {
 
 // Receive encodes the specified transmission using the underlying encoder.
 func (r *encodingReceiver) Receive(transmission *Transmission) error {
-	return errors.Wrap(r.encoder(transmission), "unable to encode transmission")
+	return errors.Wrap(r.encoder.Encode(transmission), "unable to encode transmission")
 }
 
-// finalize is a no-op for encoding receivers, because there is no reliable way
-// to encode a finalization transmission and finalization exists precisely
-// because of this uncertainty. To compensate for this inability,
-// DecodeToReceiver automatically finalizes the receiver that it's provided.
+// finalize finalizes the encoding receiver, which means that it calls Finalize
+// on its underlying Encoder.
 func (r *encodingReceiver) finalize() {
 	if r.finalized {
 		panic("receiver finalized multiple times")
 	} else {
+		r.encoder.Finalize()
 		r.finalized = true
 	}
 }
 
-// Decoder decodes a transmission encoded by an encoder. The transmission should
-// be decoded into the specified Transmission object, which will be a non-nil
-// zero-valued Transmission object. The decoder is *not* responsible for
-// validating that the transmission is valid before returning it.
-// TODO: We should really elaborate on the semantics of Decoder, in particular
-// how it is allowed to re-use existing allocations within the Transmission
-// object.
-type Decoder func(*Transmission) error
+// Encoder is the interface used by DecodeToReceiver to receive transmissions,
+// usually across a network.
+type Decoder interface {
+	// Decoder decodes a transmission encoded by an encoder. The transmission
+	// should be decoded into the specified Transmission object, which will be a
+	// non-nil zero-valued Transmission object. The decoder is *not* responsible
+	// for validating that the transmission is valid before returning it.
+	// TODO: We should really elaborate on the semantics of Decoder, in
+	// particular how it is allowed to re-use existing allocations within the
+	// Transmission object.
+	Decode(*Transmission) error
+	// Finalize is called when decoding is finished. The Decoder can use this
+	// call to close any underlying transmission resources.
+	Finalize()
+}
 
 // DecodeToReceiver decodes messages from the specified Decoder and forwards
 // them to the specified receiver. It must be passed the number of files to be
@@ -450,6 +463,9 @@ type Decoder func(*Transmission) error
 // used with an encoding receiver, such as that returned by NewEncodingReceiver.
 // It finalizes the provided receiver before returning.
 func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
+	// Ensure that the decoder is finalized when we're done.
+	defer decoder.Finalize()
+
 	// Ensure that the receiver is finalized when we're done.
 	defer receiver.finalize()
 
@@ -462,7 +478,7 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 		for {
 			// Receive the next message.
 			transmission.resetToZeroMaintainingCapacity()
-			if err := decoder(transmission); err != nil {
+			if err := decoder.Decode(transmission); err != nil {
 				return errors.Wrap(err, "unable to decode transmission")
 			}
 

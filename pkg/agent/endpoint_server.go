@@ -260,9 +260,7 @@ func (s *endpointServer) serveStage(request *stageRequest) error {
 	// The remote side of the connection should now forward rsync operations, so
 	// we need to decode and forward them to the receiver. If this operation
 	// completes successfully, staging is complete and successful.
-	decoder := func(t *rsync.Transmission) error {
-		return s.decoder.Decode(t)
-	}
+	decoder := &gobRsyncDecoder{s.decoder}
 	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return errors.Wrap(err, "unable to decode and forward rsync operations")
 	}
@@ -280,9 +278,7 @@ func (s *endpointServer) serveSupply(request *supplyRequest) error {
 
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	encoder := func(t *rsync.Transmission) error {
-		return s.encoder.Encode(t)
-	}
+	encoder := &gobRsyncEncoder{s.encoder}
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Perform supplying.
