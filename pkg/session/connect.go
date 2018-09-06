@@ -2,13 +2,30 @@ package session
 
 import (
 	"context"
-	"net"
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
+
+// ProtocolHandler defines the interface that protocol handlers must support in
+// order to connect to endpoints.
+type ProtocolHandler interface {
+	// Dial connects to the endpoint at the specified URL with the specified
+	// endpoint metadata.
+	Dial(
+		url *urlpkg.URL,
+		session string,
+		version Version,
+		configuration *Configuration,
+		alpha bool,
+		prompter string,
+	) (Endpoint, error)
+}
+
+// ProtocolHandlers is a map of registered protocol handlers. It should only be
+// modified during init() operations.
+var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 
 // connect attempts to establish a connection to an endpoint.
 func connect(
@@ -18,65 +35,29 @@ func connect(
 	configuration *Configuration,
 	alpha bool,
 	prompter string,
-) (endpoint, error) {
-	// Handle based on protocol.
-	if url.Protocol == urlpkg.Protocol_Local {
-		// Create a local endpoint.
-		endpoint, err := newLocalEndpoint(session, version, url.Path, configuration, alpha)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to create local endpoint")
-		}
-
-		// Success.
-		return endpoint, nil
-	} else if url.Protocol == urlpkg.Protocol_SSH {
-		if url.Hostname != "" {
-			// Dial using the agent package, watching for errors
-			connection, err := agent.DialSSH(url, prompter, agent.ModeEndpoint)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to connect to SSH remote")
-			}
-
-			// Create a remote endpoint.
-			endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to create remote endpoint")
-			}
-
-			// Success.
-			return endpoint, nil
-		} else {
-			// This is a special case that we use for internal testing. An SSH URL
-			// with an empty hostname is invalid, and will be rejected at any points
-			// of ingress outside of Mutagen, but if it is provided internally, it
-			// means to use a net.Pipe so that we can test remote endpoint
-			// implementations in-memory.
-
-			// Create a pipe.
-			connection, serverConnection := net.Pipe()
-
-			// Start an endpoint server in a separate Goroutine.
-			go ServeEndpoint(serverConnection)
-
-			// Create a new remote endpoint.
-			endpoint, err := newRemoteEndpoint(connection, session, version, url.Path, configuration, alpha)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to create in-memory remote endpoint")
-			}
-
-			// Success.
-			return endpoint, nil
-		}
-	} else {
-		// Handle unknown protocols.
+) (Endpoint, error) {
+	// Local the appropriate protocol handler.
+	handler, ok := ProtocolHandlers[url.Protocol]
+	if !ok {
 		return nil, errors.Errorf("unknown protocol: %s", url.Protocol)
+	} else if handler == nil {
+		panic("nil protocol handler registered")
 	}
+
+	// Dispatch the dialing.
+	endpoint, err := handler.Dial(url, session, version, configuration, alpha, prompter)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to connect to endpoint")
+	}
+
+	// Success.
+	return endpoint, nil
 }
 
 // asyncConnectResult provides asynchronous connection results.
 type asyncConnectResult struct {
 	// endpoint is the endpoint returned by connect.
-	endpoint endpoint
+	endpoint Endpoint
 	// error is the error returned by connect.
 	error error
 }
@@ -91,7 +72,7 @@ func reconnect(
 	url *urlpkg.URL,
 	configuration *Configuration,
 	alpha bool,
-) (endpoint, error) {
+) (Endpoint, error) {
 	// Create a channel to deliver the connection result.
 	results := make(chan asyncConnectResult)
 
@@ -104,7 +85,7 @@ func reconnect(
 		select {
 		case <-ctx.Done():
 			if endpoint != nil {
-				endpoint.shutdown()
+				endpoint.Shutdown()
 			}
 		case results <- asyncConnectResult{endpoint, err}:
 		}

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 const (
@@ -21,10 +21,10 @@ func housekeep() {
 	agent.Housekeep()
 
 	// Perform cache housekeeping.
-	session.HousekeepCaches()
+	local.HousekeepCaches()
 
 	// Perform staging directory housekeeping.
-	session.HousekeepStaging()
+	local.HousekeepStaging()
 }
 
 // Server provides an implementation of the Daemon service.

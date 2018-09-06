@@ -11,8 +11,8 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/havoc-io/mutagen/cmd"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 

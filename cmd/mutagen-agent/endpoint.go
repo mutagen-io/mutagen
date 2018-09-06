@@ -12,8 +12,8 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 const (
@@ -28,10 +28,10 @@ func housekeep() {
 	agent.Housekeep()
 
 	// Perform cache housekeeping.
-	session.HousekeepCaches()
+	local.HousekeepCaches()
 
 	// Perform staging directory housekeeping.
-	session.HousekeepStaging()
+	local.HousekeepStaging()
 }
 
 func housekeepRegularly(context context.Context) {
@@ -61,7 +61,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	go housekeepRegularly(housekeepingContext)
 
 	// Create a connection on standard input/output.
-	connection := newStdioConnection()
+	connection := newStdioConnection(true)
 
 	// Perform a handshake.
 	if err := mutagen.SendVersion(connection); err != nil {
@@ -72,7 +72,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	endpointTermination := make(chan error, 1)
 	go func() {
-		endpointTermination <- session.ServeEndpoint(connection)
+		endpointTermination <- agent.ServeEndpoint(connection)
 	}()
 
 	// Wait for termination from a signal or the endpoint.

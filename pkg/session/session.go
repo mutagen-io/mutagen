@@ -11,7 +11,7 @@ import (
 )
 
 // Version indicates whether or not the session version is supported.
-func (v Version) supported() bool {
+func (v Version) Supported() bool {
 	switch v {
 	case Version_Version1:
 		return true
@@ -21,7 +21,7 @@ func (v Version) supported() bool {
 }
 
 // hasher creates an appropriate hash function for the session version.
-func (v Version) hasher() hash.Hash {
+func (v Version) Hasher() hash.Hash {
 	switch v {
 	case Version_Version1:
 		return sha1.New()
@@ -75,7 +75,7 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the session version is supported.
-	if !s.Version.supported() {
+	if !s.Version.Supported() {
 		return errors.New("unknown or unsupported session version")
 	}
 

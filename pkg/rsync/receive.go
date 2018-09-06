@@ -396,7 +396,7 @@ func (r *preemptableReceiver) finalize() {
 // Encoder is a function that will encode and transmit a transmission. The
 // provided transmission will never be nil. The transmission passed to the
 // encoder may be re-used and modified, so the encoder should not hold on to the
-// transmission between calls (it should either transmit it or copy it if
+// transmission between calls (it should either transmit it or fully copy it if
 // transmission is going to be delayed).
 type Encoder func(*Transmission) error
 
@@ -435,11 +435,14 @@ func (r *encodingReceiver) finalize() {
 	}
 }
 
-// Decoder decodes a transmission encoded by an encoder. The decoder is
-// responsible for validating that the transmission is valid before returning it
-// by calling its EnsureValid method to verify its invariants. The decoder may
-// re-use the transmission object that it returns across calls.
-type Decoder func() (*Transmission, error)
+// Decoder decodes a transmission encoded by an encoder. The transmission should
+// be decoded into the specified Transmission object, which will be a non-nil
+// zero-valued Transmission object. The decoder is *not* responsible for
+// validating that the transmission is valid before returning it.
+// TODO: We should really elaborate on the semantics of Decoder, in particular
+// how it is allowed to re-use existing allocations within the Transmission
+// object.
+type Decoder func(*Transmission) error
 
 // DecodeToReceiver decodes messages from the specified Decoder and forwards
 // them to the specified receiver. It must be passed the number of files to be
@@ -450,14 +453,22 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 	// Ensure that the receiver is finalized when we're done.
 	defer receiver.finalize()
 
+	// Allocate the transmission object that we'll use to receive into.
+	transmission := &Transmission{}
+
 	// Loop until we've seen all files come in.
 	for count > 0 {
 		// Loop, decode, and forward until we see a done message.
 		for {
 			// Receive the next message.
-			transmission, err := decoder()
-			if err != nil {
+			transmission.resetToZeroMaintainingCapacity()
+			if err := decoder(transmission); err != nil {
 				return errors.Wrap(err, "unable to decode transmission")
+			}
+
+			// Validate the transmission.
+			if err := transmission.EnsureValid(); err != nil {
+				return errors.Wrap(err, "invalid transmission received")
 			}
 
 			// Forward the message.

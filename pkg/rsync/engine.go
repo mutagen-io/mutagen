@@ -117,6 +117,24 @@ func (o *Operation) Copy() *Operation {
 	}
 }
 
+// resetToZero resets an Operation to its zero-value, but leaves capacity in the
+// data slice. It's worth noting that the zero-value state is not a valid state
+// for an Operation.
+func (o *Operation) resetToZeroMaintainingCapacity() {
+	// Reset the data slice, but maintain its capacity.
+	o.Data = o.Data[:0]
+
+	// Reset start and count.
+	o.Start = 0
+	o.Count = 0
+}
+
+// isZeroValue indicates whether or not an Operation has its zero-value. It's
+// worth noting that the zero-value state is not a valid state for an Operation.
+func (o *Operation) isZeroValue() bool {
+	return len(o.Data) == 0 && o.Start == 0 && o.Count == 0
+}
+
 const (
 	// minimumOptimalBlockSize is the minimum block size that will be returned
 	// by OptimalBlockSizeForBaseLength. It has to be chosen so that it is at

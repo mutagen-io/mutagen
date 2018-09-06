@@ -1,4 +1,4 @@
-package session
+package agent
 
 import (
 	contextpkg "context"
@@ -9,19 +9,21 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// remoteEndpointServer wraps a local endpoint and dispatches requests to this
-// endpoint from a remote endpoint client.
-type remoteEndpointServer struct {
+// endpointServer wraps a local endpoint instances and dispatches requests to
+// this endpoint from an endpoint client.
+type endpointServer struct {
 	// encoder is the control stream encoder.
 	encoder *gob.Encoder
 	// decoder is the control stream decoder.
 	decoder *gob.Decoder
 	// endpoint is the underlying local endpoint.
-	endpoint endpoint
+	endpoint session.Endpoint
 }
 
 // ServeEndpoint creates and serves a remote endpoint server on the specified
@@ -47,11 +49,11 @@ func ServeEndpoint(connection net.Conn) error {
 	var validationErr error
 	if request.Session == "" {
 		validationErr = errors.New("empty session identifier")
-	} else if !request.Version.supported() {
+	} else if !request.Version.Supported() {
 		validationErr = errors.New("unknown or unsupported session version")
 	} else if request.Root == "" {
 		validationErr = errors.New("empty root path")
-	} else if err := request.Configuration.EnsureValid(ConfigurationSourceSession); err != nil {
+	} else if err := request.Configuration.EnsureValid(session.ConfigurationSourceSession); err != nil {
 		validationErr = errors.Wrap(err, "invalid session configuration")
 	}
 	if validationErr != nil {
@@ -62,13 +64,19 @@ func ServeEndpoint(connection net.Conn) error {
 
 	// Create the underlying endpoint. If it fails to create, then send a
 	// failure response and abort. If it succeeds, then defer its closure.
-	endpoint, err := newLocalEndpoint(request.Session, request.Version, request.Root, request.Configuration, request.Alpha)
+	endpoint, err := local.NewEndpoint(
+		request.Session,
+		request.Version,
+		request.Root,
+		request.Configuration,
+		request.Alpha,
+	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
 	}
-	defer endpoint.shutdown()
+	defer endpoint.Shutdown()
 
 	// Send a successful initialize response.
 	if err = encoder.Encode(initializeResponse{}); err != nil {
@@ -76,7 +84,7 @@ func ServeEndpoint(connection net.Conn) error {
 	}
 
 	// Create the server.
-	server := &remoteEndpointServer{
+	server := &endpointServer{
 		endpoint: endpoint,
 		encoder:  encoder,
 		decoder:  decoder,
@@ -87,7 +95,7 @@ func ServeEndpoint(connection net.Conn) error {
 }
 
 // serve is the main request handling loop.
-func (s *remoteEndpointServer) serve() error {
+func (s *endpointServer) serve() error {
 	// Receive and process control requests until there's an error.
 	for {
 		// Receive the next request.
@@ -124,7 +132,7 @@ func (s *remoteEndpointServer) serve() error {
 }
 
 // servePoll serves a poll request.
-func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
+func (s *endpointServer) servePoll(_ *pollRequest) error {
 	// Create a cancellable context for executing the poll. The context may be
 	// cancelled to force a response, but in case the response comes naturally,
 	// ensure the context is cancelled before we're done to avoid leaking a
@@ -135,7 +143,7 @@ func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 	// Start a Goroutine to execute the poll and send a response when done.
 	responseSendResults := make(chan error, 1)
 	go func() {
-		if err := s.endpoint.poll(pollContext); err != nil {
+		if err := s.endpoint.Poll(pollContext); err != nil {
 			s.encoder.Encode(pollResponse{Error: err.Error()})
 			responseSendResults <- errors.Wrap(err, "polling error")
 		}
@@ -181,11 +189,11 @@ func (s *remoteEndpointServer) servePoll(_ *pollRequest) error {
 }
 
 // serveScan serves a scan request.
-func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
+func (s *endpointServer) serveScan(request *scanRequest) error {
 	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
 	// endpoints anyway. If a retry is requested or an error occurs, send a
 	// response.
-	snapshot, preservesExecutability, err, tryAgain := s.endpoint.scan(nil)
+	snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(nil)
 	if tryAgain {
 		if err := s.encoder.Encode(scanResponse{Error: err.Error(), TryAgain: true}); err != nil {
 			return errors.Wrap(err, "unable to send scan retry response")
@@ -224,9 +232,9 @@ func (s *remoteEndpointServer) serveScan(request *scanRequest) error {
 }
 
 // serveStage serves a stage request.
-func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
+func (s *endpointServer) serveStage(request *stageRequest) error {
 	// Begin staging.
-	paths, signatures, receiver, err := s.endpoint.stage(request.Entries)
+	paths, signatures, receiver, err := s.endpoint.Stage(request.Entries)
 	if err != nil {
 		s.encoder.Encode(stageResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to begin staging")
@@ -245,7 +253,10 @@ func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 	// The remote side of the connection should now forward rsync operations, so
 	// we need to decode and forward them to the receiver. If this operation
 	// completes successfully, staging is complete and successful.
-	if err = rsync.DecodeToReceiver(s.decoder, uint64(len(paths)), receiver); err != nil {
+	decoder := func(t *rsync.Transmission) error {
+		return s.decoder.Decode(t)
+	}
+	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return errors.Wrap(err, "unable to decode and forward rsync operations")
 	}
 
@@ -254,13 +265,16 @@ func (s *remoteEndpointServer) serveStage(request *stageRequest) error {
 }
 
 // serveSupply serves a supply request.
-func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
+func (s *endpointServer) serveSupply(request *supplyRequest) error {
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	receiver := rsync.NewEncodingReceiver(s.encoder)
+	encoder := func(t *rsync.Transmission) error {
+		return s.encoder.Encode(t)
+	}
+	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Perform supplying.
-	if err := s.endpoint.supply(request.Paths, request.Signatures, receiver); err != nil {
+	if err := s.endpoint.Supply(request.Paths, request.Signatures, receiver); err != nil {
 		return errors.Wrap(err, "unable to perform supplying")
 	}
 
@@ -269,7 +283,7 @@ func (s *remoteEndpointServer) serveSupply(request *supplyRequest) error {
 }
 
 // serveTransitino serves a transition request.
-func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error {
+func (s *endpointServer) serveTransition(request *transitionRequest) error {
 	// Validate the request internals since they came over the wire.
 	for _, t := range request.Transitions {
 		if err := t.EnsureValid(); err != nil {
@@ -280,7 +294,7 @@ func (s *remoteEndpointServer) serveTransition(request *transitionRequest) error
 	}
 
 	// Perform the transition.
-	results, problems, err := s.endpoint.transition(request.Transitions)
+	results, problems, err := s.endpoint.Transition(request.Transitions)
 	if err != nil {
 		s.encoder.Encode(transitionResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to perform transition")

@@ -1,4 +1,4 @@
-package session
+package agent
 
 import (
 	contextpkg "context"
@@ -10,13 +10,13 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// remoteEndpointClient is an endpoint implementation that provides a proxy for
-// another endpoint over a network. It is designed to be paired with
-// ServeEndpoint.
-type remoteEndpointClient struct {
+// endpointClient provides an implementation of session.Endpoint by acting as a
+// proxy for a remotely hosted session.Endpoint.
+type endpointClient struct {
 	// connection is the control stream connection.
 	connection net.Conn
 	// encoder is the control stream encoder.
@@ -28,10 +28,17 @@ type remoteEndpointClient struct {
 	lastSnapshotBytes []byte
 }
 
-// newRemoteEndpoint constructs a new remote endpoint instance using the
-// specified connection.
-func newRemoteEndpoint(connection net.Conn, session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
-	// Create encoders and decoders.
+// newEndpointClient constructs a new endpoint client instance using the
+// specified connection and metadata.
+func newEndpointClient(
+	connection net.Conn,
+	session string,
+	version session.Version,
+	root string,
+	configuration *session.Configuration,
+	alpha bool,
+) (session.Endpoint, error) {
+	// Wrap the connection in an encoder/decoder pair.
 	encoder := gob.NewEncoder(connection)
 	decoder := gob.NewDecoder(connection)
 
@@ -59,15 +66,15 @@ func newRemoteEndpoint(connection net.Conn, session string, version Version, roo
 	}
 
 	// Success.
-	return &remoteEndpointClient{
+	return &endpointClient{
 		connection: connection,
 		encoder:    encoder,
 		decoder:    decoder,
 	}, nil
 }
 
-// poll implements the poll method for remote endpoints.
-func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
+// Poll implements the Poll method for remote endpoints.
+func (e *endpointClient) Poll(context contextpkg.Context) error {
 	// Create and send the poll request.
 	request := endpointRequest{Poll: &pollRequest{}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -130,8 +137,8 @@ func (e *remoteEndpointClient) poll(context contextpkg.Context) error {
 	return nil
 }
 
-// scan implements the scan method for remote endpoints.
-func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool) {
+// Scan implements the Scan method for remote endpoints.
+func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
@@ -195,8 +202,8 @@ func (e *remoteEndpointClient) scan(ancestor *sync.Entry) (*sync.Entry, bool, er
 	return snapshot, response.PreservesExecutability, nil, false
 }
 
-// stage implements the stage method for remote endpoints.
-func (e *remoteEndpointClient) stage(entries map[string][]byte) ([]string, []rsync.Signature, rsync.Receiver, error) {
+// Stage implements the Stage method for remote endpoints.
+func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
 	// Create and send the stage request.
 	request := endpointRequest{Stage: &stageRequest{entries}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -221,14 +228,17 @@ func (e *remoteEndpointClient) stage(entries map[string][]byte) ([]string, []rsy
 
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	receiver := rsync.NewEncodingReceiver(e.encoder)
+	encoder := func(t *rsync.Transmission) error {
+		return e.encoder.Encode(t)
+	}
+	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Success.
 	return response.Paths, response.Signatures, receiver, nil
 }
 
-// supply implements the supply method for remote endpoints.
-func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
+// Supply implements the Supply method for remote endpoints.
+func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
 	// Create and send the supply request.
 	request := endpointRequest{Supply: &supplyRequest{paths, signatures}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -249,7 +259,10 @@ func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signatu
 	// The endpoint should now forward rsync operations, so we need to decode
 	// and forward them to the receiver. If this operation completes
 	// successfully, supplying is complete and successful.
-	if err := rsync.DecodeToReceiver(e.decoder, uint64(len(paths)), receiver); err != nil {
+	decoder := func(t *rsync.Transmission) error {
+		return e.decoder.Decode(t)
+	}
+	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return errors.Wrap(err, "unable to decode and forward rsync operations")
 	}
 
@@ -257,8 +270,8 @@ func (e *remoteEndpointClient) supply(paths []string, signatures []rsync.Signatu
 	return nil
 }
 
-// transition implements the transition method for remote endpoints.
-func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+// Transition implements the Transition method for remote endpoints.
+func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Create and send the transition request.
 	request := endpointRequest{Transition: &transitionRequest{transitions}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -301,8 +314,8 @@ func (e *remoteEndpointClient) transition(transitions []*sync.Change) ([]*sync.E
 	return results, response.Problems, nil
 }
 
-// shutdown implements the shutdown method for remote endpoints.
-func (e *remoteEndpointClient) shutdown() error {
+// Shutdown implements the Shutdown method for remote endpoints.
+func (e *endpointClient) Shutdown() error {
 	// Close the underlying connection. This will cause all stream reads/writes
 	// to unblock.
 	return e.connection.Close()

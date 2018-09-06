@@ -8,7 +8,8 @@ import (
 
 // EnsureValid ensures that Entry's invariants are respected.
 func (e *Entry) EnsureValid() error {
-	// If the entry is nil, it's technically valid, though only for roots.
+	// A nil entry is technically valid, at least in certain contexts. It
+	// represents the absence of content.
 	if e == nil {
 		return nil
 	}

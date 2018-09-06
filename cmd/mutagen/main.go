@@ -7,6 +7,10 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/ssh"
+
+	// Import packages that need to register protocol handlers.
+	_ "github.com/havoc-io/mutagen/pkg/agent"
+	_ "github.com/havoc-io/mutagen/pkg/local"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {

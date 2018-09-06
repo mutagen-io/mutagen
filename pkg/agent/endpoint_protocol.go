@@ -1,7 +1,8 @@
-package session
+package agent
 
 import (
 	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -10,11 +11,11 @@ type initializeRequest struct {
 	// Session is the session identifier.
 	Session string
 	// Version is the session version.
-	Version Version
+	Version session.Version
 	// Root is the synchronization root path.
 	Root string
 	// Configuration is the session configuration.
-	Configuration *Configuration
+	Configuration *session.Configuration
 	// Alpha indicates whether or not the endpoint should behave as alpha (as
 	// opposed to beta).
 	Alpha bool
@@ -43,14 +44,14 @@ type pollResponse struct {
 type scanRequest struct {
 	// BaseSnapshotSignature is the rsync signature to use as the base for
 	// differentially transmitting snapshots.
-	BaseSnapshotSignature rsync.Signature
+	BaseSnapshotSignature *rsync.Signature
 }
 
 // scanResponse encodes the results of a scan.
 type scanResponse struct {
 	// SnapshotDelta are the operations need to reconstruct the snapshot against
 	// the specified base.
-	SnapshotDelta []rsync.Operation
+	SnapshotDelta []*rsync.Operation
 	// PreservesExecutability indicates whether or not the scan root preserves
 	// POSIX executability bits.
 	PreservesExecutability bool
@@ -72,7 +73,7 @@ type stageResponse struct {
 	// synchronization root).
 	Paths []string
 	// Signatures are the rsync signatures of the paths needing to be staged.
-	Signatures []rsync.Signature
+	Signatures []*rsync.Signature
 	// Error is the error message (if any) resulting from staging
 	// initialization.
 	Error string
@@ -83,7 +84,7 @@ type supplyRequest struct {
 	// Paths are the paths to provide (relative to the synchronization root).
 	Paths []string
 	// Signatures are the rsync signatures of the paths needing to be staged.
-	Signatures []rsync.Signature
+	Signatures []*rsync.Signature
 }
 
 // transitionRequest encodes a request for transition application.

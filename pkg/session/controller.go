@@ -101,7 +101,7 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 	betaEndpoint, err := connect(identifier, version, beta, configuration, false, prompter)
 	if err != nil {
-		alphaEndpoint.shutdown()
+		alphaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
 	}
 
@@ -122,27 +122,27 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		alphaEndpoint.shutdown()
-		betaEndpoint.shutdown()
+		alphaEndpoint.Shutdown()
+		betaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to compute session path")
 	}
 	archivePath, err := pathForArchive(session.Identifier)
 	if err != nil {
-		alphaEndpoint.shutdown()
-		betaEndpoint.shutdown()
+		alphaEndpoint.Shutdown()
+		betaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
 	// Save components to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		alphaEndpoint.shutdown()
-		betaEndpoint.shutdown()
+		alphaEndpoint.Shutdown()
+		betaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to save session")
 	}
 	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
 		os.Remove(sessionPath)
-		alphaEndpoint.shutdown()
-		betaEndpoint.shutdown()
+		alphaEndpoint.Shutdown()
+		betaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to save archive")
 	}
 
@@ -421,16 +421,16 @@ func (c *controller) halt(mode haltMode, prompter string) error {
 
 // run is the main runloop for the controller, managing connectivity and
 // synchronization.
-func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
+func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
 		// Shutdown any endpoints. These might be non-nil if the runloop was
 		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
-			alpha.shutdown()
+			alpha.Shutdown()
 		}
 		if beta != nil {
-			beta.shutdown()
+			beta.Shutdown()
 		}
 
 		// Reset the state.
@@ -517,9 +517,9 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 		err := c.synchronize(context, alpha, beta)
 
 		// Shutdown the endpoints.
-		alpha.shutdown()
+		alpha.Shutdown()
 		alpha = nil
-		beta.shutdown()
+		beta.Shutdown()
 		beta = nil
 
 		// Reset the synchronization state, but propagate the error that caused
@@ -543,7 +543,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta endpoint) {
 }
 
 // synchronize is the main synchronization loop for the controller.
-func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoint) error {
+func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
 	// Load the archive and extract the ancestor.
 	archive := &sync.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
@@ -576,13 +576,13 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 			// Start alpha polling.
 			αPollResults := make(chan error, 1)
 			go func() {
-				αPollResults <- alpha.poll(pollContext)
+				αPollResults <- alpha.Poll(pollContext)
 			}()
 
 			// Start beta polling.
 			βPollResults := make(chan error, 1)
 			go func() {
-				βPollResults <- beta.poll(pollContext)
+				βPollResults <- beta.Poll(pollContext)
 			}()
 
 			// Wait for either poll to return an event or an error, or for
@@ -627,11 +627,11 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		scanDone := &syncpkg.WaitGroup{}
 		scanDone.Add(2)
 		go func() {
-			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.scan(ancestor)
+			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(ancestor)
 			scanDone.Done()
 		}()
 		go func() {
-			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.scan(ancestor)
+			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(ancestor)
 			scanDone.Done()
 		}()
 		scanDone.Wait()
@@ -775,14 +775,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		if entries, err := sync.TransitionDependencies(αTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on alpha")
 		} else if len(entries) > 0 {
-			paths, signatures, receiver, err := alpha.stage(entries)
+			paths, signatures, receiver, err := alpha.Stage(entries)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on alpha")
 			}
 			if len(paths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
 				receiver = rsync.NewPreemptableReceiver(receiver, context)
-				if err = beta.supply(paths, signatures, receiver); err != nil {
+				if err = beta.Supply(paths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on alpha")
 				}
 			}
@@ -795,14 +795,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		if entries, err := sync.TransitionDependencies(βTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on beta")
 		} else if len(entries) > 0 {
-			paths, signatures, receiver, err := beta.stage(entries)
+			paths, signatures, receiver, err := beta.Stage(entries)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on beta")
 			}
 			if len(paths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
 				receiver = rsync.NewPreemptableReceiver(receiver, context)
-				if err = alpha.supply(paths, signatures, receiver); err != nil {
+				if err = alpha.Supply(paths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on beta")
 				}
 			}
@@ -828,7 +828,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 		if len(αTransitions) > 0 {
 			go func() {
-				αResults, αProblems, αTransitionErr = alpha.transition(αTransitions)
+				αResults, αProblems, αTransitionErr = alpha.Transition(αTransitions)
 				if αTransitionErr == nil {
 					for t, transition := range αTransitions {
 						αChanges = append(αChanges, &sync.Change{Path: transition.Path, New: αResults[t]})
@@ -839,7 +839,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta endpoin
 		}
 		if len(βTransitions) > 0 {
 			go func() {
-				βResults, βProblems, βTransitionErr = beta.transition(βTransitions)
+				βResults, βProblems, βTransitionErr = beta.Transition(βTransitions)
 				if βTransitionErr == nil {
 					for t, transition := range βTransitions {
 						βChanges = append(βChanges, &sync.Change{Path: transition.Path, New: βResults[t]})

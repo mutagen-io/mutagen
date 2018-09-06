@@ -1,13 +1,14 @@
 package main
 
 import (
-	"compress/flate"
 	"io"
 	"net"
 	"os"
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/compression"
 )
 
 type stdioAddress struct{}
@@ -21,37 +22,40 @@ func (stdioAddress) String() string {
 }
 
 type stdioConnection struct {
-	decompressor io.Reader
-	compressor   *flate.Writer
+	reader io.Reader
+	writer io.Writer
 }
 
-func newStdioConnection() *stdioConnection {
-	// Create the decompressor.
-	decompressor := flate.NewReader(os.Stdin)
+func newStdioConnection(compress bool) *stdioConnection {
+	// Create the reader.
+	var reader io.Reader
+	if compress {
+		reader = compression.NewDecompressingReader(os.Stdin)
+	} else {
+		reader = os.Stdin
+	}
 
-	// Create the compressor. If providing a sane compression level, the flate
-	// API guarantees the creation of the compressor to succeed.
-	compressor, _ := flate.NewWriter(os.Stdout, 6)
+	// Create the writer.
+	var writer io.Writer
+	if compress {
+		writer = compression.NewCompressingWriter(os.Stdout)
+	} else {
+		writer = os.Stdout
+	}
 
 	// Create the connection.
 	return &stdioConnection{
-		decompressor: decompressor,
-		compressor:   compressor,
+		reader: reader,
+		writer: writer,
 	}
 }
 
 func (c *stdioConnection) Read(buffer []byte) (int, error) {
-	return c.decompressor.Read(buffer)
+	return c.reader.Read(buffer)
 }
 
 func (c *stdioConnection) Write(buffer []byte) (int, error) {
-	if count, err := c.compressor.Write(buffer); err != nil {
-		return count, err
-	} else if err = c.compressor.Flush(); err != nil {
-		return 0, errors.Wrap(err, "unable to flush compressor")
-	} else {
-		return count, nil
-	}
+	return c.writer.Write(buffer)
 }
 
 func (c *stdioConnection) Close() error {

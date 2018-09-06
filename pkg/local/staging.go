@@ -1,4 +1,4 @@
-package session
+package local
 
 import (
 	"hash"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 const (
@@ -80,7 +82,7 @@ func (s *stagingSink) Close() error {
 // stagingSink it produces should be closed before another is created.
 type stager struct {
 	// version is the session version.
-	version Version
+	version session.Version
 	// root is the staging root.
 	root string
 	// rootCreated indicates whether or not the staging root has been created
@@ -93,7 +95,7 @@ type stager struct {
 }
 
 // newStager creates a new stager instance.
-func newStager(session string, version Version, alpha bool) (*stager, error) {
+func newStager(session string, version session.Version, alpha bool) (*stager, error) {
 	// Compute the staging root.
 	root, err := pathForStagingRoot(session, alpha)
 	if err != nil {
@@ -166,7 +168,7 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 		stager:   s,
 		path:     path,
 		storage:  storage,
-		digester: s.version.hasher(),
+		digester: s.version.Hasher(),
 	}, nil
 }
 

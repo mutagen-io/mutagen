@@ -1,4 +1,4 @@
-package session
+package local
 
 import (
 	"context"
@@ -13,13 +13,13 @@ import (
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// localEndpoint provides a local, in-memory implementation of endpoint for
-// local files. Its implementation is also used on remote endpoints, proxied by
-// the remote endpoint client/server infrastructure.
-type localEndpoint struct {
+// endpoint provides a local, in-memory implementation of session.Endpoint for
+// local files.
+type endpoint struct {
 	// root is the synchronization root for the endpoint. It is static.
 	root string
 	// watchCancel cancels filesystem monitoring. It is static.
@@ -58,8 +58,15 @@ type localEndpoint struct {
 	stager *stager
 }
 
-// newLocalEndpoint creates a new local endpoint instance.
-func newLocalEndpoint(session string, version Version, root string, configuration *Configuration, alpha bool) (endpoint, error) {
+// NewEndpoint creates a new local endpoint instance using the specified session
+// metadata.
+func NewEndpoint(
+	session string,
+	version session.Version,
+	root string,
+	configuration *session.Configuration,
+	alpha bool,
+) (session.Endpoint, error) {
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(root)
 	if err != nil {
@@ -129,7 +136,7 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 	}
 
 	// Success.
-	return &localEndpoint{
+	return &endpoint{
 		root:        root,
 		watchCancel: watchCancel,
 		watchEvents: watchEvents,
@@ -137,13 +144,13 @@ func newLocalEndpoint(session string, version Version, root string, configuratio
 		ignores:     ignores,
 		cachePath:   cachePath,
 		cache:       cache,
-		scanHasher:  version.hasher(),
+		scanHasher:  version.Hasher(),
 		stager:      stager,
 	}, nil
 }
 
-// poll implements the poll method for local endpoints.
-func (e *localEndpoint) poll(context context.Context) error {
+// Poll implements the Poll method for local endpoints.
+func (e *endpoint) Poll(context context.Context) error {
 	// Wait for either cancellation or an event.
 	select {
 	case _, ok := <-e.watchEvents:
@@ -157,8 +164,8 @@ func (e *localEndpoint) poll(context context.Context) error {
 	return nil
 }
 
-// scan implements the scan method for local endpoints.
-func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
+// Scan implements the Scan method for local endpoints.
+func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Grab the scan lock.
 	e.scanParametersLock.Lock()
 
@@ -202,7 +209,7 @@ func (e *localEndpoint) scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 
 // stageFromRoot attempts to perform staging from local files by using a reverse
 // lookup map.
-func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *sync.ReverseLookupMap) bool {
+func (e *endpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *sync.ReverseLookupMap) bool {
 	// See if we can find a path within the root that has a matching digest.
 	sourcePath, sourcePathOk := reverseLookupMap.Lookup(digest)
 	if !sourcePathOk {
@@ -234,8 +241,8 @@ func (e *localEndpoint) stageFromRoot(path string, digest []byte, reverseLookupM
 	return err == nil
 }
 
-// stage implements the stage method for local endpoints.
-func (e *localEndpoint) stage(entries map[string][]byte) ([]string, []rsync.Signature, rsync.Receiver, error) {
+// Stage implements the Stage method for local endpoints.
+func (e *endpoint) Stage(entries map[string][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
 	// It's possible that a previous staging was interrupted, so look for paths
 	// that are already staged by checking if our staging coordinator can
 	// already provide them. If everything was already staged, then we can abort
@@ -280,12 +287,14 @@ func (e *localEndpoint) stage(entries map[string][]byte) ([]string, []rsync.Sign
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltafying/patching.
-	signatures := make([]rsync.Signature, len(paths))
+	signatures := make([]*rsync.Signature, len(paths))
 	for i, path := range paths {
 		if base, err := os.Open(filepath.Join(e.root, path)); err != nil {
+			signatures[i] = &rsync.Signature{}
 			continue
 		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
+			signatures[i] = &rsync.Signature{}
 			continue
 		} else {
 			base.Close()
@@ -303,13 +312,13 @@ func (e *localEndpoint) stage(entries map[string][]byte) ([]string, []rsync.Sign
 	return paths, signatures, receiver, nil
 }
 
-// supply implements the supply method for local endpoints.
-func (e *localEndpoint) supply(paths []string, signatures []rsync.Signature, receiver rsync.Receiver) error {
+// Supply implements the supply method for local endpoints.
+func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
 	return rsync.Transmit(e.root, paths, signatures, receiver)
 }
 
-// transition implements the transition method for local endpoints.
-func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+// Transition implements the Transition method for local endpoints.
+func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Lock and defer release of the scan parameters lock.
 	e.scanParametersLock.Lock()
 	defer e.scanParametersLock.Unlock()
@@ -330,8 +339,8 @@ func (e *localEndpoint) transition(transitions []*sync.Change) ([]*sync.Entry, [
 	return results, problems, nil
 }
 
-// shutdown implements the shutdown method for local endpoints.
-func (e *localEndpoint) shutdown() error {
+// Shutdown implements the Shutdown method for local endpoints.
+func (e *endpoint) Shutdown() error {
 	// Terminate filesystem watching. This will result in the associated events
 	// channel being closed.
 	e.watchCancel()
