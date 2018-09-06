@@ -28,9 +28,9 @@ type endpointClient struct {
 	lastSnapshotBytes []byte
 }
 
-// newEndpointClient constructs a new endpoint client instance using the
+// NewEndpointClient constructs a new endpoint client instance using the
 // specified connection and metadata.
-func newEndpointClient(
+func NewEndpointClient(
 	connection net.Conn,
 	session string,
 	version session.Version,

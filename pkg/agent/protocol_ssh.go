@@ -375,7 +375,7 @@ func connectSSH(
 	}
 
 	// Wrap the connection in an endpoint client.
-	endpoint, err := newEndpointClient(connection, session, version, url.Path, configuration, alpha)
+	endpoint, err := NewEndpointClient(connection, session, version, url.Path, configuration, alpha)
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create endpoint client")
 	}

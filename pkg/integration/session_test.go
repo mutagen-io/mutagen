@@ -12,6 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
@@ -46,8 +47,8 @@ func init() {
 
 	// Perform housekeeping.
 	agent.Housekeep()
-	session.HousekeepCaches()
-	session.HousekeepStaging()
+	local.HousekeepCaches()
+	local.HousekeepStaging()
 }
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
@@ -285,7 +286,7 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToBetaOverSSHInMemory(t *testing.T) {
+func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
 		t.Skip()
@@ -302,11 +303,11 @@ func TestSessionGOROOTSrcToBetaOverSSHInMemory(t *testing.T) {
 	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
 	betaRoot := filepath.Join(directory, "beta")
 
-	// Compute alpha and beta URLs. We use a special (and invalid) SSH URL (with
-	// an empty hostname) to indicate an in-memory connection.
+	// Compute alpha and beta URLs. We use a special protocol with a custom
+	// handler to indicate an in-memory connection.
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{
-		Protocol: url.Protocol_SSH,
+		Protocol: inMemoryProtocol,
 		Path:     betaRoot,
 	}
 
