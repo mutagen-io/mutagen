@@ -60,6 +60,9 @@ func NewEndpointClient(
 	if err := decoder.Decode(&response); err != nil {
 		connection.Close()
 		return nil, errors.Wrap(err, "unable to receive transition response")
+	} else if err = response.ensureValid(); err != nil {
+		connection.Close()
+		return nil, errors.Wrap(err, "invalid initialize response")
 	} else if response.Error != "" {
 		connection.Close()
 		return nil, errors.Errorf("remote error: %s", response.Error)
@@ -106,6 +109,8 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 		var response pollResponse
 		if err := e.decoder.Decode(&response); err != nil {
 			responseReceiveResults <- errors.Wrap(err, "unable to receive poll response")
+		} else if err = response.ensureValid(); err != nil {
+			responseReceiveResults <- errors.Wrap(err, "invalid poll response")
 		} else if response.Error != "" {
 			responseReceiveResults <- errors.Errorf("remote error: %s", response.Error)
 		}
@@ -170,6 +175,8 @@ func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, b
 	var response scanResponse
 	if err := e.decoder.Decode(&response); err != nil {
 		return nil, false, errors.Wrap(err, "unable to receive scan response"), false
+	} else if err = response.ensureValid(); err != nil {
+		return nil, false, errors.Wrap(err, "invalid scan response"), false
 	}
 
 	// Check if the endpoint says we should try again.
@@ -204,6 +211,13 @@ func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, b
 
 // Stage implements the Stage method for remote endpoints.
 func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
+	// If there are no entries to stage, then we're done. We enforce (in message
+	// validation) that stage requests aren't sent to the server with no entries
+	// present.
+	if len(entries) == 0 {
+		return nil, nil, nil, nil
+	}
+
 	// Create and send the stage request.
 	request := endpointRequest{Stage: &stageRequest{entries}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -214,10 +228,10 @@ func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Si
 	var response stageResponse
 	if err := e.decoder.Decode(&response); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to receive stage response")
+	} else if err = response.ensureValid(); err != nil {
+		return nil, nil, nil, errors.Wrap(err, "invalid scan response")
 	} else if response.Error != "" {
 		return nil, nil, nil, errors.Errorf("remote error: %s", response.Error)
-	} else if len(response.Paths) != len(response.Signatures) {
-		return nil, nil, nil, errors.New("number of signatures returned does not match number of paths")
 	}
 
 	// If everything was already staged, then we can abort the staging
@@ -282,6 +296,8 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 	var response transitionResponse
 	if err := e.decoder.Decode(&response); err != nil {
 		return nil, nil, errors.Wrap(err, "unable to receive transition response")
+	} else if err = response.ensureValid(len(transitions)); err != nil {
+		return nil, nil, errors.Wrap(err, "invalid transition response")
 	} else if response.Error != "" {
 		return nil, nil, errors.Errorf("remote error: %s", response.Error)
 	}
@@ -293,21 +309,6 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 			return nil, nil, errors.New("nil result wrapper received")
 		}
 		results[r] = result.Root
-	}
-
-	// Validate the response internals since they came over the wire.
-	if len(results) != len(transitions) {
-		return nil, nil, errors.New("transition results have invalid length")
-	}
-	for _, e := range results {
-		if err := e.EnsureValid(); err != nil {
-			return nil, nil, errors.Wrap(err, "received invalid entry")
-		}
-	}
-	for _, p := range response.Problems {
-		if err := p.EnsureValid(); err != nil {
-			return nil, nil, errors.Wrap(err, "received invalid problem")
-		}
 	}
 
 	// Success.

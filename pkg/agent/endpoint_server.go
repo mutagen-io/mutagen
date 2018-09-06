@@ -43,21 +43,8 @@ func ServeEndpoint(connection net.Conn) error {
 		err = errors.Wrap(err, "unable to receive initialize request")
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
-	}
-
-	// Validate the initialization request parameters.
-	var validationErr error
-	if request.Session == "" {
-		validationErr = errors.New("empty session identifier")
-	} else if !request.Version.Supported() {
-		validationErr = errors.New("unknown or unsupported session version")
-	} else if request.Root == "" {
-		validationErr = errors.New("empty root path")
-	} else if err := request.Configuration.EnsureValid(session.ConfigurationSourceSession); err != nil {
-		validationErr = errors.Wrap(err, "invalid session configuration")
-	}
-	if validationErr != nil {
-		err := errors.Wrap(validationErr, "invalid initialization request")
+	} else if err = request.ensureValid(); err != nil {
+		err = errors.Wrap(err, "invalid initialize request")
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
 	}
@@ -102,6 +89,8 @@ func (s *endpointServer) serve() error {
 		var request endpointRequest
 		if err := s.decoder.Decode(&request); err != nil {
 			return errors.Wrap(err, "unable to receive request")
+		} else if err = request.ensureValid(); err != nil {
+			return errors.Wrap(err, "invalid endpoint request")
 		}
 
 		// Handle the request based on type.
@@ -126,13 +115,21 @@ func (s *endpointServer) serve() error {
 				return errors.Wrap(err, "unable to serve transition request")
 			}
 		} else {
+			// TODO: Should we panic here? The request validation already
+			// ensures that one and only one message component is set, so we
+			// should never hit this condition.
 			return errors.New("invalid request")
 		}
 	}
 }
 
 // servePoll serves a poll request.
-func (s *endpointServer) servePoll(_ *pollRequest) error {
+func (s *endpointServer) servePoll(request *pollRequest) error {
+	// Ensure the request is valid.
+	if err := request.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid poll request")
+	}
+
 	// Create a cancellable context for executing the poll. The context may be
 	// cancelled to force a response, but in case the response comes naturally,
 	// ensure the context is cancelled before we're done to avoid leaking a
@@ -190,6 +187,11 @@ func (s *endpointServer) servePoll(_ *pollRequest) error {
 
 // serveScan serves a scan request.
 func (s *endpointServer) serveScan(request *scanRequest) error {
+	// Ensure the request is valid.
+	if err := request.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid scan request")
+	}
+
 	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
 	// endpoints anyway. If a retry is requested or an error occurs, send a
 	// response.
@@ -233,6 +235,11 @@ func (s *endpointServer) serveScan(request *scanRequest) error {
 
 // serveStage serves a stage request.
 func (s *endpointServer) serveStage(request *stageRequest) error {
+	// Ensure the request is valid.
+	if err := request.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid stage request")
+	}
+
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.Stage(request.Entries)
 	if err != nil {
@@ -266,6 +273,11 @@ func (s *endpointServer) serveStage(request *stageRequest) error {
 
 // serveSupply serves a supply request.
 func (s *endpointServer) serveSupply(request *supplyRequest) error {
+	// Ensure the request is valid.
+	if err := request.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid supply request")
+	}
+
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
 	encoder := func(t *rsync.Transmission) error {
@@ -284,13 +296,9 @@ func (s *endpointServer) serveSupply(request *supplyRequest) error {
 
 // serveTransitino serves a transition request.
 func (s *endpointServer) serveTransition(request *transitionRequest) error {
-	// Validate the request internals since they came over the wire.
-	for _, t := range request.Transitions {
-		if err := t.EnsureValid(); err != nil {
-			err = errors.Wrap(err, "received invalid transition")
-			s.encoder.Encode(transitionResponse{Error: err.Error()})
-			return err
-		}
+	// Ensure the request is valid.
+	if err := request.ensureValid(); err != nil {
+		return errors.Wrap(err, "invalid transition request")
 	}
 
 	// Perform the transition.
