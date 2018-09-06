@@ -4,18 +4,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// supported indicates whether or not a protocol is supported.
-func (p Protocol) supported() bool {
-	switch p {
-	case Protocol_Local:
-		return true
-	case Protocol_SSH:
-		return true
-	default:
-		return false
-	}
-}
-
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
 	// Ensure that the URL is non-nil.
