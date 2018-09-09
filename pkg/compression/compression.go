@@ -20,7 +20,7 @@ func NewDecompressingReader(source io.Reader) io.Reader {
 	// However, it turns out that the underlying implementation of Close just
 	// checks for stream errors and that it isn't really necessary to call it.
 	// As a result, we ignore this portion of the interface, but we're sort of
-	// relying on an implementaiton detail in doing so.
+	// relying on an implementation detail in doing so.
 	return flate.NewReader(source)
 }
 
