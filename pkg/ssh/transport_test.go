@@ -82,13 +82,13 @@ func TestCopy(t *testing.T) {
 	destination := filepath.Join(directory, "destination")
 
 	// Copy the file.
-	if err := transport.Copy(source, target); err != nil {
+	if err := transport.Copy(source, destination); err != nil {
 		t.Fatal("unable to copy file:", err)
 	}
 
 	// Verify that the file exists.
-	if _, err := os.Lstat(target.Path); err != nil {
-		t.Error("unable to verify that target exists")
+	if _, err := os.Lstat(destination); err != nil {
+		t.Error("unable to verify that destination exists")
 	}
 }
 
@@ -122,6 +122,7 @@ func TestCommandOutput(t *testing.T) {
 		Username: user.Username,
 		Hostname: "localhost",
 		Port:     22,
+		Path:     "~/synchronization/path",
 	}
 
 	// Create a transport.
