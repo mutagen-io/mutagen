@@ -2,29 +2,57 @@ package filesystem
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 )
 
-// tildeExpand attempts tilde expansion (into the user's home directory) of
-// tildes occurring at the start of a path. It does not support ~username-style
-// expansion.
+// tildeExpand attempts tilde expansion of paths beginning with ~/ or
+// ~<username>/. On Windows, it additionally supports ~\ and ~<username>\.
 func tildeExpand(path string) (string, error) {
 	// Only process relevant paths.
 	if path == "" || path[0] != '~' {
 		return path, nil
 	}
 
-	// If the second character isn't a path separator, then someone is probably
-	// trying to do a ~username expansion, but we can't support that without CGO
-	// to support user.Lookup.
-	if len(path) > 1 && !os.IsPathSeparator(path[1]) {
-		return "", errors.New("unable to perform alternate user lookup")
+	// Find the first character in the path that's considered a path separator
+	// on the platform. Path seperators are always single-byte, so we can safely
+	// loop over the path's bytes.
+	pathSeparatorIndex := -1
+	for i := 0; i < len(path); i++ {
+		if os.IsPathSeparator(path[i]) {
+			pathSeparatorIndex = i
+			break
+		}
 	}
 
-	// Compute the path.
-	return filepath.Join(HomeDirectory, path[1:]), nil
+	// Divide the path into the "username" portion and the "subpath" portion -
+	// i.e. those portions coming before and after the separator, respectively.
+	var username string
+	var remaining string
+	if pathSeparatorIndex > 0 {
+		username = path[1:pathSeparatorIndex]
+		remaining = path[pathSeparatorIndex+1:]
+	} else {
+		username = path[1:]
+	}
+
+	// Compute the relevant home directory. If the username is empty, then we
+	// use the current user's home directory, otherwise we need to do a lookup.
+	var homeDirectory string
+	if username == "" {
+		homeDirectory = HomeDirectory
+	} else {
+		if u, err := user.Lookup(username); err != nil {
+			return "", errors.Wrap(err, "unable to lookup user")
+		} else {
+			homeDirectory = u.HomeDir
+		}
+	}
+
+	// Compute the full path.
+	return filepath.Join(homeDirectory, remaining), nil
 }
 
 // Normalize normalizes a path, expanding home directory tildes, converting it
