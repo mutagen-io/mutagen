@@ -15,6 +15,10 @@ import (
 	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
+
+	// Explicitly import packages that need to register protocol handlers.
+	_ "github.com/havoc-io/mutagen/pkg/local"
+	_ "github.com/havoc-io/mutagen/pkg/ssh"
 )
 
 // daemonLock is the daemon lock manager.
