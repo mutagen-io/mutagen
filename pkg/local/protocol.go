@@ -7,17 +7,18 @@ import (
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
-// localProtocolHandler is a protocol handler for connecting to local endpoints.
-type localProtocolHandler struct{}
+// protocolHandler implements the session.ProtocolHandler interface for
+// connecting to local endpoints.
+type protocolHandler struct{}
 
 // Dial connects to a local endpoint.
-func (h *localProtocolHandler) Dial(
+func (h *protocolHandler) Dial(
 	url *urlpkg.URL,
+	prompter,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
-	prompter string,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != urlpkg.Protocol_Local {
@@ -25,7 +26,7 @@ func (h *localProtocolHandler) Dial(
 	}
 
 	// Create a local endpoint.
-	endpoint, err := NewEndpoint(session, version, url.Path, configuration, alpha)
+	endpoint, err := NewEndpoint(url.Path, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create local endpoint")
 	}
@@ -36,5 +37,5 @@ func (h *localProtocolHandler) Dial(
 
 func init() {
 	// Register the local protocol handler with the session package.
-	session.ProtocolHandlers[urlpkg.Protocol_Local] = &localProtocolHandler{}
+	session.ProtocolHandlers[urlpkg.Protocol_Local] = &protocolHandler{}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/havoc-io/mutagen/pkg/remote"
 )
 
 const (
@@ -61,7 +62,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	go housekeepRegularly(housekeepingContext)
 
 	// Create a connection on standard input/output.
-	connection := newStdioConnection(true)
+	connection := newStdioConnection()
 
 	// Perform a handshake.
 	if err := mutagen.SendVersion(connection); err != nil {
@@ -72,7 +73,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	endpointTermination := make(chan error, 1)
 	go func() {
-		endpointTermination <- agent.ServeEndpoint(connection)
+		endpointTermination <- remote.ServeEndpoint(connection)
 	}()
 
 	// Wait for termination from a signal or the endpoint.

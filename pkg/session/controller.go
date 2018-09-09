@@ -95,11 +95,11 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(identifier, version, alpha, configuration, true, prompter)
+	alphaEndpoint, err := connect(alpha, prompter, identifier, version, configuration, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(identifier, version, beta, configuration, false, prompter)
+	betaEndpoint, err := connect(beta, prompter, identifier, version, configuration, false)
 	if err != nil {
 		alphaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
@@ -281,12 +281,12 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingAlpha
 	c.stateLock.Unlock()
 	alpha, alphaConnectErr := connect(
+		c.session.Alpha,
+		prompter,
 		c.session.Identifier,
 		c.session.Version,
-		c.session.Alpha,
 		c.session.Configuration,
 		true,
-		prompter,
 	)
 	c.stateLock.Lock()
 	c.state.AlphaConnected = (alpha != nil)
@@ -297,12 +297,12 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingBeta
 	c.stateLock.Unlock()
 	beta, betaConnectErr := connect(
+		c.session.Beta,
+		prompter,
 		c.session.Identifier,
 		c.session.Version,
-		c.session.Beta,
 		c.session.Configuration,
 		false,
-		prompter,
 	)
 	c.stateLock.Lock()
 	c.state.BetaConnected = (beta != nil)
@@ -458,9 +458,9 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.stateLock.Unlock()
 				alpha, _ = reconnect(
 					context,
+					c.session.Alpha,
 					c.session.Identifier,
 					c.session.Version,
-					c.session.Alpha,
 					c.session.Configuration,
 					true,
 				)
@@ -485,9 +485,9 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.stateLock.Unlock()
 				beta, _ = reconnect(
 					context,
+					c.session.Beta,
 					c.session.Identifier,
 					c.session.Version,
-					c.session.Beta,
 					c.session.Configuration,
 					false,
 				)

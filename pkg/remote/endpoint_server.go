@@ -1,4 +1,4 @@
-package agent
+package remote
 
 import (
 	contextpkg "context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/local"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
@@ -32,9 +33,13 @@ func ServeEndpoint(connection net.Conn) error {
 	// Defer closure of the connection.
 	defer connection.Close()
 
-	// Create encoders and decoders.
-	encoder := gob.NewEncoder(connection)
-	decoder := gob.NewDecoder(connection)
+	// Enable read/write compression on the connection.
+	reader := compression.NewDecompressingReader(connection)
+	writer := compression.NewCompressingWriter(connection)
+
+	// Create an encoder and decoder.
+	encoder := gob.NewEncoder(writer)
+	decoder := gob.NewDecoder(reader)
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
@@ -52,9 +57,9 @@ func ServeEndpoint(connection net.Conn) error {
 	// Create the underlying endpoint. If it fails to create, then send a
 	// failure response and abort. If it succeeds, then defer its closure.
 	endpoint, err := local.NewEndpoint(
+		request.Root,
 		request.Session,
 		request.Version,
-		request.Root,
 		request.Configuration,
 		request.Alpha,
 	)

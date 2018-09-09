@@ -1,4 +1,4 @@
-package agent
+package remote
 
 import (
 	"encoding/gob"

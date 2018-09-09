@@ -11,6 +11,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// posixShellCommandNotFoundExitCode is the exit code returned by most
+	// (all?) POSIX shells when the provided command isn't found. It seems to
+	// have originated with the Bourne shell and then been brought over to bash,
+	// zsh, and others. It doesn't seem to have a corresponding errno value,
+	// which I guess makes sense since errno values aren't generally expected to
+	// be used as exit codes, so we have to define it manually.
+	// TODO: Figure out if other shells return different exit codes when a
+	// command isn't found. Is this exit code defined in a standard somewhere?
+	posixShellCommandNotFoundExitCode = 127
+)
+
 // ExitCodeForError extracts the process exit code from an error returned by
 // os/exec.Process.Wait/Run. The error must be of type *os/exec.ExitError in
 // order for this function to succeed.
@@ -30,4 +42,15 @@ func ExitCodeForError(err error) (int, error) {
 
 	// Done.
 	return waitStatus.ExitStatus(), nil
+}
+
+// IsPOSIXShellCommandNotFound returns whether or not an os/exec error
+// represents a "command not found" error from a POSIX shell.
+func IsPOSIXShellCommandNotFound(err error) bool {
+	// Extract the code.
+	code, codeErr := ExitCodeForError(err)
+
+	// Ensure that extraction was successful and the code matches what's
+	// expected.
+	return codeErr == nil && code == posixShellCommandNotFoundExitCode
 }

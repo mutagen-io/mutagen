@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/compression"
 )
 
 type stdioAddress struct{}
@@ -22,40 +20,12 @@ func (stdioAddress) String() string {
 }
 
 type stdioConnection struct {
-	reader io.Reader
-	writer io.Writer
+	io.Reader
+	io.Writer
 }
 
-func newStdioConnection(compress bool) *stdioConnection {
-	// Create the reader.
-	var reader io.Reader
-	if compress {
-		reader = compression.NewDecompressingReader(os.Stdin)
-	} else {
-		reader = os.Stdin
-	}
-
-	// Create the writer.
-	var writer io.Writer
-	if compress {
-		writer = compression.NewCompressingWriter(os.Stdout)
-	} else {
-		writer = os.Stdout
-	}
-
-	// Create the connection.
-	return &stdioConnection{
-		reader: reader,
-		writer: writer,
-	}
-}
-
-func (c *stdioConnection) Read(buffer []byte) (int, error) {
-	return c.reader.Read(buffer)
-}
-
-func (c *stdioConnection) Write(buffer []byte) (int, error) {
-	return c.writer.Write(buffer)
+func newStdioConnection() *stdioConnection {
+	return &stdioConnection{os.Stdin, os.Stdout}
 }
 
 func (c *stdioConnection) Close() error {

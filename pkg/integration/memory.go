@@ -5,32 +5,31 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/remote"
 	"github.com/havoc-io/mutagen/pkg/session"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
 const (
 	// inMemoryProtocol is a fake protocol used to perform integration tests
-	// over an in-memory setup of the agent package's endpoint client/server
-	// architecture.
+	// over an in-memory setup of the remote client/server architecture.
 	inMemoryProtocol urlpkg.Protocol = -1
 )
 
-// inMemoryProtocolHandler is a protocol handler used to perform integration
-// tests over an in-memory setup of the agent package's endpoint client/server
-// architecture.
-type inMemoryProtocolHandler struct{}
+// protocolHandler implements the session.ProtocolHandler interface for
+// connecting to "remote" endpoints that actually exist in memory via an
+// in-memory pipe.
+type protocolHandler struct{}
 
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
-func (h *inMemoryProtocolHandler) Dial(
+func (h *protocolHandler) Dial(
 	url *urlpkg.URL,
+	prompter,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
-	prompter string,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != inMemoryProtocol {
@@ -42,14 +41,14 @@ func (h *inMemoryProtocolHandler) Dial(
 
 	// Server the endpoint in a background Goroutine. This will terminate once
 	// the client connection is closed.
-	go agent.ServeEndpoint(serverConnection)
+	go remote.ServeEndpoint(serverConnection)
 
 	// Create a client for this endpoint.
-	endpoint, err := agent.NewEndpointClient(
+	endpoint, err := remote.NewEndpointClient(
 		clientConnection,
+		url.Path,
 		session,
 		version,
-		url.Path,
 		configuration,
 		alpha,
 	)
@@ -63,5 +62,5 @@ func (h *inMemoryProtocolHandler) Dial(
 
 func init() {
 	// Register the in-memory protocol handler with the session package.
-	session.ProtocolHandlers[inMemoryProtocol] = &inMemoryProtocolHandler{}
+	session.ProtocolHandlers[inMemoryProtocol] = &protocolHandler{}
 }

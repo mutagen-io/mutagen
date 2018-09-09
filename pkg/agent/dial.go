@@ -16,33 +16,13 @@ import (
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/remote"
 	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/ssh"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
-const (
-	// posixCommandNotFoundExitCode is the exit code returned by most (all?)
-	// POSIX shells when the provided command isn't found. It seems to have
-	// originated with the Bourne shell and then been brought over to bash, zsh,
-	// and others. It doesn't seem to have a corresponding errno value, which I
-	// guess makes sense since errno values aren't generally expected to be used
-	// as exit codes, so we have to define it manually.
-	// TODO: Figure out if other shells return different exit codes when a
-	// command isn't found.
-	posixCommandNotFoundExitCode   = 127
-	windowsInvalidCommandFragment  = "is not recognized as an internal or external command"
-	windowsCommandNotFoundFragment = "The system cannot find the path specified"
-)
-
-func isPOSIXCommandNotFound(err error) bool {
-	code, codeErr := process.ExitCodeForError(err)
-	return codeErr == nil && code == posixCommandNotFoundExitCode
-}
-
-func probeSSHPOSIX(remote *urlpkg.URL, prompter string) (string, string, error) {
+func probePOSIX(transport Transport) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
-	unameSMBytes, err := ssh.Output(prompter, remote, "uname -s -m")
+	unameSMBytes, err := output(transport, "uname -s -m")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke uname")
 	} else if !utf8.Valid(unameSMBytes) {
@@ -77,9 +57,9 @@ func probeSSHPOSIX(remote *urlpkg.URL, prompter string) (string, string, error) 
 	return goos, goarch, nil
 }
 
-func probeSSHWindows(remote *urlpkg.URL, prompter string) (string, string, error) {
+func probeWindows(transport Transport) (string, string, error) {
 	// Attempt to dump the remote environment.
-	outputBytes, err := ssh.Output(prompter, remote, "cmd /c set")
+	outputBytes, err := output(transport, "cmd /c set")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke remote environment printing")
 	} else if !utf8.Valid(outputBytes) {
@@ -118,16 +98,16 @@ func probeSSHWindows(remote *urlpkg.URL, prompter string) (string, string, error
 	return goos, goarch, nil
 }
 
-// probeSSHPlatform attempts to identify the properties of the target platform,
-// namely GOOS, GOARCH, and whether or not it's a POSIX environment (which it
-// might be even on Windows).
-func probeSSHPlatform(remote *urlpkg.URL, prompter string) (string, string, bool, error) {
+// probe attempts to identify the properties of the target platform, namely
+// GOOS, GOARCH, and whether or not it's a POSIX environment (which it might be
+// even on Windows).
+func probe(transport Transport, prompter string) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
 	if err := prompt.Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
-	if goos, goarch, err := probeSSHPOSIX(remote, prompter); err == nil {
+	if goos, goarch, err := probePOSIX(transport); err == nil {
 		return goos, goarch, true, nil
 	}
 
@@ -135,7 +115,7 @@ func probeSSHPlatform(remote *urlpkg.URL, prompter string) (string, string, bool
 	if err := prompt.Message(prompter, "Probing endpoint (Windows)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
-	if goos, goarch, err := probeSSHWindows(remote, prompter); err == nil {
+	if goos, goarch, err := probeWindows(transport); err == nil {
 		return goos, goarch, false, nil
 	}
 
@@ -143,9 +123,9 @@ func probeSSHPlatform(remote *urlpkg.URL, prompter string) (string, string, bool
 	return "", "", false, errors.New("exhausted probing methods")
 }
 
-func installSSH(remote *urlpkg.URL, prompter string) error {
+func install(transport Transport, prompter string) error {
 	// Detect the target platform.
-	goos, goarch, posix, err := probeSSHPlatform(remote, prompter)
+	goos, goarch, posix, err := probe(transport, prompter)
 	if err != nil {
 		return errors.Wrap(err, "unable to probe remote platform")
 	}
@@ -155,21 +135,17 @@ func installSSH(remote *urlpkg.URL, prompter string) error {
 	if err := prompt.Message(prompter, "Extracting agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
-	agent, err := executableForPlatform(goos, goarch)
+	agentExecutable, err := executableForPlatform(goos, goarch)
 	if err != nil {
 		return errors.Wrap(err, "unable to get agent for platform")
 	}
-	defer os.Remove(agent)
+	defer os.Remove(agentExecutable)
 
 	// Copy the agent to the remote. We use a unique identifier for the
 	// temporary destination. For Windows remotes, we add a ".exe" suffix, which
 	// will automatically make the file executable on the remote (POSIX systems
 	// are handled separately below). For POSIX systems, we add a dot prefix to
 	// hide the executable.
-	// HACK: This assumes that the SSH user's home directory is used as the
-	// default destination directory for SCP copies. That should be true in
-	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
-	// probe information to handle this more carefully.
 	if err := prompt.Message(prompter, "Copying agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
@@ -184,14 +160,7 @@ func installSSH(remote *urlpkg.URL, prompter string) error {
 	if posix {
 		destination = "." + destination
 	}
-	destinationURL := &urlpkg.URL{
-		Protocol: remote.Protocol,
-		Username: remote.Username,
-		Hostname: remote.Hostname,
-		Port:     remote.Port,
-		Path:     destination,
-	}
-	if err = ssh.Copy(prompter, agent, destinationURL); err != nil {
+	if err = transport.Copy(agentExecutable, destination); err != nil {
 		return errors.Wrap(err, "unable to copy agent binary")
 	}
 
@@ -201,27 +170,17 @@ func installSSH(remote *urlpkg.URL, prompter string) error {
 	// binary is extracted from the bundle, it will lose its executability bit
 	// since Windows can't preserve this. This will also be applied to Windows
 	// POSIX remotes, but a "chmod +x" there will just be a no-op.
-	// HACK: This assumes that the SSH user's home directory is used as the
-	// default working directory for SSH commands. We have to do this because we
-	// don't have a portable mechanism to invoke the command relative to the
-	// user's home directory and we don't want to do a probe of the remote
-	// system before invoking the command. This assumption should be fine for
-	// 99.9% of cases, but if it becomes a major issue, we'll need to use the
-	// probe information to handle this more carefully.
 	if runtime.GOOS == "windows" && posix {
 		if err := prompt.Message(prompter, "Setting agent executability..."); err != nil {
 			return errors.Wrap(err, "unable to message prompter")
 		}
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
-		if err := ssh.Run(prompter, remote, executabilityCommand); err != nil {
+		if err := run(transport, executabilityCommand); err != nil {
 			return errors.Wrap(err, "unable to set agent executability")
 		}
 	}
 
 	// Invoke the remote installation.
-	// HACK: This assumes that the SSH user's home directory is used as the
-	// default working directory for SSH commands. The reasons for assuming this
-	// are outlined above.
 	if err := prompt.Message(prompter, "Installing agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
@@ -231,7 +190,7 @@ func installSSH(remote *urlpkg.URL, prompter string) error {
 	} else {
 		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}
-	if err := ssh.Run(prompter, remote, installCommand); err != nil {
+	if err := run(transport, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke agent installation")
 	}
 
@@ -239,31 +198,24 @@ func installSSH(remote *urlpkg.URL, prompter string) error {
 	return nil
 }
 
-func connectSSH(
-	url *urlpkg.URL,
+func connect(
+	transport Transport,
+	prompter string,
+	cmdExe bool,
+	root,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
-	prompter string,
-	windows bool,
 ) (session.Endpoint, bool, bool, error) {
-	// Compute the agent SSH command. Unless we have reason to assume that this
-	// is a Windows system, we construct a path using forward slashes. This will
+	// Compute the agent invocation command, relative to the user's home
+	// directory on the remote. Unless we have reason to assume that this is a
+	// cmd.exe environment, we construct a path using forward slashes. This will
 	// work for all POSIX systems and POSIX-like environments on Windows. If we
-	// know we're hitting a Windows SSH server that's going to invoke commands
-	// inside cmd.exe, then use backslashes, otherwise the invocation won't
-	// work.
-	// HACK: This assumes that the SSH user's home directory is used as the
-	// default working directory for SSH commands. We have to do this because we
-	// don't have a portable mechanism to invoke the command relative to the
-	// user's home directory (tilde doesn't work on Windows) and we don't want
-	// to do a probe of the remote system before invoking the endpoint. This
-	// assumption should be fine for 99.9% of cases, but if it becomes a major
-	// issue, the only other options I see are probing before invoking (slow) or
-	// using the Go SSH library to do this (painful to faithfully emulate
-	// OpenSSH's behavior). Perhaps we can allow expicit home directory
-	// specification via a command line flag if this becomes necessary.
+	// know we're hitting a cmd.exe environment, then we use backslashes,
+	// otherwise the invocation won't work. Watching for cmd.exe to fail on
+	// commands with forward slashes is actually the way that we detect cmd.exe
+	// environments.
 	// HACK: We're assuming that none of these path components have spaces in
 	// them, but since we control all of them, this is probably okay.
 	// HACK: When invoking on Windows systems (whether inside a POSIX
@@ -271,10 +223,10 @@ func connectSSH(
 	// name. Fortunately this allows us to also avoid having to try the
 	// combination of forward slashes + ".exe" for Windows POSIX environments.
 	pathSeparator := "/"
-	if windows {
+	if cmdExe {
 		pathSeparator = "\\"
 	}
-	sshAgentPath := strings.Join([]string{
+	agentInvocationPath := strings.Join([]string{
 		filesystem.MutagenDirectoryName,
 		agentsDirectoryName,
 		mutagen.Version,
@@ -282,36 +234,34 @@ func connectSSH(
 	}, pathSeparator)
 
 	// Compute the command to invoke.
-	// HACK: We rely on sshAgentPath not having any spaces in it. If we do
-	// eventually need to add any, we'll need to fix this up for the shell.
-	command := fmt.Sprintf("%s %s", sshAgentPath, ModeEndpoint)
+	command := fmt.Sprintf("%s %s", agentInvocationPath, ModeEndpoint)
 
-	// Create an SSH process.
+	// Create an agent process.
 	message := "Connecting to agent (POSIX)..."
-	if windows {
+	if cmdExe {
 		message = "Connecting to agent (Windows)..."
 	}
 	if err := prompt.Message(prompter, message); err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to message prompter")
 	}
-	process, err := ssh.Command(prompter, url, command)
+	agentProcess, err := transport.Command(command)
 	if err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to create SSH command")
+		return nil, false, false, errors.Wrap(err, "unable to create agent command")
 	}
 
 	// Create a connection that wrap's the process' standard input/output.
-	connection, err := newAgentConnection(process, true)
+	connection, err := newConnection(agentProcess)
 	if err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to create SSH process connection")
+		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
 	}
 
 	// Redirect the process' standard error output to a buffer so that we can
 	// give better feedback in errors. This might be a bit dangerous since this
 	// buffer will be attached for the lifetime of the process and we don't know
 	// exactly how much output will be received (and thus we could buffer a
-	// large amount of it in memory), but generally speaking SSH doesn't spit
-	// out much error output (unless in debug mode, which we won't be), and the
-	// agent doesn't spit out any.
+	// large amount of it in memory), but generally speaking our transport
+	// commands don't spit out too much error output, and the agent doesn't spit
+	// out any.
 	// TODO: If we do start seeing large allocations in these buffers, a simple
 	// size-limited buffer might suffice, at least to get some of the error
 	// message.
@@ -321,11 +271,11 @@ func connectSSH(
 	// access to that buffer. But for now we're mostly just concerned with
 	// connection issues.
 	errorBuffer := bytes.NewBuffer(nil)
-	process.Stderr = errorBuffer
+	agentProcess.Stderr = errorBuffer
 
 	// Start the process.
-	if err = process.Start(); err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to start SSH agent process")
+	if err = agentProcess.Start(); err != nil {
+		return nil, false, false, errors.Wrap(err, "unable to start agent process")
 	}
 
 	// Confirm that the process started correctly by performing a version
@@ -335,7 +285,7 @@ func connectSSH(
 		// the error buffer because it isn't safe for concurrent usage, and
 		// until Wait completes, the I/O forwarding Goroutines can still be
 		// running.
-		processErr := process.Wait()
+		processErr := agentProcess.Wait()
 
 		// Extract error output and ensure it's UTF-8.
 		errorOutput := errorBuffer.String()
@@ -343,18 +293,18 @@ func connectSSH(
 			return nil, false, false, errors.New("remote did not return UTF-8 output")
 		}
 
-		// If there's an error, check if SSH exits with a command not found
-		// error (or an error message on Windows indicating and invalid command
-		// (due to POSIX path formatting) or command not found). We can't really
-		// check this until we try to interact with the process and see that it
-		// misbehaves. We wouldn't be able to see this returned as an error from
-		// the Start method because it just starts the SSH client itself, not
-		// the remote command.
-		if isPOSIXCommandNotFound(processErr) {
+		// If there's an error, check if the command exits with a POSIX "command
+		// not found" error, a Windows invalid formatting message (an indication
+		// of a cmd.exe environment), or a Windows "command not found" message.
+		// We can't really check this until we try to interact with the process
+		// and see that it misbehaves. We wouldn't be able to see this returned
+		// as an error from the Start method because it just starts the
+		// transport command itself, not the remote command.
+		if process.IsPOSIXShellCommandNotFound(processErr) {
 			return nil, true, false, errors.New("command not found")
-		} else if strings.Index(errorOutput, windowsInvalidCommandFragment) != -1 {
-			return nil, true, true, errors.New("invalid command")
-		} else if strings.Index(errorOutput, windowsCommandNotFoundFragment) != -1 {
+		} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
+			return nil, false, true, errors.New("invalid command")
+		} else if process.OutputIsWindowsCommandNotFound(errorOutput) {
 			return nil, true, true, errors.New("command not found")
 		}
 
@@ -363,19 +313,19 @@ func connectSSH(
 		// value will probably just be an EOF.
 		if errorOutput != "" {
 			return nil, false, false, errors.Errorf(
-				"SSH process failed with error output:\n%s",
+				"agent process failed with error output:\n%s",
 				strings.TrimSpace(errorOutput),
 			)
 		}
 
 		// Otherwise just wrap up whatever error we have.
-		return nil, false, false, errors.Wrap(err, "unable to handshake with SSH agent process")
+		return nil, false, false, errors.Wrap(err, "unable to handshake with agent process")
 	} else if !versionMatch {
 		return nil, false, false, errors.New("version mismatch")
 	}
 
 	// Wrap the connection in an endpoint client.
-	endpoint, err := NewEndpointClient(connection, session, version, url.Path, configuration, alpha)
+	endpoint, err := remote.NewEndpointClient(connection, root, session, version, configuration, alpha)
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create endpoint client")
 	}
@@ -384,56 +334,47 @@ func connectSSH(
 	return endpoint, false, false, nil
 }
 
-// sshProtocolHandler is a protocol handler for connecting to SSH endpoints.
-type sshProtocolHandler struct{}
-
-// Dial connects to an SSH endpoint.
-func (h *sshProtocolHandler) Dial(
-	url *urlpkg.URL,
+// Dial connects to an agent-based endpoint using the specified transport,
+// prompter, and endpoint metadata.
+func Dial(
+	transport Transport,
+	prompter,
+	root,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
-	prompter string,
 ) (session.Endpoint, error) {
-	// Verify that the URL is of the correct protocol.
-	if url.Protocol != urlpkg.Protocol_SSH {
-		panic("non-SSH URL dispatched to SSH URL handler")
-	}
-
-	// Attempt a connection. If this fails but we detect a Windows environment
-	// in the process, then re-attempt a connection under the Windows
-	// assumption.
-	endpoint, install, windows, err := connectSSH(url, session, version, configuration, alpha, prompter, false)
+	// Attempt a connection. If this fails but we detect a Windows cmd.exe
+	// environment in the process, then re-attempt a connection under the
+	// cmd.exe assumption.
+	endpoint, tryInstall, cmdExe, err :=
+		connect(transport, prompter, false, root, session, version, configuration, alpha)
 	if err == nil {
 		return endpoint, nil
-	} else if windows {
-		endpoint, install, windows, err = connectSSH(url, session, version, configuration, alpha, prompter, true)
+	} else if cmdExe {
+		endpoint, tryInstall, cmdExe, err =
+			connect(transport, prompter, true, root, session, version, configuration, alpha)
 		if err == nil {
 			return endpoint, nil
 		}
 	}
 
-	// If we didn't detect a Windows environment, or we did and it also failed,
-	// then check if an install is recommended. If not, then bail.
-	if !install {
+	// If connection attempts have failed, then check whether or not an install
+	// is recommended. If not, then bail.
+	if !tryInstall {
 		return nil, err
 	}
 
 	// Attempt to install.
-	if err := installSSH(url, prompter); err != nil {
+	if err := install(transport, prompter); err != nil {
 		return nil, errors.Wrap(err, "unable to install agent")
 	}
 
 	// Re-attempt connectivity.
-	endpoint, _, _, err = connectSSH(url, session, version, configuration, alpha, prompter, windows)
+	endpoint, _, _, err = connect(transport, prompter, cmdExe, root, session, version, configuration, alpha)
 	if err != nil {
 		return nil, err
 	}
 	return endpoint, nil
-}
-
-func init() {
-	// Register the SSH protocol handler with the session package.
-	session.ProtocolHandlers[urlpkg.Protocol_SSH] = &sshProtocolHandler{}
 }

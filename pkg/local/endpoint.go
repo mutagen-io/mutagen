@@ -61,9 +61,9 @@ type endpoint struct {
 // NewEndpoint creates a new local endpoint instance using the specified session
 // metadata.
 func NewEndpoint(
+	root,
 	session string,
 	version session.Version,
-	root string,
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {

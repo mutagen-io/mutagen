@@ -1,4 +1,4 @@
-package agent
+package remote
 
 import (
 	contextpkg "context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -32,15 +33,19 @@ type endpointClient struct {
 // specified connection and metadata.
 func NewEndpointClient(
 	connection net.Conn,
+	root,
 	session string,
 	version session.Version,
-	root string,
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {
-	// Wrap the connection in an encoder/decoder pair.
-	encoder := gob.NewEncoder(connection)
-	decoder := gob.NewDecoder(connection)
+	// Enable read/write compression on the connection.
+	reader := compression.NewDecompressingReader(connection)
+	writer := compression.NewCompressingWriter(connection)
+
+	// Create an encoder and decoder.
+	encoder := gob.NewEncoder(writer)
+	decoder := gob.NewDecoder(reader)
 
 	// Create and send the initialize request.
 	request := initializeRequest{

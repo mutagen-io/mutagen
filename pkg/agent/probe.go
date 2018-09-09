@@ -24,10 +24,10 @@ var unameSToGOOS = map[string]string{
 
 // unameSIsWindowsPosix determines whether or not a uname -s output value
 // represents a Windows POSIX environment.
-func unameSIsWindowsPosix(unameS string) bool {
-	return strings.HasPrefix(unameS, "CYGWIN") ||
-		strings.HasPrefix(unameS, "MINGW") ||
-		strings.HasPrefix(unameS, "MSYS")
+func unameSIsWindowsPosix(value string) bool {
+	return strings.HasPrefix(value, "CYGWIN") ||
+		strings.HasPrefix(value, "MINGW") ||
+		strings.HasPrefix(value, "MSYS")
 }
 
 // unameMToGOARCH maps uname -m output values to their corresponding GOARCH

@@ -2,6 +2,7 @@ package process
 
 import (
 	"os/exec"
+	"runtime"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -38,5 +39,28 @@ func TestExitCode(t *testing.T) {
 		t.Fatal("unable to extract error exit code:", codeErr)
 	} else if code != 2 {
 		t.Error("exit code did not match expected")
+	}
+}
+
+// TestIsPOSIXShellCommandNotFound tests that the IsPOSIXShellCommandNotFound
+// function correctly identifiers a "command not found" error from a POSIX
+// shell.
+func TestIsPOSIXShellCommandNotFound(t *testing.T) {
+	// If we're not running in a POSIX environment, then skip this test. I think
+	// that we also have to skip this test in POSIX environments on Windows
+	// (which might be detectable with, e.g., the go-isatty package), because Go
+	// won't be able to find shell paths (e.g. "/bin/sh") due to how it resolves
+	// executable paths.
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	// Attempt to run a command that doesn't exist and verify that it has the
+	// correct error classification. Note that we have to run this inside a
+	// shell, otherwise other errors will crop up before the shell's error.
+	if err := exec.Command("/bin/sh", "mutagen-test-not-exist").Run(); err == nil {
+		t.Fatal("expected non-nil error when running non-existent command")
+	} else if !IsPOSIXShellCommandNotFound(err) {
+		t.Error("expected POSIX command not found classification")
 	}
 }
