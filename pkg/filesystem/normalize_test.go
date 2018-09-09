@@ -6,8 +6,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"testing"
 	"strings"
+	"testing"
 
 	"github.com/pkg/errors"
 )
