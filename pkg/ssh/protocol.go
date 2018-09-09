@@ -22,7 +22,7 @@ func (h *protocolHandler) Dial(
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != urlpkg.Protocol_SSH {
-		panic("non-SSH URL dispatched to SSH URL handler")
+		panic("non-SSH URL dispatched to SSH protocol handler")
 	}
 
 	// Create a transport for the agent to use.

@@ -22,7 +22,7 @@ func (h *protocolHandler) Dial(
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != urlpkg.Protocol_Local {
-		panic("non-local URL dispatched to local URL handler")
+		panic("non-local URL dispatched to local protocol handler")
 	}
 
 	// Create a local endpoint.

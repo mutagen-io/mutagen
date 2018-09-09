@@ -33,7 +33,7 @@ func (h *protocolHandler) Dial(
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != inMemoryProtocol {
-		panic("non-in-memory URL dispatched to in-memory URL handler")
+		panic("non-in-memory URL dispatched to in-memory protocol handler")
 	}
 
 	// Create an in-memory network connection.
