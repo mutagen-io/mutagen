@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // TestTildeNotPathSeparator ensures that ~ is not considered a path separator
@@ -67,13 +70,35 @@ func TestTildeExpandHomeBackslash(t *testing.T) {
 	}
 }
 
+// currentUsername is a utility wrapper around user.Current for Windows systems,
+// where the Username field will be of the form DOMAIN\username.
+func currentUsername() (string, error) {
+	// Grab the user.
+	user, err := user.Current()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to get current user")
+	}
+
+	// If we're on a POSIX system, we're done.
+	if runtime.GOOS != "windows" {
+		return user.Username, nil
+	}
+
+	// If we're on Windows, there may be a DOMAIN\ prefix on the username.
+	if index := strings.IndexByte(user.Username, '\\'); index >= 0 {
+		if index == len(user.Username) {
+			return "", errors.New("domain extends to end of username")
+		}
+		return user.Username[index+1:], nil
+	}
+	return user.Username, nil
+}
+
 func TestTildeExpandLookup(t *testing.T) {
 	// Grab the current username.
-	var username string
-	if u, err := user.Current(); err != nil {
-		t.Fatal("unable to look up current user:", err)
-	} else {
-		username = u.Username
+	username, err := currentUsername()
+	if err != nil {
+		t.Fatal("unable to look up current username:", err)
 	}
 
 	// Perform expansion.
@@ -90,11 +115,9 @@ func TestTildeExpandLookup(t *testing.T) {
 
 func TestTildeExpandLookupSlash(t *testing.T) {
 	// Grab the current username.
-	var username string
-	if u, err := user.Current(); err != nil {
-		t.Fatal("unable to look up current user:", err)
-	} else {
-		username = u.Username
+	username, err := currentUsername()
+	if err != nil {
+		t.Fatal("unable to look up current username:", err)
 	}
 
 	// Perform expansion.
@@ -114,11 +137,9 @@ func TestTildeExpandLookupBackslash(t *testing.T) {
 	expectFailure := runtime.GOOS != "windows"
 
 	// Grab the current username.
-	var username string
-	if u, err := user.Current(); err != nil {
-		t.Fatal("unable to look up current user:", err)
-	} else {
-		username = u.Username
+	username, err := currentUsername()
+	if err != nil {
+		t.Fatal("unable to look up current username:", err)
 	}
 
 	// Perform expansion.
