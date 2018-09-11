@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/pkg/compression"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -39,6 +40,34 @@ func NewEndpointClient(
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {
+	// Send our version to the server.
+	if err := mutagen.SendVersion(connection); err != nil {
+		connection.Close()
+		return nil, &handshakeTransportError{errors.Wrap(err, "unable to send client version")}
+	}
+
+	// Receive the server's version.
+	serverMajor, serverMinor, serverPatch, err := mutagen.ReceiveVersion(connection)
+	if err != nil {
+		connection.Close()
+		return nil, &handshakeTransportError{errors.Wrap(err, "unable to receive server version")}
+	}
+
+	// Ensure that our Mutagen versions are compatible. For now, we enforce that
+	// they're equal.
+	// TODO: Once we lock-in an internal protocol that we're going to support
+	// for some time, we can allow some version skew. On the client side in
+	// particular, we'll probably want to look out for the specific "locked-in"
+	// server protocol that we support and instantiate some frozen client
+	// implementation from that version.
+	versionMatch := serverMajor == mutagen.VersionMajor &&
+		serverMinor == mutagen.VersionMinor &&
+		serverPatch == mutagen.VersionPatch
+	if !versionMatch {
+		connection.Close()
+		return nil, errors.New("version mismatch")
+	}
+
 	// Enable read/write compression on the connection.
 	reader := compression.NewDecompressingReader(connection)
 	writer := compression.NewCompressingWriter(connection)
@@ -49,9 +78,9 @@ func NewEndpointClient(
 
 	// Create and send the initialize request.
 	request := initializeRequest{
+		Root:          root,
 		Session:       session,
 		Version:       version,
-		Root:          root,
 		Configuration: configuration,
 		Alpha:         alpha,
 	}

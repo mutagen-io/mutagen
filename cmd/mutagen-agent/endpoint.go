@@ -13,7 +13,6 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/local"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/remote"
 )
 
@@ -63,11 +62,6 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
-
-	// Perform a handshake.
-	if err := mutagen.SendVersion(connection); err != nil {
-		return errors.Wrap(err, "unable to transmit version")
-	}
 
 	// Serve an endpoint on standard input/output and monitor for its
 	// termination.

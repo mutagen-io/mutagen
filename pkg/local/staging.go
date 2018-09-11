@@ -95,19 +95,12 @@ type stager struct {
 }
 
 // newStager creates a new stager instance.
-func newStager(session string, version session.Version, alpha bool) (*stager, error) {
-	// Compute the staging root.
-	root, err := pathForStagingRoot(session, alpha)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute staging root")
-	}
-
-	// Success.
+func newStager(version session.Version, root string) *stager {
 	return &stager{
 		version:       version,
 		root:          root,
 		prefixCreated: make(map[string]bool, numberOfByteValues),
-	}, nil
+	}
 }
 
 // ensurePrefixExists ensures that the specified prefix directory exists within

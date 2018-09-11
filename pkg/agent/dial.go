@@ -250,7 +250,7 @@ func connect(
 	}
 
 	// Create a connection that wrap's the process' standard input/output.
-	connection, err := newConnection(agentProcess)
+	connection, err := process.NewConnection(agentProcess)
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
 	}
@@ -265,11 +265,9 @@ func connect(
 	// TODO: If we do start seeing large allocations in these buffers, a simple
 	// size-limited buffer might suffice, at least to get some of the error
 	// message.
-	// TODO: If we decide we want these errors available outside the agent
-	// package, it might be worth moving this buffer into the processStream
-	// type, exporting that type, and allowing type assertions that would give
-	// access to that buffer. But for now we're mostly just concerned with
-	// connection issues.
+	// TODO: Since this problem will likely be shared with custom protocols
+	// (which will invoke transport executables), it would be good to implement
+	// a shared solution.
 	errorBuffer := bytes.NewBuffer(nil)
 	agentProcess.Stderr = errorBuffer
 
@@ -278,9 +276,15 @@ func connect(
 		return nil, false, false, errors.Wrap(err, "unable to start agent process")
 	}
 
-	// Confirm that the process started correctly by performing a version
-	// handshake.
-	if versionMatch, err := mutagen.ReceiveAndCompareVersion(connection); err != nil {
+	// Wrap the connection in an endpoint client and handle errors that may have
+	// arisen during the handshake process. Specifically, we look for transport
+	// errors that occur during handshake, because that's an indication that our
+	// agent transport process is not functioning correctly. If that's the case,
+	// we wait for the agent transport process to exit (which we know it will
+	// because the NewEndpointClient method will close the connection (hence
+	// terminating the process) on failure), and probe the issue.
+	endpoint, err := remote.NewEndpointClient(connection, root, session, version, configuration, alpha)
+	if remote.IsHandshakeTransportError(err) {
 		// Wait for the process to complete. We need to do this before touching
 		// the error buffer because it isn't safe for concurrent usage, and
 		// until Wait completes, the I/O forwarding Goroutines can still be
@@ -320,13 +324,7 @@ func connect(
 
 		// Otherwise just wrap up whatever error we have.
 		return nil, false, false, errors.Wrap(err, "unable to handshake with agent process")
-	} else if !versionMatch {
-		return nil, false, false, errors.New("version mismatch")
-	}
-
-	// Wrap the connection in an endpoint client.
-	endpoint, err := remote.NewEndpointClient(connection, root, session, version, configuration, alpha)
-	if err != nil {
+	} else if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create endpoint client")
 	}
 

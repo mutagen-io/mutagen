@@ -6,12 +6,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-)
 
-const (
-	// PrompterEnvironmentVariable is the environment variable in which the
-	// Mutagen prompter identifier is stored.
-	PrompterEnvironmentVariable = "MUTAGEN_SSH_PROMPTER"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 )
 
 // setPrompterVariables sets up environment variables for prompting based on the
@@ -44,9 +40,11 @@ func setPrompterVariables(environment []string, prompter string) ([]string, erro
 		// Set the DISPLAY variable to Mutagen.
 		environment = append(environment, "DISPLAY=mutagen")
 
-		// Add environment variables to make Mutagen recognize an SSH prompting
-		// invocation.
-		environment = append(environment, fmt.Sprintf("%s=%s", PrompterEnvironmentVariable, prompter))
+		// Add the prompter environment variable to make Mutagen recognize a
+		// prompting invocation.
+		environment = append(environment,
+			fmt.Sprintf("%s=%s", prompt.PrompterEnvironmentVariable, prompter),
+		)
 	}
 
 	// Done.

@@ -59,18 +59,25 @@ type endpoint struct {
 }
 
 // NewEndpoint creates a new local endpoint instance using the specified session
-// metadata.
+// metadata and options.
 func NewEndpoint(
 	root,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
+	options ...EndpointOption,
 ) (session.Endpoint, error) {
 	// Expand and normalize the root path.
 	root, err := filesystem.Normalize(root)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to normalize root path")
+	}
+
+	// Create an endpoint configuration and apply all options.
+	endpointOptions := &endpointOptions{}
+	for _, o := range options {
+		o.apply(endpointOptions)
 	}
 
 	// Extract the effective symlink mode.
@@ -102,16 +109,25 @@ func NewEndpoint(
 	// Start file monitoring for the root.
 	watchContext, watchCancel := context.WithCancel(context.Background())
 	watchEvents := make(chan struct{}, 1)
-	go filesystem.Watch(
-		watchContext,
-		root,
-		watchEvents,
-		watchMode,
-		configuration.WatchPollingInterval,
-	)
+	if endpointOptions.watchingMechanism != nil {
+		go endpointOptions.watchingMechanism(watchContext, root, watchEvents)
+	} else {
+		go filesystem.Watch(
+			watchContext,
+			root,
+			watchEvents,
+			watchMode,
+			configuration.WatchPollingInterval,
+		)
+	}
 
 	// Compute the cache path.
-	cachePath, err := pathForCache(session, alpha)
+	var cachePath string
+	if endpointOptions.cachePathCallback != nil {
+		cachePath, err = endpointOptions.cachePathCallback(session, alpha)
+	} else {
+		cachePath, err = pathForCache(session, alpha)
+	}
 	if err != nil {
 		watchCancel()
 		return nil, errors.Wrap(err, "unable to compute/create cache path")
@@ -128,11 +144,16 @@ func NewEndpoint(
 		cache = &sync.Cache{}
 	}
 
-	// Create a staging coordinator.
-	stager, err := newStager(session, version, alpha)
+	// Compute the staging root path.
+	var stagingRoot string
+	if endpointOptions.stagingRootCallback != nil {
+		stagingRoot, err = endpointOptions.stagingRootCallback(session, alpha)
+	} else {
+		stagingRoot, err = pathForStagingRoot(session, alpha)
+	}
 	if err != nil {
 		watchCancel()
-		return nil, errors.Wrap(err, "unable to create staging coordinator")
+		return nil, errors.Wrap(err, "unable to compute staging root")
 	}
 
 	// Success.
@@ -145,7 +166,7 @@ func NewEndpoint(
 		cachePath:   cachePath,
 		cache:       cache,
 		scanHasher:  version.Hasher(),
-		stager:      stager,
+		stager:      newStager(version, stagingRoot),
 	}, nil
 }
 

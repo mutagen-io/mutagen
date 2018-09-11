@@ -10,12 +10,12 @@ import (
 
 // initializeRequest encodes a request for endpoint initialization.
 type initializeRequest struct {
+	// Root is the synchronization root path.
+	Root string
 	// Session is the session identifier.
 	Session string
 	// Version is the session version.
 	Version session.Version
-	// Root is the synchronization root path.
-	Root string
 	// Configuration is the session configuration.
 	Configuration *session.Configuration
 	// Alpha indicates whether or not the endpoint should behave as alpha (as

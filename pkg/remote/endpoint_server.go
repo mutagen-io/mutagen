@@ -11,6 +11,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/local"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -29,9 +30,35 @@ type endpointServer struct {
 
 // ServeEndpoint creates and serves a remote endpoint server on the specified
 // connection.
-func ServeEndpoint(connection net.Conn) error {
+func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	// Defer closure of the connection.
 	defer connection.Close()
+
+	// Receive the client's version.
+	clientMajor, clientMinor, clientPatch, err := mutagen.ReceiveVersion(connection)
+	if err != nil {
+		return &handshakeTransportError{errors.Wrap(err, "unable to receive client version")}
+	}
+
+	// Send our version to the client.
+	if err := mutagen.SendVersion(connection); err != nil {
+		return &handshakeTransportError{errors.Wrap(err, "unable to send server version")}
+	}
+
+	// Ensure that our Mutagen versions are compatible. For now, we enforce that
+	// they're equal.
+	// TODO: Once we lock-in an internal protocol that we're going to support
+	// for some time, we can allow some version skew. In the server side in
+	// particular, we'll probably just want to ensure that the client version is
+	// greater than the Mutagen version at which the protocol was locked in, and
+	// perhaps also ensure that the client version isn't blacklisted, e.g. due
+	// to a bug.
+	versionMatch := clientMajor == mutagen.VersionMajor &&
+		clientMinor == mutagen.VersionMinor &&
+		clientPatch == mutagen.VersionPatch
+	if !versionMatch {
+		return errors.New("version mismatch")
+	}
 
 	// Enable read/write compression on the connection.
 	reader := compression.NewDecompressingReader(connection)
@@ -41,6 +68,12 @@ func ServeEndpoint(connection net.Conn) error {
 	encoder := gob.NewEncoder(writer)
 	decoder := gob.NewDecoder(reader)
 
+	// Create an endpoint configuration and apply all options.
+	endpointOptions := &endpointServerOptions{}
+	for _, o := range options {
+		o.apply(endpointOptions)
+	}
+
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
 	var request initializeRequest
@@ -48,7 +81,31 @@ func ServeEndpoint(connection net.Conn) error {
 		err = errors.Wrap(err, "unable to receive initialize request")
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
-	} else if err = request.ensureValid(); err != nil {
+	}
+
+	// If a root path override has been specified, then apply it.
+	if endpointOptions.root != "" {
+		request.Root = endpointOptions.root
+	}
+
+	// If a connection validator has been provided, then ensure that it
+	// approves if the specified endpoint configuration.
+	if endpointOptions.connectionValidator != nil {
+		validationErr := endpointOptions.connectionValidator(
+			request.Session,
+			request.Version,
+			request.Configuration,
+			request.Alpha,
+		)
+		if validationErr != nil {
+			err = errors.Wrap(err, "endpoint configuration rejected")
+			encoder.Encode(initializeResponse{Error: err.Error()})
+			return err
+		}
+	}
+
+	// Ensure that the initialization request is valid.
+	if err := request.ensureValid(); err != nil {
 		err = errors.Wrap(err, "invalid initialize request")
 		encoder.Encode(initializeResponse{Error: err.Error()})
 		return err
@@ -62,6 +119,7 @@ func ServeEndpoint(connection net.Conn) error {
 		request.Version,
 		request.Configuration,
 		request.Alpha,
+		endpointOptions.endpointOptions...,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
@@ -202,7 +260,10 @@ func (s *endpointServer) serveScan(request *scanRequest) error {
 	// response.
 	snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(nil)
 	if tryAgain {
-		if err := s.encoder.Encode(scanResponse{Error: err.Error(), TryAgain: true}); err != nil {
+		if err := s.encoder.Encode(scanResponse{
+			Error:    err.Error(),
+			TryAgain: true,
+		}); err != nil {
 			return errors.Wrap(err, "unable to send scan retry response")
 		}
 		return nil

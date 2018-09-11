@@ -7,11 +7,11 @@ import (
 
 	"github.com/pkg/errors"
 
+	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	promptsvcpkg "github.com/havoc-io/mutagen/pkg/service/prompt"
-	"github.com/havoc-io/mutagen/pkg/ssh"
 )
 
-func promptSSH(arguments []string) error {
+func promptMain(arguments []string) error {
 	// Extract prompt.
 	if len(arguments) != 1 {
 		return errors.New("invalid number of arguments")
@@ -19,7 +19,7 @@ func promptSSH(arguments []string) error {
 	prompt := arguments[0]
 
 	// Extract environment parameters.
-	prompter := os.Getenv(ssh.PrompterEnvironmentVariable)
+	prompter := os.Getenv(promptpkg.PrompterEnvironmentVariable)
 	if prompter == "" {
 		return errors.New("no prompter specified")
 	}

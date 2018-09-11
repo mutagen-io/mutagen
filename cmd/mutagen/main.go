@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/ssh"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/havoc-io/mutagen/pkg/local"
@@ -66,12 +66,12 @@ func init() {
 }
 
 func main() {
-	// Check if an SSH prompting environment is set. If so, treat this as a
-	// prompt request. Prompting is sort of a special pseudo-command that's
-	// indicated by the presence of environment variables, and hence it has to
-	// be handled in a bit of a special manner.
-	if _, ok := os.LookupEnv(ssh.PrompterEnvironmentVariable); ok {
-		if err := promptSSH(os.Args[1:]); err != nil {
+	// Check if a prompting environment is set. If so, treat this as a prompt
+	// request. Prompting is sort of a special pseudo-command that's indicated
+	// by the presence of an environment variable, and hence it has to be
+	// handled in a bit of a special manner.
+	if _, ok := os.LookupEnv(prompt.PrompterEnvironmentVariable); ok {
+		if err := promptMain(os.Args[1:]); err != nil {
 			cmd.Fatal(err)
 		}
 		return
