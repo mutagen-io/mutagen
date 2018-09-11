@@ -2,7 +2,6 @@ package remote
 
 import (
 	contextpkg "context"
-	"encoding/gob"
 	"net"
 
 	"github.com/pkg/errors"
@@ -10,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/havoc-io/mutagen/pkg/compression"
+	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
@@ -22,9 +22,9 @@ type endpointClient struct {
 	// connection is the control stream connection.
 	connection net.Conn
 	// encoder is the control stream encoder.
-	encoder *gob.Encoder
+	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
-	decoder *gob.Decoder
+	decoder *encoding.ProtobufDecoder
 	// lastSnapshotBytes is the serialized form of the last snapshot received
 	// from the remote endpoint.
 	lastSnapshotBytes []byte
@@ -73,11 +73,11 @@ func NewEndpointClient(
 	writer := compression.NewCompressingWriter(connection)
 
 	// Create an encoder and decoder.
-	encoder := gob.NewEncoder(writer)
-	decoder := gob.NewDecoder(reader)
+	encoder := encoding.NewProtobufEncoder(writer)
+	decoder := encoding.NewProtobufDecoder(reader)
 
 	// Create and send the initialize request.
-	request := initializeRequest{
+	request := &InitializeRequest{
 		Root:          root,
 		Session:       session,
 		Version:       version,
@@ -90,8 +90,8 @@ func NewEndpointClient(
 	}
 
 	// Receive the response and check for remote errors.
-	var response initializeResponse
-	if err := decoder.Decode(&response); err != nil {
+	response := &InitializeResponse{}
+	if err := decoder.Decode(response); err != nil {
 		connection.Close()
 		return nil, errors.Wrap(err, "unable to receive transition response")
 	} else if err = response.ensureValid(); err != nil {
@@ -113,7 +113,7 @@ func NewEndpointClient(
 // Poll implements the Poll method for remote endpoints.
 func (e *endpointClient) Poll(context contextpkg.Context) error {
 	// Create and send the poll request.
-	request := endpointRequest{Poll: &pollRequest{}}
+	request := &EndpointRequest{Poll: &PollRequest{}}
 	if err := e.encoder.Encode(request); err != nil {
 		return errors.Wrap(err, "unable to send poll request")
 	}
@@ -132,7 +132,7 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 	go func() {
 		<-completionContext.Done()
 		completionSendResults <- errors.Wrap(
-			e.encoder.Encode(pollCompletionRequest{}),
+			e.encoder.Encode(&PollCompletionRequest{}),
 			"unable to send poll completion request",
 		)
 	}()
@@ -140,8 +140,8 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 	// Create a Goroutine that will receive a poll response.
 	responseReceiveResults := make(chan error, 1)
 	go func() {
-		var response pollResponse
-		if err := e.decoder.Decode(&response); err != nil {
+		response := &PollResponse{}
+		if err := e.decoder.Decode(response); err != nil {
 			responseReceiveResults <- errors.Wrap(err, "unable to receive poll response")
 		} else if err = response.ensureValid(); err != nil {
 			responseReceiveResults <- errors.Wrap(err, "invalid poll response")
@@ -200,14 +200,18 @@ func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, b
 	baseSignature := engine.BytesSignature(baseBytes, 0)
 
 	// Create and send the scan request.
-	request := endpointRequest{Scan: &scanRequest{baseSignature}}
+	request := &EndpointRequest{
+		Scan: &ScanRequest{
+			BaseSnapshotSignature: baseSignature,
+		},
+	}
 	if err := e.encoder.Encode(request); err != nil {
 		return nil, false, errors.Wrap(err, "unable to send scan request"), false
 	}
 
 	// Receive the response.
-	var response scanResponse
-	if err := e.decoder.Decode(&response); err != nil {
+	response := &ScanResponse{}
+	if err := e.decoder.Decode(response); err != nil {
 		return nil, false, errors.Wrap(err, "unable to receive scan response"), false
 	} else if err = response.ensureValid(); err != nil {
 		return nil, false, errors.Wrap(err, "invalid scan response"), false
@@ -253,14 +257,18 @@ func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Si
 	}
 
 	// Create and send the stage request.
-	request := endpointRequest{Stage: &stageRequest{entries}}
+	request := &EndpointRequest{
+		Stage: &StageRequest{
+			Entries: entries,
+		},
+	}
 	if err := e.encoder.Encode(request); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to send stage request")
 	}
 
 	// Receive the response and check for remote errors.
-	var response stageResponse
-	if err := e.decoder.Decode(&response); err != nil {
+	response := &StageResponse{}
+	if err := e.decoder.Decode(response); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to receive stage response")
 	} else if err = response.ensureValid(); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid scan response")
@@ -276,7 +284,7 @@ func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Si
 
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	encoder := &gobRsyncEncoder{e.encoder}
+	encoder := newProtobufRsyncEncoder(e.encoder)
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Success.
@@ -286,7 +294,12 @@ func (e *endpointClient) Stage(entries map[string][]byte) ([]string, []*rsync.Si
 // Supply implements the Supply method for remote endpoints.
 func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
 	// Create and send the supply request.
-	request := endpointRequest{Supply: &supplyRequest{paths, signatures}}
+	request := &EndpointRequest{
+		Supply: &SupplyRequest{
+			Paths:      paths,
+			Signatures: signatures,
+		},
+	}
 	if err := e.encoder.Encode(request); err != nil {
 		// TODO: Should we find a way to finalize the receiver here? That's a
 		// private rsync method, and there shouldn't be any resources in the
@@ -305,7 +318,7 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 	// The endpoint should now forward rsync operations, so we need to decode
 	// and forward them to the receiver. If this operation completes
 	// successfully, supplying is complete and successful.
-	decoder := &gobRsyncDecoder{e.decoder}
+	decoder := newProtobufRsyncDecoder(e.decoder)
 	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return errors.Wrap(err, "unable to decode and forward rsync operations")
 	}
@@ -317,14 +330,18 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 // Transition implements the Transition method for remote endpoints.
 func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
 	// Create and send the transition request.
-	request := endpointRequest{Transition: &transitionRequest{transitions}}
+	request := &EndpointRequest{
+		Transition: &TransitionRequest{
+			Transitions: transitions,
+		},
+	}
 	if err := e.encoder.Encode(request); err != nil {
 		return nil, nil, errors.Wrap(err, "unable to send transition request")
 	}
 
 	// Receive the response and check for remote errors.
-	var response transitionResponse
-	if err := e.decoder.Decode(&response); err != nil {
+	response := &TransitionResponse{}
+	if err := e.decoder.Decode(response); err != nil {
 		return nil, nil, errors.Wrap(err, "unable to receive transition response")
 	} else if err = response.ensureValid(len(transitions)); err != nil {
 		return nil, nil, errors.Wrap(err, "invalid transition response")
@@ -335,9 +352,6 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 	// HACK: Extract the wrapped results.
 	results := make([]*sync.Entry, len(response.Results))
 	for r, result := range response.Results {
-		if result == nil {
-			return nil, nil, errors.New("nil result wrapper received")
-		}
 		results[r] = result.Root
 	}
 

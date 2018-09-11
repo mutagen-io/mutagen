@@ -57,3 +57,52 @@ func TestArchiveConsistentSerialization(t *testing.T) {
 		t.Error("marshalling is not consistent")
 	}
 }
+
+func TestArchiveNilInvalid(t *testing.T) {
+	// Create a test archive.
+	var archive *Archive
+
+	// Check validity.
+	if archive.EnsureValid() == nil {
+		t.Error("nil archive considered valid")
+	}
+}
+
+func TestArchiveInvalidRootInvalid(t *testing.T) {
+	// Create a test archive.
+	archive := &Archive{
+		Root: &Entry{
+			Kind:   EntryKind_Directory,
+			Digest: []byte{0, 1, 2, 3},
+		},
+	}
+
+	// Check validity.
+	if archive.EnsureValid() == nil {
+		t.Error("archive with invalid root considered valid")
+	}
+}
+
+func TestArchiveNilRootValid(t *testing.T) {
+	// Create a test archive.
+	archive := &Archive{}
+
+	// Check validity.
+	if err := archive.EnsureValid(); err != nil {
+		t.Error("archive with nil root considered invalid:", err)
+	}
+}
+
+func TestArchiveNonNilRootValid(t *testing.T) {
+	// Create a test archive.
+	archive := &Archive{
+		Root: &Entry{
+			Kind: EntryKind_Directory,
+		},
+	}
+
+	// Check validity.
+	if err := archive.EnsureValid(); err != nil {
+		t.Error("archive with nil root considered invalid:", err)
+	}
+}

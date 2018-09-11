@@ -11,11 +11,9 @@ import (
 // to the specified receiver. It is the responsibility of the caller to ensure
 // that the provided signatures are valid by invoking their EnsureValid method.
 func Transmit(root string, paths []string, signatures []*Signature, receiver Receiver) error {
-	// Ensure that the receiver is finalized when we're done.
-	defer receiver.finalize()
-
 	// Ensure that the transmission request is sane.
 	if len(paths) != len(signatures) {
+		receiver.finalize()
 		return errors.New("number of paths does not match number of signatures")
 	}
 
@@ -37,6 +35,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 				Error: errors.Wrap(err, "unable to open file").Error(),
 			}
 			if err = receiver.Receive(transmission); err != nil {
+				receiver.finalize()
 				return errors.Wrap(err, "unable to send error transmission")
 			}
 			continue
@@ -61,6 +60,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 
 		// Handle any transmission errors. These are terminal.
 		if transmitError != nil {
+			receiver.finalize()
 			return errors.Wrap(transmitError, "unable to transmit delta")
 		}
 
@@ -72,8 +72,14 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			transmission.Error = errors.Wrap(err, "engine error").Error()
 		}
 		if err = receiver.Receive(transmission); err != nil {
+			receiver.finalize()
 			return errors.Wrap(err, "unable to send done message")
 		}
+	}
+
+	// Ensure that the receiver is finalized.
+	if err := receiver.finalize(); err != nil {
+		return errors.Wrap(err, "unable to finalize receiver")
 	}
 
 	// Success.

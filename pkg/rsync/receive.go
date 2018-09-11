@@ -34,13 +34,13 @@ func (s *ReceiverStatus) EnsureValid() error {
 type Receiver interface {
 	// Receive processes a single message in a transmission stream.
 	Receive(*Transmission) error
-	// finalize tells the receiver to abort reception (if still receiving) and
-	// close all internal resources. If called after reception is complete, it
-	// should be a no-op. Calling Receive or finalize after finalize results in
-	// undefined behavior (but it'll most likely be enforced as a panic). It is
-	// safe (and almost certainly necessary) to call finalize after an error
-	// from Receive.
-	finalize()
+	// finalize indicates that the transmission stream is completed and that no
+	// more messages will be received. This may indicate the successful
+	// completion of transmission, but could also indicate that the stream has
+	// failed due to an error. In any case, the receiver should use it as an
+	// opportunity to close all internal resources. It must be safe to call
+	// finalize after an error is returned from Receive.
+	finalize() error
 }
 
 // Sinker provides the interface for a receiver to store incoming files.
@@ -229,10 +229,10 @@ func (r *receiver) Receive(transmission *Transmission) error {
 
 // finalize aborts reception (if still in-progress) closes any open receiver
 // resources.
-func (r *receiver) finalize() {
-	// Check for double finalization.
+func (r *receiver) finalize() error {
+	// Watch for double finalization.
 	if r.finalized {
-		panic("receiver finalized multiple times")
+		return errors.New("receiver finalized multiple times")
 	}
 
 	// Close any open internal resources.
@@ -245,6 +245,9 @@ func (r *receiver) finalize() {
 
 	// Mark the receiver as finalized.
 	r.finalized = true
+
+	// Success.
+	return nil
 }
 
 // Monitor is the interface that monitors must implement to capture status
@@ -345,14 +348,15 @@ func (r *monitoringReceiver) Receive(transmission *Transmission) error {
 }
 
 // finalize invokes finalize on the underlying receiver. It also performs a
-// final empty status update, though it doesn't check for an error.
-func (r *monitoringReceiver) finalize() {
-	// Invoke finalize on the underlying receiver.
-	r.receiver.finalize()
-
+// final empty status update, though it doesn't check for an error when doing
+// so.
+func (r *monitoringReceiver) finalize() error {
 	// Perform a final status update. We don't bother checking for an error
 	// because it's inconsequential at this point.
 	r.monitor(nil)
+
+	// Invoke finalize on the underlying receiver.
+	return r.receiver.finalize()
 }
 
 // preemptableReceiver is a Receiver implementation that provides preemption
@@ -389,8 +393,8 @@ func (r *preemptableReceiver) Receive(transmission *Transmission) error {
 }
 
 // finalize invokes finalize on the underlying receiver.
-func (r *preemptableReceiver) finalize() {
-	r.receiver.finalize()
+func (r *preemptableReceiver) finalize() error {
+	return r.receiver.finalize()
 }
 
 // Encoder is the interface used by an encoding receiver to forward
@@ -404,7 +408,7 @@ type Encoder interface {
 	Encode(*Transmission) error
 	// Finalize is called when the transmission stream is finished. The Encoder
 	// can use this call to close any underlying transmission resources.
-	Finalize()
+	Finalize() error
 }
 
 // encodingReceiver is a Receiver implementation that encodes messages to an
@@ -432,13 +436,22 @@ func (r *encodingReceiver) Receive(transmission *Transmission) error {
 
 // finalize finalizes the encoding receiver, which means that it calls Finalize
 // on its underlying Encoder.
-func (r *encodingReceiver) finalize() {
+func (r *encodingReceiver) finalize() error {
+	// Watch for double finalization.
 	if r.finalized {
-		panic("receiver finalized multiple times")
-	} else {
-		r.encoder.Finalize()
-		r.finalized = true
+		return errors.New("receiver finalized multiple times")
 	}
+
+	// Mark ourselves as finalized
+	r.finalized = true
+
+	// Finalize the encoder.
+	if err := r.encoder.Finalize(); err != nil {
+		return errors.Wrap(err, "unable to finalize encoder")
+	}
+
+	// Success.
+	return nil
 }
 
 // Encoder is the interface used by DecodeToReceiver to receive transmissions,
@@ -454,7 +467,7 @@ type Decoder interface {
 	Decode(*Transmission) error
 	// Finalize is called when decoding is finished. The Decoder can use this
 	// call to close any underlying transmission resources.
-	Finalize()
+	Finalize() error
 }
 
 // DecodeToReceiver decodes messages from the specified Decoder and forwards
@@ -463,12 +476,6 @@ type Decoder interface {
 // used with an encoding receiver, such as that returned by NewEncodingReceiver.
 // It finalizes the provided receiver before returning.
 func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
-	// Ensure that the decoder is finalized when we're done.
-	defer decoder.Finalize()
-
-	// Ensure that the receiver is finalized when we're done.
-	defer receiver.finalize()
-
 	// Allocate the transmission object that we'll use to receive into.
 	transmission := &Transmission{}
 
@@ -479,16 +486,22 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 			// Receive the next message.
 			transmission.resetToZeroMaintainingCapacity()
 			if err := decoder.Decode(transmission); err != nil {
+				decoder.Finalize()
+				receiver.finalize()
 				return errors.Wrap(err, "unable to decode transmission")
 			}
 
 			// Validate the transmission.
 			if err := transmission.EnsureValid(); err != nil {
+				decoder.Finalize()
+				receiver.finalize()
 				return errors.Wrap(err, "invalid transmission received")
 			}
 
 			// Forward the message.
 			if err := receiver.Receive(transmission); err != nil {
+				decoder.Finalize()
+				receiver.finalize()
 				return errors.Wrap(err, "unable to forward message to receiver")
 			}
 
@@ -501,6 +514,17 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 
 		// Update the count.
 		count--
+	}
+
+	// Ensure that the decoder is finalized.
+	if err := decoder.Finalize(); err != nil {
+		receiver.finalize()
+		return errors.Wrap(err, "unable to finalize decoder")
+	}
+
+	// Ensure that the receiver is finalized.
+	if err := receiver.finalize(); err != nil {
+		return errors.Wrap(err, "unable to finalize receiver")
 	}
 
 	// Done.
