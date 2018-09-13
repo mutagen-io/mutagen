@@ -43,7 +43,7 @@ func printEndpointStatus(state *sessionpkg.State, alpha bool) {
 	if !alpha {
 		url = state.Session.Beta
 	}
-	fmt.Println("\tURL:", url.Format())
+	fmt.Println("\tURL:", url.Format("\n\t\t"))
 
 	// Print status.
 	connected := state.AlphaConnected

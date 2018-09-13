@@ -5,12 +5,13 @@ import (
 )
 
 type formatTestCase struct {
-	url      *URL
-	expected string
+	url               *URL
+	environmentPrefix string
+	expected          string
 }
 
 func (c *formatTestCase) run(t *testing.T) {
-	formatted := c.url.Format()
+	formatted := c.url.Format(c.environmentPrefix)
 	if formatted != c.expected {
 		t.Fatal("formatting mismatch:", formatted, "!=", c.expected)
 	}
@@ -23,7 +24,7 @@ func TestFormatInvalidProtocol(t *testing.T) {
 		}
 	}()
 	url := &URL{Protocol: Protocol(-1)}
-	url.Format()
+	url.Format("")
 }
 
 func TestFormatLocal(t *testing.T) {
@@ -89,6 +90,40 @@ func TestFormatSSHUsernameHostnamePortPath(t *testing.T) {
 			Path:     "/test/path",
 		},
 		expected: "user@host:23:/test/path",
+	}
+	test.run(t)
+}
+
+func TestFormatDocker(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "container",
+			Path:     "/test/path/to/the file",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable: "unix:///path/to/docker.sock",
+			},
+		},
+		environmentPrefix: "|",
+		expected:          "docker:container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+	}
+	test.run(t)
+}
+
+func TestFormatDockerWithUsername(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Username: "user",
+			Hostname: "container",
+			Path:     "/test/path/to/the file",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
+				DockerTLSVerifyEnvironmentVariable: "true",
+			},
+		},
+		environmentPrefix: "|",
+		expected:          "docker:user@container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
 	}
 	test.run(t)
 }

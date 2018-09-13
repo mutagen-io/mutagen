@@ -48,6 +48,18 @@ func TestURLEnsureValidLocalEmptyPathInvalid(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidLocalEnvironmentVariablesInvalid(t *testing.T) {
+	invalid := &URL{
+		Path: "some/path",
+		Environment: map[string]string{
+			"key": "value",
+		},
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
 func TestURLEnsureValidLocal(t *testing.T) {
 	valid := &URL{Path: "some/path"}
 	if err := valid.EnsureValid(); err != nil {
@@ -74,12 +86,53 @@ func TestURLEnsureValidSSHEmptyPathInvalid(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidSSHEnvironmentVariablesInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_SSH,
+		Username: "george",
+		Hostname: "washington",
+		Port:     22,
+		Path:     "~/path",
+		Environment: map[string]string{
+			"key": "value",
+		},
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
 func TestURLEnsureValidSSH(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_SSH,
 		Username: "george",
 		Hostname: "washington",
 		Port:     22,
+		Path:     "~/path",
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidDockerPortInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Docker,
+		Username: "george",
+		Hostname: "washington",
+		Port:     50,
+		Path:     "~/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidDocker(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Docker,
+		Username: "george",
+		Hostname: "washington",
 		Path:     "~/path",
 	}
 	if err := valid.EnsureValid(); err != nil {

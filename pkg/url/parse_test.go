@@ -6,13 +6,14 @@ import (
 
 type parseTestCase struct {
 	raw      string
+	alpha    bool
 	fail     bool
 	expected *URL
 }
 
 func (c *parseTestCase) run(t *testing.T) {
 	// Attempt to parse.
-	url, err := Parse(c.raw)
+	url, err := Parse(c.raw, c.alpha)
 	if err != nil {
 		if !c.fail {
 			t.Fatal("parsing failed when it should have succeeded:", err)
@@ -45,6 +46,19 @@ func (c *parseTestCase) run(t *testing.T) {
 	// Verify path.
 	if url.Path != c.expected.Path {
 		t.Error("path mismatch:", url.Path, "!=", c.expected.Path)
+	}
+
+	// Verify environment variables.
+	if len(url.Environment) != len(c.expected.Environment) {
+		t.Error("environment length mismatch:", len(url.Environment), "!=", len(c.expected.Environment))
+	} else {
+		for ek, ev := range c.expected.Environment {
+			if v, ok := url.Environment[ek]; !ok {
+				t.Error("expected environment variable", ek, "not in URL environment")
+			} else if v != ev {
+				t.Error("environment variable", ek, "value does not match expected:", v, "!=", ev)
+			}
+		}
 	}
 }
 
@@ -358,6 +372,44 @@ func TestParseUnicodeUsernameHostnamePortPath(t *testing.T) {
 			Hostname: "høst",
 			Port:     23,
 			Path:     "пат",
+		},
+	}
+	test.run(t)
+}
+
+func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
+	test := parseTestCase{
+		raw:  "docker:cøntainer:пат/to/the file",
+		fail: false,
+		expected: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "cøntainer",
+			Path:     "пат/to/the file",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      defaultDockerHost,
+				DockerTLSVerifyEnvironmentVariable: betaSpecificDockerTLSVerify,
+				DockerCertPathEnvironmentVariable:  "",
+			},
+		},
+	}
+	test.run(t)
+}
+
+func TestParseDockerWithUsernameAndAlphaSpecificVariables(t *testing.T) {
+	test := parseTestCase{
+		raw:   "docker:üsér@cøntainer:пат/to/the file",
+		alpha: true,
+		fail:  false,
+		expected: &URL{
+			Protocol: Protocol_Docker,
+			Username: "üsér",
+			Hostname: "cøntainer",
+			Path:     "пат/to/the file",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
+				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
+				DockerCertPathEnvironmentVariable:  "",
+			},
 		},
 	}
 	test.run(t)

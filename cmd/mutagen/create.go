@@ -22,11 +22,11 @@ func createMain(command *cobra.Command, arguments []string) error {
 	if len(arguments) != 2 {
 		return errors.New("invalid number of endpoint URLs provided")
 	}
-	alpha, err := url.Parse(arguments[0])
+	alpha, err := url.Parse(arguments[0], true)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse alpha URL")
 	}
-	beta, err := url.Parse(arguments[1])
+	beta, err := url.Parse(arguments[1], false)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse beta URL")
 	}

@@ -7,6 +7,9 @@ option go_package = "github.com/havoc-io/mutagen/pkg/url";
 enum Protocol {
     Local = 0;
     SSH = 1;
+    // Custom = 2;
+    // Enumeration values 3-10 reserved for core protocols.
+    Docker = 11;
 }
 
 message URL {
@@ -15,4 +18,5 @@ message URL {
     string hostname = 3;
     uint32 port = 4;
     string path = 5;
+    map<string, string> environment = 6;
 }
