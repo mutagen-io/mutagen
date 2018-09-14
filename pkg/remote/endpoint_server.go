@@ -34,15 +34,29 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	// Defer closure of the connection.
 	defer connection.Close()
 
-	// Receive the client's version.
-	clientMajor, clientMinor, clientPatch, err := mutagen.ReceiveVersion(connection)
-	if err != nil {
-		return &handshakeTransportError{errors.Wrap(err, "unable to receive client version")}
+	// Send our magic number to the client.
+	if err := sendMagicNumber(connection, serverMagicNumber); err != nil {
+		return &handshakeTransportError{errors.Wrap(err, "unable to send server magic number")}
+	}
+
+	// Receive the client's magic number. We treat a mismatch of the magic
+	// number as a transport error as well, because it indicates that we're not
+	// actually talking to a Mutagen client.
+	if magicOk, err := receiveAndCompareMagicNumber(connection, clientMagicNumber); err != nil {
+		return &handshakeTransportError{errors.Wrap(err, "unable to receive client magic number")}
+	} else if !magicOk {
+		return &handshakeTransportError{errors.Wrap(err, "client magic number incorrect")}
 	}
 
 	// Send our version to the client.
 	if err := mutagen.SendVersion(connection); err != nil {
 		return &handshakeTransportError{errors.Wrap(err, "unable to send server version")}
+	}
+
+	// Receive the client's version.
+	clientMajor, clientMinor, clientPatch, err := mutagen.ReceiveVersion(connection)
+	if err != nil {
+		return &handshakeTransportError{errors.Wrap(err, "unable to receive client version")}
 	}
 
 	// Ensure that our Mutagen versions are compatible. For now, we enforce that
@@ -59,6 +73,8 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	if !versionMatch {
 		return errors.New("version mismatch")
 	}
+
+	// TODO: Finish version negotiation.
 
 	// Enable read/write compression on the connection.
 	reader := compression.NewDecompressingReader(connection)

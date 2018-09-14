@@ -12,6 +12,17 @@ import (
 )
 
 const (
+	// posixShellInvalidCommandExitCode is the exit code returned by most (all?)
+	// POSIX shells when the provided command is invalid, e.g. due to an file
+	// without executable permissions. It seems to have originated with the
+	// Bourne shell and then been brought over to bash, zsh, and others. It
+	// doesn't seem to have a corresponding errno value, which I guess makes
+	// sense since errno values aren't generally expected to be used as exit
+	// codes, so we have to define it manually.
+	// TODO: Figure out if other shells return different exit codes when a
+	// command isn't found. Is this exit code defined in a standard somewhere?
+	posixShellInvalidCommandExitCode = 126
+
 	// posixShellCommandNotFoundExitCode is the exit code returned by most
 	// (all?) POSIX shells when the provided command isn't found. It seems to
 	// have originated with the Bourne shell and then been brought over to bash,
@@ -42,6 +53,17 @@ func ExitCodeForError(err error) (int, error) {
 
 	// Done.
 	return waitStatus.ExitStatus(), nil
+}
+
+// IsPOSIXShellInvalidCommand returns whether or not an os/exec error represents
+// an "invalid" error from a POSIX shell.
+func IsPOSIXShellInvalidCommand(err error) bool {
+	// Extract the code.
+	code, codeErr := ExitCodeForError(err)
+
+	// Ensure that extraction was successful and the code matches what's
+	// expected.
+	return codeErr == nil && code == posixShellInvalidCommandExitCode
 }
 
 // IsPOSIXShellCommandNotFound returns whether or not an os/exec error

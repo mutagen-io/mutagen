@@ -15,18 +15,18 @@ import (
 )
 
 func TestSCPCommand(t *testing.T) {
-	if command, err := scpCommand(); err != nil {
+	if commandName, err := scpCommandName(); err != nil {
 		t.Fatal("unable to locate SCP command:", err)
-	} else if command == "" {
-		t.Error("SCP command is empty")
+	} else if commandName == "" {
+		t.Error("SCP command name is empty")
 	}
 }
 
 func TestSSHCommand(t *testing.T) {
-	if command, err := sshCommand(); err != nil {
+	if commandName, err := sshCommandName(); err != nil {
 		t.Fatal("unable to locate SSH command:", err)
-	} else if command == "" {
-		t.Error("SSH command is empty")
+	} else if commandName == "" {
+		t.Error("SSH command name is empty")
 	}
 }
 
@@ -79,6 +79,11 @@ func TestCopy(t *testing.T) {
 	transport := &transport{remote: remote}
 
 	// Compute the destination path.
+	// HACK: Technically agent.Transport implementations only need to support
+	// remote destination paths that are file names relative to the home
+	// directory. For testing, however, we don't want to copy into the home
+	// directory, and since we know our Copy implementation can support
+	// arbitrary remote paths, we use one.
 	destination := filepath.Join(directory, "destination")
 
 	// Copy the file.
@@ -129,6 +134,8 @@ func TestCommandOutput(t *testing.T) {
 	transport := &transport{remote: remote}
 
 	// Attempt to execute the command.
+	// TODO: Should we also verify that an extracted HOME/USERPROFILE value
+	// matches the expected home directory since we've already queried the user?
 	if command, err := transport.Command(command); err != nil {
 		t.Fatal("unable to create command:", err)
 	} else if output, err := command.Output(); err != nil {

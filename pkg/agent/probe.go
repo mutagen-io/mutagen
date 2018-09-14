@@ -127,7 +127,11 @@ func probeWindows(transport Transport) (string, string, error) {
 		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
 
-	// Parse the environment output.
+	// Parse the output block into a series of VAR=value lines. First we replace
+	// \r\n instances with \n, in case the block comes from Windows, trim any
+	// outer whitespace (e.g. trailing newlines), and then split on newlines.
+	// TODO: We might be able to switch this function to use a bufio.Scanner for
+	// greater efficiency.
 	output := string(outputBytes)
 	output = strings.Replace(output, "\r\n", "\n", -1)
 	output = strings.TrimSpace(output)

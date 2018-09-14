@@ -7,8 +7,6 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 // commandSearchPaths specifies locations on Windows where we might find ssh.exe
@@ -48,20 +46,12 @@ func commandNamed(name string) (string, error) {
 	return "", errors.New("unable to locate command")
 }
 
-// scpCommand returns the name of or path to the scp command.
-func scpCommand() (string, error) {
+// scpCommandName returns the name of or path to the scp command.
+func scpCommandName() (string, error) {
 	return commandNamed("scp")
 }
 
-// sshCommand returns the name of or path to the ssh command.
-func sshCommand() (string, error) {
+// sshCommandName returns the name of or path to the ssh command.
+func sshCommandName() (string, error) {
 	return commandNamed("ssh")
-}
-
-// processAttributes returns the process attributes to use for starting ssh or
-// scp.
-func processAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
-		CreationFlags: process.DETACHED_PROCESS,
-	}
 }

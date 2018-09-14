@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -20,7 +21,7 @@ type transport struct {
 }
 
 // Copy implements the Copy method of agent.Transport.
-func (t *transport) Copy(localPath, remotePath string) error {
+func (t *transport) Copy(localPath, remoteName string) error {
 	// Locate the SCP command.
 	// TODO: Should we cache this inside the transport? Even if the user changes
 	// their path or adds something to it, we probably wouldn't pick it up until
@@ -30,7 +31,7 @@ func (t *transport) Copy(localPath, remotePath string) error {
 	// when we construct the transport, but then we need to compute it at
 	// construction (i.e. startup) time, and there's not really a good way to
 	// handle errors at that point.
-	scp, err := scpCommand()
+	scp, err := scpCommandName()
 	if err != nil {
 		return errors.Wrap(err, "unable to identify SCP executable")
 	}
@@ -38,16 +39,29 @@ func (t *transport) Copy(localPath, remotePath string) error {
 	// HACK: On Windows, we attempt to use SCP executables that might not
 	// understand Windows paths because they're designed to run inside a POSIX-
 	// style environment (e.g. MSYS or Cygwin). To work around this, we run them
-	// in the same directory as the source and just pass them the source base
-	// name. This works fine on other systems as well. Unfortunately this means
-	// that we need to use absolute paths, but we do that anyway.
+	// in the same directory as the source file and just pass them the source
+	// base name. In order to compute the working directory, we need the local
+	// path to be absolute, but fortunately this is the case anyway for paths
+	// supplied to agent.Transport.Copy. This works fine on non-Windows-POSIX
+	// systems as well. We probably don't need this IsAbs sanity check, since
+	// path behavior is guaranteed by the Transport interface, but it's better
+	// to have as an invariant check.
 	if !filepath.IsAbs(localPath) {
 		return errors.New("scp source path must be absolute")
 	}
 	workingDirectory, sourceBase := filepath.Split(localPath)
 
 	// Compute the destination URL.
-	destinationURL := fmt.Sprintf("%s:%s", t.remote.Hostname, remotePath)
+	// HACK: Since the remote name is supposed to be relative to the user's home
+	// directory, we'd ideally want to specify a URL of the form
+	// [user@]host:~/remoteName, but the ~/ paradigm isn't understood by
+	// Windows. Consequently, we assume that the default destination for SCP
+	// copies without a path prefix is the user's home directory, i.e. that the
+	// default working directory for the SCP receiving process is the user's
+	// home directory. Since we already make the assumption that the home
+	// directory is the default working directory for SSH commands, this is a
+	// reasonable additional assumption.
+	destinationURL := fmt.Sprintf("%s:%s", t.remote.Hostname, remoteName)
 	if t.remote.Username != "" {
 		destinationURL = fmt.Sprintf("%s@%s", t.remote.Username, destinationURL)
 	}
@@ -68,7 +82,7 @@ func (t *transport) Copy(localPath, remotePath string) error {
 	scpProcess.Dir = workingDirectory
 
 	// Force it to run detached.
-	scpProcess.SysProcAttr = processAttributes()
+	scpProcess.SysProcAttr = process.DetachedProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -105,7 +119,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// when we construct the transport, but then we need to compute it at
 	// construction (i.e. startup) time, and there's not really a good way to
 	// handle errors at that point.
-	ssh, err := sshCommand()
+	ssh, err := sshCommandName()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to identify SSH executable")
 	}
@@ -131,7 +145,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	sshProcess := exec.Command(ssh, sshArguments...)
 
 	// Force it to run detached.
-	sshProcess.SysProcAttr = processAttributes()
+	sshProcess.SysProcAttr = process.DetachedProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()

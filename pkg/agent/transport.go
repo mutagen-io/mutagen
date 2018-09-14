@@ -14,13 +14,15 @@ import (
 type Transport interface {
 	// Copy copies the specified local file (which is guaranteed to exist and be
 	// a file) to the remote. The provided local path will be absolute. The
-	// remote path will be either absolute or relative to the user's home
-	// directory on the remote.
-	Copy(localPath, remotePath string) error
+	// remote path will be a filename (i.e. without path separators) that should
+	// be treated as being relative to the user's home directory.
+	Copy(localPath, remoteName string) error
 	// Command creates (but does not start) a process that will invoke the
 	// specified command on the specified remote. It should not re-direct any of
 	// the output streams of the process. The command on the remote must be
-	// invoked with the user's home directory as the working directory.
+	// invoked with the user's home directory as the working directory. Any
+	// command provided to this interface is guaranteed to be lexable by simply
+	// splitting on spaces.
 	Command(command string) (*exec.Cmd, error)
 }
 
