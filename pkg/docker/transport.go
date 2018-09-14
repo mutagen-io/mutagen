@@ -89,8 +89,6 @@ func (t *transport) command(command, workingDirectory, user string) *exec.Cmd {
 	// Set the environment for the command.
 	dockerCommand.Env = environment
 
-	fmt.Println("dockercommand", dockerCommand)
-
 	// Done.
 	return dockerCommand
 }
