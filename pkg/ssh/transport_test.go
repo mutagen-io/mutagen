@@ -30,12 +30,6 @@ func TestSSHCommand(t *testing.T) {
 	}
 }
 
-func TestProcessAttributes(t *testing.T) {
-	if processAttributes() == nil {
-		t.Error("nil process attributes returned")
-	}
-}
-
 func TestCopy(t *testing.T) {
 	// If localhost SSH support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_SSH") != "true" {

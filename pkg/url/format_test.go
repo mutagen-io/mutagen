@@ -123,7 +123,7 @@ func TestFormatDockerWithUsername(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker:user@container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+		expected:          "docker:user@container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
 	}
 	test.run(t)
 }
