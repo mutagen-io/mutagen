@@ -24,6 +24,21 @@ type Transport interface {
 	// command provided to this interface is guaranteed to be lexable by simply
 	// splitting on spaces.
 	Command(command string) (*exec.Cmd, error)
+	// ClassifyError is used to determine how the agent dialing infrastructure
+	// should attempt to handle failure when launching agents. It is provided
+	// with the process exit error returned from os/exec.Cmd.Wait as well as a
+	// string containing the standard error output from the command. It should
+	// return a bool representing whether or not the error condition represents
+	// a failure due to an agent either not being installed or being installed
+	// improperly and a bool representing whether or not the remote system
+	// should be treated as a cmd.exe-like environment on Windows. If neither of
+	// these can be determined reliably, this method should return an error to
+	// abort dialing. If the second bool changes the dialer's platform
+	// hypothesis, it will attempt to reconnect using the correct command syntax
+	// for that platform. Otherwise, if the first bool indicates that the agent
+	// binary simply needs to be (re-)installed, it will attempt to do so and
+	// then reconnect.
+	ClassifyError(processError error, errorOutput string) (bool, bool, error)
 }
 
 // run is a utility method that invoke's a command via a transport, waits for it

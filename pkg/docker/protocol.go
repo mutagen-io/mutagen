@@ -26,7 +26,7 @@ func (h *protocolHandler) Dial(
 	}
 
 	// Create a transport for the agent to use.
-	transport := &transport{remote: url}
+	transport := &transport{remote: url, prompter: prompter}
 
 	// Dial using the agent package with a Docker transport.
 	return agent.Dial(transport, prompter, url.Path, session, version, configuration, alpha)

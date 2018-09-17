@@ -165,3 +165,36 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// Done.
 	return sshProcess, nil
 }
+
+// ClassifyError implements the ClassifyError method of agent.Transport.
+func (t *transport) ClassifyError(processError error, errorOutput string) (bool, bool, error) {
+	// SSH faithfully returns exit codes and error output, so we can use direct
+	// methods for testing and classification. Note that we may get POSIX-like
+	// error codes back even from Windows remotes, but that indicates a POSIX
+	// shell on the remote and thus we should continue connecting under that
+	// hypothesis (instead of the cmd.exe hypothesis).
+	if process.IsPOSIXShellInvalidCommand(processError) {
+		return true, false, nil
+	} else if process.IsPOSIXShellCommandNotFound(processError) {
+		return true, false, nil
+	} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
+		// A Windows invalid command error doesn't necessarily indicate that
+		// the agent isn't installed, but instead usually indicates that we were
+		// trying to invoke the agent using the POSIX shell syntax in a Windows
+		// cmd.exe environment. Thus we return false here for re-installation,
+		// but we still indicate that this is a Windows platform to potentially
+		// change the dialer's platform hypothesis and force it to reconnect
+		// under the Windows hypothesis.
+		// HACK: We're relying on the fact that the agent dialing logic will
+		// attempt a reconnect under the cmd.exe hypothesis, which it will, but
+		// this is potentially a bit fragile. We've sort of codified this
+		// behavior in the transport interface definition, but it's hard to make
+		// super explicit.
+		return false, true, nil
+	} else if process.OutputIsWindowsCommandNotFound(errorOutput) {
+		return true, true, nil
+	}
+
+	// Just bail if we weren't able to determine the nature of the error.
+	return false, false, errors.New("unknown error condition encountered")
+}

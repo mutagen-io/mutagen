@@ -10,13 +10,25 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
+
+// windowsContainerNotification is a prompt about copying files into Windows
+// containers, which requires stopping and re-starting the container.
+const windowsContainerCopyNotification = `!!! ATTENTION !!!
+In order to install its agent binary inside a Windows container, Mutagen will
+need to stop and re-start the associated container. This is necessary because
+Hyper-V doesn't support copying files into running containers.
+
+Would you like to continue? (yes/no)? `
 
 // transport implements the agent.Transport interface using Docker.
 type transport struct {
 	// remote is the endpoint URL.
 	remote *url.URL
+	// prompter is the prompter identifier to use for prompting.
+	prompter string
 	// containerProbed indicates whether or not container probing has occurred.
 	// If true, then either containerHomeDirectory will be non-empty or
 	// containerProbeError will be non-nil.
@@ -220,11 +232,60 @@ func (t *transport) probeContainer() error {
 	return nil
 }
 
+// changeContainerStatus stops or starts the container. It is required for
+// copying files on Windows when using Hyper-V.
+func (t *transport) changeContainerStatus(stop bool) error {
+	// Determine the correct Docker operation.
+	operation := "start"
+	if stop {
+		operation = "stop"
+	}
+
+	// Create the command.
+	dockerCommand := exec.Command("docker", operation, t.remote.Hostname)
+
+	// Force it to run detached.
+	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
+
+	// Create a copy of the current environment.
+	environment := os.Environ()
+
+	// Set Docker environment variables.
+	environment = setDockerVariables(environment, t.remote)
+
+	// Set the environment for the command.
+	dockerCommand.Env = environment
+
+	// Run the operation.
+	return dockerCommand.Run()
+}
+
 // Copy implements the Copy method of agent.Transport.
 func (t *transport) Copy(localPath, remoteName string) error {
-	// Ensure that the home directory is populated.
+	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return errors.Wrap(err, "unable to probe container")
+	}
+
+	// If this is a Windows container, then we need to stop it from running
+	// while we copy the agent. But first, we'll prompt the user to ensure that
+	// they're okay with this.
+	if t.containerIsWindows {
+		if t.prompter == "" {
+			return errors.New("no prompter for Docker copy behavior confirmation")
+		}
+		for {
+			if response, err := prompt.Prompt(t.prompter, windowsContainerCopyNotification); err != nil {
+				return errors.Wrap(err, "unable to prompt for Docker copy behavior confirmation")
+			} else if response == "no" {
+				return errors.New("user cancelled copy operation")
+			} else if response == "yes" {
+				break
+			}
+		}
+		if err := t.changeContainerStatus(true); err != nil {
+			return errors.Wrap(err, "unable to stop Docker container")
+		}
 	}
 
 	// Compute the path inside the container. We don't bother trimming trailing
@@ -290,17 +351,64 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		}
 	}
 
+	// If this is a Windows container, then we need to stop it from running
+	// while we copy the agent.
+	if t.containerIsWindows {
+		if err := t.changeContainerStatus(false); err != nil {
+			return errors.Wrap(err, "unable to start Docker container")
+		}
+	}
+
 	// Success.
 	return nil
 }
 
 // Command implements the Command method of agent.Transport.
 func (t *transport) Command(command string) (*exec.Cmd, error) {
-	// Ensure that the home directory is populated.
+	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return nil, errors.Wrap(err, "unable to probe container")
 	}
 
 	// Generate the command.
 	return t.command(command, t.containerHomeDirectory, ""), nil
+}
+
+// ClassifyError implements the ClassifyError method of agent.Transport.
+func (t *transport) ClassifyError(processError error, errorOutput string) (bool, bool, error) {
+	// Ensure that the container has been probed.
+	if err := t.probeContainer(); err != nil {
+		return false, false, errors.Wrap(err, "unable to probe container")
+	}
+
+	// Docker alises cases of both "invalid command" (POSIX shell error 126) and
+	// "command not found" (POSIX shell error 127) to an exit code of 126. It
+	// even aliases the Windows container equivalents of these errors to 126.
+	// Interestingly it even seems to have a 127 error code (see
+	// https://github.com/moby/moby/pull/14012), though it's not returned when
+	// the shell in the container generates a 127 exit code, so it's probably
+	// just for its own internal commands.
+	//
+	// For POSIX containers, it's okay that it merges both of these errors,
+	// since they lead to the same conclusion: the agent binary needs to be
+	// (re-)installed. For Windows containers, it's a bit of a shame that both
+	// error types get lumped together, because the "invalid command" error on
+	// Windows is indicative of invoking a POSIX-style command inside a
+	// cmd.exe-like environment, and detection of this error was one of the ways
+	// that the agent package originally detected cmd.exe-like environments,
+	// allowing for a reconnect attempt without a re-install attempt.
+	// Fortunately the dialing code in the agent package will still attempt a
+	// reconnect before a re-install if its platform hypothesis changes after
+	// the first attempt, but I wish we could return more detailed information
+	// to guide its decision.
+	//
+	// Anyway, the exit code we need to look out for with both POSIX and Windows
+	// containers is 126, and since we know the remote platform already, we can
+	// return that information without needing to resort to the error string.
+	if !process.IsPOSIXShellInvalidCommand(processError) {
+		return false, false, errors.New("unknown process exit error")
+	}
+
+	// Success.
+	return true, t.containerIsWindows, nil
 }

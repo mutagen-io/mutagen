@@ -118,70 +118,16 @@ func connect(
 		// See if we can understand the exact nature of the failure. In
 		// particular, we want to identify whether or not we should try to
 		// (re-)install the agent binary and whether or not we're talking to a
-		// Windows cmd.exe environment. The logic here is a little bit tricky
-		// and fragile, because the way that our underlying transports return
-		// error codes and error output information is all over the map.
-		//
-		// For example, if SSH is successful in connecting to a remote, it
-		// always forwards the exit code from the remote shell as its own exit
-		// code. Docker on the other hand seems to have its own pseudo-POSIX
-		// internal codes (see https://github.com/moby/moby/pull/14012) which
-		// don't correspond exactly to what's returned from the remote platform.
-		// For example, what would be a POSIX shell "command not found" (127)
-		// error would be forwarded directly by SSH, but aliased to a POSIX
-		// "invalid command" (126) error by Docker. It seems that Docker uses
-		// these POSIX-y exit codes even when talking to a Windows container.
-		//
-		// SSH also returns standard error output on standard error, while
-		// Docker merges it with the standard output stream, and it is thus
-		// gobbled up by the endpoint client (which fortunately rejects it using
-		// a magic number scheme).
-		//
-		// Suffice it to say, the problem is complex. We may eventually need to
-		// add an error classification method to the Transport interface to aid
-		// in determining this information. In the case of Docker, we might need
-		// to tee the standard output stream into both the endpoint client and
-		// a limited-size buffer to help diagnose failures.
-		if process.IsPOSIXShellInvalidCommand(processErr) {
-			// TODO: This code returned from Docker doesn't necessarily indicate
-			// that the container is a POSIX environment - it may be a Windows
-			// container, because Docker still uses the 126 exit code even in
-			// that case. We need to figure out how to identify Windows
-			// containers using Docker. Fortunately, we already probe this in
-			// the Docker transport, so we can probably expose an "is windows"
-			// hint via the Transport interface.
-			return nil, true, false, errors.New("invalid command")
-		} else if process.IsPOSIXShellCommandNotFound(processErr) {
-			return nil, true, false, errors.New("command not found")
-		} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
-			// A Windows invalid command error doesn't necessarily indicate that
-			// the agent isn't installed, but merely that we were using a POSIX
-			// shell syntax in a Windows cmd.exe environment. In this case, we
-			// should try to connect again under the cmd.exe hypothesis before
-			// attempting an install. If we conect under the cmd.exe hypothesis
-			// and the agent really isn't there, then we'll see a Windows
-			// "command not found" error next, and then we can try to install
-			// the agent.
-			// HACK: Returning false for "try install" here is using some
-			// knowledge of the caller's behavior, but I think that's okay since
-			// they're so tightly coupled anyway.
-			return nil, false, true, errors.New("invalid command")
-		} else if process.OutputIsWindowsCommandNotFound(errorOutput) {
-			return nil, true, true, errors.New("command not found")
+		// Windows cmd.exe environment. We have to map this responsibility out
+		// to the transport, because each has different error classification
+		// mechanisms.
+		tryInstall, cmdExe, err := transport.ClassifyError(processErr, errorOutput)
+		if err != nil {
+			return nil, false, false, errors.Wrap(err, "unable to classify connection handshake error")
 		}
 
-		// Otherwise, check if there is any error output that might illuminate
-		// what happened. We let this overrule any err value here since that
-		// value will probably just be an EOF.
-		if errorOutput != "" {
-			return nil, false, false, errors.Errorf(
-				"agent process failed with error output:\n%s",
-				strings.TrimSpace(errorOutput),
-			)
-		}
-
-		// Otherwise just wrap up whatever error we have.
-		return nil, false, false, errors.Wrap(err, "unable to handshake with agent process")
+		// Return what we've found.
+		return nil, tryInstall, cmdExe, errors.New("unable to handshake with agent process")
 	} else if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create endpoint client")
 	}
