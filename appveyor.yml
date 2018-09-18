@@ -10,6 +10,11 @@ environment:
   GO111MODULE: "on"
   MINGW_PATH: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1
   MUTAGEN_TEST_END_TO_END: "true"
+  MUTAGEN_TEST_DOCKER: true
+  MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME: microsoft/nanoserver:ltsc2016
+  MUTAGEN_TEST_DOCKER_IMAGE_NAME: mutagentest
+  MUTAGEN_TEST_DOCKER_CONTAINER_NAME: mutagentester
+  MUTAGEN_TEST_DOCKER_USERNAME: george
 init:
   - set PATH=%GOROOT%\bin;%MINGW_PATH%\mingw64\bin;%PATH%
 
@@ -20,6 +25,12 @@ build: off
 before_test:
   - pip install codecov
 
+# Perform setup for testing.
+before_test:
+  - diskpart /s scripts\create_test_partitions_windows.txt
+  - set MUTAGEN_TEST_FAT32_ROOT=V:\
+  - scripts\setup_docker.bat
+
 # Run tests, upload the coverage report, and build bundles. We have to run a
 # quick build before running tests because the tests rely on the agent bundle
 # being available. We don't want to do a full build to start with though because
@@ -28,8 +39,6 @@ before_test:
 # want to do).
 test_script:
   - go version
-  - diskpart /s scripts/create_test_partitions_windows.txt
-  - set MUTAGEN_TEST_FAT32_ROOT=V:\
   - go run scripts/build.go --mode=slim
   - go test -v -race -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
   - set GOARCH=386
@@ -38,6 +47,10 @@ test_script:
   - set GOARCH=amd64
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
+
+# Perform teardown after testing.
+after_test:
+  - scripts\teardown_docker.bat
 
 # Send notifications.
 notifications:

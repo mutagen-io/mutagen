@@ -50,8 +50,8 @@ install: true
 # Perform setup for testing.
 before_script:
   - source scripts/setup_ssh.sh
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/setup_docker.sh ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/setup_docker.sh ; fi
 
 # Run tests, upload the coverage report, and build bundles. We have to run a
 # quick build before running tests because the tests rely on the agent bundle
@@ -74,6 +74,7 @@ script:
 # NOTE: This actually runs after before_deploy, but it's more logical to have it
 # at this point in the file. See
 # https://docs.travis-ci.com/user/customizing-the-build/ for more information.
+# It also keeps better symmetry with AppVeyor's configuration.
 after_script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/teardown_docker.sh ; fi
 
