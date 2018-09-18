@@ -21,12 +21,11 @@ init:
 # Disable AppVeyor's default Visual Studio build system.
 build: off
 
-# Install the codecov.io Python-based upload tool.
+# Perform setup for testing. We have to manually install the codecov.io
+# Python-based uploading tool since there's no (simple) way to run the Bash
+# version on Windows. We also create test partitions and set up Docker.
 before_test:
   - pip install codecov
-
-# Perform setup for testing.
-before_test:
   - diskpart /s scripts\create_test_partitions_windows.txt
   - set MUTAGEN_TEST_FAT32_ROOT=V:\
   - scripts\setup_docker.bat
@@ -48,7 +47,8 @@ test_script:
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
 
-# Perform teardown after testing.
+# Perform teardown after testing. We tear down any Docker infrastructure that
+# we've set up.
 after_test:
   - scripts\teardown_docker.bat
 

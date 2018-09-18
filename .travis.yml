@@ -35,6 +35,13 @@ sudo: required
 services:
   - docker
 
+# Use the addons feature to get a newer version of Docker CE. The Travis CI
+# version is too old by default for Mutagen support.
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 # Set our Go version(s). Mutagen generally only supports a specific version of
 # Go at a time, usually the latest.
 # NOTE: When specifying versions with a trailing 0 (e.g. 1.10), you need to
@@ -47,7 +54,8 @@ go:
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
 
-# Perform setup for testing.
+# Perform setup for testing. We set up SSH for all platforms, create test
+# partitions for macOS, and set up Docker on Linux.
 before_script:
   - source scripts/setup_ssh.sh
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
@@ -70,7 +78,8 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
 
-# Perform teardown after testing.
+# Perform teardown after testing. We tear down any Docker infrastructure that
+# we've set up.
 # NOTE: This actually runs after before_deploy, but it's more logical to have it
 # at this point in the file. See
 # https://docs.travis-ci.com/user/customizing-the-build/ for more information.
