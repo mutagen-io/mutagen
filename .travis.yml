@@ -18,8 +18,13 @@ matrix:
     - os: linux
       env: MUTAGEN_TEST_END_TO_END=true GO111MODULE=on
 
-# Require use of sudo (we need this to set up SSH).
+# Require use of sudo (we need this to set up SSH and use Docker).
 sudo: required
+
+# Require the use of Docker. This should have no effect on Travis' macOS
+# infrastructure, where use of Docker is not supported.
+services:
+  - docker
 
 # Set our Go version(s). Mutagen generally only supports a specific version of
 # Go at a time, usually the latest.
@@ -33,6 +38,12 @@ go:
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
 
+# Perform setup for testing.
+before_script:
+  - source scripts/setup_ssh.sh
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/setup_docker.sh ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
+
 # Run tests, upload the coverage report, and build bundles. We have to run a
 # quick build before running tests because the tests rely on the agent bundle
 # being available. We don't want to do a full build to start with though because
@@ -42,8 +53,6 @@ install: true
 # we want to do)).
 script:
   - go version
-  - source scripts/setup_ssh.sh
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
   - go run scripts/build.go --mode=slim
   - go test -v -race -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOARCH=386 go run scripts/build.go --mode=slim ; fi
@@ -51,6 +60,13 @@ script:
   - bash <(curl -s https://codecov.io/bash)
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
+
+# Perform teardown after testing.
+# NOTE: This actually runs after before_deploy, but it's more logical to have it
+# at this point in the file. See
+# https://docs.travis-ci.com/user/customizing-the-build/ for more information.
+after_script:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/teardown_docker.sh ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build

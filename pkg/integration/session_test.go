@@ -9,6 +9,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/google/uuid"
+
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
@@ -17,6 +19,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 
 	// Explicitly import packages that need to register protocol handlers.
+	_ "github.com/havoc-io/mutagen/pkg/docker"
 	_ "github.com/havoc-io/mutagen/pkg/local"
 	_ "github.com/havoc-io/mutagen/pkg/ssh"
 )
@@ -313,6 +316,66 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	betaURL := &url.URL{
 		Protocol: inMemoryProtocol,
 		Path:     betaRoot,
+	}
+
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
+	// Test the session lifecycle.
+	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+		t.Fatal("session lifecycle test failed:", err)
+	}
+}
+
+func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
+	// If end-to-end tests haven't been enabled, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+		t.Skip()
+	}
+
+	// If Docker test support isn't available, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
+		t.Skip()
+	}
+
+	// Create a unique directory name for synchronization into the container. We
+	// don't clean it up, because it will be wiped out when the test container
+	// is deleted.
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		t.Fatal("unable to create random directory UUID:", err)
+	}
+
+	// Calculate alpha and beta paths.
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	betaRoot := "~/" + randomUUID.String()
+
+	// Grab Docker environment variables.
+	environment := make(map[string]string, len(url.DockerEnvironmentVariables))
+	for _, variable := range url.DockerEnvironmentVariables {
+		environment[variable] = os.Getenv(variable)
+	}
+
+	// Compute alpha and beta URLs.
+	alphaURL := &url.URL{Path: alphaRoot}
+	betaURL := &url.URL{
+		Protocol:    url.Protocol_Docker,
+		Username:    os.Getenv("MUTAGEN_TEST_DOCKER_USERNAME"),
+		Hostname:    os.Getenv("MUTAGEN_TEST_DOCKER_CONTAINER_NAME"),
+		Path:        betaRoot,
+		Environment: environment,
+	}
+
+	// Verify that the beta URL is valid (this will validate the test
+	// environment variables as well).
+	if err := betaURL.EnsureValid(); err != nil {
+		t.Fatal("beta URL is invalid:", err)
 	}
 
 	// Compute configuration.

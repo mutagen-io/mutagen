@@ -1,0 +1,5 @@
+# This is a Dockerfile that will build a minimal Alpine-based Linux container
+# image with a 10 hour sleep command as its entry point.
+
+FROM alpine
+ENTRYPOINT sleep 6000
