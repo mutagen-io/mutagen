@@ -4,4 +4,4 @@
 
 FROM microsoft/nanoserver
 RUN net user /add george
-ENTRYPOINT timeout 6000
+ENTRYPOINT cmd /c timeout 6000
