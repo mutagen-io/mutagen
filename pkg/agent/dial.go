@@ -120,10 +120,21 @@ func connect(
 		// (re-)install the agent binary and whether or not we're talking to a
 		// Windows cmd.exe environment. We have to map this responsibility out
 		// to the transport, because each has different error classification
-		// mechanisms.
+		// mechanisms. If the transport can't figure it out but we have some
+		// error output, then give it to the user, because they're probably in a
+		// better place to interpret it then they are to interpret the
+		// transport's reason for classification failure. If we don't have error
+		// output, then just tell the user why the transport failed to classify
+		// the failure.
 		tryInstall, cmdExe, err := transport.ClassifyError(processErr, errorOutput)
 		if err != nil {
-			return nil, false, false, errors.Wrap(err, "unable to classify connection handshake error")
+			if errorOutput != "" {
+				return nil, false, false, errors.Errorf(
+					"agent handshake failed with error output: %s",
+					strings.TrimSpace(errorOutput),
+				)
+			}
+			return nil, false, false, errors.Wrap(err, "unable to classify agent handshake error")
 		}
 
 		// Return what we've found.
