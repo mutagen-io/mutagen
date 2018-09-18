@@ -15,6 +15,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/local"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 
@@ -83,9 +84,9 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 	}
 }
 
-func testSessionLifecycle(alpha, beta *url.URL, configuration *session.Configuration, allowConflicts, allowProblems bool) error {
+func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *session.Configuration, allowConflicts, allowProblems bool) error {
 	// Create a session.
-	sessionId, err := sessionManager.Create(alpha, beta, configuration, "")
+	sessionId, err := sessionManager.Create(alpha, beta, configuration, prompter)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session")
 	}
@@ -171,7 +172,7 @@ func TestSessionBothRootsNil(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -207,7 +208,7 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -243,7 +244,7 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -288,7 +289,7 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -328,9 +329,22 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
+}
+
+// testWindowsDockerTransportPrompter is a prompt.Prompter implementation that
+// will answer "yes" to all prompts. It's needed to confirm container restart
+// behavior in the Docker transport on Windows.
+type testWindowsDockerTransportPrompter struct{}
+
+func (t *testWindowsDockerTransportPrompter) Message(_ string) error {
+	return nil
+}
+
+func (t *testWindowsDockerTransportPrompter) Prompt(_ string) (string, error) {
+	return "yes", nil
 }
 
 func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
@@ -342,6 +356,18 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 	// If Docker test support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
 		t.Skip()
+	}
+
+	// If we're on Windows, register a prompter that will answer yes to
+	// questions about stoping and restarting containers.
+	var prompter string
+	if runtime.GOOS == "windows" {
+		if p, err := prompt.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
+			t.Fatal("unable to register prompter:", err)
+		} else {
+			prompter = p
+			defer prompt.UnregisterPrompter(prompter)
+		}
 	}
 
 	// Create a unique directory name for synchronization into the container. We
@@ -388,7 +414,7 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 	}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(prompter, alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
