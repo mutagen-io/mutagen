@@ -8,7 +8,7 @@ import (
 
 const (
 	// dockerURLPrefix is the lowercase version of the Docker URL prefix.
-	dockerURLPrefix = "docker:"
+	dockerURLPrefix = "docker://"
 
 	// DockerHostEnvironmentVariable is the name of the DOCKER_HOST environment
 	// variable.
@@ -39,14 +39,16 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 	// Strip off the prefix.
 	raw = raw[len(dockerURLPrefix):]
 
-	// Parse off the username. If we hit a colon, then we've reached the end of
-	// a container specification and there was no username. Ideally we'd want to
-	// break on any character that isn't allowed in a username, but that isn't
-	// well-defined, even for POSIX (it's effectively determined by a
-	// configurable regular expression - NAME_REGEX).
+	// Parse off the username. If we hit a '/', then we've reached the end of a
+	// container specification and there was no username. Similarly, if we hit
+	// the end of the string without seeing an '@', then there's also no
+	// username specified. Ideally we'd want also to break on any character that
+	// isn't allowed in a username, but that isn't well-defined, even for POSIX
+	// (it's effectively determined by a configurable regular expression -
+	// NAME_REGEX).
 	var username string
 	for i, r := range raw {
-		if r == ':' {
+		if r == '/' {
 			break
 		} else if r == '@' {
 			username = raw[:i]
@@ -55,25 +57,32 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 		}
 	}
 
-	// Parse off the container. Again, ideally we'd want to be a bit more
-	// stringent here about what characters we accept in container names,
-	// potentially breaking early with an error if we see a "disallowed"
+	// Split what remains into the container and the path. Ideally we'd want to
+	// be a bit more stringent here about what characters we accept in container
+	// names, potentially breaking early with an error if we see a "disallowed"
 	// character, but we're better off just allowing Docker to reject container
 	// names that it doesn't like.
-	var container string
+	var container, path string
 	for i, r := range raw {
-		if r == ':' {
+		if r == '/' {
 			container = raw[:i]
-			raw = raw[i+1:]
+			path = raw[i:]
 			break
 		}
 	}
 	if container == "" {
 		return nil, errors.New("empty container name")
+	} else if path == "" {
+		return nil, errors.New("empty path")
 	}
 
-	// What remains is the path.
-	path := raw
+	// If the path starts with "/~", then we assume that it's supposed to be a
+	// home-directory-relative path and remove the slash. At this point we
+	// already know that the path starts with "/" since we retained that as part
+	// of the path in the split operation above.
+	if len(path) > 1 && path[1] == '~' {
+		path = path[1:]
+	}
 
 	// Loop over and record the values for the Docker environment variables that
 	// we need to preserve. For the variables in question, Docker treats an

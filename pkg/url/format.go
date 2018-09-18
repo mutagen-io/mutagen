@@ -43,10 +43,30 @@ func (u *URL) formatSSH() string {
 	return result
 }
 
+// invalidDockerURLFormat is the value returned by formatDocker when a URL is
+// provided that breaks invariants.
+const invalidDockerURLFormat = "<invalid-docker-url>"
+
 // formatDocker formats a Docker URL.
 func (u *URL) formatDocker(environmentPrefix string) string {
-	// Create the base result.
-	result := fmt.Sprintf("%s:%s", u.Hostname, u.Path)
+	// Start with the container name.
+	result := u.Hostname
+
+	// Append the path. If this is a home-directory-relative path, then we need
+	// to prepend a slash.
+	// TODO: I wish there were a better way to handle invariant breakage here,
+	// but I don't want panics and I don't want to clutter the signature with an
+	// error. In any case, invariant checks are always performed before
+	// formatting, so this shouldn't be an issue, but it's worth thinking about.
+	if u.Path == "" {
+		return invalidDockerURLFormat
+	} else if u.Path[0] == '/' {
+		result += u.Path
+	} else if u.Path[0] == '~' {
+		result += fmt.Sprintf("/%s", u.Path)
+	} else {
+		return invalidDockerURLFormat
+	}
 
 	// Add username if present.
 	if u.Username != "" {

@@ -94,6 +94,30 @@ func TestFormatSSHUsernameHostnamePortPath(t *testing.T) {
 	test.run(t)
 }
 
+func TestFormatDockerInvalidEmptyPath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "container",
+			Path:     "",
+		},
+		expected: invalidDockerURLFormat,
+	}
+	test.run(t)
+}
+
+func TestFormatDockerInvalidBadFirstPathCharacter(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "container",
+			Path:     "$5",
+		},
+		expected: invalidDockerURLFormat,
+	}
+	test.run(t)
+}
+
 func TestFormatDocker(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
@@ -105,25 +129,43 @@ func TestFormatDocker(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker:container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+		expected:          "docker://container/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
 	}
 	test.run(t)
 }
 
-func TestFormatDockerWithUsername(t *testing.T) {
+func TestFormatDockerWithUsernameAndHomeRelativePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
 			Username: "user",
 			Hostname: "container",
-			Path:     "/test/path/to/the file",
+			Path:     "~/test/path/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
 				DockerTLSVerifyEnvironmentVariable: "true",
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker:user@container:/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
+		expected:          "docker://user@container/~/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
+	}
+	test.run(t)
+}
+
+func TestFormatDockerWithUsernameAndUserRelativePath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Username: "user",
+			Hostname: "container",
+			Path:     "~otheruser/test/path/to/the file",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
+				DockerTLSVerifyEnvironmentVariable: "true",
+			},
+		},
+		environmentPrefix: "|",
+		expected:          "docker://user@container/~otheruser/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
 	}
 	test.run(t)
 }
