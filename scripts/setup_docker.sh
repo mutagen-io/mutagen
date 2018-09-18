@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Print the Docker version.
+docker version
+
 # Pull our base Docker image.
 docker pull "${MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME}" || exit $?
 
