@@ -72,7 +72,7 @@ func TestParseEmptyInvalid(t *testing.T) {
 
 func TestParseLocalPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "/this/is/a:path",
+		raw: "/this/is/a:path",
 		expected: &URL{
 			Protocol: Protocol_Local,
 			Username: "",
@@ -86,7 +86,7 @@ func TestParseLocalPath(t *testing.T) {
 
 func TestParseLocalPathWithAtSymbol(t *testing.T) {
 	test := parseTestCase{
-		raw:  "some@path",
+		raw: "some@path",
 		expected: &URL{
 			Protocol: Protocol_Local,
 			Username: "",
@@ -164,7 +164,7 @@ func TestParseSCPSSHUsernameHostnamePathEmptyPortInvalid(t *testing.T) {
 
 func TestParseSCPSSHHostnamePath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "host:path",
+		raw: "host:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "",
@@ -178,7 +178,7 @@ func TestParseSCPSSHHostnamePath(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnamePath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:path",
+		raw: "user@host:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -192,7 +192,7 @@ func TestParseSCPSSHUsernameHostnamePath(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnamePathWithColonInMiddle(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:pa:th",
+		raw: "user@host:pa:th",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -206,7 +206,7 @@ func TestParseSCPSSHUsernameHostnamePathWithColonInMiddle(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnamePathWithColonAtEnd(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:path:",
+		raw: "user@host:path:",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -220,7 +220,7 @@ func TestParseSCPSSHUsernameHostnamePathWithColonAtEnd(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnameWithAtPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@ho@st:path",
+		raw: "user@ho@st:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -234,7 +234,7 @@ func TestParseSCPSSHUsernameHostnameWithAtPath(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnamePathWithAt(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:pa@th",
+		raw: "user@host:pa@th",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -248,7 +248,7 @@ func TestParseSCPSSHUsernameHostnamePathWithAt(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnamePortPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:65535:path",
+		raw: "user@host:65535:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -262,7 +262,7 @@ func TestParseSCPSSHUsernameHostnamePortPath(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnameZeroPortPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:0:path",
+		raw: "user@host:0:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -276,7 +276,7 @@ func TestParseSCPSSHUsernameHostnameZeroPortPath(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnameDoubleZeroPortPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:00:path",
+		raw: "user@host:00:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -298,7 +298,7 @@ func TestParseSCPSSHUsernameHostnameOutOfBoundsPortInvalid(t *testing.T) {
 
 func TestParseSCPSSHUsernameHostnameHexNumericPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "user@host:aaa:path",
+		raw: "user@host:aaa:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "user",
@@ -312,7 +312,7 @@ func TestParseSCPSSHUsernameHostnameHexNumericPath(t *testing.T) {
 
 func TestParseSCPSSHUnicodeUsernameHostnamePath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "üsér@høst:пат",
+		raw: "üsér@høst:пат",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "üsér",
@@ -326,7 +326,7 @@ func TestParseSCPSSHUnicodeUsernameHostnamePath(t *testing.T) {
 
 func TestParseSCPSSHUnicodeUsernameHostnamePortPath(t *testing.T) {
 	test := parseTestCase{
-		raw:  "üsér@høst:23:пат",
+		raw: "üsér@høst:23:пат",
 		expected: &URL{
 			Protocol: Protocol_SSH,
 			Username: "üsér",
