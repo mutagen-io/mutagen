@@ -1,6 +1,9 @@
 # Set the build version.
 version: "{build}"
 
+# Set the build image.
+image: Visual Studio 2017
+
 # Set the clone folder so that Mutagen ends up in the GOPATH.
 clone_folder: C:\mutagen
 
