@@ -19,6 +19,3 @@ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || exit $?
 
 # Add localhost to our list of known hosts (so we're not prompted).
 ssh-keyscan -t rsa localhost >> ~/.ssh/known_hosts || exit $?
-
-# Mark the environment as having SSH support.
-export MUTAGEN_TEST_SSH="true"

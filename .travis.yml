@@ -14,9 +14,20 @@ matrix:
   include:
     - os: osx
       osx_image: xcode9.4
-      env: GO111MODULE=on
+      env:
+        global:
+          - GO111MODULE=on
+          - MUTAGEN_TEST_SSH=true
     - os: linux
-      env: MUTAGEN_TEST_END_TO_END=true GO111MODULE=on
+      env:
+        global:
+          - GO111MODULE=on
+          - MUTAGEN_TEST_END_TO_END=true
+          - MUTAGEN_TEST_SSH=true
+          - MUTAGEN_TEST_DOCKER=true
+          - MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME=alpine
+          - MUTAGEN_TEST_DOCKER_IMAGE_NAME=mutagentest
+          - MUTAGEN_TEST_DOCKER_CONTAINER_NAME=mutagentester
 
 # Require use of sudo (we need this to set up SSH and use Docker).
 sudo: required
