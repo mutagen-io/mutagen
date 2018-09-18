@@ -6,7 +6,7 @@ docker pull "${MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME}" || exit $?
 # Build our image.
 docker build \
     --tag "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" \
-    --file dockerfile_linux \
+    --file scripts/dockerfile_linux \
     scripts || exit $?
 
 # Start a container.
