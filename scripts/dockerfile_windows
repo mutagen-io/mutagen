@@ -2,6 +2,6 @@
 # 10 hour sleep command as its entry point. It also adds a secondary user named
 # "george" for our synchronization tests.
 
-FROM microsoft/nanoserver:ltsc2016
+FROM microsoft/nanoserver
 RUN net user /add george
 ENTRYPOINT timeout 6000
