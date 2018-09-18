@@ -2,6 +2,6 @@
 # 10 hour sleep command as its entry point. It also adds a secondary user named
 # "george" for our synchronization tests.
 
-FROM microsoft/nanoserver
+FROM microsoft/windowsservercore
 RUN net user /add george
-ENTRYPOINT cmd /c timeout 6000
+ENTRYPOINT powershell -Command sleep 6000
