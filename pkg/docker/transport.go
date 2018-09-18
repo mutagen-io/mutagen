@@ -182,12 +182,11 @@ func (t *transport) probeContainer() error {
 
 	// At this point, home directory probing has succeeded. If we're using a
 	// POSIX container, then attempt to extract the user's name and default
-	// group. In theory, the username should be the same as that passed in the
-	// URL, but we allow that to be empty, which means the default user, usually
-	// but not necessarily root. Since we need the explicit username to run our
-	// chown command, we need to query it.
-	// TODO: Figure out what we should do when it comes to permissions for
-	// Windows containers.
+	// group so that we can set permissions on copied files. In theory, the
+	// username should be the same as that passed in the URL, but we allow that
+	// to be empty, which means the default user, usually but not necessarily
+	// root. Since we need the explicit username to run our chown command, we
+	// need to query it.
 	var username, group string
 	if !windows {
 		// Query username.
@@ -329,16 +328,28 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		return errors.Wrap(err, "unable to run Docker copy command")
 	}
 
-	// Since the default ownership for the file inside the container is a bit
-	// uncertain. Ownership of the file is supposed to default to the default
-	// container user and their associated default group (usually root:root,
-	// which isn't always the user/group that we want), but apparently that's
-	// not the case with Docker anymore due to a bug or regression or just a
-	// behavioral change (see https://github.com/moby/moby/issues/34096). In any
-	// case, the ownership may be inappropriate for the file, so we manually
-	// invoke chmod if we're dealing with a POSIX container. We always run this
-	// chmod as root to ensure that it succeeds.
-	// TODO: Figure out what the behavior is on Windows and what we need to do.
+	// The default ownership of files copied into containers is a bit uncertain.
+	//
+	// For POSIX containers, ownership of the file is supposed to default to the
+	// default container user and their associated default group (usually
+	// root:root, which isn't always the user/group that we want), but
+	// apparently that's not the case with Docker anymore due to a bug or
+	// regression or just a behavioral change (see
+	// https://github.com/moby/moby/issues/34096). In any case, the ownership
+	// may be inappropriate for the file inside a POSIX container, so we
+	// manually invoke chmod to set user/group ownership when dealing with this
+	// container type. We always run this chmod command as root to ensure that
+	// it succeeds.
+	//
+	// For Windows containers, there's no documented behavior. Through
+	// experimentation, it seems like Docker just lets the file inherit the
+	// permissions based on the path that it's copied into, which for home
+	// directories is fine. If they change this in the future, we may need to
+	// similarly probe the USERNAME environment variable and use icacls to set
+	// ownership. It's a little unclear what user would be appropriate for
+	// running this command, perhaps ContainerAdministrator if it is guaranteed
+	// to exist, because most built-in NT accounts don't seem to exist in
+	// containers.
 	if !t.containerIsWindows {
 		chownCommand := fmt.Sprintf(
 			"chown %s:%s %s",
