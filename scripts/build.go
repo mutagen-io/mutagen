@@ -117,11 +117,25 @@ func (t Target) goEnv() ([]string, error) {
 	// internal linker automatically defaults to a relatively liberal (old)
 	// value for this flag, but since we're using an external linker, it
 	// defaults to the current SDK version.
+	//
+	// For all other platforms, we disable cgo. This is essential for our Linux
+	// CI setup, because we build agent executables during testing that we then
+	// run inside Docker containers for our integration tests. These containers
+	// typically run Alpine Linux, and if the agent binary is linked to C
+	// libraries that only exist on the build system, then they won't work
+	// inside the container. We can't disable cgo on a global basis though,
+	// because it's needed for race condition testing. Another reason that it's
+	// good to disable cgo when building agent binaries during testing is that
+	// the release agent binaries will also have cgo disabled (except on macOS),
+	// and we'll want to faithfully recreate that.
+	//
 	// TODO: If we ever decide to build for iOS, we should set the corresponding
 	// flags for that platform.
 	if t.GOOS == "darwin" && t.GOARCH == "amd64" {
 		result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 		result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+	} else {
+		result = append(result, "CGO_ENABLED=0")
 	}
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
