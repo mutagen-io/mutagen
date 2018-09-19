@@ -32,19 +32,32 @@ before_test:
   - set MUTAGEN_TEST_FAT32_ROOT=V:\
   - scripts\setup_docker.bat
 
-# Run tests, upload the coverage report, and build bundles. We have to run a
-# quick build before running tests because the tests rely on the agent bundle
-# being available. We don't want to do a full build to start with though because
-# that can take a while. We fold coverage report uploading into test_script
-# because after_test doesn't seem to fail the build if an upload fails (which we
-# want to do).
+# Run tests, upload the coverage report, and build bundles.
+#
+# We have to run a quick build (for the current platform only) before running
+# tests because the tests rely on the agent bundle being available. We may need
+# to switch this to a testing build if we start invoking Docker from Windows
+# with Linux containers. We don't want to do a full build to start with though
+# because that can take a while.
+#
+# We run a few different testing cycles. The first is our primary test cycle for
+# behavior and coverage reports. The second test cycle enables race detection,
+# but we have to disable integration tests in this case because they become
+# painfully slow (resulting in 15-20 minute builds). The third test cycle is for
+# the 386 architecture (where race detection isn't available anyway).
+#
+# We fold coverage report uploading into test_script because after_test doesn't
+# seem to fail the build if an upload fails (which we want to do).
 test_script:
   - go version
   - go run scripts/build.go --mode=slim
-  - go test -v -race -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
+  - go test -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
+  - set MUTAGEN_TEST_END_TO_END=false
+  - go test -race ./pkg/...
+  - set MUTAGEN_TEST_END_TO_END=true
   - set GOARCH=386
   - go run scripts/build.go --mode=slim
-  - go test -v ./pkg/...
+  - go test ./pkg/...
   - set GOARCH=amd64
   - codecov -X gcov -f coverage.txt
   - go run scripts/build.go --mode=testing
