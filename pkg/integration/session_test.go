@@ -249,6 +249,46 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	}
 }
 
+func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
+	// If end-to-end tests haven't been enabled, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+		t.Skip()
+	}
+
+	// Create a temporary directory and defer its cleanup.
+	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(directory)
+
+	// Calculate alpha and beta paths.
+	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	betaRoot := filepath.Join(directory, "beta")
+
+	// Compute alpha and beta URLs. We use a special protocol with a custom
+	// handler to indicate an in-memory connection.
+	alphaURL := &url.URL{Path: alphaRoot}
+	betaURL := &url.URL{
+		Protocol: inMemoryProtocol,
+		Path:     betaRoot,
+	}
+
+	// Compute configuration.
+	// HACK: The notify package has a race condition on Windows that the race
+	// detector catches, so force polling there for now during tests. Force
+	// polling on macOS as well since notify seems flaky in tests there as well.
+	configuration := &session.Configuration{}
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
+	}
+
+	// Test the session lifecycle.
+	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+		t.Fatal("session lifecycle test failed:", err)
+	}
+}
+
 func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// If end-to-end tests haven't been enabled, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
@@ -276,46 +316,6 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	betaURL := &url.URL{
 		Protocol: url.Protocol_SSH,
 		Hostname: "localhost",
-		Path:     betaRoot,
-	}
-
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
-	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
-
-	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
-	}
-}
-
-func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
-		t.Skip()
-	}
-
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
-	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
-	betaRoot := filepath.Join(directory, "beta")
-
-	// Compute alpha and beta URLs. We use a special protocol with a custom
-	// handler to indicate an in-memory connection.
-	alphaURL := &url.URL{Path: alphaRoot}
-	betaURL := &url.URL{
-		Protocol: inMemoryProtocol,
 		Path:     betaRoot,
 	}
 
