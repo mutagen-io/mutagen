@@ -141,10 +141,8 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 }
 
 func TestSessionBothRootsNil(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
-		t.Skip()
-	}
+	// Allow this test to run in parallel.
+	t.Parallel()
 
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
@@ -171,10 +169,22 @@ func TestSessionBothRootsNil(t *testing.T) {
 }
 
 func TestSessionGOROOTSrcToBeta(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+	// Check the end-to-end test mode and compute the source synchronization
+	// root accordingly. If no mode has been specified, then skip the test.
+	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
+	var sourceRoot string
+	if endToEndTestMode == "" {
 		t.Skip()
+	} else if endToEndTestMode == "full" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src")
+	} else if endToEndTestMode == "slim" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src", "bufio")
+	} else {
+		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
 	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
 
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
@@ -184,7 +194,7 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	alphaRoot := sourceRoot
 	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs.
@@ -201,10 +211,22 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 }
 
 func TestSessionGOROOTSrcToAlpha(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+	// Check the end-to-end test mode and compute the source synchronization
+	// root accordingly. If no mode has been specified, then skip the test.
+	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
+	var sourceRoot string
+	if endToEndTestMode == "" {
 		t.Skip()
+	} else if endToEndTestMode == "full" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src")
+	} else if endToEndTestMode == "slim" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src", "bufio")
+	} else {
+		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
 	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
 
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
@@ -215,7 +237,7 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 
 	// Calculate alpha and beta paths.
 	alphaRoot := filepath.Join(directory, "alpha")
-	betaRoot := filepath.Join(runtime.GOROOT(), "src")
+	betaRoot := sourceRoot
 
 	// Compute alpha and beta URLs.
 	alphaURL := &url.URL{Path: alphaRoot}
@@ -231,10 +253,22 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 }
 
 func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
+	// Check the end-to-end test mode and compute the source synchronization
+	// root accordingly. If no mode has been specified, then skip the test.
+	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
+	var sourceRoot string
+	if endToEndTestMode == "" {
 		t.Skip()
+	} else if endToEndTestMode == "full" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src")
+	} else if endToEndTestMode == "slim" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src", "bufio")
+	} else {
+		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
 	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
 
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
@@ -244,7 +278,7 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	alphaRoot := sourceRoot
 	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs. We use a special protocol with a custom
@@ -265,15 +299,27 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 }
 
 func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
-		t.Skip()
-	}
-
 	// If localhost SSH support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_SSH") != "true" {
 		t.Skip()
 	}
+
+	// Check the end-to-end test mode and compute the source synchronization
+	// root accordingly. If no mode has been specified, then skip the test.
+	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
+	var sourceRoot string
+	if endToEndTestMode == "" {
+		t.Skip()
+	} else if endToEndTestMode == "full" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src")
+	} else if endToEndTestMode == "slim" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src", "bufio")
+	} else {
+		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
+	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
 
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
@@ -283,7 +329,7 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	alphaRoot := sourceRoot
 	betaRoot := filepath.Join(directory, "beta")
 
 	// Compute alpha and beta URLs.
@@ -317,15 +363,27 @@ func (t *testWindowsDockerTransportPrompter) Prompt(_ string) (string, error) {
 }
 
 func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
-	// If end-to-end tests haven't been enabled, then skip this test.
-	if os.Getenv("MUTAGEN_TEST_END_TO_END") != "true" {
-		t.Skip()
-	}
-
 	// If Docker test support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
 		t.Skip()
 	}
+
+	// Check the end-to-end test mode and compute the source synchronization
+	// root accordingly. If no mode has been specified, then skip the test.
+	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
+	var sourceRoot string
+	if endToEndTestMode == "" {
+		t.Skip()
+	} else if endToEndTestMode == "full" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src")
+	} else if endToEndTestMode == "slim" {
+		sourceRoot = filepath.Join(runtime.GOROOT(), "src", "bufio")
+	} else {
+		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
+	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
 
 	// If we're on Windows, register a prompter that will answer yes to
 	// questions about stoping and restarting containers.
@@ -348,7 +406,7 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 	}
 
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(runtime.GOROOT(), "src")
+	alphaRoot := sourceRoot
 	betaRoot := "~/" + randomUUID.String()
 
 	// Grab Docker environment variables.

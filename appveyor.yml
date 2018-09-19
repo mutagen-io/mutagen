@@ -12,7 +12,7 @@ environment:
   GOROOT: C:\go111
   GO111MODULE: "on"
   MINGW_PATH: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1
-  MUTAGEN_TEST_END_TO_END: "true"
+  MUTAGEN_TEST_END_TO_END: "full"
   MUTAGEN_TEST_DOCKER: "true"
   MUTAGEN_TEST_DOCKER_IMAGE_NAME: mutagentest
   MUTAGEN_TEST_DOCKER_CONTAINER_NAME: mutagentester
@@ -42,9 +42,10 @@ before_test:
 #
 # We run a few different testing cycles. The first is our primary test cycle for
 # behavior and coverage reports. The second test cycle enables race detection,
-# but we have to disable integration tests in this case because they become
-# painfully slow (resulting in 15-20 minute builds). The third test cycle is for
-# the 386 architecture (where race detection isn't available anyway).
+# but we use a smaller synchronization root for integration tests in this case
+# because the tests incur about an order-of-magnitude slowdown due to the race
+# detector. The third test cycle is for the 386 architecture (where race
+# detection isn't available anyway).
 #
 # We fold coverage report uploading into test_script because after_test doesn't
 # seem to fail the build if an upload fails (which we want to do).
@@ -52,9 +53,9 @@ test_script:
   - go version
   - go run scripts/build.go --mode=slim
   - go test -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
-  - set MUTAGEN_TEST_END_TO_END=false
+  - set MUTAGEN_TEST_END_TO_END=slim
   - go test -race ./pkg/...
-  - set MUTAGEN_TEST_END_TO_END=true
+  - set MUTAGEN_TEST_END_TO_END=full
   - set GOARCH=386
   - go run scripts/build.go --mode=slim
   - go test ./pkg/...
