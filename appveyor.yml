@@ -13,7 +13,7 @@ environment:
   GO111MODULE: "on"
   MINGW_PATH: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1
   MUTAGEN_TEST_END_TO_END: "true"
-  MUTAGEN_TEST_DOCKER: true
+  MUTAGEN_TEST_DOCKER: "true"
   MUTAGEN_TEST_DOCKER_IMAGE_NAME: mutagentest
   MUTAGEN_TEST_DOCKER_CONTAINER_NAME: mutagentester
   MUTAGEN_TEST_DOCKER_USERNAME: george
