@@ -162,14 +162,8 @@ func TestSessionBothRootsNil(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -198,14 +192,8 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -234,14 +222,8 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{Path: betaRoot}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -274,14 +256,8 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 		Path:     betaRoot,
 	}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -319,14 +295,8 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 		Path:     betaRoot,
 	}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -404,14 +374,8 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 		t.Fatal("beta URL is invalid:", err)
 	}
 
-	// Compute configuration.
-	// HACK: The notify package has a race condition on Windows that the race
-	// detector catches, so force polling there for now during tests. Force
-	// polling on macOS as well since notify seems flaky in tests there as well.
+	// Compute configuration. We use defaults for everything.
 	configuration := &session.Configuration{}
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		configuration.WatchMode = filesystem.WatchMode_WatchForcePoll
-	}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(prompter, alphaURL, betaURL, configuration, false, false); err != nil {
