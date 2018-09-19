@@ -78,10 +78,10 @@ before_script:
 script:
   - go version
   - go run scripts/build.go --mode=slim
-  - go test -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
-  - MUTAGEN_TEST_END_TO_END=slim go test -race ./pkg/...
+  - go test -p 1 -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
+  - MUTAGEN_TEST_END_TO_END=slim go test -p 1 -race ./pkg/...
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOARCH=386 go run scripts/build.go --mode=slim ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOARCH=386 go test ./pkg/... ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOARCH=386 go test -p 1 ./pkg/... ; fi
   - bash <(curl -s https://codecov.io/bash)
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go run scripts/build.go --mode=testing ; fi
