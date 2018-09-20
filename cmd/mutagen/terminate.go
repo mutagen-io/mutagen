@@ -58,6 +58,8 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "terminate failed")
+		} else if err = response.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid terminate response received")
 		} else if response.Message == "" {
 			statusLinePrinter.Clear()
 			return nil

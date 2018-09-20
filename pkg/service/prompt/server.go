@@ -28,8 +28,8 @@ type asyncPromptResponse struct {
 // Prompt facilitates prompting by registered prompters.
 func (s *Server) Prompt(ctx context.Context, request *PromptRequest) (*PromptResponse, error) {
 	// Validate the request.
-	if request.Prompter == "" || request.Prompt == "" {
-		return nil, errors.New("invalid prompt request")
+	if err := request.ensureValid(); err != nil {
+		return nil, errors.Wrap(err, "invalid prompt request")
 	}
 
 	// Perform prompting from the global registry asynchronously.

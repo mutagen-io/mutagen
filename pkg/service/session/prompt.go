@@ -22,6 +22,8 @@ func (p *createStreamPrompter) sendReceive(request *CreateResponse) (*CreateRequ
 	// Receive the response.
 	if response, err := p.stream.Recv(); err != nil {
 		return nil, errors.Wrap(err, "unable to receive response")
+	} else if err = response.ensureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid response received")
 	} else {
 		return response, nil
 	}
@@ -60,6 +62,8 @@ func (p *pauseStreamPrompter) sendReceive(request *PauseResponse) (*PauseRequest
 	// Receive the response.
 	if response, err := p.stream.Recv(); err != nil {
 		return nil, errors.Wrap(err, "unable to receive response")
+	} else if err = response.ensureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid response received")
 	} else {
 		return response, nil
 	}
@@ -94,6 +98,8 @@ func (p *resumeStreamPrompter) sendReceive(request *ResumeResponse) (*ResumeRequ
 	// Receive the response.
 	if response, err := p.stream.Recv(); err != nil {
 		return nil, errors.Wrap(err, "unable to receive response")
+	} else if err = response.ensureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid response received")
 	} else {
 		return response, nil
 	}
@@ -132,6 +138,8 @@ func (p *terminateStreamPrompter) sendReceive(request *TerminateResponse) (*Term
 	// Receive the response.
 	if response, err := p.stream.Recv(); err != nil {
 		return nil, errors.Wrap(err, "unable to receive response")
+	} else if err = response.ensureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid response received")
 	} else {
 		return response, nil
 	}

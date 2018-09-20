@@ -58,6 +58,8 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "pause failed")
+		} else if err = response.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid pause response received")
 		} else if response.Message == "" {
 			statusLinePrinter.Clear()
 			return nil

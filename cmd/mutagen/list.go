@@ -147,6 +147,8 @@ func listMain(command *cobra.Command, arguments []string) error {
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "list failed")
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid list response received")
 	}
 
 	// Validate the list response contents.

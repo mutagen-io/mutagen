@@ -123,7 +123,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if response, err := stream.Recv(); err != nil {
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "create failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid response received")
+			return errors.Wrap(err, "invalid create response received")
 		} else if response.Session != "" {
 			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
 			return nil

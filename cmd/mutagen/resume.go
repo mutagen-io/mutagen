@@ -61,7 +61,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			return errors.Wrap(peelAwayRPCErrorLayer(err), "resume failed")
 		} else if err = response.EnsureValid(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(err, "invalid response received")
+			return errors.Wrap(err, "invalid resume response received")
 		} else if response.Message == "" && response.Prompt == "" {
 			statusLinePrinter.Clear()
 			return nil
