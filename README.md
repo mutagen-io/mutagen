@@ -1,10 +1,20 @@
 # Mutagen
 
-Mutagen is a cross-platform, continuous, bidirectional file synchronization
-utility designed to be simple, robust, and performant. It is designed to replace
-tools like SSHFS, Unison, and SFTP editor plugins. Its *raison d'être* is remote
-development via code synchronization, though it can efficiently synchronize any
-type of content.
+Mutagen is a **fast**, continuous, bidirectional file synchronization tool. It
+can safely, scalably, and efficiently synchronize filesystem contents between
+arbitrary pairs of locations in near real-time. Support is currently implemented
+for locations on local filesystems, SSH-accessible filesystems, and Docker
+container filesystems.
+
+Mutagen excels at supporting remote development scenarios, with options
+specifically designed to help developers edit code locally while building,
+running, or packaging it in a remote environment.
+
+For a basic summary and quick usage information, please check out the
+[documentation site](https://mutagen.io).
+
+Detailed information about Mutagen's [unique features](#unique-features) and
+[advanced usage](#usage) can be found below.
 
 
 ## Status
@@ -37,6 +47,12 @@ remote systems. The more people who use it and report
 **For a quick summary and usage guide that will cover most of your needs, please
 see the [documentation site](https://mutagen.io).**
 
+For information about Mutagen's SSH support, please see the
+[SSH documentation](doc/ssh.md).
+
+For information about Mutagen's Docker support, please see the
+[Docker documentation](doc/docker.md).
+
 For information about Mutagen's configuration system, please see the
 [configuration documentation](doc/configuration.md).
 
@@ -48,9 +64,6 @@ For information about ignoring files, please see the
 
 For information about filesystem watching, please see the
 [watching documentation](doc/watching.md).
-
-For information about Mutagen's use of SSH, please see the
-[SSH documentation](doc/ssh.md).
 
 For information about Mutagen's safety mechanisms, please see the
 [safety documentation](doc/safety.md).
@@ -68,12 +81,12 @@ conclusions. I'd recommend that users read this list so they know what they're
 getting.
 
 - Mutagen is truly cross-platform, treating Linux, macOS, Windows, and other
-  systems as first class citizens. Differences in OS and filesystem behavior are
-  addressed head-on, not ignored until an edge case causes breakage. Mutagen
-  attempts to handle quirks by default, e.g. dealing with case-(in)sensitivity,
-  HFS's pseudo-NFD Unicode normalization, filesystems that don't support
-  executability bits, or file names that might create NTFS alternate data
-  streams.
+  operating systems as first class citizens. Differences in OS and filesystem
+  behavior are addressed head-on, not ignored until an edge case causes
+  breakage. Mutagen attempts to handle quirks by default, e.g. dealing with
+  case-(in)sensitivity, HFS's pseudo-NFD Unicode normalization, filesystems that
+  don't support POSIX executability bits, or file names that might create NTFS
+  alternate data streams.
 - Mutagen is a user-space utility, not requiring any kernel extensions or
   administrative permissions to use.
 - **Mutagen only needs to be installed on the computer where you want to control
@@ -107,10 +120,10 @@ getting.
   the most recently updated contents in order to maintain low-latency change
   notifications.
 - Mutagen is agnostic of the transport to endpoints - all it requires is a byte
-  stream to each endpoint. Support is currently built-in for local and SSH-based
-  synchronization, but support for other remote types can easily be added. As a
-  corollary, Mutagen can even synchronize between two remote endpoints without
-  ever needing a local copy of the files.
+  stream to each endpoint. Support is currently implemented for synchronization
+  with local, SSH, and Docker endpoints, but support for other remote types can
+  easily be added. As a corollary, Mutagen can even synchronize between two
+  remote endpoints without ever needing a local copy of the files.
 - Mutagen can display dynamic synchronization status in the terminal.
 - Mutagen does not propagate (most) permissions, but it does
   preserve<sup>1</sup> permissions when updating files. The only permission

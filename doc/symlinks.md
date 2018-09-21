@@ -39,16 +39,11 @@ following configuration in `~/.mutagen.toml`:
 On Windows, the `SeCreateSymbolicLinkPrivilege` permission is required to create
 symlinks. By default, this permission is usually only granted to administrators.
 This has changed a bit in Windows 10, where anyone can create symlinks if
-Developer Mode has been enabled and the
-`SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE` flag is passed to
-`CreateSymbolicLinkW`. Go has
-[implemented](https://github.com/golang/go/commit/c23afa9ddb1180b929ba09a7d96710677a2a4b45)
-support for passing this flag, but it won't land until Go 1.11. Mutagen will
-incorporate this change as soon as Go 1.11 is released.
+Developer Mode has been enabled.
 
 If you don't have the `SeCreateSymbolicLinkPrivilege` permission and can't add
-it for yourself, or you can't enable Developer Mode in Windows 10 and wait for
-Go 1.11, then you have two choices:
+it for yourself, or you can't enable Developer Mode in Windows 10, then you have
+two choices:
 
 1. Do nothing. In this case, Mutagen will attempt to propagate symlinks (if it's
    in Portable mode), and will simply report that it is unable to do so. This

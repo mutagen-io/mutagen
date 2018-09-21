@@ -1,6 +1,71 @@
 # SSH
 
+Mutagen provides support for synchronizing with filesystem locations accessible
+via SSH. This support extends to SSH clients and servers found on both POSIX and
+Windows systems.
+
+
+## Requirements
+
+Mutagen requires an OpenSSH client installation to be available on your system.
+This is the default for almost all POSIX operating systems, so you probably
+don't need to do anything if you're on macOS, Linux, or one of the BSDs. Windows
+is supported as well, but please see the [section on Windows support](#windows)
+for more detailed information.
+
+Mutagen should support most SSH server implementations, so long as they support
+OpenSSH's `scp` and `ssh` implementations. If you run into trouble with a
+particular SSH server implementation, please file an issue.
+
+
+## Usage
+
+SSH synchronization endpoints can be specified to Mutagen's `create` command
+using an SCP-like URL syntax of the form:
+
+    [user@]host[:port]:path
+
+The `user` component is optional and will be passed to OpenSSH to override the
+default username.
+
+The `host` component can be any IP address, hostname, or alias understood by
+OpenSSH.
+
+The `port` component is also optional and is an extension to the standard SCP
+URL syntax. If specified, it will be passed to OpenSSH to override the default
+port.
+
+The `path` component is interpreted in the same way as an SCP path. It can be an
+absolute path, e.g.
+
+    user@host:/var/www
+
+a relative path (in which case it's considered relative to the user's home
+directory), e.g.
+
+    user@host:path/in/home/directory
+
+a home-directory-relative path, e.g.
+
+    user@host:~/path/in/home/directory
+
+or an alternate user home-directory-relative path, e.g.
+
+    user@host:~otheruser/path/in/their/home/directory
+
+The `path` component is not allowed to be empty.
+
+
+## Mechanism of action
+
 Mutagen's SSH support is provided by the OpenSSH installation on your system.
+Mutagen uses the OpenSSH suite's `scp` command to copy agent binaries to remote
+systems and the `ssh` command to run and communicate with the agent binaries
+over standard input/output streams.
+
+Mutagen redirects SSH prompts to its `create` and `resume` commands via the
+`SSH_ASKPASS` environment variable.
+
 This design has a number of advantages:
 
 - OpenSSH installations are nearly universal in the POSIX world, and
@@ -19,16 +84,6 @@ Mutagen may eventually support other SSH clients or embed the
 always be fallback options.
 
 
-## Mechanism of action
-
-Mutagen uses the OpenSSH suite's `scp` and `ssh` commands to copy agent binaries
-to remote systems and execute them. Communication with the agent happens over
-standard input/output streams.
-
-Mutagen redirects SSH prompts to its `create` and `resume` commands via the
-`SSH_ASKPASS` environment variable.
-
-
 ## Windows
 
 Windows is fully supported by Mutagen, though you'll need to bring your own
@@ -43,7 +98,9 @@ supported).
 Mutagen has a hardcoded set of OpenSSH clients that it will look for and use at
 the moment, including those from
 [Git for Windows](https://gitforwindows.org/) (recommended),
-[MSYS2](http://www.msys2.org/), and [Cygwin](https://www.cygwin.com/).
+[MSYS2](http://www.msys2.org/), and [Cygwin](https://www.cygwin.com/). You can
+see the full list of search paths
+[here](https://github.com/havoc-io/mutagen/blob/fa4fa0dfe1aa35ec4c7a1c432593fd38191401da/pkg/ssh/ssh_windows.go#L13).
 
 One thing to be aware of is that the MSYS2 and Cygwin OpenSSH clients will, by
 default, look for SSH configuration (`~/.ssh`) in the "virtual" home directory
