@@ -67,7 +67,7 @@ func (r *CreateResponse) EnsureValid() error {
 		return errors.New("nil create response")
 	}
 
-	// Ensure that at most a single field is set.
+	// Ensure that exactly one field is set.
 	var fieldsSet int
 	if r.Session != "" {
 		fieldsSet++
@@ -78,8 +78,8 @@ func (r *CreateResponse) EnsureValid() error {
 	if r.Prompt != "" {
 		fieldsSet++
 	}
-	if fieldsSet > 1 {
-		return errors.New("multiple fields set")
+	if fieldsSet != 1 {
+		return errors.New("incorrect number of fields set")
 	}
 
 	// Success.
@@ -185,7 +185,9 @@ func (r *ResumeResponse) EnsureValid() error {
 		return errors.New("nil resume response")
 	}
 
-	// Ensure that at most a single field is set.
+	// Ensure that at most a single field is set. Unlike CreateResponse, we
+	// allow neither to be set, which indicates completion. In CreateResponse,
+	// this completion is indicated by the session identifier being set.
 	var fieldsSet int
 	if r.Message != "" {
 		fieldsSet++
