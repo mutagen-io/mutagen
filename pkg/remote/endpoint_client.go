@@ -46,7 +46,7 @@ func NewEndpointClient(
 	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
 		return nil, &handshakeTransportError{errors.Wrap(err, "unable to receive server magic number")}
 	} else if !magicOk {
-		return nil, &handshakeTransportError{errors.Wrap(err, "server magic number incorrect")}
+		return nil, &handshakeTransportError{errors.New("server magic number incorrect")}
 	}
 
 	// Send our magic number to the server.

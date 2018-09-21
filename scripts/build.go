@@ -413,7 +413,7 @@ func main() {
 		cmd.Fatal(errors.Wrap(err, "unable to determine working directory relative path"))
 	}
 	if strings.Contains(workingDirectoryRelativePath, "..") {
-		cmd.Fatal(errors.Wrap(err, "build script run outside Mutagen source tree"))
+		cmd.Fatal(errors.New("build script run outside Mutagen source tree"))
 	}
 
 	// Compute the path to the build directory and ensure that it exists.

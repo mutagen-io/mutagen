@@ -45,7 +45,7 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	if magicOk, err := receiveAndCompareMagicNumber(connection, clientMagicNumber); err != nil {
 		return &handshakeTransportError{errors.Wrap(err, "unable to receive client magic number")}
 	} else if !magicOk {
-		return &handshakeTransportError{errors.Wrap(err, "client magic number incorrect")}
+		return &handshakeTransportError{errors.New("client magic number incorrect")}
 	}
 
 	// Send our version to the client.

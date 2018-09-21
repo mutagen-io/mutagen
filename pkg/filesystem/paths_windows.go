@@ -18,7 +18,7 @@ func mustComputeHomeDirectory() string {
 
 	// Verify that their home directory is non-empty.
 	if currentUser.HomeDir == "" {
-		panic(errors.Wrap(err, "empty home directory found"))
+		panic(errors.New("empty home directory found"))
 	}
 
 	// Success.
