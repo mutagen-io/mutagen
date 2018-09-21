@@ -36,6 +36,16 @@ body {
 
 /* Content styles */
 
+.intro-span {
+    display: block;
+}
+
+@media (max-width: 992px) {
+    .intro-span {
+        display: inline;
+    }
+}
+
 a {
     /* Color settings */
     color: #ff3002;

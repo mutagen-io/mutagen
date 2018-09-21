@@ -28,10 +28,14 @@
                 <div class="col-xs-12 col-sm-12 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2">
                     <img src="mutagen_medium.svg" class="img-responsive center-block" alt="Mutagen logo" style="width:25%;">
                     <h1 class="text-center" style="margin-top:0;">Mutagen</h1>
-                    <p class="lead">
-                        Mutagen is a fast file synchronization tool designed for
-                        remote development. It is designed to replace tools like
-                        SSHFS, Unison, and SFTP editor plugins.
+                    <p class="lead text-center">
+                        <span class="intro-span">
+                            Mutagen is a fast, continuous, bidirectional file
+                            synchronization tool
+                        </span>
+                        <span>
+                            designed to support remote development scenarios.
+                        </span>
                     </p>
                     <p id="github-buttons" class="text-center">
                         <iframe src="https://ghbtns.com/github-btn.html?user=havoc-io&repo=mutagen&type=star&count=true&size=large" frameborder="0" scrolling="0" width="160px" height="30px"></iframe>
@@ -40,11 +44,13 @@
                     <p>
                         Mutagen uses a <b>bidirectional</b> version of the
                         <a href="https://rsync.samba.org/tech_report/">rsync algorithm</a>
-                        to synchronize the filesystem contents at two locations.
-                        Each location can be either a local filesystem location
-                        or a remote location accessible via SSH. Filesystem
-                        contents are monitored for changes on both endpoints and
-                        any non-conflicting changes are propagated
+                        to safely, scalably, and efficiently synchronize
+                        filesystem contents between arbitrary pairs of locations
+                        in near real-time. Support is currently implemented for
+                        locations on local filesystems, SSH-accessible
+                        filesystems, and in Docker container filesystems.
+                        Filesystem contents are monitored for changes at both
+                        locations and any non-conflicting changes are propagated
                         automatically.
                     </p>
                     <p>
@@ -58,10 +64,10 @@
                     </p>
                     <p>
                         Although it can synchronize any content efficiently,
-                        Mutagen is tailored for synchronizing code for remote
-                        development. It handles cross-platform quirks by
-                        default, manages conflicts safely, and provides powerful
-                        configuration options for handling things like
+                        Mutagen is tailored for synchronizing code in remote
+                        development scenarios. It handles cross-platform quirks
+                        by default, manages conflicts safely, and provides
+                        powerful configuration options for handling things like
                         <a href="https://github.com/havoc-io/mutagen/blob/master/doc/symlinks.md">symlinks</a>
                         and
                         <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ignores.md">ignores</a>
@@ -120,8 +126,8 @@ $ brew install havoc-io/mutagen/mutagen
                         Mutagen relies on a daemon that runs in the background
                         as a per-user process and manages synchronization
                         sessions. If a session becomes disconnected from a
-                        remote endpoint, the daemon will automatically attempt
-                        to reconnect the session in the background.
+                        remote system, the daemon will automatically attempt to
+                        reconnect the session in the background.
                     </p>
                     <p>
                         The Mutagen daemon is started using the
@@ -161,32 +167,43 @@ $ mutagen create Projects/my_project user@hostname:~/my_project_copy
 </code>
 </pre>
                     <p>
-                        The locations specified can be local paths or SCP-style
-                        URLs. The order of the locations is not important
-                        &mdash; it only determines which will be referred to as
-                        &quot;alpha&quot; and which will be referred to as
-                        &quot;beta.&quot;
+                        The create command takes two filesystem location
+                        specifications (referred to as "endpoints") and creates
+                        a synchronization session between them. The order of the
+                        endpoints is not important &mdash; it only determines
+                        which will be referred to as &quot;alpha&quot; and which
+                        will be referred to as &quot;beta&quot;. Both endpoints
+                        are considered equal and non-conflicting changes
+                        propagate bidirectionally between them.
                     </p>
                     <p>
-                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ssh.md">Mutagen uses OpenSSH under the hood</a>,
-                        so all of your configuration, keys, and aliases will be
-                        automatically available. If authentication is required
-                        to connect to a remote endpoint, then the
-                        <code>create</code> command will ask for credentials.
+                        Endpoint specifications can be local paths,
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ssh.md#usage">SSH</a> URLs,
+                        or
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/docker.md#usage">Docker</a> URLs.
+                        <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ssh.md#mechanism-of-action">Mutagen uses OpenSSH</a>
+                        under the hood, so all of your settings, keys, and
+                        aliases will be automatically available. If confirmation
+                        or authentication is required to connect to a remote
+                        endpoint, then the <code>create</code> command will
+                        prompt accordingly.
                     </p>
                     <p>
-                        The <code>create</code> command supports a number of
+                        Mutagen can create synchronization sessions between
+                        arbitrary pairs of endpoints &mdash; one needn't be
+                        local. For example, you could set up synchronization
+                        between an SSH-accessible filesystem location and a
+                        folder inside a Docker container without ever having a
+                        copy of the files locally. The Mutagen daemon simply
+                        acts as a proxy and arbiter for endpoints.
+                    </p>
+                    <p>
+                        The <code>create</code> command also supports a number
+                        of
                         <a href="https://github.com/havoc-io/mutagen/blob/master/doc/configuration.md">configuration</a> options for
                         <a href="https://github.com/havoc-io/mutagen/blob/master/doc/symlinks.md">symlinks</a>,
                         <a href="https://github.com/havoc-io/mutagen/blob/master/doc/ignores.md">ignores</a>,
                         and <a href="https://github.com/havoc-io/mutagen/blob/master/doc/watching.md">filesystem watching</a>.
-                    </p>
-                    <p>
-                        Each session is assigned a unique identifier that can be
-                        used to refer to it in subsequent commands. Sessions can
-                        also be referred to by a fragment of either endpoint
-                        path or hostname, so long as this specification is
-                        unambiguous.
                     </p>
                     <h2>Listing sessions</h2>
                     <p>
@@ -197,7 +214,7 @@ $ mutagen create Projects/my_project user@hostname:~/my_project_copy
                     </p>
 <pre>
 <code>
-$ mutagen list my_project
+$ mutagen list
 Session: 7bb4a56b-f4be-4083-be24-7f590beda02e
 Alpha:
     URL: /Users/me/Projects/my_project
@@ -208,6 +225,15 @@ Beta:
 Status: Watching for changes
 </code>
 </pre>
+                    <p>
+                        Each session is assigned a unique identifier that can be
+                        used to refer to it in Mutagen commands. This identifier
+                        will be printed by the <code>create</code> command and
+                        can be seen in the <code>list</code> command's output.
+                        Sessions can also be referred to by a fragment of either
+                        endpoint path or hostname, so long as this specification
+                        is unambiguous.
+                    </p>
                     <p>
                         If no sessions are specified to the <code>list</code>
                         command, it will simply print all sessions. More
@@ -256,8 +282,9 @@ $ mutagen resume my_project
                         This command will ensure that a session is unpaused and
                         attempting to synchronize. If the daemon can't
                         automatically reconnect to an endpoint because
-                        authentication is required, the <code>resume</code>
-                        command can be used to provide credentials.
+                        confirmation or authentication is required, the
+                        <code>resume</code> command can be used to provide the
+                        necessary input.
                     </p>
                     <h2>Terminating a session</h2>
                     <p>
