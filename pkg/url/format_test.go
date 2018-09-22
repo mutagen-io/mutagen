@@ -169,3 +169,20 @@ func TestFormatDockerWithUsernameAndUserRelativePath(t *testing.T) {
 	}
 	test.run(t)
 }
+
+func TestFormatDockerWithWindowsPathPath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "container",
+			Path:     `C:\A\Windows\File Path `,
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
+				DockerTLSVerifyEnvironmentVariable: "true",
+			},
+		},
+		environmentPrefix: "|",
+		expected:          `docker://container/C:\A\Windows\File Path |DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=`,
+	}
+	test.run(t)
+}

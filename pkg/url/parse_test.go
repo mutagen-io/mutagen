@@ -1,6 +1,7 @@
 package url
 
 import (
+	"runtime"
 	"testing"
 )
 
@@ -94,6 +95,24 @@ func TestParseLocalPathWithAtSymbol(t *testing.T) {
 			Port:     0,
 			Path:     "some@path",
 		},
+	}
+	test.run(t)
+}
+
+func TestParsePOSIXSCPSSHWindowsLocal(t *testing.T) {
+	expected := &URL{
+		Protocol: Protocol_SSH,
+		Hostname: "C",
+		Path: "/local/path",
+	}
+	if runtime.GOOS == "windows" {
+		expected = &URL{
+			Path: "C:/local/path",
+		}
+	}
+	test := &parseTestCase{
+		raw: "C:/local/path",
+		expected: expected,
 	}
 	test.run(t)
 }
@@ -349,6 +368,25 @@ func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      defaultDockerHost,
 				DockerTLSVerifyEnvironmentVariable: betaSpecificDockerTLSVerify,
+				DockerCertPathEnvironmentVariable:  "",
+			},
+		},
+	}
+	test.run(t)
+}
+
+func TestParseDockerWithWindowsPathAndAlphaSpecificVariables(t *testing.T) {
+	test := parseTestCase{
+		raw:   `docker://cøntainer/C:\пат/to\the file`,
+		alpha: true,
+		fail:  false,
+		expected: &URL{
+			Protocol: Protocol_Docker,
+			Hostname: "cøntainer",
+			Path:     `C:\пат/to\the file`,
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
+				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
 				DockerCertPathEnvironmentVariable:  "",
 			},
 		},
