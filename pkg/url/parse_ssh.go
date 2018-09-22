@@ -1,6 +1,7 @@
 package url
 
 import (
+	"runtime"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -17,8 +18,9 @@ import (
 // should just use some other addressing scheme for it (e.g. an IP address or
 // alternate hostname).
 func isSCPSSHURL(raw string) bool {
-	// If this is a local Windows path, then reject it.
-	if isWindowsPath(raw) {
+	// If this is a Windows path on a Windows system, then reject it because it
+	// should be treated as a local URL.
+	if runtime.GOOS == "windows" && isWindowsPath(raw) {
 		return false
 	}
 
@@ -30,6 +32,9 @@ func isSCPSSHURL(raw string) bool {
 			break
 		}
 	}
+
+	// If there wasn't a colon or a slash came first, then this is not an
+	// SCP-style SSH URL.
 	return false
 }
 

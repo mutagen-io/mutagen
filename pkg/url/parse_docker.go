@@ -84,6 +84,16 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 		path = path[1:]
 	}
 
+	// If the path is of the form "/" + Windows path, then assume it's supposed
+	// to be a Windows path. This is a heuristic, but a reasonable one. We do
+	// this on all systems (not just on Windows as with SSH URLs) because users
+	// can connect to Windows containers from non-Windows systems. At this point
+	// we already know that the path starts with "/" since we retained that as
+	// part of the path in the split operation above.
+	if isWindowsPath(path[1:]) {
+		path = path[1:]
+	}
+
 	// Loop over and record the values for the Docker environment variables that
 	// we need to preserve. For the variables in question, Docker treats an
 	// empty value the same as an unspecified value, so we always store

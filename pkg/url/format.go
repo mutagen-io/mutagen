@@ -52,17 +52,13 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 	// Start with the container name.
 	result := u.Hostname
 
-	// Append the path. If this is a home-directory-relative path, then we need
-	// to prepend a slash.
-	// TODO: I wish there were a better way to handle invariant breakage here,
-	// but I don't want panics and I don't want to clutter the signature with an
-	// error. In any case, invariant checks are always performed before
-	// formatting, so this shouldn't be an issue, but it's worth thinking about.
+	// Append the path. If this is a home-directory-relative path or a Windows
+	// path, then we need to prepend a slash.
 	if u.Path == "" {
 		return invalidDockerURLFormat
 	} else if u.Path[0] == '/' {
 		result += u.Path
-	} else if u.Path[0] == '~' {
+	} else if u.Path[0] == '~' || isWindowsPath(u.Path) {
 		result += fmt.Sprintf("/%s", u.Path)
 	} else {
 		return invalidDockerURLFormat
