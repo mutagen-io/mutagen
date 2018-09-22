@@ -46,8 +46,8 @@ understood by `docker cp` and `docker exec`, e.g. a name or hexidecimal
 identifier.
 
 The `path` component must be non-empty (i.e. at least a `/` character) and can
-take one of three forms: an absolute path, a home-directory-relative path, or a
-home-directory-relative path for an alternate user:
+take one of four forms: an absolute path, a home-directory-relative path, a
+home-directory-relative path for an alternate user, or a Windows absolute path:
 
     # Example absolute path (/var/www)
     docker://container/var/www
@@ -57,6 +57,9 @@ home-directory-relative path for an alternate user:
 
     # Example alternate user home-directory-relative path (~otheruser/project)
     docker://container/~otheruser/project
+
+    # Example Windows path (C:\path)
+    docker://container/C:\path
 
 Docker containers must be running to create synchronization sessions and to
 allow synchronization to run.
