@@ -44,7 +44,7 @@ func (u *URL) EnsureValid() error {
 			return errors.New("Docker URL with non-zero port")
 		} else if u.Path == "" {
 			return errors.New("Docker URL with empty path")
-		} else if !(u.Path[0] == '/' || u.Path[0] == '~') {
+		} else if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
 			return errors.New("Docker URL with incorrect first path character")
 		}
 	} else {

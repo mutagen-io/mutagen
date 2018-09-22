@@ -176,6 +176,18 @@ func TestURLEnsureValidDockerUserRelativePath(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidDockerWindowsPath(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Docker,
+		Username: "george",
+		Hostname: "washington",
+		Path:     `C:\path`,
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
 func TestURLEnsureValidDocker(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Docker,
