@@ -56,6 +56,9 @@ For information about Mutagen's Docker support, please see the
 For information about Mutagen's configuration system, please see the
 [configuration documentation](doc/configuration.md).
 
+For information about using Mutagen with version control systems, please see the
+[VCS documentation](doc/vcs.md).
+
 For information about symlink support, please see the
 [symlink documentation](doc/symlinks.md).
 
