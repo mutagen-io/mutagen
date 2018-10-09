@@ -47,8 +47,8 @@ A third reason is that Git isn't expecting concurrent modifications of its
 processes specifically for this reason.
 
 There are a number of other reasons, but it basically comes down to the fact
-that only Git is in a position to be in control of what's in its `.git` folder
-(at least when it comes to the index and object stores).
+that only Git is in a position to be in control of what's in its `.git`
+directory (at least when it comes to the index and object stores).
 
 
 ## Recommended workflow
