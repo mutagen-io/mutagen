@@ -58,7 +58,7 @@ home-directory-relative path for an alternate user, or a Windows absolute path:
     # Example alternate user home-directory-relative path (~otheruser/project)
     docker://container/~otheruser/project
 
-    # Example Windows path (C:\path)
+    # Example Windows absolute path (C:\path)
     docker://container/C:\path
 
 Docker containers must be running to create synchronization sessions and to
@@ -101,3 +101,11 @@ is only necessary if a compatible agent binary doesn't already exist in the
 container, so it won't be necessary on subsequent connection operations.
 
 This restriction does not apply to Linux containers.
+
+
+## Mechanism of action
+
+Mutagen's Docker support is provided by the Docker installation on your system.
+Mutagen uses Docker's `docker cp` command to copy agent binaries into containers
+and the `docker exec` command to run and communicate with the agent binaries
+over standard input/output streams.
