@@ -44,13 +44,16 @@ func NewEndpointClient(
 	// number as a transport error as well, because it indicates that we're not
 	// actually talking to a Mutagen server.
 	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
+		connection.Close()
 		return nil, &handshakeTransportError{errors.Wrap(err, "unable to receive server magic number")}
 	} else if !magicOk {
+		connection.Close()
 		return nil, &handshakeTransportError{errors.New("server magic number incorrect")}
 	}
 
 	// Send our magic number to the server.
 	if err := sendMagicNumber(connection, clientMagicNumber); err != nil {
+		connection.Close()
 		return nil, &handshakeTransportError{errors.Wrap(err, "unable to send client magic number")}
 	}
 
