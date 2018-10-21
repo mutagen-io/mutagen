@@ -167,15 +167,15 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 }
 
 // ClassifyError implements the ClassifyError method of agent.Transport.
-func (t *transport) ClassifyError(processError error, errorOutput string) (bool, bool, error) {
+func (t *transport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
 	// SSH faithfully returns exit codes and error output, so we can use direct
 	// methods for testing and classification. Note that we may get POSIX-like
 	// error codes back even from Windows remotes, but that indicates a POSIX
 	// shell on the remote and thus we should continue connecting under that
 	// hypothesis (instead of the cmd.exe hypothesis).
-	if process.IsPOSIXShellInvalidCommand(processError) {
+	if process.IsPOSIXShellInvalidCommand(processState) {
 		return true, false, nil
-	} else if process.IsPOSIXShellCommandNotFound(processError) {
+	} else if process.IsPOSIXShellCommandNotFound(processState) {
 		return true, false, nil
 	} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
 		// A Windows invalid command error doesn't necessarily indicate that

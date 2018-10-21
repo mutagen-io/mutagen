@@ -386,7 +386,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 }
 
 // ClassifyError implements the ClassifyError method of agent.Transport.
-func (t *transport) ClassifyError(processError error, errorOutput string) (bool, bool, error) {
+func (t *transport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return false, false, errors.Wrap(err, "unable to probe container")
@@ -416,7 +416,7 @@ func (t *transport) ClassifyError(processError error, errorOutput string) (bool,
 	// Anyway, the exit code we need to look out for with both POSIX and Windows
 	// containers is 126, and since we know the remote platform already, we can
 	// return that information without needing to resort to the error string.
-	if !process.IsPOSIXShellInvalidCommand(processError) {
+	if !process.IsPOSIXShellInvalidCommand(processState) {
 		return false, false, errors.New("unknown process exit error")
 	}
 

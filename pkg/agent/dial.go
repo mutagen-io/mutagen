@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,16 @@ import (
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/remote"
 	"github.com/havoc-io/mutagen/pkg/session"
+)
+
+const (
+	// agentKillDelay is the maximum amount of time that Mutagen will wait for
+	// an agent process to exit on its own in the event of an error before
+	// issuing a kill request. It's necessary to make this non-zero because
+	// agent transport executables need to be allowed time to exit on failure so
+	// that we can get their true exit codes instead of killing them immediately
+	// on a handshake error.
+	agentKillDelay = 5 * time.Second
 )
 
 func connect(
@@ -68,7 +79,7 @@ func connect(
 	}
 
 	// Create a connection that wrap's the process' standard input/output.
-	connection, err := process.NewConnection(agentProcess)
+	connection, err := process.NewConnection(agentProcess, agentKillDelay)
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
 	}
@@ -103,11 +114,11 @@ func connect(
 	// terminating the process) on failure), and probe the issue.
 	endpoint, err := remote.NewEndpointClient(connection, root, session, version, configuration, alpha)
 	if remote.IsHandshakeTransportError(err) {
-		// Wait for the process to complete. We need to do this before touching
-		// the error buffer because it isn't safe for concurrent usage, and
-		// until Wait completes, the I/O forwarding Goroutines can still be
-		// running.
-		processErr := agentProcess.Wait()
+		// At this point, we know that the agent process and its I/O forwarding
+		// Goroutines have terminated because NewEndpointClient will have closed
+		// the connection on error and the Close method won't return until the
+		// process has fully terminated. As a result, it's safe to touch the
+		// error buffer and process state for the agent process at this point.
 
 		// Extract error output and ensure it's UTF-8.
 		errorOutput := errorBuffer.String()
@@ -126,7 +137,7 @@ func connect(
 		// the transport's reason for classification failure. If we don't have
 		// error output, then just tell the user why the transport failed to
 		// classify the failure.
-		tryInstall, cmdExe, err := transport.ClassifyError(processErr, errorOutput)
+		tryInstall, cmdExe, err := transport.ClassifyError(agentProcess.ProcessState, errorOutput)
 		if err != nil {
 			if errorOutput != "" {
 				return nil, false, false, errors.Errorf(

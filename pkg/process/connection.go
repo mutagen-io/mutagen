@@ -34,11 +34,19 @@ type connection struct {
 	// closeOnce is a one-time executor used to ensure that the underlying
 	// process is only closed once.
 	closeOnce sync.Once
+	// killDelay specifies the duration that the connection should wait for the
+	// underlying process to exit on its own before killing the process.
+	killDelay time.Duration
 }
 
 // NewConnection creates a new net.Conn object by wraping a command object. It
 // must be called before the corresponding process is started.
-func NewConnection(process *exec.Cmd) (net.Conn, error) {
+func NewConnection(process *exec.Cmd, killDelay time.Duration) (net.Conn, error) {
+	// Validate the kill delay time.
+	if killDelay < time.Duration(0) {
+		panic("negative kill delay specified")
+	}
+
 	// Redirect the process' standard input.
 	standardInput, err := process.StdinPipe()
 	if err != nil {
@@ -56,6 +64,7 @@ func NewConnection(process *exec.Cmd) (net.Conn, error) {
 		process:        process,
 		standardOutput: standardOutput,
 		standardInput:  standardInput,
+		killDelay:      killDelay,
 	}, nil
 }
 
@@ -69,7 +78,11 @@ func (c *connection) Write(buffer []byte) (int, error) {
 	return c.standardInput.Write(buffer)
 }
 
-// Close closes the process connection by terminating the underlying process.
+// Close closes the process connection by terminating the underlying process and
+// waiting for it to exit. If a non-negative/non-zero kill delay has been
+// specified, then this method will wait (up to the specified duration) for the
+// process to exit on its own before issuing a kill request. By the time this
+// method returns, the underlying process is guaranteed to no longer be running.
 // HACK: Rather than closing the process' standard input/output, this method
 // simply terminates the process. The problem with closing the input/output
 // streams is that they'll be OS pipes that might be blocked in reads or writes
@@ -77,27 +90,37 @@ func (c *connection) Write(buffer []byte) (int, error) {
 // - it's all platform dependent. But terminating the process will close the
 // remote ends of the pipes and thus unblocks and reads/writes.
 func (c *connection) Close() error {
-	// Track errors.
-	var err error
-
-	// Terminate the underlying process, but only once.
-	c.closeOnce.Do(func() {
-		// HACK: Accessing the Process field of an os/exec.Cmd could be a bit
-		// dangerous if other code was accessing the Cmd at the same time, but
-		// in our use cases the Cmd becomes completely encapsulated inside the
-		// connection before connection is returned, so it's okay.
-		if c.process.Process != nil {
-			err = c.process.Process.Kill()
-		}
-	})
-
-	// Handle errors.
-	if err != nil {
-		return errors.Wrap(err, "unable to kill underlying process")
+	// Verify that the process was actually started.
+	if c.process.Process == nil {
+		return errors.New("process not started")
 	}
 
-	// Done.
-	return nil
+	// Start a background Goroutine that will wait for the process to exit and
+	// return the wait result.
+	waitResults := make(chan error, 1)
+	go func() {
+		waitResults <- c.process.Wait()
+	}()
+
+	// Wait, up to the specified duration, for the process to exit on its own.
+	select {
+	case err := <-waitResults:
+		return errors.Wrap(err, "process wait failed")
+	case <-time.After(c.killDelay):
+	}
+
+	// Issue a kill request.
+	// HACK: We don't handle errors here, because there's not much we can do
+	// with the information. We need to guarantee that, by the time this method
+	// returns, the process is no longer running. That will be enforced by our
+	// indefinite wait in the return statement, but it's possible that the kill
+	// signal could fail, and that the process could run indefinitely. That's
+	// highly unlikely though, and it's safer to block indefinitely in that case
+	// than to return with an error that might not be checked.
+	c.process.Process.Kill()
+
+	// Wait for the wait operation to complete.
+	return errors.Wrap(<-waitResults, "process wait failed")
 }
 
 // LocalAddr returns the local address for the connection.

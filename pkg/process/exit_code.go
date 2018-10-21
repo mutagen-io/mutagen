@@ -5,7 +5,7 @@
 package process
 
 import (
-	"os/exec"
+	"os"
 	"syscall"
 
 	"github.com/pkg/errors"
@@ -34,19 +34,12 @@ const (
 	posixShellCommandNotFoundExitCode = 127
 )
 
-// ExitCodeForError extracts the process exit code from an error returned by
-// os/exec.Process.Wait/Run. The error must be of type *os/exec.ExitError in
-// order for this function to succeed.
-func ExitCodeForError(err error) (int, error) {
-	// Attempt to extract the error.
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok {
-		return 0, errors.New("error is not an exit error")
-	}
-
+// ExitCodeForProcessState extracts the process exit code from the process'
+// post-exit state.
+func ExitCodeForProcessState(state *os.ProcessState) (int, error) {
 	// Attempt to extract the wait status. The syscall.WaitStatus type is
 	// platform-dependent, but this code uses a portable subset of its features.
-	waitStatus, ok := exitErr.Sys().(syscall.WaitStatus)
+	waitStatus, ok := state.Sys().(syscall.WaitStatus)
 	if !ok {
 		return 0, errors.New("unable to access wait status")
 	}
@@ -55,24 +48,24 @@ func ExitCodeForError(err error) (int, error) {
 	return waitStatus.ExitStatus(), nil
 }
 
-// IsPOSIXShellInvalidCommand returns whether or not an os/exec error represents
+// IsPOSIXShellInvalidCommand returns whether or not a process state represents
 // an "invalid" error from a POSIX shell.
-func IsPOSIXShellInvalidCommand(err error) bool {
+func IsPOSIXShellInvalidCommand(state *os.ProcessState) bool {
 	// Extract the code.
-	code, codeErr := ExitCodeForError(err)
+	code, err := ExitCodeForProcessState(state)
 
 	// Ensure that extraction was successful and the code matches what's
 	// expected.
-	return codeErr == nil && code == posixShellInvalidCommandExitCode
+	return err == nil && code == posixShellInvalidCommandExitCode
 }
 
-// IsPOSIXShellCommandNotFound returns whether or not an os/exec error
-// represents a "command not found" error from a POSIX shell.
-func IsPOSIXShellCommandNotFound(err error) bool {
+// IsPOSIXShellCommandNotFound returns whether or not a process state represents
+// a "command not found" error from a POSIX shell.
+func IsPOSIXShellCommandNotFound(state *os.ProcessState) bool {
 	// Extract the code.
-	code, codeErr := ExitCodeForError(err)
+	code, err := ExitCodeForProcessState(state)
 
 	// Ensure that extraction was successful and the code matches what's
 	// expected.
-	return codeErr == nil && code == posixShellCommandNotFoundExitCode
+	return err == nil && code == posixShellCommandNotFoundExitCode
 }

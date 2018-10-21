@@ -50,7 +50,7 @@ func HandleTerminalCompatibility() {
 
 	// Run the command and terminate with its exit code.
 	if err := command.Run(); err != nil {
-		if exitCode, exitCodeErr := process.ExitCodeForError(err); exitCodeErr == nil {
+		if exitCode, exitCodeErr := process.ExitCodeForProcessState(command.ProcessState); exitCodeErr == nil {
 			os.Exit(exitCode)
 		}
 		Fatal(errors.Wrap(err, "running inside mintty terminal and unable to restart process"))
