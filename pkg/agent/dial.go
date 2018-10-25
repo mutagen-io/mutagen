@@ -78,7 +78,11 @@ func connect(
 		return nil, false, false, errors.Wrap(err, "unable to create agent command")
 	}
 
-	// Create a connection that wrap's the process' standard input/output.
+	// Create a connection that wraps the process' standard input/output. We
+	// set a non-zero kill delay so that, if there's a handshake failure, the
+	// process will be allowed to exit with its natural exit code (instead of an
+	// exit code due to forced termination) that we can use to diagnose the
+	// connection issue.
 	connection, err := process.NewConnection(agentProcess, agentKillDelay)
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
@@ -154,6 +158,10 @@ func connect(
 	} else if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create endpoint client")
 	}
+
+	// Now that we've successfully connected, disable the kill delay on the
+	// process connection.
+	connection.SetKillDelay(time.Duration(0))
 
 	// Done.
 	return endpoint, false, false, nil
