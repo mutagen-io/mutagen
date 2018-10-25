@@ -141,7 +141,7 @@ func (t Target) goEnv() ([]string, error) {
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
 	// We don't need to unset any existing GOARM variables since they simply
 	// won't be used if we're not targeting (non-64-bit) ARM systems.
-	if t.GOOS == "arm" {
+	if t.GOARCH == "arm" {
 		result = append(result, fmt.Sprintf("GOARM=%s", minimumARMSupport))
 	}
 
