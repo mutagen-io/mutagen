@@ -16,7 +16,11 @@ message Configuration {
     // synchronization.
     sync.SymlinkMode symlinkMode = 1;
 
-    // Fields 2-20 are reserved for future general configuration parameters.
+    // Conflict flags
+    bool AlphaWinsOnConflict = 2;
+    bool BetaWinsOnConflict = 3;
+
+    // Fields 4-20 are reserved for future general configuration parameters.
 
     // WatchMode specifies the filesystem watching mode.
     filesystem.WatchMode watchMode = 21;

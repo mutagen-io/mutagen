@@ -514,7 +514,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 		}
 
 		// Perform synchronization.
-		err := c.synchronize(context, alpha, beta)
+		err := c.synchronize(context, alpha, beta, c.session.Configuration)
 
 		// Shutdown the endpoints.
 		alpha.Shutdown()
@@ -543,7 +543,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 }
 
 // synchronize is the main synchronization loop for the controller.
-func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
+func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint, configuration *Configuration) error {
 	// Load the archive and extract the ancestor.
 	archive := &sync.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
@@ -693,7 +693,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// Perform reconciliation and record conflicts.
 		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
-			ancestor, αSnapshot, βSnapshot,
+			ancestor, αSnapshot, βSnapshot, configuration.AlphaWinsOnConflict, configuration.BetaWinsOnConflict,
 		)
 		c.stateLock.Lock()
 		c.state.Conflicts = conflicts

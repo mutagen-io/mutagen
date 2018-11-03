@@ -98,6 +98,16 @@ func createMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke create")
 	}
 
+	var alphaWinsOnConflict, betaWinsOnConflict bool
+
+	if createConfiguration.conflictWinner == "alpha" {
+		alphaWinsOnConflict = true
+		betaWinsOnConflict = false
+	} else if createConfiguration.conflictWinner == "beta" {
+		alphaWinsOnConflict = false
+		betaWinsOnConflict = true
+	}
+
 	// Send the initial request.
 	request := &sessionsvcpkg.CreateRequest{
 		Alpha: alpha,
@@ -108,6 +118,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 			WatchPollingInterval: createConfiguration.watchPollingInterval,
 			Ignores:              createConfiguration.ignores,
 			IgnoreVCSMode:        ignoreVCSMode,
+			AlphaWinsOnConflict:  alphaWinsOnConflict,
+			BetaWinsOnConflict:   betaWinsOnConflict,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -157,6 +169,7 @@ var createConfiguration struct {
 	symlinkMode          string
 	watchMode            string
 	watchPollingInterval uint32
+	conflictWinner       string
 }
 
 func init() {
@@ -170,4 +183,5 @@ func init() {
 	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
+	flags.StringVar(&createConfiguration.conflictWinner, "conflict-winner", "", "Specify which side wins on conflict (alpha|beta)")
 }

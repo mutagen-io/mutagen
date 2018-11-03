@@ -32,7 +32,14 @@ type reconciler struct {
 }
 
 // reconcile performs a recursive three-way merge.
-func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
+func (r *reconciler) reconcile(
+	path string,
+	ancestor,
+	alpha,
+	beta *Entry,
+	alphaWinsOnConflict bool,
+	betaWinsOnConflict bool) {
+
 	// Check if alpha and beta agree on the contents of this node.
 	if alpha.equalShallow(beta) {
 		// If both endpoints agree, grab content lists, because we'll recurse.
@@ -62,6 +69,8 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 				ancestorContents[name],
 				alphaContents[name],
 				betaContents[name],
+				alphaWinsOnConflict,
+				betaWinsOnConflict,
 			)
 		}
 
@@ -130,14 +139,20 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// about the deletions that have happened on that side is lost.
 	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
 	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
-	if len(alphaDeltaNonDeletion) == 0 {
+
+	if len(alphaDeltaNonDeletion) == 0 ||
+		(len(alphaDeltaNonDeletion) > 0 && alphaWinsOnConflict) {
+
 		r.alphaChanges = append(r.alphaChanges, &Change{
 			Path: path,
 			Old:  alpha,
 			New:  beta,
 		})
 		return
-	} else if len(betaDeltaNonDeletion) == 0 {
+
+	} else if len(betaDeltaNonDeletion) == 0 ||
+		(len(alphaDeltaNonDeletion) > 0 && betaWinsOnConflict) {
+
 		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
 			Old:  beta,
@@ -158,12 +173,12 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 
 // Reconcile performs a recursive three-way merge and generates a list of
 // changes for the ancestor, alpha, and beta, as well as a list of conflicts.
-func Reconcile(ancestor, alpha, beta *Entry) ([]*Change, []*Change, []*Change, []*Conflict) {
+func Reconcile(ancestor, alpha, beta *Entry, alphaWinsOnConflict bool, betaWinsOnConflict bool) ([]*Change, []*Change, []*Change, []*Conflict) {
 	// Create the reconciler.
 	r := &reconciler{}
 
 	// Perform reconciliation.
-	r.reconcile("", ancestor, alpha, beta)
+	r.reconcile("", ancestor, alpha, beta, alphaWinsOnConflict, betaWinsOnConflict)
 
 	// Done.
 	return r.ancestorChanges, r.alphaChanges, r.betaChanges, r.conflicts
