@@ -357,6 +357,34 @@ func TestParseSCPSSHUnicodeUsernameHostnamePortPath(t *testing.T) {
 	test.run(t)
 }
 
+func TestParseSCPSSHEscapedUsernameHostnamePathWithAt(t *testing.T) {
+	test := parseTestCase{
+		raw: `user\@vm\:user@host:pa@th`,
+		expected: &URL{
+			Protocol: Protocol_SSH,
+			Username: "user@vm:user",
+			Hostname: "host",
+			Port:     0,
+			Path:     "pa@th",
+		},
+	}
+	test.run(t)
+}
+
+func TestParseSCPSSHUsernameEscapedHostnamePathWithAt(t *testing.T) {
+	test := parseTestCase{
+		raw: `user@vm\:user\@host:pa@th`,
+		expected: &URL{
+			Protocol: Protocol_SSH,
+			Username: "user",
+			Hostname: "vm:user@host",
+			Port:     0,
+			Path:     "pa@th",
+		},
+	}
+	test.run(t)
+}
+
 func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 	test := parseTestCase{
 		raw:  "docker://cøntainer/пат/to/the file",
