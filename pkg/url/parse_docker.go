@@ -47,14 +47,10 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 	// (it's effectively determined by a configurable regular expression -
 	// NAME_REGEX).
 	var username string
-	for i, r := range raw {
-		if r == '/' {
-			break
-		} else if r == '@' {
-			username = raw[:i]
-			raw = raw[i+1:]
-			break
-		}
+	var err error
+	username, raw, err = splitAndBreak(raw, '@', '/', false,"")
+	if err != nil {
+		return nil, err
 	}
 
 	// Split what remains into the container and the path. Ideally we'd want to
@@ -63,12 +59,9 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 	// character, but we're better off just allowing Docker to reject container
 	// names that it doesn't like.
 	var container, path string
-	for i, r := range raw {
-		if r == '/' {
-			container = raw[:i]
-			path = raw[i:]
-			break
-		}
+	container, path, err = splitAndBreak(raw, '/', '\x00', true, "")
+	if err != nil {
+		return nil, err
 	}
 	if container == "" {
 		return nil, errors.New("empty container name")

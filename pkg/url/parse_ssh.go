@@ -49,17 +49,10 @@ func parseSCPSSH(raw string) (*URL, error) {
 	// NAME_REGEX). We enforce that if a username is specified, that it is
 	// non-empty.
 	var username string
-	for i, r := range raw {
-		if r == ':' {
-			break
-		} else if r == '@' {
-			if i == 0 {
-				return nil, errors.New("empty username specified")
-			}
-			username = raw[:i]
-			raw = raw[i+1:]
-			break
-		}
+	var err error
+	username, raw, err = splitAndBreak(raw, '@', ':',  false,"username")
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse off the host. Again, ideally we'd want to be a bit more stringent
@@ -71,15 +64,9 @@ func parseSCPSSH(raw string) (*URL, error) {
 	// not found a colon (which indicates that this is probably not an SCP-style
 	// SSH URL).
 	var hostname string
-	for i, r := range raw {
-		if r == ':' {
-			if i == 0 {
-				return nil, errors.New("empty hostname")
-			}
-			hostname = raw[:i]
-			raw = raw[i+1:]
-			break
-		}
+	hostname, raw, err = splitAndBreak(raw, ':', '\x00', false,"hostname")
+	if err != nil {
+		return nil, err
 	}
 	if hostname == "" {
 		return nil, errors.New("no hostname present")
