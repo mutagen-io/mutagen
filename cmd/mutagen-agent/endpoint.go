@@ -55,6 +55,12 @@ func housekeepRegularly(context context.Context) {
 }
 
 func endpointMain(command *cobra.Command, arguments []string) error {
+	// Create a channel to track termination signals. We do this before creating
+	// and starting other infrastructure so that we can ensure things terminate
+	// smoothly, not mid-initialization.
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
+
 	// Set up regular housekeeping and defer its shutdown.
 	housekeepingContext, housekeepingCancel := context.WithCancel(context.Background())
 	defer housekeepingCancel()
@@ -71,8 +77,6 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	}()
 
 	// Wait for termination from a signal or the endpoint.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
 	case sig := <-signalTermination:
 		return errors.Errorf("terminated by signal: %s", sig)

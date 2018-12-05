@@ -33,6 +33,12 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	}
 	defer lock.Unlock()
 
+	// Create a channel to track termination signals. We do this before creating
+	// and starting other infrastructure so that we can ensure things terminate
+	// smoothly, not mid-initialization.
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
+
 	// Create the gRPC server.
 	server := grpc.NewServer()
 
@@ -68,8 +74,6 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 
 	// Wait for termination from a signal, the server, or the daemon server. We
 	// treat daemon termination as a non-error.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
 	select {
 	case sig := <-signalTermination:
 		return errors.Errorf("terminated by signal: %s", sig)
