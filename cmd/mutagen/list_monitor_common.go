@@ -17,6 +17,22 @@ func printSession(state *sessionpkg.State, long bool) {
 		// Extract configuration.
 		configuration := state.Session.Configuration
 
+		// Compute and print conflict resolution mode.
+		conflictResolutionMode := configuration.ConflictResolutionMode.Description()
+		if configuration.ConflictResolutionMode.IsDefault() {
+			defaultConflictResolutionMode := state.Session.Version.DefaultConflictResolutionMode()
+			conflictResolutionMode += fmt.Sprintf(" (%s)", defaultConflictResolutionMode.Description())
+		}
+		fmt.Println("Conflict resolution mode:", conflictResolutionMode)
+
+		// Compute and print symlink mode.
+		symlinkModeDescription := configuration.SymlinkMode.Description()
+		if configuration.SymlinkMode == sync.SymlinkMode_SymlinkDefault {
+			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
+			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
+		}
+		fmt.Println("Symlink mode:", symlinkModeDescription)
+
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
 		if configuration.IgnoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSDefault {
@@ -44,14 +60,6 @@ func printSession(state *sessionpkg.State, long bool) {
 		} else {
 			fmt.Println("Ignores: None")
 		}
-
-		// Compute and print symlink mode.
-		symlinkModeDescription := configuration.SymlinkMode.Description()
-		if configuration.SymlinkMode == sync.SymlinkMode_SymlinkDefault {
-			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
-			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
-		}
-		fmt.Println("Symlink mode:", symlinkModeDescription)
 
 		// Compute and print the watch mode.
 		watchModeDescription := configuration.WatchMode.Description()

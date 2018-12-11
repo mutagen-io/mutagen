@@ -5,6 +5,7 @@ package session;
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
 import "filesystem/watch.proto";
+import "sync/conflict_resolution.proto";
 import "sync/ignore.proto";
 import "sync/symlink.proto";
 
@@ -12,11 +13,37 @@ import "sync/symlink.proto";
 // commands to specify configuration options, for loading global configuration
 // options, and for storing a merged configuration inside sessions.
 message Configuration {
+    // Synchronization parameters (fields 11-20).
+    // NOTE: These run from field indices 11-20 (rather than 1-10, which are
+    // reserved for symlink configuration parameters) due to the historical
+    // order in which these fields were added.
+
+    // Field 11 is reserved for synchronization mode.
+
+    // Field 12 is reserved for unidirectional synchronization deletion
+    // behavior.
+
+    // ConflictResolutionMode specifies the conflict resolution mode that should
+    // be used in bidirectional synchronization.
+    sync.ConflictResolutionMode conflictResolutionMode = 13;
+
+    // Fields 14-20 are reserved for future synchronization configuration
+    // parameters.
+
+
+    // Symlink configuration parameters (fields 1-10).
+    // NOTE: These run from field indices 1-10. The reason for this is that
+    // symlink configuration parameters is due to the historical order in which
+    // configuration fields were added.
+
     // SymlinkMode specifies the symlink mode that should be used in
     // synchronization.
     sync.SymlinkMode symlinkMode = 1;
 
-    // Fields 2-20 are reserved for future general configuration parameters.
+    // Fields 2-10 are reserved for future symlink configuration parameters.
+
+
+    // Watch configuration parameters (fields 21-30).
 
     // WatchMode specifies the filesystem watching mode.
     filesystem.WatchMode watchMode = 21;
@@ -26,8 +53,10 @@ message Configuration {
     // be used.
     uint32 watchPollingInterval = 22;
 
-    // Fields 23-30 are reserved for future watch-related configuration
-    // parameters.
+    // Fields 23-30 are reserved for future watch configuration parameters.
+
+
+    // Ignore configuration parameters (fields 31-60).
 
     // DefaultIgnores specifies the ignore patterns brought in from the global
     // configuration.
@@ -40,6 +69,5 @@ message Configuration {
     // synchronization.
     sync.IgnoreVCSMode ignoreVCSMode = 33;
 
-    // Fields 34-100 are reserved for future ignore-related configuration
-    // parameters.
+    // Fields 34-60 are reserved for future ignore configuration parameters.
 }

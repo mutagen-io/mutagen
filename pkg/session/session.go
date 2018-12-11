@@ -30,6 +30,17 @@ func (v Version) Hasher() hash.Hash {
 	}
 }
 
+// DefaultConflictResolutionMode returns the default conflict resolution mode
+// for the session version.
+func (v Version) DefaultConflictResolutionMode() sync.ConflictResolutionMode {
+	switch v {
+	case Version_Version1:
+		return sync.ConflictResolutionMode_ConflictResolutionModeSafe
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultSymlinkMode returns the default symlink mode for the session version.
 func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {

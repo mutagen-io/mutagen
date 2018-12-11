@@ -30,6 +30,12 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 		return errors.New("nil configuration")
 	}
 
+	// Verify that the conflict resolution mode is unspecified or supported for
+	// usage.
+	if !c.ConflictResolutionMode.IsDefault() && !c.ConflictResolutionMode.Supported() {
+		return errors.New("unknown or unsupported conflict resolution mode")
+	}
+
 	// Verify that the symlink mode is unspecified or supported for usage.
 	if c.SymlinkMode != sync.SymlinkMode_SymlinkDefault && !c.SymlinkMode.Supported() {
 		return errors.New("unknown or unsupported symlink mode")
@@ -86,11 +92,12 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 
 	// Create a session configuration object.
 	result := &Configuration{
-		SymlinkMode:          configuration.Symlink.Mode,
-		WatchMode:            configuration.Watch.Mode,
-		WatchPollingInterval: configuration.Watch.PollingInterval,
-		DefaultIgnores:       configuration.Ignore.Default,
-		IgnoreVCSMode:        configuration.Ignore.VCS,
+		ConflictResolutionMode: configuration.Synchronization.ConflictResolutionMode,
+		SymlinkMode:            configuration.Symlink.Mode,
+		WatchMode:              configuration.Watch.Mode,
+		WatchPollingInterval:   configuration.Watch.PollingInterval,
+		DefaultIgnores:         configuration.Ignore.Default,
+		IgnoreVCSMode:          configuration.Ignore.VCS,
 	}
 
 	// Verify that the resulting configuration is valid.
@@ -108,6 +115,13 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 func MergeConfigurations(session, global *Configuration) *Configuration {
 	// Create the resulting configuration.
 	result := &Configuration{}
+
+	// Merge conflict resolution mode.
+	if !session.ConflictResolutionMode.IsDefault() {
+		result.ConflictResolutionMode = session.ConflictResolutionMode
+	} else {
+		result.ConflictResolutionMode = global.ConflictResolutionMode
+	}
 
 	// Merge symlink mode.
 	if session.SymlinkMode != sync.SymlinkMode_SymlinkDefault {

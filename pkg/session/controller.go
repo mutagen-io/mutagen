@@ -38,13 +38,12 @@ type controller struct {
 	// archivePath is the path to the serialized archive.
 	archivePath string
 	// stateLock guards and tracks changes to the session member's Paused field
-	// and the state member. Code may access static members of the session
-	// without holding this lock, but any reads or writes to the Paused field
-	// (including as part of a read of the whole session) should be guarded by
-	// this lock.
+	// and the state member.
 	stateLock *state.TrackingLock
-	// session is the current session state. It should be saved to disk any time
-	// it is modified.
+	// session records the associated session metadata and configuration. It is
+	// considered static and safe for concurrent access except for its Paused
+	// field, for which the stateLock member should be held. It should be saved
+	// to disk any time it is modified.
 	session *Session
 	// state represents the current synchronization state.
 	state *State
@@ -696,7 +695,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			ancestor,
 			αSnapshot,
 			βSnapshot,
-			sync.ConflictResolutionMode_ConflictResolutionModeSafe,
+			c.session.Configuration.ConflictResolutionMode,
 		)
 		c.stateLock.Lock()
 		c.state.Conflicts = conflicts

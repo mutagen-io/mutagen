@@ -47,6 +47,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate and convert the conflict resolution mode specification.
+	var conflictResolutionMode sync.ConflictResolutionMode
+	if createConfiguration.conflictResolutionMode != "" {
+		if err := conflictResolutionMode.UnmarshalText([]byte(createConfiguration.conflictResolutionMode)); err != nil {
+			return errors.Wrap(err, "unable to parse conflict resolution mode")
+		}
+	}
+
 	// Validate and convert the symlink mode specification.
 	var symlinkMode sync.SymlinkMode
 	if createConfiguration.symlinkMode != "" {
@@ -103,11 +111,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Alpha: alpha,
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
-			SymlinkMode:          symlinkMode,
-			WatchMode:            watchMode,
-			WatchPollingInterval: createConfiguration.watchPollingInterval,
-			Ignores:              createConfiguration.ignores,
-			IgnoreVCSMode:        ignoreVCSMode,
+			ConflictResolutionMode: conflictResolutionMode,
+			SymlinkMode:            symlinkMode,
+			WatchMode:              watchMode,
+			WatchPollingInterval:   createConfiguration.watchPollingInterval,
+			Ignores:                createConfiguration.ignores,
+			IgnoreVCSMode:          ignoreVCSMode,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -150,13 +159,14 @@ var createCommand = &cobra.Command{
 }
 
 var createConfiguration struct {
-	help                 bool
-	ignores              []string
-	ignoreVCS            bool
-	noIgnoreVCS          bool
-	symlinkMode          string
-	watchMode            string
-	watchPollingInterval uint32
+	help                   bool
+	ignores                []string
+	ignoreVCS              bool
+	noIgnoreVCS            bool
+	conflictResolutionMode string
+	symlinkMode            string
+	watchMode              string
+	watchPollingInterval   uint32
 }
 
 func init() {
@@ -167,6 +177,7 @@ func init() {
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")
+	flags.StringVar(&createConfiguration.conflictResolutionMode, "conflict-resolution-mode", "", "Specify conflict resolution mode (safe|alpha-wins|beta-wins|alpha-wins-all|beta-wins-all)")
 	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")

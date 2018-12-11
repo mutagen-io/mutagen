@@ -8,7 +8,10 @@ import (
 
 const (
 	testConfigurationGibberish = "[a+1a4"
-	testConfigurationValid     = `[symlink]
+	testConfigurationValid     = `[synchronization]
+conflictResolution = "alpha-wins-all"
+
+[symlink]
 mode = "portable"
 
 [watch]

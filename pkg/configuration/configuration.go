@@ -10,6 +10,11 @@ import (
 
 // Configuration represents the global Mutagen configuration.
 type Configuration struct {
+	// Synchronization contains parameters related to synchronization behavior.
+	Synchronization struct {
+		ConflictResolutionMode sync.ConflictResolutionMode `toml:"conflictResolutionMode"`
+	} `toml:"synchronization"`
+
 	// Ignore contains parameters related to synchronization ignore
 	// specifications.
 	Ignore struct {

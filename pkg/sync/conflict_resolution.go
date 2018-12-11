@@ -4,6 +4,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IsDefault indicates whether or not the conflict resolution mode is
+// ConflictResolutionMode_ConflictResolutionModeDefault.
+func (m ConflictResolutionMode) IsDefault() bool {
+	return m == ConflictResolutionMode_ConflictResolutionModeDefault
+}
+
 // UnmarshalText implements the text unmarshalling interface used when loading
 // from TOML files.
 func (m *ConflictResolutionMode) UnmarshalText(textBytes []byte) error {
