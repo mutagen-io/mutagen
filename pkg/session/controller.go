@@ -693,7 +693,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// Perform reconciliation and record conflicts.
 		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
-			ancestor, αSnapshot, βSnapshot,
+			ancestor,
+			αSnapshot,
+			βSnapshot,
+			sync.ConflictResolutionMode_ConflictResolutionModeSafe,
 		)
 		c.stateLock.Lock()
 		c.state.Conflicts = conflicts

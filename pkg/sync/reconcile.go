@@ -20,6 +20,9 @@ func nonDeletionChangesOnly(changes []*Change) []*Change {
 
 // reconciler provides the recursive implementation of reconciliation.
 type reconciler struct {
+	// conflictResolutionMode is the conflict resolution mode to use for
+	// handling conflicts.
+	conflictResolutionMode ConflictResolutionMode
 	// ancestorChanges are the changes to the ancestor that are currently being
 	// tracked.
 	ancestorChanges []*Change
@@ -69,10 +72,12 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		return
 	}
 
-	// Alpha and beta weren't equal at this node. Thus, at least one of them
-	// must differ from ancestor *at this node*. The other may also differ from
-	// the ancestor at this node, a subnode, or not at all. If one side is
-	// unmodified, then we can simply propagate changes from the other side.
+	// Alpha and beta weren't equal at this path. Thus, at least one of them
+	// must differ from ancestor *at this path*. The other may also differ from
+	// the ancestor at this path, a subpath, or not at all. If one side is
+	// unmodified, then there is no conflict, and we can simply propagate
+	// changes from the other side. This is the standard mechanism for change
+	// propagation.
 	alphaDelta := diff(path, ancestor, alpha)
 	if len(alphaDelta) == 0 {
 		r.alphaChanges = append(r.alphaChanges, &Change{
@@ -92,42 +97,41 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		return
 	}
 
-	// It appears that both sides have been modified. Before we mark a conflict,
-	// check if one side has only deletion changes. If so, we can propagate the
-	// changes from the other side without fear of losing any information. This
-	// is essentially the only form of automated conflict resolution that we can
-	// do. In some sense, it is a heuristic designed to avoid conflicts in very
-	// common cases, but more importantly, it is necessary to enable our form of
-	// manual conflict resolution: having the user delete the side they don't
-	// want to keep.
-	//
-	// Now, you're probably asking yourself a few questions here:
-	//
-	// Why didn't we simply make this check first? Why do we need to check the
-	// full diffs above? Well, imagine that one side had deleted and the other
-	// was unmodified. If we only looked at non-deletion changes, we would not
-	// detect this because both sides would have no changes or deletion-only
-	// changes, and both lists below would be empty, and the winning side would
-	// be determined simply by the ordering of the conditional statement below
-	// (essentially beta would always win out as it is currently structured).
-	//
-	// What if both sides have completely deleted this node? Well, that would
-	// have passed the equality check at the start of the function and would
-	// have been treated as a both-deleted scenario. Thus, we know at least one
-	// side has content at this node.
-	//
-	// What if both sides are directories and have only deleted some subset of
-	// the tree below here? Well, that would ALSO have passed the equality check
-	// above since nothing has changed at this node, and the function would have
-	// simply recursed.
-	//
-	// Note that, when recording these changes, we use the side we're going to
-	// overrule as the "old" value in the change, because that's what it should
-	// expect to see on disk, not the ancestor. And since that "old" must be a
-	// subtree of ancestor (it contains only deletion changes), it still
-	// represents a valid value to return from a transition in the case that the
-	// transition fails, and, as a nice side-effect in that case, no information
-	// about the deletions that have happened on that side is lost.
+	// At this point, we know that both sides have been modified from the
+	// ancestor, at least one of them at this path (and the other at either this
+	// path or a subpath), and thus a conflict has arisen. We don't know the
+	// nature of the changes, and one may be a deletion (though it can't be the
+	// case that both are deletions since alpha and beta aren't equal at this
+	// path), but if our conflict resolution mode states that one side is the
+	// unequivocal winner, even in the case of deletions, then we can simply
+	// propagate that side's contents.
+	// NOTE: This is also the point where we'll eventually handle
+	// ConflictResolutionMode_ConflictResolutionModeNone, by simply marking a
+	// conflict and returning.
+	if r.conflictResolutionMode == ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll {
+		r.betaChanges = append(r.betaChanges, &Change{
+			Path: path,
+			Old:  beta,
+			New:  alpha,
+		})
+		return
+	} else if r.conflictResolutionMode == ConflictResolutionMode_ConflictResolutionModeBetaWinsAll {
+		r.alphaChanges = append(r.alphaChanges, &Change{
+			Path: path,
+			Old:  alpha,
+			New:  beta,
+		})
+		return
+	}
+
+	// At this point we're dealing with "safe" conflict resolution modes - i.e.
+	// those that try to automatically resolve conflicts without losing data
+	// (e.g. a modification overriding a deletion). So, before we mark a
+	// conflict at this path, check if one side has only deletion changes. If
+	// so, then we can propagate the changes from the other side without fear of
+	// losing any information. This behavior is what enables our form of manual
+	// conflict resolution (having the user delete the side they don't want to
+	// keep).
 	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
 	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
 	if len(alphaDeltaNonDeletion) == 0 {
@@ -147,20 +151,42 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	}
 
 	// At this point, both sides have made changes that would cause information
-	// to be lost if we were to propgate changes from one side to the other, so
-	// we need to record a conflict. We only record non-deletion changes because
-	// those are the only ones that create conflict.
-	r.conflicts = append(r.conflicts, &Conflict{
-		AlphaChanges: alphaDeltaNonDeletion,
-		BetaChanges:  betaDeltaNonDeletion,
-	})
+	// to be lost if we were to propgate changes from one side to the other. If
+	// the conflict resolution mode specifies that one side should win in this
+	// case then perform the appropriate resolution, otherwise record a
+	// conflict.
+	if r.conflictResolutionMode == ConflictResolutionMode_ConflictResolutionModeAlphaWins {
+		r.betaChanges = append(r.betaChanges, &Change{
+			Path: path,
+			Old:  beta,
+			New:  alpha,
+		})
+	} else if r.conflictResolutionMode == ConflictResolutionMode_ConflictResolutionModeBetaWins {
+		r.alphaChanges = append(r.alphaChanges, &Change{
+			Path: path,
+			Old:  alpha,
+			New:  beta,
+		})
+	} else {
+		r.conflicts = append(r.conflicts, &Conflict{
+			AlphaChanges: alphaDeltaNonDeletion,
+			BetaChanges:  betaDeltaNonDeletion,
+		})
+	}
 }
 
 // Reconcile performs a recursive three-way merge and generates a list of
 // changes for the ancestor, alpha, and beta, as well as a list of conflicts.
-func Reconcile(ancestor, alpha, beta *Entry) ([]*Change, []*Change, []*Change, []*Conflict) {
+func Reconcile(
+	ancestor,
+	alpha,
+	beta *Entry,
+	conflictResolutionMode ConflictResolutionMode,
+) ([]*Change, []*Change, []*Change, []*Conflict) {
 	// Create the reconciler.
-	r := &reconciler{}
+	r := &reconciler{
+		conflictResolutionMode: conflictResolutionMode,
+	}
 
 	// Perform reconciliation.
 	r.reconcile("", ancestor, alpha, beta)

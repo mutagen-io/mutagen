@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package sync;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
+// ConflictResolutionMode specifies the mode for conflict resolution during the
+// reconciliation phase of bidirectional synchronization.
+enum ConflictResolutionMode {
+    // ConflictResolutionMode_ConflictResolutionModeDefault represents an
+    // unspecified conflict resolution mode. It is not valid for use with
+    // Reconcile. It should be converted to one of the following values based on
+    // the desired default behavior.
+    ConflictResolutionModeDefault = 0;
+
+    // Enumeration value 1 is reserved for ConflictResolutionModeNone.
+
+    // ConflictResolutionMode_ConflictResolutionModeSafe specifies that
+    // automatic conflict resolution should be performed only in cases where no
+    // data would be lost. Specifically, this means that modified contents are
+    // allowed to propagate to the opposite endpoint if the corresponding
+    // contents on the opposite endpoint are unmodified or deleted. All other
+    // conflicts are left unresolved.
+    ConflictResolutionModeSafe = 2;
+
+    // ConflictResolutionMode_ConflictResolutionModeAlphaWins performs the same
+    // as ConflictResolutionMode_ConflictResolutionModeSafe, but specifies that
+    // the alpha endpoint should win automatically in any conflict where alpha
+    // and beta have both modified (not deleted) the same contents. Notably,
+    // this still allows changes to contents on beta to propagate over deletion
+    // of the corresponding contents on alpha.
+    ConflictResolutionModeAlphaWins = 3;
+
+    // ConflictResolutionMode_ConflictResolutionModeBetaWins performs the same
+    // as ConflictResolutionMode_ConflictResolutionModeAlphaWins, but with the
+    // winner and loser roles reversed.
+    ConflictResolutionModeBetaWins = 4;
+
+    // ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll performs the
+    // same as ConflictResolutionMode_ConflictResolutionModeAlphaWins, but
+    // specifies that deletions on alpha should win over modifications to beta.
+    ConflictResolutionModeAlphaWinsAll = 5;
+
+    // ConflictResolutionMode_ConflictResolutionModeBetaWinsAll performs the
+    // same as ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll, but
+    // with the winner and loser roles reversed.
+    ConflictResolutionModeBetaWinsAll = 6;
+}

@@ -25,7 +25,12 @@ func TestReconcileNonDeletionChangesOnly(t *testing.T) {
 
 func TestReconcileAllNil(t *testing.T) {
 	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(nil, nil, nil)
+	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
+		nil,
+		nil,
+		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
+	)
 
 	// Validate ancestor changes.
 	if len(ancestorChanges) != 0 {
@@ -54,6 +59,7 @@ func TestReconcileDirectoryNothingChanged(t *testing.T) {
 		testDirectory1Entry,
 		testDirectory1Entry,
 		testDirectory1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -83,6 +89,7 @@ func TestReconcileFileNothingChanged(t *testing.T) {
 		testFile1Entry,
 		testFile1Entry,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -112,6 +119,7 @@ func TestReconcileAlphaDeletedRoot(t *testing.T) {
 		testDirectory1Entry,
 		nil,
 		testDirectory1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -147,6 +155,7 @@ func TestReconcileBetaDeletedRoot(t *testing.T) {
 		testDirectory1Entry,
 		testDirectory1Entry,
 		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -182,6 +191,7 @@ func TestReconcileBothDeletedRoot(t *testing.T) {
 		testDirectory1Entry,
 		nil,
 		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -217,6 +227,7 @@ func TestReconcileAlphaCreatedRoot(t *testing.T) {
 		nil,
 		testFile1Entry,
 		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -252,6 +263,7 @@ func TestReconcileBetaCreatedRoot(t *testing.T) {
 		nil,
 		nil,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -287,6 +299,7 @@ func TestReconcileBothCreatedSameFile(t *testing.T) {
 		nil,
 		testFile1Entry,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -320,6 +333,7 @@ func TestReconcileBothCreatedSameDirectory(t *testing.T) {
 		nil,
 		testDirectory1Entry,
 		testDirectory1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -353,6 +367,7 @@ func TestReconcileBothCreatedDifferentDirectory(t *testing.T) {
 		nil,
 		testDirectory1Entry,
 		testDirectory2Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -382,6 +397,7 @@ func TestReconcileBothCreatedDifferentTypes(t *testing.T) {
 		nil,
 		testDirectory1Entry,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -411,6 +427,7 @@ func TestReconcileAlphaDeletedRootBetaCreatedFile(t *testing.T) {
 		testDirectory1Entry,
 		nil,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -446,6 +463,7 @@ func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
 		testDirectory1Entry,
 		testFile1Entry,
 		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -481,6 +499,7 @@ func TestReconcileAlphaDeletedRootBetaCreatedDirectory(t *testing.T) {
 		testFile1Entry,
 		nil,
 		testDirectory1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -516,6 +535,7 @@ func TestReconcileAlphaCreatedDirectoryBetaDeletedRoot(t *testing.T) {
 		testFile1Entry,
 		testDirectory1Entry,
 		nil,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -551,6 +571,7 @@ func TestReconcileAlphaChangedDirectory(t *testing.T) {
 		testDirectory2Entry,
 		testDirectory3Entry,
 		testDirectory2Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -584,6 +605,7 @@ func TestReconcileBetaChangedDirectory(t *testing.T) {
 		testDirectory3Entry,
 		testDirectory3Entry,
 		testDirectory2Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -617,6 +639,7 @@ func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContents(t *testing.T)
 		testDirectory2Entry,
 		testFile1Entry,
 		testDirectory3Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
@@ -652,6 +675,7 @@ func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectory(t *testing.T)
 		testDirectory2Entry,
 		testDirectory3Entry,
 		testFile1Entry,
+		ConflictResolutionMode_ConflictResolutionModeSafe,
 	)
 
 	// Validate ancestor changes.
