@@ -6,8 +6,10 @@ import (
 
 // propagateExecutabilityRecursive propagates executability recursively.
 func propagateExecutabilityRecursive(ancestor, source, target *Entry) {
-	// If target is nil, then we don't have anything to propagate to, so bail.
-	if target == nil {
+	// If there is no location from which executability information can be
+	// propagated or no location to which executability information can be
+	// propagated, then we can discontinue recursion along this path.
+	if (ancestor == nil && source == nil) || target == nil {
 		return
 	}
 
