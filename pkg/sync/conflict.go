@@ -31,11 +31,18 @@ func (c *Conflict) EnsureValid() error {
 		}
 	}
 
-	// There's technically a bit more validation we could do to ensure that each
-	// side uses a given path only once and that all of the paths on one side
-	// are subpaths of the other (or that both sides name the same path), but
-	// that becomes very complicated and expensive, and it isn't really needed
-	// for memory safety.
+	// Ensure that at least one side has exactly one conflict. We know this must
+	// be the case because at least one of the sides must have a change at the
+	// root of the conflict.
+	if len(c.AlphaChanges) != 1 && len(c.BetaChanges) != 1 {
+		return errors.New("both sides of conflict have zero or multiple changes")
+	}
+
+	// There's technically a bit more validation we could do, e.g. ensuring that
+	// each side uses a given path only once and that all of the paths on one of
+	// the sides are subpaths of the single path on the other side (or that both
+	// sides name the same path), but that becomes very complicated and
+	// expensive, and it isn't really needed for memory safety purposes.
 
 	// Success.
 	return nil
