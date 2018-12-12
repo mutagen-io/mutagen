@@ -48,7 +48,8 @@ const (
 	ConflictResolutionMode_ConflictResolutionModeBetaWins ConflictResolutionMode = 4
 	// ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll performs the
 	// same as ConflictResolutionMode_ConflictResolutionModeAlphaWins, but
-	// specifies that deletions on alpha should win over modifications to beta.
+	// additionally specifies that deletions on alpha should win over
+	// modifications to beta.
 	ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll ConflictResolutionMode = 5
 	// ConflictResolutionMode_ConflictResolutionModeBetaWinsAll performs the
 	// same as ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll, but
@@ -77,7 +78,7 @@ func (x ConflictResolutionMode) String() string {
 	return proto.EnumName(ConflictResolutionMode_name, int32(x))
 }
 func (ConflictResolutionMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_conflict_resolution_dc1672ce4899e5b9, []int{0}
+	return fileDescriptor_conflict_resolution_55c38d5f7c504231, []int{0}
 }
 
 func init() {
@@ -85,10 +86,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("sync/conflict_resolution.proto", fileDescriptor_conflict_resolution_dc1672ce4899e5b9)
+	proto.RegisterFile("sync/conflict_resolution.proto", fileDescriptor_conflict_resolution_55c38d5f7c504231)
 }
 
-var fileDescriptor_conflict_resolution_dc1672ce4899e5b9 = []byte{
+var fileDescriptor_conflict_resolution_55c38d5f7c504231 = []byte{
 	// 196 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2b, 0xae, 0xcc, 0x4b,
 	0xd6, 0x4f, 0xce, 0xcf, 0x4b, 0xcb, 0xc9, 0x4c, 0x2e, 0x89, 0x2f, 0x4a, 0x2d, 0xce, 0xcf, 0x29,

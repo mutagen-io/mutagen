@@ -38,7 +38,8 @@ enum ConflictResolutionMode {
 
     // ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll performs the
     // same as ConflictResolutionMode_ConflictResolutionModeAlphaWins, but
-    // specifies that deletions on alpha should win over modifications to beta.
+    // additionally specifies that deletions on alpha should win over
+    // modifications to beta.
     ConflictResolutionModeAlphaWinsAll = 5;
 
     // ConflictResolutionMode_ConflictResolutionModeBetaWinsAll performs the
