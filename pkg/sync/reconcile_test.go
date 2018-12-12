@@ -4,6 +4,151 @@ import (
 	"testing"
 )
 
+// changeListsEqual determines whether or not two lists of changes are
+// equivalent. The change lists do not need to be in the same order, but they do
+// need to be structurally equivalent - i.e. not composed differently.
+func changeListsEqual(actualChanges, expectedChanges []*Change) bool {
+	// Verify that the number of changes is the same in each case.
+	if len(actualChanges) != len(expectedChanges) {
+		return false
+	}
+
+	// Index expected changes by path, because ordering is not guaranteed.
+	pathToExpectedChange := make(map[string]*Change, len(expectedChanges))
+	for _, expected := range expectedChanges {
+		pathToExpectedChange[expected.Path] = expected
+	}
+
+	// Verify that they are equal.
+	for _, actual := range actualChanges {
+		// Look for the corresponding expected change. This also validates path
+		// equivalence.
+		expected, ok := pathToExpectedChange[actual.Path]
+		if !ok {
+			return false
+		}
+
+		// Verify that the old values match.
+		if !actual.Old.Equal(expected.Old) {
+			return false
+		}
+
+		// Verify that the new values match.
+		if !actual.New.Equal(expected.New) {
+			return false
+		}
+	}
+
+	// At this point, the changes lists must be equivalent.
+	return true
+}
+
+// conflictListsEqual determines whether or not two lists of conflicts are
+// equivalent. The conflict lists do not need to be in the same order.
+func conflictListsEqual(actualConflicts, expectedConflicts []*Conflict) bool {
+	// Verify that the number of conflicts is the same in each case.
+	if len(actualConflicts) != len(expectedConflicts) {
+		return false
+	}
+
+	// Index expected conflicts by root path, because ordering is not
+	// guaranteed.
+	pathToExpectedConflict := make(map[string]*Conflict, len(expectedConflicts))
+	for _, expected := range expectedConflicts {
+		pathToExpectedConflict[expected.Root()] = expected
+	}
+
+	// Verify that they are equal.
+	for _, actual := range actualConflicts {
+		// Look for the corresponding expected change. This also validates
+		// conflict root equivalence.
+		expected, ok := pathToExpectedConflict[actual.Root()]
+		if !ok {
+			return false
+		}
+
+		// Verify that alpha changes are equal.
+		if !changeListsEqual(actual.AlphaChanges, expected.AlphaChanges) {
+			return false
+		}
+
+		// Verify that beta changes are equal.
+		if !changeListsEqual(actual.BetaChanges, expected.BetaChanges) {
+			return false
+		}
+	}
+
+	// At this point, the changes lists must be equivalent.
+	return true
+}
+
+// reconcileTestCase is a utility type for reconciliation tests.
+type reconcileTestCase struct {
+	// ancestor is the ancestor contents for reconciliation.
+	ancestor *Entry
+	// alpha is the alpha contents for reconciliation.
+	alpha *Entry
+	// beta is the beta contents for reconciliation.
+	beta *Entry
+	// conflictResolutionMode is the conflict resolution mode to use for
+	// reconciliation.
+	conflictResolutionMode ConflictResolutionMode
+	// expectedAncestorChanges are the expected ancestor changes.
+	expectedAncestorChanges []*Change
+	// expectedAlphaChanges are the expected alpha changes.
+	expectedAlphaChanges []*Change
+	// expectedBetaChanges are the expected beta changes.
+	expectedBetaChanges []*Change
+	// expectedConflicts are the expected conflicts.
+	expectedConflicts []*Conflict
+}
+
+// run invokes the test case in the specified testing context.
+func (c *reconcileTestCase) run(t *testing.T) {
+	// Mark this as a helper function.
+	t.Helper()
+
+	// Perform reconciliation.
+	ancestorChanges, alphaChanges, betaChanges, conflicts := Reconcile(
+		c.ancestor,
+		c.alpha,
+		c.beta,
+		c.conflictResolutionMode,
+	)
+
+	// Check that ancestor changes are what we expect.
+	if !changeListsEqual(ancestorChanges, c.expectedAncestorChanges) {
+		t.Error(
+			"ancestor changes do not match expected:",
+			ancestorChanges, "!=", c.expectedAncestorChanges,
+		)
+	}
+
+	// Check that alpha changes are what we expect.
+	if !changeListsEqual(alphaChanges, c.expectedAlphaChanges) {
+		t.Error(
+			"alpha changes do not match expected:",
+			alphaChanges, "!=", c.expectedAlphaChanges,
+		)
+	}
+
+	// Check that beta changes are what we expect.
+	if !changeListsEqual(betaChanges, c.expectedBetaChanges) {
+		t.Error(
+			"beta changes do not match expected:",
+			betaChanges, "!=", c.expectedBetaChanges,
+		)
+	}
+
+	// Check that conflicts are what we expect.
+	if !conflictListsEqual(conflicts, c.expectedConflicts) {
+		t.Error(
+			"conflicts do not match expected:",
+			conflicts, "!=", c.expectedConflicts,
+		)
+	}
+}
+
 func TestReconcileNonDeletionChangesOnly(t *testing.T) {
 	changes := []*Change{
 		{
@@ -24,683 +169,407 @@ func TestReconcileNonDeletionChangesOnly(t *testing.T) {
 }
 
 func TestReconcileAllNil(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		nil,
-		nil,
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		nil, nil, nil,
 		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+		nil, nil, nil,
+		nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileDirectoryNothingChanged(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		testDirectory1Entry,
-		testDirectory1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory1Entry,
+		alpha:                   testDirectory1Entry,
+		beta:                    testDirectory1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts:       nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileFileNothingChanged(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFile1Entry,
-		testFile1Entry,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testFile1Entry,
+		alpha:                   testFile1Entry,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts:       nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaDeletedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		nil,
-		testDirectory1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testFile1Entry,
+		alpha:                   nil,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{Old: testFile1Entry},
+		},
+		expectedConflicts: nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 1 {
-		t.Error("beta transitions have unexpected length")
-	} else if βTransitions[0].Path != "" {
-		t.Error("beta transition has unexpected path")
-	} else if βTransitions[0].Old != testDirectory1Entry {
-		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != nil {
-		t.Error("beta transition has unexpected new entry")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBetaDeletedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		testDirectory1Entry,
-		nil,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testFile1Entry,
+		alpha:                   testFile1Entry,
+		beta:                    nil,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{Old: testFile1Entry},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 1 {
-		t.Error("alpha transitions have unexpected length")
-	} else if αTransitions[0].Path != "" {
-		t.Error("alpha transition has unexpected path")
-	} else if αTransitions[0].Old != testDirectory1Entry {
-		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != nil {
-		t.Error("alpha transition has unexpected new entry")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBothDeletedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		nil,
-		nil,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 1 {
-		t.Error("ancestor changes have unexpected length")
-	} else if ancestorChanges[0].Path != "" {
-		t.Error("ancestor change has unexpected path")
-	} else if ancestorChanges[0].Old != nil {
-		t.Error("ancestor change has unexpected old entry")
-	} else if ancestorChanges[0].New != nil {
-		t.Error("ancestor change has unexpected new entry")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:               testFile1Entry,
+		alpha:                  nil,
+		beta:                   nil,
+		conflictResolutionMode: ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: []*Change{
+			{},
+		},
+		expectedAlphaChanges: nil,
+		expectedBetaChanges:  nil,
+		expectedConflicts:    nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaCreatedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		testFile1Entry,
-		nil,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                nil,
+		alpha:                   testFile1Entry,
+		beta:                    nil,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedConflicts: nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 1 {
-		t.Error("beta transitions have unexpected length")
-	} else if βTransitions[0].Path != "" {
-		t.Error("beta transition has unexpected path")
-	} else if βTransitions[0].Old != nil {
-		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFile1Entry {
-		t.Error("beta transition has unexpected new entry")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBetaCreatedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		nil,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                nil,
+		alpha:                   nil,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 1 {
-		t.Error("alpha transitions have unexpected length")
-	} else if αTransitions[0].Path != "" {
-		t.Error("alpha transition has unexpected path")
-	} else if αTransitions[0].Old != nil {
-		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFile1Entry {
-		t.Error("alpha transition has unexpected new entry")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBothCreatedSameFile(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		testFile1Entry,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 1 {
-		t.Error("unexpected number of ancestor changes")
-	} else if newAncestor, err := Apply(nil, ancestorChanges); err != nil {
-		t.Error("unable to apply ancestor changes")
-	} else if !newAncestor.Equal(testFile1Entry) {
-		t.Error("post-change ancestor does not match expected")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:               nil,
+		alpha:                  testFile1Entry,
+		beta:                   testFile1Entry,
+		conflictResolutionMode: ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedAlphaChanges: nil,
+		expectedBetaChanges:  nil,
+		expectedConflicts:    nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBothCreatedSameDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		testDirectory1Entry,
-		testDirectory1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 11 {
-		t.Error("unexpected number of ancestor changes")
-	} else if newAncestor, err := Apply(nil, ancestorChanges); err != nil {
-		t.Error("unable to apply ancestor changes")
-	} else if !newAncestor.Equal(testDirectory1Entry) {
-		t.Error("post-change ancestor does not match expected")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                nil,
+		alpha:                   testDirectory1Entry,
+		beta:                    testDirectory1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: testDecomposeEntry("", testDirectory1Entry, true),
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts:       nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBothCreatedDifferentDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		testDirectory1Entry,
-		testDirectory2Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 4 {
-		t.Error("unexpected number of ancestor changes")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: &Entry{},
+		alpha: &Entry{
+			Contents: map[string]*Entry{
+				"same":      testDirectory1Entry,
+				"alpha":     testFile1Entry,
+				"different": testFile1Entry,
+			},
+		},
+		beta: &Entry{
+			Contents: map[string]*Entry{
+				"same":      testDirectory1Entry,
+				"beta":      testFile2Entry,
+				"different": testDirectory3Entry,
+			},
+		},
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
+		expectedAlphaChanges: []*Change{
+			{Path: "beta", New: testFile2Entry},
+		},
+		expectedBetaChanges: []*Change{
+			{Path: "alpha", New: testFile1Entry},
+		},
+		expectedConflicts: []*Conflict{
+			{
+				AlphaChanges: []*Change{
+					{
+						Path: "different",
+						New:  testFile1Entry,
+					},
+				},
+				BetaChanges: []*Change{
+					{
+						Path: "different",
+						New:  testDirectory3Entry,
+					},
+				},
+			},
+		},
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 4 {
-		t.Error("unexpected number of alpha transitions")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 3 {
-		t.Error("unexpected number of beta transitions")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 1 {
-		t.Error("unexpected number of conflicts")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBothCreatedDifferentTypes(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		nil,
-		testDirectory1Entry,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                nil,
+		alpha:                   testDirectory1Entry,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts: []*Conflict{
+			{
+				AlphaChanges: []*Change{
+					{New: testDirectory1Entry},
+				},
+				BetaChanges: []*Change{
+					{New: testFile1Entry},
+				},
+			},
+		},
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 1 {
-		t.Error("unexpected number of conflicts")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaDeletedRootBetaCreatedFile(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		nil,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory1Entry,
+		alpha:                   nil,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 1 {
-		t.Error("alpha transitions have unexpected length")
-	} else if αTransitions[0].Path != "" {
-		t.Error("alpha transition has unexpected path")
-	} else if αTransitions[0].Old != nil {
-		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFile1Entry {
-		t.Error("alpha transition has unexpected new entry")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory1Entry,
-		testFile1Entry,
-		nil,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory1Entry,
+		alpha:                   testFile1Entry,
+		beta:                    nil,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedConflicts: nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 1 {
-		t.Error("beta transitions have unexpected length")
-	} else if βTransitions[0].Path != "" {
-		t.Error("beta transition has unexpected path")
-	} else if βTransitions[0].Old != nil {
-		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFile1Entry {
-		t.Error("beta transition has unexpected new entry")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaDeletedRootBetaCreatedDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFile1Entry,
-		nil,
-		testDirectory1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testFile1Entry,
+		alpha:                   nil,
+		beta:                    testDirectory1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{New: testDirectory1Entry},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 1 {
-		t.Error("alpha transitions have unexpected length")
-	} else if αTransitions[0].Path != "" {
-		t.Error("alpha transition has unexpected path")
-	} else if αTransitions[0].Old != nil {
-		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testDirectory1Entry {
-		t.Error("alpha transition has unexpected new entry")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaCreatedDirectoryBetaDeletedRoot(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testFile1Entry,
-		testDirectory1Entry,
-		nil,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testFile1Entry,
+		alpha:                   testDirectory1Entry,
+		beta:                    nil,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{New: testDirectory1Entry},
+		},
+		expectedConflicts: nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 1 {
-		t.Error("beta transitions have unexpected length")
-	} else if βTransitions[0].Path != "" {
-		t.Error("beta transition has unexpected path")
-	} else if βTransitions[0].Old != nil {
-		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testDirectory1Entry {
-		t.Error("beta transition has unexpected new entry")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaChangedDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory2Entry,
-		testDirectory3Entry,
-		testDirectory2Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory2Entry,
+		alpha:                   testDirectory3Entry,
+		beta:                    testDirectory2Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     diff("", testDirectory2Entry, testDirectory3Entry),
+		expectedConflicts:       nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 2 {
-		t.Error("beta transitions have unexpected length")
-	} else if newBeta, err := Apply(testDirectory2Entry, βTransitions); err != nil {
-		t.Error("unable to apply beta transitions")
-	} else if !newBeta.Equal(testDirectory3Entry) {
-		t.Error("post-transition beta does not match expected")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileBetaChangedDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory3Entry,
-		testDirectory3Entry,
-		testDirectory2Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory2Entry,
+		alpha:                   testDirectory2Entry,
+		beta:                    testDirectory3Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    diff("", testDirectory2Entry, testDirectory3Entry),
+		expectedBetaChanges:     nil,
+		expectedConflicts:       nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 2 {
-		t.Error("beta transitions have unexpected length")
-	} else if newBeta, err := Apply(testDirectory3Entry, αTransitions); err != nil {
-		t.Error("unable to apply beta transitions")
-	} else if !newBeta.Equal(testDirectory2Entry) {
-		t.Error("post-transition beta does not match expected")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContents(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory2Entry,
-		testFile1Entry,
-		testDirectory3Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory2Entry,
+		alpha:                   testFile1Entry,
+		beta:                    testDirectory3Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{
+				Old: testDirectory3Entry,
+				New: testFile1Entry,
+			},
+		},
+		expectedConflicts: nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 0 {
-		t.Error("alpha transitions non-empty")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 1 {
-		t.Error("beta transitions have unexpected length")
-	} else if βTransitions[0].Path != "" {
-		t.Error("beta transition has unexpected path")
-	} else if βTransitions[0].Old != testDirectory3Entry {
-		t.Error("beta transition has unexpected old entry")
-	} else if βTransitions[0].New != testFile1Entry {
-		t.Error("beta transition has unexpected new entry")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }
 
 func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectory(t *testing.T) {
-	// Perform reconciliation.
-	ancestorChanges, αTransitions, βTransitions, conflicts := Reconcile(
-		testDirectory2Entry,
-		testDirectory3Entry,
-		testFile1Entry,
-		ConflictResolutionMode_ConflictResolutionModeSafe,
-	)
-
-	// Validate ancestor changes.
-	if len(ancestorChanges) != 0 {
-		t.Error("ancestor changes non-empty")
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor:                testDirectory2Entry,
+		alpha:                   testDirectory3Entry,
+		beta:                    testFile1Entry,
+		conflictResolutionMode:  ConflictResolutionMode_ConflictResolutionModeSafe,
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{
+				Old: testDirectory3Entry,
+				New: testFile1Entry,
+			},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
 	}
 
-	// Validate alpha transitions.
-	if len(αTransitions) != 1 {
-		t.Error("alpha transitions have unexpected length")
-	} else if αTransitions[0].Path != "" {
-		t.Error("alpha transition has unexpected path")
-	} else if αTransitions[0].Old != testDirectory3Entry {
-		t.Error("alpha transition has unexpected old entry")
-	} else if αTransitions[0].New != testFile1Entry {
-		t.Error("alpha transition has unexpected new entry")
-	}
-
-	// Validate beta transitions.
-	if len(βTransitions) != 0 {
-		t.Error("beta transitions non-empty")
-	}
-
-	// Validate conflicts.
-	if len(conflicts) != 0 {
-		t.Error("conflicts present")
-	}
+	// Run the test case.
+	testCase.run(t)
 }

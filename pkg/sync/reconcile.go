@@ -36,7 +36,7 @@ type reconciler struct {
 
 // reconcile performs a recursive three-way merge.
 func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
-	// Check if alpha and beta agree on the contents of this node.
+	// Check if alpha and beta agree on the contents of this path.
 	if alpha.equalShallow(beta) {
 		// If both endpoints agree, grab content lists, because we'll recurse.
 		ancestorContents := ancestor.GetContents()
@@ -44,8 +44,13 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		betaContents := beta.GetContents()
 
 		// See if the ancestor also agrees. If it disagrees, record the change
-		// for this node and ignore ancestor contents. We ignore the contents so
-		// that we don't add deletion changes for old subnodes.
+		// for this path and ignore ancestor contents. Since the ancestor is
+		// updated with Apply, the Old value will be ignored anyway (since it
+		// doesn't need to be transitioned away like on-disk contents do during
+		// a transition), so we just set it to nil, rather than the old contents
+		// of the ancestor. Since we'll be wiping out the old ancestor value at
+		// this path, we don't want to recursively add deletion changes for its
+		// old contents as well, so we nil them out at this point.
 		if !ancestor.equalShallow(alpha) {
 			r.ancestorChanges = append(
 				r.ancestorChanges,

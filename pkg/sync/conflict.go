@@ -4,6 +4,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Root returns the root path for a conflict.
+func (c *Conflict) Root() string {
+	// Handle determination of the root path based on the number of changes on
+	// each side. At least one of the sides should have exactly one change,
+	// whose path will correspond to the conflict root. If both sides have
+	// exactly one change, then their paths must be equal or one must be a
+	// prefix (parent path) of the other, in which case the shorter path to be
+	// the conflict root.
+	if len(c.AlphaChanges) == 1 && len(c.BetaChanges) == 1 {
+		if len(c.AlphaChanges[0].Path) < len(c.BetaChanges[0].Path) {
+			return c.AlphaChanges[0].Path
+		} else {
+			return c.BetaChanges[0].Path
+		}
+	} else if len(c.AlphaChanges) == 1 && len(c.BetaChanges) != 1 {
+		return c.AlphaChanges[0].Path
+	} else if len(c.BetaChanges) == 1 && len(c.AlphaChanges) != 1 {
+		return c.BetaChanges[0].Path
+	} else {
+		panic("invalid conflict")
+	}
+}
+
 // EnsureValid ensures that Conflict's invariants are respected.
 func (c *Conflict) EnsureValid() error {
 	// A nil conflict is not valid.
