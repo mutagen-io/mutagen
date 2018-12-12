@@ -552,6 +552,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 	}
 	ancestor := archive.Root
 
+	// Compute the effective conflict resolution mode.
+	conflictResolutionMode := c.session.Configuration.ConflictResolutionMode
+	if conflictResolutionMode.IsDefault() {
+		conflictResolutionMode = c.session.Version.DefaultConflictResolutionMode()
+	}
+
 	// Loop until there is a synchronization error. We always skip polling on
 	// the first time through the loop because changes may have occurred while
 	// we were halted. We also skip polling in the event that an endpoint asks
@@ -695,7 +701,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			ancestor,
 			αSnapshot,
 			βSnapshot,
-			c.session.Configuration.ConflictResolutionMode,
+			conflictResolutionMode,
 		)
 		c.stateLock.Lock()
 		c.state.Conflicts = conflicts
