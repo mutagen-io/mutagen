@@ -317,7 +317,7 @@ func TestReconcileBothDeletedRoot(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileAlphaCreatedRootSafe(t *testing.T) {
+func TestReconcileAlphaCreatedRoot(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
@@ -342,7 +342,7 @@ func TestReconcileAlphaCreatedRootSafe(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBetaCreatedRootSafe(t *testing.T) {
+func TestReconcileBetaCreatedRoot(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
@@ -367,7 +367,7 @@ func TestReconcileBetaCreatedRootSafe(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedSameFileSafe(t *testing.T) {
+func TestReconcileBothCreatedSameFile(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
