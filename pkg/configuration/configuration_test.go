@@ -9,7 +9,7 @@ import (
 const (
 	testConfigurationGibberish = "[a+1a4"
 	testConfigurationValid     = `[synchronization]
-conflictResolution = "alpha-wins-all"
+conflictResolutionMode = "alpha-wins-all"
 
 [symlink]
 mode = "portable"
