@@ -103,7 +103,7 @@ func TestParsePOSIXSCPSSHWindowsLocal(t *testing.T) {
 	expected := &URL{
 		Protocol: Protocol_SSH,
 		Hostname: "C",
-		Path: "/local/path",
+		Path:     "/local/path",
 	}
 	if runtime.GOOS == "windows" {
 		expected = &URL{
@@ -111,7 +111,7 @@ func TestParsePOSIXSCPSSHWindowsLocal(t *testing.T) {
 		}
 	}
 	test := &parseTestCase{
-		raw: "C:/local/path",
+		raw:      "C:/local/path",
 		expected: expected,
 	}
 	test.run(t)
