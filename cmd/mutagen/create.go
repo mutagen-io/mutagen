@@ -159,14 +159,14 @@ var createCommand = &cobra.Command{
 }
 
 var createConfiguration struct {
-	help                   bool
-	ignores                []string
-	ignoreVCS              bool
-	noIgnoreVCS            bool
-	synchronizationMode    string
-	symlinkMode            string
-	watchMode              string
-	watchPollingInterval   uint32
+	help                 bool
+	ignores              []string
+	ignoreVCS            bool
+	noIgnoreVCS          bool
+	synchronizationMode  string
+	symlinkMode          string
+	watchMode            string
+	watchPollingInterval uint32
 }
 
 func init() {
