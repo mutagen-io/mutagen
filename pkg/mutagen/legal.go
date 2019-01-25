@@ -11,7 +11,7 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 
 ================================================================================
-Mutagen makes use of the following third-party software:
+Mutagen depends on the following third-party software:
 ================================================================================
 
 Go, the Go standard library, the Go crypto, net, sys, and text subrepositories,
@@ -264,7 +264,7 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 
 ================================================================================
-Mutagen and Mutagen's third-party software makes use of the following licenses:
+Mutagen and its dependencies make use of the following licenses:
 ================================================================================
 
 MIT License
