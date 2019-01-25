@@ -18,14 +18,14 @@ func (m *SynchronizationMode) UnmarshalText(textBytes []byte) error {
 
 	// Convert to a VCS mode.
 	switch text {
-	case "symmetric":
-		*m = SynchronizationMode_SynchronizationModeSymmetric
-	case "source-wins":
-		*m = SynchronizationMode_SynchronizationModeSourceWins
-	case "mirror-safe":
-		*m = SynchronizationMode_SynchronizationModeMirrorSafe
-	case "mirror-exact":
-		*m = SynchronizationMode_SynchronizationModeMirrorExact
+	case "two-way-safe":
+		*m = SynchronizationMode_SynchronizationModeTwoWaySafe
+	case "two-way-resolved":
+		*m = SynchronizationMode_SynchronizationModeTwoWayResolved
+	case "one-way-safe":
+		*m = SynchronizationMode_SynchronizationModeOneWaySafe
+	case "one-way-replica":
+		*m = SynchronizationMode_SynchronizationModeOneWayReplica
 	default:
 		return errors.Errorf("unknown synchronization mode specification: %s", text)
 	}
@@ -38,13 +38,13 @@ func (m *SynchronizationMode) UnmarshalText(textBytes []byte) error {
 // valid, non-default value.
 func (m SynchronizationMode) Supported() bool {
 	switch m {
-	case SynchronizationMode_SynchronizationModeSymmetric:
+	case SynchronizationMode_SynchronizationModeTwoWaySafe:
 		return true
-	case SynchronizationMode_SynchronizationModeSourceWins:
+	case SynchronizationMode_SynchronizationModeTwoWayResolved:
 		return true
-	case SynchronizationMode_SynchronizationModeMirrorSafe:
+	case SynchronizationMode_SynchronizationModeOneWaySafe:
 		return true
-	case SynchronizationMode_SynchronizationModeMirrorExact:
+	case SynchronizationMode_SynchronizationModeOneWayReplica:
 		return true
 	default:
 		return false
@@ -56,14 +56,14 @@ func (m SynchronizationMode) Description() string {
 	switch m {
 	case SynchronizationMode_SynchronizationModeDefault:
 		return "Default"
-	case SynchronizationMode_SynchronizationModeSymmetric:
-		return "Symmetric"
-	case SynchronizationMode_SynchronizationModeSourceWins:
-		return "Source Wins"
-	case SynchronizationMode_SynchronizationModeMirrorSafe:
-		return "Mirror Safe"
-	case SynchronizationMode_SynchronizationModeMirrorExact:
-		return "Mirror Exact"
+	case SynchronizationMode_SynchronizationModeTwoWaySafe:
+		return "Two Way Safe"
+	case SynchronizationMode_SynchronizationModeTwoWayResolved:
+		return "Two Way Resolved"
+	case SynchronizationMode_SynchronizationModeOneWaySafe:
+		return "One Way Safe"
+	case SynchronizationMode_SynchronizationModeOneWayReplica:
+		return "One Way Replica"
 	default:
 		return "Unknown"
 	}

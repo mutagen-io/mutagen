@@ -13,30 +13,30 @@ enum SynchronizationMode {
     // behavior.
     SynchronizationModeDefault = 0;
 
-    // SynchronizationMode_SynchronizationModeSymmetric represents a
+    // SynchronizationMode_SynchronizationModeTwoWaySafe represents a
     // bidirectional synchronization mode where automatic conflict resolution is
     // performed only in cases where no data would be lost. Specifically, this
     // means that modified contents are allowed to propagate to the opposite
     // endpoint if the corresponding contents on the opposite endpoint are
     // unmodified or deleted. All other conflicts are left unresolved.
-    SynchronizationModeSymmetric = 1;
+    SynchronizationModeTwoWaySafe = 1;
 
-    // SynchronizationMode_SynchronizationModeSourceWins is the same as
-    // SynchronizationMode_SynchronizationModeSymmetric, but specifies that
-    // the alpha endpoint should win automatically in any conflict between alpha
-    // and beta, including cases where alpha has deleted contents that beta has
+    // SynchronizationMode_SynchronizationModeTwoWayResolved is the same as
+    // SynchronizationMode_SynchronizationModeTwoWaySafe, but specifies that the
+    // alpha endpoint should win automatically in any conflict between alpha and
+    // beta, including cases where alpha has deleted contents that beta has
     // modified.
-    SynchronizationModeSourceWins = 2;
+    SynchronizationModeTwoWayResolved = 2;
 
-    // SynchronizationMode_SynchronizationModeMirrorSafe represents a
+    // SynchronizationMode_SynchronizationModeOneWaySafe represents a
     // unidirectional synchronization mode where contents and changes propagate
     // from alpha to beta, but won't overwrite any creations or modifications on
     // beta.
-    SynchronizationModeMirrorSafe = 3;
+    SynchronizationModeOneWaySafe = 3;
 
-    // SynchronizationMode_SynchronizationModeMirrorSafe represents a
+    // SynchronizationMode_SynchronizationModeOneWayReplica represents a
     // unidirectional synchronization mode where contents on alpha are mirrored
-    // to beta, overwriting any conflicting contents on beta and deleting any
-    // excess contents on beta.
-    SynchronizationModeMirrorExact = 4;
+    // (verbatim) to beta, overwriting any conflicting contents on beta and
+    // deleting any extraneous contents on beta.
+    SynchronizationModeOneWayReplica = 4;
 }

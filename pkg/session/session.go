@@ -35,7 +35,7 @@ func (v Version) Hasher() hash.Hash {
 func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
 	switch v {
 	case Version_Version1:
-		return sync.SynchronizationMode_SynchronizationModeSymmetric
+		return sync.SynchronizationMode_SynchronizationModeTwoWaySafe
 	default:
 		panic("unknown or unsupported session version")
 	}

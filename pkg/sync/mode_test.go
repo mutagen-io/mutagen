@@ -15,10 +15,10 @@ func TestSynchronizationModeUnmarshal(t *testing.T) {
 	}{
 		{"", SynchronizationMode_SynchronizationModeDefault, true},
 		{"asdf", SynchronizationMode_SynchronizationModeDefault, true},
-		{"symmetric", SynchronizationMode_SynchronizationModeSymmetric, false},
-		{"source-wins", SynchronizationMode_SynchronizationModeSourceWins, false},
-		{"mirror-safe", SynchronizationMode_SynchronizationModeMirrorSafe, false},
-		{"mirror-exact", SynchronizationMode_SynchronizationModeMirrorExact, false},
+		{"two-way-safe", SynchronizationMode_SynchronizationModeTwoWaySafe, false},
+		{"two-way-resolved", SynchronizationMode_SynchronizationModeTwoWayResolved, false},
+		{"one-way-safe", SynchronizationMode_SynchronizationModeOneWaySafe, false},
+		{"one-way-replica", SynchronizationMode_SynchronizationModeOneWayReplica, false},
 	}
 
 	// Process test cases.
@@ -49,11 +49,11 @@ func TestSynchronizationModeSupported(t *testing.T) {
 		ExpectSupported bool
 	}{
 		{SynchronizationMode_SynchronizationModeDefault, false},
-		{SynchronizationMode_SynchronizationModeSymmetric, true},
-		{SynchronizationMode_SynchronizationModeSourceWins, true},
-		{SynchronizationMode_SynchronizationModeMirrorSafe, true},
-		{SynchronizationMode_SynchronizationModeMirrorExact, true},
-		{(SynchronizationMode_SynchronizationModeMirrorExact + 1), false},
+		{SynchronizationMode_SynchronizationModeTwoWaySafe, true},
+		{SynchronizationMode_SynchronizationModeTwoWayResolved, true},
+		{SynchronizationMode_SynchronizationModeOneWaySafe, true},
+		{SynchronizationMode_SynchronizationModeOneWayReplica, true},
+		{(SynchronizationMode_SynchronizationModeOneWayReplica + 1), false},
 	}
 
 	// Process test cases.
@@ -77,11 +77,11 @@ func TestSynchronizationModeDescription(t *testing.T) {
 		ExpectedDescription string
 	}{
 		{SynchronizationMode_SynchronizationModeDefault, "Default"},
-		{SynchronizationMode_SynchronizationModeSymmetric, "Symmetric"},
-		{SynchronizationMode_SynchronizationModeSourceWins, "Source Wins"},
-		{SynchronizationMode_SynchronizationModeMirrorSafe, "Mirror Safe"},
-		{SynchronizationMode_SynchronizationModeMirrorExact, "Mirror Exact"},
-		{(SynchronizationMode_SynchronizationModeMirrorExact + 1), "Unknown"},
+		{SynchronizationMode_SynchronizationModeTwoWaySafe, "Two Way Safe"},
+		{SynchronizationMode_SynchronizationModeTwoWayResolved, "Two Way Resolved"},
+		{SynchronizationMode_SynchronizationModeOneWaySafe, "One Way Safe"},
+		{SynchronizationMode_SynchronizationModeOneWayReplica, "One Way Replica"},
+		{(SynchronizationMode_SynchronizationModeOneWayReplica + 1), "Unknown"},
 	}
 
 	// Process test cases.

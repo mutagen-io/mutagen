@@ -78,13 +78,13 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 	// Since there was a disagreement about the contents of this path, we need
 	// to disaptch to the appropriate handler.
 	switch r.synchronizationMode {
-	case SynchronizationMode_SynchronizationModeSymmetric:
+	case SynchronizationMode_SynchronizationModeTwoWaySafe:
 		r.handleDisagreementBidirectional(path, ancestor, alpha, beta)
-	case SynchronizationMode_SynchronizationModeSourceWins:
+	case SynchronizationMode_SynchronizationModeTwoWayResolved:
 		r.handleDisagreementBidirectional(path, ancestor, alpha, beta)
-	case SynchronizationMode_SynchronizationModeMirrorSafe:
+	case SynchronizationMode_SynchronizationModeOneWaySafe:
 		r.handleDisagreementUnidirectional(path, ancestor, alpha, beta)
-	case SynchronizationMode_SynchronizationModeMirrorExact:
+	case SynchronizationMode_SynchronizationModeOneWayReplica:
 		r.handleDisagreementUnidirectional(path, ancestor, alpha, beta)
 	default:
 		panic("unhandled synchronization mode")
@@ -125,7 +125,7 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 	// path), but if our synchronization mode states that alpha is the
 	// unequivocal winner, even in the case of deletions, then we can simply
 	// propagate its contents to beta.
-	if r.synchronizationMode == SynchronizationMode_SynchronizationModeSourceWins {
+	if r.synchronizationMode == SynchronizationMode_SynchronizationModeTwoWayResolved {
 		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
 			Old:  beta,
@@ -171,7 +171,7 @@ func (r *reconciler) handleDisagreementUnidirectional(path string, ancestor, alp
 	// If we're performing exact mirroring, then we can simply propagate
 	// contents (or lack thereof) from alpha to beta, overwriting any changes
 	// that may have occurred on beta.
-	if r.synchronizationMode == SynchronizationMode_SynchronizationModeMirrorExact {
+	if r.synchronizationMode == SynchronizationMode_SynchronizationModeOneWayReplica {
 		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
 			Old:  beta,
