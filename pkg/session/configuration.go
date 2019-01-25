@@ -30,10 +30,10 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 		return errors.New("nil configuration")
 	}
 
-	// Verify that the conflict resolution mode is unspecified or supported for
+	// Verify that the synchronization mode is unspecified or supported for
 	// usage.
-	if !c.ConflictResolutionMode.IsDefault() && !c.ConflictResolutionMode.Supported() {
-		return errors.New("unknown or unsupported conflict resolution mode")
+	if !c.SynchronizationMode.IsDefault() && !c.SynchronizationMode.Supported() {
+		return errors.New("unknown or unsupported synchronization mode")
 	}
 
 	// Verify that the symlink mode is unspecified or supported for usage.
@@ -92,12 +92,12 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 
 	// Create a session configuration object.
 	result := &Configuration{
-		ConflictResolutionMode: configuration.Synchronization.ConflictResolutionMode,
-		SymlinkMode:            configuration.Symlink.Mode,
-		WatchMode:              configuration.Watch.Mode,
-		WatchPollingInterval:   configuration.Watch.PollingInterval,
-		DefaultIgnores:         configuration.Ignore.Default,
-		IgnoreVCSMode:          configuration.Ignore.VCS,
+		SynchronizationMode:  configuration.Synchronization.Mode,
+		SymlinkMode:          configuration.Symlink.Mode,
+		WatchMode:            configuration.Watch.Mode,
+		WatchPollingInterval: configuration.Watch.PollingInterval,
+		DefaultIgnores:       configuration.Ignore.Default,
+		IgnoreVCSMode:        configuration.Ignore.VCS,
 	}
 
 	// Verify that the resulting configuration is valid.
@@ -116,11 +116,11 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 	// Create the resulting configuration.
 	result := &Configuration{}
 
-	// Merge conflict resolution mode.
-	if !session.ConflictResolutionMode.IsDefault() {
-		result.ConflictResolutionMode = session.ConflictResolutionMode
+	// Merge synchronization mode.
+	if !session.SynchronizationMode.IsDefault() {
+		result.SynchronizationMode = session.SynchronizationMode
 	} else {
-		result.ConflictResolutionMode = global.ConflictResolutionMode
+		result.SynchronizationMode = global.SynchronizationMode
 	}
 
 	// Merge symlink mode.
