@@ -5,8 +5,8 @@ package session;
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
 import "filesystem/watch.proto";
-import "sync/conflict_resolution.proto";
 import "sync/ignore.proto";
+import "sync/mode.proto";
 import "sync/symlink.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
@@ -18,16 +18,11 @@ message Configuration {
     // reserved for symlink configuration parameters) due to the historical
     // order in which these fields were added.
 
-    // Field 11 is reserved for synchronization mode.
+    // SynchronizationMode specifies the synchronization mode that should be
+    // used in synchronization.
+    sync.SynchronizationMode synchronizationMode = 11;
 
-    // Field 12 is reserved for unidirectional synchronization deletion
-    // behavior.
-
-    // ConflictResolutionMode specifies the conflict resolution mode that should
-    // be used in bidirectional synchronization.
-    sync.ConflictResolutionMode conflictResolutionMode = 13;
-
-    // Fields 14-20 are reserved for future synchronization configuration
+    // Fields 12-20 are reserved for future synchronization configuration
     // parameters.
 
 

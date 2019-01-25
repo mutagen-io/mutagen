@@ -11,23 +11,6 @@ func TestChangeNilInvalid(t *testing.T) {
 	}
 }
 
-func TestChangeBothNilInvalid(t *testing.T) {
-	change := &Change{}
-	if change.EnsureValid() == nil {
-		t.Error("change with both entries nil considered valid")
-	}
-}
-
-func TestChangeBothSameInvalid(t *testing.T) {
-	change := &Change{
-		Old: testFile1Entry,
-		New: testFile1Entry,
-	}
-	if change.EnsureValid() == nil {
-		t.Error("change with duplicate considered valid")
-	}
-}
-
 func TestChangeValid(t *testing.T) {
 	change := &Change{New: testSymlinkEntry}
 	if err := change.EnsureValid(); err != nil {

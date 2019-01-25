@@ -300,7 +300,7 @@ func TestConflictNoBetaChangesInvalid(t *testing.T) {
 
 func TestConflictInvalidAlphaChangeInvalid(t *testing.T) {
 	conflict := &Conflict{
-		AlphaChanges: []*Change{{}},
+		AlphaChanges: []*Change{nil},
 		BetaChanges:  []*Change{{New: testFile1Entry}},
 	}
 	if conflict.EnsureValid() == nil {
@@ -311,7 +311,7 @@ func TestConflictInvalidAlphaChangeInvalid(t *testing.T) {
 func TestConflictInvalidBetaChangeInvalid(t *testing.T) {
 	conflict := &Conflict{
 		AlphaChanges: []*Change{{New: testFile1Entry}},
-		BetaChanges:  []*Change{{}},
+		BetaChanges:  []*Change{nil},
 	}
 	if conflict.EnsureValid() == nil {
 		t.Error("conflict with invalid beta change considered valid")

@@ -90,9 +90,9 @@ type reconcileTestCase struct {
 	alpha *Entry
 	// beta is the beta contents for reconciliation.
 	beta *Entry
-	// conflictResolutionModes are the conflict resolution modes for which the
-	// test case should apply.
-	conflictResolutionModes []ConflictResolutionMode
+	// synchronizationModes are the synchronization modes for which the test
+	// case should apply.
+	synchronizationModes []SynchronizationMode
 	// expectedAncestorChanges are the expected ancestor changes.
 	expectedAncestorChanges []*Change
 	// expectedAlphaChanges are the expected alpha changes.
@@ -109,11 +109,11 @@ func (c *reconcileTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Run in each of the specified conflict resolution modes.
-	for _, conflictResolutionMode := range c.conflictResolutionModes {
+	for _, synchronizationMode := range c.synchronizationModes {
 		// Perform reconciliation.
 		ancestorChanges, alphaChanges, betaChanges, conflicts := Reconcile(
 			c.ancestor, c.alpha, c.beta,
-			conflictResolutionMode,
+			synchronizationMode,
 		)
 
 		// Check that ancestor changes are what we expect.
@@ -121,7 +121,7 @@ func (c *reconcileTestCase) run(t *testing.T) {
 			t.Error(
 				"ancestor changes do not match expected:",
 				ancestorChanges, "!=", c.expectedAncestorChanges,
-				"using", conflictResolutionMode,
+				"using", synchronizationMode,
 			)
 		}
 
@@ -130,7 +130,7 @@ func (c *reconcileTestCase) run(t *testing.T) {
 			t.Error(
 				"alpha changes do not match expected:",
 				alphaChanges, "!=", c.expectedAlphaChanges,
-				"using", conflictResolutionMode,
+				"using", synchronizationMode,
 			)
 		}
 
@@ -139,7 +139,7 @@ func (c *reconcileTestCase) run(t *testing.T) {
 			t.Error(
 				"beta changes do not match expected:",
 				betaChanges, "!=", c.expectedBetaChanges,
-				"using", conflictResolutionMode,
+				"using", synchronizationMode,
 			)
 		}
 
@@ -148,7 +148,7 @@ func (c *reconcileTestCase) run(t *testing.T) {
 			t.Error(
 				"conflicts do not match expected:",
 				conflicts, "!=", c.expectedConflicts,
-				"using", conflictResolutionMode,
+				"using", synchronizationMode,
 			)
 		}
 	}
@@ -179,12 +179,11 @@ func TestReconcileAllNil(t *testing.T) {
 		ancestor: nil,
 		alpha:    nil,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -202,12 +201,11 @@ func TestReconcileDirectoryNothingChanged(t *testing.T) {
 		ancestor: testDirectory1Entry,
 		alpha:    testDirectory1Entry,
 		beta:     testDirectory1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -225,12 +223,11 @@ func TestReconcileFileNothingChanged(t *testing.T) {
 		ancestor: testFile1Entry,
 		alpha:    testFile1Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -248,12 +245,11 @@ func TestReconcileAlphaDeletedRoot(t *testing.T) {
 		ancestor: testFile1Entry,
 		alpha:    nil,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -267,18 +263,15 @@ func TestReconcileAlphaDeletedRoot(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBetaDeletedRoot(t *testing.T) {
+func TestReconcileBetaDeletedRootBidirectional(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testFile1Entry,
 		alpha:    testFile1Entry,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges: []*Change{
@@ -292,18 +285,39 @@ func TestReconcileBetaDeletedRoot(t *testing.T) {
 	testCase.run(t)
 }
 
+func TestReconcileBetaDeletedRootUnidirectional(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    testFile1Entry,
+		beta:     nil,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{New: testFile1Entry},
+		},
+		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
 func TestReconcileBothDeletedRoot(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testFile1Entry,
 		alpha:    nil,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: []*Change{
 			{},
@@ -323,12 +337,11 @@ func TestReconcileAlphaCreatedRoot(t *testing.T) {
 		ancestor: nil,
 		alpha:    testFile1Entry,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -342,18 +355,15 @@ func TestReconcileAlphaCreatedRoot(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBetaCreatedRoot(t *testing.T) {
+func TestReconcileBetaCreatedRootBidirectional(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
 		alpha:    nil,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges: []*Change{
@@ -367,18 +377,57 @@ func TestReconcileBetaCreatedRoot(t *testing.T) {
 	testCase.run(t)
 }
 
+func TestReconcileBetaCreatedRootMirrorSafe(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: nil,
+		alpha:    nil,
+		beta:     testFile1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts:       nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileBetaCreatedRootMirrorExact(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: nil,
+		alpha:    nil,
+		beta:     testFile1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorExact,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{Old: testFile1Entry},
+		},
+		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
 func TestReconcileBothCreatedSameFile(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
 		alpha:    testFile1Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: []*Change{
 			{New: testFile1Entry},
@@ -398,12 +447,11 @@ func TestReconcileBothCreatedSameDirectory(t *testing.T) {
 		ancestor: nil,
 		alpha:    testDirectory1Entry,
 		beta:     testDirectory1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: testDecomposeEntry("", testDirectory1Entry, true),
 		expectedAlphaChanges:    nil,
@@ -415,7 +463,7 @@ func TestReconcileBothCreatedSameDirectory(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedPartiallyMatchingContentsSafe(t *testing.T) {
+func TestReconcileBothCreatedPartiallyMatchingContentsSymmetric(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: &Entry{},
@@ -433,8 +481,8 @@ func TestReconcileBothCreatedPartiallyMatchingContentsSafe(t *testing.T) {
 				"different": testDirectory3Entry,
 			},
 		},
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
 		},
 		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
 		expectedAlphaChanges: []*Change{
@@ -465,7 +513,7 @@ func TestReconcileBothCreatedPartiallyMatchingContentsSafe(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedPartiallyMatchingContentsAlphaWinsIncludingAll(t *testing.T) {
+func TestReconcileBothCreatedPartiallyMatchingContentsSourceWins(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: &Entry{},
@@ -483,9 +531,8 @@ func TestReconcileBothCreatedPartiallyMatchingContentsAlphaWinsIncludingAll(t *t
 				"different": testDirectory3Entry,
 			},
 		},
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSourceWins,
 		},
 		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
 		expectedAlphaChanges: []*Change{
@@ -502,7 +549,7 @@ func TestReconcileBothCreatedPartiallyMatchingContentsAlphaWinsIncludingAll(t *t
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedPartiallyMatchingContentsBetaWinsIncludingAll(t *testing.T) {
+func TestReconcileBothCreatedPartiallyMatchingContentsMirrorSafe(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: &Entry{},
@@ -520,17 +567,63 @@ func TestReconcileBothCreatedPartiallyMatchingContentsBetaWinsIncludingAll(t *te
 				"different": testDirectory3Entry,
 			},
 		},
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
 		},
 		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
-		expectedAlphaChanges: []*Change{
-			{Path: "beta", New: testFile2Entry},
-			{Path: "different", Old: testFile1Entry, New: testDirectory3Entry},
-		},
+		expectedAlphaChanges:    nil,
 		expectedBetaChanges: []*Change{
 			{Path: "alpha", New: testFile1Entry},
+		},
+		expectedConflicts: []*Conflict{
+			{
+				AlphaChanges: []*Change{
+					{
+						Path: "different",
+						New:  testFile1Entry,
+					},
+				},
+				BetaChanges: []*Change{
+					{
+						Path: "different",
+						New:  testDirectory3Entry,
+					},
+				},
+			},
+		},
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileBothCreatedPartiallyMatchingContentsMirrorExact(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: &Entry{},
+		alpha: &Entry{
+			Contents: map[string]*Entry{
+				"same":      testDirectory1Entry,
+				"alpha":     testFile1Entry,
+				"different": testFile1Entry,
+			},
+		},
+		beta: &Entry{
+			Contents: map[string]*Entry{
+				"same":      testDirectory1Entry,
+				"beta":      testFile2Entry,
+				"different": testDirectory3Entry,
+			},
+		},
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorExact,
+		},
+		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{Path: "alpha", New: testFile1Entry},
+			{Path: "beta", Old: testFile2Entry},
+			{Path: "different", Old: testDirectory3Entry, New: testFile1Entry},
 		},
 		expectedConflicts: nil,
 	}
@@ -545,8 +638,9 @@ func TestReconcileBothCreatedDifferentTypesSafe(t *testing.T) {
 		ancestor: nil,
 		alpha:    testDirectory1Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -567,15 +661,15 @@ func TestReconcileBothCreatedDifferentTypesSafe(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedDifferentTypesAlphaWinsIncludingAll(t *testing.T) {
+func TestReconcileBothCreatedDifferentTypesOverwrite(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: nil,
 		alpha:    testDirectory1Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -592,42 +686,14 @@ func TestReconcileBothCreatedDifferentTypesAlphaWinsIncludingAll(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBothCreatedDifferentTypesBetaWinsIncludingAll(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testDirectory1Entry,
-		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{
-				Old: testDirectory1Entry,
-				New: testFile1Entry,
-			},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedFileNonAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaDeletedRootBetaCreatedFileSymmetric(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory1Entry,
 		alpha:    nil,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges: []*Change{
@@ -641,14 +707,15 @@ func TestReconcileAlphaDeletedRootBetaCreatedFileNonAlphaWinsAll(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileAlphaDeletedRootBetaCreatedFileAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaDeletedRootBetaCreatedFileUnsafe(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory1Entry,
 		alpha:    nil,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -662,17 +729,38 @@ func TestReconcileAlphaDeletedRootBetaCreatedFileAlphaWinsAll(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileAlphaCreatedFileBetaDeletedRootNonBetaWinsAll(t *testing.T) {
+func TestReconcileAlphaDeletedRootBetaCreatedFileMirrorSafe(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testDirectory1Entry,
+		alpha:    nil,
+		beta:     testFile1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+		},
+		expectedAncestorChanges: []*Change{
+			{},
+		},
+		expectedAlphaChanges: nil,
+		expectedBetaChanges:  nil,
+		expectedConflicts:    nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory1Entry,
 		alpha:    testFile1Entry,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -686,38 +774,14 @@ func TestReconcileAlphaCreatedFileBetaDeletedRootNonBetaWinsAll(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileAlphaCreatedFileBetaDeletedRootBetaWinsAll(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    testFile1Entry,
-		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{Old: testFile1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedDirectoryNonAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaDeletedRootBetaCreatedDirectorySymmetric(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testFile1Entry,
 		alpha:    nil,
 		beta:     testDirectory1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges: []*Change{
@@ -731,14 +795,15 @@ func TestReconcileAlphaDeletedRootBetaCreatedDirectoryNonAlphaWinsAll(t *testing
 	testCase.run(t)
 }
 
-func TestReconcileAlphaDeletedRootBetaCreatedDirectoryAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaDeletedRootBetaCreatedDirectoryUnsafe(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
 		ancestor: testFile1Entry,
 		alpha:    nil,
 		beta:     testDirectory1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -746,6 +811,27 @@ func TestReconcileAlphaDeletedRootBetaCreatedDirectoryAlphaWinsAll(t *testing.T)
 			{Old: testDirectory1Entry},
 		},
 		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileAlphaDeletedRootBetaCreatedDirectoryMirrorSafe(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    nil,
+		beta:     testDirectory1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+		},
+		expectedAncestorChanges: []*Change{
+			{},
+		},
+		expectedAlphaChanges: nil,
+		expectedBetaChanges:  nil,
+		expectedConflicts:    nil,
 	}
 
 	// Run the test case.
@@ -758,11 +844,11 @@ func TestReconcileAlphaCreatedDirectoryBetaDeletedRootNonBetaWinsAll(t *testing.
 		ancestor: testFile1Entry,
 		alpha:    testDirectory1Entry,
 		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -776,39 +862,18 @@ func TestReconcileAlphaCreatedDirectoryBetaDeletedRootNonBetaWinsAll(t *testing.
 	testCase.run(t)
 }
 
-func TestReconcileAlphaCreatedDirectoryBetaDeletedRootBetaWinsAll(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testDirectory1Entry,
-		beta:     nil,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{Old: testDirectory1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaChangedDirectory(t *testing.T) {
-	// Set up the test case.
+func TestReconcileAlphaPartiallyDeletedDirectory(t *testing.T) {
+	// Set up the test case. Worth noting here is that testDirectory3Entry is a
+	// subtree of testDirectory2Entry.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory2Entry,
 		alpha:    testDirectory3Entry,
 		beta:     testDirectory2Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -820,18 +885,16 @@ func TestReconcileAlphaChangedDirectory(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileBetaChangedDirectory(t *testing.T) {
-	// Set up the test case.
+func TestReconcileBetaPartiallyDeletedDirectoryBidirectional(t *testing.T) {
+	// Set up the test case. Worth noting here is that testDirectory3Entry is a
+	// subtree of testDirectory2Entry.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory2Entry,
 		alpha:    testDirectory2Entry,
 		beta:     testDirectory3Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    diff("", testDirectory2Entry, testDirectory3Entry),
@@ -843,18 +906,39 @@ func TestReconcileBetaChangedDirectory(t *testing.T) {
 	testCase.run(t)
 }
 
-func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContentsNonBetaWinsAll(t *testing.T) {
+func TestReconcileBetaPartiallyDeletedDirectoryUnidirectional(t *testing.T) {
+	// Set up the test case. Worth noting here is that testDirectory3Entry is a
+	// subtree of testDirectory2Entry.
+	testCase := reconcileTestCase{
+		ancestor: testDirectory2Entry,
+		alpha:    testDirectory2Entry,
+		beta:     testDirectory3Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     diff("", testDirectory3Entry, testDirectory2Entry),
+		expectedConflicts:       nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileAlphaReplacedDirectoryBetaPartiallyDeletedDirectory(t *testing.T) {
 	// Set up the test case. Worth noting here is that testDirectory3Entry is a
 	// subtree of testDirectory2Entry.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory2Entry,
 		alpha:    testFile1Entry,
 		beta:     testDirectory3Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -871,43 +955,15 @@ func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContentsNonBetaWinsAll
 	testCase.run(t)
 }
 
-func TestReconcileAlphaReplacedDirectoryBetaDeletedPartialContentsBetaWinsAll(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testFile1Entry,
-		beta:     testDirectory3Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{
-				Old: testFile1Entry,
-				New: testDirectory3Entry,
-			},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectoryNonAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectorySymmetric(t *testing.T) {
 	// Set up the test case. Worth noting here is that testDirectory3Entry is a
 	// subtree of testDirectory2Entry.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory2Entry,
 		alpha:    testDirectory3Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeSafe,
-			ConflictResolutionMode_ConflictResolutionModeAlphaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWins,
-			ConflictResolutionMode_ConflictResolutionModeBetaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSymmetric,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges: []*Change{
@@ -924,15 +980,16 @@ func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectoryNonAlphaWinsAl
 	testCase.run(t)
 }
 
-func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectoryAlphaWinsAll(t *testing.T) {
+func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectoryUnsafe(t *testing.T) {
 	// Set up the test case. Worth noting here is that testDirectory3Entry is a
 	// subtree of testDirectory2Entry.
 	testCase := reconcileTestCase{
 		ancestor: testDirectory2Entry,
 		alpha:    testDirectory3Entry,
 		beta:     testFile1Entry,
-		conflictResolutionModes: []ConflictResolutionMode{
-			ConflictResolutionMode_ConflictResolutionModeAlphaWinsAll,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeSourceWins,
+			SynchronizationMode_SynchronizationModeMirrorExact,
 		},
 		expectedAncestorChanges: nil,
 		expectedAlphaChanges:    nil,
@@ -943,6 +1000,31 @@ func TestReconcileAlphaDeletedPartialContentsBetaReplacedDirectoryAlphaWinsAll(t
 			},
 		},
 		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectoryMirrorSafe(t *testing.T) {
+	// Set up the test case. Worth noting here is that testDirectory3Entry is a
+	// subtree of testDirectory2Entry.
+	testCase := reconcileTestCase{
+		ancestor: testDirectory2Entry,
+		alpha:    testDirectory3Entry,
+		beta:     testFile1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeMirrorSafe,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts: []*Conflict{
+			{
+				AlphaChanges: diff("", testDirectory2Entry, testDirectory3Entry),
+				BetaChanges:  diff("", testDirectory2Entry, testFile1Entry),
+			},
+		},
 	}
 
 	// Run the test case.

@@ -47,11 +47,11 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate and convert the conflict resolution mode specification.
-	var conflictResolutionMode sync.ConflictResolutionMode
-	if createConfiguration.conflictResolutionMode != "" {
-		if err := conflictResolutionMode.UnmarshalText([]byte(createConfiguration.conflictResolutionMode)); err != nil {
-			return errors.Wrap(err, "unable to parse conflict resolution mode")
+	// Validate and convert the synchronization mode specification.
+	var synchronizationMode sync.SynchronizationMode
+	if createConfiguration.synchronizationMode != "" {
+		if err := synchronizationMode.UnmarshalText([]byte(createConfiguration.synchronizationMode)); err != nil {
+			return errors.Wrap(err, "unable to parse synchronization mode")
 		}
 	}
 
@@ -163,7 +163,7 @@ var createConfiguration struct {
 	ignores                []string
 	ignoreVCS              bool
 	noIgnoreVCS            bool
-	conflictResolutionMode string
+	synchronizationMode    string
 	symlinkMode            string
 	watchMode              string
 	watchPollingInterval   uint32
@@ -177,7 +177,7 @@ func init() {
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")
-	flags.StringVar(&createConfiguration.conflictResolutionMode, "conflict-resolution-mode", "", "Specify conflict resolution mode (safe|alpha-wins|beta-wins|alpha-wins-all|beta-wins-all)")
+	flags.StringVar(&createConfiguration.synchronizationMode, "synchronization-mode", "", "Specify synchronization mode (symmetric|source-wins|mirror-safe|mirror-exact)")
 	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
