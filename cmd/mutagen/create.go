@@ -111,12 +111,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Alpha: alpha,
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
-			ConflictResolutionMode: conflictResolutionMode,
-			SymlinkMode:            symlinkMode,
-			WatchMode:              watchMode,
-			WatchPollingInterval:   createConfiguration.watchPollingInterval,
-			Ignores:                createConfiguration.ignores,
-			IgnoreVCSMode:          ignoreVCSMode,
+			SynchronizationMode:  synchronizationMode,
+			SymlinkMode:          symlinkMode,
+			WatchMode:            watchMode,
+			WatchPollingInterval: createConfiguration.watchPollingInterval,
+			Ignores:              createConfiguration.ignores,
+			IgnoreVCSMode:        ignoreVCSMode,
 		},
 	}
 	if err := stream.Send(request); err != nil {

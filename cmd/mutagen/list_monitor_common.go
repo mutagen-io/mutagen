@@ -17,13 +17,13 @@ func printSession(state *sessionpkg.State, long bool) {
 		// Extract configuration.
 		configuration := state.Session.Configuration
 
-		// Compute and print conflict resolution mode.
-		conflictResolutionMode := configuration.ConflictResolutionMode.Description()
-		if configuration.ConflictResolutionMode.IsDefault() {
-			defaultConflictResolutionMode := state.Session.Version.DefaultConflictResolutionMode()
-			conflictResolutionMode += fmt.Sprintf(" (%s)", defaultConflictResolutionMode.Description())
+		// Compute and print synchronization mode.
+		synchronizationMode := configuration.SynchronizationMode.Description()
+		if configuration.SynchronizationMode.IsDefault() {
+			defaultSynchronizationMode := state.Session.Version.DefaultSynchronizationMode()
+			synchronizationMode += fmt.Sprintf(" (%s)", defaultSynchronizationMode.Description())
 		}
-		fmt.Println("Conflict resolution mode:", conflictResolutionMode)
+		fmt.Println("Synchronization mode:", synchronizationMode)
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := configuration.SymlinkMode.Description()
