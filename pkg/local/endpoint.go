@@ -30,6 +30,9 @@ type endpoint struct {
 	symlinkMode sync.SymlinkMode
 	// ignores is the list of ignored paths for the session. It is static.
 	ignores []string
+	// permissionExposureLevel is the permission exposure level to use in
+	// "portable" permission propagation. It is static.
+	permissionExposureLevel sync.PermissionExposureLevel
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
@@ -98,6 +101,21 @@ func NewEndpoint(
 		ignoreVCSMode = version.DefaultIgnoreVCSMode()
 	}
 
+	// Extract the effective permission exposure level.
+	permissionExposureLevel := configuration.PermissionExposureLevel
+	if alpha {
+		if !configuration.AlphaPermissionExposureLevel.IsDefault() {
+			permissionExposureLevel = configuration.AlphaPermissionExposureLevel
+		}
+	} else {
+		if !configuration.BetaPermissionExposureLevel.IsDefault() {
+			permissionExposureLevel = configuration.BetaPermissionExposureLevel
+		}
+	}
+	if permissionExposureLevel.IsDefault() {
+		permissionExposureLevel = version.DefaultPermissionExposureLevel()
+	}
+
 	// Compute a combined ignore list.
 	var ignores []string
 	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCS {
@@ -158,15 +176,16 @@ func NewEndpoint(
 
 	// Success.
 	return &endpoint{
-		root:        root,
-		watchCancel: watchCancel,
-		watchEvents: watchEvents,
-		symlinkMode: symlinkMode,
-		ignores:     ignores,
-		cachePath:   cachePath,
-		cache:       cache,
-		scanHasher:  version.Hasher(),
-		stager:      newStager(version, stagingRoot),
+		root:                    root,
+		watchCancel:             watchCancel,
+		watchEvents:             watchEvents,
+		symlinkMode:             symlinkMode,
+		ignores:                 ignores,
+		permissionExposureLevel: permissionExposureLevel,
+		cachePath:               cachePath,
+		cache:                   cache,
+		scanHasher:              version.Hasher(),
+		stager:                  newStager(version, stagingRoot),
 	}, nil
 }
 
@@ -345,7 +364,15 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	defer e.scanParametersLock.Unlock()
 
 	// Perform the transition.
-	results, problems := sync.Transition(e.root, transitions, e.cache, e.symlinkMode, e.recomposeUnicode, e.stager)
+	results, problems := sync.Transition(
+		e.root,
+		transitions,
+		e.cache,
+		e.symlinkMode,
+		e.permissionExposureLevel,
+		e.recomposeUnicode,
+		e.stager,
+	)
 
 	// Wipe the staging directory. We don't monitor for errors here, because we
 	// need to return the results and problems no matter what, but if there's

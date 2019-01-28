@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package sync;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/sync";
+
+
+// PermissionExposureLevel specifies the exposure level for base permissions in
+// "portable" permission propagation mode.
+enum PermissionExposureLevel {
+    // PermissionExposureLevel_PermissionExposureLevelDefault represents an
+    // unspecified permission exposure level. It is not valid for use with
+    // Transition. It should be converted to one of the following values based
+    // on the desired default behavior.
+    PermissionExposureLevelDefault = 0;
+    // PermissionExposureLevel_PermissionExposureLevelUser specifies that a base
+    // permission that exposes content only to the user should be used.
+    PermissionExposureLevelUser = 1;
+    // PermissionExposureLevel_PermissionExposureLevelGroup specifies that a
+    // base permission that exposes content only to the user and their group
+    // should be used.
+    PermissionExposureLevelGroup = 2;
+    // PermissionExposureLevel_PermissionExposureLevelOther specifies that a
+    // base permission that exposes content only to the user, their group, and
+    // other system users (i.e. no restrictions whatsoever) should be used.
+    PermissionExposureLevelOther = 3;
+}

@@ -33,6 +33,9 @@ type transitioner struct {
 	// symlinkMode is the symlink mode to use for synchronization. It's required
 	// to verify existing symlinks (which may require normalization).
 	symlinkMode SymlinkMode
+	// permissionExposureLevel is the permission exposure level to use for new
+	// directories and files in "portable" permission propagation.
+	permissionExposureLevel PermissionExposureLevel
 	// recomposeUnicode indicates whether or not filenames need to be recomposed
 	// due to Unicode decomposition behavior on the synchronization root
 	// filesystem.
@@ -438,7 +441,7 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 	}
 
 	// Compute the new file mode based on the new entry's executability.
-	mode := newFileBaseMode
+	mode := t.permissionExposureLevel.newFileBaseMode()
 	if target.Executable {
 		mode = markExecutableForReaders(mode)
 	} else {
@@ -488,6 +491,7 @@ func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
 	}
 
 	// Attempt to create the directory.
+	newDirectoryBaseMode := t.permissionExposureLevel.newDirectoryBaseMode()
 	if err := os.Mkdir(filepath.Join(t.root, path), newDirectoryBaseMode); err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to create directory"))
 		return nil
@@ -554,6 +558,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 	// the root path exists and is a directory. We can assume that it's intended
 	// to be a directory since the root is intended to exist inside it.
 	if path == "" {
+		newDirectoryBaseMode := t.permissionExposureLevel.newDirectoryBaseMode()
 		if err := os.MkdirAll(filepath.Dir(t.root), newDirectoryBaseMode); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to create parent component of root path"))
 			return nil
@@ -608,16 +613,18 @@ func Transition(
 	transitions []*Change,
 	cache *Cache,
 	symlinkMode SymlinkMode,
+	permissionExposureLevel PermissionExposureLevel,
 	recomposeUnicode bool,
 	provider Provider,
 ) ([]*Entry, []*Problem) {
 	// Create the transitioner.
 	transitioner := &transitioner{
-		root:             root,
-		cache:            cache,
-		symlinkMode:      symlinkMode,
-		recomposeUnicode: recomposeUnicode,
-		provider:         provider,
+		root:                    root,
+		cache:                   cache,
+		symlinkMode:             symlinkMode,
+		permissionExposureLevel: permissionExposureLevel,
+		recomposeUnicode:        recomposeUnicode,
+		provider:                provider,
 	}
 
 	// Set up results.

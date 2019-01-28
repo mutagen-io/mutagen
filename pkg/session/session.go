@@ -72,6 +72,17 @@ func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
 	}
 }
 
+// DefaultPermissionExposureLevel returns the default permission exposure level
+// for the session version.
+func (v Version) DefaultPermissionExposureLevel() sync.PermissionExposureLevel {
+	switch v {
+	case Version_Version1:
+		return sync.PermissionExposureLevel_PermissionExposureLevelUser
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // EnsureValid ensures that Session's invariants are respected.
 func (s *Session) EnsureValid() error {
 	// A nil session is not valid.

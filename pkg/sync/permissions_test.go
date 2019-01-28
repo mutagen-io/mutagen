@@ -4,6 +4,95 @@ import (
 	"testing"
 )
 
+// TestPermissionExposureLevelUnmarshal tests that unmarshaling from a string
+// specification succeeeds for PermissionExposureLevel.
+func TestPermissionExposureLevelUnmarshal(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Text          string
+		ExpectedMode  PermissionExposureLevel
+		ExpectFailure bool
+	}{
+		{"", PermissionExposureLevel_PermissionExposureLevelDefault, true},
+		{"asdf", PermissionExposureLevel_PermissionExposureLevelDefault, true},
+		{"user", PermissionExposureLevel_PermissionExposureLevelUser, false},
+		{"group", PermissionExposureLevel_PermissionExposureLevelGroup, false},
+		{"other", PermissionExposureLevel_PermissionExposureLevelOther, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var mode PermissionExposureLevel
+		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
+			if !testCase.ExpectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+			}
+		} else if testCase.ExpectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
+		} else if mode != testCase.ExpectedMode {
+			t.Errorf(
+				"unmarshaled mode (%s) does not match expected (%s)",
+				mode,
+				testCase.ExpectedMode,
+			)
+		}
+	}
+}
+
+// TestPermissionExposureLevelSupported tests that PermissionExposureLevel
+// support detection works as expected.
+func TestPermissionExposureLevelSupported(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Mode            PermissionExposureLevel
+		ExpectSupported bool
+	}{
+		{PermissionExposureLevel_PermissionExposureLevelDefault, false},
+		{PermissionExposureLevel_PermissionExposureLevelUser, true},
+		{PermissionExposureLevel_PermissionExposureLevelGroup, true},
+		{PermissionExposureLevel_PermissionExposureLevelOther, true},
+		{(PermissionExposureLevel_PermissionExposureLevelOther + 1), false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+			t.Errorf(
+				"mode support status (%t) does not match expected (%t)",
+				supported,
+				testCase.ExpectSupported,
+			)
+		}
+	}
+}
+
+// TestPermissionExposureLevelDescription tests that PermissionExposureLevel
+// description generation works as expected.
+func TestPermissionExposureLevelDescription(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Mode                PermissionExposureLevel
+		ExpectedDescription string
+	}{
+		{PermissionExposureLevel_PermissionExposureLevelDefault, "Default"},
+		{PermissionExposureLevel_PermissionExposureLevelUser, "User"},
+		{PermissionExposureLevel_PermissionExposureLevelGroup, "Group"},
+		{PermissionExposureLevel_PermissionExposureLevelOther, "Other"},
+		{(PermissionExposureLevel_PermissionExposureLevelOther + 1), "Unknown"},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+			t.Errorf(
+				"mode description (%s) does not match expected (%s)",
+				description,
+				testCase.ExpectedDescription,
+			)
+		}
+	}
+}
+
 func TestAnyExecutableBitSet(t *testing.T) {
 	if anyExecutableBitSet(0666) {
 		t.Error("executable bits detected")

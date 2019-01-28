@@ -175,7 +175,15 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	defer provider.finalize()
 
 	// Perform the creation transition.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
+	if entries, problems := Transition(
+		root,
+		transitions,
+		nil,
+		SymlinkMode_SymlinkPortable,
+		PermissionExposureLevel_PermissionExposureLevelUser,
+		recomposeUnicode,
+		provider,
+	); len(problems) != 0 {
 		os.RemoveAll(parent)
 		return "", "", errors.New("problems occurred during creation transition")
 	} else if len(entries) != len(transitions) {
@@ -218,7 +226,15 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	}
 
 	// Perform the removal transition.
-	if entries, problems := Transition(root, transitions, cache, symlinkMode, recomposeUnicode, nil); len(problems) != 0 {
+	if entries, problems := Transition(
+		root,
+		transitions,
+		cache,
+		symlinkMode,
+		PermissionExposureLevel_PermissionExposureLevelUser,
+		recomposeUnicode,
+		nil,
+	); len(problems) != 0 {
 		return errors.New("problems occurred during removal transition")
 	} else if len(entries) != len(transitions) {
 		return errors.New("unexpected number of entries returned from removal transition")
@@ -384,7 +400,15 @@ func TestTransitionSwapFile(t *testing.T) {
 
 		// Perform the swap transition, ensure that it succeeds, and update the
 		// expected contents.
-		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) != 0 {
+		if entries, problems := Transition(
+			root,
+			transitions,
+			cache,
+			SymlinkMode_SymlinkPortable,
+			PermissionExposureLevel_PermissionExposureLevelUser,
+			recomposeUnicode,
+			provider,
+		); len(problems) != 0 {
 			return nil, errors.New("file swap transition failed")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from swap transition")
@@ -431,7 +455,15 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 
 		// Perform the swap transition with a nil provider (since it shouldn't
 		// be used), ensure that it succeeds, and update the expected contents.
-		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, nil); len(problems) != 0 {
+		if entries, problems := Transition(
+			root,
+			transitions,
+			cache,
+			SymlinkMode_SymlinkPortable,
+			PermissionExposureLevel_PermissionExposureLevelUser,
+			recomposeUnicode,
+			nil,
+		); len(problems) != 0 {
 			return nil, errors.New("file swap transition failed")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from swap transition")
@@ -531,7 +563,15 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 		defer provider.finalize()
 
 		// Perform the create transition and ensure that it fails.
-		if entries, problems := Transition(root, transitions, cache, SymlinkMode_SymlinkPortable, recomposeUnicode, provider); len(problems) == 0 {
+		if entries, problems := Transition(
+			root,
+			transitions,
+			cache,
+			SymlinkMode_SymlinkPortable,
+			PermissionExposureLevel_PermissionExposureLevelUser,
+			recomposeUnicode,
+			provider,
+		); len(problems) == 0 {
 			return nil, errors.New("transition succeeded unexpectedly")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from creation transition")
@@ -617,7 +657,15 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	defer provider.finalize()
 
 	// Perform the creation transition and ensure that it encounters a problem.
-	if entries, problems := Transition(root, transitions, nil, SymlinkMode_SymlinkPortable, false, provider); len(problems) != 1 {
+	if entries, problems := Transition(
+		root,
+		transitions,
+		nil,
+		SymlinkMode_SymlinkPortable,
+		PermissionExposureLevel_PermissionExposureLevelUser,
+		false,
+		provider,
+	); len(problems) != 1 {
 		t.Error("transition succeeded unexpectedly")
 	} else if len(entries) != 1 {
 		t.Error("transition returned invalid number of entries")

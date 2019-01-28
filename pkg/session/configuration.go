@@ -76,6 +76,25 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 		return errors.New("unknown or unsupported VCS ignore mode")
 	}
 
+	// Verify that permission exposure levels are unspecified or supported for
+	// usage.
+	if !c.PermissionExposureLevel.IsDefault() && !c.PermissionExposureLevel.Supported() {
+		return errors.New("unknown or unsupported permission exposure level")
+	}
+	if source == ConfigurationSourceGlobal {
+		if !c.AlphaPermissionExposureLevel.IsDefault() {
+			return errors.New("global configuration with alpha-specific permission exposure level specified")
+		} else if !c.BetaPermissionExposureLevel.IsDefault() {
+			return errors.New("global configuration with beta-specific permission exposure level specified")
+		}
+	} else {
+		if !c.AlphaPermissionExposureLevel.IsDefault() && !c.AlphaPermissionExposureLevel.Supported() {
+			return errors.New("unknown or unsupported alpha permission exposure level")
+		} else if !c.BetaPermissionExposureLevel.IsDefault() && !c.BetaPermissionExposureLevel.Supported() {
+			return errors.New("unknown or unsupported beta permission exposure level")
+		}
+	}
+
 	// Success.
 	return nil
 }
@@ -92,12 +111,13 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 
 	// Create a session configuration object.
 	result := &Configuration{
-		SynchronizationMode:  configuration.Synchronization.Mode,
-		SymlinkMode:          configuration.Symlink.Mode,
-		WatchMode:            configuration.Watch.Mode,
-		WatchPollingInterval: configuration.Watch.PollingInterval,
-		DefaultIgnores:       configuration.Ignore.Default,
-		IgnoreVCSMode:        configuration.Ignore.VCS,
+		SynchronizationMode:     configuration.Synchronization.Mode,
+		SymlinkMode:             configuration.Symlink.Mode,
+		WatchMode:               configuration.Watch.Mode,
+		WatchPollingInterval:    configuration.Watch.PollingInterval,
+		DefaultIgnores:          configuration.Ignore.Default,
+		IgnoreVCSMode:           configuration.Ignore.VCS,
+		PermissionExposureLevel: configuration.Permission.ExposureLevel,
 	}
 
 	// Verify that the resulting configuration is valid.
@@ -156,6 +176,16 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 	} else {
 		result.IgnoreVCSMode = global.IgnoreVCSMode
 	}
+
+	// Merge permission exposure levels. Endpoint-specific exposure levels are
+	// currently disallowed in the global configuration for safety reasons.
+	if !session.PermissionExposureLevel.IsDefault() {
+		result.PermissionExposureLevel = session.PermissionExposureLevel
+	} else {
+		result.PermissionExposureLevel = global.PermissionExposureLevel
+	}
+	result.AlphaPermissionExposureLevel = session.AlphaPermissionExposureLevel
+	result.BetaPermissionExposureLevel = session.BetaPermissionExposureLevel
 
 	// Done.
 	return result

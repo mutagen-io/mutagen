@@ -7,6 +7,7 @@ option go_package = "github.com/havoc-io/mutagen/pkg/session";
 import "filesystem/watch.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
+import "sync/permissions.proto";
 import "sync/symlink.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
@@ -65,4 +66,26 @@ message Configuration {
     sync.IgnoreVCSMode ignoreVCSMode = 33;
 
     // Fields 34-60 are reserved for future ignore configuration parameters.
+
+
+    // Permission configuration parameters (fields 61-80).
+
+    // Field 61 is reserved for PermissionMode.
+
+    // PermissionExposureLevel specifies the default exposure level for
+    // permissions in "portable" permission propagation mode, with
+    // endpoint-specific specifications taking priority.
+    sync.PermissionExposureLevel permissionExposureLevel = 62;
+
+    // AlphaPermissionExposureLevel specifies the default exposure level for
+    // permissions on alpha in "portable permission mode", taking priority over
+    // PermissionExposureLevel if specified.
+    sync.PermissionExposureLevel alphaPermissionExposureLevel = 63;
+
+    // BetaPermissionExposureLevel specifies the default exposure level for
+    // permissions on beta in "portable permission mode", taking priority over
+    // PermissionExposureLevel if specified.
+    sync.PermissionExposureLevel betaPermissionExposureLevel = 64;
+
+    // Fields 65-80 are reserved for future permission configuration parameters.
 }
