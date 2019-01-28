@@ -7,7 +7,7 @@ option go_package = "github.com/havoc-io/mutagen/pkg/session";
 import "filesystem/watch.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
-import "sync/permissions.proto";
+import "sync/permission.proto";
 import "sync/symlink.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
