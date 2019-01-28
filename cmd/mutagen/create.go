@@ -177,7 +177,7 @@ func init() {
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")
-	flags.StringVar(&createConfiguration.synchronizationMode, "synchronization-mode", "", "Specify synchronization mode (symmetric|source-wins|mirror-safe|mirror-exact)")
+	flags.StringVarP(&createConfiguration.synchronizationMode, "synchronization-mode", "m", "", "Specify synchronization mode (symmetric|source-wins|mirror-safe|mirror-exact)")
 	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
