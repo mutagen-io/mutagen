@@ -18,7 +18,7 @@ import (
 
 func formatPath(path string) string {
 	if path == "" {
-		return "(root)"
+		return "<root>"
 	}
 	return path
 }
