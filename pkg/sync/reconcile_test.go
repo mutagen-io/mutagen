@@ -239,6 +239,107 @@ func TestReconcileFileNothingChanged(t *testing.T) {
 	testCase.run(t)
 }
 
+func TestReconcileAlphaModifiedRoot(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    testFile2Entry,
+		beta:     testFile1Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeTwoWaySafe,
+			SynchronizationMode_SynchronizationModeTwoWayResolved,
+			SynchronizationMode_SynchronizationModeOneWaySafe,
+			SynchronizationMode_SynchronizationModeOneWayReplica,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{Old: testFile1Entry, New: testFile2Entry},
+		},
+		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileBetaModifiedRootBidirectional(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    testFile1Entry,
+		beta:     testFile2Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeTwoWaySafe,
+			SynchronizationMode_SynchronizationModeTwoWayResolved,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges: []*Change{
+			{Old: testFile1Entry, New: testFile2Entry},
+		},
+		expectedBetaChanges: nil,
+		expectedConflicts:   nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileBetaModifiedRootOneWaySafe(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    testFile1Entry,
+		beta:     testFile2Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeOneWaySafe,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges:     nil,
+		expectedConflicts: []*Conflict{
+			{
+				AlphaChanges: []*Change{
+					{
+						Old: testFile1Entry,
+						New: testFile1Entry,
+					},
+				},
+				BetaChanges: []*Change{
+					{
+						Old: testFile1Entry,
+						New: testFile2Entry,
+					},
+				},
+			},
+		},
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
+func TestReconcileBetaModifiedRootOneWayReplica(t *testing.T) {
+	// Set up the test case.
+	testCase := reconcileTestCase{
+		ancestor: testFile1Entry,
+		alpha:    testFile1Entry,
+		beta:     testFile2Entry,
+		synchronizationModes: []SynchronizationMode{
+			SynchronizationMode_SynchronizationModeOneWayReplica,
+		},
+		expectedAncestorChanges: nil,
+		expectedAlphaChanges:    nil,
+		expectedBetaChanges: []*Change{
+			{Old: testFile2Entry, New: testFile1Entry},
+		},
+		expectedConflicts: nil,
+	}
+
+	// Run the test case.
+	testCase.run(t)
+}
+
 func TestReconcileAlphaDeletedRoot(t *testing.T) {
 	// Set up the test case.
 	testCase := reconcileTestCase{
