@@ -15,8 +15,8 @@ Mutagen depends on the following third-party software:
 ================================================================================
 
 Go, the Go standard library, the Go crypto, net, sys, and text subrepositories,
-modified code from the Go standard library, and modified code from the build and
-exp subrepositories.
+modified code from the Go standard library, and modified code from the build,
+sys, and exp subrepositories.
 
 https://golang.org/
 https://github.com/golang/
@@ -115,6 +115,17 @@ go-isatty
 https://github.com/mattn/go-isatty
 
 Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
+go-acl
+
+https://github.com/hectane/go-acl
+
+Copyright (c) 2015 Nathan Osman
 
 Used under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.

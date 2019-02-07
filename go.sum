@@ -14,6 +14,8 @@ github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434 h1:pv+XB7AVlAEl9
 github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434/go.mod h1:2Bp/paC6WIT5rEqgNOjUvJcFj/BIuStH8YoMIj8rxSY=
 github.com/havoc-io/gopass v0.0.0-20170602182606-9a121bec1ae7 h1:ugvine+ipOFuvsbQRR8A9JmPHxNnw2Y3N0tZ5fPKLVo=
 github.com/havoc-io/gopass v0.0.0-20170602182606-9a121bec1ae7/go.mod h1:f9gPqQgJ3af7YNppznMOqzxsLZ79DbHmZ6/lef+LlPY=
+github.com/hectane/go-acl v0.0.0-20190112205748-6937c4c474eb h1:6IKzU4buXW5hM92bzfPl8voRA8cHioD40M6PTgaPI8Q=
+github.com/hectane/go-acl v0.0.0-20190112205748-6937c4c474eb/go.mod h1:xk/21OELzVCkl0NZCoB+eLISXe1p+YDiha8WaQDD1d8=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/mattn/go-colorable v0.0.0-20180310133214-efa589957cd0 h1:cDvUG90i1ssGJGqMNx2Ubbn+bx7VOzjdvQ45zpy0X4w=
@@ -32,8 +34,8 @@ golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd h1:SuDTjBhSMCPRh1JuhAAzDb
 golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/net v0.0.0-20180511174649-2491c5de3490 h1:0Q0ESa4hjqMAXX5fW/YoKX7MlU1fWzl2ZNJrv7Yo3ZE=
 golang.org/x/net v0.0.0-20180511174649-2491c5de3490/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
-golang.org/x/sys v0.0.0-20180510032850-7dfd1290c791 h1:fFK3O68ywqxh9kSJokoTlNlK0NSLZ66TYEOB+yqcOVs=
-golang.org/x/sys v0.0.0-20180510032850-7dfd1290c791/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190204203706-41f3e6584952 h1:FDfvYgoVsA7TTZSbgiqjAbfPbK47CNHdWl3h/PJtii0=
+golang.org/x/sys v0.0.0-20190204203706-41f3e6584952/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5 h1:23hw054QGj0KDkhDTmeMTzaawNqHp/Q5B65f8TTG3vg=
 golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 google.golang.org/genproto v0.0.0-20180514194645-7bb2a897381c h1:R3jNsirp2C5jVsB8uNG/vYmFEyzB9SLTFUwE0Wsj0B8=

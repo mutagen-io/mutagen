@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v0.0.0-20171129191014-dec09d789f3d
 	github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/havoc-io/gopass v0.0.0-20170602182606-9a121bec1ae7
+	github.com/hectane/go-acl v0.0.0-20190112205748-6937c4c474eb
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.0.0-20180310133214-efa589957cd0 // indirect
 	github.com/mattn/go-isatty v0.0.0-20171107050531-6ca4dbf54d38
@@ -18,7 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.2
 	golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd // indirect
 	golang.org/x/net v0.0.0-20180511174649-2491c5de3490
-	golang.org/x/sys v0.0.0-20180510032850-7dfd1290c791
+	golang.org/x/sys v0.0.0-20190204203706-41f3e6584952
 	golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5
 	google.golang.org/genproto v0.0.0-20180514194645-7bb2a897381c // indirect
 	google.golang.org/grpc v1.14.0

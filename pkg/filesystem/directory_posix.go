@@ -1,0 +1,411 @@
+// +build !windows
+
+package filesystem
+
+import (
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/pkg/errors"
+
+	"golang.org/x/sys/unix"
+)
+
+// pathSeparator is a byte representation of the OS path separator. We rely on
+// this being a single byte for performance in ensureValidName. For each
+// platform where we make this assumption, we have a test to ensure that it's
+// valid.
+var pathSeparator = byte(os.PathSeparator)
+
+// ensureValidName verifies that the provided name does not reference the
+// current directory, the parent directory, or contain a path separator
+// character.
+func ensureValidName(name string) error {
+	// Verify that the name does not reference the directory itself or the
+	// parent directory.
+	if name == "." {
+		return errors.New("name is directory reference")
+	} else if name == ".." {
+		return errors.New("name is parent directory reference")
+	}
+
+	// Verify that the path separator character does not appear in the name.
+	if strings.IndexByte(name, pathSeparator) != -1 {
+		return errors.New("path separator appears in name")
+	}
+
+	// Success.
+	return nil
+}
+
+// Directory represents a directory on disk and provides race-free operations on
+// the directory's contents. All of its operations avoid the traversal of
+// symbolic links.
+type Directory struct {
+	// file is the underlying os.File object corresponding to the directory.
+	file *os.File
+	// descriptor is the cached file descriptor extracted from the os.File
+	// object.
+	descriptor int
+}
+
+// Close closes the directory.
+func (d *Directory) Close() error {
+	return d.file.Close()
+}
+
+// CreateDirectory creates a new directory with the specified name inside the
+// directory. The directory will be created with user-only read/write/execute
+// permissions.
+func (d *Directory) CreateDirectory(name string) error {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Create the directory.
+	return mkdirat(d.descriptor, name, 0700)
+}
+
+// maximumTemporaryFileRetries is the maximum number of retries that we'll
+// perform when trying to find an available temporary file name.
+const maximumTemporaryFileRetries = 256
+
+// CreateTemporaryFile creates a new temporary file using the specified name
+// pattern inside the directory. Pattern behavior follows that of
+// io/ioutil.TempFile. The file will be created with user-only read/write
+// permissions.
+func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, error) {
+	// Verify that the name is valid. This should still be a sensible operation
+	// for pattern specifications.
+	if err := ensureValidName(pattern); err != nil {
+		return "", nil, err
+	}
+
+	// Parse the pattern into prefix and suffix components.
+	var prefix, suffix string
+	if starIndex := strings.LastIndex(pattern, "*"); starIndex != -1 {
+		prefix, suffix = pattern[:starIndex], pattern[starIndex+1:]
+	} else {
+		prefix = pattern
+	}
+
+	// Iterate until we can find a free file name. We take a slightly simpler
+	// approach than the io/ioutil.TempFile implementation and skip the user of
+	// a random number generator.
+	// TODO: Is it worth going through the trouble of using a random number
+	// generator for this?
+	for i := 0; i < maximumTemporaryFileRetries; i++ {
+		// Compute the next potential name.
+		name := prefix + strconv.Itoa(i) + suffix
+
+		// Attempt to open the file. Note that we needn't specify O_NOFOLLOW
+		// here since we're enforcing that the file doesn't already exist.
+		descriptor, err := openat(d.descriptor, name, os.O_RDWR|os.O_CREATE|os.O_EXCL|unix.O_CLOEXEC, 0600)
+		if err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return "", nil, errors.Wrap(err, "unable to create file")
+		}
+
+		// Success.
+		return name, os.NewFile(uintptr(descriptor), name), nil
+	}
+
+	// At this point, we've exhausted our maximum number of retries.
+	return "", nil, errors.New("exhausted potential file names")
+}
+
+// CreateSymbolicLink creates a new symbolic link with the specified name and
+// target inside the directory. The symbolic link is created with the default
+// system permissions (which, generally speaking, don't apply to the symbolic
+// link itself).
+func (d *Directory) CreateSymbolicLink(name, target string) error {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Create the symbolic link.
+	return symlinkat(target, d.descriptor, name)
+}
+
+// SetPermissions sets the permissions on the content within the directory
+// specified by name. Ownership information is set first, followed by
+// permissions extracted from the mode using ModePermissionsMask. Ownership
+// setting can be skipped by providing a nil OwnershipSpecification. Setting
+// only individual components of ownership can be accomplished by providing an
+// OwnershipSpecification with only the relevant components set. Permission
+// setting can be skipped by providing a mode value that yields 0 after
+// permission bit masking.
+func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecification, mode Mode) error {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Set ownership information, if specified.
+	if ownership != nil && (ownership.userID != -1 || ownership.groupID != -1) {
+		if err := fchownat(d.descriptor, name, ownership.userID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			return errors.Wrap(err, "unable to set ownership information")
+		}
+	}
+
+	// Set permissions, if specified.
+	mode = mode & ModePermissionsMask
+	if mode != 0 {
+		if err := fchmodat(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			return errors.Wrap(err, "unable to set permission bits")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
+// open is the underlying open implementation shared by OpenDirectory and
+// OpenFile.
+func (d *Directory) open(name string) (*os.File, int, error) {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return nil, 0, err
+	}
+
+	// Open the file for reading while avoiding symbolic link traversal. There
+	// are a few things to note about the flags that we use. First, we don't
+	// specify O_NONBLOCK because that flag applies to the open operation itself
+	// rather than the resulting file, and even for the resulting file we don't
+	// want to set a non-blocking mode because it isn't useful for directories
+	// or regular files. Second, we use the O_CLOEXEC flag to avoid any race
+	// conditions with fork/exec infrastructure. It used to be the case that
+	// this flag was not supported on every Go platform (and it's still not
+	// supported on some of the more esoteric ports (e.g. NaCL and and web
+	// platforms)), and there was a race condition between opening files and
+	// manually setting close-on-exec behavior, but nowadays all of the "real"
+	// POSIX platforms support this flag.
+	//
+	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
+	var descriptor int
+	for {
+		if d, err := openat(int(d.descriptor), name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
+			descriptor = d
+			break
+		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
+			continue
+		} else {
+			return nil, 0, err
+		}
+	}
+
+	// Wrap the descriptor up in a file object.
+	file := os.NewFile(uintptr(descriptor), name)
+
+	// TODO: Should we add an fstat operation (simply via os.File's Stat method)
+	// that enforces the opened file is of the desired type? If doing so is
+	// cheap, and it might be relatively cheap given our traversal patterns,
+	// then it might be worth doing. Symbolic links will definitely fail to open
+	// due to the presence of O_NOFOLLOW, but other file types and directories
+	// could open, with varying levels of failure amongst later operations on
+	// the file.
+
+	// Success.
+	return file, descriptor, nil
+}
+
+// OpenDirectory opens the directory within the directory specified by name.
+func (d *Directory) OpenDirectory(name string) (*Directory, error) {
+	// Call the underlying open method.
+	file, descriptor, err := d.open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return &Directory{
+		file:       file,
+		descriptor: descriptor,
+	}, nil
+}
+
+// readMetadata reads metadata for the filesystem entry within the directory
+// specified by name.
+func (d *Directory) readMetadata(name string) (*Metadata, error) {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return nil, err
+	}
+
+	// Query metadata.
+	var metadata unix.Stat_t
+	if err := fstatat(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return nil, err
+	}
+
+	// Extract modification time specification.
+	modificationTime := extractModificationTime(&metadata)
+
+	// Success.
+	return &Metadata{
+		Name:             name,
+		Mode:             Mode(metadata.Mode),
+		Size:             uint64(metadata.Size),
+		ModificationTime: time.Unix(modificationTime.Unix()),
+		DeviceID:         uint64(metadata.Dev),
+		FileID:           uint64(metadata.Ino),
+	}, nil
+}
+
+// ReadContents queries the directory contents and their associated metadata.
+func (d *Directory) ReadContents() ([]*Metadata, error) {
+	// Read content names. Fortunately we can use the os.File implementation for
+	// this since it operates on the underlying file descriptor directly.
+	names, err := d.file.Readdirnames(0)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to read directory content names")
+	}
+
+	// Allocate the result slice with enough capacity to accommodate all
+	// entries.
+	results := make([]*Metadata, 0, len(names))
+
+	// Loop over names and grab their individual metadata.
+	for _, name := range names {
+		// Watch for names that reference the directory itself or the parent
+		// directory. The implementation underlying os.File.Readdirnames does
+		// filter these out, but that's not guaranteed by its documentation, so
+		// it's better to do this explicitly.
+		if name == "." || name == ".." {
+			continue
+		}
+
+		// Grab metadata for this entry. If the file has disappeared between
+		// listing and the metadata query, then just pretend that it never
+		// existed, because from an observability standpoint, it may as well not
+		// have.
+		metadata, err := d.readMetadata(name)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, errors.Wrap(err, "unable to access content metadata")
+		}
+
+		// Apppend the metadata.
+		results = append(results, metadata)
+	}
+
+	// Success.
+	return results, nil
+}
+
+// OpenFile opens the file within the directory specified by name.
+func (d *Directory) OpenFile(name string) (ReadableFile, error) {
+	file, _, err := d.open(name)
+	return file, err
+}
+
+// readlinkInitialBufferSize specifies the initial buffer size to use for
+// readlinkat operations. It should be large enough to accomodate most symbolic
+// links but not so large that every readlinkat operation incurs an inordinate
+// amount of allocation overhead. This value is pinched from the os.Readlink
+// implementation.
+const readlinkInitialBufferSize = 128
+
+// ReadSymbolicLink reads the target of the symbolic link within the directory
+// specified by name.
+func (d *Directory) ReadSymbolicLink(name string) (string, error) {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return "", err
+	}
+
+	// Loop until we encounter a condition where we successfully read the
+	// symbolic link and don't fill our buffer. Unfortunately this is the only
+	// way to approach the problem because readlink and its ilk don't provide
+	// any mechanism for determining the untruncated length of the symbolic
+	// link.
+	// TODO: Should we put an upper-bound on this size? The os.Readlink
+	// implementation doesn't, and I can't imagine that most OS symbolic link
+	// implementations would allow for anything crazy, but maybe it's worth
+	// thinking about.
+	for size := readlinkInitialBufferSize; ; size *= 2 {
+		// Allocate a buffer.
+		buffer := make([]byte, size)
+
+		// Attempt to read the symbolic link target.
+		// TODO: On AIX systems, readlinkat can specify ERANGE in errno to
+		// indicate inadequate buffer space. Watch for this error and continue
+		// growing the buffer in that case. See the os.Readlink implementation
+		// (for Go 1.12+) for an example of how this is handled.
+		count, err := readlinkat(d.descriptor, name, buffer)
+		if err != nil {
+			return "", &os.PathError{"readlinkat", name, err}
+		}
+
+		// Verify that the count is sane.
+		if count < 0 {
+			return "", errors.New("unknown readlinkat failure occurred")
+		}
+
+		// If we've managed to read the target and have buffer space to spare,
+		// then we know that we have the full link.
+		if count < size {
+			return string(buffer[:count]), nil
+		}
+	}
+}
+
+// RemoveDirectory deletes a directory with the specified name inside the
+// directory. The removal target must be empty.
+func (d *Directory) RemoveDirectory(name string) error {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Remove the directory.
+	return unlinkat(d.descriptor, name, at_removedir)
+}
+
+// RemoveFile deletes a file with the specified name inside the directory.
+func (d *Directory) RemoveFile(name string) error {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Remove the file.
+	return unlinkat(d.descriptor, name, 0)
+}
+
+// RemoveSymbolicLink deletes a symbolic link with the specified name inside the
+// directory.
+func (d *Directory) RemoveSymbolicLink(name string) error {
+	return d.RemoveFile(name)
+}
+
+// atomicRename performs an atomic rename operation, relocating the file
+// specified by sourceName within sourceDirectory to the location specified by
+// targetName within targetDirectory. It does not support cross-device copies,
+// which can be performed in an approximately atomic fashion by AtomicRename.
+func atomicRename(
+	sourceDirectory *Directory, sourceName string,
+	targetDirectory *Directory, targetName string,
+) error {
+	// Verify that both names are valid.
+	if err := ensureValidName(sourceName); err != nil {
+		return errors.Wrap(err, "source name invalid")
+	} else if err = ensureValidName(targetName); err != nil {
+		return errors.Wrap(err, "target name invalid")
+	}
+
+	// Perform an atomic rename.
+	return renameat(
+		sourceDirectory.descriptor, sourceName,
+		targetDirectory.descriptor, targetName,
+	)
+}
