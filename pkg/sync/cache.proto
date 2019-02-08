@@ -34,7 +34,11 @@ message CacheEntry {
     // Size is the cached size.
     uint64 size = 3;
 
-    // Fields 4-8 are reserved for future common metadata.
+    // FileID is the file identifier. On POSIX systems it is the inode number.
+    // On Windows it is currently 0.
+    uint64 fileID = 4;
+
+    // Fields 5-8 are reserved for future common metadata.
 
     // Digest is the cached digest for file entries.
     bytes digest = 9;

@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+
+	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 // IsDefault indicates whether or not the permission exposure level is
@@ -94,8 +96,8 @@ func (l PermissionExposureLevel) newFileBaseMode() os.FileMode {
 
 // anyExecutableBitSet returns true if any executable bit is set on the file,
 // false otherwise.
-func anyExecutableBitSet(mode os.FileMode) bool {
-	return mode&0111 != 0
+func anyExecutableBitSet(mode fs.Mode) bool {
+	return mode&(fs.ModePermissionUserExecutable|fs.ModePermissionGroupExecutable|fs.ModePermissionOthersExecutable) != 0
 }
 
 // stripExecutableBits strips all executability bits from the specified file

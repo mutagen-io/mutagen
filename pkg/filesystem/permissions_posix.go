@@ -123,7 +123,7 @@ func CopyPermissions(
 
 	// Set permissions on the target file, including the setuid bit, the setgid
 	// bit, and the sticky bit.
-	permissions := metadata.Mode & (unix.S_IRWXU | unix.S_IRWXG | unix.S_IRWXO | unix.S_ISUID | unix.S_ISGID | unix.S_ISVTX)
+	permissions := Mode(metadata.Mode) & ModeExtendedPermissionsMask
 	if err := fchmodat(targetDirectory.descriptor, targetName, uint32(permissions), unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return errors.Wrap(err, "unable to set permission bits")
 	}

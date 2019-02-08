@@ -13,3 +13,14 @@ func TestModePermissionMaskIsExpected(t *testing.T) {
 		t.Error("ModePermissionsMask value not equal to expected:", ModePermissionsMask, "!=", Mode(0777))
 	}
 }
+
+// TestModePermissionMaskIsUnionOfPermissions is a sanity check that
+// ModePermissionMask is equal to the union of individual permissions.
+func TestModePermissionMaskIsExpected(t *testing.T) {
+	permissionUnion := ModePermissionUserRead | ModePermissionUserWrite | ModePermissionUserExecute |
+		ModePermissionGroupRead | ModePermissionGroupWrite | ModePermissionGroupExecute |
+		ModePermissionOthersRead | ModePermissionOthersWrite | ModePermissionOthersExecute
+	if ModePermissionsMask != permissionUnion {
+		t.Error("ModePermissionsMask value not equal to union of permissions:", ModePermissionsMask, "!=", permissionUnion)
+	}
+}

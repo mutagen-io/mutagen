@@ -268,6 +268,14 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 		return nil, errors.Wrap(err, "unable to read directory content names")
 	}
 
+	// Seek the directory back to the beginning since the Readdirnames operation
+	// will have exhausted its "content".
+	if offset, err := unix.Seek(d.descriptor, 0, 0); err != nil {
+		return nil, errors.Wrap(err, "unable to reset directory read pointer")
+	} else if offset != 0 {
+		return nil, errors.New("directory offset is non-zero after seek operation")
+	}
+
 	// Allocate the result slice with enough capacity to accommodate all
 	// entries.
 	results := make([]*Metadata, 0, len(names))

@@ -149,7 +149,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 
 	// Determine whether or not we need to recompose Unicode when transitioning
 	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicode(parent)
+	recomposeUnicode, err := filesystem.DecomposesUnicodeLegacy(parent)
 	if err != nil {
 		os.RemoveAll(parent)
 		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
@@ -218,7 +218,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	// Unicode recomposition behavior.
 	var recomposeUnicode bool
 	if expected != nil && expected.Kind == EntryKind_Directory {
-		if r, err := filesystem.DecomposesUnicode(root); err != nil {
+		if r, err := filesystem.DecomposesUnicodeLegacy(root); err != nil {
 			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
 		} else {
 			recomposeUnicode = r

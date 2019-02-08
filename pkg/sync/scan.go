@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 const (
@@ -64,44 +64,50 @@ type scanner struct {
 	preservesExecutability bool
 }
 
-// file performs processing of a file filesystem entry.
-func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
-	// Extract metadata.
-	mode := info.Mode()
-	modificationTime := info.ModTime()
-	size := uint64(info.Size())
+// file performs processing of a file entry. Exactly one of file or parent will
+// be non-nil, depending on whether or not the file represents the root path.
+// If file is non-nil, this function is responsible for closing it.
+func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata, parent *fs.Directory) (*Entry, error) {
+	// If the file is non-nil, defer its closure.
+	if file != nil {
+		defer file.Close()
+	}
 
 	// Compute executability.
-	executable := s.preservesExecutability && anyExecutableBitSet(mode)
+	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
 
 	// Convert the timestamp to Protocol Buffers format.
-	modificationTimeProto, err := ptypes.TimestampProto(modificationTime)
+	modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to convert modification time format")
 	}
 
-	// Try to find a cached digest. We only enforce that type, modification
-	// time, and size haven't changed in order to re-use digests.
+	// Try to find a cached digest. We require that type, modification time,
+	// file size, and file ID haven't changed in order to re-use digests.
 	var digest []byte
 	cached, hit := s.cache.Entries[path]
 	match := hit &&
-		(os.FileMode(cached.Mode)&os.ModeType) == (mode&os.ModeType) &&
+		(metadata.Mode&fs.ModeTypeMask) == (fs.Mode(cached.Mode)&fs.ModeTypeMask) &&
 		cached.ModificationTime != nil &&
 		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
 		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
-		cached.Size == size
+		metadata.Size == cached.Size &&
+		metadata.FileID == cached.FileID
 	if match {
 		digest = cached.Digest
 	}
 
 	// If we weren't able to pull a digest from the cache, compute one manually.
 	if digest == nil {
-		// Open the file and ensure its closure.
-		file, err := os.Open(filepath.Join(s.root, path))
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to open file")
+		// Open the file if it's not open already. If we do open it, then defer
+		// its closure.
+		if file == nil {
+			file, err = parent.OpenFile(metadata.Name)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to open file")
+			}
+			defer file.Close()
 		}
-		defer file.Close()
 
 		// Reset the hash state.
 		s.hasher.Reset()
@@ -109,7 +115,7 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 		// Copy data into the hash and very that we copied as much as expected.
 		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
 			return nil, errors.Wrap(err, "unable to hash file contents")
-		} else if uint64(copied) != size {
+		} else if uint64(copied) != metadata.Size {
 			return nil, errors.New("hashed size mismatch")
 		}
 
@@ -119,9 +125,10 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 
 	// Add a cache entry.
 	s.newCache.Entries[path] = &CacheEntry{
-		Mode:             uint32(mode),
+		Mode:             uint32(metadata.Mode),
 		ModificationTime: modificationTimeProto,
-		Size:             size,
+		Size:             metadata.Size,
+		FileID:           metadata.FileID,
 		Digest:           digest,
 	}
 
@@ -133,12 +140,12 @@ func (s *scanner) file(path string, info os.FileInfo) (*Entry, error) {
 	}, nil
 }
 
-// symlink performs processing of a symlink filesystem entry.
-func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
+// symlink performs processing of a symlink entry.
+func (s *scanner) symlink(path, name string, parent *fs.Directory, enforcePortable bool) (*Entry, error) {
 	// Read the link target.
-	target, err := os.Readlink(filepath.Join(s.root, path))
+	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read symlink target")
+		return nil, errors.Wrap(err, "unable to read symbolic link target")
 	}
 
 	// If requested, enforce that the link is portable, otherwise just ensure
@@ -146,10 +153,10 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	if enforcePortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("invalid symlink (%s)", path))
+			return nil, errors.Wrap(err, fmt.Sprintf("invalid symbolic link (%s)", path))
 		}
 	} else if target == "" {
-		return nil, errors.New("symlink target is empty")
+		return nil, errors.New("symbolic link target is empty")
 	}
 
 	// Success.
@@ -159,19 +166,36 @@ func (s *scanner) symlink(path string, enforcePortable bool) (*Entry, error) {
 	}, nil
 }
 
-// directory performs processing of a directory filesystem entry.
-func (s *scanner) directory(path string, info os.FileInfo) (*Entry, error) {
+// directory performs processing of a directory entry. Exactly one of directory
+// or parent will be non-nil, depending on whether or not the directory
+// represents the root path. If directory is non-nil, then this function is
+// responsible for closing it.
+func (s *scanner) directory(path string, directory *fs.Directory, metadata *fs.Metadata, parent *fs.Directory) (*Entry, error) {
+	// If the directory has already been opened, then defer its closure.
+	if directory != nil {
+		defer directory.Close()
+	}
+
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
-	if id, err := filesystem.DeviceID(info); err != nil {
-		return nil, errors.Wrap(err, "unable to extract directory device ID")
-	} else if id != s.deviceID {
+	if metadata.DeviceID != s.deviceID {
 		return nil, errors.New("scan crossed filesystem boundary")
 	}
 
+	// If the directory is not yet opened, then open it. If we do open it, then
+	// defer its closure.
+	var err error
+	if directory == nil {
+		directory, err = parent.OpenDirectory(metadata.Name)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to open directory")
+		}
+		defer directory.Close()
+	}
+
 	// Read directory contents.
-	directoryContents, err := filesystem.DirectoryContents(filepath.Join(s.root, path))
+	directoryContents, err := directory.ReadContents()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read directory contents")
 	}
@@ -180,18 +204,19 @@ func (s *scanner) directory(path string, info os.FileInfo) (*Entry, error) {
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, c := range directoryContents {
 		// Extract the content name.
-		name := c.Name()
+		name := c.Name
 
 		// Determine whether or not this is a test file, and if so skip it. Also
 		// ignore intermediate files generated by atomic operations. It's only
 		// possible for scans to see these files if they're generated by other
 		// sessions with overlapping synchronization roots, but that's a very
-		// real possibility.
-		if filesystem.IsExecutabilityProbeFileName(name) {
+		// real possibility. Note that these methods work regardless of Unicode
+		// decomposition behavior on the filesystem.
+		if fs.IsExecutabilityProbeFileName(name) {
 			continue
-		} else if filesystem.IsUnicodeProbeFileName(name) {
+		} else if fs.IsUnicodeProbeFileName(name) {
 			continue
-		} else if filesystem.IsAtomicOperationFileName(name) {
+		} else if fs.IsAtomicOperationFileName(name) {
 			continue
 		}
 
@@ -204,12 +229,15 @@ func (s *scanner) directory(path string, info os.FileInfo) (*Entry, error) {
 		contentPath := pathJoin(path, name)
 
 		// Compute the kind for this content, skipping if unsupported.
-		kind := EntryKind_File
-		if mode := c.Mode(); mode&os.ModeDir != 0 {
+		var kind EntryKind
+		switch c.Mode & fs.ModeTypeMask {
+		case fs.ModeTypeDirectory:
 			kind = EntryKind_Directory
-		} else if mode&os.ModeSymlink != 0 {
+		case fs.ModeTypeFile:
+			kind = EntryKind_File
+		case fs.ModeTypeSymbolicLink:
 			kind = EntryKind_Symlink
-		} else if mode&os.ModeType != 0 {
+		default:
 			continue
 		}
 
@@ -229,19 +257,19 @@ func (s *scanner) directory(path string, info os.FileInfo) (*Entry, error) {
 		// Handle based on kind.
 		var entry *Entry
 		if kind == EntryKind_File {
-			entry, err = s.file(contentPath, c)
+			entry, err = s.file(contentPath, nil, c, directory)
 		} else if kind == EntryKind_Symlink {
 			if s.symlinkMode == SymlinkMode_SymlinkPortable {
-				entry, err = s.symlink(contentPath, true)
+				entry, err = s.symlink(contentPath, name, directory, true)
 			} else if s.symlinkMode == SymlinkMode_SymlinkIgnore {
 				continue
 			} else if s.symlinkMode == SymlinkMode_SymlinkPOSIXRaw {
-				entry, err = s.symlink(contentPath, false)
+				entry, err = s.symlink(contentPath, name, directory, false)
 			} else {
 				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, c)
+			entry, err = s.directory(contentPath, nil, c, directory)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -316,58 +344,87 @@ func Scan(root string, hasher hash.Hash, cache *Cache, ignores []string, ignoreC
 		buffer:         make([]byte, scannerCopyBufferSize),
 	}
 
-	// Create the snapshot.
-	if info, err := os.Lstat(root); err != nil {
+	// Open the root.
+	rootObject, metadata, err := fs.Open(root)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, false, newCache, newIgnoreCache, nil
 		} else {
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe scan root")
 		}
-	} else if mode := info.Mode(); mode&os.ModeDir != 0 {
-		// Grab and set the device ID for the root directory.
-		if id, err := filesystem.DeviceID(info); err != nil {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root device ID")
-		} else {
-			s.deviceID = id
+	}
+
+	// Store the device ID for the root.
+	s.deviceID = metadata.DeviceID
+
+	// Handle the scan based on the root type.
+	if rootType := metadata.Mode & fs.ModeTypeMask; rootType == fs.ModeTypeDirectory {
+		// Extract the directory object.
+		rootDirectory, ok := rootObject.(*fs.Directory)
+		if !ok {
+			panic("invalid directory object returned from root open operation")
 		}
 
 		// Probe and set Unicode decomposition behavior for the root directory.
-		if decomposes, err := filesystem.DecomposesUnicode(root); err != nil {
+		if decomposes, err := fs.DecomposesUnicode(rootDirectory); err != nil {
+			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
 		} else {
 			s.recomposeUnicode = decomposes
 		}
 
-		// Probe and set executability preservation behavior for the root directory.
-		if preserves, err := filesystem.PreservesExecutability(root); err != nil {
+		// Probe and set executability preservation behavior for the root
+		// directory.
+		if preserves, err := fs.PreservesExecutability(rootDirectory); err != nil {
+			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
-		// Perform a recursive scan.
-		if rootEntry, err := s.directory("", info); err != nil {
+		// Perform a recursive scan. The directory function is responsible for
+		// closing the directory object, regardless of errors.
+		if rootEntry, err := s.directory("", rootDirectory, metadata, nil); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
 		}
-	} else if mode&os.ModeType != 0 {
-		// We disallow symlinks as synchronization roots because there's no easy
-		// way to propagate changes to them.
-		return nil, false, false, nil, nil, errors.New("invalid scan root type")
-	} else {
-		// Probe and set executability preservation behavior for the parent of the root directory.
-		if preserves, err := filesystem.PreservesExecutability(filepath.Dir(root)); err != nil {
+	} else if rootType == fs.ModeTypeFile {
+		// Extract the file object.
+		rootFile, ok := rootObject.(fs.ReadableFile)
+		if !ok {
+			panic("invalid file object returned from root open operation")
+		}
+
+		// Probe and set executability preservation behavior for the parent of the root path.
+		//
+		// RACE: There is technically a race condition here on POSIX because the
+		// root file that we have open may have been unlinked and the parent
+		// directory path replaced. Even if the file hasn't been unlinked, we
+		// still have to make this probe by path since there's no way (both due
+		// to API and underlying design) to grab a parent directory by file
+		// descriptor on POSIX (it's not a well-defined concept). Anyway, this
+		// race does not have any significant risk. The only other option would
+		// be to switch executability preservation detection to use fstatfs, but
+		// this is a non-standardized call that returns different metadata on
+		// each platform. Even on platforms where detailed metadata is provided,
+		// the filesystem identifier alone may not be enough to determine this
+		// behavior.
+		if preserves, err := fs.PreservesExecutabilityByPath(filepath.Dir(root)); err != nil {
+			rootFile.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
 		} else {
 			s.preservesExecutability = preserves
 		}
 
-		// Perform a scan of the root file.
-		if rootEntry, err := s.file("", info); err != nil {
+		// Perform a scan of the root file. The file function is responsible for
+		// closing the file object, regardless of errors.
+		if rootEntry, err := s.file("", rootFile, metadata, nil); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, false, newCache, newIgnoreCache, nil
 		}
+	} else {
+		panic("invalid type returned from root open operation")
 	}
 }

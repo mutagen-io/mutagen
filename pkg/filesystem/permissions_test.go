@@ -10,12 +10,12 @@ type parseOwnershipIdentifierTestCase struct {
 	// specification is the ownership specification.
 	specification string
 	// expectedKind is the expected OwnershipIdentifierKind.
-	expectedKind  OwnershipIdentifierKind
+	expectedKind OwnershipIdentifierKind
 	// expectedValue is the expected ownership specification value.
 	expectedValue string
 }
 
-// run executes the test.
+// run executes the test in the provided test context.
 func (c *parseOwnershipIdentifierTestCase) run(t *testing.T) {
 	// Mark ourselves as a helper function.
 	t.Helper()

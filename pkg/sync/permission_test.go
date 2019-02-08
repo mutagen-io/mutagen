@@ -106,6 +106,18 @@ func TestAnyExecutableBitSet(t *testing.T) {
 	if !anyExecutableBitSet(0667) {
 		t.Error("others executable bit not detected")
 	}
+	if !anyExecutableBitSet(0776) {
+		t.Error("user executable bits not detected")
+	}
+	if !anyExecutableBitSet(0677) {
+		t.Error("group executable bits not detected")
+	}
+	if !anyExecutableBitSet(0767) {
+		t.Error("others executable bits not detected")
+	}
+	if !anyExecutableBitSet(0777) {
+		t.Error("others executable bits not detected")
+	}
 }
 
 func TestStripExecutableBits(t *testing.T) {
