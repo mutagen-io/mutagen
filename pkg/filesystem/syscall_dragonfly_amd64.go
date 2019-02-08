@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	// at_removedir is the numeric representation of the AT_REMOVEDIR flag used
+	// _AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
 	// with unlinkat.
-	at_removedir = 0x2
+	_AT_REMOVEDIR = 0x2
 )
 
 // syscall6 is a handle for the DragonFly BSD system call implementation in the

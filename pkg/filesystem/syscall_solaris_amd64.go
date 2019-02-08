@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	// at_removedir is the numeric representation of the AT_REMOVEDIR flag used
+	// _AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
 	// with unlinkat.
-	at_removedir = unix.AT_REMOVEDIR
+	_AT_REMOVEDIR = unix.AT_REMOVEDIR
 )
 
 // libcFunction is a handle type for Solaris libc functions.

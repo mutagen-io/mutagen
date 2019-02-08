@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/pkg/errors"
 
@@ -258,7 +259,10 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 		return nil, errors.Wrap(err, "unable to open directory handle")
 	}
 
-	// Open the corresponding file object.
+	// Open the corresponding file object. Unfortunately we can't force the file
+	// to use the base name in order to keep consistency with file os.File
+	// objects on Windows and file/directory os.File POSIX, but it's okay since
+	// this object (and its Name method) isn't exposed anyway.
 	file, err := os.Open(path)
 	if err != nil {
 		windows.CloseHandle(handle)
@@ -320,9 +324,10 @@ func (d *Directory) OpenFile(name string) (ReadableFile, error) {
 		return nil, errors.Wrap(err, "unable to open file handle")
 	}
 
-	// Wrap the file handle in an os.File object. Even though we have full path
-	// information available, we use the provided name as the file name because
-	// it's technically the "name" that was used to open the file.
+	// Wrap the file handle in an os.File object. We use the base name for the
+	// file since that's the name that was used to "open" the file, which is
+	// what os.File.Name is supposed to return (even though we don't expose
+	// os.File.Name).
 	file := os.NewFile(uintptr(handle), name)
 
 	// Success.
@@ -388,11 +393,10 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 	return d.RemoveFile(name)
 }
 
-// atomicRename performs an atomic rename operation, relocating the file
-// specified by sourceName within sourceDirectory to the location specified by
-// targetName within targetDirectory. It does not support cross-device copies,
-// which can be performed in an approximately atomic fashion by AtomicRename.
-func atomicRename(
+// Rename performs an atomic rename operation, relocating the file specified by
+// sourceName within sourceDirectory to the location specified by targetName
+// within targetDirectory. It does not support cross-device copies.
+func Rename(
 	sourceDirectory *Directory, sourceName string,
 	targetDirectory *Directory, targetName string,
 ) error {
@@ -408,4 +412,27 @@ func atomicRename(
 		filepath.Join(sourceDirectory.file.Name(), sourceName),
 		filepath.Join(targetDirectory.file.Name(), targetName),
 	)
+}
+
+const (
+	// _ERROR_NOT_SAME_DEVICE is the error code returned by MoveFileEx on
+	// Windows when attempting to move a file across devices. This can actually
+	// be avoided on Windows by specifying the MOVEFILE_COPY_ALLOWED flag, but
+	// Go's standard library doesn't do this (most likely to keep consistency
+	// with POSIX, which has no such facility). Since we don't know the exact
+	// mechanism by which MOVEFILE_COPY_ALLOWED (i.e. whether or not it uses an
+	// intermediate file), we avoid using it via a direct call to MoveFileEx.
+	_ERROR_NOT_SAME_DEVICE = 0x11
+)
+
+// IsCrossDeviceError checks whether or not an error returned from rename
+// represents a cross-device error.
+func IsCrossDeviceError(err error) bool {
+	if linkErr, ok := err.(*os.LinkError); !ok {
+		return false
+	} else if errno, ok := linkErr.Err.(syscall.Errno); !ok {
+		return false
+	} else {
+		return errno == _ERROR_NOT_SAME_DEVICE
+	}
 }

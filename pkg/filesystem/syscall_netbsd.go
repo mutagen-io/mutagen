@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	// at_removedir is the numeric representation of the AT_REMOVEDIR flag used
+	// _AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
 	// with unlinkat.
-	at_removedir = 0x800
+	_AT_REMOVEDIR = 0x800
 )
 
 // mkdirat is a Go entry point for the mkdirat system call.

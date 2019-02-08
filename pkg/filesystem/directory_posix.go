@@ -112,8 +112,11 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 			return "", nil, errors.Wrap(err, "unable to create file")
 		}
 
+		// Wrap up the descriptor in a file object.
+		file := os.NewFile(uintptr(descriptor), name)
+
 		// Success.
-		return name, os.NewFile(uintptr(descriptor), name), nil
+		return name, file, nil
 	}
 
 	// At this point, we've exhausted our maximum number of retries.
@@ -201,7 +204,10 @@ func (d *Directory) open(name string) (*os.File, int, error) {
 		}
 	}
 
-	// Wrap the descriptor up in a file object.
+	// Wrap the descriptor up in a file object. We use the base name for the
+	// file since that's the name that was used to "open" the file, which is
+	// what os.File.Name is supposed to return (even though we don't expose
+	// os.File.Name).
 	file := os.NewFile(uintptr(descriptor), name)
 
 	// TODO: Should we add an fstat operation (simply via os.File's Stat method)
@@ -376,7 +382,7 @@ func (d *Directory) RemoveDirectory(name string) error {
 	}
 
 	// Remove the directory.
-	return unlinkat(d.descriptor, name, at_removedir)
+	return unlinkat(d.descriptor, name, _AT_REMOVEDIR)
 }
 
 // RemoveFile deletes a file with the specified name inside the directory.
@@ -396,11 +402,10 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 	return d.RemoveFile(name)
 }
 
-// atomicRename performs an atomic rename operation, relocating the file
-// specified by sourceName within sourceDirectory to the location specified by
-// targetName within targetDirectory. It does not support cross-device copies,
-// which can be performed in an approximately atomic fashion by AtomicRename.
-func atomicRename(
+// Rename performs an atomic rename operation, relocating the file specified by
+// sourceName within sourceDirectory to the location specified by targetName
+// within targetDirectory. It does not support cross-device copies.
+func Rename(
 	sourceDirectory *Directory, sourceName string,
 	targetDirectory *Directory, targetName string,
 ) error {
@@ -416,4 +421,10 @@ func atomicRename(
 		sourceDirectory.descriptor, sourceName,
 		targetDirectory.descriptor, targetName,
 	)
+}
+
+// IsCrossDeviceError checks whether or not an error returned from rename
+// represents a cross-device error.
+func IsCrossDeviceError(err error) bool {
+	return err == unix.EXDEV
 }
