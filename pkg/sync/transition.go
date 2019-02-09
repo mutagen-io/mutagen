@@ -71,7 +71,7 @@ func (t *transitioner) nameExistsInDirectoryWithProperCase(
 	name string,
 	directory *filesystem.Directory,
 ) (bool, error) {
-	// List directory names.
+	// Grab the content names in the directory.
 	names, err := directory.ReadContentNames()
 	if err != nil {
 		return false, errors.Wrap(err, "unable to read directory contents")

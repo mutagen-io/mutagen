@@ -37,7 +37,7 @@ func NewManager() (*Manager, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute sessions directory")
 	}
-	sessionsDirectoryContents, err := filesystem.DirectoryContents(sessionsDirectory)
+	sessionsDirectoryContents, err := filesystem.DirectoryContentsByPath(sessionsDirectory)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read contents of sessions directory")
 	}

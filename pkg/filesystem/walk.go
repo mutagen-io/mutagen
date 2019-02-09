@@ -57,7 +57,7 @@ func walkRecursive(path string, info os.FileInfo, visitor filepath.WalkFunc) err
 	}
 
 	// Read directory contents.
-	contents, contentErr := DirectoryContents(path)
+	contents, contentErr := DirectoryContentsByPath(path)
 
 	// Visit the directory, passing the visitor any error that occurred in
 	// reading contents.

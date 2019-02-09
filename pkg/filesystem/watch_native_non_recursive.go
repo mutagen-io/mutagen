@@ -91,10 +91,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 					monitoringErrors <- errors.New("watcher event stream closed")
 					return
 				}
-				name := filepath.Base(path)
-				resetCoalescingTimer = !IsExecutabilityProbeFileName(name) &&
-					!IsUnicodeProbeFileName(name) &&
-					!IsTemporaryFileName(name)
+				resetCoalescingTimer = !IsTemporaryFileName(filepath.Base(path))
 			}
 
 			// Reset the coalescing timer if necessary. Perform a non-blocking

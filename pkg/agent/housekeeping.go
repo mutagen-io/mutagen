@@ -30,7 +30,7 @@ func Housekeep() {
 	}
 
 	// Get the list of locally installed agent versions. If we fail, just abort.
-	agentDirectoryContents, err := filesystem.DirectoryContents(agentsDirectoryPath)
+	agentDirectoryContents, err := filesystem.DirectoryContentsByPath(agentsDirectoryPath)
 	if err != nil {
 		return
 	}

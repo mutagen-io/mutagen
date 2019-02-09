@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DirectoryContents returns the contents of the directory at the specified
-// path. The ordering of the contents is non-deterministic.
-func DirectoryContents(path string) ([]os.FileInfo, error) {
+// DirectoryContentsByPath returns the contents of the directory at the
+// specified path. The ordering of the contents is non-deterministic.
+func DirectoryContentsByPath(path string) ([]os.FileInfo, error) {
 	// Open the directory and ensure its closure.
 	directory, err := os.Open(path)
 	if err != nil {

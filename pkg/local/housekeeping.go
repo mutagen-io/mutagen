@@ -29,7 +29,7 @@ func HousekeepCaches() {
 	}
 
 	// Get the list of caches. If we fail, just abort.
-	cachesDirectoryContents, err := filesystem.DirectoryContents(cachesDirectoryPath)
+	cachesDirectoryContents, err := filesystem.DirectoryContentsByPath(cachesDirectoryPath)
 	if err != nil {
 		return
 	}
@@ -66,7 +66,7 @@ func HousekeepStaging() {
 	}
 
 	// Get the list of staging roots. If we fail, just abort.
-	stagingDirectoryContents, err := filesystem.DirectoryContents(stagingDirectoryPath)
+	stagingDirectoryContents, err := filesystem.DirectoryContentsByPath(stagingDirectoryPath)
 	if err != nil {
 		return
 	}

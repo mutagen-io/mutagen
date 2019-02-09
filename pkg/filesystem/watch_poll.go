@@ -86,13 +86,8 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 			return err
 		}
 
-		// If this is an executability preservation or Unicode decomposition
-		// probe file, then ignore it. Also ignore intermediate temporary files.
-		if name := filepath.Base(path); IsExecutabilityProbeFileName(name) {
-			return nil
-		} else if IsUnicodeProbeFileName(name) {
-			return nil
-		} else if IsTemporaryFileName(name) {
+		// If this is an intermediate temporary file, then ignore it.
+		if IsTemporaryFileName(filepath.Base(path)) {
 			return nil
 		}
 

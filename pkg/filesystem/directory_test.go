@@ -8,7 +8,7 @@ import (
 )
 
 func TestDirectoryContentsNotExist(t *testing.T) {
-	if _, err := DirectoryContents("/does/not/exist"); err == nil {
+	if _, err := DirectoryContentsByPath("/does/not/exist"); err == nil {
 		t.Error("directory listing succeedeed for non-existent path")
 	}
 }
@@ -24,13 +24,13 @@ func TestDirectoryContentsFile(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	// Ensure that directory listing fails.
-	if _, err := DirectoryContents(file.Name()); err == nil {
+	if _, err := DirectoryContentsByPath(file.Name()); err == nil {
 		t.Error("directory listing succeedeed for non-directory path")
 	}
 }
 
 func TestDirectoryContentsGOROOT(t *testing.T) {
-	if contents, err := DirectoryContents(runtime.GOROOT()); err != nil {
+	if contents, err := DirectoryContentsByPath(runtime.GOROOT()); err != nil {
 		t.Fatal("directory listing failed for GOROOT:", err)
 	} else if contents == nil {
 		t.Fatal("directory contents nil for GOROOT")

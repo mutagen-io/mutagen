@@ -5,7 +5,6 @@ package filesystem
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -13,14 +12,8 @@ import (
 const (
 	// executabilityProbeFileNamePrefix is the prefix used for temporary files
 	// created by the executability preservation test.
-	executabilityProbeFileNamePrefix = ".mutagen-executability-test"
+	executabilityProbeFileNamePrefix = TemporaryNamePrefix + "executability-test"
 )
-
-// IsExecutabilityProbeFileName determines whether or not a file name (not a
-// file path) is the name of an executability preservation probe file.
-func IsExecutabilityProbeFileName(name string) bool {
-	return strings.HasPrefix(name, executabilityProbeFileNamePrefix)
-}
 
 // PreservesExecutabilityByPath determines whether or not the filesystem on
 // which the directory at the specified path resides preserves POSIX
