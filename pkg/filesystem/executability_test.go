@@ -75,7 +75,7 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Open the path, ensure that it's a directory, and defer its closure.
-	object, metadata, err := Open(c.path)
+	object, metadata, err := Open(c.path, false)
 	var directory *Directory
 	var ok bool
 	if err != nil {

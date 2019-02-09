@@ -137,11 +137,11 @@ func (d *Directory) CreateSymbolicLink(name, target string) error {
 // SetPermissions sets the permissions on the content within the directory
 // specified by name. Ownership information is set first, followed by
 // permissions extracted from the mode using ModePermissionsMask. Ownership
-// setting can be skipped by providing a nil OwnershipSpecification. Setting
-// only individual components of ownership can be accomplished by providing an
-// OwnershipSpecification with only the relevant components set. Permission
-// setting can be skipped by providing a mode value that yields 0 after
-// permission bit masking.
+// setting can be skipped completely by providing a nil OwnershipSpecification
+// or a specification with both components unset. An OwnershipSpecification may
+// also include only certain components, in which case only those components
+// will be set. Permission setting can be skipped by providing a mode value that
+// yields 0 after permission bit masking.
 func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecification, mode Mode) error {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
@@ -276,9 +276,77 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	}, nil
 }
 
+// ReadContentNames queries the directory contents and returns their base names.
+// It does not return "." or ".." entries.
+func (d *Directory) ReadContentNames() ([]string, error) {
+	// Read content names. Fortunately we can use the os.File implementation for
+	// this since it operates on the underlying file descriptor directly.
+	names, err := d.file.Readdirnames(0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter names (without allocating a new slice).
+	results := names[:0]
+	for _, name := range names {
+		// Watch for names that reference the directory itself or the parent
+		// directory. The implementation underlying os.File.Readdirnames does
+		// filter these out, but that's not guaranteed by its documentation, so
+		// it's better to do this explicitly.
+		if name == "." || name == ".." {
+			continue
+		}
+
+		// Store the name.
+		results = append(results, name)
+	}
+
+	// Success.
+	return names, nil
+}
+
+// ReadContentMetadata reads metadata for the content within the directory
+// specified by name.
+func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return nil, err
+	}
+
+	// Query metadata.
+	metadata, err := os.Lstat(filepath.Join(d.file.Name(), name))
+	if err != nil {
+		return nil, err
+	}
+
+	// Success.
+	return &Metadata{
+		Name:             name,
+		Mode:             Mode(metadata.Mode()),
+		Size:             uint64(metadata.Size()),
+		ModificationTime: metadata.ModTime(),
+	}, nil
+}
+
 // ReadContents queries the directory contents and their associated metadata.
+// While the results of this function can be computed as a combination of
+// ReadContentNames and ReadContentMetadata (and this is indeed the mechanism by
+// which this function is implemented on POSIX systems), it may be significantly
+// faster than a naïve combination implementation on some platforms
+// (specifically Windows, where it relies on FindFirstFile/FindNextFile
+// infrastructure). This function doesn't not return metadata for "." or ".."
+// entries.
 func (d *Directory) ReadContents() ([]*Metadata, error) {
-	// Read directory content.
+	// Read directory content. On Windows, we use the os.File implementation to
+	// read names and (an acceptable amount of metadata) in one fell swoop,
+	// rather than using a "read names + loop and query" construct. The reason
+	// for this is that Windows file metadata queries are extremely slow,
+	// requiring use of either GetFileInformationByHandle (which requires
+	// opening the file) or GetFileAttributesEx (which I'm fairly sure uses the
+	// first function under the hood). Instead, os.File.Readdir uses
+	// FindFirstFile/FindNextFile infrastructure under the hood (in fact os.File
+	// is just a search handle for directory objects on Windows), which is much
+	// faster and retrieves just enough of the necessary metadata.
 	contents, err := d.file.Readdir(0)
 	if err != nil {
 		return nil, err
@@ -393,25 +461,37 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 	return d.RemoveFile(name)
 }
 
-// Rename performs an atomic rename operation, relocating the file specified by
-// sourceName within sourceDirectory to the location specified by targetName
-// within targetDirectory. It does not support cross-device copies.
+// Rename performs an atomic rename operation from one filesystem location (the
+// source) to another (the target). Each location can be specified in one of two
+// ways: either by a combination of directory and (non-path) name or by path
+// (with corresponding nil Directory object). Different specification mechanisms
+// can be used for each location.
+//
+// This function does not support cross-device renames. To detect whether or not
+// an error is due to an attempted cross-device rename, use the
+// IsCrossDeviceError function.
 func Rename(
-	sourceDirectory *Directory, sourceName string,
-	targetDirectory *Directory, targetName string,
+	sourceDirectory *Directory, sourceNameOrPath string,
+	targetDirectory *Directory, targetNameOrPath string,
 ) error {
-	// Verify that both names are valid.
-	if err := ensureValidName(sourceName); err != nil {
-		return errors.Wrap(err, "source name invalid")
-	} else if err = ensureValidName(targetName); err != nil {
-		return errors.Wrap(err, "target name invalid")
+	// Adjust the source path if necessary.
+	if sourceDirectory != nil {
+		if err := ensureValidName(sourceNameOrPath); err != nil {
+			return errors.Wrap(err, "source name invalid")
+		}
+		sourceNameOrPath = filepath.Join(sourceDirectory.file.Name(), sourceNameOrPath)
+	}
+
+	// Adjust the target path if necessary.
+	if targetDirectory != nil {
+		if err := ensureValidName(targetNameOrPath); err != nil {
+			return errors.Wrap(err, "target name invalid")
+		}
+		targetNameOrPath = filepath.Join(targetDirectory.file.Name(), targetNameOrPath)
 	}
 
 	// Perform an atomic rename.
-	return os.Rename(
-		filepath.Join(sourceDirectory.file.Name(), sourceName),
-		filepath.Join(targetDirectory.file.Name(), targetName),
-	)
+	return os.Rename(sourceNameOrPath, targetNameOrPath)
 }
 
 const (

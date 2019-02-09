@@ -76,22 +76,111 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 		return errors.New("unknown or unsupported VCS ignore mode")
 	}
 
-	// Verify that permission exposure levels are unspecified or supported for
-	// usage.
-	if !c.PermissionExposureLevel.IsDefault() && !c.PermissionExposureLevel.Supported() {
-		return errors.New("unknown or unsupported permission exposure level")
-	}
+	// Verify that permission settings are empty from the global configuration
+	// and sane from the per-session configuration.
 	if source == ConfigurationSourceGlobal {
-		if !c.AlphaPermissionExposureLevel.IsDefault() {
-			return errors.New("global configuration with alpha-specific permission exposure level specified")
-		} else if !c.BetaPermissionExposureLevel.IsDefault() {
-			return errors.New("global configuration with beta-specific permission exposure level specified")
+		// Verify that default file permission modes are all 0.
+		if c.PermissionDefaultFileMode != 0 {
+			return errors.New("global configuration with default file permission mode specified")
+		} else if c.PermissionDefaultFileModeAlpha != 0 {
+			return errors.New("global configuration with alpha-specific default file permission mode specified")
+		} else if c.PermissionDefaultFileModeBeta != 0 {
+			return errors.New("global configuration with beta-specific default file permission mode specified")
+		}
+
+		// Verify that default directory permission modes are all 0.
+		if c.PermissionDefaultDirectoryMode != 0 {
+			return errors.New("global configuration with default directory permission mode specified")
+		} else if c.PermissionDefaultDirectoryModeAlpha != 0 {
+			return errors.New("global configuration with alpha-specific default directory permission mode specified")
+		} else if c.PermissionDefaultDirectoryModeBeta != 0 {
+			return errors.New("global configuration with beta-specific default directory permission mode specified")
+		}
+
+		// Verify that default owner user identifiers are all empty.
+		if c.PermissionDefaultUser != "" {
+			return errors.New("global configuration with default owner user identifier specified")
+		} else if c.PermissionDefaultUserAlpha != "" {
+			return errors.New("global configuration with alpha-specific default owner user identifier specified")
+		} else if c.PermissionDefaultUserBeta != "" {
+			return errors.New("global configuration with beta-specific default owner user identifier specified")
+		}
+
+		// Verify that default owner group identifiers are all empty.
+		if c.PermissionDefaultGroup != "" {
+			return errors.New("global configuration with default owner group identifier specified")
+		} else if c.PermissionDefaultGroupAlpha != "" {
+			return errors.New("global configuration with alpha-specific default owner group identifier specified")
+		} else if c.PermissionDefaultGroupBeta != "" {
+			return errors.New("global configuration with beta-specific default owner group identifier specified")
 		}
 	} else {
-		if !c.AlphaPermissionExposureLevel.IsDefault() && !c.AlphaPermissionExposureLevel.Supported() {
-			return errors.New("unknown or unsupported alpha permission exposure level")
-		} else if !c.BetaPermissionExposureLevel.IsDefault() && !c.BetaPermissionExposureLevel.Supported() {
-			return errors.New("unknown or unsupported beta permission exposure level")
+		// Verify that default file permission modes are all 0 or valid.
+		if c.PermissionDefaultFileMode != 0 {
+			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileMode)); err != nil {
+				return errors.Wrap(err, "invalid default file permission mode specified")
+			}
+		}
+		if c.PermissionDefaultFileModeAlpha != 0 {
+			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileModeAlpha)); err != nil {
+				return errors.Wrap(err, "invalid alpha-specific default file permission mode specified")
+			}
+		}
+		if c.PermissionDefaultFileModeBeta != 0 {
+			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileModeBeta)); err != nil {
+				return errors.Wrap(err, "invalid beta-specific default file permission mode specified")
+			}
+		}
+
+		// Verify that default directory permission modes are all 0 or valid.
+		if c.PermissionDefaultDirectoryMode != 0 {
+			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryMode)); err != nil {
+				return errors.Wrap(err, "invalid default directory permission mode specified")
+			}
+		}
+		if c.PermissionDefaultDirectoryModeAlpha != 0 {
+			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryModeAlpha)); err != nil {
+				return errors.Wrap(err, "invalid alpha-specific default directory permission mode specified")
+			}
+		}
+		if c.PermissionDefaultDirectoryModeBeta != 0 {
+			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryModeBeta)); err != nil {
+				return errors.Wrap(err, "invalid beta-specific default directory permission mode specified")
+			}
+		}
+
+		// Verify that default owner user identifiers are all empty or valid.
+		if c.PermissionDefaultUser != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUser); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid default owner user identifier specified")
+			}
+		}
+		if c.PermissionDefaultUserAlpha != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUserAlpha); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid alpha-specific default owner user identifier specified")
+			}
+		}
+		if c.PermissionDefaultUserBeta != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUserBeta); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid beta-specific default owner user identifier specified")
+			}
+		}
+
+		// Verify that default owner group identifiers are all empty or valid.
+		if c.PermissionDefaultGroup != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroup); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid default owner group identifier specified")
+			}
+		}
+		if c.PermissionDefaultGroupAlpha != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroupAlpha); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid alpha-specific default owner group identifier specified")
+			}
+		}
+		if c.PermissionDefaultGroupBeta != "" {
+			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroupBeta); kind == filesystem.OwnershipIdentifierKindInvalid {
+				return errors.New("invalid beta-specific default owner group identifier specified")
+			}
 		}
 	}
 
@@ -111,13 +200,12 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 
 	// Create a session configuration object.
 	result := &Configuration{
-		SynchronizationMode:     configuration.Synchronization.Mode,
-		SymlinkMode:             configuration.Symlink.Mode,
-		WatchMode:               configuration.Watch.Mode,
-		WatchPollingInterval:    configuration.Watch.PollingInterval,
-		DefaultIgnores:          configuration.Ignore.Default,
-		IgnoreVCSMode:           configuration.Ignore.VCS,
-		PermissionExposureLevel: configuration.Permission.ExposureLevel,
+		SynchronizationMode:  configuration.Synchronization.Mode,
+		SymlinkMode:          configuration.Symlink.Mode,
+		WatchMode:            configuration.Watch.Mode,
+		WatchPollingInterval: configuration.Watch.PollingInterval,
+		DefaultIgnores:       configuration.Ignore.Default,
+		IgnoreVCSMode:        configuration.Ignore.VCS,
 	}
 
 	// Verify that the resulting configuration is valid.
@@ -177,15 +265,29 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 		result.IgnoreVCSMode = global.IgnoreVCSMode
 	}
 
-	// Merge permission exposure levels. Endpoint-specific exposure levels are
-	// currently disallowed in the global configuration for safety reasons.
-	if !session.PermissionExposureLevel.IsDefault() {
-		result.PermissionExposureLevel = session.PermissionExposureLevel
-	} else {
-		result.PermissionExposureLevel = global.PermissionExposureLevel
-	}
-	result.AlphaPermissionExposureLevel = session.AlphaPermissionExposureLevel
-	result.BetaPermissionExposureLevel = session.BetaPermissionExposureLevel
+	// Merge default file permission modes. These are all currently disallowed
+	// in global configuration.
+	result.PermissionDefaultFileMode = session.PermissionDefaultFileMode
+	result.PermissionDefaultFileModeAlpha = session.PermissionDefaultFileModeAlpha
+	result.PermissionDefaultFileModeBeta = session.PermissionDefaultFileModeBeta
+
+	// Merge default directory permission modes. These are all currently
+	// disallowed in global configuration.
+	result.PermissionDefaultDirectoryMode = session.PermissionDefaultDirectoryMode
+	result.PermissionDefaultDirectoryModeAlpha = session.PermissionDefaultDirectoryModeAlpha
+	result.PermissionDefaultDirectoryModeBeta = session.PermissionDefaultDirectoryModeBeta
+
+	// Merge default owner user identifiers. These are all currently disallowed
+	// in global configuration.
+	result.PermissionDefaultUser = session.PermissionDefaultUser
+	result.PermissionDefaultUserAlpha = session.PermissionDefaultUserAlpha
+	result.PermissionDefaultUserBeta = session.PermissionDefaultUserBeta
+
+	// Merge default owner group identifiers. These are all currently disallowed
+	// in global configuration.
+	result.PermissionDefaultGroup = session.PermissionDefaultGroup
+	result.PermissionDefaultGroupAlpha = session.PermissionDefaultGroupAlpha
+	result.PermissionDefaultGroupBeta = session.PermissionDefaultGroupBeta
 
 	// Done.
 	return result

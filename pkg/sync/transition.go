@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+)
+
+const (
+	// crossDeviceRenameTemporaryNamePrefix is the file name prefix to use for
+	// intermediate temporary files used in cross-device renames.
+	crossDeviceRenameTemporaryNamePrefix = filesystem.TemporaryNamePrefix + "cross-device-rename"
 )
 
 // Provider defines the interface that higher-level logic can use to provide
@@ -33,9 +40,15 @@ type transitioner struct {
 	// symlinkMode is the symlink mode to use for synchronization. It's required
 	// to verify existing symlinks (which may require normalization).
 	symlinkMode SymlinkMode
-	// permissionExposureLevel is the permission exposure level to use for new
-	// directories and files in "portable" permission propagation.
-	permissionExposureLevel PermissionExposureLevel
+	// defaultFilePermissionMode is the default file permission mode to use in
+	// "portable" permission propagation.
+	defaultFilePermissionMode filesystem.Mode
+	// defaultDirectoryPermissionMode is the default directory permission mode
+	// to use in "portable" permission propagation.
+	defaultDirectoryPermissionMode filesystem.Mode
+	// defaultOwnership is the default ownership specification to use in
+	// "portable" permission propagation.
+	defaultOwnership *filesystem.OwnershipSpecification
 	// recomposeUnicode indicates whether or not filenames need to be recomposed
 	// due to Unicode decomposition behavior on the synchronization root
 	// filesystem.
@@ -51,125 +64,246 @@ func (t *transitioner) recordProblem(path string, err error) {
 	t.problems = append(t.problems, &Problem{Path: path, Error: err.Error()})
 }
 
-// ensureRouteWithProperCase ensures that a path exists, relative to the
-// synchronization root, with each component having the proper case.
-func (t *transitioner) ensureRouteWithProperCase(path string, skipLast bool) error {
-	// If the path is empty, then there's nothing to check.
-	if path == "" {
-		return nil
+// nameExistsInDirectoryWithProperCase is a utility method that checks if a name
+// exists within the specified directory, recomposing the names of the
+// directory's contents if necessary.
+func (t *transitioner) nameExistsInDirectoryWithProperCase(
+	name string,
+	directory *filesystem.Directory,
+) (bool, error) {
+	// List directory names.
+	names, err := directory.ReadContentNames()
+	if err != nil {
+		return false, errors.Wrap(err, "unable to read directory contents")
 	}
 
-	// Set the initial parent.
-	parent := t.root
+	// Check if this path component exists in the contents. It's important
+	// to note that the contents are not guaranteed to be ordered, and we
+	// may need to recompose Unicode, so we can't do a binary search here.
+	for _, n := range names {
+		if !t.recomposeUnicode && n == name {
+			return true, nil
+		} else if t.recomposeUnicode && norm.NFC.String(n) == name {
+			return true, nil
+		}
+	}
 
-	// Decompose the path.
+	// No match was found.
+	return false, nil
+}
+
+// walkToParentAndComputeLeafName walks down to the parent directory of the
+// specified path, verifying proper casing at each step, and optionally
+// validating the casing of the path leaf. It returns the Directory object
+// representing the parent path and the base name of the path, or an error if
+// this operation fails. If provided a root (empty) path, it will open the
+// parent directory of the root path and return the base name of the root path.
+// If the parent directory does not exist, this method will create it if
+// requested.
+//
+// The purpose of this function is to transform any transition operation into
+// one where we have a Directory object for race-free filesystem access, the
+// base name of the content within that directory which needs to be tranformed,
+// and (external to this function) the old and new content specifications.
+//
+// This method's implementation also has the side effect of enforcing case
+// correctness. If verifyLeafCasing is true, then this method will additionally
+// verify that the casing of the leaf name of the path matches what's on the
+// filesystem.
+func (t *transitioner) walkToParentAndComputeLeafName(
+	path string,
+	createRootParent bool,
+	validateLeafCasing bool,
+) (*filesystem.Directory, string, error) {
+	// Handle the special case of a root path. In this case we open the parent
+	// directory of the synchronization root and return the base name of the
+	// synchronization root.
+	if path == "" {
+		// Split the synchronization root path into parent path and base name.
+		// If the base name is empty, it means that the synchronization root
+		// path represents the filesystem root (i.e. '/' on POSIX systems and
+		// a drive root on Windows). If this is the case, then return an error,
+		// because we need to be able to access the root's parent in order to
+		// modify the root itself. In practice, this is fine, because there are
+		// no transitions that we could perform on a filesystem root anyway (it
+		// will always just be a directory).
+		//
+		// Note that we're assuming here that the path is absolute and
+		// normalized (i.e. it's not something like "/component/"). This is fine
+		// because we require this for synchronization root paths passed to
+		// Transition.
+		rootParentPath, rootName := filepath.Split(t.root)
+		if rootName == "" {
+			return nil, "", errors.New("root path is a filesystem root")
+		}
+
+		// If creation of the root parent has been requested, then make sure it
+		// exists. This is a no-op if the parent does exist.
+		//
+		// RACE: The os.MkdirAll function is technically racy since it's purely
+		// path-based, but it's fine for our out-of-synchronization-root
+		// behavior.
+		if createRootParent {
+			if err := os.MkdirAll(rootParentPath, os.FileMode(t.defaultDirectoryPermissionMode)); err != nil {
+				return nil, "", errors.Wrap(err, "unable to create parent component of root path")
+			}
+		}
+
+		// RACE: There is also technically a race condition here because we're
+		// doing a Mkdir operation (potentially) and then opening the parent,
+		// but it's inconsequential since we'll ensure that it exists once open
+		// and that it's a directory.
+
+		// Open the parent. We do allow the parent path to be a symbolic link
+		// since we allow symbolic link resolution for parent components of the
+		// synchronization root (just not at the synchronization root itself).
+		if p, m, err := filesystem.Open(rootParentPath, true); err != nil {
+			return nil, "", errors.Wrap(err, "unable to open synchronization root parent directory")
+		} else if (m.Mode & filesystem.ModeTypeMask) != filesystem.ModeTypeDirectory {
+			p.Close()
+			return nil, "", errors.New("synchronization root parent is not a directory")
+		} else if directory, ok := p.(*filesystem.Directory); !ok {
+			panic("invalid directory object returned from root open operation")
+		} else {
+			return directory, rootName, nil
+		}
+	}
+
+	// Split the path.
 	components := strings.Split(path, "/")
 
-	// Exclude the last component from checking if requested.
-	if skipLast {
-		components = components[:len(components)-1]
+	// Extract the leaf name and reduce the components list to only parent
+	// components.
+	parentComponents := components[:len(components)-1]
+	leafName := components[len(components)-1]
+
+	// Open the root path. If it's not a directory, then this operation isn't
+	// valid.
+	var parent *filesystem.Directory
+	if p, m, err := filesystem.Open(t.root, false); err != nil {
+		return nil, "", errors.Wrap(err, "unable to open synchronization root")
+	} else if (m.Mode & filesystem.ModeTypeMask) != filesystem.ModeTypeDirectory {
+		p.Close()
+		return nil, "", errors.New("synchronization root is not a directory")
+	} else if directory, ok := p.(*filesystem.Directory); !ok {
+		panic("invalid directory object returned from root open operation")
+	} else {
+		parent = directory
 	}
 
-	// While components remain, read the contents of the current parent and
-	// ensure that a child with the correct cased entry exists.
-	for _, component := range components {
-		// Grab the contents for this location.
-		contents, err := filesystem.DirectoryContents(parent)
-		if err != nil {
-			return errors.Wrap(err, "unable to read directory contents")
+	// Traverse through parent components, validating casing as we go and moving
+	// down the directory hierarchy.
+	for _, component := range parentComponents {
+		// Verify that the next component exists with the proper casing.
+		if found, err := t.nameExistsInDirectoryWithProperCase(component, parent); err != nil {
+			parent.Close()
+			return nil, "", errors.Wrap(err, "unable to verify parent path casing")
+		} else if !found {
+			parent.Close()
+			return nil, "", errors.New("parent path does not exist or has incorrect casing")
 		}
 
-		// Check if this path component exists in the contents. It's important
-		// to note that the contents are not guaranteed to be ordered, and we
-		// may need to recompose Unicode, so we can't do a binary search here.
-		found := false
-		for _, c := range contents {
-			// Extract the content name, recomposing Unicode if necessary.
-			name := c.Name()
-			if t.recomposeUnicode {
-				name = norm.NFC.String(name)
-			}
+		// RACE: There is technically a race condition here because the path
+		// could be removed and recreated with a different case between our
+		// check and the time that we open it. Unfortunately there's nothing we
+		// can do about this - case insensitive filesystems simply suffer this
+		// issue. The worst case fallout here is not severe. Case insensitive
+		// filesystems won't allow two names which differ only in casing, so
+		// technically we're still opening the "right" path, though arguably not
+		// so in the context of our synchronization algorithm (which is
+		// case-sensitive). Case sensitive filesystems don't suffer from any
+		// issue here. In any case, the synchronization algorithm will see the
+		// correct casing on the next synchronization cycle.
 
-			// Check if it's a match.
-			if name == component {
-				found = true
-				break
-			}
+		// Open the next directory.
+		if p, err := parent.OpenDirectory(component); err != nil {
+			parent.Close()
+			return nil, "", errors.Wrap(err, "unable to open parent component")
+		} else {
+			parent.Close()
+			parent = p
 		}
+	}
 
-		// If the component wasn't found, then return an error.
-		if !found {
-			return errors.New("unable to find matching entry")
+	// Once we've extracted the parent, validate the leaf name casing if
+	// requested.
+	if validateLeafCasing {
+		if found, err := t.nameExistsInDirectoryWithProperCase(leafName, parent); err != nil {
+			parent.Close()
+			return nil, "", errors.Wrap(err, "unable to verify path leaf name casing")
+		} else if !found {
+			parent.Close()
+			return nil, "", errors.New("leaf name does not exist or has incorrect casing")
 		}
+	}
 
-		// Update the parent.
-		parent = filepath.Join(parent, component)
+	// Success.
+	return parent, leafName, nil
+}
+
+// ensureExpectedFile ensures that the file specified by name within the
+// specified directory matches the specified entry.
+func (t *transitioner) ensureExpectedFile(parent *filesystem.Directory, name, path string, expected *Entry) error {
+	// Grab cache information for this path. If we can't find it, we treat this
+	// as an immediate fail. This is a bit of a heuristic/hack, because we could
+	// recompute the digest of what's on disk, but for our use case this is very
+	// expensive and we SHOULD already have this information cached from the
+	// last scan.
+	cached, ok := t.cache.Entries[path]
+	if !ok {
+		return errors.New("unable to find cache information for path")
+	}
+
+	// Grab metadata for this path.
+	metadata, err := parent.ReadContentMetadata(name)
+	if err != nil {
+		return errors.Wrap(err, "unable to grab file statistics")
+	}
+
+	// Convert the timestamp to Protocol Buffers format.
+	modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
+	if err != nil {
+		return errors.Wrap(err, "unable to convert modification time format")
+	}
+
+	// Instead of comparing directly against the expected entry, compare the
+	// current metadata with that in the cache. If that matches, compare the
+	// cached digest with that of the entry. This allows us to avoid recomputing
+	// the file digest (which would be an expensive and racy procedure) while
+	// still performing a stringent comparison.
+	//
+	// Notably absent from this comparison is an explicit equality check of the
+	// Executability property of the expected entry with some computed
+	// executability value. Unfortunately this can't be done directly, because
+	// we may be on a filesystem that does not preserve exectuability
+	// information. Indeed, the Executability property may have been set by the
+	// executability propagation algorithm before reconciliation. Instead, we
+	// take an indirect comparison approach and simply compare permission bits
+	// (as part of the mode equivalence check) from the current metadata and the
+	// cache. If these match, we take it as an indication that the permission
+	// bits which (via some mechanism in the synchronization algorithm)
+	// generated the current Executability property value are unchanged, and
+	// hence the Executability property value would be unchanged as well if we
+	// were able to compute and compare it directly.
+	match := metadata.Mode == filesystem.Mode(cached.Mode) &&
+		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
+		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
+		metadata.Size == cached.Size &&
+		metadata.FileID == cached.FileID &&
+		bytes.Equal(cached.Digest, expected.Digest)
+	if !match {
+		return errors.New("modification detected")
 	}
 
 	// Success.
 	return nil
 }
 
-// ensureExpectedFile ensures that the file at the specified path is what's
-// expected.
-func (t *transitioner) ensureExpectedFile(path string, expected *Entry) (os.FileMode, int, int, error) {
-	// Grab cache information for this path. If we can't find it, we treat this
-	// as an immediate fail. This is a bit of a heuristic/hack, because we could
-	// recompute the digest of what's on disk, but for our use case this is very
-	// expensive and we SHOULD already have this information cached from the
-	// last scan.
-	cacheEntry, ok := t.cache.Entries[path]
-	if !ok {
-		return 0, 0, 0, errors.New("unable to find cache information for path")
-	}
-
-	// Grab stat information for this path.
-	info, err := os.Lstat(filepath.Join(t.root, path))
-	if err != nil {
-		return 0, 0, 0, errors.Wrap(err, "unable to grab file statistics")
-	}
-
-	// Grab the model.
-	mode := info.Mode()
-
-	// Grab the modification time.
-	modificationTime := info.ModTime()
-
-	// Grab the cached modification time and convert it to a Go format.
-	cachedModificationTime, err := ptypes.Timestamp(cacheEntry.ModificationTime)
-	if err != nil {
-		return 0, 0, 0, errors.Wrap(err, "unable to convert cached modification time format")
-	}
-
-	// If stat information doesn't match, don't bother re-hashing, just abort.
-	// Note that we don't really have to check executability here (and we
-	// shouldn't since it's not preserved on all systems) - we just need to
-	// check that it hasn't changed from the perspective of the filesystem, and
-	// that is accomplished as part of the mode check. This is why we don't
-	// restrict the mode comparison to the type bits.
-	match := os.FileMode(cacheEntry.Mode) == mode &&
-		modificationTime.Equal(cachedModificationTime) &&
-		cacheEntry.Size == uint64(info.Size()) &&
-		bytes.Equal(cacheEntry.Digest, expected.Digest)
-	if !match {
-		return 0, 0, 0, errors.New("modification detected")
-	}
-
-	// Extract ownership.
-	uid, gid, err := filesystem.GetOwnership(info)
-	if err != nil {
-		return 0, 0, 0, errors.Wrap(err, "unable to compute file ownership")
-	}
-
-	// Success.
-	return mode, uid, gid, nil
-}
-
-// ensureExpectedSymlink ensures that the symlink at the specified path is
-// what's expected.
-func (t *transitioner) ensureExpectedSymlink(path string, expected *Entry) error {
+// ensureExpectedSymbolicLink ensures that the symbolic link specified by name
+// within the specified directory matches the specified entry.
+func (t *transitioner) ensureExpectedSymbolicLink(parent *filesystem.Directory, name, path string, expected *Entry) error {
 	// Grab the link target.
-	target, err := os.Readlink(filepath.Join(t.root, path))
+	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
 		return errors.Wrap(err, "unable to read symlink target")
 	}
@@ -193,10 +327,11 @@ func (t *transitioner) ensureExpectedSymlink(path string, expected *Entry) error
 	return nil
 }
 
-// ensureNotExists ensures nothing exists at the specified path.
-func (t *transitioner) ensureNotExists(path string) error {
+// ensureNotExists ensures that no content with the specified name exists within
+// the specified directory.
+func (t *transitioner) ensureNotExists(parent *filesystem.Directory, name string) error {
 	// Attempt to grab stat information for the path.
-	_, err := os.Lstat(filepath.Join(t.root, path))
+	_, err := parent.ReadContentMetadata(name)
 
 	// Handle error cases (which may indicate success).
 	if err != nil {
@@ -210,67 +345,92 @@ func (t *transitioner) ensureNotExists(path string) error {
 	return errors.New("path exists")
 }
 
-// removeFile removes the file at the specified path, enforcing that it matches
-// the specified target.
-func (t *transitioner) removeFile(path string, target *Entry) error {
+// removeFile removes the file specified by name within the specified directory,
+// enforcing that it matches the specified entry.
+func (t *transitioner) removeFile(parent *filesystem.Directory, name, path string, expected *Entry) error {
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
-	if _, _, _, err := t.ensureExpectedFile(path, target); err != nil {
+	if err := t.ensureExpectedFile(parent, name, path, expected); err != nil {
 		return errors.Wrap(err, "unable to validate existing file")
 	}
 
+	// RACE: There is a race condition here between the file check and the file
+	// removal that we have to live with due to limitations in filesystem APIs.
+	// The worst case fallout is removal of contents that are modified during
+	// this window.
+
 	// Remove the file.
-	return os.Remove(filepath.Join(t.root, path))
+	return parent.RemoveFile(name)
 }
 
-// removeSymlink removes the symlink at the specified path, enforcing that it
-// matches the specified target.
-func (t *transitioner) removeSymlink(path string, target *Entry) error {
-	// Ensure that the existing symlink hasn't been modified from what we're
-	// expecting.
-	if err := t.ensureExpectedSymlink(path, target); err != nil {
-		return errors.Wrap(err, "unable to validate existing symlink")
+// removeSymbolicLink removes the symbolic link specified by name within the
+// specified directory, enforcing that it matches the specified entry.
+func (t *transitioner) removeSymbolicLink(parent *filesystem.Directory, name, path string, expected *Entry) error {
+	// Ensure that this request is valid for the current symbolic link handling
+	// mode.
+	if t.symlinkMode == SymlinkMode_SymlinkIgnore {
+		return errors.New("symbolic link removal requested with symbolic links ignored")
 	}
 
+	// Ensure that the existing symlink hasn't been modified from what we're
+	// expecting.
+	if err := t.ensureExpectedSymbolicLink(parent, name, path, expected); err != nil {
+		return errors.Wrap(err, "unable to validate existing symbolic link")
+	}
+
+	// RACE: There is a race condition here between the symbolic link check and
+	// the symbolic link removal that we have to live with due to limitations in
+	// filesystem APIs. The worst case fallout is removal of contents that are
+	// modified during this window.
+
 	// Remove the symlink.
-	return os.Remove(filepath.Join(t.root, path))
+	return parent.RemoveSymbolicLink(name)
 }
 
-// removeDirectory removes the directory at the specified path, enforcing that
-// it matches the specified target. If only a portion of the directory can be
-// removed, the provided target will be reduced to represent what remains.
-func (t *transitioner) removeDirectory(path string, target *Entry) bool {
-	// Compute the full path to this directory.
-	fullPath := filepath.Join(t.root, path)
+// removeDirectory (recursively) removes the directory specified by name within
+// the specified directory, enforcing that it matches the specified entry. If
+// only a portion of the directory can be removed, the provided entry will be
+// reduced to represent what remains.
+func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path string, expected *Entry) bool {
+	// Open the directory itself. We don't defer its closure because we'll need
+	// to explicitly close it before being able to remove it.
+	directory, err := parent.OpenDirectory(name)
+	if err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to open directory"))
+		return false
+	}
 
 	// List the contents for this directory.
-	contents, err := filesystem.DirectoryContents(fullPath)
+	contents, err := directory.ReadContents()
 	if err != nil {
+		directory.Close()
 		t.recordProblem(path, errors.Wrap(err, "unable to read directory contents"))
 		return false
 	}
 
+	// RACE: There is a race condition here between directory content listing
+	// and removal that we have to live with due to limitations in filesystem
+	// APIs. The worst case fallout from this race is that directory removal
+	// will fail due to modifications that occur in this window.
+
 	// Loop through contents and remove them. We do this to ensure that what
 	// we're removing has the proper case. If we were to just pass the OS what
 	// exists in our content map and it were case insensitive, we could delete
-	// a file that had been unmodified but renamed. There is, of course, a race
-	// condition here between the time we grab the directory contents and the
-	// time we remove, but it is very small and we also compare file contents,
-	// so the chance of deleting something we shouldn't is very small.
+	// a file that had been unmodified but renamed.
 	unknownContentEncountered := false
 	for _, c := range contents {
 		// Compute the content name, renormalizing Unicode if necessary.
-		name := c.Name()
+		contentName := c.Name
 		if t.recomposeUnicode {
-			name = norm.NFC.String(name)
+			contentName = norm.NFC.String(contentName)
 		}
 
 		// Compute the content path.
-		contentPath := pathJoin(path, name)
+		contentPath := pathJoin(path, contentName)
 
 		// Grab the corresponding entry. If we don't know anything about this
 		// entry, then mark that as a problem and ignore for now.
-		entry, ok := target.Contents[name]
+		entry, ok := expected.Contents[contentName]
 		if !ok {
 			t.recordProblem(contentPath, errors.New("unknown content encountered on disk"))
 			unknownContentEncountered = true
@@ -279,17 +439,17 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 
 		// Handle content removal based on type.
 		if entry.Kind == EntryKind_Directory {
-			if !t.removeDirectory(contentPath, entry) {
+			if !t.removeDirectory(directory, contentName, contentPath, entry) {
 				continue
 			}
 		} else if entry.Kind == EntryKind_File {
-			if err = t.removeFile(contentPath, entry); err != nil {
+			if err = t.removeFile(directory, contentName, contentPath, entry); err != nil {
 				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove file"))
 				continue
 			}
 		} else if entry.Kind == EntryKind_Symlink {
-			if err = t.removeSymlink(contentPath, entry); err != nil {
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove symlink"))
+			if err = t.removeSymbolicLink(directory, contentName, contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove symbolic link"))
 				continue
 			}
 		} else {
@@ -299,13 +459,30 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 
 		// At this point the removal must have succeeded, so remove the entry
 		// from the target.
-		delete(target.Contents, name)
+		delete(expected.Contents, contentName)
 	}
+
+	// Close the directory.
+	directory.Close()
+
+	// RACE: There is a race condition here that is platform-dependent. On POSIX
+	// platforms, the directory handle we had open (and whose content we
+	// deleted) pointed to the directory by the given name in the parent at the
+	// time of opening. It may have been unlinked, and we may have been
+	// operating on something that wasn't visible on the filesystem.
+	// Additionally, it may have been replaced by some other content with the
+	// same name within the parent during this time. On Windows, holding open a
+	// directory handle keeps it from being removed on the filesystem, but
+	// there's still a window between the time that we close the directory and
+	// the time we attempt to remove it. The worst case fallout in either case
+	// is removal of content that was created with the same name during these
+	// windows, or the apparent failure of the directory removal if the content
+	// is of a different type.
 
 	// If we didn't encounter any unknown content and the target contents are
 	// empty, then we can attempt to remove the directory itself.
-	if !unknownContentEncountered && len(target.Contents) == 0 {
-		if err := os.Remove(fullPath); err != nil {
+	if !unknownContentEncountered && len(expected.Contents) == 0 {
+		if err := parent.RemoveDirectory(name); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove directory"))
 		} else {
 			return true
@@ -319,119 +496,68 @@ func (t *transitioner) removeDirectory(path string, target *Entry) bool {
 }
 
 // remove removes the content at the specified path, enforcing that it matches
-// the specified target. If only a portion of the content can be removed, then
+// the specified entry. If only a portion of the content can be removed, then
 // what remains will be represented by the return value.
-func (t *transitioner) remove(path string, target *Entry) *Entry {
-	// If the target is nil, we're done.
-	if target == nil {
+func (t *transitioner) remove(path string, entry *Entry) *Entry {
+	// If the entry is nil, we're done.
+	if entry == nil {
 		return nil
 	}
 
-	// Ensure that the path of the target exists (relative to the root) with the
-	// specificed casing.
-	if err := t.ensureRouteWithProperCase(path, false); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to verify path to target"))
-		return target
+	// Walk down to the parent of the target and compute the target's leaf name.
+	// If we are successful, defer closure of the parent.
+	parent, name, err := t.walkToParentAndComputeLeafName(path, false, true)
+	if err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root"))
+		return entry
 	}
+	defer parent.Close()
 
 	// Handle removal based on type.
-	if target.Kind == EntryKind_Directory {
-		// Create a copy of target for mutation.
-		targetCopy := target.Copy()
+	if entry.Kind == EntryKind_Directory {
+		// Create a copy of entry for mutation.
+		entryCopy := entry.Copy()
 
 		// Attempt to reduce it.
-		if !t.removeDirectory(path, targetCopy) {
-			return targetCopy
+		if !t.removeDirectory(parent, name, path, entryCopy) {
+			return entryCopy
 		}
-	} else if target.Kind == EntryKind_File {
-		if err := t.removeFile(path, target); err != nil {
+	} else if entry.Kind == EntryKind_File {
+		if err := t.removeFile(parent, name, path, entry); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove file"))
-			return target
+			return entry
 		}
-	} else if target.Kind == EntryKind_Symlink {
-		if err := t.removeSymlink(path, target); err != nil {
+	} else if entry.Kind == EntryKind_Symlink {
+		if err := t.removeSymbolicLink(parent, name, path, entry); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove symlink"))
-			return target
+			return entry
 		}
 	} else {
 		t.recordProblem(path, errors.New("removal requested for unknown entry type"))
-		return target
+		return entry
 	}
 
 	// Success.
 	return nil
 }
 
-// swapFile atomically swaps files at the specified path, enforcing that the
-// existing file matches what's expected.
-func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
-	// Ensure that the path of the target exists (relative to the root) with the
-	// specificed casing.
-	if err := t.ensureRouteWithProperCase(path, false); err != nil {
-		return errors.Wrap(err, "unable to verify path to target")
-	}
-
-	// Compute the full path to this file.
-	fullPath := filepath.Join(t.root, path)
-
-	// Ensure that the existing entry hasn't been modified from what we're
-	// expecting.
-	mode, uid, gid, err := t.ensureExpectedFile(path, oldEntry)
-	if err != nil {
-		return errors.Wrap(err, "unable to validate existing file")
-	}
-
-	// Compute the new file mode based on the new entry's executability.
-	if newEntry.Executable {
+// findAndMoveStagedFileIntoPlace locates a staged file for the specified
+// combination of path and entry, sets its permissions appropriately, and moves
+// it to the location specified by the combination of parent directory and
+// content name. If this requires a cross-device rename, this function will
+// approximate atomicity using an intermediate temporary file.
+func (t *transitioner) findAndMoveStagedFileIntoPlace(
+	path string,
+	target *Entry,
+	parent *filesystem.Directory,
+	name string,
+) error {
+	// Compute the new file mode based on the new entry's executability. We
+	// enforce that default file modes don't have executability bits set, so we
+	// don't need to strip them out in the event that executability isn't set.
+	mode := t.defaultFilePermissionMode
+	if target.Executable {
 		mode = markExecutableForReaders(mode)
-	} else {
-		mode = stripExecutableBits(mode)
-	}
-
-	// If both files have the same contents (differing only in permissions),
-	// then we won't have staged the file, so we just change the permissions on
-	// the existing file.
-	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
-		// Attempt to change file permissions.
-		if err := os.Chmod(fullPath, mode); err != nil {
-			return errors.Wrap(err, "unable to change file permissions")
-		}
-
-		// Success.
-		return nil
-	}
-
-	// Compute the path to the staged file.
-	stagedPath, err := t.provider.Provide(path, newEntry.Digest)
-	if err != nil {
-		return errors.Wrap(err, "unable to locate staged file")
-	}
-
-	// Set the mode for the staged file.
-	if err := os.Chmod(stagedPath, mode); err != nil {
-		return errors.Wrap(err, "unable to set staged file mode")
-	}
-
-	// Set the ownership for the staged file.
-	if err := filesystem.SetOwnership(stagedPath, uid, gid); err != nil {
-		return errors.Wrap(err, "unable to set staged file ownership")
-	}
-
-	// Rename the staged file.
-	if err := filesystem.RenameFileAtomic(stagedPath, fullPath); err != nil {
-		return errors.Wrap(err, "unable to relocate staged file")
-	}
-
-	// Success.
-	return nil
-}
-
-// createFile creates the target file at the specified path.
-func (t *transitioner) createFile(path string, target *Entry) error {
-	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
-	// modification since the last scan.
-	if err := t.ensureNotExists(path); err != nil {
-		return errors.Wrap(err, "unable to ensure path does not exist")
 	}
 
 	// Compute the path to the staged file.
@@ -440,59 +566,187 @@ func (t *transitioner) createFile(path string, target *Entry) error {
 		return errors.Wrap(err, "unable to locate staged file")
 	}
 
-	// Compute the new file mode based on the new entry's executability.
-	mode := t.permissionExposureLevel.newFileBaseMode()
-	if target.Executable {
-		mode = markExecutableForReaders(mode)
-	} else {
-		mode = stripExecutableBits(mode)
+	// Set permissions for the staged file.
+	if err := filesystem.SetPermissionsByPath(stagedPath, t.defaultOwnership, mode); err != nil {
+		return errors.Wrap(err, "unable to set staged file permissions")
 	}
 
-	// Set the mode for the staged file.
-	if err := os.Chmod(stagedPath, mode); err != nil {
-		return errors.Wrap(err, "unable to set staged file mode")
+	// Attempt to atomically rename the file. If we succeed, we're done.
+	renameErr := filesystem.Rename(nil, stagedPath, parent, name)
+	if renameErr == nil {
+		return nil
 	}
 
-	// Rename the staged file.
-	if err := filesystem.RenameFileAtomic(stagedPath, filepath.Join(t.root, path)); err != nil {
-		return errors.Wrap(err, "unable to relocate staged file")
+	// If the atomic rename failed, check if it was due to a cross-device
+	// rename. If not, then there's nothing else we can do.
+	if !filesystem.IsCrossDeviceError(renameErr) {
+		return errors.Wrap(renameErr, "unable to relocate staged file")
 	}
+
+	// At this point, we know we're dealing with a cross-device rename, for
+	// which we'll have to simulate atomicity with an intermediate temporary
+	// file.
+
+	// Open the staged file. We can't defer its closure because we need to be
+	// able to remove it after a successful rename, which we can't do (on some
+	// platforms, notably Windows) if the file handle is open.
+	stagedFile, err := os.Open(stagedPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to open staged file")
+	}
+
+	// Create a temporary file in the target directory. We can't defer its
+	// closure because we'll want to be rename it or remove it on rename
+	// failure, which we can't do (on some platforms, notably Windows) if the
+	// file handle is open.
+	temporaryName, temporary, err := parent.CreateTemporaryFile(crossDeviceRenameTemporaryNamePrefix)
+	if err != nil {
+		stagedFile.Close()
+		return errors.Wrap(err, "unable to create temporary file for cross-device rename")
+	}
+
+	// Copy the file contents. We'll handle errors below.
+	_, copyErr := io.Copy(temporary, stagedFile)
+
+	// Close out files.
+	stagedFile.Close()
+	temporary.Close()
+
+	// If there was a copy error, then remove the temporary and abort.
+	if copyErr != nil {
+		parent.RemoveFile(temporaryName)
+		return errors.Wrap(copyErr, "unable to copy file contents")
+	}
+
+	// Set permissions on the temporary file.
+	if err := parent.SetPermissions(temporaryName, t.defaultOwnership, mode); err != nil {
+		parent.RemoveFile(temporaryName)
+		return errors.Wrap(err, "unable to set intermediate file permissions")
+	}
+
+	// Rename the file.
+	if err := filesystem.Rename(parent, temporaryName, parent, name); err != nil {
+		parent.RemoveFile(temporaryName)
+		return errors.Wrap(err, "unable to relocate intermediate file")
+	}
+
+	// Remove the staged file. We don't bother checking for errors because
+	// there's not much we can or need to do about them at this point.
+	os.Remove(stagedPath)
 
 	// Success.
 	return nil
 }
 
-// createSymlink creates the target symlink at the specified path.
-func (t *transitioner) createSymlink(path string, target *Entry) error {
+// swapFile atomically swaps files at the specified path, enforcing that the
+// existing file matches what's expected.
+func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
+	// Walk down to the parent of the target and compute the target's leaf name.
+	// If we are successful, defer closure of the parent.
+	parent, name, err := t.walkToParentAndComputeLeafName(path, false, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to walk to transition root")
+	}
+	defer parent.Close()
+
+	// Ensure that the existing entry hasn't been modified from what we're
+	// expecting.
+	if err := t.ensureExpectedFile(parent, name, path, oldEntry); err != nil {
+		return errors.Wrap(err, "unable to validate existing file")
+	}
+
+	// RACE: There is a race condition here between the file check and the file
+	// replacement that we have to live with due to limitations in filesystem
+	// APIs. The worst case fallout is replacement of contents that are modified
+	// during this window.
+
+	// If both files have the same contents (differing only in executability),
+	// then we won't have staged the file, so we just change the permissions on
+	// the existing file.
+	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
+		// Compute the new file mode based on the new entry's executability. We
+		// enforce that default file modes don't have executability bits set, so
+		// we don't need to strip them out in the event that executability isn't
+		// set.
+		mode := t.defaultFilePermissionMode
+		if newEntry.Executable {
+			mode = markExecutableForReaders(mode)
+		}
+
+		// Attempt to change file permissions.
+		//
+		// TODO: If we were to pass in executability preservation information to
+		// the transitioner, we could skip this call on systems where
+		// executability information is not preserved.
+		if err := parent.SetPermissions(name, t.defaultOwnership, mode); err != nil {
+			return errors.Wrap(err, "unable to change file permissions")
+		}
+
+		// Success.
+		return nil
+	}
+
+	// Otherwise, we will have a staged file, so find it and move it into place.
+	return t.findAndMoveStagedFileIntoPlace(path, newEntry, parent, name)
+}
+
+// createFile creates the target file at the specified path.
+func (t *transitioner) createFile(parent *filesystem.Directory, name, path string, target *Entry) error {
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
-	if err := t.ensureNotExists(path); err != nil {
+	if err := t.ensureNotExists(parent, name); err != nil {
 		return errors.Wrap(err, "unable to ensure path does not exist")
 	}
 
-	// Create the symlink.
-	if err := os.Symlink(target.Target, filepath.Join(t.root, path)); err != nil {
-		return errors.Wrap(err, "unable to link to target")
+	// RACE: There is a race condition here between the non-existence check and
+	// the file relocation that we have to live with due to limitations in
+	// filesystem APIs. The worst case fallout is replacement of contents that
+	// are created during this window.
+
+	// Find the staged file and move it into place.
+	return t.findAndMoveStagedFileIntoPlace(path, target, parent, name)
+}
+
+// createSymbolicLink creates the target symbolic link at the specified path.
+func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, path string, target *Entry) error {
+	// Verify that the symbolic link agrees with our symbolic link handling
+	// mode.
+	if t.symlinkMode == SymlinkMode_SymlinkIgnore {
+		return errors.New("symbolic link creation requested with symbolic links ignored")
+	} else if t.symlinkMode == SymlinkMode_SymlinkPortable {
+		if normalized, err := normalizeSymlinkAndEnsurePortable(path, target.Target); err != nil || normalized != target.Target {
+			return errors.New("symbolic link was not in normalized form or was not portable")
+		}
 	}
 
-	// Success.
-	return nil
+	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
+	// modification since the last scan.
+	if err := t.ensureNotExists(parent, name); err != nil {
+		return errors.Wrap(err, "unable to ensure path does not exist")
+	}
+
+	// RACE: There is a race condition here between the non-existence check and
+	// the symbolic link creation that we have to live with due to limitations
+	// in filesystem APIs. The worst case fallout is replacement of contents
+	// that are created during this window.
+
+	// Create the symbolic link.
+	return parent.CreateSymbolicLink(name, target.Target)
 }
 
 // createDirectory creates the target directory at the specified path. If only a
 // portion of the directory can be created, an entry representing that portion
 // will be returned.
-func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
+func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path string, target *Entry) *Entry {
 	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
 	// modification since the last scan.
-	if err := t.ensureNotExists(path); err != nil {
+	if err := t.ensureNotExists(parent, name); err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to ensure path does not exist"))
 		return nil
 	}
 
 	// Attempt to create the directory.
-	newDirectoryBaseMode := t.permissionExposureLevel.newDirectoryBaseMode()
-	if err := os.Mkdir(filepath.Join(t.root, path), newDirectoryBaseMode); err != nil {
+	if err := parent.CreateDirectory(name); err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to create directory"))
 		return nil
 	}
@@ -501,10 +755,38 @@ func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
 	// contents.
 	created := target.CopyShallow()
 
+	// RACE: There is a race condition here between the directory creation and
+	// the permission setting and the creation of the directory's contents that
+	// we have to live with due to limitations in filesystem APIs. The worst
+	// case fallout is that the directory has been replaced by another file on
+	// which permissions are set and modifications are made. If this other
+	// object is a non-directory, then errors will arise quickly.
+
+	// Set directory permissions. If this fails, we abort the remainder of the
+	// operation because it's indicative of the fact that something's wrong.
+	// However, since we did succeed in creating the directory, we return that
+	// portion.
+	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultDirectoryPermissionMode); err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to set directory permissions"))
+		return created
+	}
+
 	// If there are contents in the target, allocate a map for created, because
-	// we'll need to populate it.
+	// we'll need to populate it, and open the directory for operations
+	// (deferring its closure).
+	var directory *filesystem.Directory
 	if len(target.Contents) > 0 {
+		// Allocate the content map.
 		created.Contents = make(map[string]*Entry)
+
+		// Open the directory.
+		if d, err := parent.OpenDirectory(name); err != nil {
+			t.recordProblem(path, errors.Wrap(err, "unable to open new directory"))
+			return created
+		} else {
+			directory = d
+			defer directory.Close()
+		}
 	}
 
 	// Attempt to create the target contents. Track problems as we go.
@@ -512,27 +794,20 @@ func (t *transitioner) createDirectory(path string, target *Entry) *Entry {
 		// Compute the content path.
 		contentPath := pathJoin(path, name)
 
-		// Verify that the content name doesn't contain an alternate path
-		// separator.
-		if containsAlternatePathSeparator(name) {
-			t.recordProblem(contentPath, errors.New("name contains path separator"))
-			continue
-		}
-
 		// Handle content creation based on type.
 		if entry.Kind == EntryKind_Directory {
-			if c := t.createDirectory(contentPath, entry); c != nil {
+			if c := t.createDirectory(directory, name, contentPath, entry); c != nil {
 				created.Contents[name] = c
 			}
 		} else if entry.Kind == EntryKind_File {
-			if err := t.createFile(contentPath, entry); err != nil {
+			if err := t.createFile(directory, name, contentPath, entry); err != nil {
 				t.recordProblem(contentPath, errors.Wrap(err, "unable to create file"))
 			} else {
 				created.Contents[name] = entry
 			}
 		} else if entry.Kind == EntryKind_Symlink {
-			if err := t.createSymlink(contentPath, entry); err != nil {
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to create symlink"))
+			if err := t.createSymbolicLink(directory, name, contentPath, entry); err != nil {
+				t.recordProblem(contentPath, errors.Wrap(err, "unable to create symbolic link"))
 			} else {
 				created.Contents[name] = entry
 			}
@@ -554,46 +829,27 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 		return nil
 	}
 
-	// If we're creating something at the root, then ensure that the parent of
-	// the root path exists and is a directory. We can assume that it's intended
-	// to be a directory since the root is intended to exist inside it.
-	if path == "" {
-		newDirectoryBaseMode := t.permissionExposureLevel.newDirectoryBaseMode()
-		if err := os.MkdirAll(filepath.Dir(t.root), newDirectoryBaseMode); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to create parent component of root path"))
-			return nil
-		}
-	}
-
-	// Ensure that the parent of the target path exists with the proper casing.
-	if err := t.ensureRouteWithProperCase(path, true); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to verify path to target"))
+	// Walk down to the parent of the target and compute the target's leaf name.
+	// If we are successful, defer closure of the parent.
+	parent, name, err := t.walkToParentAndComputeLeafName(path, false, false)
+	if err != nil {
+		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root parent"))
 		return nil
 	}
-
-	// Ensure that the target base name doesn't contain an alternate path
-	// separator.
-	// NOTE: Technically we only need to test the base name of the path because
-	// all preceding components will have been "tested" by
-	// ensureRouteWithProperCase. However, since we know all of those are valid,
-	// it's faster just to test the whole path than to compute the base name.
-	if containsAlternatePathSeparator(path) {
-		t.recordProblem(path, errors.New("name contains path separator"))
-		return nil
-	}
+	defer parent.Close()
 
 	// Handle creation based on type.
 	if target.Kind == EntryKind_Directory {
-		return t.createDirectory(path, target)
+		return t.createDirectory(parent, name, path, target)
 	} else if target.Kind == EntryKind_File {
-		if err := t.createFile(path, target); err != nil {
+		if err := t.createFile(parent, name, path, target); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to create file"))
 			return nil
 		} else {
 			return target
 		}
 	} else if target.Kind == EntryKind_Symlink {
-		if err := t.createSymlink(path, target); err != nil {
+		if err := t.createSymbolicLink(parent, name, path, target); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to create symlink"))
 			return nil
 		} else {
@@ -607,24 +863,29 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 
 // Transition provides recursive filesystem transitioning facilities for
 // synchronization roots, allowing the application of changes after
-// reconciliation.
+// reconciliation. The path to the provided synchronization root must be
+// absolute and normalized (using filepath.Clean).
 func Transition(
 	root string,
 	transitions []*Change,
 	cache *Cache,
 	symlinkMode SymlinkMode,
-	permissionExposureLevel PermissionExposureLevel,
+	defaultFilePermissionMode filesystem.Mode,
+	defaultDirectoryPermissionMode filesystem.Mode,
+	defaultOwnership *filesystem.OwnershipSpecification,
 	recomposeUnicode bool,
 	provider Provider,
 ) ([]*Entry, []*Problem) {
 	// Create the transitioner.
 	transitioner := &transitioner{
-		root:                    root,
-		cache:                   cache,
-		symlinkMode:             symlinkMode,
-		permissionExposureLevel: permissionExposureLevel,
-		recomposeUnicode:        recomposeUnicode,
-		provider:                provider,
+		root:                           root,
+		cache:                          cache,
+		symlinkMode:                    symlinkMode,
+		defaultFilePermissionMode:      defaultFilePermissionMode,
+		defaultDirectoryPermissionMode: defaultDirectoryPermissionMode,
+		defaultOwnership:               defaultOwnership,
+		recomposeUnicode:               recomposeUnicode,
+		provider:                       provider,
 	}
 
 	// Set up results.

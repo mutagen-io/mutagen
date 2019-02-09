@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 
@@ -10,9 +11,18 @@ import (
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
-// either a Directory or ReadableFile object, along with Metadata that can be
-// used to determine the type of object being returned.
-func Open(path string) (interface{}, *Metadata, error) {
+// either a Directory or ReadableFile object (as an io.Closer for convenient
+// closing access without casting), along with Metadata that can be used to
+// determine the type of object being returned. Unless explicitly specified,
+// this function does not allow the leaf component of path to be a symbolic link
+// (though intermediate components of the path can be symbolic links and will be
+// resolved in the resolution of the path), and an error will be returned if
+// this is the case. However, if allowSymbolicLinkLeaf is true, then this
+// function will allow resolution of a path leaf component that's a symbolic
+// link. In this case, the referenced object must still be a directory or
+// regular file, and the returned object will still be either a Directory or
+// ReadableFile.
+func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
 	// Verify that the provided path is absolute. This is a requirement on
 	// Windows, where all of our operations are path-based.
 	if !filepath.IsAbs(path) {
@@ -29,13 +39,17 @@ func Open(path string) (interface{}, *Metadata, error) {
 	// other threads or processes to delete or rename the file while open,
 	// avoids symbolic link traversal (at the path leaf), and has suitable
 	// semantics for both files and directories.
+	flags := uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_BACKUP_SEMANTICS | windows.FILE_FLAG_OPEN_REPARSE_POINT)
+	if allowSymbolicLinkLeaf {
+		flags = uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_BACKUP_SEMANTICS)
+	}
 	handle, err := windows.CreateFile(
 		path16,
 		windows.GENERIC_READ,
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
 		nil,
 		windows.OPEN_EXISTING,
-		windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT,
+		flags,
 		0,
 	)
 	if err != nil {
@@ -49,10 +63,13 @@ func Open(path string) (interface{}, *Metadata, error) {
 		return nil, nil, errors.Wrap(err, "unable to query file metadata")
 	}
 
-	// Verify that the handle does not represent a symbolic link. Note that
-	// FILE_ATTRIBUTE_REPARSE_POINT can be or'd with FILE_ATTRIBUTE_DIRECTORY
-	// (since symbolic links are "typed" on Windows), so we have to explicitly
-	// exclude reparse points before checking types.
+	// Verify that the handle does not represent a symbolic link. Even if we
+	// allow symbolic links in the leaf position of the path, we should not end
+	// up with one (it should resolve).
+	//
+	// Note that FILE_ATTRIBUTE_REPARSE_POINT can be or'd with
+	// FILE_ATTRIBUTE_DIRECTORY (since symbolic links are "typed" on Windows),
+	// so we have to explicitly exclude reparse points before checking types.
 	//
 	// TODO: Are there additional attributes upon which we should reject here?
 	// The Go os.File implementation doesn't seem to for normal os.Open

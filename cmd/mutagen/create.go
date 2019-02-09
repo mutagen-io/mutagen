@@ -87,32 +87,6 @@ func createMain(command *cobra.Command, arguments []string) error {
 		ignoreVCSMode = sync.IgnoreVCSMode_PropagateVCS
 	}
 
-	// Validate and convert permission exposure levels.
-	var permissionExposureLevel sync.PermissionExposureLevel
-	var alphaPermissionExposureLevel sync.PermissionExposureLevel
-	var betaPermissionExposureLevel sync.PermissionExposureLevel
-	if createConfiguration.permissionExposureLevel != "" {
-		if err := permissionExposureLevel.UnmarshalText(
-			[]byte(createConfiguration.permissionExposureLevel),
-		); err != nil {
-			return errors.Wrap(err, "unable to parse permission exposure level")
-		}
-	}
-	if createConfiguration.alphaPermissionExposureLevel != "" {
-		if err := alphaPermissionExposureLevel.UnmarshalText(
-			[]byte(createConfiguration.alphaPermissionExposureLevel),
-		); err != nil {
-			return errors.Wrap(err, "unable to parse alpha permission exposure level")
-		}
-	}
-	if createConfiguration.betaPermissionExposureLevel != "" {
-		if err := betaPermissionExposureLevel.UnmarshalText(
-			[]byte(createConfiguration.betaPermissionExposureLevel),
-		); err != nil {
-			return errors.Wrap(err, "unable to parse beta permission exposure level")
-		}
-	}
-
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
@@ -143,9 +117,6 @@ func createMain(command *cobra.Command, arguments []string) error {
 			WatchPollingInterval:         createConfiguration.watchPollingInterval,
 			Ignores:                      createConfiguration.ignores,
 			IgnoreVCSMode:                ignoreVCSMode,
-			PermissionExposureLevel:      permissionExposureLevel,
-			AlphaPermissionExposureLevel: alphaPermissionExposureLevel,
-			BetaPermissionExposureLevel:  betaPermissionExposureLevel,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -196,9 +167,6 @@ var createConfiguration struct {
 	symlinkMode                  string
 	watchMode                    string
 	watchPollingInterval         uint32
-	permissionExposureLevel      string
-	alphaPermissionExposureLevel string
-	betaPermissionExposureLevel  string
 }
 
 func init() {
@@ -213,7 +181,4 @@ func init() {
 	flags.StringVar(&createConfiguration.symlinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
-	flags.StringVar(&createConfiguration.permissionExposureLevel, "permission-exposure-level", "", "Specify permission exposure level (user|group|other)")
-	flags.StringVar(&createConfiguration.alphaPermissionExposureLevel, "alpha-permission-exposure-level", "", "Specify alpha-specific permission exposure level (user|group|other)")
-	flags.StringVar(&createConfiguration.betaPermissionExposureLevel, "beta-permission-exposure-level", "", "Specify beta-specific permission exposure level (user|group|other)")
 }

@@ -7,8 +7,8 @@ option go_package = "github.com/havoc-io/mutagen/pkg/url";
 enum Protocol {
     Local = 0;
     SSH = 1;
-    // Custom = 2;
-    // Enumeration values 3-10 reserved for core protocols.
+    // Enumeration value 2 is reserved for custom protocols.
+    // Enumeration values 3-10 are reserved for core protocols.
     Docker = 11;
 }
 

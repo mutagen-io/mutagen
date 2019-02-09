@@ -94,7 +94,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				name := filepath.Base(path)
 				resetCoalescingTimer = !IsExecutabilityProbeFileName(name) &&
 					!IsUnicodeProbeFileName(name) &&
-					!IsAtomicOperationFileName(name)
+					!IsTemporaryFileName(name)
 			}
 
 			// Reset the coalescing timer if necessary. Perform a non-blocking

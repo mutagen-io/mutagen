@@ -3,6 +3,7 @@
 package filesystem
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -11,13 +12,24 @@ import (
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
-// either a Directory or ReadableFile object, along with Metadata that can be
-// used to determine the type of object being returned.
-func Open(path string) (interface{}, *Metadata, error) {
-	// Open the file using the os package's infrastructure. We specify
-	// O_NOFOLLOW to enforce that the underlying open operation doesn't follow
-	// symbolic links at the path leaf (intermedaite symbolic links are still
-	// allowed).
+// either a Directory or ReadableFile object (as an io.Closer for convenient
+// closing access without casting), along with Metadata that can be used to
+// determine the type of object being returned. Unless explicitly specified,
+// this function does not allow the leaf component of path to be a symbolic link
+// (though intermediate components of the path can be symbolic links and will be
+// resolved in the resolution of the path), and an error will be returned if
+// this is the case (though on POSIX systems it will not be
+// ErrUnsupportedRootType). However, if allowSymbolicLinkLeaf is true, then this
+// function will allow resolution of a path leaf component that's a symbolic
+// link. In this case, the referenced object must still be a directory or
+// regular file, and the returned object will still be either a Directory or
+// ReadableFile.
+func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
+	// Open the file using the os package's infrastructure. Unless explicitly
+	// allowed, we disable resolution of symbolic links at the leaf position of
+	// the path by specifying O_NOFOLLOW. Note that this flag only affects the
+	// leaf component of the path - intermediate symbolic links are still
+	// allowed and resolved.
 	//
 	// Ideally, we'd want the open function to open the symbolic link itself
 	// in the event that O_NOFOLLOW is specified and the path leaf references a
@@ -34,7 +46,11 @@ func Open(path string) (interface{}, *Metadata, error) {
 	// readlink and its ilk. Since ELOOP still sort of makes sense (we've
 	// encountered too many symbolic links at the path leaf), we return it
 	// unmodified.
-	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	flags := os.O_RDONLY | syscall.O_NOFOLLOW
+	if allowSymbolicLinkLeaf {
+		flags = os.O_RDONLY
+	}
+	file, err := os.OpenFile(path, flags, 0)
 	if err != nil {
 		return nil, nil, err
 	}

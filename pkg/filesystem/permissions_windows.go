@@ -1,13 +1,14 @@
 package filesystem
 
 import (
+	"os"
 	userpkg "os/user"
-	"path/filepath"
 
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
+	"github.com/hectane/go-acl"
 	aclapi "github.com/hectane/go-acl/api"
 )
 
@@ -90,50 +91,46 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 	}, nil
 }
 
-// CopyPermissions copies ownership and permission information from a source
-// file to a target file. On Windows systems, this includes copying the owner,
-// primary group, and DACL.
-func CopyPermissions(
-	sourceDirectory *Directory, sourceName string,
-	targetDirectory *Directory, targetName string,
-) error {
-	// Verify that both names are valid.
-	if err := ensureValidName(sourceName); err != nil {
-		return errors.Wrap(err, "source name invalid")
-	} else if err = ensureValidName(targetName); err != nil {
-		return errors.Wrap(err, "target name invalid")
+// SetPermissionsByPath sets the permissions on the content at the specified
+// path. Ownership information is set first, followed by permissions extracted
+// from the mode using ModePermissionsMask. Ownership setting can be skipped
+// completely by providing a nil OwnershipSpecification or a specification with
+// both components unset. An OwnershipSpecification may also include only
+// certain components, in which case only those components will be set.
+// Permission setting can be skipped by providing a mode value that yields 0
+// after permission bit masking.
+func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode Mode) error {
+	// Set ownership information, if specified.
+	if ownership != nil && (ownership.userSID != nil || ownership.groupSID != nil) {
+		// Compute the information that we're going to set.
+		var information uint32
+		if ownership.userSID != nil {
+			information |= aclapi.OWNER_SECURITY_INFORMATION
+		}
+		if ownership.groupSID != nil {
+			information |= aclapi.GROUP_SECURITY_INFORMATION
+		}
+
+		// Set the information.
+		if err := aclapi.SetNamedSecurityInfo(
+			path,
+			aclapi.SE_FILE_OBJECT,
+			information,
+			ownership.userSID,
+			ownership.groupSID,
+			0,
+			0,
+		); err != nil {
+			return errors.Wrap(err, "unable to set ownership information")
+		}
 	}
 
-	// Query permission information, including user ownership, group ownership,
-	// and DACL. If successful, defer the release of the securityDescriptor,
-	// which provides the memory backing for the other parameters.
-	var userSID, groupSID *windows.SID
-	var dacl, securityDescriptor windows.Handle
-	if err := aclapi.GetNamedSecurityInfo(
-		filepath.Join(sourceDirectory.file.Name(), sourceName),
-		aclapi.SE_FILE_OBJECT,
-		aclapi.OWNER_SECURITY_INFORMATION|aclapi.GROUP_SECURITY_INFORMATION|aclapi.DACL_SECURITY_INFORMATION,
-		&userSID,
-		&groupSID,
-		&dacl,
-		nil,
-		&securityDescriptor,
-	); err != nil {
-		return errors.Wrap(err, "unable to read source file permissions")
-	}
-	defer windows.LocalFree(securityDescriptor)
-
-	// Set permission information.
-	if err := aclapi.SetNamedSecurityInfo(
-		filepath.Join(targetDirectory.file.Name(), targetName),
-		aclapi.SE_FILE_OBJECT,
-		aclapi.OWNER_SECURITY_INFORMATION|aclapi.GROUP_SECURITY_INFORMATION|aclapi.DACL_SECURITY_INFORMATION,
-		userSID,
-		groupSID,
-		dacl,
-		0,
-	); err != nil {
-		return errors.Wrap(err, "unable to read source file permissions")
+	// Set permissions, if specified.
+	mode = mode & ModePermissionsMask
+	if mode != 0 {
+		if err := acl.Chmod(path, os.FileMode(mode)); err != nil {
+			return errors.Wrap(err, "unable to set permission bits")
+		}
 	}
 
 	// Success.

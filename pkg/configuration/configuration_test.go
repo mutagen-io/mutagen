@@ -20,11 +20,6 @@ pollingInterval = 5
 
 [ignore]
 default = ["ignore/this/**", "!ignore/this/that"]
-
-[permissions]
-exposureLevel = "user"
-alphaExposureLevel = "group"
-betaExposureLevel = "other"
 `
 )
 

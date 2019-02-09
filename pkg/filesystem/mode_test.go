@@ -16,7 +16,7 @@ func TestModePermissionMaskIsExpected(t *testing.T) {
 
 // TestModePermissionMaskIsUnionOfPermissions is a sanity check that
 // ModePermissionMask is equal to the union of individual permissions.
-func TestModePermissionMaskIsExpected(t *testing.T) {
+func TestModePermissionMaskIsUnionOfPermissions(t *testing.T) {
 	permissionUnion := ModePermissionUserRead | ModePermissionUserWrite | ModePermissionUserExecute |
 		ModePermissionGroupRead | ModePermissionGroupWrite | ModePermissionGroupExecute |
 		ModePermissionOthersRead | ModePermissionOthersWrite | ModePermissionOthersExecute

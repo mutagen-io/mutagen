@@ -23,8 +23,8 @@ type Protocol int32
 const (
 	Protocol_Local Protocol = 0
 	Protocol_SSH   Protocol = 1
-	// Custom = 2;
-	// Enumeration values 3-10 reserved for core protocols.
+	// Enumeration value 2 is reserved for custom protocols.
+	// Enumeration values 3-10 are reserved for core protocols.
 	Protocol_Docker Protocol = 11
 )
 
@@ -43,7 +43,7 @@ func (x Protocol) String() string {
 	return proto.EnumName(Protocol_name, int32(x))
 }
 func (Protocol) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_url_979e68f32bd7f2f3, []int{0}
+	return fileDescriptor_url_90d4731711dd819a, []int{0}
 }
 
 type URL struct {
@@ -62,7 +62,7 @@ func (m *URL) Reset()         { *m = URL{} }
 func (m *URL) String() string { return proto.CompactTextString(m) }
 func (*URL) ProtoMessage()    {}
 func (*URL) Descriptor() ([]byte, []int) {
-	return fileDescriptor_url_979e68f32bd7f2f3, []int{0}
+	return fileDescriptor_url_90d4731711dd819a, []int{0}
 }
 func (m *URL) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_URL.Unmarshal(m, b)
@@ -130,9 +130,9 @@ func init() {
 	proto.RegisterEnum("url.Protocol", Protocol_name, Protocol_value)
 }
 
-func init() { proto.RegisterFile("url/url.proto", fileDescriptor_url_979e68f32bd7f2f3) }
+func init() { proto.RegisterFile("url/url.proto", fileDescriptor_url_90d4731711dd819a) }
 
-var fileDescriptor_url_979e68f32bd7f2f3 = []byte{
+var fileDescriptor_url_90d4731711dd819a = []byte{
 	// 283 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x90, 0xc1, 0x4b, 0xc3, 0x30,
 	0x18, 0xc5, 0xcd, 0xb2, 0xcd, 0xed, 0x2b, 0x95, 0x12, 0x3c, 0xd4, 0x9d, 0x8a, 0x22, 0xd4, 0x81,

@@ -30,9 +30,9 @@ func IsUnicodeProbeFileName(name string) bool {
 	return strings.HasPrefix(name, decompositionProbeFileNamePrefix)
 }
 
-// DecomposesUnicodeLegacy determines whether or not the filesystem on which the
+// DecomposesUnicodeByPath determines whether or not the filesystem on which the
 // directory at the specified path resides decomposes Unicode filenames.
-func DecomposesUnicodeLegacy(path string) (bool, error) {
+func DecomposesUnicodeByPath(path string) (bool, error) {
 	// Create and close a temporary file using the composed filename.
 	file, err := ioutil.TempFile(path, composedFileNamePrefix)
 	if err != nil {

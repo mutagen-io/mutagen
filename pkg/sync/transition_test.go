@@ -15,6 +15,19 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
+const (
+	// defaultFilePermissionMode is the default file permission mode to use in
+	// transition-based tests.
+	defaultFilePermissionMode = filesystem.ModePermissionUserRead | filesystem.ModePermissionUserWrite |
+		filesystem.ModePermissionGroupRead |
+		filesystem.ModePermissionOthersRead
+	// defaultDirectoryPermissionMode is the default directory permission mode
+	// to use in transition-based tests.
+	defaultDirectoryPermissionMode = filesystem.ModePermissionUserRead | filesystem.ModePermissionUserWrite | filesystem.ModePermissionUserExecute |
+		filesystem.ModePermissionGroupRead | filesystem.ModePermissionGroupExecute |
+		filesystem.ModePermissionOthersRead | filesystem.ModePermissionOthersExecute
+)
+
 // testEntryDecomposer provides the implementation for testDecomposeEntry.
 type testEntryDecomposer struct {
 	// creation records whether or not the decomposition is for a creation
@@ -149,7 +162,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 
 	// Determine whether or not we need to recompose Unicode when transitioning
 	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicodeLegacy(parent)
+	recomposeUnicode, err := filesystem.DecomposesUnicodeByPath(parent)
 	if err != nil {
 		os.RemoveAll(parent)
 		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
@@ -174,13 +187,18 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	}
 	defer provider.finalize()
 
-	// Perform the creation transition.
+	// Perform the creation transition. For this particular transition
+	// operation, we operate in POSIX raw symbolic link handling, because we
+	// want to be able to create symbolic links for testing that would be
+	// invalid under portable mode.
 	if entries, problems := Transition(
 		root,
 		transitions,
 		nil,
-		SymlinkMode_SymlinkPortable,
-		PermissionExposureLevel_PermissionExposureLevelUser,
+		SymlinkMode_SymlinkPOSIXRaw,
+		defaultFilePermissionMode,
+		defaultDirectoryPermissionMode,
+		nil,
 		recomposeUnicode,
 		provider,
 	); len(problems) != 0 {
@@ -218,7 +236,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	// Unicode recomposition behavior.
 	var recomposeUnicode bool
 	if expected != nil && expected.Kind == EntryKind_Directory {
-		if r, err := filesystem.DecomposesUnicodeLegacy(root); err != nil {
+		if r, err := filesystem.DecomposesUnicodeByPath(root); err != nil {
 			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
 		} else {
 			recomposeUnicode = r
@@ -231,7 +249,9 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 		transitions,
 		cache,
 		symlinkMode,
-		PermissionExposureLevel_PermissionExposureLevelUser,
+		defaultFilePermissionMode,
+		defaultDirectoryPermissionMode,
+		nil,
 		recomposeUnicode,
 		nil,
 	); len(problems) != 0 {
@@ -405,7 +425,9 @@ func TestTransitionSwapFile(t *testing.T) {
 			transitions,
 			cache,
 			SymlinkMode_SymlinkPortable,
-			PermissionExposureLevel_PermissionExposureLevelUser,
+			defaultFilePermissionMode,
+			defaultDirectoryPermissionMode,
+			nil,
 			recomposeUnicode,
 			provider,
 		); len(problems) != 0 {
@@ -460,7 +482,9 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 			transitions,
 			cache,
 			SymlinkMode_SymlinkPortable,
-			PermissionExposureLevel_PermissionExposureLevelUser,
+			defaultFilePermissionMode,
+			defaultDirectoryPermissionMode,
+			nil,
 			recomposeUnicode,
 			nil,
 		); len(problems) != 0 {
@@ -568,7 +592,9 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			transitions,
 			cache,
 			SymlinkMode_SymlinkPortable,
-			PermissionExposureLevel_PermissionExposureLevelUser,
+			defaultFilePermissionMode,
+			defaultDirectoryPermissionMode,
+			nil,
 			recomposeUnicode,
 			provider,
 		); len(problems) == 0 {
@@ -662,7 +688,9 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 		transitions,
 		nil,
 		SymlinkMode_SymlinkPortable,
-		PermissionExposureLevel_PermissionExposureLevelUser,
+		defaultFilePermissionMode,
+		defaultDirectoryPermissionMode,
+		nil,
 		false,
 		provider,
 	); len(problems) != 1 {

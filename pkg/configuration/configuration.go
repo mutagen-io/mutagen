@@ -43,20 +43,14 @@ type Configuration struct {
 		PollingInterval uint32 `toml:"pollingInterval"`
 	} `toml:"watch"`
 
-	// Permission contains parameters related to permission handling.
-	Permission struct {
-		// ExposureLevel specifies the permission exposure level to use in
-		// "portable" permission propagation, with endpoint-specific
-		// specifications (at any level of configuration) taking priority.
-		ExposureLevel sync.PermissionExposureLevel `toml:"exposureLevel"`
-
-		// NOTE: Alpha-specific and beta-specific permission exposure levels are
-		// not currently supported at a global configuration level. There is no
-		// technical reason that prevents this, but it seems like a footgun that
-		// might inadvertently expose content. It's much better to have these
-		// parameters be session-specific overrides that are specified alongside
-		// the endpoint URLs which they'll affect.
-	} `toml:"permission"`
+	// Permission parameters are currently excluded from TOML configuration
+	// files. There's no technical reason preventing this, but having
+	// permissions for all sessions be globally specified seems like a footgun.
+	// Even a permission propagation mode might be dangerous to specify on a
+	// global basis.
+	//
+	// That being said, it may make sense to allow permission specifications in
+	// per-project TOML configuration files, if we decide to allow those.
 }
 
 // loadFromPath is the internal loading function. We keep it separate from Load

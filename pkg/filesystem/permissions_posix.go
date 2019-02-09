@@ -3,12 +3,11 @@
 package filesystem
 
 import (
+	"os"
 	userpkg "os/user"
 	"strconv"
 
 	"github.com/pkg/errors"
-
-	"golang.org/x/sys/unix"
 )
 
 // OwnershipSpecification is an opaque type that encodes specification of file
@@ -94,38 +93,28 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 	}, nil
 }
 
-// CopyPermissions copies ownership and permission information from a source
-// file to a target file. On POSIX systems, this includes copying user ID, group
-// ID, and permission bits (including the setuid bit, the setgid bit, and the
-// sticky bit).
-func CopyPermissions(
-	sourceDirectory *Directory, sourceName string,
-	targetDirectory *Directory, targetName string,
-) error {
-	// Verify that both names are valid.
-	if err := ensureValidName(sourceName); err != nil {
-		return errors.Wrap(err, "source name invalid")
-	} else if err = ensureValidName(targetName); err != nil {
-		return errors.Wrap(err, "target name invalid")
+// SetPermissionsByPath sets the permissions on the content at the specified
+// path. Ownership information is set first, followed by permissions extracted
+// from the mode using ModePermissionsMask. Ownership setting can be skipped
+// completely by providing a nil OwnershipSpecification or a specification with
+// both components unset. An OwnershipSpecification may also include only
+// certain components, in which case only those components will be set.
+// Permission setting can be skipped by providing a mode value that yields 0
+// after permission bit masking.
+func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode Mode) error {
+	// Set ownership information, if specified.
+	if ownership != nil && (ownership.userID != -1 || ownership.groupID != -1) {
+		if err := os.Chown(path, ownership.userID, ownership.groupID); err != nil {
+			return errors.Wrap(err, "unable to set ownership information")
+		}
 	}
 
-	// Grab metadata (which will include ownership and permissions) for the
-	// source file.
-	var metadata unix.Stat_t
-	if err := fstatat(sourceDirectory.descriptor, sourceName, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return errors.Wrap(err, "unable to read source file metadata")
-	}
-
-	// Set ownership information on the target file.
-	if err := fchownat(targetDirectory.descriptor, targetName, int(metadata.Uid), int(metadata.Gid), unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return errors.Wrap(err, "unable to set ownership information on target file")
-	}
-
-	// Set permissions on the target file, including the setuid bit, the setgid
-	// bit, and the sticky bit.
-	permissions := Mode(metadata.Mode) & ModeExtendedPermissionsMask
-	if err := fchmodat(targetDirectory.descriptor, targetName, uint32(permissions), unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return errors.Wrap(err, "unable to set permission bits")
+	// Set permissions, if specified.
+	mode = mode & ModePermissionsMask
+	if mode != 0 {
+		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
+			return errors.Wrap(err, "unable to set permission bits")
+		}
 	}
 
 	// Success.

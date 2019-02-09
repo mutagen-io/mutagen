@@ -30,9 +30,15 @@ type endpoint struct {
 	symlinkMode sync.SymlinkMode
 	// ignores is the list of ignored paths for the session. It is static.
 	ignores []string
-	// permissionExposureLevel is the permission exposure level to use in
+	// defaultFilePermissionMode is the default file permission mode to use in
 	// "portable" permission propagation. It is static.
-	permissionExposureLevel sync.PermissionExposureLevel
+	defaultFilePermissionMode filesystem.Mode
+	// defaultDirectoryPermissionMode is the default directory permission mode
+	// to use in "portable" permission propagation. It is static.
+	defaultDirectoryPermissionMode filesystem.Mode
+	// defaultOwnership is the default ownership specification to use in
+	// "portable" permission propagation. It is static.
+	defaultOwnership *filesystem.OwnershipSpecification
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
@@ -83,37 +89,79 @@ func NewEndpoint(
 		o.apply(endpointOptions)
 	}
 
-	// Extract the effective symlink mode.
+	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
 	if symlinkMode == sync.SymlinkMode_SymlinkDefault {
 		symlinkMode = version.DefaultSymlinkMode()
 	}
 
-	// Extract the effective watch mode.
+	// Compute the effective watch mode.
 	watchMode := configuration.WatchMode
 	if watchMode == filesystem.WatchMode_WatchDefault {
 		watchMode = version.DefaultWatchMode()
 	}
 
-	// Extract the effective VCS ignore mode.
+	// Compute the effective VCS ignore mode.
 	ignoreVCSMode := configuration.IgnoreVCSMode
 	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSDefault {
 		ignoreVCSMode = version.DefaultIgnoreVCSMode()
 	}
 
-	// Extract the effective permission exposure level.
-	permissionExposureLevel := configuration.PermissionExposureLevel
-	if alpha {
-		if !configuration.AlphaPermissionExposureLevel.IsDefault() {
-			permissionExposureLevel = configuration.AlphaPermissionExposureLevel
-		}
+	// Compute the effective default file permission mode.
+	var defaultFilePermissionMode filesystem.Mode
+	if alpha && configuration.PermissionDefaultFileModeAlpha != 0 {
+		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeAlpha)
+	} else if !alpha && configuration.PermissionDefaultFileModeBeta != 0 {
+		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeBeta)
+	} else if configuration.PermissionDefaultFileMode != 0 {
+		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileMode)
 	} else {
-		if !configuration.BetaPermissionExposureLevel.IsDefault() {
-			permissionExposureLevel = configuration.BetaPermissionExposureLevel
-		}
+		defaultFilePermissionMode = version.DefaultFilePermissionMode()
 	}
-	if permissionExposureLevel.IsDefault() {
-		permissionExposureLevel = version.DefaultPermissionExposureLevel()
+
+	// Compute the effective default directory permission mode.
+	var defaultDirectoryPermissionMode filesystem.Mode
+	if alpha && configuration.PermissionDefaultDirectoryModeAlpha != 0 {
+		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeAlpha)
+	} else if !alpha && configuration.PermissionDefaultDirectoryModeBeta != 0 {
+		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeBeta)
+	} else if configuration.PermissionDefaultDirectoryMode != 0 {
+		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryMode)
+	} else {
+		defaultDirectoryPermissionMode = version.DefaultDirectoryPermissionMode()
+	}
+
+	// Compute the effective owner user specification.
+	var defaultUserSpecification string
+	if alpha && configuration.PermissionDefaultUserAlpha != "" {
+		defaultUserSpecification = configuration.PermissionDefaultUserAlpha
+	} else if !alpha && configuration.PermissionDefaultUserBeta != "" {
+		defaultUserSpecification = configuration.PermissionDefaultUserBeta
+	} else if configuration.PermissionDefaultUser != "" {
+		defaultUserSpecification = configuration.PermissionDefaultUser
+	} else {
+		defaultUserSpecification = version.DefaultUserSpecification()
+	}
+
+	// Compute the effective owner group specification.
+	var defaultGroupSpecification string
+	if alpha && configuration.PermissionDefaultGroupAlpha != "" {
+		defaultGroupSpecification = configuration.PermissionDefaultGroupAlpha
+	} else if !alpha && configuration.PermissionDefaultGroupBeta != "" {
+		defaultGroupSpecification = configuration.PermissionDefaultGroupBeta
+	} else if configuration.PermissionDefaultGroup != "" {
+		defaultGroupSpecification = configuration.PermissionDefaultGroup
+	} else {
+		defaultGroupSpecification = version.DefaultGroupSpecification()
+	}
+
+	// Compute the effective ownership specification.
+	defaultOwnership, err := filesystem.NewOwnershipSpecification(
+		defaultUserSpecification,
+		defaultGroupSpecification,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create ownership specification")
 	}
 
 	// Compute a combined ignore list.
@@ -176,16 +224,18 @@ func NewEndpoint(
 
 	// Success.
 	return &endpoint{
-		root:                    root,
-		watchCancel:             watchCancel,
-		watchEvents:             watchEvents,
-		symlinkMode:             symlinkMode,
-		ignores:                 ignores,
-		permissionExposureLevel: permissionExposureLevel,
-		cachePath:               cachePath,
-		cache:                   cache,
-		scanHasher:              version.Hasher(),
-		stager:                  newStager(version, stagingRoot),
+		root:                           root,
+		watchCancel:                    watchCancel,
+		watchEvents:                    watchEvents,
+		symlinkMode:                    symlinkMode,
+		ignores:                        ignores,
+		defaultFilePermissionMode:      defaultFilePermissionMode,
+		defaultDirectoryPermissionMode: defaultDirectoryPermissionMode,
+		defaultOwnership:               defaultOwnership,
+		cachePath:                      cachePath,
+		cache:                          cache,
+		scanHasher:                     version.Hasher(),
+		stager:                         newStager(version, stagingRoot),
 	}, nil
 }
 
@@ -369,7 +419,9 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		transitions,
 		e.cache,
 		e.symlinkMode,
-		e.permissionExposureLevel,
+		e.defaultFilePermissionMode,
+		e.defaultDirectoryPermissionMode,
+		e.defaultOwnership,
 		e.recomposeUnicode,
 		e.stager,
 	)

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestDecomposesUnicodeLegacyDarwinHFS(t *testing.T) {
+func TestDecomposesUnicodeByPathDarwinHFS(t *testing.T) {
 	// If we're not on Darwin, skip this test. We may have an HFS+ root (e.g. on
 	// Linux), but Linux's HFS+ implementation can either compose or decompose
 	// depending on its settings.
@@ -21,14 +21,14 @@ func TestDecomposesUnicodeLegacyDarwinHFS(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicodeLegacy(hfsRoot); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath(hfsRoot); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if !decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
 	}
 }
 
-func TestDecomposesUnicodeLegacyDarwinAPFS(t *testing.T) {
+func TestDecomposesUnicodeByPathDarwinAPFS(t *testing.T) {
 	// If we don't have the separate APFS partition, skip this test.
 	apfsRoot := os.Getenv("MUTAGEN_TEST_APFS_ROOT")
 	if apfsRoot == "" {
@@ -36,14 +36,14 @@ func TestDecomposesUnicodeLegacyDarwinAPFS(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicodeLegacy(apfsRoot); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath(apfsRoot); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
 	}
 }
 
-func TestDecomposesUnicodeLegacyOSPartition(t *testing.T) {
+func TestDecomposesUnicodeByPathOSPartition(t *testing.T) {
 	// If we're on Darwin, then our OS partition could be either HFS+ (or some
 	// variant thereof) or APFS, but it's difficult to know, so skip this test
 	// in that case.
@@ -54,7 +54,7 @@ func TestDecomposesUnicodeLegacyOSPartition(t *testing.T) {
 	// Probe the behavior of the root and ensure it matches what's expected. The
 	// only case we expect to decompose is HFS+ on Darwin, which we won't
 	// encounter in this test.
-	if decomposes, err := DecomposesUnicodeLegacy("."); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath("."); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -75,7 +75,7 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Open the path, ensure that it's a directory, and defer its closure.
-	object, metadata, err := Open(c.path)
+	object, metadata, err := Open(c.path, false)
 	var directory *Directory
 	var ok bool
 	if err != nil {

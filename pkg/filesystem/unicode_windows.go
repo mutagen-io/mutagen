@@ -7,11 +7,11 @@ func IsUnicodeProbeFileName(_ string) bool {
 	return false
 }
 
-// DecomposesUnicodeLegacy determines whether or not the filesystem on which the
+// DecomposesUnicodeByPath determines whether or not the filesystem on which the
 // directory at the specified path resides decomposes Unicode filenames. On
 // Windows this function always returns false since Windows filesystems preserve
 // Unicode filename normalization.
-func DecomposesUnicodeLegacy(_ string) (bool, error) {
+func DecomposesUnicodeByPath(_ string) (bool, error) {
 	return false, nil
 }
 

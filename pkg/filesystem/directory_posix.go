@@ -140,11 +140,11 @@ func (d *Directory) CreateSymbolicLink(name, target string) error {
 // SetPermissions sets the permissions on the content within the directory
 // specified by name. Ownership information is set first, followed by
 // permissions extracted from the mode using ModePermissionsMask. Ownership
-// setting can be skipped by providing a nil OwnershipSpecification. Setting
-// only individual components of ownership can be accomplished by providing an
-// OwnershipSpecification with only the relevant components set. Permission
-// setting can be skipped by providing a mode value that yields 0 after
-// permission bit masking.
+// setting can be skipped completely by providing a nil OwnershipSpecification
+// or a specification with both components unset. An OwnershipSpecification may
+// also include only certain components, in which case only those components
+// will be set. Permission setting can be skipped by providing a mode value that
+// yields 0 after permission bit masking.
 func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecification, mode Mode) error {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
@@ -237,9 +237,46 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	}, nil
 }
 
-// readMetadata reads metadata for the filesystem entry within the directory
+// ReadContentNames queries the directory contents and returns their base names.
+// It does not return "." or ".." entries.
+func (d *Directory) ReadContentNames() ([]string, error) {
+	// Read content names. Fortunately we can use the os.File implementation for
+	// this since it operates on the underlying file descriptor directly.
+	names, err := d.file.Readdirnames(0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Seek the directory back to the beginning since the Readdirnames operation
+	// will have exhausted its "content".
+	if offset, err := unix.Seek(d.descriptor, 0, 0); err != nil {
+		return nil, errors.Wrap(err, "unable to reset directory read pointer")
+	} else if offset != 0 {
+		return nil, errors.New("directory offset is non-zero after seek operation")
+	}
+
+	// Filter names (without allocating a new slice).
+	results := names[:0]
+	for _, name := range names {
+		// Watch for names that reference the directory itself or the parent
+		// directory. The implementation underlying os.File.Readdirnames does
+		// filter these out, but that's not guaranteed by its documentation, so
+		// it's better to do this explicitly.
+		if name == "." || name == ".." {
+			continue
+		}
+
+		// Store the name.
+		results = append(results, name)
+	}
+
+	// Success.
+	return names, nil
+}
+
+// ReadContentMetadata reads metadata for the content within the directory
 // specified by name.
-func (d *Directory) readMetadata(name string) (*Metadata, error) {
+func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
 		return nil, err
@@ -266,20 +303,18 @@ func (d *Directory) readMetadata(name string) (*Metadata, error) {
 }
 
 // ReadContents queries the directory contents and their associated metadata.
+// While the results of this function can be computed as a combination of
+// ReadContentNames and ReadContentMetadata (and this is indeed the mechanism by
+// which this function is implemented on POSIX systems), it may be significantly
+// faster than a naïve combination implementation on some platforms
+// (specifically Windows, where it relies on FindFirstFile/FindNextFile
+// infrastructure). This function doesn't not return metadata for "." or ".."
+// entries.
 func (d *Directory) ReadContents() ([]*Metadata, error) {
-	// Read content names. Fortunately we can use the os.File implementation for
-	// this since it operates on the underlying file descriptor directly.
-	names, err := d.file.Readdirnames(0)
+	// Read content names.
+	names, err := d.ReadContentNames()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read directory content names")
-	}
-
-	// Seek the directory back to the beginning since the Readdirnames operation
-	// will have exhausted its "content".
-	if offset, err := unix.Seek(d.descriptor, 0, 0); err != nil {
-		return nil, errors.Wrap(err, "unable to reset directory read pointer")
-	} else if offset != 0 {
-		return nil, errors.New("directory offset is non-zero after seek operation")
 	}
 
 	// Allocate the result slice with enough capacity to accommodate all
@@ -288,28 +323,18 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 	// Loop over names and grab their individual metadata.
 	for _, name := range names {
-		// Watch for names that reference the directory itself or the parent
-		// directory. The implementation underlying os.File.Readdirnames does
-		// filter these out, but that's not guaranteed by its documentation, so
-		// it's better to do this explicitly.
-		if name == "." || name == ".." {
-			continue
-		}
-
 		// Grab metadata for this entry. If the file has disappeared between
 		// listing and the metadata query, then just pretend that it never
 		// existed, because from an observability standpoint, it may as well not
 		// have.
-		metadata, err := d.readMetadata(name)
-		if err != nil {
+		if m, err := d.ReadContentMetadata(name); err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
 			return nil, errors.Wrap(err, "unable to access content metadata")
+		} else {
+			results = append(results, m)
 		}
-
-		// Apppend the metadata.
-		results = append(results, metadata)
 	}
 
 	// Success.
@@ -402,24 +427,48 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 	return d.RemoveFile(name)
 }
 
-// Rename performs an atomic rename operation, relocating the file specified by
-// sourceName within sourceDirectory to the location specified by targetName
-// within targetDirectory. It does not support cross-device copies.
+// Rename performs an atomic rename operation from one filesystem location (the
+// source) to another (the target). Each location can be specified in one of two
+// ways: either by a combination of directory and (non-path) name or by path
+// (with corresponding nil Directory object). Different specification mechanisms
+// can be used for each location.
+//
+// This function does not support cross-device renames. To detect whether or not
+// an error is due to an attempted cross-device rename, use the
+// IsCrossDeviceError function.
 func Rename(
-	sourceDirectory *Directory, sourceName string,
-	targetDirectory *Directory, targetName string,
+	sourceDirectory *Directory, sourceNameOrPath string,
+	targetDirectory *Directory, targetNameOrPath string,
 ) error {
-	// Verify that both names are valid.
-	if err := ensureValidName(sourceName); err != nil {
-		return errors.Wrap(err, "source name invalid")
-	} else if err = ensureValidName(targetName); err != nil {
-		return errors.Wrap(err, "target name invalid")
+	// If a source directory has been provided, then verify that the source name
+	// is a valid name and not a path.
+	if sourceDirectory != nil {
+		if err := ensureValidName(sourceNameOrPath); err != nil {
+			return errors.Wrap(err, "source name invalid")
+		}
+	}
+
+	// If a target directory has been provided, then verify that the target name
+	// is a valid name and not a path.
+	if targetDirectory != nil {
+		if err := ensureValidName(targetNameOrPath); err != nil {
+			return errors.Wrap(err, "target name invalid")
+		}
+	}
+
+	// Extract the file descriptors to pass to renameat.
+	var sourceDescriptor, targetDescriptor int
+	if sourceDirectory != nil {
+		sourceDescriptor = sourceDirectory.descriptor
+	}
+	if targetDirectory != nil {
+		targetDescriptor = targetDirectory.descriptor
 	}
 
 	// Perform an atomic rename.
 	return renameat(
-		sourceDirectory.descriptor, sourceName,
-		targetDirectory.descriptor, targetName,
+		sourceDescriptor, sourceNameOrPath,
+		targetDescriptor, targetNameOrPath,
 	)
 }
 
