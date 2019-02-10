@@ -28,7 +28,7 @@ func EnsureDefaultFileModeValid(mode fs.Mode) error {
 	// Verify that only valid bits are set. Executability is excluded since it
 	// is controlled by Mutagen.
 	if (mode & allReadWritePermissionMask) != mode {
-		return errors.New("non-permission bits detected in file mode")
+		return errors.New("executability bits detected in file mode")
 	}
 
 	// Verify that the mode is non-zero. This should never be the case, because

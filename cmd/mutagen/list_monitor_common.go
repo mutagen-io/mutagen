@@ -31,7 +31,24 @@ func printSession(state *sessionpkg.State, long bool) {
 			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 		}
-		fmt.Println("Symlink mode:", symlinkModeDescription)
+		fmt.Println("Symbolic link mode:", symlinkModeDescription)
+
+		// Compute and print the watch mode.
+		watchModeDescription := configuration.WatchMode.Description()
+		if configuration.WatchMode == filesystem.WatchMode_WatchDefault {
+			defaultWatchMode := state.Session.Version.DefaultWatchMode()
+			watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
+		}
+		fmt.Println("Watch mode:", watchModeDescription)
+
+		// Compute and print the watch polling interval.
+		var watchPollingIntervalDescription string
+		if configuration.WatchPollingInterval == 0 {
+			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
+		} else {
+			watchPollingIntervalDescription = fmt.Sprintf("%d seconds", configuration.WatchPollingInterval)
+		}
+		fmt.Println("Watch polling interval:", watchPollingIntervalDescription)
 
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
@@ -61,21 +78,98 @@ func printSession(state *sessionpkg.State, long bool) {
 			fmt.Println("Ignores: None")
 		}
 
-		// Compute and print the watch mode.
-		watchModeDescription := configuration.WatchMode.Description()
-		if configuration.WatchMode == filesystem.WatchMode_WatchDefault {
-			defaultWatchMode := state.Session.Version.DefaultWatchMode()
-			watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
+		// Print alpha permission settings.
+		var alphaDefaultFileMode uint32
+		var alphaDefaultDirectoryMode uint32
+		var alphaDefaultUser string
+		var alphaDefaultGroup string
+		if configuration.PermissionDefaultFileModeAlpha != 0 {
+			alphaDefaultFileMode = configuration.PermissionDefaultFileModeAlpha
+		} else if configuration.PermissionDefaultFileMode != 0 {
+			alphaDefaultFileMode = configuration.PermissionDefaultFileMode
 		}
-		fmt.Println("Watch mode:", watchModeDescription)
-
-		// Compute and print the polling interval.
-		var watchPollingIntervalDescription string
-		if configuration.WatchPollingInterval == 0 {
-			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
+		if configuration.PermissionDefaultDirectoryModeAlpha != 0 {
+			alphaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryModeAlpha
+		} else if configuration.PermissionDefaultDirectoryMode != 0 {
+			alphaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryMode
+		}
+		if configuration.PermissionDefaultUserAlpha != "" {
+			alphaDefaultUser = configuration.PermissionDefaultUserAlpha
+		} else if configuration.PermissionDefaultUser != "" {
+			alphaDefaultUser = configuration.PermissionDefaultUser
+		}
+		if configuration.PermissionDefaultGroupAlpha != "" {
+			alphaDefaultGroup = configuration.PermissionDefaultGroupAlpha
+		} else if configuration.PermissionDefaultGroup != "" {
+			alphaDefaultGroup = configuration.PermissionDefaultGroup
+		}
+		alphaPermissionsNonDefault := alphaDefaultFileMode != 0 ||
+			alphaDefaultDirectoryMode != 0 ||
+			alphaDefaultUser != "" ||
+			alphaDefaultGroup != ""
+		if alphaPermissionsNonDefault {
+			fmt.Println("Alpha permissions (non-defaults):")
+			if alphaDefaultFileMode != 0 {
+				fmt.Printf("\tFile mode: %#o\n", alphaDefaultFileMode)
+			}
+			if alphaDefaultDirectoryMode != 0 {
+				fmt.Printf("\tDirectory mode: %#o\n", alphaDefaultDirectoryMode)
+			}
+			if alphaDefaultUser != "" {
+				fmt.Println("\tOwner user:", alphaDefaultUser)
+			}
+			if alphaDefaultGroup != "" {
+				fmt.Println("\tOwner group:", alphaDefaultGroup)
+			}
 		} else {
-			watchPollingIntervalDescription = fmt.Sprintf("%d seconds", configuration.WatchPollingInterval)
+			fmt.Println("Alpha permissions: Default")
 		}
-		fmt.Println("Watch polling interval:", watchPollingIntervalDescription)
+
+		// Print beta permission settings.
+		var betaDefaultFileMode uint32
+		var betaDefaultDirectoryMode uint32
+		var betaDefaultUser string
+		var betaDefaultGroup string
+		if configuration.PermissionDefaultFileModeBeta != 0 {
+			betaDefaultFileMode = configuration.PermissionDefaultFileModeBeta
+		} else if configuration.PermissionDefaultFileMode != 0 {
+			betaDefaultFileMode = configuration.PermissionDefaultFileMode
+		}
+		if configuration.PermissionDefaultDirectoryModeBeta != 0 {
+			betaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryModeBeta
+		} else if configuration.PermissionDefaultDirectoryMode != 0 {
+			betaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryMode
+		}
+		if configuration.PermissionDefaultUserBeta != "" {
+			betaDefaultUser = configuration.PermissionDefaultUserBeta
+		} else if configuration.PermissionDefaultUser != "" {
+			betaDefaultUser = configuration.PermissionDefaultUser
+		}
+		if configuration.PermissionDefaultGroupBeta != "" {
+			betaDefaultGroup = configuration.PermissionDefaultGroupBeta
+		} else if configuration.PermissionDefaultGroup != "" {
+			betaDefaultGroup = configuration.PermissionDefaultGroup
+		}
+		betaPermissionsNonDefault := betaDefaultFileMode != 0 ||
+			betaDefaultDirectoryMode != 0 ||
+			betaDefaultUser != "" ||
+			betaDefaultGroup != ""
+		if betaPermissionsNonDefault {
+			fmt.Println("Beta permissions (non-defaults):")
+			if betaDefaultFileMode != 0 {
+				fmt.Printf("\tFile mode: %#o\n", betaDefaultFileMode)
+			}
+			if betaDefaultDirectoryMode != 0 {
+				fmt.Printf("\tDirectory mode: %#o\n", betaDefaultDirectoryMode)
+			}
+			if betaDefaultUser != "" {
+				fmt.Println("\tOwner user:", betaDefaultUser)
+			}
+			if betaDefaultGroup != "" {
+				fmt.Println("\tOwner group:", betaDefaultGroup)
+			}
+		} else {
+			fmt.Println("Beta permissions: Default")
+		}
 	}
 }

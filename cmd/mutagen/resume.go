@@ -89,14 +89,21 @@ var resumeCommand = &cobra.Command{
 }
 
 var resumeConfiguration struct {
-	all  bool
+	// help indicates whether or not help information should be shown for the
+	// command.
 	help bool
+	// all indicates whether or not all sessions should be resumed.
+	all bool
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := resumeCommand.Flags()
-	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&resumeConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up resume flags.
+	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
 }

@@ -186,14 +186,21 @@ var listCommand = &cobra.Command{
 }
 
 var listConfiguration struct {
+	// help indicates whether or not help information should be shown for the
+	// command.
 	help bool
+	// long indicates whether or not to use long-format listing.
 	long bool
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := listCommand.Flags()
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&listConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up list flags.
 	flags.BoolVarP(&listConfiguration.long, "long", "l", false, "Show detailed session information")
 }

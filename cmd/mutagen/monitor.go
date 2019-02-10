@@ -158,14 +158,21 @@ var monitorCommand = &cobra.Command{
 }
 
 var monitorConfiguration struct {
+	// help indicates whether or not help information should be shown for the
+	// command.
 	help bool
+	// long indicates whether or not to use long-format monitoring.
 	long bool
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := monitorCommand.Flags()
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&monitorConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up monitor flags.
 	flags.BoolVarP(&monitorConfiguration.long, "long", "l", false, "Show detailed session information")
 }

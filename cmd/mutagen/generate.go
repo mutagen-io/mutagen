@@ -39,14 +39,22 @@ var generateCommand = &cobra.Command{
 }
 
 var generateConfiguration struct {
-	help                 bool
+	// help indicates whether or not help information should be shown for the
+	// command.
+	help bool
+	// bashCompletionScript indicates the path, if any, at which to generate the
+	// bash completion script.
 	bashCompletionScript string
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := generateCommand.Flags()
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&generateConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up file generation flags.
 	flags.StringVar(&generateConfiguration.bashCompletionScript, "bash-completion-script", "", "Generate bash completion script")
 }

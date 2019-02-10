@@ -80,14 +80,21 @@ var terminateCommand = &cobra.Command{
 }
 
 var terminateConfiguration struct {
-	all  bool
+	// help indicates whether or not help information should be shown for the
+	// command.
 	help bool
+	// all indicates whether or not all sessions should be terminated.
+	all bool
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := terminateCommand.Flags()
-	flags.BoolVarP(&terminateConfiguration.all, "all", "a", false, "Terminate all sessions")
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&terminateConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up terminate flags.
+	flags.BoolVarP(&terminateConfiguration.all, "all", "a", false, "Terminate all sessions")
 }

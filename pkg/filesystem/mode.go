@@ -1,5 +1,11 @@
 package filesystem
 
+import (
+	"strconv"
+
+	"github.com/pkg/errors"
+)
+
 const (
 	// ModePermissionsMask is a bit mask that isolates portable permission bits.
 	ModePermissionsMask = Mode(0777)
@@ -23,3 +29,17 @@ const (
 	// ModePermissionOthersExecute is the others executable bit.
 	ModePermissionOthersExecute = Mode(0001)
 )
+
+// ParseMode parses a user-specified octal string and verifies that it is
+// limited to the bits specified in mask. It allows, but does not require, the
+// string to begin with a 0 (or several 0s). The provided string must not be
+// empty.
+func ParseMode(value string, mask Mode) (Mode, error) {
+	if m, err := strconv.ParseUint(value, 8, 32); err != nil {
+		return 0, errors.Wrap(err, "unable to parse numeric value")
+	} else if mode := Mode(m); mode&mask != mode {
+		return 0, errors.New("mode contains disallowed bits")
+	} else {
+		return mode, nil
+	}
+}

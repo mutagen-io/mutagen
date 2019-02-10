@@ -31,12 +31,16 @@ var daemonUnregisterCommand = &cobra.Command{
 }
 
 var daemonUnregisterConfiguration struct {
+	// help indicates whether or not help information should be shown for the
+	// command.
 	help bool
 }
 
 func init() {
-	// Bind flags to configuration. We manually add help to override the default
-	// message, but Cobra still implements it automatically.
+	// Grab a handle for the command line flags.
 	flags := daemonUnregisterCommand.Flags()
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
 	flags.BoolVarP(&daemonUnregisterConfiguration.help, "help", "h", false, "Show help information")
 }
