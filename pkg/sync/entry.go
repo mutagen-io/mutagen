@@ -72,6 +72,34 @@ func (e *Entry) EnsureValid() error {
 	return nil
 }
 
+// Count returns the total number of entries within the entry hierarchy rooted
+// at the entry.
+func (e *Entry) Count() uint64 {
+	// If we're a nil entry, then the hierarchy is empty.
+	if e == nil {
+		return 0
+	}
+
+	// Count ourselves.
+	result := uint64(1)
+
+	// If we're a directory, count our children.
+	if e.Kind == EntryKind_Directory {
+		for _, entry := range e.Contents {
+			// TODO: At the moment, we don't worry about overflow here. The
+			// reason is that, in order to overflow uint64, we'd need a minimum
+			// of 2**64 entries in the hierarchy. Even assuming that each entry
+			// consumed only one byte of memory (and they consume at least an
+			// order of magnitude more than that), we'd have to be on a system
+			// with (at least) ~18.5 exabytes of memory.
+			result += entry.Count()
+		}
+	}
+
+	// Done.
+	return result
+}
+
 // equalShallow returns true if and only if the existence, kind, executability,
 // and digest of the two entries are equivalent. It pays no attention to the
 // contents of either entry.

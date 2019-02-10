@@ -76,6 +76,17 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
+humanize
+
+https://github.com/dustin/go-humanize
+
+Copyright (c) 2005-2008  Dustin Sallings <dustin@spy.net>
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
 mousestrap
 
 https://github.com/inconshreveable/mousetrap

@@ -20,6 +20,10 @@ import (
 type endpoint struct {
 	// root is the synchronization root for the endpoint. It is static.
 	root string
+	// maximumEntryCount is the maximum number of entries within the
+	// synchronization root that this endpoint will support synchronizing. A
+	// zero value means that the size is unlimited.
+	maximumEntryCount uint64
 	// watchCancel cancels filesystem monitoring. It is static.
 	watchCancel context.CancelFunc
 	// watchEvents is the filesystem monitoring channel. It is static.
@@ -40,14 +44,19 @@ type endpoint struct {
 	// cachePath is the path at which to save the cache for the session. It is
 	// static.
 	cachePath string
-	// scanParametersLock serializes access to the scan-related fields below
-	// (those that are updated during scans). Even though we enforce that an
-	// endpoint's scan method can't be called concurrently, we perform
-	// asynchronous cache disk writes, and thus we need to be sure that we don't
-	// re-enter scan and start mutating the following fields while the write
-	// Goroutine is still running. We also acquire this lock during transitions
-	// since they re-use scan parameters.
-	scanParametersLock syncpkg.Mutex
+	// cacheLock locks cacheWriteError and cache. Although endpoint is not
+	// designed for concurrent external usage, it performs concurrent cache
+	// writes after a scan, which requires that we lock these two parameters
+	// (since we use them in other methods that might be called concurrently
+	// with the save operation).
+	// TODO: Would it make sense to make this a RWMutex? I'm not sure it would
+	// help much, because the only time where there'd be contention would be
+	// when cache writing wasn't finished by the time staging or transitioning
+	// had started, but we'd still need to ensure cacheWriteError was locked for
+	// writes by the cache writing Goroutine, so we'd have to use a separate
+	// lock for that if we wanted the cache writing Goroutine to only acquire a
+	// read lock on the cache. It's just not likely to help much.
+	cacheLock syncpkg.Mutex
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
@@ -63,6 +72,14 @@ type endpoint struct {
 	scanHasher hash.Hash
 	// stager is the staging coordinator.
 	stager *stager
+	// lastScanCount is the entry count at the time of the last scan.
+	lastScanCount uint64
+	// scannedSinceLastStageCall tracks whether or not a scan operation has
+	// occurred since the last staging operation.
+	scannedSinceLastStageCall bool
+	// scannedSinceLastTransitionCall tracks whether or not a scan operation has
+	// occurred since the last transitioning operation.
+	scannedSinceLastTransitionCall bool
 }
 
 // NewEndpoint creates a new local endpoint instance using the specified session
@@ -223,6 +240,7 @@ func NewEndpoint(
 	// Success.
 	return &endpoint{
 		root:                           root,
+		maximumEntryCount:              configuration.MaximumEntryCount,
 		watchCancel:                    watchCancel,
 		watchEvents:                    watchEvents,
 		symlinkMode:                    symlinkMode,
@@ -233,7 +251,7 @@ func NewEndpoint(
 		cachePath:                      cachePath,
 		cache:                          cache,
 		scanHasher:                     version.Hasher(),
-		stager:                         newStager(version, stagingRoot),
+		stager:                         newStager(version, stagingRoot, configuration.MaximumStagingFileSize),
 	}, nil
 }
 
@@ -254,15 +272,15 @@ func (e *endpoint) Poll(context context.Context) error {
 
 // Scan implements the Scan method for local endpoints.
 func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
-	// Grab the scan lock.
-	e.scanParametersLock.Lock()
+	// Grab the cache lock.
+	e.cacheLock.Lock()
 
 	// Check for asynchronous cache write errors. If we've encountered one, we
 	// don't proceed. Note that we use a defer to unlock since we're grabbing
 	// the cacheWriteError on the next line (this avoids an intermediate
 	// assignment).
 	if e.cacheWriteError != nil {
-		defer e.scanParametersLock.Unlock()
+		defer e.cacheLock.Unlock()
 		return nil, false, errors.Wrap(e.cacheWriteError, "unable to save cache to disk"), false
 	}
 
@@ -272,8 +290,21 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.symlinkMode,
 	)
 	if err != nil {
-		e.scanParametersLock.Unlock()
+		e.cacheLock.Unlock()
 		return nil, false, err, true
+	}
+
+	// Update the last scan count.
+	e.lastScanCount = result.Count()
+
+	// Update call states.
+	e.scannedSinceLastStageCall = true
+	e.scannedSinceLastTransitionCall = true
+
+	// Verify that we haven't exceeded the maximum entry count.
+	if e.maximumEntryCount != 0 && e.lastScanCount > e.maximumEntryCount {
+		e.cacheLock.Unlock()
+		return nil, false, errors.New("exceeded allowed entry count"), true
 	}
 
 	// Store the cache, ignore cache, and recommended Unicode recomposition
@@ -282,13 +313,13 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	e.ignoreCache = newIgnoreCache
 	e.recomposeUnicode = recomposeUnicode
 
-	// Save the cache to disk in a background Goroutine, allowing this Goroutine
-	// to unlock the scan lock once the write is complete.
+	// Save the cache to disk in a background Goroutine (and release the cache
+	// lock once that's complete).
 	go func() {
 		if err := encoding.MarshalAndSaveProtobuf(e.cachePath, e.cache); err != nil {
 			e.cacheWriteError = err
 		}
-		e.scanParametersLock.Unlock()
+		e.cacheLock.Unlock()
 	}()
 
 	// Done.
@@ -336,11 +367,25 @@ func (e *endpoint) stageFromRoot(
 
 // Stage implements the Stage method for local endpoints.
 func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
+	// Verify that we've performed a scan since the last staging operation, that
+	// way our count check is valid. If we haven't, then the controller is
+	// either malfunctioning or malicious.
+	if !e.scannedSinceLastStageCall {
+		return nil, nil, nil, errors.New("multiple staging operations performed without scan")
+	}
+	e.scannedSinceLastStageCall = false
+
+	// Verify that the number of paths provided isn't going to put us over the
+	// maximum number of allowed entries.
+	if e.maximumEntryCount != 0 && (e.maximumEntryCount-e.lastScanCount) < uint64(len(paths)) {
+		return nil, nil, nil, errors.New("staging would exceeded allowed entry count")
+	}
+
 	// Generate a reverse lookup map from the cache, which we'll use shortly to
 	// detect renames and copies.
-	e.scanParametersLock.Lock()
+	e.cacheLock.Lock()
 	reverseLookupMap, err := e.cache.GenerateReverseLookupMap()
-	e.scanParametersLock.Unlock()
+	e.cacheLock.Unlock()
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
 	}
@@ -415,9 +460,46 @@ func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receive
 
 // Transition implements the Transition method for local endpoints.
 func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
-	// Lock and defer release of the scan parameters lock.
-	e.scanParametersLock.Lock()
-	defer e.scanParametersLock.Unlock()
+	// Verify that we've performed a scan since the last transition operation,
+	// that way our count check is valid. If we haven't, then the controller is
+	// either malfunctioning or malicious.
+	if !e.scannedSinceLastTransitionCall {
+		return nil, nil, errors.New("multiple transition operations performed without scan")
+	}
+	e.scannedSinceLastTransitionCall = false
+
+	// Verify that the number of entries we'll be creating won't put us over the
+	// maximum number of allowed entries. Again, we don't worry too much about
+	// overflow here for the same reasons as in Entry.Count.
+	if e.maximumEntryCount != 0 {
+		// Compute the resulting entry count. If we dip below zero in this
+		// counting process, then the controller is malfunctioning.
+		resultingEntryCount := e.lastScanCount
+		for _, transition := range transitions {
+			if removed := transition.Old.Count(); removed > resultingEntryCount {
+				return nil, nil, errors.New("transition requires removing more entries than exist")
+			} else {
+				resultingEntryCount -= removed
+			}
+			resultingEntryCount += transition.New.Count()
+		}
+
+		// If the resulting entry count would be too high, then abort the
+		// transitioning operation, but return the error as a problem, not an
+		// error, since nobody is malfunctioning here.
+		results := make([]*sync.Entry, len(transitions))
+		for t, transition := range transitions {
+			results[t] = transition.Old
+		}
+		problems := []*sync.Problem{{Error: "transitioning would exceeded allowed entry count"}}
+		if e.maximumEntryCount < resultingEntryCount {
+			return results, problems, nil
+		}
+	}
+
+	// Lock and defer release of the cache lock.
+	e.cacheLock.Lock()
+	defer e.cacheLock.Unlock()
 
 	// Perform the transition.
 	results, problems := sync.Transition(
@@ -436,9 +518,11 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// need to return the results and problems no matter what, but if there's
 	// something weird going on with the filesystem, we'll see it the next time
 	// we scan or stage.
+	//
 	// TODO: If we see a large number of problems, should we avoid wiping the
-	// staging directory? It could be due to a parent path component missing,
-	// which could be corrected.
+	// staging directory? It could be due to an easily correctable error, at
+	// which point you wouldn't want to restage if you're talking about lots of
+	// files.
 	e.stager.wipe()
 
 	// Done.

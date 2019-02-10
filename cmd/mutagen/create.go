@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/havoc-io/mutagen/cmd"
 	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
@@ -55,6 +57,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// There's no need to validate the maximum entry count - any uint64 value is
+	// valid.
+
+	// Validate and convert the maximum staging file size.
+	var maximumStagingFileSize uint64
+	if createConfiguration.maximumStagingFileSize != "" {
+		if s, err := humanize.ParseBytes(createConfiguration.maximumStagingFileSize); err != nil {
+			return errors.Wrap(err, "unable to parse maximum staging file size")
+		} else {
+			maximumStagingFileSize = s
+		}
+	}
+
 	// Validate and convert the symbolic link mode specification.
 	var symbolicLinkMode sync.SymlinkMode
 	if createConfiguration.symbolicLinkMode != "" {
@@ -71,11 +86,13 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// NOTE: There's no need to validate the watch polling interval - any uint32
-	// value is valid.
+	// There's no need to validate the watch polling interval - any uint32 value
+	// is valid.
 
-	// NOTE: We don't need to validate ignores here, that will happen on the
-	// session service, so we'll save ourselves the time.
+	// We don't need to validate ignores here, that will happen on the session
+	// service, so we'll save ourselves the time.
+	// TODO: Should we change this and validate here as well? We do try to catch
+	// other errors early.
 
 	// Validate and convert the VCS ignore mode specification.
 	var ignoreVCSMode sync.IgnoreVCSMode
@@ -206,6 +223,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
 			SynchronizationMode:                 synchronizationMode,
+			MaximumEntryCount:                   createConfiguration.maximumEntryCount,
+			MaximumStagingFileSize:              maximumStagingFileSize,
 			SymlinkMode:                         symbolicLinkMode,
 			WatchMode:                           watchMode,
 			WatchPollingInterval:                createConfiguration.watchPollingInterval,
@@ -270,6 +289,12 @@ var createConfiguration struct {
 	help bool
 	// synchronizationMode specifies the synchronization mode for the session.
 	synchronizationMode string
+	// maximumEntryCount specifies the maximum number of filesystem entries that
+	// endpoints will tolerate managing.
+	maximumEntryCount uint64
+	// maximumStagingFileSize is the maximum file size that endpoints will
+	// stage. It can be specified in human-friendly units.
+	maximumStagingFileSize string
 	// symbolicLinkMode specifies the symbolic link handling mode to use for
 	// the session.
 	symbolicLinkMode string
@@ -348,6 +373,8 @@ func init() {
 
 	// Wire up synchronization flags.
 	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (symmetric|source-wins|mirror-safe|mirror-exact)")
+	flags.Uint64Var(&createConfiguration.maximumEntryCount, "max-entry-count", 0, "Specify the maximum number of entries that endpoints will manage")
+	flags.StringVar(&createConfiguration.maximumStagingFileSize, "max-staging-file-size", "", "Specify the maximum (individual) file size that endpoints will stage")
 
 	// Wire up symbolic link flags.
 	flags.StringVar(&createConfiguration.symbolicLinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")

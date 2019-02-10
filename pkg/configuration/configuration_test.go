@@ -10,6 +10,8 @@ const (
 	testConfigurationGibberish = "[a+1a4"
 	testConfigurationValid     = `[sync]
 mode = "two-way-resolved"
+maxEntryCount = 500
+maxStagingFileSize = "10 GB"
 
 [symlink]
 mode = "portable"

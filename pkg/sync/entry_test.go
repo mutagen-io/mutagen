@@ -188,6 +188,24 @@ func TestEntryInvalidKindInvalid(t *testing.T) {
 	}
 }
 
+func TestEntryCountNil(t *testing.T) {
+	if count := testNilEntry.Count(); count != 0 {
+		t.Error("zero-entry hierarchy reported incorrect count:", count)
+	}
+}
+
+func TestEntryCountSingle(t *testing.T) {
+	if count := testFile1Entry.Count(); count != 1 {
+		t.Error("single-entry hierarchy reported incorrect count:", count)
+	}
+}
+
+func TestEntryCountHierarchy(t *testing.T) {
+	if count := testDirectory1Entry.Count(); count != 11 {
+		t.Error("multi-entry hierarchy reported incorrect count:", count, "!=", 11)
+	}
+}
+
 func TestEntryNilNilEqualShallow(t *testing.T) {
 	if !testNilEntry.equalShallow(testNilEntry) {
 		t.Error("two nil entries not considered shallow equal")

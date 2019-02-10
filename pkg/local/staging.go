@@ -28,16 +28,32 @@ type stagingSink struct {
 	storage *os.File
 	// digester is the hash of the data already written.
 	digester hash.Hash
+	// maximumSize is the maximum number of bytes allowed to be written to the
+	// file. A zero value means that the size is unlimited.
+	maximumSize uint64
+	// currentSize is the number of bytes that have been written to the file.
+	currentSize uint64
 }
 
 // Write writes data to the sink.
 func (s *stagingSink) Write(data []byte) (int, error) {
+	// Watch for size violations.
+	if s.maximumSize != 0 && (s.maximumSize-s.currentSize) < uint64(len(data)) {
+		return 0, errors.New("maximum file size reached")
+	}
+
 	// Write to the underlying storage.
 	n, err := s.storage.Write(data)
 
 	// Write as much to the digester as we wrote to the underlying storage. This
 	// can't fail.
 	s.digester.Write(data[:n])
+
+	// Update the current size. We needn't worry about this overflowing, because
+	// if maximumSize is 0, then this isn't even used, and if maximumSize is
+	// non-zero, then the check above is sufficient to know that this amount of
+	// data won't overflow the maximum uint64 value.
+	s.currentSize += uint64(n)
 
 	// Done.
 	return n, err
@@ -85,6 +101,9 @@ type stager struct {
 	version session.Version
 	// root is the staging root.
 	root string
+	// maximumFileSize is the maximum allowed size for a single staged file. A
+	// zero value means that the size is unlimited.
+	maximumFileSize uint64
 	// rootCreated indicates whether or not the staging root has been created
 	// by us since the last wipe.
 	rootCreated bool
@@ -94,12 +113,14 @@ type stager struct {
 	prefixCreated map[string]bool
 }
 
-// newStager creates a new stager instance.
-func newStager(version session.Version, root string) *stager {
+// newStager creates a new stager instance. If maximumFileSize is 0, then no
+// size limit is imposed on files.
+func newStager(version session.Version, root string, maximumFileSize uint64) *stager {
 	return &stager{
-		version:       version,
-		root:          root,
-		prefixCreated: make(map[string]bool, numberOfByteValues),
+		version:         version,
+		root:            root,
+		maximumFileSize: maximumFileSize,
+		prefixCreated:   make(map[string]bool, numberOfByteValues),
 	}
 }
 
@@ -158,10 +179,11 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 
 	// Success.
 	return &stagingSink{
-		stager:   s,
-		path:     path,
-		storage:  storage,
-		digester: s.version.Hasher(),
+		stager:      s,
+		path:        path,
+		storage:     storage,
+		digester:    s.version.Hasher(),
+		maximumSize: s.maximumFileSize,
 	}, nil
 }
 

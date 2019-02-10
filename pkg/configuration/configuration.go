@@ -14,6 +14,12 @@ type Configuration struct {
 	Synchronization struct {
 		// Mode specifies the default synchronization mode.
 		Mode sync.SynchronizationMode `toml:"mode"`
+		// MaximumEntryCount specifies the maximum number of filesystem entries
+		// that endpoints will tolerate managing.
+		MaximumEntryCount uint64 `toml:"maxEntryCount"`
+		// MaximumStagingFileSize is the maximum (individual) file size that
+		// endpoints will stage. It can be specified in human-friendly units.
+		MaximumStagingFileSize string `toml:"maxStagingFileSize"`
 	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -24,6 +26,24 @@ func printSession(state *sessionpkg.State, long bool) {
 			synchronizationMode += fmt.Sprintf(" (%s)", defaultSynchronizationMode.Description())
 		}
 		fmt.Println("Synchronization mode:", synchronizationMode)
+
+		// Compute and print maximum entry count.
+		if configuration.MaximumEntryCount == 0 {
+			fmt.Println("Maximum entry count: Unlimited")
+		} else {
+			fmt.Println("Maximum entry count:", configuration.MaximumEntryCount)
+		}
+
+		// Compute and print maximum staging file size.
+		if configuration.MaximumStagingFileSize == 0 {
+			fmt.Println("Maximum staging file size: Unlimited")
+		} else {
+			fmt.Printf(
+				"Maximum staging file size: %d (%s)\n",
+				configuration.MaximumStagingFileSize,
+				humanize.Bytes(configuration.MaximumStagingFileSize),
+			)
+		}
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := configuration.SymlinkMode.Description()

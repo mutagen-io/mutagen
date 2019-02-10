@@ -22,7 +22,15 @@ message Configuration {
     // used in synchronization.
     sync.SynchronizationMode synchronizationMode = 11;
 
-    // Fields 12-20 are reserved for future synchronization configuration
+    // MaximumEntryCount specifies the maximum number of filesystem entries that
+    // endpoints will tolerate managing. A zero value indicates no limit.
+    uint64 maximumEntryCount = 12;
+
+    // MaximumStagingFileSize is the maximum (individual) file size that
+    // endpoints will stage. A zero value indicates no limit.
+    uint64 maximumStagingFileSize = 13;
+
+    // Fields 14-20 are reserved for future synchronization configuration
     // parameters.
 
 

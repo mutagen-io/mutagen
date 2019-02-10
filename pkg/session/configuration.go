@@ -3,6 +3,8 @@ package session
 import (
 	"github.com/pkg/errors"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -35,6 +37,12 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 	if !c.SynchronizationMode.IsDefault() && !c.SynchronizationMode.Supported() {
 		return errors.New("unknown or unsupported synchronization mode")
 	}
+
+	// The maximum entry count doesn't need to be validated - any of its values
+	// are technically valid.
+
+	// The maximum staging file size doesn't need to be validated - any of its
+	// values are technically valid.
 
 	// Verify that the symlink mode is unspecified or supported for usage.
 	if c.SymlinkMode != sync.SymlinkMode_SymlinkDefault && !c.SymlinkMode.Supported() {
@@ -198,14 +206,26 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 		return nil, errors.Wrap(err, "unable to load global configuration")
 	}
 
+	// Parse maximum staging file size if specified.
+	var maximumStagingFileSize uint64
+	if configuration.Synchronization.MaximumStagingFileSize != "" {
+		if s, err := humanize.ParseBytes(configuration.Synchronization.MaximumStagingFileSize); err != nil {
+			return nil, errors.Wrap(err, "unable to parse maximum staging file size")
+		} else {
+			maximumStagingFileSize = s
+		}
+	}
+
 	// Create a session configuration object.
 	result := &Configuration{
-		SynchronizationMode:  configuration.Synchronization.Mode,
-		SymlinkMode:          configuration.Symlink.Mode,
-		WatchMode:            configuration.Watch.Mode,
-		WatchPollingInterval: configuration.Watch.PollingInterval,
-		DefaultIgnores:       configuration.Ignore.Default,
-		IgnoreVCSMode:        configuration.Ignore.VCS,
+		SynchronizationMode:    configuration.Synchronization.Mode,
+		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
+		MaximumStagingFileSize: maximumStagingFileSize,
+		SymlinkMode:            configuration.Symlink.Mode,
+		WatchMode:              configuration.Watch.Mode,
+		WatchPollingInterval:   configuration.Watch.PollingInterval,
+		DefaultIgnores:         configuration.Ignore.Default,
+		IgnoreVCSMode:          configuration.Ignore.VCS,
 	}
 
 	// Verify that the resulting configuration is valid.
@@ -229,6 +249,20 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 		result.SynchronizationMode = session.SynchronizationMode
 	} else {
 		result.SynchronizationMode = global.SynchronizationMode
+	}
+
+	// Merge maximum entry count.
+	if session.MaximumEntryCount != 0 {
+		result.MaximumEntryCount = session.MaximumEntryCount
+	} else {
+		result.MaximumEntryCount = global.MaximumEntryCount
+	}
+
+	// Merge maximum staging file size.
+	if session.MaximumStagingFileSize != 0 {
+		result.MaximumStagingFileSize = session.MaximumStagingFileSize
+	} else {
+		result.MaximumStagingFileSize = global.MaximumStagingFileSize
 	}
 
 	// Merge symlink mode.
