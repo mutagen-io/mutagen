@@ -8,7 +8,7 @@ import (
 
 const (
 	testConfigurationGibberish = "[a+1a4"
-	testConfigurationValid     = `[synchronization]
+	testConfigurationValid     = `[sync]
 mode = "two-way-resolved"
 
 [symlink]

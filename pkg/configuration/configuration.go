@@ -14,7 +14,7 @@ type Configuration struct {
 	Synchronization struct {
 		// Mode specifies the default synchronization mode.
 		Mode sync.SynchronizationMode `toml:"mode"`
-	} `toml:"synchronization"`
+	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore
 	// specifications.
