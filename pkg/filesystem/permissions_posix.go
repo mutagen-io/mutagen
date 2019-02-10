@@ -74,7 +74,7 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 		case OwnershipIdentifierKindWindowsSID:
 			return nil, errors.New("Windows SIDs not supported on POSIX systems")
 		case OwnershipIdentifierKindName:
-			if groupObject, err := userpkg.Lookup(identifier); err != nil {
+			if groupObject, err := userpkg.LookupGroup(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup group by ID")
 			} else if g, err := strconv.Atoi(groupObject.Gid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
