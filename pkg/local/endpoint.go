@@ -4,8 +4,6 @@ import (
 	"context"
 	"hash"
 	"io"
-	"os"
-	"path/filepath"
 	syncpkg "sync"
 
 	"github.com/pkg/errors"
@@ -299,7 +297,12 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 
 // stageFromRoot attempts to perform staging from local files by using a reverse
 // lookup map.
-func (e *endpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *sync.ReverseLookupMap) bool {
+func (e *endpoint) stageFromRoot(
+	path string,
+	digest []byte,
+	reverseLookupMap *sync.ReverseLookupMap,
+	opener *filesystem.Opener,
+) bool {
 	// See if we can find a path within the root that has a matching digest.
 	sourcePath, sourcePathOk := reverseLookupMap.Lookup(digest)
 	if !sourcePathOk {
@@ -307,7 +310,7 @@ func (e *endpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *s
 	}
 
 	// Open the source file and defer its closure.
-	source, err := os.Open(filepath.Join(e.root, sourcePath))
+	source, err := opener.Open(sourcePath)
 	if err != nil {
 		return false
 	}
@@ -332,74 +335,77 @@ func (e *endpoint) stageFromRoot(path string, digest []byte, reverseLookupMap *s
 }
 
 // Stage implements the Stage method for local endpoints.
-func (e *endpoint) Stage(entries map[string][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
-	// It's possible that a previous staging was interrupted, so look for paths
-	// that are already staged by checking if our staging coordinator can
-	// already provide them. If everything was already staged, then we can abort
-	// the staging operation.
-	for path, digest := range entries {
-		if _, err := e.stager.Provide(path, digest); err == nil {
-			delete(entries, path)
-		}
-	}
-	if len(entries) == 0 {
-		return nil, nil, nil, nil
-	}
-
-	// It's possible that we're dealing with renames or copies, so generate a
-	// reverse lookup map from the cache and see if we can find any files
-	// locally. If we manage to handle all files, then we can abort the staging
-	// operation.
+func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
+	// Generate a reverse lookup map from the cache, which we'll use shortly to
+	// detect renames and copies.
 	e.scanParametersLock.Lock()
 	reverseLookupMap, err := e.cache.GenerateReverseLookupMap()
 	e.scanParametersLock.Unlock()
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
 	}
-	for path, digest := range entries {
-		if e.stageFromRoot(path, digest, reverseLookupMap) {
-			delete(entries, path)
+
+	// Create an opener that we can use file opening and defer its closure. We
+	// can't cache this across synchronization cycles since its path references
+	// may become invalidated or may prevent modifications.
+	opener := filesystem.NewOpener(e.root)
+	defer opener.Close()
+
+	// Filter the path list by looking for files that we can source locally.
+	//
+	// First, check if the content can be provided from the stager, which
+	// indicates that a previous staging operation was interrupted.
+	//
+	// Second, use a reverse lookup map (generated from the cache) and see if we
+	// can find (and stage) any files locally, which indicates that a file has
+	// been copied or renamed.
+	//
+	// If we manage to handle all files, then we can abort the staging
+	// operation.
+	filteredPaths := paths[:0]
+	for p, path := range paths {
+		digest := digests[p]
+		if _, err := e.stager.Provide(path, digest); err == nil {
+			continue
+		} else if e.stageFromRoot(path, digest, reverseLookupMap, opener) {
+			continue
+		} else {
+			filteredPaths = append(filteredPaths, path)
 		}
 	}
-	if len(entries) == 0 {
+	if len(filteredPaths) == 0 {
 		return nil, nil, nil, nil
 	}
 
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
-	// Extract paths.
-	paths := make([]string, 0, len(entries))
-	for path := range entries {
-		paths = append(paths, path)
-	}
-
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltafying/patching.
-	signatures := make([]*rsync.Signature, len(paths))
-	for i, path := range paths {
-		if base, err := os.Open(filepath.Join(e.root, path)); err != nil {
-			signatures[i] = &rsync.Signature{}
+	signatures := make([]*rsync.Signature, len(filteredPaths))
+	for p, path := range filteredPaths {
+		if base, err := opener.Open(path); err != nil {
+			signatures[p] = &rsync.Signature{}
 			continue
 		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
-			signatures[i] = &rsync.Signature{}
+			signatures[p] = &rsync.Signature{}
 			continue
 		} else {
 			base.Close()
-			signatures[i] = signature
+			signatures[p] = signature
 		}
 	}
 
 	// Create a receiver.
-	receiver, err := rsync.NewReceiver(e.root, paths, signatures, e.stager)
+	receiver, err := rsync.NewReceiver(e.root, filteredPaths, signatures, e.stager)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to create rsync receiver")
 	}
 
 	// Done.
-	return paths, signatures, receiver, nil
+	return filteredPaths, signatures, receiver, nil
 }
 
 // Supply implements the supply method for local endpoints.

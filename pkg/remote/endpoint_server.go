@@ -327,7 +327,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	}
 
 	// Begin staging.
-	paths, signatures, receiver, err := s.endpoint.Stage(request.Entries)
+	paths, signatures, receiver, err := s.endpoint.Stage(request.Paths, request.Digests)
 	if err != nil {
 		s.encoder.Encode(&StageResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to begin staging")

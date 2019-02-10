@@ -157,38 +157,23 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// Open the parent. We do allow the parent path to be a symbolic link
 		// since we allow symbolic link resolution for parent components of the
 		// synchronization root (just not at the synchronization root itself).
-		if p, m, err := filesystem.Open(rootParentPath, true); err != nil {
+		if rootParent, _, err := filesystem.OpenDirectory(rootParentPath, true); err != nil {
 			return nil, "", errors.Wrap(err, "unable to open synchronization root parent directory")
-		} else if (m.Mode & filesystem.ModeTypeMask) != filesystem.ModeTypeDirectory {
-			p.Close()
-			return nil, "", errors.New("synchronization root parent is not a directory")
-		} else if directory, ok := p.(*filesystem.Directory); !ok {
-			panic("invalid directory object returned from root open operation")
 		} else {
-			return directory, rootName, nil
+			return rootParent, rootName, nil
 		}
 	}
 
-	// Split the path.
+	// Split the path and extract the parent components and leaf name.
 	components := strings.Split(path, "/")
-
-	// Extract the leaf name and reduce the components list to only parent
-	// components.
 	parentComponents := components[:len(components)-1]
 	leafName := components[len(components)-1]
 
 	// Open the root path. If it's not a directory, then this operation isn't
 	// valid.
-	var parent *filesystem.Directory
-	if p, m, err := filesystem.Open(t.root, false); err != nil {
+	parent, _, err := filesystem.OpenDirectory(t.root, false)
+	if err != nil {
 		return nil, "", errors.Wrap(err, "unable to open synchronization root")
-	} else if (m.Mode & filesystem.ModeTypeMask) != filesystem.ModeTypeDirectory {
-		p.Close()
-		return nil, "", errors.New("synchronization root is not a directory")
-	} else if directory, ok := p.(*filesystem.Directory); !ok {
-		panic("invalid directory object returned from root open operation")
-	} else {
-		parent = directory
 	}
 
 	// Traverse through parent components, validating casing as we go and moving

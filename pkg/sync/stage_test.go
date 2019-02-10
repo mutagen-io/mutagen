@@ -5,10 +5,12 @@ import (
 )
 
 func TestTransitionDependenciesEmtpy(t *testing.T) {
-	if entries, err := TransitionDependencies(nil); err != nil {
+	if paths, digests, err := TransitionDependencies(nil); err != nil {
 		t.Error("transition dependency finding failed for no transitions:", err)
-	} else if len(entries) != 0 {
-		t.Error("unexpected number of entries for no transitions")
+	} else if len(paths) != 0 {
+		t.Error("unexpected number of paths for no transitions")
+	} else if len(digests) != len(paths) {
+		t.Error("digest count does not match path count")
 	}
 }
 
@@ -21,7 +23,7 @@ func TestTransitionDependenciesInvalid(t *testing.T) {
 			New:  root,
 		},
 	}
-	if _, err := TransitionDependencies(transitions); err == nil {
+	if _, _, err := TransitionDependencies(transitions); err == nil {
 		t.Error("transition dependency finding succeeded for invalid transition")
 	}
 }
@@ -33,10 +35,12 @@ func TestTransitionDependenciesNewNil(t *testing.T) {
 			New:  nil,
 		},
 	}
-	if entries, err := TransitionDependencies(transitions); err != nil {
+	if paths, digests, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(entries) != 0 {
-		t.Error("unexpected number of entries")
+	} else if len(paths) != 0 {
+		t.Error("unexpected number of paths")
+	} else if len(digests) != len(paths) {
+		t.Error("digest count does not match path count")
 	}
 }
 
@@ -47,10 +51,12 @@ func TestTransitionDependenciesNewNonNil(t *testing.T) {
 			New:  testDirectory1Entry,
 		},
 	}
-	if entries, err := TransitionDependencies(transitions); err != nil {
+	if paths, digests, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(entries) != 4 {
-		t.Error("unexpected number of entries")
+	} else if len(paths) != 4 {
+		t.Error("unexpected number of paths")
+	} else if len(digests) != len(paths) {
+		t.Error("digest count does not match path count")
 	}
 }
 
@@ -64,9 +70,11 @@ func TestTransitionDependenciesOnlyExecutableBitChange(t *testing.T) {
 			New:  testFile2Entry,
 		},
 	}
-	if entries, err := TransitionDependencies(transitions); err != nil {
+	if paths, digests, err := TransitionDependencies(transitions); err != nil {
 		t.Error("transition dependency finding failed:", err)
-	} else if len(entries) != 0 {
+	} else if len(paths) != 0 {
 		t.Error("unexpected number of entries")
+	} else if len(digests) != len(paths) {
+		t.Error("digest count does not match path count")
 	}
 }

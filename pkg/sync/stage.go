@@ -9,8 +9,11 @@ import (
 // stagingPathFinder recursively identifies paths/entries that need be staged in
 // order to perform transitioning.
 type stagingPathFinder struct {
-	// entries is a map from path to digest of all encountered file entries.
-	entries map[string][]byte
+	// paths is the list of paths for encountered file entries.
+	paths []string
+	// digests is the list of digests for encountered file entries, with length
+	// and contents corresponding to paths.
+	digests [][]byte
 }
 
 // find recursively searches for file entries that need staging.
@@ -28,7 +31,8 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 			}
 		}
 	} else if entry.Kind == EntryKind_File {
-		f.entries[path] = entry.Digest
+		f.paths = append(f.paths, path)
+		f.digests = append(f.digests, entry.Digest)
 	} else if entry.Kind == EntryKind_Symlink {
 		return nil
 	} else {
@@ -41,12 +45,11 @@ func (f *stagingPathFinder) find(path string, entry *Entry) error {
 
 // TransitionDependencies analyzes a list of transitions and determines the file
 // paths (and their corresponding digests) that will need to be provided in
-// order to apply the transitions using Transition.
-func TransitionDependencies(transitions []*Change) (map[string][]byte, error) {
+// order to apply the transitions using Transition. It will return these paths
+// in depth-first traversal order.
+func TransitionDependencies(transitions []*Change) ([]string, [][]byte, error) {
 	// Create a path finder.
-	finder := &stagingPathFinder{
-		entries: make(map[string][]byte, len(transitions)),
-	}
+	finder := &stagingPathFinder{}
 
 	// Have it find paths for all the transitions.
 	for _, t := range transitions {
@@ -64,10 +67,10 @@ func TransitionDependencies(transitions []*Change) (map[string][]byte, error) {
 
 		// Otherwise we need to perform a full scan.
 		if err := finder.find(t.Path, t.New); err != nil {
-			return nil, errors.Wrap(err, "unable to find staging paths")
+			return nil, nil, errors.Wrap(err, "unable to find staging paths")
 		}
 	}
 
 	// Success.
-	return finder.entries, nil
+	return finder.paths, finder.digests, nil
 }

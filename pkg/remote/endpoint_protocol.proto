@@ -68,8 +68,11 @@ message ScanResponse {
 
 // StageRequest encodes a request for staging.
 message StageRequest {
-    // Entries maps the paths that need to be staged to their target digests.
-    map<string, bytes> entries = 1;
+    // Paths lists the paths that need to be staged.
+    repeated string paths = 1;
+    // Digests lists the digests for the paths that need to be staged. Its
+    // length and contents correspond to that of Paths.
+    repeated bytes digests = 2;
 }
 
 // StageResponse encodes the results of staging initialization.

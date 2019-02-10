@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 // EnsureValid ensures that ReceiverStatus' invariants are respected.
@@ -81,6 +81,8 @@ type receiver struct {
 	// signatures is the list of signatures corresponding to the bases for these
 	// paths.
 	signatures []*Signature
+	// opener is the filesystem opener used to open base files.
+	opener *fs.Opener
 	// sinker is the Sinker to use for staging files.
 	sinker Sinker
 	// engine is the rsync Engine.
@@ -104,7 +106,8 @@ type receiver struct {
 
 // NewReceiver creates a new receiver that stores files on disk. It is the
 // responsibility of the caller to ensure that the provided signatures are valid
-// by invoking their EnsureValid method.
+// by invoking their EnsureValid method. In order for the receiver to perform
+// efficiently, paths should be passed in depth-first traversal order.
 func NewReceiver(root string, paths []string, signatures []*Signature, sinker Sinker) (Receiver, error) {
 	// Ensure that the receiving request is sane.
 	if len(paths) != len(signatures) {
@@ -116,6 +119,7 @@ func NewReceiver(root string, paths []string, signatures []*Signature, sinker Si
 		root:       root,
 		paths:      paths,
 		signatures: signatures,
+		opener:     fs.NewOpener(root),
 		sinker:     sinker,
 		engine:     NewEngine(),
 		total:      uint64(len(paths)),
@@ -193,7 +197,7 @@ func (r *receiver) Receive(transmission *Transmission) error {
 		// terminal error.
 		if signature.isEmpty() {
 			r.base = newEmptyReadSeekCloser()
-		} else if base, err := os.Open(filepath.Join(r.root, path)); err != nil {
+		} else if base, err := r.opener.Open(path); err != nil {
 			r.burning = true
 			return nil
 		} else {
@@ -242,6 +246,9 @@ func (r *receiver) finalize() error {
 		r.target.Close()
 		r.target = nil
 	}
+
+	// Close the file opener.
+	r.opener.Close()
 
 	// Mark the receiver as finalized.
 	r.finalized = true

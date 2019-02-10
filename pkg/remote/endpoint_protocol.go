@@ -133,13 +133,35 @@ func (r *StageRequest) ensureValid() error {
 		return errors.New("nil stage request")
 	}
 
-	// Ensure that there are a non-zero number of entries. This isn't an
-	// invariant that we really *need* to enforce, as our logic is capable of
-	// handling it, but it's a useful check to make sure that the client is
-	// avoiding transmission in these cases.
-	if len(r.Entries) == 0 {
-		return errors.New("no entries present")
+	// Ensure that there are a non-zero number of paths. This isn't an invariant
+	// that we really *need* to enforce, as our logic is capable of handling it,
+	// but it's a useful check to make sure that the client is avoiding
+	// transmission in these cases.
+	if len(r.Paths) == 0 {
+		return errors.New("no paths present")
 	}
+
+	// NOTE: We could perform an additional check that the specified paths are
+	// unique, but this isn't quite so cheap, and it won't break anything if
+	// they're not.
+
+	// HACK: We don't verify that the paths are valid (and we'd have a hard time
+	// doing so in any sense other than syntactically) because we use the
+	// filesystem.Opener infrastructure to properly traverse the synchronization
+	// root. It would also be expensive to verify the correctness of these paths
+	// and it would be of little benefit. I'd class this as a hack because it's
+	// sort of a layering violation (the message shouldn't know about the code
+	// that uses it), but I'm willing to live with it because the message is so
+	// tightly coupled to the endpoint implementation anyway.
+
+	// Ensure that the number of digests matches the number of paths.
+	if len(r.Digests) != len(r.Paths) {
+		return errors.New("digest count does not match path count")
+	}
+
+	// NOTE: We could perform an additional check that the specified digests are
+	// valid, but this isn't really necessary, and we'd have to handle varying
+	// digest lengths.
 
 	// Success.
 	return nil
