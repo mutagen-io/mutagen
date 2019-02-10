@@ -104,6 +104,18 @@ func NewEndpoint(
 		o.apply(endpointOptions)
 	}
 
+	// Compute the effective maximum entry count.
+	maximumEntryCount := configuration.MaximumEntryCount
+	if endpointOptions.maximumEntryCountCallback != nil {
+		maximumEntryCount = endpointOptions.maximumEntryCountCallback()
+	}
+
+	// Compute the effective maximum staging file size.
+	maximumStagingFileSize := configuration.MaximumStagingFileSize
+	if endpointOptions.maximumStagingFileSizeCallback != nil {
+		maximumStagingFileSize = endpointOptions.maximumStagingFileSizeCallback()
+	}
+
 	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
 	if symlinkMode == sync.SymlinkMode_SymlinkDefault {
@@ -124,7 +136,9 @@ func NewEndpoint(
 
 	// Compute the effective default file permission mode.
 	var defaultFilePermissionMode filesystem.Mode
-	if alpha && configuration.PermissionDefaultFileModeAlpha != 0 {
+	if endpointOptions.defaultFileModeCallback != nil {
+		defaultFilePermissionMode = endpointOptions.defaultFileModeCallback()
+	} else if alpha && configuration.PermissionDefaultFileModeAlpha != 0 {
 		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeAlpha)
 	} else if !alpha && configuration.PermissionDefaultFileModeBeta != 0 {
 		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeBeta)
@@ -136,7 +150,9 @@ func NewEndpoint(
 
 	// Compute the effective default directory permission mode.
 	var defaultDirectoryPermissionMode filesystem.Mode
-	if alpha && configuration.PermissionDefaultDirectoryModeAlpha != 0 {
+	if endpointOptions.defaultDirectoryModeCallback != nil {
+		defaultDirectoryPermissionMode = endpointOptions.defaultDirectoryModeCallback()
+	} else if alpha && configuration.PermissionDefaultDirectoryModeAlpha != 0 {
 		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeAlpha)
 	} else if !alpha && configuration.PermissionDefaultDirectoryModeBeta != 0 {
 		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeBeta)
@@ -148,7 +164,9 @@ func NewEndpoint(
 
 	// Compute the effective owner user specification.
 	var defaultUserSpecification string
-	if alpha && configuration.PermissionDefaultUserAlpha != "" {
+	if endpointOptions.defaultOwnerUserCallback != nil {
+		defaultUserSpecification = endpointOptions.defaultOwnerUserCallback()
+	} else if alpha && configuration.PermissionDefaultUserAlpha != "" {
 		defaultUserSpecification = configuration.PermissionDefaultUserAlpha
 	} else if !alpha && configuration.PermissionDefaultUserBeta != "" {
 		defaultUserSpecification = configuration.PermissionDefaultUserBeta
@@ -160,7 +178,9 @@ func NewEndpoint(
 
 	// Compute the effective owner group specification.
 	var defaultGroupSpecification string
-	if alpha && configuration.PermissionDefaultGroupAlpha != "" {
+	if endpointOptions.defaultOwnerGroupCallback != nil {
+		defaultGroupSpecification = endpointOptions.defaultOwnerGroupCallback()
+	} else if alpha && configuration.PermissionDefaultGroupAlpha != "" {
 		defaultGroupSpecification = configuration.PermissionDefaultGroupAlpha
 	} else if !alpha && configuration.PermissionDefaultGroupBeta != "" {
 		defaultGroupSpecification = configuration.PermissionDefaultGroupBeta
@@ -240,7 +260,7 @@ func NewEndpoint(
 	// Success.
 	return &endpoint{
 		root:                           root,
-		maximumEntryCount:              configuration.MaximumEntryCount,
+		maximumEntryCount:              maximumEntryCount,
 		watchCancel:                    watchCancel,
 		watchEvents:                    watchEvents,
 		symlinkMode:                    symlinkMode,
@@ -251,7 +271,7 @@ func NewEndpoint(
 		cachePath:                      cachePath,
 		cache:                          cache,
 		scanHasher:                     version.Hasher(),
-		stager:                         newStager(version, stagingRoot, configuration.MaximumStagingFileSize),
+		stager:                         newStager(version, stagingRoot, maximumStagingFileSize),
 	}, nil
 }
 
