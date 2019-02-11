@@ -172,7 +172,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 
 // open is the underlying open implementation shared by OpenDirectory and
 // OpenFile.
-func (d *Directory) open(name string) (*os.File, int, error) {
+func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error) {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
 		return nil, 0, err
@@ -204,6 +204,27 @@ func (d *Directory) open(name string) (*os.File, int, error) {
 		}
 	}
 
+	// Verify that we've ended up with the expected file type. This keeps parity
+	// with the Windows implementation where checking file type is required for
+	// the implementation to work at all. There is some overhead to performing
+	// this check, of course, and on POSIX we could live without it (simply
+	// allowing other methods on the resulting directory or file object to
+	// fail), but given the typical filesystem access patterns at play when
+	// using this code (especially in Mutagen), the overhead will be minimal
+	// since this information should still be in the OS's stat cache.
+	expectedType := ModeTypeFile
+	if wantDirectory {
+		expectedType = ModeTypeDirectory
+	}
+	var metadata unix.Stat_t
+	if err := unix.Fstat(descriptor, &metadata); err != nil {
+		unix.Close(descriptor)
+		return nil, 0, errors.Wrap(err, "unable to query file metadata")
+	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
+		unix.Close(descriptor)
+		return nil, 0, errors.New("path is not of the expected type")
+	}
+
 	// Wrap the descriptor up in a file object. We use the base name for the
 	// file since that's the name that was used to "open" the file, which is
 	// what os.File.Name is supposed to return (even though we don't expose
@@ -225,7 +246,7 @@ func (d *Directory) open(name string) (*os.File, int, error) {
 // OpenDirectory opens the directory within the directory specified by name.
 func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Call the underlying open method.
-	file, descriptor, err := d.open(name)
+	file, descriptor, err := d.open(name, true)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +364,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 // OpenFile opens the file within the directory specified by name.
 func (d *Directory) OpenFile(name string) (ReadableFile, error) {
-	file, _, err := d.open(name)
+	file, _, err := d.open(name, false)
 	return file, err
 }
 
