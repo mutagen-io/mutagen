@@ -5,7 +5,17 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"unicode/utf8"
 )
+
+// TestPathSeparatorSingleByte verifies that the platform path separator rune is
+// encoded as a single byte in UTF-8. We rely on this assumption for high
+// performance in ensureValidName.
+func TestPathSeparatorSingleByte(t *testing.T) {
+	if utf8.RuneLen(os.PathSeparator) != 1 {
+		t.Fatal("OS path separator does not have single-byte UTF-8 encoding")
+	}
+}
 
 func TestDirectoryContentsNotExist(t *testing.T) {
 	if _, err := DirectoryContentsByPath("/does/not/exist"); err == nil {

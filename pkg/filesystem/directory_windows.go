@@ -15,18 +15,6 @@ import (
 	aclapi "github.com/hectane/go-acl/api"
 )
 
-// pathSeparator is a byte representation of the OS path separator. We rely on
-// this being a single byte for performance in ensureNoPathSeparator. For each
-// platform where we make this assumption, we have a test to ensure that it's
-// valid.
-var pathSeparator = byte(os.PathSeparator)
-
-// pathSeparatorAlternate is a byte representation of the alternate OS path
-// separator. We rely on this being a single byte for performance in
-// ensureNoPathSeparator. For each platform where we make this assumption, we
-// have a test to ensure that it's valid.
-var pathSeparatorAlternate = byte('/')
-
 // ensureValidName verifies that the provided name does not reference the
 // current directory, the parent directory, or contain a path separator
 // character.
@@ -40,9 +28,9 @@ func ensureValidName(name string) error {
 	}
 
 	// Verify that neither of the path separator characters appears in the name.
-	if strings.IndexByte(name, pathSeparator) != -1 {
+	if strings.IndexByte(name, os.PathSeparator) != -1 {
 		return errors.New("path separator appears in name")
-	} else if strings.IndexByte(name, pathSeparatorAlternate) != -1 {
+	} else if strings.IndexByte(name, '/') != -1 {
 		return errors.New("alternate path separator appears in name")
 	}
 

@@ -14,12 +14,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// pathSeparator is a byte representation of the OS path separator. We rely on
-// this being a single byte for performance in ensureValidName. For each
-// platform where we make this assumption, we have a test to ensure that it's
-// valid.
-var pathSeparator = byte(os.PathSeparator)
-
 // ensureValidName verifies that the provided name does not reference the
 // current directory, the parent directory, or contain a path separator
 // character.
@@ -33,7 +27,7 @@ func ensureValidName(name string) error {
 	}
 
 	// Verify that the path separator character does not appear in the name.
-	if strings.IndexByte(name, pathSeparator) != -1 {
+	if strings.IndexByte(name, os.PathSeparator) != -1 {
 		return errors.New("path separator appears in name")
 	}
 
