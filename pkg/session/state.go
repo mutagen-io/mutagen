@@ -8,7 +8,7 @@ import (
 func (s Status) Description() string {
 	switch s {
 	case Status_Disconnected:
-		return "Disconnected"
+		return "Waiting to connect"
 	case Status_HaltedOnRootDeletion:
 		return "Halted due to root deletion"
 	case Status_HaltedOnRootTypeChange:
@@ -22,7 +22,7 @@ func (s Status) Description() string {
 	case Status_Scanning:
 		return "Scanning files"
 	case Status_WaitingForRescan:
-		return "Waiting for rescan"
+		return "Waiting 5 seconds for rescan"
 	case Status_Reconciling:
 		return "Reconciling changes"
 	case Status_StagingAlpha:
