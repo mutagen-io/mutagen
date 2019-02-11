@@ -593,6 +593,18 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 
 // synchronize is the main synchronization loop for the controller.
 func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
+	// Clear any error state upon restart of this function. If there was a
+	// terminal error previously caused synchronization to fail, then the user
+	// will have had 30 seconds to review it (while the run loop is waiting to
+	// reconnect), so it's not like we're getting rid of it too quickly.
+	c.stateLock.Lock()
+	if c.state.LastError != "" {
+		c.state.LastError = ""
+		c.stateLock.Unlock()
+	} else {
+		c.stateLock.UnlockWithoutNotify()
+	}
+
 	// Load the archive and extract the ancestor.
 	archive := &sync.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
@@ -735,6 +747,18 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			// Retry.
 			skipPolling = true
 			continue
+		}
+
+		// Clear the last error (if any) after a successful scan. Since scan
+		// errors are the only non-terminal errors, and since we know that we've
+		// cleared any other terminal error at the entry to this loop, we know
+		// that what we're covering up here can only be a scan error.
+		c.stateLock.Lock()
+		if c.state.LastError != "" {
+			c.state.LastError = ""
+			c.stateLock.Unlock()
+		} else {
+			c.stateLock.UnlockWithoutNotify()
 		}
 
 		// If one side preserves executability and the other does not, then
@@ -965,11 +989,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			return errors.Wrap(βTransitionErr, "unable to apply changes to beta")
 		}
 
-		// After a successful synchronization cycle, increment the cycle count
-		// and clear any synchronization error.
+		// Increment the synchronization cycle count.
 		c.stateLock.Lock()
 		c.state.SuccessfulSynchronizationCycles++
-		c.state.LastError = ""
 		c.stateLock.Unlock()
 	}
 }
