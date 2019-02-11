@@ -22,6 +22,12 @@ pollingInterval = 5
 
 [ignore]
 default = ["ignore/this/**", "!ignore/this/that"]
+
+[permissions]
+defaultFileMode = 644
+defaultDirectoryMode = 0755
+defaultUser = "george"
+defaultGroup = "presidents"
 `
 )
 

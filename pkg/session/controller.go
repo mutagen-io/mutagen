@@ -45,6 +45,16 @@ type controller struct {
 	// field, for which the stateLock member should be held. It should be saved
 	// to disk any time it is modified.
 	session *Session
+	// mergedAlphaConfiguration is the alpha-specific configuration object
+	// (computed from the core configuration and alpha-specific overrides). It
+	// is considered static and safe for concurrent access. It is a derived
+	// field and not saved to disk.
+	mergedAlphaConfiguration *Configuration
+	// mergedBetaConfiguration is the beta-specific configuration object
+	// (computed from the core configuration and beta-specific overrides). It is
+	// considered static and safe for concurrent access. It is a derived field
+	// and not saved to disk.
+	mergedBetaConfiguration *Configuration
 	// state represents the current synchronization state.
 	state *State
 	// lifecycleLock guards setting of the disabled, cancel, forceCycle, and
@@ -71,7 +81,12 @@ type controller struct {
 }
 
 // newSession creates a new session and corresponding controller.
-func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Configuration, prompter string) (*controller, error) {
+func newSession(
+	tracker *state.Tracker,
+	alpha, beta *url.URL,
+	configuration, configurationAlpha, configurationBeta *Configuration,
+	prompter string,
+) (*controller, error) {
 	// Update status.
 	prompt.Message(prompter, "Creating session...")
 
@@ -82,7 +97,11 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 
 	// Create an effective merged configuration.
-	configuration = MergeConfigurations(configuration, globalConfiguration)
+	mergedConfiguration := MergeConfigurations(globalConfiguration, configuration)
+
+	// Compute endpoint-specific merged configurations.
+	mergedAlphaConfiguration := MergeConfigurations(mergedConfiguration, configurationAlpha)
+	mergedBetaConfiguration := MergeConfigurations(mergedConfiguration, configurationBeta)
 
 	// Create a unique session identifier.
 	randomUUID, err := uuid.NewRandom()
@@ -102,11 +121,11 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	}
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(alpha, prompter, identifier, version, configuration, true)
+	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(beta, prompter, identifier, version, configuration, false)
+	betaEndpoint, err := connect(beta, prompter, identifier, version, mergedBetaConfiguration, false)
 	if err != nil {
 		alphaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
@@ -122,7 +141,9 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 		CreatingVersionPatch: mutagen.VersionPatch,
 		Alpha:                alpha,
 		Beta:                 beta,
-		Configuration:        configuration,
+		Configuration:        mergedConfiguration,
+		ConfigurationAlpha:   configurationAlpha,
+		ConfigurationBeta:    configurationBeta,
 	}
 	archive := &sync.Archive{}
 
@@ -155,10 +176,12 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 
 	// Create the controller.
 	controller := &controller{
-		sessionPath: sessionPath,
-		archivePath: archivePath,
-		stateLock:   state.NewTrackingLock(tracker),
-		session:     session,
+		sessionPath:              sessionPath,
+		archivePath:              archivePath,
+		stateLock:                state.NewTrackingLock(tracker),
+		session:                  session,
+		mergedAlphaConfiguration: mergedAlphaConfiguration,
+		mergedBetaConfiguration:  mergedBetaConfiguration,
 		state: &State{
 			Session: session,
 		},
@@ -187,8 +210,12 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
-	// Load and validate the session.
-	session := &Session{}
+	// Load and validate the session. We pre-populate a few fields that can be
+	// nil in older configurations.
+	session := &Session{
+		ConfigurationAlpha: &Configuration{},
+		ConfigurationBeta:  &Configuration{},
+	}
 	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
 		return nil, errors.Wrap(err, "unable to load session configuration")
 	} else if err = session.EnsureValid(); err != nil {
@@ -201,6 +228,14 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		archivePath: archivePath,
 		stateLock:   state.NewTrackingLock(tracker),
 		session:     session,
+		mergedAlphaConfiguration: MergeConfigurations(
+			session.Configuration,
+			session.ConfigurationAlpha,
+		),
+		mergedBetaConfiguration: MergeConfigurations(
+			session.Configuration,
+			session.ConfigurationBeta,
+		),
 		state: &State{
 			Session: session,
 		},
@@ -332,7 +367,7 @@ func (c *controller) resume(prompter string) error {
 		prompter,
 		c.session.Identifier,
 		c.session.Version,
-		c.session.Configuration,
+		c.mergedAlphaConfiguration,
 		true,
 	)
 	c.stateLock.Lock()
@@ -348,7 +383,7 @@ func (c *controller) resume(prompter string) error {
 		prompter,
 		c.session.Identifier,
 		c.session.Version,
-		c.session.Configuration,
+		c.mergedBetaConfiguration,
 		false,
 	)
 	c.stateLock.Lock()
@@ -510,7 +545,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 					c.session.Alpha,
 					c.session.Identifier,
 					c.session.Version,
-					c.session.Configuration,
+					c.mergedAlphaConfiguration,
 					true,
 				)
 			}
@@ -537,7 +572,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 					c.session.Beta,
 					c.session.Identifier,
 					c.session.Version,
-					c.session.Configuration,
+					c.mergedBetaConfiguration,
 					false,
 				)
 			}

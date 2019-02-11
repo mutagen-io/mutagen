@@ -27,8 +27,18 @@ func (r *CreateRequest) ensureValid(first bool) error {
 		}
 
 		// Verify that the configuration is valid.
-		if err := r.Configuration.EnsureValid(session.ConfigurationSourceCreate); err != nil {
+		if err := r.Configuration.EnsureValid(session.ConfigurationSourceTypeCreate); err != nil {
 			return errors.Wrap(err, "invalid session configuration")
+		}
+
+		// Verify that the alpha-specific configuration is valid.
+		if err := r.ConfigurationAlpha.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+			return errors.Wrap(err, "invalid alpha-specific configuration")
+		}
+
+		// Verify that the beta-specific configuration is valid.
+		if err := r.ConfigurationBeta.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+			return errors.Wrap(err, "invalid beta-specific configuration")
 		}
 
 		// Verify that the response field is empty.
@@ -49,6 +59,16 @@ func (r *CreateRequest) ensureValid(first bool) error {
 		// Verify that the configuration is nil.
 		if r.Configuration != nil {
 			return errors.New("configuration present")
+		}
+
+		// Verify that the alpha-specific configuration is nil.
+		if r.ConfigurationAlpha != nil {
+			return errors.New("alpha-specific configuration present")
+		}
+
+		// Verify that the beta-specific configuration is nil.
+		if r.ConfigurationBeta != nil {
+			return errors.New("beta-specific configuration present")
 		}
 
 		// We can't really validate the response field, and an empty value may

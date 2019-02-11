@@ -152,9 +152,18 @@ func (m *Manager) Shutdown() {
 }
 
 // Create tells the manager to create a new session.
-func (m *Manager) Create(alpha, beta *url.URL, configuration *Configuration, prompter string) (string, error) {
+func (m *Manager) Create(
+	alpha, beta *url.URL,
+	configuration, configurationAlpha, configurationBeta *Configuration,
+	prompter string,
+) (string, error) {
 	// Attempt to create a session.
-	controller, err := newSession(m.tracker, alpha, beta, configuration, prompter)
+	controller, err := newSession(
+		m.tracker,
+		alpha, beta,
+		configuration, configurationAlpha, configurationBeta,
+		prompter,
+	)
 	if err != nil {
 		return "", err
 	}

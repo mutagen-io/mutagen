@@ -12,7 +12,9 @@ message CreateRequest {
     url.URL alpha = 1;
     url.URL beta = 2;
     session.Configuration configuration = 3;
-    string response = 4;
+    session.Configuration configurationAlpha = 4;
+    session.Configuration configurationBeta = 5;
+    string response = 6;
 }
 
 message CreateResponse {

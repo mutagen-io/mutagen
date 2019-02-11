@@ -29,7 +29,7 @@ func (r *InitializeRequest) ensureValid() error {
 	}
 
 	// Ensure that the configuration is valid.
-	if err := r.Configuration.EnsureValid(session.ConfigurationSourceSession); err != nil {
+	if err := r.Configuration.EnsureValid(session.ConfigurationSourceTypeSession); err != nil {
 		return errors.Wrap(err, "invalid configuration")
 	}
 

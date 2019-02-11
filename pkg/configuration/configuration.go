@@ -49,14 +49,20 @@ type Configuration struct {
 		PollingInterval uint32 `toml:"pollingInterval"`
 	} `toml:"watch"`
 
-	// Permission parameters are currently excluded from TOML configuration
-	// files. There's no technical reason preventing this, but having
-	// permissions for all sessions be globally specified seems like a footgun.
-	// Even a permission propagation mode might be dangerous to specify on a
-	// global basis.
-	//
-	// That being said, it may make sense to allow permission specifications in
-	// per-project TOML configuration files, if we decide to allow those.
+	// Permissions contains parameters related to permission handling.
+	Permissions struct {
+		// DefaultFileMode specifies the default file mode.
+		DefaultFileMode filesystem.Mode `toml:"defaultFileMode"`
+
+		// DefaultDirectoryMode specifies the default directory mode.
+		DefaultDirectoryMode filesystem.Mode `toml:"defaultDirectoryMode"`
+
+		// DefaultUser specifies the default owner user.
+		DefaultUser string `toml:"defaultUser"`
+
+		// DefaultGroup specifies the default owner group.
+		DefaultGroup string `toml:"defaultGroup"`
+	} `toml:"permissions"`
 }
 
 // loadFromPath is the internal loading function. We keep it separate from Load

@@ -10,57 +10,88 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// ConfigurationSource represents the source of a configuration object.
-type ConfigurationSource uint8
+// ConfigurationSourceType specifies the source and type of a Configuration
+// object. Knowledge of this information is required to appropriately validate a
+// Configuration object.
+type ConfigurationSourceType uint8
 
 const (
-	// ConfigurationSourceSession specifies that a configuration object came
-	// from a session object stored on disk.
-	ConfigurationSourceSession ConfigurationSource = iota
-	// ConfigurationSourceGlobal specifies that a configuration object was
-	// loaded from the global configuration file.
-	ConfigurationSourceGlobal
-	// ConfigurationSourceCreate specifies that a configuration object came from
-	// a create RPC request.
-	ConfigurationSourceCreate
+	// ConfigurationSourceTypeSession indicates a session Configuration object
+	// sourced from a Session object stored on disk.
+	ConfigurationSourceTypeSession ConfigurationSourceType = iota
+	// ConfigurationSourceTypeGlobal indicates a session Configuration object
+	// sourced from the global configuration file.
+	ConfigurationSourceTypeGlobal
+	// ConfigurationSourceTypeCreate indicates a session Configuration object
+	// sourced from a create RPC request.
+	ConfigurationSourceTypeCreate
+	// ConfigurationSourceTypeSessionEndpointSpecific indicates an endpoint-
+	// specific session Configuration object sourced from a Session object
+	// stored on disk.
+	ConfigurationSourceTypeSessionEndpointSpecific
+	// ConfigurationSourceTypeCreateEndpointSpecific indicates an endpoint-
+	// specific session Configuration object sourced from a create RPC request.
+	ConfigurationSourceTypeCreateEndpointSpecific
+	// ConfigurationSourceTypeAPIEndpointSpecific indicates an endpoint-specific
+	// session Configuration object provided directly to an endpoint.
+	ConfigurationSourceTypeAPIEndpointSpecific
 )
 
 // EnsureValid ensures that Configuration's invariants are respected.
-func (c *Configuration) EnsureValid(source ConfigurationSource) error {
+func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
 	// A nil configuration is not considered valid.
 	if c == nil {
 		return errors.New("nil configuration")
 	}
 
-	// Verify that the synchronization mode is unspecified or supported for
-	// usage.
-	if !c.SynchronizationMode.IsDefault() && !c.SynchronizationMode.Supported() {
-		return errors.New("unknown or unsupported synchronization mode")
+	// Determine whether or not this is an endpoint-specific Configuration
+	// object.
+	endpointSpecific := source == ConfigurationSourceTypeSessionEndpointSpecific ||
+		source == ConfigurationSourceTypeCreateEndpointSpecific ||
+		source == ConfigurationSourceTypeAPIEndpointSpecific
+
+	// Validate the synchronization mode.
+	if endpointSpecific {
+		if !c.SynchronizationMode.IsDefault() {
+			return errors.New("synchronization mode cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if !(c.SynchronizationMode.IsDefault() || c.SynchronizationMode.Supported()) {
+			return errors.New("unknown or unsupported synchronization mode")
+		}
 	}
 
 	// The maximum entry count doesn't need to be validated - any of its values
-	// are technically valid.
+	// are technically valid regardless of the source.
 
 	// The maximum staging file size doesn't need to be validated - any of its
-	// values are technically valid.
+	// values are technically valid regardless of the source.
 
-	// Verify that the symlink mode is unspecified or supported for usage.
-	if c.SymlinkMode != sync.SymlinkMode_SymlinkDefault && !c.SymlinkMode.Supported() {
-		return errors.New("unknown or unsupported symlink mode")
+	// Verify that the symlink mode.
+	if endpointSpecific {
+		if !c.SymlinkMode.IsDefault() {
+			return errors.New("symbolic link handling mode cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if !(c.SymlinkMode.IsDefault() || c.SymlinkMode.Supported()) {
+			return errors.New("unknown or unsupported symlink mode")
+		}
 	}
 
 	// Verify that the watch mode is unspecified or supported for usage.
-	if !c.WatchMode.IsDefault() && !c.WatchMode.Supported() {
+	if !(c.WatchMode.IsDefault() || c.WatchMode.Supported()) {
 		return errors.New("unknown or unsupported watch mode")
 	}
 
 	// The watch polling interval doesn't need to be validated - any of its
-	// values are technically valid.
+	// values are technically valid regardless of the source.
 
-	// Verify that default ignores are allowed to be specified and that all
-	// specified default ignores are valid.
-	if source == ConfigurationSourceCreate && len(c.DefaultIgnores) > 0 {
-		return errors.New("create configuration with default ignores specified")
+	// Verify that default ignores are unset, unless this is a Configuration
+	// object sourced from an existing Session. If there are any allowed
+	// DefaultIgnores, verify that they're valid. This field is deprecated and
+	// no longer used.
+	if source != ConfigurationSourceTypeSession && len(c.DefaultIgnores) > 0 {
+		return errors.New("deprecated default ignores configuration field specified")
 	}
 	for _, ignore := range c.DefaultIgnores {
 		if !sync.ValidIgnorePattern(ignore) {
@@ -68,10 +99,10 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 		}
 	}
 
-	// Verify that ignores are allowed to be specified and that all specified
-	// ignores are valid.
-	if source == ConfigurationSourceGlobal && len(c.Ignores) > 0 {
-		return errors.New("global configuration with ignores specified")
+	// Verify that ignores are unset for endpoint-specific configurations and
+	// that any specified ignores are valid.
+	if endpointSpecific && len(c.Ignores) > 0 {
+		return errors.New("ignores cannot be specified on an endpoint-specific basis")
 	}
 	for _, ignore := range c.Ignores {
 		if !sync.ValidIgnorePattern(ignore) {
@@ -80,115 +111,41 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 	}
 
 	// Verify that the VCS ignore mode is unspecified or supported for usage.
-	if c.IgnoreVCSMode != sync.IgnoreVCSMode_IgnoreVCSDefault && !c.IgnoreVCSMode.Supported() {
-		return errors.New("unknown or unsupported VCS ignore mode")
-	}
-
-	// Verify that permission settings are empty from the global configuration
-	// and sane from the per-session configuration.
-	if source == ConfigurationSourceGlobal {
-		// Verify that default file permission modes are all 0.
-		if c.PermissionDefaultFileMode != 0 {
-			return errors.New("global configuration with default file permission mode specified")
-		} else if c.PermissionDefaultFileModeAlpha != 0 {
-			return errors.New("global configuration with alpha-specific default file permission mode specified")
-		} else if c.PermissionDefaultFileModeBeta != 0 {
-			return errors.New("global configuration with beta-specific default file permission mode specified")
-		}
-
-		// Verify that default directory permission modes are all 0.
-		if c.PermissionDefaultDirectoryMode != 0 {
-			return errors.New("global configuration with default directory permission mode specified")
-		} else if c.PermissionDefaultDirectoryModeAlpha != 0 {
-			return errors.New("global configuration with alpha-specific default directory permission mode specified")
-		} else if c.PermissionDefaultDirectoryModeBeta != 0 {
-			return errors.New("global configuration with beta-specific default directory permission mode specified")
-		}
-
-		// Verify that default owner user identifiers are all empty.
-		if c.PermissionDefaultUser != "" {
-			return errors.New("global configuration with default owner user identifier specified")
-		} else if c.PermissionDefaultUserAlpha != "" {
-			return errors.New("global configuration with alpha-specific default owner user identifier specified")
-		} else if c.PermissionDefaultUserBeta != "" {
-			return errors.New("global configuration with beta-specific default owner user identifier specified")
-		}
-
-		// Verify that default owner group identifiers are all empty.
-		if c.PermissionDefaultGroup != "" {
-			return errors.New("global configuration with default owner group identifier specified")
-		} else if c.PermissionDefaultGroupAlpha != "" {
-			return errors.New("global configuration with alpha-specific default owner group identifier specified")
-		} else if c.PermissionDefaultGroupBeta != "" {
-			return errors.New("global configuration with beta-specific default owner group identifier specified")
+	if endpointSpecific {
+		if !c.IgnoreVCSMode.IsDefault() {
+			return errors.New("VCS ignore mode cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		// Verify that default file permission modes are all 0 or valid.
-		if c.PermissionDefaultFileMode != 0 {
-			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileMode)); err != nil {
-				return errors.Wrap(err, "invalid default file permission mode specified")
-			}
+		if !(c.IgnoreVCSMode.IsDefault() || c.IgnoreVCSMode.Supported()) {
+			return errors.New("unknown or unsupported VCS ignore mode")
 		}
-		if c.PermissionDefaultFileModeAlpha != 0 {
-			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileModeAlpha)); err != nil {
-				return errors.Wrap(err, "invalid alpha-specific default file permission mode specified")
-			}
-		}
-		if c.PermissionDefaultFileModeBeta != 0 {
-			if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.PermissionDefaultFileModeBeta)); err != nil {
-				return errors.Wrap(err, "invalid beta-specific default file permission mode specified")
-			}
-		}
+	}
 
-		// Verify that default directory permission modes are all 0 or valid.
-		if c.PermissionDefaultDirectoryMode != 0 {
-			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryMode)); err != nil {
-				return errors.Wrap(err, "invalid default directory permission mode specified")
-			}
+	// Verify the default file mode.
+	if c.DefaultFileMode != 0 {
+		if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.DefaultFileMode)); err != nil {
+			return errors.Wrap(err, "invalid default file permission mode specified")
 		}
-		if c.PermissionDefaultDirectoryModeAlpha != 0 {
-			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryModeAlpha)); err != nil {
-				return errors.Wrap(err, "invalid alpha-specific default directory permission mode specified")
-			}
-		}
-		if c.PermissionDefaultDirectoryModeBeta != 0 {
-			if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.PermissionDefaultDirectoryModeBeta)); err != nil {
-				return errors.Wrap(err, "invalid beta-specific default directory permission mode specified")
-			}
-		}
+	}
 
-		// Verify that default owner user identifiers are all empty or valid.
-		if c.PermissionDefaultUser != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUser); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid default owner user identifier specified")
-			}
+	// Verify the default directory mode.
+	if c.DefaultDirectoryMode != 0 {
+		if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.DefaultDirectoryMode)); err != nil {
+			return errors.Wrap(err, "invalid default directory permission mode specified")
 		}
-		if c.PermissionDefaultUserAlpha != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUserAlpha); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid alpha-specific default owner user identifier specified")
-			}
-		}
-		if c.PermissionDefaultUserBeta != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultUserBeta); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid beta-specific default owner user identifier specified")
-			}
-		}
+	}
 
-		// Verify that default owner group identifiers are all empty or valid.
-		if c.PermissionDefaultGroup != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroup); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid default owner group identifier specified")
-			}
+	// Verify the default user specification.
+	if c.DefaultUser != "" {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(c.DefaultUser); kind == filesystem.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid default user specification")
 		}
-		if c.PermissionDefaultGroupAlpha != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroupAlpha); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid alpha-specific default owner group identifier specified")
-			}
-		}
-		if c.PermissionDefaultGroupBeta != "" {
-			if kind, _ := filesystem.ParseOwnershipIdentifier(c.PermissionDefaultGroupBeta); kind == filesystem.OwnershipIdentifierKindInvalid {
-				return errors.New("invalid beta-specific default owner group identifier specified")
-			}
+	}
+
+	// Verify the default group specification.
+	if c.DefaultGroup != "" {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(c.DefaultGroup); kind == filesystem.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid default group specification")
 		}
 	}
 
@@ -224,12 +181,16 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 		SymlinkMode:            configuration.Symlink.Mode,
 		WatchMode:              configuration.Watch.Mode,
 		WatchPollingInterval:   configuration.Watch.PollingInterval,
-		DefaultIgnores:         configuration.Ignore.Default,
+		Ignores:                configuration.Ignore.Default,
 		IgnoreVCSMode:          configuration.Ignore.VCS,
+		DefaultFileMode:        uint32(configuration.Permissions.DefaultFileMode),
+		DefaultDirectoryMode:   uint32(configuration.Permissions.DefaultDirectoryMode),
+		DefaultUser:            configuration.Permissions.DefaultUser,
+		DefaultGroup:           configuration.Permissions.DefaultGroup,
 	}
 
 	// Verify that the resulting configuration is valid.
-	if err := result.EnsureValid(ConfigurationSourceGlobal); err != nil {
+	if err := result.EnsureValid(ConfigurationSourceTypeGlobal); err != nil {
 		return nil, errors.Wrap(err, "global configuration invalid")
 	}
 
@@ -237,91 +198,98 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 	return result, nil
 }
 
-// MergeConfigurations merges a per-session and global configuration, allowing
-// the per-session configuration to merge with or override the global
-// configuration.
-func MergeConfigurations(session, global *Configuration) *Configuration {
+// MergeConfigurations merges two configurations of differing priorities. Both
+// configurations must be non-nil.
+func MergeConfigurations(lower, higher *Configuration) *Configuration {
 	// Create the resulting configuration.
 	result := &Configuration{}
 
 	// Merge synchronization mode.
-	if !session.SynchronizationMode.IsDefault() {
-		result.SynchronizationMode = session.SynchronizationMode
+	if !higher.SynchronizationMode.IsDefault() {
+		result.SynchronizationMode = higher.SynchronizationMode
 	} else {
-		result.SynchronizationMode = global.SynchronizationMode
+		result.SynchronizationMode = lower.SynchronizationMode
 	}
 
 	// Merge maximum entry count.
-	if session.MaximumEntryCount != 0 {
-		result.MaximumEntryCount = session.MaximumEntryCount
+	if higher.MaximumEntryCount != 0 {
+		result.MaximumEntryCount = higher.MaximumEntryCount
 	} else {
-		result.MaximumEntryCount = global.MaximumEntryCount
+		result.MaximumEntryCount = lower.MaximumEntryCount
 	}
 
 	// Merge maximum staging file size.
-	if session.MaximumStagingFileSize != 0 {
-		result.MaximumStagingFileSize = session.MaximumStagingFileSize
+	if higher.MaximumStagingFileSize != 0 {
+		result.MaximumStagingFileSize = higher.MaximumStagingFileSize
 	} else {
-		result.MaximumStagingFileSize = global.MaximumStagingFileSize
+		result.MaximumStagingFileSize = lower.MaximumStagingFileSize
 	}
 
 	// Merge symlink mode.
-	if session.SymlinkMode != sync.SymlinkMode_SymlinkDefault {
-		result.SymlinkMode = session.SymlinkMode
+	if !higher.SymlinkMode.IsDefault() {
+		result.SymlinkMode = higher.SymlinkMode
 	} else {
-		result.SymlinkMode = global.SymlinkMode
+		result.SymlinkMode = lower.SymlinkMode
 	}
 
 	// Merge watch mode.
-	if session.WatchMode != filesystem.WatchMode_WatchModeDefault {
-		result.WatchMode = session.WatchMode
+	if !higher.WatchMode.IsDefault() {
+		result.WatchMode = higher.WatchMode
 	} else {
-		result.WatchMode = global.WatchMode
+		result.WatchMode = lower.WatchMode
 	}
 
 	// Merge polling interval.
-	if session.WatchPollingInterval != 0 {
-		result.WatchPollingInterval = session.WatchPollingInterval
+	if higher.WatchPollingInterval != 0 {
+		result.WatchPollingInterval = higher.WatchPollingInterval
 	} else {
-		result.WatchPollingInterval = global.WatchPollingInterval
+		result.WatchPollingInterval = lower.WatchPollingInterval
 	}
 
-	// Propagate default ignores.
-	result.DefaultIgnores = global.DefaultIgnores
+	// Merge default ignores. In theory, at most one of these should be
+	// non-empty, but we'll still implement it as if they both might have
+	// content.
+	result.DefaultIgnores = append(result.DefaultIgnores, lower.DefaultIgnores...)
+	result.DefaultIgnores = append(result.DefaultIgnores, higher.DefaultIgnores...)
 
-	// Propagate per-session ignores.
-	result.Ignores = session.Ignores
+	// Merge ignores.
+	result.Ignores = append(result.Ignores, lower.Ignores...)
+	result.Ignores = append(result.Ignores, higher.Ignores...)
 
 	// Merge VCS ignore mode.
-	if session.IgnoreVCSMode != sync.IgnoreVCSMode_IgnoreVCSDefault {
-		result.IgnoreVCSMode = session.IgnoreVCSMode
+	if !higher.IgnoreVCSMode.IsDefault() {
+		result.IgnoreVCSMode = higher.IgnoreVCSMode
 	} else {
-		result.IgnoreVCSMode = global.IgnoreVCSMode
+		result.IgnoreVCSMode = lower.IgnoreVCSMode
 	}
 
-	// Merge default file permission modes. These are all currently disallowed
-	// in global configuration.
-	result.PermissionDefaultFileMode = session.PermissionDefaultFileMode
-	result.PermissionDefaultFileModeAlpha = session.PermissionDefaultFileModeAlpha
-	result.PermissionDefaultFileModeBeta = session.PermissionDefaultFileModeBeta
+	// Merge default file mode.
+	if higher.DefaultFileMode != 0 {
+		result.DefaultFileMode = higher.DefaultFileMode
+	} else {
+		result.DefaultFileMode = lower.DefaultFileMode
+	}
 
-	// Merge default directory permission modes. These are all currently
-	// disallowed in global configuration.
-	result.PermissionDefaultDirectoryMode = session.PermissionDefaultDirectoryMode
-	result.PermissionDefaultDirectoryModeAlpha = session.PermissionDefaultDirectoryModeAlpha
-	result.PermissionDefaultDirectoryModeBeta = session.PermissionDefaultDirectoryModeBeta
+	// Merge default directory mode.
+	if higher.DefaultDirectoryMode != 0 {
+		result.DefaultDirectoryMode = higher.DefaultDirectoryMode
+	} else {
+		result.DefaultDirectoryMode = lower.DefaultDirectoryMode
+	}
 
-	// Merge default owner user identifiers. These are all currently disallowed
-	// in global configuration.
-	result.PermissionDefaultUser = session.PermissionDefaultUser
-	result.PermissionDefaultUserAlpha = session.PermissionDefaultUserAlpha
-	result.PermissionDefaultUserBeta = session.PermissionDefaultUserBeta
+	// Merge default user.
+	if higher.DefaultUser != "" {
+		result.DefaultUser = higher.DefaultUser
+	} else {
+		result.DefaultUser = lower.DefaultUser
+	}
 
-	// Merge default owner group identifiers. These are all currently disallowed
-	// in global configuration.
-	result.PermissionDefaultGroup = session.PermissionDefaultGroup
-	result.PermissionDefaultGroupAlpha = session.PermissionDefaultGroupAlpha
-	result.PermissionDefaultGroupBeta = session.PermissionDefaultGroupBeta
+	// Merge default group.
+	if higher.DefaultGroup != "" {
+		result.DefaultGroup = higher.DefaultGroup
+	} else {
+		result.DefaultGroup = lower.DefaultGroup
+	}
 
 	// Done.
 	return result

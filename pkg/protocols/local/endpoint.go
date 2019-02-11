@@ -32,12 +32,12 @@ type endpoint struct {
 	symlinkMode sync.SymlinkMode
 	// ignores is the list of ignored paths for the session. It is static.
 	ignores []string
-	// defaultFilePermissionMode is the default file permission mode to use in
+	// defaultFileMode is the default file permission mode to use in "portable"
+	// permission propagation. It is static.
+	defaultFileMode filesystem.Mode
+	// defaultDirectoryMode is the default directory permission mode to use in
 	// "portable" permission propagation. It is static.
-	defaultFilePermissionMode filesystem.Mode
-	// defaultDirectoryPermissionMode is the default directory permission mode
-	// to use in "portable" permission propagation. It is static.
-	defaultDirectoryPermissionMode filesystem.Mode
+	defaultDirectoryMode filesystem.Mode
 	// defaultOwnership is the default ownership specification to use in
 	// "portable" permission propagation. It is static.
 	defaultOwnership *filesystem.OwnershipSpecification
@@ -86,7 +86,7 @@ type endpoint struct {
 // metadata and options.
 func NewEndpoint(
 	root,
-	session string,
+	sessionIdentifier string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
@@ -104,21 +104,23 @@ func NewEndpoint(
 		o.apply(endpointOptions)
 	}
 
-	// Compute the effective maximum entry count.
-	maximumEntryCount := configuration.MaximumEntryCount
-	if endpointOptions.maximumEntryCountCallback != nil {
-		maximumEntryCount = endpointOptions.maximumEntryCountCallback()
-	}
-
-	// Compute the effective maximum staging file size.
-	maximumStagingFileSize := configuration.MaximumStagingFileSize
-	if endpointOptions.maximumStagingFileSizeCallback != nil {
-		maximumStagingFileSize = endpointOptions.maximumStagingFileSizeCallback()
+	// If configuration overrides have been provided, then validate them and
+	// merge them into the main configuration.
+	if endpointOptions.configuration != nil {
+		if err := endpointOptions.configuration.EnsureValid(
+			session.ConfigurationSourceTypeAPIEndpointSpecific,
+		); err != nil {
+			return nil, errors.Wrap(err, "override configuration invalid")
+		}
+		configuration = session.MergeConfigurations(
+			configuration,
+			endpointOptions.configuration,
+		)
 	}
 
 	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
-	if symlinkMode == sync.SymlinkMode_SymlinkDefault {
+	if symlinkMode.IsDefault() {
 		symlinkMode = version.DefaultSymlinkMode()
 	}
 
@@ -130,63 +132,31 @@ func NewEndpoint(
 
 	// Compute the effective VCS ignore mode.
 	ignoreVCSMode := configuration.IgnoreVCSMode
-	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSDefault {
+	if ignoreVCSMode.IsDefault() {
 		ignoreVCSMode = version.DefaultIgnoreVCSMode()
 	}
 
-	// Compute the effective default file permission mode.
-	var defaultFilePermissionMode filesystem.Mode
-	if endpointOptions.defaultFileModeCallback != nil {
-		defaultFilePermissionMode = endpointOptions.defaultFileModeCallback()
-	} else if alpha && configuration.PermissionDefaultFileModeAlpha != 0 {
-		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeAlpha)
-	} else if !alpha && configuration.PermissionDefaultFileModeBeta != 0 {
-		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileModeBeta)
-	} else if configuration.PermissionDefaultFileMode != 0 {
-		defaultFilePermissionMode = filesystem.Mode(configuration.PermissionDefaultFileMode)
-	} else {
-		defaultFilePermissionMode = version.DefaultFilePermissionMode()
+	// Compute the effective default file mode.
+	defaultFileMode := filesystem.Mode(configuration.DefaultFileMode)
+	if defaultFileMode == 0 {
+		defaultFileMode = version.DefaultFileMode()
 	}
 
-	// Compute the effective default directory permission mode.
-	var defaultDirectoryPermissionMode filesystem.Mode
-	if endpointOptions.defaultDirectoryModeCallback != nil {
-		defaultDirectoryPermissionMode = endpointOptions.defaultDirectoryModeCallback()
-	} else if alpha && configuration.PermissionDefaultDirectoryModeAlpha != 0 {
-		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeAlpha)
-	} else if !alpha && configuration.PermissionDefaultDirectoryModeBeta != 0 {
-		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryModeBeta)
-	} else if configuration.PermissionDefaultDirectoryMode != 0 {
-		defaultDirectoryPermissionMode = filesystem.Mode(configuration.PermissionDefaultDirectoryMode)
-	} else {
-		defaultDirectoryPermissionMode = version.DefaultDirectoryPermissionMode()
+	// Compute the effective default directory mode.
+	defaultDirectoryMode := filesystem.Mode(configuration.DefaultDirectoryMode)
+	if defaultDirectoryMode == 0 {
+		defaultDirectoryMode = version.DefaultDirectoryMode()
 	}
 
 	// Compute the effective owner user specification.
-	var defaultUserSpecification string
-	if endpointOptions.defaultOwnerUserCallback != nil {
-		defaultUserSpecification = endpointOptions.defaultOwnerUserCallback()
-	} else if alpha && configuration.PermissionDefaultUserAlpha != "" {
-		defaultUserSpecification = configuration.PermissionDefaultUserAlpha
-	} else if !alpha && configuration.PermissionDefaultUserBeta != "" {
-		defaultUserSpecification = configuration.PermissionDefaultUserBeta
-	} else if configuration.PermissionDefaultUser != "" {
-		defaultUserSpecification = configuration.PermissionDefaultUser
-	} else {
+	defaultUserSpecification := configuration.DefaultUser
+	if defaultUserSpecification == "" {
 		defaultUserSpecification = version.DefaultUserSpecification()
 	}
 
 	// Compute the effective owner group specification.
-	var defaultGroupSpecification string
-	if endpointOptions.defaultOwnerGroupCallback != nil {
-		defaultGroupSpecification = endpointOptions.defaultOwnerGroupCallback()
-	} else if alpha && configuration.PermissionDefaultGroupAlpha != "" {
-		defaultGroupSpecification = configuration.PermissionDefaultGroupAlpha
-	} else if !alpha && configuration.PermissionDefaultGroupBeta != "" {
-		defaultGroupSpecification = configuration.PermissionDefaultGroupBeta
-	} else if configuration.PermissionDefaultGroup != "" {
-		defaultGroupSpecification = configuration.PermissionDefaultGroup
-	} else {
+	defaultGroupSpecification := configuration.DefaultGroup
+	if defaultGroupSpecification == "" {
 		defaultGroupSpecification = version.DefaultGroupSpecification()
 	}
 
@@ -225,9 +195,9 @@ func NewEndpoint(
 	// Compute the cache path.
 	var cachePath string
 	if endpointOptions.cachePathCallback != nil {
-		cachePath, err = endpointOptions.cachePathCallback(session, alpha)
+		cachePath, err = endpointOptions.cachePathCallback(sessionIdentifier, alpha)
 	} else {
-		cachePath, err = pathForCache(session, alpha)
+		cachePath, err = pathForCache(sessionIdentifier, alpha)
 	}
 	if err != nil {
 		watchCancel()
@@ -248,9 +218,9 @@ func NewEndpoint(
 	// Compute the staging root path.
 	var stagingRoot string
 	if endpointOptions.stagingRootCallback != nil {
-		stagingRoot, err = endpointOptions.stagingRootCallback(session, alpha)
+		stagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
 	} else {
-		stagingRoot, err = pathForStagingRoot(session, alpha)
+		stagingRoot, err = pathForStagingRoot(sessionIdentifier, alpha)
 	}
 	if err != nil {
 		watchCancel()
@@ -259,19 +229,19 @@ func NewEndpoint(
 
 	// Success.
 	return &endpoint{
-		root:                           root,
-		maximumEntryCount:              maximumEntryCount,
-		watchCancel:                    watchCancel,
-		watchEvents:                    watchEvents,
-		symlinkMode:                    symlinkMode,
-		ignores:                        ignores,
-		defaultFilePermissionMode:      defaultFilePermissionMode,
-		defaultDirectoryPermissionMode: defaultDirectoryPermissionMode,
-		defaultOwnership:               defaultOwnership,
-		cachePath:                      cachePath,
-		cache:                          cache,
-		scanHasher:                     version.Hasher(),
-		stager:                         newStager(version, stagingRoot, maximumStagingFileSize),
+		root:                 root,
+		maximumEntryCount:    configuration.MaximumEntryCount,
+		watchCancel:          watchCancel,
+		watchEvents:          watchEvents,
+		symlinkMode:          symlinkMode,
+		ignores:              ignores,
+		defaultFileMode:      defaultFileMode,
+		defaultDirectoryMode: defaultDirectoryMode,
+		defaultOwnership:     defaultOwnership,
+		cachePath:            cachePath,
+		cache:                cache,
+		scanHasher:           version.Hasher(),
+		stager:               newStager(version, stagingRoot, configuration.MaximumStagingFileSize),
 	}, nil
 }
 
@@ -527,8 +497,8 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		transitions,
 		e.cache,
 		e.symlinkMode,
-		e.defaultFilePermissionMode,
-		e.defaultDirectoryPermissionMode,
+		e.defaultFileMode,
+		e.defaultDirectoryMode,
 		e.defaultOwnership,
 		e.recomposeUnicode,
 		e.stager,

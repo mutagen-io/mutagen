@@ -98,31 +98,15 @@ func printSession(state *sessionpkg.State, long bool) {
 			fmt.Println("Ignores: None")
 		}
 
-		// Print alpha permission settings.
-		var alphaDefaultFileMode uint32
-		var alphaDefaultDirectoryMode uint32
-		var alphaDefaultUser string
-		var alphaDefaultGroup string
-		if configuration.PermissionDefaultFileModeAlpha != 0 {
-			alphaDefaultFileMode = configuration.PermissionDefaultFileModeAlpha
-		} else if configuration.PermissionDefaultFileMode != 0 {
-			alphaDefaultFileMode = configuration.PermissionDefaultFileMode
-		}
-		if configuration.PermissionDefaultDirectoryModeAlpha != 0 {
-			alphaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryModeAlpha
-		} else if configuration.PermissionDefaultDirectoryMode != 0 {
-			alphaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryMode
-		}
-		if configuration.PermissionDefaultUserAlpha != "" {
-			alphaDefaultUser = configuration.PermissionDefaultUserAlpha
-		} else if configuration.PermissionDefaultUser != "" {
-			alphaDefaultUser = configuration.PermissionDefaultUser
-		}
-		if configuration.PermissionDefaultGroupAlpha != "" {
-			alphaDefaultGroup = configuration.PermissionDefaultGroupAlpha
-		} else if configuration.PermissionDefaultGroup != "" {
-			alphaDefaultGroup = configuration.PermissionDefaultGroup
-		}
+		// Compute alpha-specific configuration and print permission settings.
+		alphaConfigurationMerged := sessionpkg.MergeConfigurations(
+			state.Session.Configuration,
+			state.Session.ConfigurationAlpha,
+		)
+		alphaDefaultFileMode := filesystem.Mode(alphaConfigurationMerged.DefaultFileMode)
+		alphaDefaultDirectoryMode := filesystem.Mode(alphaConfigurationMerged.DefaultDirectoryMode)
+		alphaDefaultUser := alphaConfigurationMerged.DefaultUser
+		alphaDefaultGroup := alphaConfigurationMerged.DefaultGroup
 		alphaPermissionsNonDefault := alphaDefaultFileMode != 0 ||
 			alphaDefaultDirectoryMode != 0 ||
 			alphaDefaultUser != "" ||
@@ -145,31 +129,15 @@ func printSession(state *sessionpkg.State, long bool) {
 			fmt.Println("Alpha permissions: Default")
 		}
 
-		// Print beta permission settings.
-		var betaDefaultFileMode uint32
-		var betaDefaultDirectoryMode uint32
-		var betaDefaultUser string
-		var betaDefaultGroup string
-		if configuration.PermissionDefaultFileModeBeta != 0 {
-			betaDefaultFileMode = configuration.PermissionDefaultFileModeBeta
-		} else if configuration.PermissionDefaultFileMode != 0 {
-			betaDefaultFileMode = configuration.PermissionDefaultFileMode
-		}
-		if configuration.PermissionDefaultDirectoryModeBeta != 0 {
-			betaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryModeBeta
-		} else if configuration.PermissionDefaultDirectoryMode != 0 {
-			betaDefaultDirectoryMode = configuration.PermissionDefaultDirectoryMode
-		}
-		if configuration.PermissionDefaultUserBeta != "" {
-			betaDefaultUser = configuration.PermissionDefaultUserBeta
-		} else if configuration.PermissionDefaultUser != "" {
-			betaDefaultUser = configuration.PermissionDefaultUser
-		}
-		if configuration.PermissionDefaultGroupBeta != "" {
-			betaDefaultGroup = configuration.PermissionDefaultGroupBeta
-		} else if configuration.PermissionDefaultGroup != "" {
-			betaDefaultGroup = configuration.PermissionDefaultGroup
-		}
+		// Compute beta-specific configuration and print permission settings.
+		betaConfigurationMerged := sessionpkg.MergeConfigurations(
+			state.Session.Configuration,
+			state.Session.ConfigurationBeta,
+		)
+		betaDefaultFileMode := filesystem.Mode(betaConfigurationMerged.DefaultFileMode)
+		betaDefaultDirectoryMode := filesystem.Mode(betaConfigurationMerged.DefaultDirectoryMode)
+		betaDefaultUser := betaConfigurationMerged.DefaultUser
+		betaDefaultGroup := betaConfigurationMerged.DefaultGroup
 		betaPermissionsNonDefault := betaDefaultFileMode != 0 ||
 			betaDefaultDirectoryMode != 0 ||
 			betaDefaultUser != "" ||

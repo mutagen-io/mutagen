@@ -21,14 +21,54 @@ enum Version {
 }
 
 message Session {
+    // The identifier, version, creationTime, and creatingVersion* fields are
+    // considered the "header" fields for all session versions. A message
+    // composed purely of these fields is guaranteed to be compatible with all
+    // future session versions. This can be used to dispatch session decoding to
+    // more specific message structures once multiple session version formats
+    // are implemented.
+
+    // Identifier is the (unique) session identifier. It is static. It cannot be
+    // empty.
     string identifier = 1;
+    // Version is the session version. It identifies the session version. It is
+    // static.
     Version version = 2;
+    // CreationTime is the creation time of the session. It is static. It cannot
+    // be nil.
     google.protobuf.Timestamp creationTime = 3;
+    // CreatingVersionMajor is the major version component of the version of
+    // Mutagen which created the session. It is static.
     uint32 creatingVersionMajor = 4;
+    // CreatingVersionMinor is the minor version component of the version of
+    // Mutagen which created the session. It is static.
     uint32 creatingVersionMinor = 5;
+    // CreatingVersionPatch is the patch version component of the version of
+    // Mutagen which created the session. It is static.
     uint32 creatingVersionPatch = 6;
+
+    // The remaining fields are those currently used by session version 1.
+
+    // Alpha is the alpha endpoint URL. It is static. It cannot be nil.
     url.URL alpha = 7;
+    // Beta is the beta endpoint URL. It is static. It cannot be nil.
     url.URL beta = 8;
+    // Configuration is the flattened session configuration. It is static. It
+    // cannot be nil.
     Configuration configuration = 9;
+    // ConfigurationAlpha are the alpha-specific session configuration
+    // overrides. It is static. It may be nil for existing sessions loaded from
+    // disk, but it is not considered valid unless non-nil, so it should be
+    // replaced with an empty default value in-memory if a nil on-disk value is
+    // detected.
+    Configuration configurationAlpha = 11;
+    // ConfigurationBeta are the beta-specific session configuration overrides.
+    // It is static. It may be nil for existing sessions loaded from disk, but
+    // it is not considered valid unless non-nil, so it should be replaced with
+    // an empty default value in-memory if a nil on-disk value is detected.
+    Configuration configurationBeta = 12;
+    // Paused indicates whether or not the session is marked as paused.
     bool paused = 10;
+    // NOTE: Fields 11 and 12 are used above. They are out of order for
+    // historical reasons.
 }

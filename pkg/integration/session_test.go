@@ -13,8 +13,8 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/protocols/local"
 	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/protocols/local"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 
@@ -85,7 +85,11 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 
 func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *session.Configuration, allowConflicts, allowProblems bool) error {
 	// Create a session.
-	sessionId, err := sessionManager.Create(alpha, beta, configuration, prompter)
+	sessionId, err := sessionManager.Create(
+		alpha, beta,
+		configuration, &session.Configuration{}, &session.Configuration{},
+		prompter,
+	)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session")
 	}

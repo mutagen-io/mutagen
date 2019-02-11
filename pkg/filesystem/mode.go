@@ -43,3 +43,20 @@ func ParseMode(value string, mask Mode) (Mode, error) {
 		return mode, nil
 	}
 }
+
+// UnmarshalText implements the text unmarshalling interface used when loading
+// from TOML files.
+func (m *Mode) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Perform parsing.
+	if result, err := ParseMode(text, ModePermissionsMask); err != nil {
+		return err
+	} else {
+		*m = result
+	}
+
+	// Success.
+	return nil
+}

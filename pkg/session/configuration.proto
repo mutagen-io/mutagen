@@ -63,6 +63,10 @@ message Configuration {
 
     // DefaultIgnores specifies the ignore patterns brought in from the global
     // configuration.
+    // DEPRECATED: This field is no longer used when loading from global
+    // configuration. Instead, ignores provided by global configuration are
+    // simply merged into the ignore list of the main configuration. However,
+    // older sessions still use this field.
     repeated string defaultIgnores = 31;
 
     // Ignores specifies the ignore patterns brought in from the create request.
@@ -79,74 +83,25 @@ message Configuration {
 
     // Field 61 is reserved for PermissionMode.
 
-    // Fields 62-64 are reserved for PermissionPreservationMode and its
-    // endpoint-specific variants.
+    // Field 62 is reserved for PermissionPreservationMode.
 
-    // PermissionDefaultFileMode specifies the default permission mode to use
-    // for new files in "portable" permission propagation mode, with
-    // endpoint-specific specifications taking priority.
-    uint32 permissionDefaultFileMode = 65;
+    // DefaultFileMode specifies the default permission mode to use for new
+    // files in "portable" permission propagation mode.
+    uint32 defaultFileMode = 63;
 
-    // PermissionDefaultFileModeAlpha specifies the default permission mode to
-    // use for new files on alpha in "portable" permission propagation mode,
-    // taking priority over PermissionDefaultFileMode on alpha if specified.
-    uint32 permissionDefaultFileModeAlpha = 66;
+    // DefaultDirectoryMode specifies the default permission mode to use for new
+    // files in "portable" permission propagation mode.
+    uint32 defaultDirectoryMode = 64;
 
-    // PermissionDefaultFileModeBeta specifies the default permission mode to
-    // use for new files on beta in "portable" permission propagation mode,
-    // taking priority over PermissionDefaultFileMode on beta if specified.
-    uint32 permissionDefaultFileModeBeta = 67;
+    // DefaultUser specifies the default user identifier to use when setting
+    // ownership of new files and directories in "portable" permission
+    // propagation mode.
+    string defaultUser = 65;
 
-    // PermissionDefaultDirectoryMode specifies the default permission mode to
-    // use for new directories in "portable" permission propagation mode, with
-    // endpoint-specific specifications taking priority.
-    uint32 permissionDefaultDirectoryMode = 68;
-
-    // PermissionDefaultDirectoryModeAlpha specifies the default permission mode
-    // to use for new directories on alpha in "portable" permission propagation
-    // mode, taking priority over PermissionDefaultDirectoryMode on alpha if
-    // specified.
-    uint32 permissionDefaultDirectoryModeAlpha = 69;
-
-    // PermissionDefaultDirectoryModeBeta specifies the default permission mode
-    // to use for new directories on beta in "portable" permission propagation
-    // mode, taking priority over PermissionDefaultDirectoryMode on beta if
-    // specified.
-    uint32 permissionDefaultDirectoryModeBeta = 70;
-
-    // PermissionDefaultUser specifies the default user identifier to use when
-    // setting ownership of new files and directories in "portable" permission
+    // DefaultGroup specifies the default group identifier to use when setting
+    // ownership of new files and directories in "portable" permission
     // propagation mode, with endpoint-specific specifications taking priority.
-    string permissionDefaultUser = 71;
+    string defaultGroup = 66;
 
-    // PermissionDefaultUserAlpha specifies the default user identifier to use
-    // when setting ownership of new files and directories on alpha in
-    // "portable" permission propagation mode, taking priority over
-    // PermissionDefaultUser on alpha if specified.
-    string permissionDefaultUserAlpha = 72;
-
-    // PermissionDefaultUserBeta specifies the default user identifier to use
-    // when setting ownership of new files and directories on beta in "portable"
-    // permission propagation mode, taking priority over PermissionDefaultUser
-    // on beta if specified.
-    string permissionDefaultUserBeta = 73;
-
-    // PermissionDefaultGroup specifies the default group identifier to use when
-    // setting ownership of new files and directories in "portable" permission
-    // propagation mode, with endpoint-specific specifications taking priority.
-    string permissionDefaultGroup = 74;
-
-    // PermissionDefaultGroupAlpha specifies the default group identifier to use
-    // when setting ownership of new files and directories on alpha in
-    // "portable" permission propagation mode, taking priority over
-    // PermissionDefaultGroup on alpha if specified.
-    string permissionDefaultGroupAlpha = 75;
-
-    // PermissionDefaultGroupBeta specifies the default group identifier to use
-    // when setting ownership of new files and directories on beta in "portable"
-    // permission propagation mode, taking priority over PermissionDefaultGroup
-    // on beta if specified.
-    string permissionDefaultGroupBeta = 76;
-
-    // Fields 77-90 are reserved for future permission configuration parameters.
+    // Fields 67-80 are reserved for future permission configuration parameters.
 }

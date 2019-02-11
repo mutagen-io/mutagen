@@ -22,23 +22,22 @@ func TestSupportedVersions(t *testing.T) {
 	}
 }
 
-// TestDefaultFilePermissionModeValid verifies that DefaultFilePermissionMode
-// results are valid for use in "portable" permission propagation.
-func TestDefaultFilePermissionModeValid(t *testing.T) {
+// TestDefaultFileModeValid verifies that DefaultFileMode results are valid for
+// use in "portable" permission propagation.
+func TestDefaultFileModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := sync.EnsureDefaultFileModeValid(version.DefaultFilePermissionMode()); err != nil {
-			t.Error("invalid default file permission mode:", err)
+		if err := sync.EnsureDefaultFileModeValid(version.DefaultFileMode()); err != nil {
+			t.Error("invalid default file mode:", err)
 		}
 	}
 }
 
-// TestDefaultDirectoryPermissionModeValid verifies that
-// DefaultDirectoryPermissionMode results are valid for use in "portable"
-// permission propagation.
-func TestDefaultDirectoryPermissionModeValid(t *testing.T) {
+// TestDefaultDirectoryModeValid verifies that DefaultDirectoryMode results are
+// valid for use in "portable" permission propagation.
+func TestDefaultDirectoryModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := sync.EnsureDefaultDirectoryModeValid(version.DefaultDirectoryPermissionMode()); err != nil {
-			t.Error("invalid default directory permission mode:", err)
+		if err := sync.EnsureDefaultDirectoryModeValid(version.DefaultDirectoryMode()); err != nil {
+			t.Error("invalid default directory mode:", err)
 		}
 	}
 }

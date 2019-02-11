@@ -9,6 +9,12 @@ import (
 	"github.com/bmatcuk/doublestar"
 )
 
+// IsDefault indicates whether or not the VCS ignore mode is
+// IgnoreVCSMode_IgnoreVCSDefault.
+func (m IgnoreVCSMode) IsDefault() bool {
+	return m == IgnoreVCSMode_IgnoreVCSDefault
+}
+
 // UnmarshalText implements the text unmarshalling interface used when loading
 // from TOML files.
 func (m *IgnoreVCSMode) UnmarshalText(textBytes []byte) error {

@@ -222,26 +222,30 @@ func createMain(command *cobra.Command, arguments []string) error {
 		Alpha: alpha,
 		Beta:  beta,
 		Configuration: &sessionpkg.Configuration{
-			SynchronizationMode:                 synchronizationMode,
-			MaximumEntryCount:                   createConfiguration.maximumEntryCount,
-			MaximumStagingFileSize:              maximumStagingFileSize,
-			SymlinkMode:                         symbolicLinkMode,
-			WatchMode:                           watchMode,
-			WatchPollingInterval:                createConfiguration.watchPollingInterval,
-			Ignores:                             createConfiguration.ignores,
-			IgnoreVCSMode:                       ignoreVCSMode,
-			PermissionDefaultFileMode:           defaultFileMode,
-			PermissionDefaultFileModeAlpha:      defaultFileModeAlpha,
-			PermissionDefaultFileModeBeta:       defaultFileModeBeta,
-			PermissionDefaultDirectoryMode:      defaultDirectoryMode,
-			PermissionDefaultDirectoryModeAlpha: defaultDirectoryModeAlpha,
-			PermissionDefaultDirectoryModeBeta:  defaultDirectoryModeBeta,
-			PermissionDefaultUser:               createConfiguration.defaultUser,
-			PermissionDefaultUserAlpha:          createConfiguration.defaultUserAlpha,
-			PermissionDefaultUserBeta:           createConfiguration.defaultUserBeta,
-			PermissionDefaultGroup:              createConfiguration.defaultGroup,
-			PermissionDefaultGroupAlpha:         createConfiguration.defaultGroupAlpha,
-			PermissionDefaultGroupBeta:          createConfiguration.defaultGroupBeta,
+			SynchronizationMode:    synchronizationMode,
+			MaximumEntryCount:      createConfiguration.maximumEntryCount,
+			MaximumStagingFileSize: maximumStagingFileSize,
+			SymlinkMode:            symbolicLinkMode,
+			WatchMode:              watchMode,
+			WatchPollingInterval:   createConfiguration.watchPollingInterval,
+			Ignores:                createConfiguration.ignores,
+			IgnoreVCSMode:          ignoreVCSMode,
+			DefaultFileMode:        defaultFileMode,
+			DefaultDirectoryMode:   defaultDirectoryMode,
+			DefaultUser:            createConfiguration.defaultUser,
+			DefaultGroup:           createConfiguration.defaultGroup,
+		},
+		ConfigurationAlpha: &sessionpkg.Configuration{
+			DefaultFileMode:      defaultFileModeAlpha,
+			DefaultDirectoryMode: defaultDirectoryModeAlpha,
+			DefaultUser:          createConfiguration.defaultUserAlpha,
+			DefaultGroup:         createConfiguration.defaultGroupAlpha,
+		},
+		ConfigurationBeta: &sessionpkg.Configuration{
+			DefaultFileMode:      defaultFileModeBeta,
+			DefaultDirectoryMode: defaultDirectoryModeBeta,
+			DefaultUser:          createConfiguration.defaultUserBeta,
+			DefaultGroup:         createConfiguration.defaultGroupBeta,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -395,10 +399,10 @@ func init() {
 	flags.StringVar(&createConfiguration.defaultDirectoryMode, "default-directory-mode", "", "Specify default directory permission mode")
 	flags.StringVar(&createConfiguration.defaultDirectoryModeAlpha, "default-directory-mode-alpha", "", "Specify default directory permission mode for alpha")
 	flags.StringVar(&createConfiguration.defaultDirectoryModeBeta, "default-directory-mode-beta", "", "Specify default directory permission mode for beta")
-	flags.StringVar(&createConfiguration.defaultUser, "default-owner-user", "", "Specify default file owner user")
-	flags.StringVar(&createConfiguration.defaultUserAlpha, "default-owner-user-alpha", "", "Specify default file owner user for alpha")
-	flags.StringVar(&createConfiguration.defaultUserBeta, "default-owner-user-beta", "", "Specify default file owner user for beta")
-	flags.StringVar(&createConfiguration.defaultGroup, "default-owner-group", "", "Specify default file owner group")
-	flags.StringVar(&createConfiguration.defaultGroupAlpha, "default-owner-group-alpha", "", "Specify default file owner group for alpha")
-	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-owner-group-beta", "", "Specify default file owner group for beta")
+	flags.StringVar(&createConfiguration.defaultUser, "default-user", "", "Specify default file owner user")
+	flags.StringVar(&createConfiguration.defaultUserAlpha, "default-user-alpha", "", "Specify default file owner user for alpha")
+	flags.StringVar(&createConfiguration.defaultUserBeta, "default-user-beta", "", "Specify default file owner user for beta")
+	flags.StringVar(&createConfiguration.defaultGroup, "default-group", "", "Specify default file owner group")
+	flags.StringVar(&createConfiguration.defaultGroupAlpha, "default-group-alpha", "", "Specify default file owner group for alpha")
+	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file owner group for beta")
 }

@@ -7,6 +7,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IsDefault indicates whether or not the symbolic link handling mode is
+// SymlinkMode_SymlinkDefault.
+func (m SymlinkMode) IsDefault() bool {
+	return m == SymlinkMode_SymlinkDefault
+}
+
 // UnmarshalText implements the text unmarshalling interface used when loading
 // from TOML files.
 func (m *SymlinkMode) UnmarshalText(textBytes []byte) error {

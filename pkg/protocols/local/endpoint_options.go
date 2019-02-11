@@ -3,17 +3,13 @@ package local
 import (
 	"context"
 
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 // endpointOptions controls the override behavior for a local endpoint.
 type endpointOptions struct {
-	// maximumEntryCountCallback can specify a callback that will return an
-	// override value for the maximum entry count.
-	maximumEntryCountCallback func() uint64
-	// maximumStagingFileSizeCallback can specify a callback that will return an
-	// override value for the maximum stagin file size.
-	maximumStagingFileSizeCallback func() uint64
+	// configuration specifies endpoint-specific configuration overrides.
+	configuration *session.Configuration
 	// cachePathCallback can specify a callback that will be used to compute the
 	// cache path.
 	cachePathCallback func(string, bool) (string, error)
@@ -23,18 +19,6 @@ type endpointOptions struct {
 	// watchingMechanism can specify a callback that will be used as an
 	// alternative mechanism for filesystem watching.
 	watchingMechanism func(context.Context, string, chan<- struct{})
-	// defaultFileModeCallback can specify a callback that will return an
-	// override value for the default file mode.
-	defaultFileModeCallback func() fs.Mode
-	// defaultFileModeCallback can specify a callback that will return an
-	// override value for the default directory mode.
-	defaultDirectoryModeCallback func() fs.Mode
-	// defaultOwnerUserCallback can specify a callback that will return an
-	// override value for the default owner user specification.
-	defaultOwnerUserCallback func() string
-	// defaultOwnerGroupCallback can specify a callback that will return an
-	// override value for the default owner group specification.
-	defaultOwnerGroupCallback func() string
 }
 
 // EndpointOption is the interface for specifying endpoint options. It cannot be
@@ -63,25 +47,13 @@ func (o *functionEndpointOption) apply(options *endpointOptions) {
 	o.applier(options)
 }
 
-// WithMaximumEntryCount specifies that the endpoint should use the specified
-// maximum entry count instead of what's received from the controller in the
-// session configuration.
-func WithMaximumEntryCount(count uint64) EndpointOption {
+// WithConfiguration allows for overriding certain endpoint-specific parameters.
+// The provided Configuration object will be validated to ensure that that it
+// only overrides parameters which are valid to override on an endpoint-specific
+// basis.
+func WithConfiguration(configuration *session.Configuration) EndpointOption {
 	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.maximumEntryCountCallback = func() uint64 {
-			return count
-		}
-	})
-}
-
-// WithMaximumStagingFileSize specifies that the endpoint should use the
-// specified maximum staging file size instead of what's received from the
-// controller in the session configuration.
-func WithMaximumStagingFileSize(size uint64) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.maximumStagingFileSizeCallback = func() uint64 {
-			return size
-		}
+		options.configuration = configuration
 	})
 }
 
@@ -119,49 +91,5 @@ func WithStagingRootCallback(callback func(string, bool) (string, error)) Endpoi
 func WithWatchingMechanism(callback func(context.Context, string, chan<- struct{})) EndpointOption {
 	return newFunctionEndpointOption(func(options *endpointOptions) {
 		options.watchingMechanism = callback
-	})
-}
-
-// WithDefaultFileMode specifies that the endpoint should use the specified
-// default file mode instead of what's received from the controller in the
-// session configuration.
-func WithDefaultFileMode(mode fs.Mode) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.defaultFileModeCallback = func() fs.Mode {
-			return mode
-		}
-	})
-}
-
-// WithDefaultDirectoryMode specifies that the endpoint should use the specified
-// default directory mode instead of what's received from the controller in the
-// session configuration.
-func WithDefaultDirectoryMode(mode fs.Mode) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.defaultDirectoryModeCallback = func() fs.Mode {
-			return mode
-		}
-	})
-}
-
-// WithDefaultOwnerUser specifies that the endpoint should use the specified
-// default owner user instead of what's received from the controller in the
-// session configuration.
-func WithDefaultOwnerUser(user string) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.defaultOwnerUserCallback = func() string {
-			return user
-		}
-	})
-}
-
-// WithDefaultOwnerGroup specifies that the endpoint should use the specified
-// default owner group instead of what's received from the controller in the
-// session configuration.
-func WithDefaultOwnerGroup(group string) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.defaultOwnerGroupCallback = func() string {
-			return group
-		}
 	})
 }

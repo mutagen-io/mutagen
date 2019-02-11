@@ -57,6 +57,8 @@ func (s *Server) Create(stream Sessions_CreateServer) error {
 		request.Alpha,
 		request.Beta,
 		request.Configuration,
+		request.ConfigurationAlpha,
+		request.ConfigurationBeta,
 		prompter,
 	)
 
