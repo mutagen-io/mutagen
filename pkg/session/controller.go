@@ -210,15 +210,21 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 		return nil, errors.Wrap(err, "unable to compute archive path")
 	}
 
-	// Load and validate the session. We pre-populate a few fields that can be
-	// nil in older configurations.
-	session := &Session{
-		ConfigurationAlpha: &Configuration{},
-		ConfigurationBeta:  &Configuration{},
-	}
+	// Load and validate the session. We have to populate a few optional fields
+	// before validation if they're not set. We can't do this in the Session
+	// literal because they'll be wiped out during unmarshalling, even if not
+	// set.
+	session := &Session{}
 	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
 		return nil, errors.Wrap(err, "unable to load session configuration")
-	} else if err = session.EnsureValid(); err != nil {
+	}
+	if session.ConfigurationAlpha == nil {
+		session.ConfigurationAlpha = &Configuration{}
+	}
+	if session.ConfigurationBeta == nil {
+		session.ConfigurationBeta = &Configuration{}
+	}
+	if err := session.EnsureValid(); err != nil {
 		return nil, errors.Wrap(err, "invalid session found on disk")
 	}
 
