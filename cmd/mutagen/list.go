@@ -90,7 +90,7 @@ func formatEntryKind(entry *sync.Entry) string {
 		}
 		return fmt.Sprintf("File (%x)", entry.Digest)
 	} else if entry.Kind == sync.EntryKind_Symlink {
-		return fmt.Sprintf("Symlink (%s)", entry.Target)
+		return fmt.Sprintf("Symbolic Link (%s)", entry.Target)
 	} else {
 		return "<unknown>"
 	}
