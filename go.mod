@@ -6,6 +6,7 @@ require (
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0
+	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef
 	github.com/golang/protobuf v0.0.0-20180814211427-aa810b61a9c7
 	github.com/google/uuid v0.0.0-20171129191014-dec09d789f3d
 	github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434

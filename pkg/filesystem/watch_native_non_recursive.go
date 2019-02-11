@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/golang/groupcache/lru"
 )
 
 const (
@@ -62,8 +64,38 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 	}
 	defer watcher.stop()
 
-	// Create a map to track those paths that are currently watched.
-	watchedPaths := make(map[string]os.FileInfo, watchNativeNonRecursiveMaximumWatches)
+	// Create a map to track the paths that are currently watched, along with
+	// their associated metadata.
+	watchedPaths := make(map[string]os.FileInfo, watchNativeNonRecursiveMaximumWatches-1)
+
+	// Create an LRU-evicting cache to manage eviction of watched paths. Its
+	// size is one less than the maximum value since we have to account for the
+	// root parent watch.
+	//
+	// The keys in this cache are paths and the values are simply 0-valued
+	// integers. We only use it to track path watching order and to manage the
+	// eviction process. There's no need to defer the eviction of all entries -
+	// we simply rely on the watcher to cancel all the watches once this
+	// function returns.
+	//
+	// Because the eviction API doesn't allow us to return an error on unwatch
+	// failure, we create a channel that the polling loop can monitor for
+	// failure.
+	unwatchErrors := make(chan error, 1)
+	watchedPathManager := lru.New(watchNativeNonRecursiveMaximumWatches-1)
+	watchedPathManager.OnEvicted = func(key lru.Key, _ interface{}) {
+		if path, ok := key.(string); !ok {
+			panic("invalid key type in watch path cache")
+		} else {
+			if err := watcher.unwatch(path); err != nil {
+				select {
+				case unwatchErrors <- err:
+				default:
+				}
+			}
+			delete(watchedPaths, path)
+		}
+	}
 
 	// Start a cancellable Goroutine to extract events/errors from the watchers
 	// and manage the coalescing timer. Defer cancellation of this Goroutine and
@@ -111,12 +143,16 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 	// Create a container to track polling contents.
 	var contents map[string]os.FileInfo
 
-	// Poll for cancellation, the coalescing timer, or the polling timer.
+	// Poll for cancellation, unwatching failures, the coalescing timer, or the
+	// polling timer.
 	for {
 		select {
 		case <-context.Done():
 			// Abort the watch.
 			return errors.New("watch cancelled")
+		case err := <-unwatchErrors:
+			// Abort the watch.
+			return errors.Wrap(err, "unable to unwatch path")
 		case <-coalescingTimer.C:
 			// Forward a coalesced event in a non-blocking fashion.
 			select {
@@ -205,10 +241,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 				if ok && watchRootParametersEqual(currentMetadata, m) {
 					continue
 				}
-				if err := watcher.unwatch(p); err != nil {
-					return errors.Wrap(err, "unable to remove stale watch")
-				}
-				delete(watchedPaths, p)
+				watchedPathManager.Remove(p)
 			}
 
 			// Filter any potential watch paths that are already watched.
@@ -220,20 +253,12 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 
 			// If the new changes are too numerous to watch on their own, then
 			// just ignore them. This generally happens on massive bulk creates,
-			// where we wouldn't want to watch all the new files anyway.
-			if len(changes) > watchNativeNonRecursiveMaximumWatches {
+			// where we wouldn't want to watch all the new files anyway. If the
+			// paths were in depth-first-traversal-ordering, then it might make
+			// sense (as an heuristic) to take the first chunk of them, but they
+			// aren't, and it's a questionable heuristic anyway.
+			if len(changes) > (watchNativeNonRecursiveMaximumWatches-1) {
 				changes = nil
-			}
-
-			// If we're going to overflow the maximum number of watches, then
-			// purge any existing watches.
-			if len(changes)+len(watchedPaths) > watchNativeNonRecursiveMaximumWatches {
-				for p := range watchedPaths {
-					if err := watcher.unwatch(p); err != nil {
-						return errors.Wrap(err, "unable to remove stale watch")
-					}
-					delete(watchedPaths, p)
-				}
 			}
 
 			// Add new watches.
@@ -245,6 +270,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 					return errors.Wrap(err, "unable to create watch")
 				}
 				watchedPaths[p] = newContents[p]
+				watchedPathManager.Add(p, 0)
 			}
 
 			// Reset the polling timer and continue polling.
