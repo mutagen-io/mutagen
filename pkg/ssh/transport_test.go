@@ -15,7 +15,7 @@ import (
 )
 
 func TestSCPCommand(t *testing.T) {
-	if commandName, err := scpCommandName(); err != nil {
+	if commandName, err := scpCommand(); err != nil {
 		t.Fatal("unable to locate SCP command:", err)
 	} else if commandName == "" {
 		t.Error("SCP command name is empty")
@@ -23,7 +23,7 @@ func TestSCPCommand(t *testing.T) {
 }
 
 func TestSSHCommand(t *testing.T) {
-	if commandName, err := sshCommandName(); err != nil {
+	if commandName, err := sshCommand(); err != nil {
 		t.Fatal("unable to locate SSH command:", err)
 	} else if commandName == "" {
 		t.Error("SSH command name is empty")

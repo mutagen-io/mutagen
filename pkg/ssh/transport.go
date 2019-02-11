@@ -31,7 +31,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	// when we construct the transport, but then we need to compute it at
 	// construction (i.e. startup) time, and there's not really a good way to
 	// handle errors at that point.
-	scp, err := scpCommandName()
+	scp, err := scpCommand()
 	if err != nil {
 		return errors.Wrap(err, "unable to identify SCP executable")
 	}
@@ -119,7 +119,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// when we construct the transport, but then we need to compute it at
 	// construction (i.e. startup) time, and there's not really a good way to
 	// handle errors at that point.
-	ssh, err := sshCommandName()
+	ssh, err := sshCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to identify SSH executable")
 	}
