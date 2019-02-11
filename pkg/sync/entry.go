@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -29,6 +30,8 @@ func (e *Entry) EnsureValid() error {
 		for name, entry := range e.Contents {
 			if name == "" {
 				return errors.New("empty content name detected")
+			} else if strings.IndexByte(name, '/') != -1 {
+				return errors.New("content name contains path separator")
 			} else if entry == nil {
 				return errors.New("nil content detected")
 			} else if err := entry.EnsureValid(); err != nil {

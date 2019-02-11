@@ -52,6 +52,18 @@ func TestEntryDirectoryEmptyContentNameInvalid(t *testing.T) {
 	}
 }
 
+func TestEntryDirectoryContentNameWithPathSeparatorInvalid(t *testing.T) {
+	directory := &Entry{
+		Kind: EntryKind_Directory,
+		Contents: map[string]*Entry{
+			"na/me": testFile1Entry,
+		},
+	}
+	if directory.EnsureValid() == nil {
+		t.Fatal("directory with path separator in content name considered valid")
+	}
+}
+
 func TestEntryDirectoryNilContentInvalid(t *testing.T) {
 	directory := &Entry{
 		Kind: EntryKind_Directory,
