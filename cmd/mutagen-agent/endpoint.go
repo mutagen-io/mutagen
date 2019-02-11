@@ -12,7 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/local"
+	"github.com/havoc-io/mutagen/pkg/protocols/local"
 	"github.com/havoc-io/mutagen/pkg/remote"
 )
 

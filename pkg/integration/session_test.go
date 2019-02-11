@@ -13,15 +13,15 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/local"
+	"github.com/havoc-io/mutagen/pkg/protocols/local"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 
 	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/havoc-io/mutagen/pkg/docker"
-	_ "github.com/havoc-io/mutagen/pkg/local"
-	_ "github.com/havoc-io/mutagen/pkg/ssh"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/local"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/ssh"
 )
 
 // daemonLock is the daemon lock manager.

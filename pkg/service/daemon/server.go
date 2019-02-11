@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/local"
+	"github.com/havoc-io/mutagen/pkg/protocols/local"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 

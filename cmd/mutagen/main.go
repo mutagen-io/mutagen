@@ -9,9 +9,9 @@ import (
 	"github.com/havoc-io/mutagen/pkg/prompt"
 
 	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/havoc-io/mutagen/pkg/docker"
-	_ "github.com/havoc-io/mutagen/pkg/local"
-	_ "github.com/havoc-io/mutagen/pkg/ssh"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/local"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/ssh"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
