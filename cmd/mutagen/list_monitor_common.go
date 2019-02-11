@@ -55,7 +55,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print the watch mode.
 		watchModeDescription := configuration.WatchMode.Description()
-		if configuration.WatchMode == filesystem.WatchMode_WatchDefault {
+		if configuration.WatchMode.IsDefault() {
 			defaultWatchMode := state.Session.Version.DefaultWatchMode()
 			watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
 		}

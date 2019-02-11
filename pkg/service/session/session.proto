@@ -31,6 +31,14 @@ message ListResponse {
     repeated session.State sessionStates = 2;
 }
 
+message FlushRequest {
+    repeated string specifications = 1;
+}
+
+message FlushResponse{
+    string message = 1;
+}
+
 message PauseRequest {
     repeated string specifications = 1;
 }
@@ -60,6 +68,7 @@ message TerminateResponse{
 service Sessions {
     rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
     rpc List(ListRequest) returns (ListResponse) {}
+    rpc Flush(stream FlushRequest) returns (stream FlushResponse) {}
     rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
     rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}

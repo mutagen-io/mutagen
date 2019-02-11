@@ -82,7 +82,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 	// failure, we create a channel that the polling loop can monitor for
 	// failure.
 	unwatchErrors := make(chan error, 1)
-	watchedPathManager := lru.New(watchNativeNonRecursiveMaximumWatches-1)
+	watchedPathManager := lru.New(watchNativeNonRecursiveMaximumWatches - 1)
 	watchedPathManager.OnEvicted = func(key lru.Key, _ interface{}) {
 		if path, ok := key.(string); !ok {
 			panic("invalid key type in watch path cache")
@@ -257,7 +257,7 @@ func watchNative(context contextpkg.Context, root string, events chan struct{}, 
 			// paths were in depth-first-traversal-ordering, then it might make
 			// sense (as an heuristic) to take the first chunk of them, but they
 			// aren't, and it's a questionable heuristic anyway.
-			if len(changes) > (watchNativeNonRecursiveMaximumWatches-1) {
+			if len(changes) > (watchNativeNonRecursiveMaximumWatches - 1) {
 				changes = nil
 			}
 

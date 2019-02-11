@@ -6,18 +6,21 @@ option go_package = "github.com/havoc-io/mutagen/pkg/filesystem";
 
 // WatchMode specifies the mode for filesystem watching.
 enum WatchMode {
-    // WatchMode_WatchDefault represents an unspecified watch mode. It should be
-    // converted to one of the following values based on the desired default
-    // behavior.
-    WatchDefault = 0;
-    // WatchMode_WatchPortable specifies that native recursive watching should
-    // be used to monitor paths on systems that support it if those paths fall
-    // under the home directory. In these cases, a watch on the entire home
+    // WatchMode_WatchModeDefault represents an unspecified watch mode. It
+    // should be converted to one of the following values based on the desired
+    // default behavior.
+    WatchModeDefault = 0;
+    // WatchMode_WatchModePortable specifies that native recursive watching
+    // should be used to monitor paths on systems that support it if those paths
+    // fall under the home directory. In these cases, a watch on the entire home
     // directory is established and filtered for events pertaining to the
     // specified path. On all other systems and for all other paths, poll-based
     // watching is used.
-    WatchPortable = 1;
-    // WatchMode_WatchForcePoll specifies that only poll-based watching should
-    // be used.
-    WatchForcePoll = 2;
+    WatchModePortable = 1;
+    // WatchMode_WatchModeForcePoll specifies that only poll-based watching
+    // should be used.
+    WatchModeForcePoll = 2;
+    // WatchMode_WatchModeNoWatch specifies that no watching should be used
+    // (i.e. no events should be generated).
+    WatchModeNoWatch = 3;
 }

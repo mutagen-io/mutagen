@@ -204,6 +204,29 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 	return stateIndex, states, nil
 }
 
+// Flush tells the manager to flush sessions matching the given specifications.
+func (m *Manager) Flush(specifications []string, prompter string) error {
+	// Extract the controllers for the sessions of interest.
+	var controllers []*controller
+	if len(specifications) == 0 {
+		controllers = m.allControllers()
+	} else if cs, err := m.findControllers(specifications); err != nil {
+		return errors.Wrap(err, "unable to locate requested sessions")
+	} else {
+		controllers = cs
+	}
+
+	// Attempt to flush the sessions.
+	for _, controller := range controllers {
+		if err := controller.flush(prompter); err != nil {
+			return errors.Wrap(err, "unable to flush session")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
 // Pause tells the manager to pause sessions matching the given specifications.
 func (m *Manager) Pause(specifications []string, prompter string) error {
 	// Extract the controllers for the sessions of interest.

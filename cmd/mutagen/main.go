@@ -60,6 +60,7 @@ func init() {
 		createCommand,
 		listCommand,
 		monitorCommand,
+		flushCommand,
 		pauseCommand,
 		resumeCommand,
 		terminateCommand,

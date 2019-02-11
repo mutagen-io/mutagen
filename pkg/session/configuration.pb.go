@@ -165,7 +165,7 @@ func (m *Configuration) GetWatchMode() filesystem.WatchMode {
 	if m != nil {
 		return m.WatchMode
 	}
-	return filesystem.WatchMode_WatchDefault
+	return filesystem.WatchMode_WatchModeDefault
 }
 
 func (m *Configuration) GetWatchPollingInterval() uint32 {

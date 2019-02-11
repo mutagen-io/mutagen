@@ -47,7 +47,11 @@ type controller struct {
 	session *Session
 	// state represents the current synchronization state.
 	state *State
-	// lifecycleLock guards the disabled, cancel, and done members.
+	// lifecycleLock guards setting of the disabled, cancel, forceCycle, and
+	// done members. Access to these members is allowed for the synchronization
+	// loop without holding the lock. Any code wishing to set these members
+	// should first acquire the lock, then cancel the synchronization loop, and
+	// wait for it to complete before making any such changes.
 	lifecycleLock syncpkg.Mutex
 	// disabled indicates that no more changes to the synchronization loop
 	// lifecycle are allowed (i.e. no more synchronization loops can be started
@@ -58,6 +62,10 @@ type controller struct {
 	// cancel cancels the synchronization loop execution context. It should be
 	// nil if and only if there is no synchronization loop running.
 	cancel contextpkg.CancelFunc
+	// forceCycle is used to indicate to the controller that it should force a
+	// synchronization cycle. It is buffered so that a single request can be
+	// queued.
+	forceCycle chan struct{}
 	// done will be closed by the current synchronization loop when it exits.
 	done chan struct{}
 }
@@ -159,6 +167,7 @@ func newSession(tracker *state.Tracker, alpha, beta *url.URL, configuration *Con
 	// Start a synchronization loop.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	controller.cancel = cancel
+	controller.forceCycle = make(chan struct{}, 1)
 	controller.done = make(chan struct{})
 	go controller.run(context, alphaEndpoint, betaEndpoint)
 
@@ -201,6 +210,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 	if !session.Paused {
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
+		controller.forceCycle = make(chan struct{}, 1)
 		controller.done = make(chan struct{})
 		go controller.run(context, nil, nil)
 	}
@@ -221,6 +231,42 @@ func (c *controller) currentState() *State {
 	return c.state.Copy()
 }
 
+// flush attempts to force a synchronization cycle for the session.
+func (c *controller) flush(prompter string) error {
+	// Update status.
+	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
+
+	// Lock the controller's lifecycle and defer its release.
+	c.lifecycleLock.Lock()
+	defer c.lifecycleLock.Unlock()
+
+	// Don't allow any operations if the controller is disabled.
+	if c.disabled {
+		return errors.New("controller disabled")
+	}
+
+	// Check if the session is paused by checking whether or not it has a
+	// synchronization loop. It's an internal invariant that a session has a
+	// synchronization loop if and only if it is not paused, but checking for
+	// paused status requires holding the state lock, whereas checking for the
+	// existence of a synchronization loop only requires holding the lifecycle
+	// lock, which we do at this point.
+	if c.cancel == nil {
+		return errors.New("session is paused")
+	}
+
+	// Tell the controller to force a synchronization cycle, in a non-blocking
+	// fashion. The channel is buffered, so if a request is already queued, then
+	// this is a no-op.
+	select {
+	case c.forceCycle <- struct{}{}:
+	default:
+	}
+
+	// Success.
+	return nil
+}
+
 // resume attempts to reconnect and resume the session if it isn't currently
 // connected and synchronizing.
 func (c *controller) resume(prompter string) error {
@@ -236,7 +282,8 @@ func (c *controller) resume(prompter string) error {
 		return errors.New("controller disabled")
 	}
 
-	// Check if there's an existing synchronization loop.
+	// Check if there's an existing synchronization loop (i.e. if the session is
+	// unpaused).
 	if c.cancel != nil {
 		// If there is an existing synchronization loop, check if it's already
 		// in a state that's considered "connected".
@@ -266,6 +313,7 @@ func (c *controller) resume(prompter string) error {
 
 		// Nil out any lifecycle state.
 		c.cancel = nil
+		c.forceCycle = nil
 		c.done = nil
 	}
 
@@ -312,6 +360,7 @@ func (c *controller) resume(prompter string) error {
 	// loop keep trying to connect.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	c.cancel = cancel
+	c.forceCycle = make(chan struct{}, 1)
 	c.done = make(chan struct{})
 	go c.run(context, alpha, beta)
 
@@ -382,6 +431,7 @@ func (c *controller) halt(mode haltMode, prompter string) error {
 
 		// Nil out any lifecycle state.
 		c.cancel = nil
+		c.forceCycle = nil
 		c.done = nil
 	}
 
@@ -590,9 +640,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				βPollResults <- beta.Poll(pollContext)
 			}()
 
-			// Wait for either poll to return an event or an error, or for
-			// cancellation. In any of these cases, cancel polling and ensure
-			// that both polling operations have completed.
+			// Wait for either poll to return an event or an error, for the
+			// cycle to be forced, or for cancellation. In any of these cases,
+			// cancel polling and ensure that both polling operations have
+			// completed.
 			var αPollErr, βPollErr error
 			cancelled := false
 			select {
@@ -602,6 +653,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			case βPollErr = <-βPollResults:
 				pollCancel()
 				αPollErr = <-αPollResults
+			case <-c.forceCycle:
+				pollCancel()
+				αPollErr = <-αPollResults
+				βPollErr = <-βPollResults
 			case <-context.Done():
 				cancelled = true
 				pollCancel()

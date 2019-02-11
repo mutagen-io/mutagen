@@ -124,7 +124,7 @@ func NewEndpoint(
 
 	// Compute the effective watch mode.
 	watchMode := configuration.WatchMode
-	if watchMode == filesystem.WatchMode_WatchDefault {
+	if watchMode.IsDefault() {
 		watchMode = version.DefaultWatchMode()
 	}
 

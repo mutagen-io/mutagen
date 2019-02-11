@@ -55,7 +55,7 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 func (v Version) DefaultWatchMode() filesystem.WatchMode {
 	switch v {
 	case Version_Version1:
-		return filesystem.WatchMode_WatchPortable
+		return filesystem.WatchMode_WatchModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}

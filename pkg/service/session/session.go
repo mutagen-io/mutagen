@@ -118,6 +118,43 @@ func (r *ListResponse) EnsureValid() error {
 	return nil
 }
 
+// ensureValid verifies that a FlushRequest is valid.
+func (r *FlushRequest) ensureValid(first bool) error {
+	// A nil flush request is not valid.
+	if r == nil {
+		return errors.New("nil flush request")
+	}
+
+	// Handle validation based on whether or not this is the first request in
+	// the stream.
+	if first {
+		// We can't really verify specifications, but any values are valid, even
+		// if they might not be correct.
+	} else {
+		// Ensure that specifications are empty when acknowledging messages.
+		if r.Specifications != nil {
+			return errors.New("non-empty specifications on message acknowledgement")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
+// EnsureValid verifies that a FlushResponse is valid.
+func (r *FlushResponse) EnsureValid() error {
+	// A nil flush response is not valid.
+	if r == nil {
+		return errors.New("nil flush response")
+	}
+
+	// We can't really verify the message field. Even an empty value may be
+	// valid.
+
+	// Success.
+	return nil
+}
+
 // ensureValid verifies that a PauseRequest is valid.
 func (r *PauseRequest) ensureValid(first bool) error {
 	// A nil pause request is not valid.

@@ -50,7 +50,7 @@ func (c *Configuration) EnsureValid(source ConfigurationSource) error {
 	}
 
 	// Verify that the watch mode is unspecified or supported for usage.
-	if c.WatchMode != filesystem.WatchMode_WatchDefault && !c.WatchMode.Supported() {
+	if !c.WatchMode.IsDefault() && !c.WatchMode.Supported() {
 		return errors.New("unknown or unsupported watch mode")
 	}
 
@@ -273,7 +273,7 @@ func MergeConfigurations(session, global *Configuration) *Configuration {
 	}
 
 	// Merge watch mode.
-	if session.WatchMode != filesystem.WatchMode_WatchDefault {
+	if session.WatchMode != filesystem.WatchMode_WatchModeDefault {
 		result.WatchMode = session.WatchMode
 	} else {
 		result.WatchMode = global.WatchMode

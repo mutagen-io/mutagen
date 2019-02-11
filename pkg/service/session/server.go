@@ -98,6 +98,43 @@ func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, e
 	}, nil
 }
 
+// Flush flushes existing sessions.
+func (s *Server) Flush(stream Sessions_FlushServer) error {
+	// Receive the first request.
+	request, err := stream.Recv()
+	if err != nil {
+		return errors.Wrap(err, "unable to receive request")
+	} else if err = request.ensureValid(true); err != nil {
+		return errors.Wrap(err, "received invalid flush request")
+	}
+
+	// Wrap the stream in a prompter and register it with the prompt server.
+	prompter, err := prompt.RegisterPrompter(&flushStreamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
+
+	// Perform termination.
+	// TODO: Figure out a way to monitor for cancellation.
+	err = s.manager.Flush(request.Specifications, prompter)
+
+	// Unregister the prompter.
+	prompt.UnregisterPrompter(prompter)
+
+	// Handle any errors.
+	if err != nil {
+		return err
+	}
+
+	// Signal completion.
+	if err := stream.Send(&FlushResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send response")
+	}
+
+	// Success.
+	return nil
+}
+
 // Pause pauses existing sessions.
 func (s *Server) Pause(stream Sessions_PauseServer) error {
 	// Receive the first request.

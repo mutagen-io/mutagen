@@ -12,65 +12,92 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TestWatchModeUnmarshalPortable(t *testing.T) {
-	var mode WatchMode
-	if err := mode.UnmarshalText([]byte("portable")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != WatchMode_WatchPortable {
-		t.Error("unmarshalled mode does not match expected")
+// TestWatchModeUnmarshal tests that unmarshaling from a string specification
+// succeeeds for WatchMode.
+func TestWatchModeUnmarshal(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Text          string
+		ExpectedMode  WatchMode
+		ExpectFailure bool
+	}{
+		{"", WatchMode_WatchModeDefault, true},
+		{"asdf", WatchMode_WatchModeDefault, true},
+		{"portable", WatchMode_WatchModePortable, false},
+		{"force-poll", WatchMode_WatchModeForcePoll, false},
+		{"no-watch", WatchMode_WatchModeNoWatch, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var mode WatchMode
+		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
+			if !testCase.ExpectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+			}
+		} else if testCase.ExpectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
+		} else if mode != testCase.ExpectedMode {
+			t.Errorf(
+				"unmarshaled mode (%s) does not match expected (%s)",
+				mode,
+				testCase.ExpectedMode,
+			)
+		}
 	}
 }
 
-func TestWatchModeUnmarshalPOSIXRaw(t *testing.T) {
-	var mode WatchMode
-	if err := mode.UnmarshalText([]byte("force-poll")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != WatchMode_WatchForcePoll {
-		t.Error("unmarshalled mode does not match expected")
-	}
-}
-
-func TestWatchModeUnmarshalEmpty(t *testing.T) {
-	var mode WatchMode
-	if mode.UnmarshalText([]byte("")) == nil {
-		t.Error("empty watch mode successfully unmarshalled")
-	}
-}
-
-func TestWatchModeUnmarshalInvalid(t *testing.T) {
-	var mode WatchMode
-	if mode.UnmarshalText([]byte("invalid")) == nil {
-		t.Error("invalid watch mode successfully unmarshalled")
-	}
-}
-
+// TestWatchModeSupported tests that WatchMode support detection works as
+// expected.
 func TestWatchModeSupported(t *testing.T) {
-	if WatchMode_WatchDefault.Supported() {
-		t.Error("default watch mode considered supported")
+	// Set up test cases.
+	testCases := []struct {
+		Mode            WatchMode
+		ExpectSupported bool
+	}{
+		{WatchMode_WatchModeDefault, false},
+		{WatchMode_WatchModePortable, true},
+		{WatchMode_WatchModeForcePoll, true},
+		{WatchMode_WatchModeNoWatch, true},
+		{(WatchMode_WatchModeNoWatch + 1), false},
 	}
-	if !WatchMode_WatchPortable.Supported() {
-		t.Error("portable watch mode considered unsupported")
-	}
-	if !WatchMode_WatchForcePoll.Supported() {
-		t.Error("force poll watch mode considered unsupported")
-	}
-	if (WatchMode_WatchForcePoll + 1).Supported() {
-		t.Error("invalid watch mode considered supported")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+			t.Errorf(
+				"mode support status (%t) does not match expected (%t)",
+				supported,
+				testCase.ExpectSupported,
+			)
+		}
 	}
 }
 
+// TestWatchModeDescription tests that WatchMode description generation works as
+// expected.
 func TestWatchModeDescription(t *testing.T) {
-	if description := WatchMode_WatchDefault.Description(); description != "Default" {
-		t.Error("default watch mode description incorrect:", description, "!=", "Default")
+	// Set up test cases.
+	testCases := []struct {
+		Mode                WatchMode
+		ExpectedDescription string
+	}{
+		{WatchMode_WatchModeDefault, "Default"},
+		{WatchMode_WatchModePortable, "Portable"},
+		{WatchMode_WatchModeForcePoll, "Force Poll"},
+		{WatchMode_WatchModeNoWatch, "No Watch"},
+		{(WatchMode_WatchModeNoWatch + 1), "Unknown"},
 	}
-	if description := WatchMode_WatchPortable.Description(); description != "Portable" {
-		t.Error("watch mode portable description incorrect:", description, "!=", "Portable")
-	}
-	if description := WatchMode_WatchForcePoll.Description(); description != "Force Poll" {
-		t.Error("watch mode force poll description incorrect:", description, "!=", "Force Poll")
-	}
-	if description := (WatchMode_WatchForcePoll + 1).Description(); description != "Unknown" {
-		t.Error("invalid watch mode description incorrect:", description, "!=", "Unknown")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+			t.Errorf(
+				"mode description (%s) does not match expected (%s)",
+				description,
+				testCase.ExpectedDescription,
+			)
+		}
 	}
 }
 
@@ -136,7 +163,7 @@ func TestWatchPortable(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Run the test cycle.
-	if err := testWatchCycle(directory, WatchMode_WatchPortable); err != nil {
+	if err := testWatchCycle(directory, WatchMode_WatchModePortable); err != nil {
 		t.Fatal("watch cycle test failed:", err)
 	}
 }
@@ -150,7 +177,7 @@ func TestWatchForcePoll(t *testing.T) {
 	defer os.RemoveAll(directory)
 
 	// Run the test cycle.
-	if err := testWatchCycle(directory, WatchMode_WatchForcePoll); err != nil {
+	if err := testWatchCycle(directory, WatchMode_WatchModeForcePoll); err != nil {
 		t.Fatal("watch cycle test failed:", err)
 	}
 }
