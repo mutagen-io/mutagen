@@ -12,6 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	mgrpc "github.com/havoc-io/mutagen/pkg/grpc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
@@ -40,7 +41,10 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
 	// Create the gRPC server.
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.MaxSendMsgSize(mgrpc.MaximumIPCMessageSize),
+		grpc.MaxRecvMsgSize(mgrpc.MaximumIPCMessageSize),
+	)
 
 	// Create and register the daemon service and defer its shutdown.
 	daemonServer := daemonsvc.New()

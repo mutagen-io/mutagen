@@ -11,6 +11,7 @@ import (
 	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	mgrpc "github.com/havoc-io/mutagen/pkg/grpc"
 )
 
 func daemonDialer(_ string, timeout time.Duration) (net.Conn, error) {
@@ -32,6 +33,8 @@ func createDaemonClientConnection() (*grpc.ClientConn, error) {
 		grpc.WithInsecure(),
 		grpc.WithDialer(daemonDialer),
 		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(mgrpc.MaximumIPCMessageSize)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(mgrpc.MaximumIPCMessageSize)),
 	)
 }
 
