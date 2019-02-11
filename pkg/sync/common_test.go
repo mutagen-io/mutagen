@@ -103,6 +103,8 @@ var testFile3ContentMap = map[string][]byte{
 	"": testFile3Contents,
 }
 
+var testEmptyDirectory = &Entry{}
+
 var testDirectory1Entry = &Entry{
 	Kind: EntryKind_Directory,
 	Contents: map[string]*Entry{

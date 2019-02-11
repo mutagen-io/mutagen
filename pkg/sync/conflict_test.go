@@ -4,6 +4,46 @@ import (
 	"testing"
 )
 
+func TestConflictCopySlim(t *testing.T) {
+	// Create a test conflict.
+	conflict := &Conflict{
+		AlphaChanges: []*Change{
+			{
+				Path: "",
+				New:  testFile1Entry,
+			},
+		},
+		BetaChanges: []*Change{
+			{
+				Path: "",
+				New:  testDirectory2Entry,
+			},
+		},
+	}
+
+	// Create a slim copy.
+	slim := conflict.CopySlim()
+
+	// Check validity.
+	if err := slim.EnsureValid(); err != nil {
+		t.Fatal("slim copy of conflict is invalid:", err)
+	}
+
+	// Check alpha changes.
+	if len(slim.AlphaChanges) != 1 {
+		t.Error("slim copy of conflict has incorrect number of alpha changes")
+	} else if !slim.AlphaChanges[0].New.Equal(testFile1Entry) {
+		t.Error("slim copy of conflict has incorrect alpha changes")
+	}
+
+	// Check beta changes.
+	if len(slim.BetaChanges) != 1 {
+		t.Error("slim copy of conflict has incorrect number of beta changes")
+	} else if !slim.BetaChanges[0].New.Equal(testEmptyDirectory) {
+		t.Error("slim copy of conflict has incorrect beta changes")
+	}
+}
+
 func TestConflictRootInvalid(t *testing.T) {
 	// Defer a handler that checks for a panic.
 	defer func() {

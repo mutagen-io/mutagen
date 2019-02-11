@@ -149,9 +149,10 @@ func (e *Entry) Equal(other *Entry) bool {
 	return true
 }
 
-// CopyShallow creates a shallow copy of the entry (excluding directory
-// contents, if any).
-func (e *Entry) CopyShallow() *Entry {
+// copySlim creates a "slim" copy of the entry. For files and symbolic links,
+// this yields an equivalent entry. For directories, it yields an equivalent
+// entry but without any contents.
+func (e *Entry) copySlim() *Entry {
 	// If the entry is nil, the copy is nil.
 	if e == nil {
 		return nil

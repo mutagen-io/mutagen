@@ -45,7 +45,7 @@ func (d *testEntryDecomposer) decompose(path string, entry *Entry) {
 	}
 
 	// Create a shallow copy of the entry.
-	shallowEntry := entry.CopyShallow()
+	shallowEntry := entry.copySlim()
 
 	// If this is a creation decomposition, add this entry before processing any
 	// contents.

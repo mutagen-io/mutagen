@@ -56,7 +56,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		if !ancestor.equalShallow(alpha) {
 			r.ancestorChanges = append(r.ancestorChanges, &Change{
 				Path: path,
-				New:  alpha.CopyShallow(),
+				New:  alpha.copySlim(),
 			})
 			ancestorContents = nil
 		}

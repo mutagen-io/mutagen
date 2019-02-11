@@ -738,7 +738,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 
 	// Create a shallow copy of the target that we'll populate as we create its
 	// contents.
-	created := target.CopyShallow()
+	created := target.copySlim()
 
 	// RACE: There is a race condition here between the directory creation and
 	// the permission setting and the creation of the directory's contents that

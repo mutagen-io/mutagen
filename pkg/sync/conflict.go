@@ -4,6 +4,30 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CopySlim returns a copy of the conflict, except that each Change object has
+// had its root entry reduced to a shallow copy (i.e. excluding any contents).
+// The conflict will still have enough metadata to determine its root path, and
+// it will be considered valid.
+func (c *Conflict) CopySlim() *Conflict {
+	// Recompute alpha changes.
+	alphaChanges := make([]*Change, len(c.AlphaChanges))
+	for a, change := range c.AlphaChanges {
+		alphaChanges[a] = change.copySlim()
+	}
+
+	// Recompute beta changes.
+	betaChanges := make([]*Change, len(c.BetaChanges))
+	for b, change := range c.BetaChanges {
+		betaChanges[b] = change.copySlim()
+	}
+
+	// Done.
+	return &Conflict{
+		AlphaChanges: alphaChanges,
+		BetaChanges:  betaChanges,
+	}
+}
+
 // Root returns the root path for a conflict.
 func (c *Conflict) Root() string {
 	// Handle determination of the root path based on the number of changes on

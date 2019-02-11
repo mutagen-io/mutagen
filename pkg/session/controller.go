@@ -751,15 +751,25 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
-		// Perform reconciliation and record conflicts.
+		// Perform reconciliation.
 		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
 			ancestor,
 			αSnapshot,
 			βSnapshot,
 			synchronizationMode,
 		)
+
+		// Create a slim copy of the conflicts so that we don't need to hold
+		// the full-size versions in memory or send them over the wire.
+		var slimConflicts []*sync.Conflict
+		if len(conflicts) > 0 {
+			slimConflicts = make([]*sync.Conflict, len(conflicts))
+			for c, conflict := range conflicts {
+				slimConflicts[c] = conflict.CopySlim()
+			}
+		}
 		c.stateLock.Lock()
-		c.state.Conflicts = conflicts
+		c.state.Conflicts = slimConflicts
 		c.stateLock.Unlock()
 
 		// Check if a root deletion is being propagated. If so, switch to a
