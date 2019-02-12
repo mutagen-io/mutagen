@@ -11,7 +11,7 @@ const (
 	testConfigurationValid     = `[sync]
 mode = "two-way-resolved"
 maxEntryCount = 500
-maxStagingFileSize = "10 GB"
+maxStagingFileSize = "1000 GB"
 
 [symlink]
 mode = "portable"

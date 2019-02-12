@@ -19,7 +19,7 @@ type Configuration struct {
 		MaximumEntryCount uint64 `toml:"maxEntryCount"`
 		// MaximumStagingFileSize is the maximum (individual) file size that
 		// endpoints will stage. It can be specified in human-friendly units.
-		MaximumStagingFileSize string `toml:"maxStagingFileSize"`
+		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize"`
 	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore

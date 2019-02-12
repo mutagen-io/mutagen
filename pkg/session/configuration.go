@@ -3,8 +3,6 @@ package session
 import (
 	"github.com/pkg/errors"
 
-	"github.com/dustin/go-humanize"
-
 	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -163,21 +161,11 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 		return nil, errors.Wrap(err, "unable to load global configuration")
 	}
 
-	// Parse maximum staging file size if specified.
-	var maximumStagingFileSize uint64
-	if configuration.Synchronization.MaximumStagingFileSize != "" {
-		if s, err := humanize.ParseBytes(configuration.Synchronization.MaximumStagingFileSize); err != nil {
-			return nil, errors.Wrap(err, "unable to parse maximum staging file size")
-		} else {
-			maximumStagingFileSize = s
-		}
-	}
-
 	// Create a session configuration object.
 	result := &Configuration{
 		SynchronizationMode:    configuration.Synchronization.Mode,
 		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
-		MaximumStagingFileSize: maximumStagingFileSize,
+		MaximumStagingFileSize: uint64(configuration.Synchronization.MaximumStagingFileSize),
 		SymlinkMode:            configuration.Symlink.Mode,
 		WatchMode:              configuration.Watch.Mode,
 		WatchPollingInterval:   configuration.Watch.PollingInterval,
