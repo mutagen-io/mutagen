@@ -1,5 +1,3 @@
-// +build darwin freebsd
-
 package filesystem
 
 import (
@@ -44,7 +42,9 @@ func fstatat(directory int, path string, metadata *unix.Stat_t, flags int) error
 
 // fchmodat is a Go entry point for the fchmodat system call.
 func fchmodat(directory int, path string, mode uint32, flags int) error {
-	return unix.Fchmodat(directory, path, mode, flags)
+	// HACK: On Linux, the AT_SYMLINK_NOFOLLOW flag is not supported for
+	// fchmodat and will result in an ENOTSUP error, so we have to strip it out.
+	return unix.Fchmodat(directory, path, mode, flags &^ unix.AT_SYMLINK_NOFOLLOW)
 }
 
 // fchownat is a Go entry point for the fchownat system call.
