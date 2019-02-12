@@ -64,17 +64,17 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 		case OwnershipIdentifierKindPOSIXID:
 			return nil, errors.New("POSIX IDs not supported on Windows systems")
 		case OwnershipIdentifierKindWindowsSID:
-			if groupObject, err := userpkg.LookupId(identifier); err != nil {
+			if groupObject, err := userpkg.LookupGroupId(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup group by ID")
-			} else if g, err := windows.StringToSid(groupObject.Uid); err != nil {
+			} else if g, err := windows.StringToSid(groupObject.Gid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert SID string to object")
 			} else {
 				groupSID = g
 			}
 		case OwnershipIdentifierKindName:
-			if groupObject, err := userpkg.Lookup(identifier); err != nil {
+			if groupObject, err := userpkg.LookupGroup(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup group by ID")
-			} else if g, err := windows.StringToSid(groupObject.Uid); err != nil {
+			} else if g, err := windows.StringToSid(groupObject.Gid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert SID string to object")
 			} else {
 				groupSID = g
