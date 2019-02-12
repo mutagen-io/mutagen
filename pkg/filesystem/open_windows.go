@@ -53,6 +53,9 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		0,
 	)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil, err
+		}
 		return nil, nil, errors.Wrap(err, "unable to open path")
 	}
 

@@ -207,6 +207,9 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 		0,
 	)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return "", 0, err
+		}
 		return "", 0, errors.Wrap(err, "unable to open path")
 	}
 
