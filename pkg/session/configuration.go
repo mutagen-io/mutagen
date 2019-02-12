@@ -133,10 +133,10 @@ func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
 		}
 	}
 
-	// Verify the default user specification.
-	if c.DefaultUser != "" {
-		if kind, _ := filesystem.ParseOwnershipIdentifier(c.DefaultUser); kind == filesystem.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid default user specification")
+	// Verify the default owner specification.
+	if c.DefaultOwner != "" {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(c.DefaultOwner); kind == filesystem.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid default owner specification")
 		}
 	}
 
@@ -173,7 +173,7 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 		IgnoreVCSMode:          configuration.Ignore.VCS,
 		DefaultFileMode:        uint32(configuration.Permissions.DefaultFileMode),
 		DefaultDirectoryMode:   uint32(configuration.Permissions.DefaultDirectoryMode),
-		DefaultUser:            configuration.Permissions.DefaultUser,
+		DefaultOwner:           configuration.Permissions.DefaultOwner,
 		DefaultGroup:           configuration.Permissions.DefaultGroup,
 	}
 
@@ -265,11 +265,11 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.DefaultDirectoryMode = lower.DefaultDirectoryMode
 	}
 
-	// Merge default user.
-	if higher.DefaultUser != "" {
-		result.DefaultUser = higher.DefaultUser
+	// Merge default owner.
+	if higher.DefaultOwner != "" {
+		result.DefaultOwner = higher.DefaultOwner
 	} else {
-		result.DefaultUser = lower.DefaultUser
+		result.DefaultOwner = lower.DefaultOwner
 	}
 
 	// Merge default group.

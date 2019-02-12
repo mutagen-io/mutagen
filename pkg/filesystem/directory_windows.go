@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/hectane/go-acl"
 	aclapi "github.com/hectane/go-acl/api"
 )
 
@@ -140,10 +139,10 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	path := filepath.Join(d.file.Name(), name)
 
 	// Set ownership information, if specified.
-	if ownership != nil && (ownership.userSID != nil || ownership.groupSID != nil) {
+	if ownership != nil && (ownership.ownerSID != nil || ownership.groupSID != nil) {
 		// Compute the information that we're going to set.
 		var information uint32
-		if ownership.userSID != nil {
+		if ownership.ownerSID != nil {
 			information |= aclapi.OWNER_SECURITY_INFORMATION
 		}
 		if ownership.groupSID != nil {
@@ -155,7 +154,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 			path,
 			aclapi.SE_FILE_OBJECT,
 			information,
-			ownership.userSID,
+			ownership.ownerSID,
 			ownership.groupSID,
 			0,
 			0,
@@ -167,7 +166,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	// Set permissions, if specified.
 	mode = mode & ModePermissionsMask
 	if mode != 0 {
-		if err := acl.Chmod(path, os.FileMode(mode)); err != nil {
+		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
 			return errors.Wrap(err, "unable to set permission bits")
 		}
 	}

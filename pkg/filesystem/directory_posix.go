@@ -146,8 +146,8 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	}
 
 	// Set ownership information, if specified.
-	if ownership != nil && (ownership.userID != -1 || ownership.groupID != -1) {
-		if err := fchownat(d.descriptor, name, ownership.userID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
+		if err := fchownat(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 			return errors.Wrap(err, "unable to set ownership information")
 		}
 	}

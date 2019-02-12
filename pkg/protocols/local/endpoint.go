@@ -148,10 +148,10 @@ func NewEndpoint(
 		defaultDirectoryMode = version.DefaultDirectoryMode()
 	}
 
-	// Compute the effective owner user specification.
-	defaultUserSpecification := configuration.DefaultUser
-	if defaultUserSpecification == "" {
-		defaultUserSpecification = version.DefaultUserSpecification()
+	// Compute the effective owner specification.
+	defaultOwnerSpecification := configuration.DefaultOwner
+	if defaultOwnerSpecification == "" {
+		defaultOwnerSpecification = version.DefaultOwnerSpecification()
 	}
 
 	// Compute the effective owner group specification.
@@ -162,7 +162,7 @@ func NewEndpoint(
 
 	// Compute the effective ownership specification.
 	defaultOwnership, err := filesystem.NewOwnershipSpecification(
-		defaultUserSpecification,
+		defaultOwnerSpecification,
 		defaultGroupSpecification,
 	)
 	if err != nil {

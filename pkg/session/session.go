@@ -97,9 +97,9 @@ func (v Version) DefaultDirectoryMode() filesystem.Mode {
 	}
 }
 
-// DefaultUserSpecification returns the default owner user specification for the
+// DefaultOwnerSpecification returns the default owner specification for the
 // session version.
-func (v Version) DefaultUserSpecification() string {
+func (v Version) DefaultOwnerSpecification() string {
 	switch v {
 	case Version_Version1:
 		return ""

@@ -93,14 +93,14 @@ message Configuration {
     // files in "portable" permission propagation mode.
     uint32 defaultDirectoryMode = 64;
 
-    // DefaultUser specifies the default user identifier to use when setting
+    // DefaultOwner specifies the default owner identifier to use when setting
     // ownership of new files and directories in "portable" permission
     // propagation mode.
-    string defaultUser = 65;
+    string defaultOwner = 65;
 
     // DefaultGroup specifies the default group identifier to use when setting
     // ownership of new files and directories in "portable" permission
-    // propagation mode, with endpoint-specific specifications taking priority.
+    // propagation mode.
     string defaultGroup = 66;
 
     // Fields 67-80 are reserved for future permission configuration parameters.

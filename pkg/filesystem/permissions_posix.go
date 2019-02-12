@@ -13,11 +13,11 @@ import (
 // OwnershipSpecification is an opaque type that encodes specification of file
 // and/or directory ownership.
 type OwnershipSpecification struct {
-	// userID encodes the POSIX user ID associated with the ownership
+	// ownerID encodes the POSIX user ID associated with the ownership
 	// specification. A value of -1 indicates the absence of specification. The
 	// availability of -1 as a sentinel value for omission is guaranteed by the
 	// POSIX definition of chmod.
-	userID int
+	ownerID int
 	// groupID encodes the POSIX user ID associated with the ownership
 	// specification. A value of -1 indicates the absence of specification. The
 	// availability of -1 as a sentinel value for omission is guaranteed by the
@@ -25,32 +25,32 @@ type OwnershipSpecification struct {
 	groupID int
 }
 
-// NewOwnershipSpecification parsers user and group specifications and resolves
+// NewOwnershipSpecification parsers owner and group specifications and resolves
 // their system-level identifiers.
-func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, error) {
-	// Attempt to parse and look up user, if specified.
-	userID := -1
-	if user != "" {
-		switch kind, identifier := ParseOwnershipIdentifier(user); kind {
+func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, error) {
+	// Attempt to parse and look up owner user, if specified.
+	ownerID := -1
+	if owner != "" {
+		switch kind, identifier := ParseOwnershipIdentifier(owner); kind {
 		case OwnershipIdentifierKindInvalid:
 			return nil, errors.New("invalid user specification")
 		case OwnershipIdentifierKindPOSIXID:
 			if _, err := userpkg.LookupId(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup user by ID")
-			} else if u, err := strconv.Atoi(identifier); err != nil {
+			} else if userID, err := strconv.Atoi(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
 			} else {
-				userID = u
+				ownerID = userID
 			}
 		case OwnershipIdentifierKindWindowsSID:
 			return nil, errors.New("Windows SIDs not supported on POSIX systems")
 		case OwnershipIdentifierKindName:
 			if userObject, err := userpkg.Lookup(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup user by ID")
-			} else if u, err := strconv.Atoi(userObject.Uid); err != nil {
+			} else if userID, err := strconv.Atoi(userObject.Uid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
 			} else {
-				userID = u
+				ownerID = userID
 			}
 		default:
 			panic("unhandled ownership identifier kind")
@@ -88,7 +88,7 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 
 	// Success.
 	return &OwnershipSpecification{
-		userID:  userID,
+		ownerID: ownerID,
 		groupID: groupID,
 	}, nil
 }
@@ -103,8 +103,8 @@ func NewOwnershipSpecification(user, group string) (*OwnershipSpecification, err
 // after permission bit masking.
 func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode Mode) error {
 	// Set ownership information, if specified.
-	if ownership != nil && (ownership.userID != -1 || ownership.groupID != -1) {
-		if err := os.Chown(path, ownership.userID, ownership.groupID); err != nil {
+	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
+		if err := os.Chown(path, ownership.ownerID, ownership.groupID); err != nil {
 			return errors.Wrap(err, "unable to set ownership information")
 		}
 	}

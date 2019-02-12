@@ -26,7 +26,7 @@ default = ["ignore/this/**", "!ignore/this/that"]
 [permissions]
 defaultFileMode = 644
 defaultDirectoryMode = 0755
-defaultUser = "george"
+defaultOwner = "george"
 defaultGroup = "presidents"
 `
 )

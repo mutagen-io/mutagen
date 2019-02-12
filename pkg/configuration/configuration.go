@@ -51,16 +51,22 @@ type Configuration struct {
 
 	// Permissions contains parameters related to permission handling.
 	Permissions struct {
-		// DefaultFileMode specifies the default file mode.
+		// DefaultFileMode specifies the default permission mode to use for new
+		// files in "portable" permission propagation mode.
 		DefaultFileMode filesystem.Mode `toml:"defaultFileMode"`
 
-		// DefaultDirectoryMode specifies the default directory mode.
+		// DefaultDirectoryMode specifies the default permission mode to use for
+		// new files in "portable" permission propagation mode.
 		DefaultDirectoryMode filesystem.Mode `toml:"defaultDirectoryMode"`
 
-		// DefaultUser specifies the default owner user.
-		DefaultUser string `toml:"defaultUser"`
+		// DefaultOwner specifies the default owner identifier to use when
+		// setting ownership of new files and directories in "portable"
+		// permission propagation mode.
+		DefaultOwner string `toml:"defaultOwner"`
 
-		// DefaultGroup specifies the default owner group.
+		// DefaultGroup specifies the default group identifier to use when
+		// setting ownership of new files and directories in "portable"
+		// permission propagation mode.
 		DefaultGroup string `toml:"defaultGroup"`
 	} `toml:"permissions"`
 }

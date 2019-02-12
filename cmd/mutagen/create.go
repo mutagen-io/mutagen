@@ -164,20 +164,20 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate default file owner user specifications.
-	if createConfiguration.defaultUser != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultUser); kind == fs.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid user ownership specification")
+	// Validate default file owner owner specifications.
+	if createConfiguration.defaultOwner != "" {
+		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwner); kind == fs.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid ownership specification")
 		}
 	}
-	if createConfiguration.defaultUserAlpha != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultUserAlpha); kind == fs.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid user ownership specification for alpha")
+	if createConfiguration.defaultOwnerAlpha != "" {
+		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwnerAlpha); kind == fs.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid ownership specification for alpha")
 		}
 	}
-	if createConfiguration.defaultUserBeta != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultUserBeta); kind == fs.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid user ownership specification for beta")
+	if createConfiguration.defaultOwnerBeta != "" {
+		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwnerBeta); kind == fs.OwnershipIdentifierKindInvalid {
+			return errors.New("invalid ownership specification for beta")
 		}
 	}
 
@@ -232,19 +232,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 			IgnoreVCSMode:          ignoreVCSMode,
 			DefaultFileMode:        defaultFileMode,
 			DefaultDirectoryMode:   defaultDirectoryMode,
-			DefaultUser:            createConfiguration.defaultUser,
+			DefaultOwner:            createConfiguration.defaultOwner,
 			DefaultGroup:           createConfiguration.defaultGroup,
 		},
 		ConfigurationAlpha: &sessionpkg.Configuration{
 			DefaultFileMode:      defaultFileModeAlpha,
 			DefaultDirectoryMode: defaultDirectoryModeAlpha,
-			DefaultUser:          createConfiguration.defaultUserAlpha,
+			DefaultOwner:          createConfiguration.defaultOwnerAlpha,
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
 		},
 		ConfigurationBeta: &sessionpkg.Configuration{
 			DefaultFileMode:      defaultFileModeBeta,
 			DefaultDirectoryMode: defaultDirectoryModeBeta,
-			DefaultUser:          createConfiguration.defaultUserBeta,
+			DefaultOwner:          createConfiguration.defaultOwnerBeta,
 			DefaultGroup:         createConfiguration.defaultGroupBeta,
 		},
 	}
@@ -338,19 +338,20 @@ var createConfiguration struct {
 	// new directories on beta in "portable" permission propagation mode, taking
 	// priority over defaultDirectoryMode on beta if specified.
 	defaultDirectoryModeBeta string
-	// defaultUser specifies the default user identifier to use when setting
+	// defaultOwner specifies the default owner identifier to use when setting
 	// ownership of new files and directories in "portable" permission
 	// propagation mode, with endpoint-specific specifications taking priority.
-	defaultUser string
-	// defaultUserAlpha specifies the default user identifier to use when
+	defaultOwner string
+	// defaultOwnerAlpha specifies the default owner identifier to use when
 	// setting ownership of new files and directories on alpha in "portable"
-	// permission propagation mode, taking priority over defaultUser on alpha if
+	// permission propagation mode, taking priority over defaultOwner on alpha
+	// if specified.
+	defaultOwnerAlpha string
+	// defaultOwnerBeta specifies the default owner identifier to use when
+	// setting ownership of new files and directories on beta in "portable"
+	// permission propagation mode, taking priority over defaultOwner on beta if
 	// specified.
-	defaultUserAlpha string
-	// defaultUserBeta specifies the default user identifier to use when setting
-	// ownership of new files and directories on beta in "portable" permission
-	// propagation mode, taking priority over defaultUser on beta if specified.
-	defaultUserBeta string
+	defaultOwnerBeta string
 	// defaultGroup specifies the default group identifier to use when setting
 	// ownership of new files and directories in "portable" permission
 	// propagation mode, with endpoint-specific specifications taking priority.
@@ -399,10 +400,10 @@ func init() {
 	flags.StringVar(&createConfiguration.defaultDirectoryMode, "default-directory-mode", "", "Specify default directory permission mode")
 	flags.StringVar(&createConfiguration.defaultDirectoryModeAlpha, "default-directory-mode-alpha", "", "Specify default directory permission mode for alpha")
 	flags.StringVar(&createConfiguration.defaultDirectoryModeBeta, "default-directory-mode-beta", "", "Specify default directory permission mode for beta")
-	flags.StringVar(&createConfiguration.defaultUser, "default-user", "", "Specify default file owner user")
-	flags.StringVar(&createConfiguration.defaultUserAlpha, "default-user-alpha", "", "Specify default file owner user for alpha")
-	flags.StringVar(&createConfiguration.defaultUserBeta, "default-user-beta", "", "Specify default file owner user for beta")
-	flags.StringVar(&createConfiguration.defaultGroup, "default-group", "", "Specify default file owner group")
-	flags.StringVar(&createConfiguration.defaultGroupAlpha, "default-group-alpha", "", "Specify default file owner group for alpha")
-	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file owner group for beta")
+	flags.StringVar(&createConfiguration.defaultOwner, "default-owner", "", "Specify default file owner")
+	flags.StringVar(&createConfiguration.defaultOwnerAlpha, "default-owner-alpha", "", "Specify default file owner for alpha")
+	flags.StringVar(&createConfiguration.defaultOwnerBeta, "default-owner-beta", "", "Specify default file owner for beta")
+	flags.StringVar(&createConfiguration.defaultGroup, "default-group", "", "Specify default file group")
+	flags.StringVar(&createConfiguration.defaultGroupAlpha, "default-group-alpha", "", "Specify default file group for alpha")
+	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file group for beta")
 }

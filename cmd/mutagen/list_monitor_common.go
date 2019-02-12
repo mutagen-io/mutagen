@@ -105,11 +105,11 @@ func printSession(state *sessionpkg.State, long bool) {
 		)
 		alphaDefaultFileMode := filesystem.Mode(alphaConfigurationMerged.DefaultFileMode)
 		alphaDefaultDirectoryMode := filesystem.Mode(alphaConfigurationMerged.DefaultDirectoryMode)
-		alphaDefaultUser := alphaConfigurationMerged.DefaultUser
+		alphaDefaultOwner := alphaConfigurationMerged.DefaultOwner
 		alphaDefaultGroup := alphaConfigurationMerged.DefaultGroup
 		alphaPermissionsNonDefault := alphaDefaultFileMode != 0 ||
 			alphaDefaultDirectoryMode != 0 ||
-			alphaDefaultUser != "" ||
+			alphaDefaultOwner != "" ||
 			alphaDefaultGroup != ""
 		if alphaPermissionsNonDefault {
 			fmt.Println("Alpha permissions (non-defaults):")
@@ -119,11 +119,11 @@ func printSession(state *sessionpkg.State, long bool) {
 			if alphaDefaultDirectoryMode != 0 {
 				fmt.Printf("\tDirectory mode: %#o\n", alphaDefaultDirectoryMode)
 			}
-			if alphaDefaultUser != "" {
-				fmt.Println("\tOwner user:", alphaDefaultUser)
+			if alphaDefaultOwner != "" {
+				fmt.Println("\tOwner:", alphaDefaultOwner)
 			}
 			if alphaDefaultGroup != "" {
-				fmt.Println("\tOwner group:", alphaDefaultGroup)
+				fmt.Println("\tGroup:", alphaDefaultGroup)
 			}
 		} else {
 			fmt.Println("Alpha permissions: Default")
@@ -136,11 +136,11 @@ func printSession(state *sessionpkg.State, long bool) {
 		)
 		betaDefaultFileMode := filesystem.Mode(betaConfigurationMerged.DefaultFileMode)
 		betaDefaultDirectoryMode := filesystem.Mode(betaConfigurationMerged.DefaultDirectoryMode)
-		betaDefaultUser := betaConfigurationMerged.DefaultUser
+		betaDefaultOwner := betaConfigurationMerged.DefaultOwner
 		betaDefaultGroup := betaConfigurationMerged.DefaultGroup
 		betaPermissionsNonDefault := betaDefaultFileMode != 0 ||
 			betaDefaultDirectoryMode != 0 ||
-			betaDefaultUser != "" ||
+			betaDefaultOwner != "" ||
 			betaDefaultGroup != ""
 		if betaPermissionsNonDefault {
 			fmt.Println("Beta permissions (non-defaults):")
@@ -150,11 +150,11 @@ func printSession(state *sessionpkg.State, long bool) {
 			if betaDefaultDirectoryMode != 0 {
 				fmt.Printf("\tDirectory mode: %#o\n", betaDefaultDirectoryMode)
 			}
-			if betaDefaultUser != "" {
-				fmt.Println("\tOwner user:", betaDefaultUser)
+			if betaDefaultOwner != "" {
+				fmt.Println("\tOwner:", betaDefaultOwner)
 			}
 			if betaDefaultGroup != "" {
-				fmt.Println("\tOwner group:", betaDefaultGroup)
+				fmt.Println("\tGroup:", betaDefaultGroup)
 			}
 		} else {
 			fmt.Println("Beta permissions: Default")
