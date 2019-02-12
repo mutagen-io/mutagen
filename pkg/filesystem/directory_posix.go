@@ -225,14 +225,6 @@ func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error)
 	// os.File.Name).
 	file := os.NewFile(uintptr(descriptor), name)
 
-	// TODO: Should we add an fstat operation (simply via os.File's Stat method)
-	// that enforces the opened file is of the desired type? If doing so is
-	// cheap, and it might be relatively cheap given our traversal patterns,
-	// then it might be worth doing. Symbolic links will definitely fail to open
-	// due to the presence of O_NOFOLLOW, but other file types and directories
-	// could open, with varying levels of failure amongst later operations on
-	// the file.
-
 	// Success.
 	return file, descriptor, nil
 }
