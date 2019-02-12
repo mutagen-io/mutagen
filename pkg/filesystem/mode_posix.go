@@ -23,8 +23,4 @@ const (
 	ModeTypeFile = Mode(unix.S_IFREG)
 	// ModeTypeSymbolicLink represents a symbolic link.
 	ModeTypeSymbolicLink = Mode(unix.S_IFLNK)
-	// ModeExtendedPermissionsMask is a bit mask that isolates permission bits,
-	// including extended permission bits (setuid, setgid, and sticky bits). It
-	// is only available on POSIX systems.
-	ModeExtendedPermissionsMask = ModePermissionsMask | Mode(unix.S_ISUID|unix.S_ISGID|unix.S_ISVTX)
 )
