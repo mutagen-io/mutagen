@@ -75,7 +75,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 
 var flushCommand = &cobra.Command{
 	Use:   "flush [<session>...]",
-	Short: "Flushs a synchronization session",
+	Short: "Flushes a synchronization session",
 	Run:   cmd.Mainify(flushMain),
 }
 
