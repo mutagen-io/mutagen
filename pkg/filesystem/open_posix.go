@@ -19,7 +19,7 @@ import (
 // (though intermediate components of the path can be symbolic links and will be
 // resolved in the resolution of the path), and an error will be returned if
 // this is the case (though on POSIX systems it will not be
-// ErrUnsupportedRootType). However, if allowSymbolicLinkLeaf is true, then this
+// ErrUnsupportedOpenType). However, if allowSymbolicLinkLeaf is true, then this
 // function will allow resolution of a path leaf component that's a symbolic
 // link. In this case, the referenced object must still be a directory or
 // regular file, and the returned object will still be either a Directory or
@@ -90,6 +90,6 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return file, metadata, nil
 	default:
 		file.Close()
-		return nil, nil, ErrUnsupportedRootType
+		return nil, nil, ErrUnsupportedOpenType
 	}
 }

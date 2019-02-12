@@ -77,7 +77,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// option in mind.
 	if rawMetadata.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
 		windows.CloseHandle(handle)
-		return nil, nil, ErrUnsupportedRootType
+		return nil, nil, ErrUnsupportedOpenType
 	}
 
 	// Determine whether or not this is a directory.

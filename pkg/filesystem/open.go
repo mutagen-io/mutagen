@@ -6,9 +6,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ErrUnsupportedRootType indicates that the filesystem entry at the specified
+// ErrUnsupportedOpenType indicates that the filesystem entry at the specified
 // path is not supported as a traversal root.
-var ErrUnsupportedRootType = errors.New("unsupported root type")
+var ErrUnsupportedOpenType = errors.New("unsupported open type")
 
 // OpenDirectory is a convenience wrapper around Open that requires the result
 // to be a directory.
@@ -19,6 +19,7 @@ func OpenDirectory(path string, allowSymbolicLinkLeaf bool) (*Directory, *Metada
 		d.Close()
 		return nil, nil, errors.New("path is not a directory")
 	} else if directory, ok := d.(*Directory); !ok {
+		d.Close()
 		panic("invalid directory object returned from open operation")
 	} else {
 		return directory, metadata, nil
@@ -34,6 +35,7 @@ func OpenFile(path string, allowSymbolicLinkLeaf bool) (ReadableFile, *Metadata,
 		f.Close()
 		return nil, nil, errors.New("path is not a file")
 	} else if file, ok := f.(ReadableFile); !ok {
+		f.Close()
 		panic("invalid file object returned from open operation")
 	} else {
 		return file, metadata, nil
@@ -79,8 +81,19 @@ func (o *Opener) Open(path string) (ReadableFile, error) {
 	// Handle the special case of a root path. We enforce that it must be a
 	// file.
 	if path == "" {
+		// Verify that the root path hasn't already been opened as a directory.
+		// This is primarily just a cheap sanity check. On POSIX systems, the
+		// directory we hold open for the root could have been unlinked and
+		// replaced with a file, and it's better to catch that here before
+		// future Opener operations open files that aren't visible on the
+		// filesystem or are somewhere else on the filesystem.
+		if o.rootDirectory != nil {
+			return nil, errors.New("root already opened as directory")
+		}
+
+		// Attempt to open the file.
 		if file, _, err := OpenFile(o.root, false); err != nil {
-			return nil, errors.Wrap(err, "unable to open transmission root file")
+			return nil, errors.Wrap(err, "unable to open root file")
 		} else {
 			return file, nil
 		}
@@ -94,7 +107,7 @@ func (o *Opener) Open(path string) (ReadableFile, error) {
 	// If it's not already open, open the root directory.
 	if o.rootDirectory == nil {
 		if directory, _, err := OpenDirectory(o.root, false); err != nil {
-			return nil, errors.Wrap(err, "unable to open transmission root directory")
+			return nil, errors.Wrap(err, "unable to open root directory")
 		} else {
 			o.rootDirectory = directory
 		}
@@ -149,7 +162,7 @@ func (o *Opener) Close() error {
 	// Track the first error to arise, if any.
 	var firstErr error
 
-	// Close the transmission root directory, if open.
+	// Close the root directory, if open.
 	if o.rootDirectory != nil {
 		firstErr = o.rootDirectory.Close()
 	}
