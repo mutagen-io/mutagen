@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/rsync"
@@ -661,11 +662,13 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		synchronizationMode = c.session.Version.DefaultSynchronizationMode()
 	}
 
-	// Loop until there is a synchronization error. We always skip polling on
-	// the first time through the loop because changes may have occurred while
-	// we were halted. We also skip polling in the event that an endpoint asks
-	// for a scan retry.
+	// Indicate that polling should be skipped. We always skip polling on the
+	// first time through the loop because changes may have occurred while we
+	// were halted. We also skip polling in the event that an endpoint asks for
+	// a scan retry.
 	skipPolling := true
+
+	// Loop until there is a synchronization error.
 	for {
 		// Unless we've been requested to skip polling, wait for a dirty state
 		// while monitoring for cancellation. If we've been requested to skip
@@ -681,16 +684,32 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			// just track cancellation there separately.
 			pollContext, pollCancel := contextpkg.WithCancel(contextpkg.Background())
 
-			// Start alpha polling.
+			// Start alpha polling. If alpha has been put into a no-watch mode,
+			// then don't actually start polling there, because we don't want a
+			// malfunctioning (or malicious) endpoint to be able to force
+			// synchronization when it's not supposed to be able to.
 			αPollResults := make(chan error, 1)
+			αDisablePolling := (c.mergedAlphaConfiguration.WatchMode == filesystem.WatchMode_WatchModeNoWatch)
 			go func() {
-				αPollResults <- alpha.Poll(pollContext)
+				if αDisablePolling {
+					<-pollContext.Done()
+					αPollResults <- nil
+				} else {
+					αPollResults <- alpha.Poll(pollContext)
+				}
 			}()
 
-			// Start beta polling.
+
+			// Start beta polling. The logic here mirrors that for alpha above.
 			βPollResults := make(chan error, 1)
+			βDisablePolling := (c.mergedBetaConfiguration.WatchMode == filesystem.WatchMode_WatchModeNoWatch)
 			go func() {
-				βPollResults <- beta.Poll(pollContext)
+				if βDisablePolling {
+					<-pollContext.Done()
+					βPollResults <- nil
+				} else {
+					βPollResults <- beta.Poll(pollContext)
+				}
 			}()
 
 			// Wait for either poll to return an event or an error, for the
