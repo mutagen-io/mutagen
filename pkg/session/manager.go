@@ -1,6 +1,7 @@
 package session
 
 import (
+	contextpkg "context"
 	"sort"
 	"strings"
 
@@ -214,7 +215,7 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 }
 
 // Flush tells the manager to flush sessions matching the given specifications.
-func (m *Manager) Flush(specifications []string, prompter string) error {
+func (m *Manager) Flush(specifications []string, prompter string, wait bool, context contextpkg.Context) error {
 	// Extract the controllers for the sessions of interest.
 	var controllers []*controller
 	if len(specifications) == 0 {
@@ -227,7 +228,7 @@ func (m *Manager) Flush(specifications []string, prompter string) error {
 
 	// Attempt to flush the sessions.
 	for _, controller := range controllers {
-		if err := controller.flush(prompter); err != nil {
+		if err := controller.flush(prompter, wait, context); err != nil {
 			return errors.Wrap(err, "unable to flush session")
 		}
 	}

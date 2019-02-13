@@ -116,9 +116,8 @@ func (s *Server) Flush(stream Sessions_FlushServer) error {
 		return errors.Wrap(err, "unable to register prompter")
 	}
 
-	// Perform termination.
-	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Flush(request.Specifications, prompter)
+	// Perform flush.
+	err = s.manager.Flush(request.Specifications, prompter, request.Wait, stream.Context())
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)

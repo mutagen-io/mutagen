@@ -58,7 +58,7 @@ type controller struct {
 	mergedBetaConfiguration *Configuration
 	// state represents the current synchronization state.
 	state *State
-	// lifecycleLock guards setting of the disabled, cancel, forceCycle, and
+	// lifecycleLock guards setting of the disabled, cancel, flushRequests, and
 	// done members. Access to these members is allowed for the synchronization
 	// loop without holding the lock. Any code wishing to set these members
 	// should first acquire the lock, then cancel the synchronization loop, and
@@ -73,10 +73,10 @@ type controller struct {
 	// cancel cancels the synchronization loop execution context. It should be
 	// nil if and only if there is no synchronization loop running.
 	cancel contextpkg.CancelFunc
-	// forceCycle is used to indicate to the controller that it should force a
-	// synchronization cycle. It is buffered so that a single request can be
-	// queued.
-	forceCycle chan struct{}
+	// flushRequests is used pass flush requests to the synchronization loop. It
+	// is buffered, allowing a single request to be queued. All requests passed
+	// via that channel must be buffered and contain room for one error.
+	flushRequests chan chan error
 	// done will be closed by the current synchronization loop when it exits.
 	done chan struct{}
 }
@@ -191,7 +191,7 @@ func newSession(
 	// Start a synchronization loop.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	controller.cancel = cancel
-	controller.forceCycle = make(chan struct{}, 1)
+	controller.flushRequests = make(chan chan error, 1)
 	controller.done = make(chan struct{})
 	go controller.run(context, alphaEndpoint, betaEndpoint)
 
@@ -252,7 +252,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*controller, error)
 	if !session.Paused {
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
-		controller.forceCycle = make(chan struct{}, 1)
+		controller.flushRequests = make(chan chan error, 1)
 		controller.done = make(chan struct{})
 		go controller.run(context, nil, nil)
 	}
@@ -273,8 +273,11 @@ func (c *controller) currentState() *State {
 	return c.state.Copy()
 }
 
-// flush attempts to force a synchronization cycle for the session.
-func (c *controller) flush(prompter string) error {
+// flush attempts to force a synchronization cycle for the session. If wait is
+// specified, then the method will wait until a post-flush synchronization cycle
+// has completed. The provided context (which must be non-nil) can terminate
+// this wait early.
+func (c *controller) flush(prompter string, wait bool, context contextpkg.Context) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
@@ -297,12 +300,40 @@ func (c *controller) flush(prompter string) error {
 		return errors.New("session is paused")
 	}
 
-	// Tell the controller to force a synchronization cycle, in a non-blocking
-	// fashion. The channel is buffered, so if a request is already queued, then
-	// this is a no-op.
+	// Create a flush request.
+	request := make(chan error, 1)
+
+	// If we don't want to wait, then we can simply send the request in a
+	// non-blocking manner, in which case either this request (or one that's
+	// already queued) will be processed eventually. After that, we'd done.
+	if !wait {
+		// Send the request in a non-blocking manner.
+		select {
+		case c.flushRequests <- request:
+		default:
+		}
+
+		// Success.
+		return nil
+	}
+
+	// Otherwise we need to send the request in a blocking manner, watching for
+	// cancellation in the mean time.
 	select {
-	case c.forceCycle <- struct{}{}:
-	default:
+	case c.flushRequests <- request:
+	case <-context.Done():
+		return errors.New("flush cancelled before request could be sent")
+	}
+
+	// Now we need to wait for a response to the request, again watching for
+	// cancellation in the mean time.
+	select {
+	case err := <-request:
+		if err != nil {
+			return err
+		}
+	case <-context.Done():
+		return errors.New("flush cancelled while waiting for synchronization cycle")
 	}
 
 	// Success.
@@ -355,7 +386,7 @@ func (c *controller) resume(prompter string) error {
 
 		// Nil out any lifecycle state.
 		c.cancel = nil
-		c.forceCycle = nil
+		c.flushRequests = nil
 		c.done = nil
 	}
 
@@ -402,7 +433,7 @@ func (c *controller) resume(prompter string) error {
 	// loop keep trying to connect.
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	c.cancel = cancel
-	c.forceCycle = make(chan struct{}, 1)
+	c.flushRequests = make(chan chan error, 1)
 	c.done = make(chan struct{})
 	go c.run(context, alpha, beta)
 
@@ -473,7 +504,7 @@ func (c *controller) halt(mode haltMode, prompter string) error {
 
 		// Nil out any lifecycle state.
 		c.cancel = nil
-		c.forceCycle = nil
+		c.flushRequests = nil
 		c.done = nil
 	}
 
@@ -647,6 +678,17 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.UnlockWithoutNotify()
 	}
 
+	// Track any flush request that we've pulled from the queue but haven't
+	// marked as complete. If we bail due to an error, then close out the
+	// request.
+	var flushRequest chan error
+	defer func() {
+		if flushRequest != nil {
+			flushRequest <- errors.New("synchronization cycle failed")
+			flushRequest = nil
+		}
+	}()
+
 	// Load the archive and extract the ancestor.
 	archive := &sync.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
@@ -662,11 +704,28 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		synchronizationMode = c.session.Version.DefaultSynchronizationMode()
 	}
 
-	// Indicate that polling should be skipped. We always skip polling on the
-	// first time through the loop because changes may have occurred while we
-	// were halted. We also skip polling in the event that an endpoint asks for
-	// a scan retry.
-	skipPolling := true
+	// Compute, on a per-endpoint basis, whether or not polling should be
+	// disabled.
+	αWatchMode := c.mergedAlphaConfiguration.WatchMode
+	βWatchMode := c.mergedBetaConfiguration.WatchMode
+	if αWatchMode.IsDefault() {
+		αWatchMode = c.session.Version.DefaultWatchMode()
+	}
+	if βWatchMode.IsDefault() {
+		βWatchMode = c.session.Version.DefaultWatchMode()
+	}
+	αDisablePolling := (αWatchMode == filesystem.WatchMode_WatchModeNoWatch)
+	βDisablePolling := (βWatchMode == filesystem.WatchMode_WatchModeNoWatch)
+
+	// Track whether or not we should skip over polling (and go straight to a
+	// synchronization cycle). This variable is normally used to continue a
+	// synchronization cycle after a scan failure without having to wait for
+	// polling, but we also use it when first starting a synchronization loop to
+	// force a check for changes that may have occurred while the
+	// synchronization loop wasn't running. The only time we don't force this
+	// check on startup is when both endpoints have polling disabled, which is
+	// an indication that the session should operate in a fully manual mode.
+	skipPolling := (!αDisablePolling || !βDisablePolling)
 
 	// Loop until there is a synchronization error.
 	for {
@@ -689,7 +748,6 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			// malfunctioning (or malicious) endpoint to be able to force
 			// synchronization when it's not supposed to be able to.
 			αPollResults := make(chan error, 1)
-			αDisablePolling := (c.mergedAlphaConfiguration.WatchMode == filesystem.WatchMode_WatchModeNoWatch)
 			go func() {
 				if αDisablePolling {
 					<-pollContext.Done()
@@ -701,7 +759,6 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 			// Start beta polling. The logic here mirrors that for alpha above.
 			βPollResults := make(chan error, 1)
-			βDisablePolling := (c.mergedBetaConfiguration.WatchMode == filesystem.WatchMode_WatchModeNoWatch)
 			go func() {
 				if βDisablePolling {
 					<-pollContext.Done()
@@ -711,10 +768,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				}
 			}()
 
-			// Wait for either poll to return an event or an error, for the
-			// cycle to be forced, or for cancellation. In any of these cases,
-			// cancel polling and ensure that both polling operations have
-			// completed.
+			// Wait for either poll to return an event or an error, for a flush
+			// request, or for cancellation. In any of these cases, cancel
+			// polling and ensure that both polling operations have completed.
 			var αPollErr, βPollErr error
 			cancelled := false
 			select {
@@ -724,7 +780,10 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			case βPollErr = <-βPollResults:
 				pollCancel()
 				αPollErr = <-αPollResults
-			case <-c.forceCycle:
+			case flushRequest = <-c.flushRequests:
+				if cap(flushRequest) < 1 {
+					panic("unbuffered flush request")
+				}
 				pollCancel()
 				αPollErr = <-αPollResults
 				βPollErr = <-βPollResults
@@ -1052,5 +1111,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Lock()
 		c.state.SuccessfulSynchronizationCycles++
 		c.stateLock.Unlock()
+
+		// If a flush request triggered this synchronization cycle, then tell it
+		// that the cycle has completed and remove it from our tracking.
+		if flushRequest != nil {
+			flushRequest <- nil
+			flushRequest = nil
+		}
 	}
 }
