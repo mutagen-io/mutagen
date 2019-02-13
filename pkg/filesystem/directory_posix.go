@@ -389,7 +389,11 @@ func (d *Directory) ReadSymbolicLink(name string) (string, error) {
 		// (for Go 1.12+) for an example of how this is handled.
 		count, err := readlinkat(d.descriptor, name, buffer)
 		if err != nil {
-			return "", &os.PathError{"readlinkat", name, err}
+			return "", &os.PathError{
+				Op:   "readlinkat",
+				Path: name,
+				Err:  err,
+			}
 		}
 
 		// Verify that the count is sane.
