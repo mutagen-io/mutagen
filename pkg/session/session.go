@@ -61,6 +61,17 @@ func (v Version) DefaultWatchMode() filesystem.WatchMode {
 	}
 }
 
+// DefaultWatchPollingInterval returns the default watch polling interval for
+// the session version.
+func (v Version) DefaultWatchPollingInterval() uint32 {
+	switch v {
+	case Version_Version1:
+		return 10
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultIgnoreVCSMode returns the default VCS ignore mode for the session
 // version.
 func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {

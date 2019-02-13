@@ -130,6 +130,12 @@ func NewEndpoint(
 		watchMode = version.DefaultWatchMode()
 	}
 
+	// Compute the effective watch polling interval.
+	watchPollingInterval := configuration.WatchPollingInterval
+	if watchPollingInterval == 0 {
+		watchPollingInterval = version.DefaultWatchPollingInterval()
+	}
+
 	// Compute the effective VCS ignore mode.
 	ignoreVCSMode := configuration.IgnoreVCSMode
 	if ignoreVCSMode.IsDefault() {
@@ -188,7 +194,7 @@ func NewEndpoint(
 			root,
 			watchEvents,
 			watchMode,
-			configuration.WatchPollingInterval,
+			watchPollingInterval,
 		)
 	}
 

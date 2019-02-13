@@ -10,8 +10,6 @@ import (
 )
 
 const (
-	// DefaultPollingInterval is the default watch polling interval, in seconds.
-	DefaultPollingInterval = 10
 	// defaultInitialContentMapCapacity is the default content map capacity if
 	// the existing content map is empty.
 	defaultInitialContentMapCapacity = 1024
@@ -140,9 +138,9 @@ func poll(root string, existing map[string]os.FileInfo, trackChanges bool) (map[
 
 // watchPoll performs poll-based filesystem watching.
 func watchPoll(context context.Context, root string, events chan struct{}, pollInterval uint32) error {
-	// Compute the polling interval.
+	// Validate the polling interval and convert it to a duration.
 	if pollInterval == 0 {
-		pollInterval = DefaultPollingInterval
+		return errors.New("polling interval must be greater than 0 seconds")
 	}
 	pollIntervalDuration := time.Duration(pollInterval) * time.Second
 

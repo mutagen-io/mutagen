@@ -23,9 +23,9 @@ const (
 // watchNative attempts to perform efficient watching using the operating
 // system's native filesystem watching facilities.
 func watchNative(context contextpkg.Context, root string, events chan struct{}, pollInterval uint32) error {
-	// Compute the polling interval.
+	// Validate the polling interval and convert it to a duration.
 	if pollInterval == 0 {
-		pollInterval = DefaultPollingInterval
+		return errors.New("polling interval must be greater than 0 seconds")
 	}
 	pollIntervalDuration := time.Duration(pollInterval) * time.Second
 

@@ -22,6 +22,17 @@ func TestSupportedVersions(t *testing.T) {
 	}
 }
 
+// TestDefaultWatchPollingIntervalNonZero verifies that
+// DefaultWatchPollingInterval results are non-zero, which is required for watch
+// operations.
+func TestDefaultWatchPollingIntervalNonZero(t *testing.T) {
+	for _, version := range supportedSessionVersions {
+		if version.DefaultWatchPollingInterval() == 0 {
+			t.Error("zero-valued default watch polling interval")
+		}
+	}
+}
+
 // TestDefaultFileModeValid verifies that DefaultFileMode results are valid for
 // use in "portable" permission propagation.
 func TestDefaultFileModeValid(t *testing.T) {

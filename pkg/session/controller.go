@@ -699,7 +699,6 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				}
 			}()
 
-
 			// Start beta polling. The logic here mirrors that for alpha above.
 			βPollResults := make(chan error, 1)
 			βDisablePolling := (c.mergedBetaConfiguration.WatchMode == filesystem.WatchMode_WatchModeNoWatch)

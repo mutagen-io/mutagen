@@ -30,7 +30,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Confi
 	if configuration.WatchMode != filesystem.WatchMode_WatchModeNoWatch {
 		var watchPollingIntervalDescription string
 		if configuration.WatchPollingInterval == 0 {
-			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
+			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", version.DefaultWatchPollingInterval())
 		} else {
 			watchPollingIntervalDescription = fmt.Sprintf("%d seconds", configuration.WatchPollingInterval)
 		}

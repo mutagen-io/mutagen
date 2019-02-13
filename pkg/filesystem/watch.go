@@ -71,10 +71,13 @@ func (m WatchMode) Description() string {
 // (it doesn't have any total failure modes) and won't exit until the associated
 // context is cancelled.
 // TODO: Document that the events channel must be buffered.
+// TODO: Document that the polling interval must be non-0.
 func Watch(context context.Context, root string, events chan struct{}, mode WatchMode, pollInterval uint32) {
 	// Ensure that the events channel is buffered.
 	if cap(events) < 1 {
 		panic("watch channel should be buffered")
+	} else if pollInterval == 0 {
+		panic("polling interval must be greater than 0 seconds")
 	}
 
 	// Ensure that the events channel is closed when we're cancelled.
