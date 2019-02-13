@@ -8,7 +8,67 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
+	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
+
+func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Configuration, version sessionpkg.Version) {
+	// Print the endpoint header.
+	fmt.Println(name, "configuration:")
+
+	// Print the URL.
+	fmt.Println("\tURL:", url.Format("\n\t\t"))
+
+	// Compute and print the watch mode.
+	watchModeDescription := configuration.WatchMode.Description()
+	if configuration.WatchMode.IsDefault() {
+		watchModeDescription += fmt.Sprintf(" (%s)", version.DefaultWatchMode().Description())
+	}
+	fmt.Println("\tWatch mode:", watchModeDescription)
+
+	// Compute and print the watch polling interval, so long as we're not in
+	// no-watch mode.
+	if configuration.WatchMode != filesystem.WatchMode_WatchModeNoWatch {
+		var watchPollingIntervalDescription string
+		if configuration.WatchPollingInterval == 0 {
+			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
+		} else {
+			watchPollingIntervalDescription = fmt.Sprintf("%d seconds", configuration.WatchPollingInterval)
+		}
+		fmt.Println("\tWatch polling interval:", watchPollingIntervalDescription)
+	}
+
+	// Compute and print the default file mode.
+	var defaultFileModeDescription string
+	if configuration.DefaultFileMode == 0 {
+		defaultFileModeDescription = fmt.Sprintf("Default (%#o)", version.DefaultFileMode())
+	} else {
+		defaultFileModeDescription = fmt.Sprintf("%#o", configuration.DefaultFileMode)
+	}
+	fmt.Println("\tFile mode:", defaultFileModeDescription)
+
+	// Compute and print the default directory mode.
+	var defaultDirectoryModeDescription string
+	if configuration.DefaultDirectoryMode == 0 {
+		defaultDirectoryModeDescription = fmt.Sprintf("Default (%#o)", version.DefaultDirectoryMode())
+	} else {
+		defaultDirectoryModeDescription = fmt.Sprintf("%#o", configuration.DefaultDirectoryMode)
+	}
+	fmt.Println("\tDirectory mode:", defaultDirectoryModeDescription)
+
+	// Compute and print the default file/directory owner.
+	defaultOwnerDescription := "Default"
+	if configuration.DefaultOwner != "" {
+		defaultOwnerDescription = configuration.DefaultOwner
+	}
+	fmt.Println("\tDefault file/directory owner:", defaultOwnerDescription)
+
+	// Compute and print the default file/directory group.
+	defaultGroupDescription := "Default"
+	if configuration.DefaultGroup != "" {
+		defaultGroupDescription = configuration.DefaultGroup
+	}
+	fmt.Println("\tDefault file/directory group:", defaultGroupDescription)
+}
 
 func printSession(state *sessionpkg.State, long bool) {
 	// Print the session identifier.
@@ -16,6 +76,9 @@ func printSession(state *sessionpkg.State, long bool) {
 
 	// Print extended information, if desired.
 	if long {
+		// Print the configuration header.
+		fmt.Println("Configuration:")
+
 		// Extract configuration.
 		configuration := state.Session.Configuration
 
@@ -25,21 +88,21 @@ func printSession(state *sessionpkg.State, long bool) {
 			defaultSynchronizationMode := state.Session.Version.DefaultSynchronizationMode()
 			synchronizationMode += fmt.Sprintf(" (%s)", defaultSynchronizationMode.Description())
 		}
-		fmt.Println("Synchronization mode:", synchronizationMode)
+		fmt.Println("\tSynchronization mode:", synchronizationMode)
 
 		// Compute and print maximum entry count.
 		if configuration.MaximumEntryCount == 0 {
-			fmt.Println("Maximum entry count: Unlimited")
+			fmt.Println("\tMaximum entry count: Unlimited")
 		} else {
-			fmt.Println("Maximum entry count:", configuration.MaximumEntryCount)
+			fmt.Println("\tMaximum entry count:", configuration.MaximumEntryCount)
 		}
 
 		// Compute and print maximum staging file size.
 		if configuration.MaximumStagingFileSize == 0 {
-			fmt.Println("Maximum staging file size: Unlimited")
+			fmt.Println("\tMaximum staging file size: Unlimited")
 		} else {
 			fmt.Printf(
-				"Maximum staging file size: %d (%s)\n",
+				"\tMaximum staging file size: %d (%s)\n",
 				configuration.MaximumStagingFileSize,
 				humanize.Bytes(configuration.MaximumStagingFileSize),
 			)
@@ -51,24 +114,7 @@ func printSession(state *sessionpkg.State, long bool) {
 			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 		}
-		fmt.Println("Symbolic link mode:", symlinkModeDescription)
-
-		// Compute and print the watch mode.
-		watchModeDescription := configuration.WatchMode.Description()
-		if configuration.WatchMode.IsDefault() {
-			defaultWatchMode := state.Session.Version.DefaultWatchMode()
-			watchModeDescription += fmt.Sprintf(" (%s)", defaultWatchMode.Description())
-		}
-		fmt.Println("Watch mode:", watchModeDescription)
-
-		// Compute and print the watch polling interval.
-		var watchPollingIntervalDescription string
-		if configuration.WatchPollingInterval == 0 {
-			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", filesystem.DefaultPollingInterval)
-		} else {
-			watchPollingIntervalDescription = fmt.Sprintf("%d seconds", configuration.WatchPollingInterval)
-		}
-		fmt.Println("Watch polling interval:", watchPollingIntervalDescription)
+		fmt.Println("\tSymbolic link mode:", symlinkModeDescription)
 
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
@@ -76,88 +122,39 @@ func printSession(state *sessionpkg.State, long bool) {
 			defaultIgnoreVCSMode := state.Session.Version.DefaultIgnoreVCSMode()
 			ignoreVCSModeDescription += fmt.Sprintf(" (%s)", defaultIgnoreVCSMode.Description())
 		}
-		fmt.Println("Ignore VCS mode:", ignoreVCSModeDescription)
+		fmt.Println("\tIgnore VCS mode:", ignoreVCSModeDescription)
 
-		// Print default ignores.
+		// Print default ignores. Since this field is deprecated, we don't print
+		// it if it's not set.
 		if len(configuration.DefaultIgnores) > 0 {
-			fmt.Println("Default ignores:")
+			fmt.Println("\tDefault ignores:")
 			for _, p := range configuration.DefaultIgnores {
-				fmt.Printf("\t%s\n", p)
+				fmt.Printf("\t\t%s\n", p)
 			}
-		} else {
-			fmt.Println("Default ignores: None")
 		}
 
 		// Print per-session ignores.
 		if len(configuration.Ignores) > 0 {
-			fmt.Println("Ignores:")
+			fmt.Println("\tIgnores:")
 			for _, p := range configuration.Ignores {
-				fmt.Printf("\t%s\n", p)
+				fmt.Printf("\t\t%s\n", p)
 			}
 		} else {
-			fmt.Println("Ignores: None")
+			fmt.Println("\tIgnores: None")
 		}
 
-		// Compute alpha-specific configuration and print permission settings.
+		// Compute and print alpha-specific configuration.
 		alphaConfigurationMerged := sessionpkg.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationAlpha,
 		)
-		alphaDefaultFileMode := filesystem.Mode(alphaConfigurationMerged.DefaultFileMode)
-		alphaDefaultDirectoryMode := filesystem.Mode(alphaConfigurationMerged.DefaultDirectoryMode)
-		alphaDefaultOwner := alphaConfigurationMerged.DefaultOwner
-		alphaDefaultGroup := alphaConfigurationMerged.DefaultGroup
-		alphaPermissionsNonDefault := alphaDefaultFileMode != 0 ||
-			alphaDefaultDirectoryMode != 0 ||
-			alphaDefaultOwner != "" ||
-			alphaDefaultGroup != ""
-		if alphaPermissionsNonDefault {
-			fmt.Println("Alpha permissions (non-defaults):")
-			if alphaDefaultFileMode != 0 {
-				fmt.Printf("\tFile mode: %#o\n", alphaDefaultFileMode)
-			}
-			if alphaDefaultDirectoryMode != 0 {
-				fmt.Printf("\tDirectory mode: %#o\n", alphaDefaultDirectoryMode)
-			}
-			if alphaDefaultOwner != "" {
-				fmt.Println("\tOwner:", alphaDefaultOwner)
-			}
-			if alphaDefaultGroup != "" {
-				fmt.Println("\tGroup:", alphaDefaultGroup)
-			}
-		} else {
-			fmt.Println("Alpha permissions: Default")
-		}
+		printEndpoint("Alpha", state.Session.Alpha, alphaConfigurationMerged, state.Session.Version)
 
-		// Compute beta-specific configuration and print permission settings.
+		// Compute and print beta-specific configuration.
 		betaConfigurationMerged := sessionpkg.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationBeta,
 		)
-		betaDefaultFileMode := filesystem.Mode(betaConfigurationMerged.DefaultFileMode)
-		betaDefaultDirectoryMode := filesystem.Mode(betaConfigurationMerged.DefaultDirectoryMode)
-		betaDefaultOwner := betaConfigurationMerged.DefaultOwner
-		betaDefaultGroup := betaConfigurationMerged.DefaultGroup
-		betaPermissionsNonDefault := betaDefaultFileMode != 0 ||
-			betaDefaultDirectoryMode != 0 ||
-			betaDefaultOwner != "" ||
-			betaDefaultGroup != ""
-		if betaPermissionsNonDefault {
-			fmt.Println("Beta permissions (non-defaults):")
-			if betaDefaultFileMode != 0 {
-				fmt.Printf("\tFile mode: %#o\n", betaDefaultFileMode)
-			}
-			if betaDefaultDirectoryMode != 0 {
-				fmt.Printf("\tDirectory mode: %#o\n", betaDefaultDirectoryMode)
-			}
-			if betaDefaultOwner != "" {
-				fmt.Println("\tOwner:", betaDefaultOwner)
-			}
-			if betaDefaultGroup != "" {
-				fmt.Println("\tGroup:", betaDefaultGroup)
-			}
-		} else {
-			fmt.Println("Beta permissions: Default")
-		}
+		printEndpoint("Beta", state.Session.Beta, betaConfigurationMerged, state.Session.Version)
 	}
 }

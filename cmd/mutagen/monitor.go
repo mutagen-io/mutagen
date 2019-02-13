@@ -135,9 +135,12 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			// Print session information.
 			printSession(state, monitorConfiguration.long)
 
-			// Print endpoint URLs.
-			fmt.Println("Alpha:", state.Session.Alpha.Format("\n\t"))
-			fmt.Println("Beta:", state.Session.Beta.Format("\n\t"))
+			// Print endpoint URLs, but only if not in long mode (where they're
+			// already printed in the session metadata).
+			if !monitorConfiguration.long {
+				fmt.Println("Alpha:", state.Session.Alpha.Format("\n\t"))
+				fmt.Println("Beta:", state.Session.Beta.Format("\n\t"))
+			}
 
 			// Mark session information as printed.
 			sessionInformationPrinted = true

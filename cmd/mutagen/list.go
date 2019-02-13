@@ -14,6 +14,7 @@ import (
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
+	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
 func formatPath(path string) string {
@@ -30,33 +31,20 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpointStatus(state *sessionpkg.State, alpha bool) {
-	// Print the header for this endpoint.
-	header := "Alpha:"
-	if !alpha {
-		header = "Beta:"
-	}
-	fmt.Println(header)
+func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems []*sync.Problem) {
+	// Print header.
+	fmt.Printf("%s:\n", name)
 
-	// Print URL.
-	url := state.Session.Alpha
-	if !alpha {
-		url = state.Session.Beta
+	// Print URL if we're not in long-listing mode (otherwise it will be
+	// printed elsewhere).
+	if !listConfiguration.long {
+		fmt.Println("\tURL:", url.Format("\n\t\t"))
 	}
-	fmt.Println("\tURL:", url.Format("\n\t\t"))
 
-	// Print status.
-	connected := state.AlphaConnected
-	if !alpha {
-		connected = state.BetaConnected
-	}
-	fmt.Println("\tStatus:", formatConnectionStatus(connected))
+	// Print connection status.
+	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
 
 	// Print problems, if any.
-	problems := state.AlphaProblems
-	if !alpha {
-		problems = state.BetaProblems
-	}
 	if len(problems) > 0 {
 		color.Red("\tProblems:\n")
 		for _, p := range problems {
@@ -162,8 +150,8 @@ func listMain(command *cobra.Command, arguments []string) error {
 	for _, state := range response.SessionStates {
 		fmt.Println(delimiterLine)
 		printSession(state, listConfiguration.long)
-		printEndpointStatus(state, true)
-		printEndpointStatus(state, false)
+		printEndpointStatus("Alpha", state.Session.Alpha, state.AlphaConnected, state.AlphaProblems)
+		printEndpointStatus("Beta", state.Session.Beta, state.BetaConnected, state.BetaProblems)
 		printSessionStatus(state)
 		if len(state.Conflicts) > 0 {
 			printConflicts(state.Conflicts)
