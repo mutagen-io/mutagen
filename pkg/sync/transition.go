@@ -103,7 +103,7 @@ func (t *transitioner) nameExistsInDirectoryWithProperCase(
 //
 // The purpose of this function is to transform any transition operation into
 // one where we have a Directory object for race-free filesystem access, the
-// base name of the content within that directory which needs to be tranformed,
+// base name of the content within that directory which needs to be transformed,
 // and (external to this function) the old and new content specifications.
 //
 // This method's implementation also has the side effect of enforcing case

@@ -355,7 +355,7 @@ func (d *Directory) OpenFile(name string) (ReadableFile, error) {
 }
 
 // readlinkInitialBufferSize specifies the initial buffer size to use for
-// readlinkat operations. It should be large enough to accomodate most symbolic
+// readlinkat operations. It should be large enough to accommodate most symbolic
 // links but not so large that every readlinkat operation incurs an inordinate
 // amount of allocation overhead. This value is pinched from the os.Readlink
 // implementation.
