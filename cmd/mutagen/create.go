@@ -78,16 +78,26 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate and convert the watch mode specification.
-	var watchMode fs.WatchMode
+	// Validate and convert watch mode specifications.
+	var watchMode, watchModeAlpha, watchModeBeta fs.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")
 		}
 	}
+	if createConfiguration.watchModeAlpha != "" {
+		if err := watchModeAlpha.UnmarshalText([]byte(createConfiguration.watchModeAlpha)); err != nil {
+			return errors.Wrap(err, "unable to parse watch mode for alpha")
+		}
+	}
+	if createConfiguration.watchModeBeta != "" {
+		if err := watchModeBeta.UnmarshalText([]byte(createConfiguration.watchModeBeta)); err != nil {
+			return errors.Wrap(err, "unable to parse watch mode for beta")
+		}
+	}
 
-	// There's no need to validate the watch polling interval - any uint32 value
-	// is valid.
+	// There's no need to validate the watch polling intervals - any uint32
+	// values are valid.
 
 	// We don't need to validate ignores here, that will happen on the session
 	// service, so we'll save ourselves the time.
@@ -236,12 +246,16 @@ func createMain(command *cobra.Command, arguments []string) error {
 			DefaultGroup:           createConfiguration.defaultGroup,
 		},
 		ConfigurationAlpha: &sessionpkg.Configuration{
+			WatchMode:            watchModeAlpha,
+			WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
 			DefaultFileMode:      defaultFileModeAlpha,
 			DefaultDirectoryMode: defaultDirectoryModeAlpha,
 			DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
 		},
 		ConfigurationBeta: &sessionpkg.Configuration{
+			WatchMode:            watchModeBeta,
+			WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
 			DefaultFileMode:      defaultFileModeBeta,
 			DefaultDirectoryMode: defaultDirectoryModeBeta,
 			DefaultOwner:         createConfiguration.defaultOwnerBeta,
@@ -304,9 +318,23 @@ var createConfiguration struct {
 	symbolicLinkMode string
 	// watchMode specifies the filesystem watching mode to use for the session.
 	watchMode string
+	// watchModeAlpha specifies the filesystem watching mode to use for the
+	// session, taking priority over watchMode on alpha if specified.
+	watchModeAlpha string
+	// watchModeBeta specifies the filesystem watching mode to use for the
+	// session, taking priority over watchMode on beta if specified.
+	watchModeBeta string
 	// watchPollingInterval specifies the polling interval to use if using
 	// poll-based or hybrid watching.
 	watchPollingInterval uint32
+	// watchPollingIntervalAlpha specifies the polling interval to use if using
+	// poll-based or hybrid watching, taking priority over watchPollingInterval
+	// on alpha if specified.
+	watchPollingIntervalAlpha uint32
+	// watchPollingIntervalBeta specifies the polling interval to use if using
+	// poll-based or hybrid watching, taking priority over watchPollingInterval
+	// on beta if specified.
+	watchPollingIntervalBeta uint32
 	// ignores is the list of ignore specifications for the session.
 	ignores []string
 	// ignoreVCS specifies whether or not to enable VCS ignores for the session.
@@ -386,7 +414,11 @@ func init() {
 
 	// Wire up watch flags.
 	flags.StringVar(&createConfiguration.watchMode, "watch-mode", "", "Specify watch mode (portable|force-poll|no-watch)")
+	flags.StringVar(&createConfiguration.watchModeAlpha, "watch-mode-alpha", "", "Specify watch mode for alpha (portable|force-poll|no-watch)")
+	flags.StringVar(&createConfiguration.watchModeBeta, "watch-mode-beta", "", "Specify watch mode for alpha (portable|force-poll|no-watch)")
 	flags.Uint32Var(&createConfiguration.watchPollingInterval, "watch-polling-interval", 0, "Specify watch polling interval in seconds")
+	flags.Uint32Var(&createConfiguration.watchPollingIntervalAlpha, "watch-polling-interval-alpha", 0, "Specify watch polling interval in seconds for alpha")
+	flags.Uint32Var(&createConfiguration.watchPollingIntervalBeta, "watch-polling-interval-beta", 0, "Specify watch polling interval in seconds for beta")
 
 	// Wire up ignore flags.
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
