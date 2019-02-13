@@ -99,10 +99,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// There's no need to validate the watch polling intervals - any uint32
 	// values are valid.
 
-	// We don't need to validate ignores here, that will happen on the session
-	// service, so we'll save ourselves the time.
-	// TODO: Should we change this and validate here as well? We do try to catch
-	// other errors early.
+	// Validate ignore specifications.
+	for _, ignore := range createConfiguration.ignores {
+		if !sync.ValidIgnorePattern(ignore) {
+			return errors.Errorf("invalid ignore pattern: %s", ignore)
+		}
+	}
 
 	// Validate and convert the VCS ignore mode specification.
 	var ignoreVCSMode sync.IgnoreVCSMode
