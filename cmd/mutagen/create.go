@@ -232,19 +232,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 			IgnoreVCSMode:          ignoreVCSMode,
 			DefaultFileMode:        defaultFileMode,
 			DefaultDirectoryMode:   defaultDirectoryMode,
-			DefaultOwner:            createConfiguration.defaultOwner,
+			DefaultOwner:           createConfiguration.defaultOwner,
 			DefaultGroup:           createConfiguration.defaultGroup,
 		},
 		ConfigurationAlpha: &sessionpkg.Configuration{
 			DefaultFileMode:      defaultFileModeAlpha,
 			DefaultDirectoryMode: defaultDirectoryModeAlpha,
-			DefaultOwner:          createConfiguration.defaultOwnerAlpha,
+			DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
 		},
 		ConfigurationBeta: &sessionpkg.Configuration{
 			DefaultFileMode:      defaultFileModeBeta,
 			DefaultDirectoryMode: defaultDirectoryModeBeta,
-			DefaultOwner:          createConfiguration.defaultOwnerBeta,
+			DefaultOwner:         createConfiguration.defaultOwnerBeta,
 			DefaultGroup:         createConfiguration.defaultGroupBeta,
 		},
 	}
