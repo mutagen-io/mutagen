@@ -277,7 +277,7 @@ func (c *controller) currentState() *State {
 // specified, then the method will wait until a post-flush synchronization cycle
 // has completed. The provided context (which must be non-nil) can terminate
 // this wait early.
-func (c *controller) flush(prompter string, wait bool, context contextpkg.Context) error {
+func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Context) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
@@ -306,7 +306,7 @@ func (c *controller) flush(prompter string, wait bool, context contextpkg.Contex
 	// If we don't want to wait, then we can simply send the request in a
 	// non-blocking manner, in which case either this request (or one that's
 	// already queued) will be processed eventually. After that, we'd done.
-	if !wait {
+	if skipWait {
 		// Send the request in a non-blocking manner.
 		select {
 		case c.flushRequests <- request:

@@ -45,7 +45,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	// Send the initial request.
 	request := &sessionsvcpkg.FlushRequest{
 		Specifications: specifications,
-		Wait:           flushConfiguration.wait,
+		SkipWait:       flushConfiguration.skipWait,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send flush request")
@@ -86,9 +86,9 @@ var flushConfiguration struct {
 	help bool
 	// all indicates whether or not all sessions should be flushed.
 	all bool
-	// wait indicates whether or not the flush operation should block until a
-	// synchronization cycle completes for each sesion requested.
-	wait bool
+	// skipWait indicates whether or not the flush operation should block until
+	// a synchronization cycle completes for each sesion requested.
+	skipWait bool
 }
 
 func init() {
@@ -101,5 +101,5 @@ func init() {
 
 	// Wire up flush flags.
 	flags.BoolVarP(&flushConfiguration.all, "all", "a", false, "Flush all sessions")
-	flags.BoolVarP(&flushConfiguration.wait, "wait", "w", false, "Wait for a post-flush synchronization cycle to complete")
+	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle to complete")
 }

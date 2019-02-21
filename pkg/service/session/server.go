@@ -117,7 +117,7 @@ func (s *Server) Flush(stream Sessions_FlushServer) error {
 	}
 
 	// Perform flush.
-	err = s.manager.Flush(request.Specifications, prompter, request.Wait, stream.Context())
+	err = s.manager.Flush(request.Specifications, prompter, request.SkipWait, stream.Context())
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)

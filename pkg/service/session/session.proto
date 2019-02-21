@@ -35,7 +35,7 @@ message ListResponse {
 
 message FlushRequest {
     repeated string specifications = 1;
-    bool wait = 2;
+    bool skipWait = 2;
 }
 
 message FlushResponse{
