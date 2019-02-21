@@ -20,6 +20,14 @@ import (
 type endpoint struct {
 	// root is the synchronization root for the endpoint. It is static.
 	root string
+	// readOnly determines whether or not the endpoint should be operating in a
+	// read-only mode (i.e. it is the source of unidirectional synchronization).
+	// Although the controller can send the endpoint whatever configuration it
+	// wants, there may be a configuration validation option for the endpoint
+	// that ensures the endpoint is in a read-only state. In those cases, we
+	// want to make sure an untrusted controller can't then try to perform a
+	// modification operation. This field is static.
+	readOnly bool
 	// maximumEntryCount is the maximum number of entries within the
 	// synchronization root that this endpoint will support synchronizing. A
 	// zero value means that the size is unlimited.
@@ -117,6 +125,15 @@ func NewEndpoint(
 			endpointOptions.configuration,
 		)
 	}
+
+	// Determine if the endpoint is running in a read-only mode.
+	synchronizationMode := configuration.SynchronizationMode
+	if synchronizationMode.IsDefault() {
+		synchronizationMode = version.DefaultSynchronizationMode()
+	}
+	unidirectional := synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWaySafe ||
+		synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWayReplica
+	readOnly := alpha && unidirectional
 
 	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
@@ -236,6 +253,7 @@ func NewEndpoint(
 	// Success.
 	return &endpoint{
 		root:                 root,
+		readOnly:             readOnly,
 		maximumEntryCount:    configuration.MaximumEntryCount,
 		watchCancel:          watchCancel,
 		watchEvents:          watchEvents,
@@ -363,6 +381,11 @@ func (e *endpoint) stageFromRoot(
 
 // Stage implements the Stage method for local endpoints.
 func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
+	// If we're in a read-only mode, we shouldn't be staging files.
+	if e.readOnly {
+		return nil, nil, nil, errors.New("endpoint is in read-only mode")
+	}
+
 	// Verify that we've performed a scan since the last staging operation, that
 	// way our count check is valid. If we haven't, then the controller is
 	// either malfunctioning or malicious.
@@ -456,6 +479,11 @@ func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receive
 
 // Transition implements the Transition method for local endpoints.
 func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+	// If we're in a read-only mode, we shouldn't be performing transitions.
+	if e.readOnly {
+		return nil, nil, errors.New("endpoint is in read-only mode")
+	}
+
 	// Verify that we've performed a scan since the last transition operation,
 	// that way our count check is valid. If we haven't, then the controller is
 	// either malfunctioning or malicious.
