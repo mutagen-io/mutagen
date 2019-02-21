@@ -85,9 +85,9 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	decoder := encoding.NewProtobufDecoder(reader)
 
 	// Create an endpoint configuration and apply all options.
-	endpointOptions := &endpointServerOptions{}
+	endpointServerOptions := &endpointServerOptions{}
 	for _, o := range options {
-		o.apply(endpointOptions)
+		o.apply(endpointServerOptions)
 	}
 
 	// Receive the initialize request. If this fails, then send a failure
@@ -100,20 +100,37 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	}
 
 	// If a root path override has been specified, then apply it.
-	if endpointOptions.root != "" {
-		request.Root = endpointOptions.root
+	if endpointServerOptions.root != "" {
+		request.Root = endpointServerOptions.root
+	}
+
+	// If configuration overrides have been provided, then validate them and
+	// merge them into the main configuration.
+	if endpointServerOptions.configuration != nil {
+		if err := endpointServerOptions.configuration.EnsureValid(
+			session.ConfigurationSourceTypeAPIEndpointSpecific,
+		); err != nil {
+			err = errors.Wrap(err, "override configuration invalid")
+			encoder.Encode(&InitializeResponse{Error: err.Error()})
+			return err
+		}
+		request.Configuration = session.MergeConfigurations(
+			request.Configuration,
+			endpointServerOptions.configuration,
+		)
 	}
 
 	// If a connection validator has been provided, then ensure that it
 	// approves if the specified endpoint configuration.
-	if endpointOptions.connectionValidator != nil {
-		validationErr := endpointOptions.connectionValidator(
+	if endpointServerOptions.connectionValidator != nil {
+		err := endpointServerOptions.connectionValidator(
+			request.Root,
 			request.Session,
 			request.Version,
 			request.Configuration,
 			request.Alpha,
 		)
-		if validationErr != nil {
+		if err != nil {
 			err = errors.Wrap(err, "endpoint configuration rejected")
 			encoder.Encode(&InitializeResponse{Error: err.Error()})
 			return err
@@ -135,7 +152,7 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 		request.Version,
 		request.Configuration,
 		request.Alpha,
-		endpointOptions.endpointOptions...,
+		endpointServerOptions.endpointOptions...,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")

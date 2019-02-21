@@ -2,14 +2,10 @@ package local
 
 import (
 	"context"
-
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 // endpointOptions controls the override behavior for a local endpoint.
 type endpointOptions struct {
-	// configuration specifies endpoint-specific configuration overrides.
-	configuration *session.Configuration
 	// cachePathCallback can specify a callback that will be used to compute the
 	// cache path.
 	cachePathCallback func(string, bool) (string, error)
@@ -45,16 +41,6 @@ func newFunctionEndpointOption(applier func(*endpointOptions)) EndpointOption {
 // apply implements EndpointOption.apply for functionEndpointOption.
 func (o *functionEndpointOption) apply(options *endpointOptions) {
 	o.applier(options)
-}
-
-// WithConfiguration allows for overriding certain endpoint-specific parameters.
-// The provided Configuration object will be validated to ensure that that it
-// only overrides parameters which are valid to override on an endpoint-specific
-// basis.
-func WithConfiguration(configuration *session.Configuration) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.configuration = configuration
-	})
 }
 
 // WithCachePathCallback overrides the function that the endpoint uses to

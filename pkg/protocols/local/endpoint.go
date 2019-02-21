@@ -112,20 +112,6 @@ func NewEndpoint(
 		o.apply(endpointOptions)
 	}
 
-	// If configuration overrides have been provided, then validate them and
-	// merge them into the main configuration.
-	if endpointOptions.configuration != nil {
-		if err := endpointOptions.configuration.EnsureValid(
-			session.ConfigurationSourceTypeAPIEndpointSpecific,
-		); err != nil {
-			return nil, errors.Wrap(err, "override configuration invalid")
-		}
-		configuration = session.MergeConfigurations(
-			configuration,
-			endpointOptions.configuration,
-		)
-	}
-
 	// Determine if the endpoint is running in a read-only mode.
 	synchronizationMode := configuration.SynchronizationMode
 	if synchronizationMode.IsDefault() {

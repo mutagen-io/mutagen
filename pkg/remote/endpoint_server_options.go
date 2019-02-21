@@ -6,18 +6,27 @@ import (
 )
 
 // EndpointConnectionValidator is a validator function type for validating
-// endpoint server connections. It is passed the session identifier, session
-// version, session configuration, and alpha identification provided by the
-// connnection. If it returns a non-nil error, the connection will be terminated
-// before serving begins. The validator should not mutate the provided
-// configuration.
-type EndpointConnectionValidator func(string, session.Version, *session.Configuration, bool) error
+// endpoint server connections. It is passed the session root, identifier,
+// version, configuration, and role information provided by the connection. If
+// it returns a non-nil error, the connection will be terminated before serving
+// begins. The validator should not mutate the provided configuration. The
+// provided root and configuration passed to the validation function will take
+// into account any overrides specified by endpoint server options.
+type EndpointConnectionValidator func(string, string, session.Version, *session.Configuration, bool) error
 
 // endpointServerOptions controls the override behavior for an endpoint server.
 type endpointServerOptions struct {
-	root                string
+	// root specifies an override for the session root path.
+	root string
+	// configuration specifies endpoint-specific configuration overrides.
+	configuration *session.Configuration
+	// connectionValidator specifies a validation function for the received
+	// endpoint configuration (with root and configuration overrides taken into
+	// account).
 	connectionValidator EndpointConnectionValidator
-	endpointOptions     []local.EndpointOption
+	// endpointOptions is a collection of endpoint options that will be passed
+	// to the underlying endpoint.
+	endpointOptions []local.EndpointOption
 }
 
 // EndpointServerOption is the interface for specifying endpoint server options.
@@ -53,6 +62,16 @@ func (o *functionEndpointServerOption) apply(options *endpointServerOptions) {
 func WithRoot(root string) EndpointServerOption {
 	return newFunctionEndpointServerOption(func(options *endpointServerOptions) {
 		options.root = root
+	})
+}
+
+// WithConfiguration allows for overriding certain endpoint-specific parameters.
+// The provided Configuration object will be validated to ensure that that it
+// only overrides parameters which are valid to override on an endpoint-specific
+// basis.
+func WithConfiguration(configuration *session.Configuration) EndpointServerOption {
+	return newFunctionEndpointServerOption(func(options *endpointServerOptions) {
+		options.configuration = configuration
 	})
 }
 
