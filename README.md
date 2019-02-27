@@ -42,6 +42,15 @@ remote systems. The more people who use it and report
 [rc-link]: https://goreportcard.com/report/github.com/havoc-io/mutagen "Report card status"
 
 
+## Security
+
+Mutagen takes security very seriously. If you believe you have found a security
+issue with Mutagen, please practice responsible disclosure practices and send an
+email directly to [security@mutagen.io](mailto:security@mutagen.io) instead of
+opening a GitHub issue. For more information, please see the
+[security documentation](SECURITY.md).
+
+
 ## Usage
 
 **For a quick summary and usage guide that will cover most of your needs, please
