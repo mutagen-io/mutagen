@@ -16,6 +16,13 @@ For a basic summary and quick usage information, please check out the
 Detailed information about Mutagen's [unique features](#unique-features) and
 [advanced usage](#usage) can be found below.
 
+To follow release and security announcements for Mutagen, please subscribe to
+the [mutagen-announce](https://groups.google.com/forum/#!forum/mutagen-announce)
+mailing list.
+
+For discussion about Mutagen usage, please join the
+[discussion forums](https://groups.google.com/forum/#!forum/mutagen).
+
 
 ## Status
 
