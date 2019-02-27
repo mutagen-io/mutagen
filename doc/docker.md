@@ -25,6 +25,11 @@ of the `-w/--workdir` flag with the `docker exec` command, Mutagen requires a
 Docker client and daemon supporting API 1.35+. You can check the API version
 support of your Docker client and daemon by using the `docker version` command.
 
+**NOTE:** Mutagen assumes that the transport from the `docker` command to the
+Docker daemon is secure, and thus Mutagen provides no encryption on top of this
+transport. For information about securing the Docker daemon, please see the
+[relevant documentation](https://docs.docker.com/engine/security/https/).
+
 
 ## Usage
 
