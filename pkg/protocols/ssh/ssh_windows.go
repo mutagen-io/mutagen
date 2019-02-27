@@ -1,5 +1,9 @@
 package ssh
 
+import (
+	"github.com/havoc-io/mutagen/pkg/process"
+)
+
 // commandSearchPaths specifies locations on Windows where we might find ssh.exe
 // and scp.exe binaries.
 var commandSearchPaths = []string{
@@ -16,11 +20,11 @@ var commandSearchPaths = []string{
 // sshCommandForPlatform will search for a suitable ssh command implementation
 // on Windows.
 func sshCommandForPlatform() (string, error) {
-	return findCommand("ssh", commandSearchPaths)
+	return process.FindCommand("ssh", commandSearchPaths)
 }
 
 // scpCommandForPlatform will search for a suitable scp command implementation
 // on Windows.
 func scpCommandForPlatform() (string, error) {
-	return findCommand("scp", commandSearchPaths)
+	return process.FindCommand("scp", commandSearchPaths)
 }
