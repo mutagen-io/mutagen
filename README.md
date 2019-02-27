@@ -84,6 +84,12 @@ For platform-specific instructions and known issues, please see the
 [platform guide](doc/platforms.md).
 
 
+## Contributing
+
+If you'd like to contribute to Mutagen, please see the
+[contribution documentation](CONTRIBUTING.md).
+
+
 ## Unique features
 
 Instead of providing a heavily biased feature comparison table, I'll just point
