@@ -38,14 +38,15 @@ type Endpoint interface {
 	// staged from previously interrupted stagings and what can be staged from
 	// local contents (e.g. in cases of renames and copies), and then return a
 	// list of paths, their signatures, and a receiver to receive them. The
-	// returned path list should retain depth-first traversal order, again for
-	// performance reasons. If the list of paths is empty, then all paths were
-	// either already staged or able to be staged from local data, and the
-	// receiver will be nil. Otherwise, the receiver will be non-nil and must be
-	// finalized (i.e. transmitted to) before subsequent methods can be invoked
-	// on the endpoint. This method is allowed to modify the argument slices. If
-	// the receiver fails, the endpoint should be considered contaminated and
-	// not used (though shutdown can and should still be invoked).
+	// returned path list must maintain relative ordering for its filtered
+	// paths, again for performance reasons. If the list of paths is empty, then
+	// all paths were either already staged or able to be staged from local
+	// data, and the receiver will be nil. Otherwise, the receiver will be
+	// non-nil and must be finalized (i.e. transmitted to) before subsequent
+	// methods can be invoked on the endpoint. This method is allowed to modify
+	// the argument slices. If the receiver fails, the endpoint should be
+	// considered contaminated and not used (though shutdown can and should
+	// still be invoked).
 	Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error)
 
 	// Supply transmits files in a streaming fashion using the rsync algorithm

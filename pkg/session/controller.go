@@ -990,14 +990,17 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		if paths, digests, err := sync.TransitionDependencies(αTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on alpha")
 		} else if len(paths) > 0 {
-			paths, signatures, receiver, err := alpha.Stage(paths, digests)
+			filteredPaths, signatures, receiver, err := alpha.Stage(paths, digests)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on alpha")
 			}
-			if len(paths) > 0 {
-				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+			if !filteredPathsAreSubset(filteredPaths, paths) {
+				return errors.New("alpha returned incorrect subset of staging paths")
+			}
+			if len(filteredPaths) > 0 {
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
 				receiver = rsync.NewPreemptableReceiver(receiver, context)
-				if err = beta.Supply(paths, signatures, receiver); err != nil {
+				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on alpha")
 				}
 			}
@@ -1010,14 +1013,17 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		if paths, digests, err := sync.TransitionDependencies(βTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on beta")
 		} else if len(paths) > 0 {
-			paths, signatures, receiver, err := beta.Stage(paths, digests)
+			filteredPaths, signatures, receiver, err := beta.Stage(paths, digests)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on beta")
 			}
-			if len(paths) > 0 {
-				receiver = rsync.NewMonitoringReceiver(receiver, paths, monitor)
+			if !filteredPathsAreSubset(filteredPaths, paths) {
+				return errors.New("beta returned incorrect subset of staging paths")
+			}
+			if len(filteredPaths) > 0 {
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
 				receiver = rsync.NewPreemptableReceiver(receiver, context)
-				if err = alpha.Supply(paths, signatures, receiver); err != nil {
+				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on beta")
 				}
 			}
