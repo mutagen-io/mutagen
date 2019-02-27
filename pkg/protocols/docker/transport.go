@@ -25,6 +25,8 @@ Would you like to continue? (yes/no)? `
 
 // transport implements the agent.Transport interface using Docker.
 type transport struct {
+	// dockerExecutable is the name of or path to the docker executable.
+	dockerExecutable string
 	// remote is the endpoint URL.
 	remote *url.URL
 	// prompter is the prompter identifier to use for prompting.
@@ -51,6 +53,22 @@ type transport struct {
 	// containerProbeError tracks any error that arose when probing the
 	// container.
 	containerProbeError error
+}
+
+// newTransport creates a new Docker transport.
+func newTransport(remote *url.URL, prompter string) (*transport, error) {
+	// Identify the name of or path to the Docker executable.
+	dockerExecutable, err := dockerCommand()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to locate docker executable")
+	}
+
+	// Success.
+	return &transport{
+		dockerExecutable: dockerExecutable,
+		remote:           remote,
+		prompter:         prompter,
+	}, nil
 }
 
 // command is an underlying command generation function that allows
@@ -87,7 +105,7 @@ func (t *transport) command(command, workingDirectory, user string) *exec.Cmd {
 	dockerArguments = append(dockerArguments, strings.Split(command, " ")...)
 
 	// Create the command.
-	dockerCommand := exec.Command("docker", dockerArguments...)
+	dockerCommand := exec.Command(t.dockerExecutable, dockerArguments...)
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -241,7 +259,7 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	}
 
 	// Create the command.
-	dockerCommand := exec.Command("docker", operation, t.remote.Hostname)
+	dockerCommand := exec.Command(t.dockerExecutable, operation, t.remote.Hostname)
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -309,7 +327,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	}
 
 	// Create the command.
-	dockerCommand := exec.Command("docker", "cp", localPath, containerPath)
+	dockerCommand := exec.Command(t.dockerExecutable, "cp", localPath, containerPath)
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
