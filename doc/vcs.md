@@ -46,6 +46,13 @@ A third reason is that Git isn't expecting concurrent modifications of its
 `.git` directory. In fact it has an index lock that has to be held by Git
 processes specifically for this reason.
 
+A fourth reason is that synchronizing the Git directory allows for arbitrary
+code execution. The content of the directory is considered to be trusted
+and contains dangerous configuration like local hooks. 
+Syncing it would permit the remote host to compromise your workstation 
+by modifying the hook configuration, which is then ran the next time
+you use a Git command locally.
+
 There are a number of other reasons, but it basically comes down to the fact
 that only Git is in a position to be in control of what's in its `.git`
 directory (at least when it comes to the index and object stores).
