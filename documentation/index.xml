@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Documentation on Mutagen</title>
+    <link>https://mutagen.io/documentation/</link>
+    <description>Recent content in Documentation on Mutagen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    
+	<atom:link href="https://mutagen.io/documentation/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Configuration</title>
+      <link>https://mutagen.io/documentation/configuration/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/configuration/</guid>
+      <description>Configuration Mutagen is designed to have safe, conservative defaults, focused specifically on development scenarios.
+As users integrate Mutagen more deeply into their workflows, they will most likely want to tweak Mutagen&amp;rsquo;s behavior in one way or another. Configuration parameters are currently available for synchronization modes, ignoring content, permission handling, symbolic link handling, filesystem watching, and file size limits.
+Hierarchy Mutagen has four levels of configuration: its own default behavior, the global configuration file (~/.</description>
+    </item>
+    
+    <item>
+      <title>Design and usage</title>
+      <link>https://mutagen.io/documentation/design-and-usage/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/design-and-usage/</guid>
+      <description>Design and usage Mutagen is designed and operated around the concept of synchronization sessions. A session handles synchronization between an arbitrary pair of endpoints.1 Each endpoint is just a filesystem location, either local or remote, specified by a URL which Mutagen maps to one of its underlying transports. Mutagen monitors the filesystem contents at each of these locations and triggers a synchronization cycle any time a change is detected. These cycles are fast enough that content synchronizes in effectively real-time.</description>
+    </item>
+    
+    <item>
+      <title>Filesystem watching</title>
+      <link>https://mutagen.io/documentation/filesystem-watching/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/filesystem-watching/</guid>
+      <description>Filesystem watching Mutagen uses filesystem watching to know when it should scan for and propagate changes. Unfortunately, the filesystem watching landscape is extremely varied in terms of implementation, efficiency, and robustness. Almost every platform uses a completely different mechanism, many of which are unreliable or non-scalable.
+Some systems (namely macOS and Windows) provide native recursive watching mechanisms that can monitor arbitrarily large directory hierarchies, though their behavior when the location being watched is deleted or changed is somewhat inconsistent, and Windows only supports using a directory as the root of such a recursive watch.</description>
+    </item>
+    
+    <item>
+      <title>Ignoring paths</title>
+      <link>https://mutagen.io/documentation/ignores/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/ignores/</guid>
+      <description>Ignores By default, Mutagen attempts to propagate all files that it sees within a synchronization root. This isn&amp;rsquo;t always desirable, so Mutagen supports ignoring paths within a synchronization root and excluding them from synchronization. When a path is ignored, it won&amp;rsquo;t be scanned, it won&amp;rsquo;t be propagated, and it won&amp;rsquo;t be deleted.
+Mutagen allows ignores to be specified on both a default and per-session basis, and provides utilities for ignoring certain kinds of common directories.</description>
+    </item>
+    
+    <item>
+      <title>Installation</title>
+      <link>https://mutagen.io/documentation/installation/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/installation/</guid>
+      <description>Installation Mutagen can be installed by downloading the appropriate release for your platform and adding its contents to your path.
+Alternatively, Homebrew users can install Mutagen with:
+$ brew install havoc-io/mutagen/mutagen  There is no need to install Mutagen on remote systems.</description>
+    </item>
+    
+    <item>
+      <title>Offline behavior</title>
+      <link>https://mutagen.io/documentation/offline-behavior/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/offline-behavior/</guid>
+      <description>Offline behavior A core part of Mutagen&amp;rsquo;s design is its robustness to connection dropouts. All of its algorithms are designed to be interrupted at any point in time, for any length of time, with synchronization continuing exactly where it left off once Mutagen is able to reconnect.
+Because Mutagen tracks the most recently agreed-upon filesystem contents for each session, it can always determine exactly what&amp;rsquo;s changed on both endpoints, regardless of how long it&amp;rsquo;s been disconnected.</description>
+    </item>
+    
+    <item>
+      <title>Permissions</title>
+      <link>https://mutagen.io/documentation/permissions/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/permissions/</guid>
+      <description>Permissions Mutagen uses a portable but flexible permission propagation system focused on development scenarios.
+By default, the only permission propagated by Mutagen is POSIX executability. This propagation only applies when synchronizing between POSIX systems, though it is tracked even when synchronizing with Windows systems so that it can be correctly preserved. Mutagen considers POSIX executability to be set for a file if any executable bit is set for the file.</description>
+    </item>
+    
+    <item>
+      <title>Safety mechanisms</title>
+      <link>https://mutagen.io/documentation/safety-mechanisms/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/safety-mechanisms/</guid>
+      <description>Safety mechanisms Mutagen has two best-effort safety mechanisms aimed at avoiding unintentional synchronization root deletion or replacement. Each of these mechanisms detects an &amp;ldquo;irregular&amp;rdquo; condition during synchronization and halts the synchronization cycle until the user confirms that the condition is intentional.
+In both cases, the user is required to delete the synchronization root on the side to which the deletion or replacement should propagate, and then use mutagen resume to continue synchronization for the session.</description>
+    </item>
+    
+    <item>
+      <title>Size limits</title>
+      <link>https://mutagen.io/documentation/size-limits/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/size-limits/</guid>
+      <description>Size limits Mutagen has two control parameters to limit disk usage.
+Maximum staging file size The maximum file size that Mutagen will allow to be staged (transferred) can be set on a per-session basis by passing the --max-staging-file-size=&amp;lt;size&amp;gt; flag to the create command. This limit can be set on a default per-session basis by including the following in ~/mutagen.toml:
+[sync] maxStagingFileSize = &amp;lt;size&amp;gt;  Size specifications can be provided as a numeric value representing byte count or as a string using human-friendly units (e.</description>
+    </item>
+    
+    <item>
+      <title>Symbolic links</title>
+      <link>https://mutagen.io/documentation/symbolic-links/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/symbolic-links/</guid>
+      <description>Symbolic links Mutagen has full support for symbolic links on both POSIX and Windows systems.
+Modes Because POSIX and Windows platforms have different symbolic link implementations and interpretations, Mutagen provides a few different symbolic link synchronization modes aimed at providing maximum compatibility:
+ ignore: In this mode, Mutagen simply ignores any symbolic links that it encounters within a synchronization root. This means that it won&amp;rsquo;t propagate them and it won&amp;rsquo;t delete them.</description>
+    </item>
+    
+    <item>
+      <title>Synchronization modes</title>
+      <link>https://mutagen.io/documentation/synchronization-modes/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/synchronization-modes/</guid>
+      <description>Synchronization modes Unlike traditional file copying and synchronization tools, Mutagen doesn&amp;rsquo;t have the notion of &amp;ldquo;source&amp;rdquo; and &amp;ldquo;destination&amp;rdquo; locations. Instead, it conceptualizes synchronization as occurring between two endpoints whose identities are determined by the order in which they are specified to the create command (the first endpoint is identified as &amp;ldquo;alpha&amp;rdquo; and the second endpoint is identified as &amp;ldquo;beta&amp;rdquo;) and whose roles are determined based on the &amp;ldquo;synchronization mode&amp;rdquo; specified for the corresponding synchronization session.</description>
+    </item>
+    
+    <item>
+      <title>Version control systems</title>
+      <link>https://mutagen.io/documentation/version-control-systems/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://mutagen.io/documentation/version-control-systems/</guid>
+      <description>Version control systems Mutagen is designed to work in tandem with version control systems (VCSs), allowing you to, e.g., clone and edit a project while mirroring it to a remote system and testing it as your make edits. This helps you to avoid needing a push/pull cycle every time you make a change that you want to test.
+When using Mutagen with a VCS repository, there are a few &amp;ldquo;best practices&amp;rdquo; of which you should be aware.</description>
+    </item>
+    
+  </channel>
+</rss>

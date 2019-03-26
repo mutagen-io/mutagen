@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en" class="h-100">
+    <head>
+        
+        <title>
+            
+                Overview | Mutagen
+            
+        </title>
+
+        
+        <meta charset="utf-8">
+
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        
+        <link rel="shortcut icon" href="/img/favicon.png">
+
+        
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+        
+        <script src="/js/asciinema-player.js"></script>
+
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono">
+
+        
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+        
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="/css/asciinema-player.css">
+
+        
+        
+        <link rel="stylesheet" href="https://mutagen.io/sass/mutagen.min.9b222dd1d84a63648b0e047c53c211c76c3ad36feaf7bed5889a943ebb9f573a.css" integrity="sha256-myIt0dhKY2SLDgR8U8IRx2w602/q977ViJqUPrufVzo=">
+
+        
+        <script type="text/javascript">
+            
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip()
+            });
+        </script>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <div class="flex-shrink-0">
+            <nav class="navbar navbar-light navbar-expand-md">
+                <div class="container">
+                    <a class="navbar-brand" href="/">
+                        <img class="d-inline-block align-top mutagen-navbar-logo" src="/img/logo_thick_light.svg" alt="Mutagen logo">
+                        Mutagen
+                    </a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation-content" aria-controls="navigation-content" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navigation-content">
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/overview">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation/installation">Install</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/havoc-io/mutagen">Source</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+<div class="container mt-5">
+    <div class="row align-items-center">
+    <div class="col-md-6">
+        <h2>
+            <strong>Mutagen</strong> is a new kind of remote development
+            solution...
+        </h2>
+        <p>
+            Unlike web-based IDEs, network filesystems, and editor plugins,
+            <strong>Mutagen is a high-performance file synchronization
+            engine</strong>. It allows developers to edit code on their local
+            filesystem, with their editor of choice, and have it synchronized in
+            real-time to remote locations.
+        </p>
+        <p>
+            In contrast with other synchronization tools, <strong>Mutagen
+            focuses specifically on development scenarios</strong>. It offers
+            granular control over development-centric behaviors such as
+            permission handling, conflict resolution, symbolic link handling,
+            ignoring content, filesystem watching, and more.
+        </p>
+        <p>
+            <strong>Mutagen also offers a flexible assortment of unidirectional
+            and bidirectional synchronization modes</strong>, allowing it to
+            adapt to a broad range of workflows. It can currently synchronize
+            between any pair of local, SSH-accessible, and Docker<sup>®</sup>
+            container endpoints.
+        </p>
+    </div>
+    <div class="d-none d-md-block col-md-6">
+        <div class="landing-performance-asciinema-container">
+            <asciinema-player cols="80" rows="20" src="/cast/mutagen.cast" autoplay="true" font-size="87.5%"></asciinema-player>
+        </div>
+    </div>
+</div>
+
+<div class="row align-items-center">
+    <div class="col-md-6 pt-3">
+        <object type="image/svg+xml" data="/img/overview/plot.svg" style="width: 100%;"></object>
+    </div>
+    <div class="col-md-6 pt-3">
+        <h2>
+            ...enabling <strong>remote</strong>, container-based development
+            workflows...
+        </h2>
+        <p>
+            With applications continuing their march towards cloud-based,
+            containerized deployment, <strong>there is a growing desire to
+            realign development and deployment workflows</strong>. However,
+            despite a growing number of orchestration tools making their way
+            into the development ecosystem, one critical feature remains
+            conspicuously absent: the ability to efficiently and robustly
+            synchronize code into remote environments.
+        </p>
+        <p>
+            <strong>As cloud platforms and containerization technologies
+            continue to become more complex and difficult to emulate locally,
+            this workflow realignment is no longer going to be
+            optional</strong>. Mutagen is designed to fill the code
+            synchronization gap and work in tandem with orchestration tooling to
+            facilitate remote, container-based development scenarios.
+        </p>
+    </div>
+</div>
+
+<div class="row pb-5">
+    <div class="col-md-6 pt-3" id="unique-design">
+        <h2>
+            ...with a <strong>uniquely simple design</strong>...
+        </h2>
+        <p>
+            <strong>Mutagen is unique amongst synchronizers in that it doesn't
+            need to be installed on remote systems and doesn't require TCP port
+            forwarding</strong>. Instead, it ships with an assortment of
+            cross-compiled "agent" binaries that it copies to remote systems and
+            executes, communicating and transmitting data over standard
+            input/output streams. This behavior makes Mutagen ideally suited for
+            work with ephemeral remotes like containers.
+        </p>
+        <p>
+            Mutagen also has no dependencies, runs completely in user space (no
+            administrative permissions or pesky kernel extensions required), and
+            brings along some nifty safety features to avoid accidental data
+            deletion. Combined with its robustness to connection dropouts,
+            <strong>Mutagen can be used in almost any environment and with any
+            connection</strong>.
+        </p>
+    </div>
+    <div class="col-md-6 py-3" id="unrivaled-performance">
+        <h2>
+            ...and <strong>unrivaled performance</strong>.
+        </h2>
+        <p>
+            Although it's designed for development, Mutagen can efficiently
+            synchronize any filesystem content. Under the hood, <strong>Mutagen
+            uses a bidirectional version of the rsync algorithm based on a
+            three-way merge</strong>. This allows it to perform differential
+            file transfers while safely reconciling filesystem contents between
+            two endpoints.
+        </p>
+        <p>
+            Coupled with low-latency filesystem watching,
+            metadata caching, and pipelined network operations, <strong>Mutagen
+            offers effectively real-time synchronization even in low-bandwidth,
+            high-latency setups</strong>.
+        </p>
+    </div>
+</div>
+
+<hr style="border-top: solid 2px #eee; margin: 0;" />
+
+<div class="row justify-content-md-center align-items-center pb-3 mt-5">
+    <div class="col-md text-center">
+        <h2 style="color: #504f4f;">
+            Get started with Mutagen
+        </h2>
+    </div>
+</div>
+<div class="row justify-content-md-center align-items-center pb-4 mb-5">
+    <div class="col-md col-lg-9">
+        <div class="card-deck">
+            <div class="card" style="border: none; box-shadow: 0px 4px 40px -5px #ccc;">
+                <div class="card-body d-flex flex-column h-100">
+                    <div class="flex-shrink-0">
+                        <h5 class="card-title" style="color: #504f4f;">
+                            Read documentation
+                        </h5>
+                        <p>
+                            Find more information about Mutagen's design
+                            and usage in the documentation. You can find
+                            quick start guides, usage examples, and
+                            information about advanced features.
+                        </p>
+                    </div>
+                    <div class="mt-auto">
+                        <hr />
+                        <a class="btn btn-success" href="/documentation" role="button">Read documentation</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="border: none; box-shadow: 0px 4px 40px -5px #ccc;">
+                <div class="card-body d-flex flex-column h-100">
+                    <div class="flex-shrink-0">
+                        <h5 class="card-title" style="color: #504f4f;">
+                            Install Mutagen
+                        </h5>
+                        <p>
+                            Download the latest Mutagen release for your
+                            platform, either from a supported package
+                            manager or as a standalone binary.
+                        </p>
+                    </div>
+                    <div class="mt-auto">
+                        <hr />
+                        <a class="btn btn-primary" href="/documentation/installation" role="button">Install</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+        </div>
+        <footer class="mt-auto">
+            <div class="container py-3">
+                <div class="row">
+                    <div class="col-md-4 py-3 text-muted">
+                        <strong>Copyright © 2016 – 2019 Jacob Howard.</strong><br />
+                        All rights reserved.
+                    </div>
+                    <div class="col-md-2 offset-md-2 py-3">
+                        <h4>Resources</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen-announce">Announcements</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen">Forums</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen/blob/master/SECURITY.md">Security</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Legal</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/third-party-trademark-notices">Third-party trademarks</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Links</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen">GitHub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://twitter.com/mutagen_io">Twitter</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Top of page <i class="fas fa-caret-up"></i></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </body>
+</html>

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en" class="h-100">
+    <head>
+        
+        <title>
+            
+                Filesystem watching | Mutagen
+            
+        </title>
+
+        
+        <meta charset="utf-8">
+
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        
+        <link rel="shortcut icon" href="/img/favicon.png">
+
+        
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+        
+        <script src="/js/asciinema-player.js"></script>
+
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono">
+
+        
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+        
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="/css/asciinema-player.css">
+
+        
+        
+        <link rel="stylesheet" href="https://mutagen.io/sass/mutagen.min.9b222dd1d84a63648b0e047c53c211c76c3ad36feaf7bed5889a943ebb9f573a.css" integrity="sha256-myIt0dhKY2SLDgR8U8IRx2w602/q977ViJqUPrufVzo=">
+
+        
+        <script type="text/javascript">
+            
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip()
+            });
+        </script>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <div class="flex-shrink-0">
+            <nav class="navbar navbar-light navbar-expand-md">
+                <div class="container">
+                    <a class="navbar-brand" href="/">
+                        <img class="d-inline-block align-top mutagen-navbar-logo" src="/img/logo_thick_light.svg" alt="Mutagen logo">
+                        Mutagen
+                    </a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation-content" aria-controls="navigation-content" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navigation-content">
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/overview">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation/installation">Install</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/havoc-io/mutagen">Source</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+<div class="container">
+    <nav class="pt-4 pb-1" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        
+        
+            
+        
+        
+        <li class="breadcrumb-item">
+            <a href="https://mutagen.io/documentation/">Documentation</a>
+        
+        </li>
+    
+        
+        
+        <li class="breadcrumb-item active" aria-current="page">
+            Filesystem watching
+        
+        </li>
+    
+    </ol>
+    
+</nav>
+    <div class="row">
+        <div class="d-none d-lg-block col-lg-4">
+            <div class="sticky-top" style="top:40px;">
+                <nav id="TableOfContents">
+<ul>
+<li><a href="#filesystem-watching">Filesystem watching</a>
+<ul>
+<li><a href="#native-recursive-watching">Native recursive watching</a></li>
+<li><a href="#polling">Polling</a></li>
+<li><a href="#modes">Modes</a>
+<ul>
+<li><a href="#polling-interval">Polling interval</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-8 mb-3">
+            
+
+<h1 id="filesystem-watching">Filesystem watching</h1>
+
+<p>Mutagen uses filesystem watching to know when it should scan for and propagate
+changes. Unfortunately, the filesystem watching landscape is <em>extremely</em> varied
+in terms of implementation, efficiency, and robustness. Almost every platform
+uses a completely different mechanism, many of which are unreliable or
+non-scalable.</p>
+
+<p>Some systems (namely macOS and Windows) provide native recursive watching
+mechanisms that can monitor arbitrarily large directory hierarchies, though
+their behavior when the location being watched is deleted or changed is somewhat
+inconsistent, and Windows only supports using a directory as the root of such a
+recursive watch.</p>
+
+<p>Other systems (e.g. Linux<sup>®</sup> and BSD systems) provide mechanisms that
+require a watch descriptor or file descriptor to be open for <em>every</em> file or
+directory being watched in a directory hierarchy, which can quickly exhaust
+system quotas for directories that might be used in development (e.g. imagine a
+synchronization root containing a <code>node_modules</code> directory).</p>
+
+<p>Mutagen takes a pragmatic approach to filesystem watching that attempts to
+maximize reliability and responsiveness while avoiding exhaustion of system
+resources or problematic behavior.</p>
+
+<h2 id="native-recursive-watching">Native recursive watching</h2>
+
+<p>On systems that natively support recursive filesystem watching, a watch is
+established on either the synchronization root itself (on macOS) or the parent
+directory of the synchronization root (on Windows) and events are filtered to
+only those originating from the synchronization root. Because these systems can
+behave strangely if the root of a watch is deleted, a regular (but very cheap)
+polling mechanism is used to ensure that the watch root hasn&rsquo;t been deleted or
+recreated. If a change to the watch root is detected, the watch is
+re-established.</p>
+
+<h2 id="polling">Polling</h2>
+
+<p>On all other systems, a polling mechanism is used to avoid exhausting watch/file
+descriptors. This polling mechanism is also used as a fallback in cases where
+native watching mechanisms fail unrecoverably. On Linux, this polling is coupled
+with a restricted set of native watches on the most recently updated contents,
+allowing for low-latency change notifications for most workflows without
+exhausting watch/file descriptors.</p>
+
+<h2 id="modes">Modes</h2>
+
+<p>Mutagen provides three different filesystem watching modes:</p>
+
+<ul>
+<li><strong><code>portable</code></strong> (Default): In this mode, Mutagen uses the most efficient
+watching implementation possible for an endpoint. If some type of native
+watching mechanism is available, it is used, otherwise pure poll-based
+watching is used.</li>
+<li><code>force-poll</code>: In this mode, Mutagen will always use its poll-based watching
+implementation, even on systems that support native watching.</li>
+<li><code>no-watch</code>: In this mode, Mutagen won&rsquo;t perform any filesystem watching, and
+endpoints using this mode will not be able to trigger a synchronization cycle.
+If this mode is used for the entire synchronization session, then a
+synchronization cycle only occurs when the <code>flush</code> command is used.</li>
+</ul>
+
+<p>These modes can be specified on a per-session and/or per-endpoint basis by
+passing the <code>--watch-mode=&lt;mode&gt;</code> or <code>--watch-mode-(alpha|beta)=&lt;mode&gt;</code> flag,
+respectively, to the <code>create</code> command. These modes can be specified on a default
+per-session basis by including the following configuration in <code>~/.mutagen.toml</code>:</p>
+
+<pre><code>[watch]
+mode = &quot;&lt;mode&gt;&quot;
+</code></pre>
+
+<h3 id="polling-interval">Polling interval</h3>
+
+<p>If using polling-based watching, the polling interval (which defaults to 10
+seconds) can be specified on a per-session basis by passing the
+<code>--watch-polling-interval=&lt;interval&gt;</code> flag to the <code>create</code> command (where
+<code>&lt;interval&gt;</code> is an integer value representing seconds) and on a default
+per-session basis by including the following configuration in <code>~/.mutagen.toml</code>:</p>
+
+<pre><code>[watch]
+pollingInterval = &lt;interval&gt;
+</code></pre>
+
+        </div>
+    </div>
+</div>
+
+        </div>
+        <footer class="mt-auto">
+            <div class="container py-3">
+                <div class="row">
+                    <div class="col-md-4 py-3 text-muted">
+                        <strong>Copyright © 2016 – 2019 Jacob Howard.</strong><br />
+                        All rights reserved.
+                    </div>
+                    <div class="col-md-2 offset-md-2 py-3">
+                        <h4>Resources</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen-announce">Announcements</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen">Forums</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen/blob/master/SECURITY.md">Security</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Legal</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/third-party-trademark-notices">Third-party trademarks</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Links</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen">GitHub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://twitter.com/mutagen_io">Twitter</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Top of page <i class="fas fa-caret-up"></i></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </body>
+</html>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <url>
+    <loc>https://mutagen.io/categories/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/configuration/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/design-and-usage/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/filesystem-watching/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/ignores/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/installation/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/transports/local/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/offline-behavior/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/overview/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/permissions/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/transports/ssh/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/safety-mechanisms/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/size-limits/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/transports/docker/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/symbolic-links/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/synchronization-modes/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/tags/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/third-party-trademark-notices/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/transports/</loc>
+  </url>
+  
+  <url>
+    <loc>https://mutagen.io/documentation/version-control-systems/</loc>
+  </url>
+  
+</urlset>

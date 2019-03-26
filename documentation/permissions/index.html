@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en" class="h-100">
+    <head>
+        
+        <title>
+            
+                Permissions | Mutagen
+            
+        </title>
+
+        
+        <meta charset="utf-8">
+
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        
+        <link rel="shortcut icon" href="/img/favicon.png">
+
+        
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+        
+        <script src="/js/asciinema-player.js"></script>
+
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono">
+
+        
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+        
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="/css/asciinema-player.css">
+
+        
+        
+        <link rel="stylesheet" href="https://mutagen.io/sass/mutagen.min.9b222dd1d84a63648b0e047c53c211c76c3ad36feaf7bed5889a943ebb9f573a.css" integrity="sha256-myIt0dhKY2SLDgR8U8IRx2w602/q977ViJqUPrufVzo=">
+
+        
+        <script type="text/javascript">
+            
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip()
+            });
+        </script>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <div class="flex-shrink-0">
+            <nav class="navbar navbar-light navbar-expand-md">
+                <div class="container">
+                    <a class="navbar-brand" href="/">
+                        <img class="d-inline-block align-top mutagen-navbar-logo" src="/img/logo_thick_light.svg" alt="Mutagen logo">
+                        Mutagen
+                    </a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation-content" aria-controls="navigation-content" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navigation-content">
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/overview">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation/installation">Install</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/havoc-io/mutagen">Source</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+<div class="container">
+    <nav class="pt-4 pb-1" aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        
+        
+            
+        
+        
+        <li class="breadcrumb-item">
+            <a href="https://mutagen.io/documentation/">Documentation</a>
+        
+        </li>
+    
+        
+        
+        <li class="breadcrumb-item active" aria-current="page">
+            Permissions
+        
+        </li>
+    
+    </ol>
+    
+</nav>
+    <div class="row">
+        <div class="d-none d-lg-block col-lg-4">
+            <div class="sticky-top" style="top:40px;">
+                <nav id="TableOfContents">
+<ul>
+<li><a href="#permissions">Permissions</a>
+<ul>
+<li><a href="#specifying-owner-and-group">Specifying owner and group</a></li>
+<li><a href="#specifying-permissions">Specifying permissions</a></li>
+</ul></li>
+</ul>
+</nav>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-8 mb-3">
+            
+
+<h1 id="permissions">Permissions</h1>
+
+<p>Mutagen uses a portable but flexible permission propagation system focused on
+development scenarios.</p>
+
+<p>By default, the only permission propagated by Mutagen is POSIX executability.
+This propagation only applies when synchronizing between POSIX systems, though
+it is tracked even when synchronizing with Windows systems so that it can be
+correctly preserved. Mutagen considers POSIX executability to be set for a file
+if any executable bit is set for the file. When setting executability for a
+file, Mutagen sets the executable bit for any entity with a corresponding read
+bit set. When clearing executability for a file, Mutagen clears all executable
+bits.</p>
+
+<p>When creating directories or creating/updating files on an endpoint, Mutagen
+uses a default set of user-only permissions (<code>0700</code> for directories, <code>0600</code> for
+files, and <code>0700</code> for executable files) and sets file ownership and group
+information according to the user running either the Mutagen daemon (for local
+endpoints) or <code>mutagen-agent</code> binary (for remote endpoints).<sup>1</sup></p>
+
+<p><small><sup>1</sup> The descriptions here are given in terms of POSIX semantics,
+but they are conceptually identical in the Windows implementation.</small></p>
+
+<h2 id="specifying-owner-and-group">Specifying owner and group</h2>
+
+<p>The default owner for new and updated files can be overridden on a per-session
+and/or per-endpoint basis by passing the <code>--default-owner=&lt;identifier&gt;</code> or
+<code>--default-owner-(alpha|beta)=&lt;identifier&gt;</code> flag, respectively, to the <code>create</code>
+command. The default owner can be specified on a default per-session basis by
+including the following in <code>~/mutagen.toml</code>:</p>
+
+<pre><code>[permissions]
+defaultOwner = &quot;&lt;identifier&gt;&quot;
+</code></pre>
+
+<p>The default group for new and updated files can be overridden on a per-session
+or per-endpoint basis by passing the <code>--default-group=&lt;identifier&gt;</code> or
+<code>--default-group-(alpha|beta)=&lt;identifier&gt;</code> flag, respectively, to the <code>create</code>
+command. The default group can be specified on a default per-session basis by
+including the following in <code>~/mutagen.toml</code>:</p>
+
+<pre><code>[permissions]
+defaultGroup = &quot;&lt;identifier&gt;&quot;
+</code></pre>
+
+<p>Owner and group identifiers can be provided in three formats:</p>
+
+<ul>
+<li>POSIX-ID-based: A string of the form <code>id:N</code>, where <code>N</code> is a number
+representing the user or group ID. This is only supported for POSIX endpoints.</li>
+<li>Windows-SID-based: A string of the form <code>sid:XXXXXXXXXX</code> where <code>XXXXXXXXXX</code> is
+some valid Windows SID (the formats are highly variable). This is only
+supported for Windows endpoints.</li>
+<li>Name-based: A non-empty string that does not adhere to one of the above
+formats is treated as a literal user or group name. This is supported on both
+POSIX and Windows endpoints.</li>
+</ul>
+
+<p>Please note that on POSIX systems you&rsquo;ll need superuser privileges to set
+ownership to a user besides yourself, or to set a group to which you do not
+belong.</p>
+
+<p>Also note that on Windows systems:</p>
+
+<ul>
+<li>Setting file ownership to a group or another user requires the
+<code>SeRestorePrivilege</code>, which has to be granted by a system administrator and
+then requires that the requesting process activate that privilege. Mutagen
+doesn&rsquo;t do this at the moment because having the <code>SeRestorePrivilege</code> gives a
+process write access to an entire system (including system files) and this can
+be dangerous.</li>
+<li>Setting group ownership on Windows has no real effect. This information is
+not visible from the Win32 subsystem - it&rsquo;s a Windows POSIX relic.</li>
+</ul>
+
+<h2 id="specifying-permissions">Specifying permissions</h2>
+
+<p>The default base file permissions (excluding executable bits) for new and
+updated files can be overridden on a per-session or per-endpoint basis by
+passing the <code>--default-file-mode=&lt;mode&gt;</code> or
+<code>--default-file-mode-(alpha|beta)=&lt;mode&gt;</code> flag, respectively, to the <code>create</code>
+command. The default base file permissions can be specified on a default
+per-session basis by including the following in <code>~/mutagen.toml</code>:</p>
+
+<pre><code>[permissions]
+defaultFileMode = &quot;&lt;mode&gt;&quot;
+</code></pre>
+
+<p>The default base directory permissions for newly created directories can be
+overridden on a per-session or per-endpoint basis by passing the
+<code>--default-directory-mode=&lt;mode&gt;</code> or
+<code>--default-directory-mode-(alpha|beta)=&lt;mode&gt;</code> flag, respectively, to the
+<code>create</code> command. The default base directory permissions can be specified on a
+default per-session basis by including the following in <code>~/mutagen.toml</code>:</p>
+
+<pre><code>[permissions]
+defaultDirectoryMode = &quot;&lt;mode&gt;&quot;
+</code></pre>
+
+<p>File and directory permissions are specified in octal format (the <code>0</code> prefix is
+optional), e.g. <code>0644</code> or <code>750</code>. They default to <code>0600</code> for files and <code>0700</code> for
+directories. They are also restricted by the <code>umask</code> (if applicable) on the
+endpoint. Base file permissions should not include executable bits since these
+are managed by Mutagen.</p>
+
+<p>On Windows, these numeric file and directory permissions are processed as
+outlined in the Go <a href="https://golang.org/pkg/os/#Chmod"><code>os.Chmod</code></a> function. This
+will improve over time, but POSIX permission bits are not a natural fit for
+Windows.</p>
+
+        </div>
+    </div>
+</div>
+
+        </div>
+        <footer class="mt-auto">
+            <div class="container py-3">
+                <div class="row">
+                    <div class="col-md-4 py-3 text-muted">
+                        <strong>Copyright © 2016 – 2019 Jacob Howard.</strong><br />
+                        All rights reserved.
+                    </div>
+                    <div class="col-md-2 offset-md-2 py-3">
+                        <h4>Resources</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen-announce">Announcements</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen">Forums</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen/blob/master/SECURITY.md">Security</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Legal</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/third-party-trademark-notices">Third-party trademarks</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Links</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen">GitHub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://twitter.com/mutagen_io">Twitter</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Top of page <i class="fas fa-caret-up"></i></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </body>
+</html>

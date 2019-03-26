@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en" class="h-100">
+    <head>
+        
+        <title>
+            
+                Documentation | Mutagen
+            
+        </title>
+
+        
+        <meta charset="utf-8">
+
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        
+        <link rel="shortcut icon" href="/img/favicon.png">
+
+        
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+        
+        <script src="/js/asciinema-player.js"></script>
+
+        
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono">
+
+        
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+        
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+        
+        <link rel="stylesheet" href="/css/asciinema-player.css">
+
+        
+        
+        <link rel="stylesheet" href="https://mutagen.io/sass/mutagen.min.9b222dd1d84a63648b0e047c53c211c76c3ad36feaf7bed5889a943ebb9f573a.css" integrity="sha256-myIt0dhKY2SLDgR8U8IRx2w602/q977ViJqUPrufVzo=">
+
+        
+        <script type="text/javascript">
+            
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip()
+            });
+        </script>
+    </head>
+    <body class="d-flex flex-column h-100">
+        <div class="flex-shrink-0">
+            <nav class="navbar navbar-light navbar-expand-md">
+                <div class="container">
+                    <a class="navbar-brand" href="/">
+                        <img class="d-inline-block align-top mutagen-navbar-logo" src="/img/logo_thick_light.svg" alt="Mutagen logo">
+                        Mutagen
+                    </a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation-content" aria-controls="navigation-content" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navigation-content">
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="/overview">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="/documentation/installation">Install</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/havoc-io/mutagen">Source</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+<div class="container">
+    
+        <div class="pt-4 pb-1">
+</div>
+    
+    <div class="row">
+        <div class="d-none d-lg-block col-lg-4">
+            <div class="sticky-top" style="top:40px;">
+                <nav id="TableOfContents">
+<ul>
+<li><a href="#documentation">Documentation</a>
+<ul>
+<li><a href="#getting-started">Getting started</a></li>
+<li><a href="#transports">Transports</a></li>
+<li><a href="#configuration">Configuration</a>
+<ul>
+<li><a href="#synchronization-modes">Synchronization modes</a></li>
+<li><a href="#ignoring-content">Ignoring content</a></li>
+<li><a href="#other-behavioral-settings">Other behavioral settings</a></li>
+</ul></li>
+<li><a href="#version-control-systems">Version control systems</a></li>
+<li><a href="#safety">Safety</a></li>
+</ul></li>
+</ul>
+</nav>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-8 mb-3">
+            
+
+<h1 id="documentation">Documentation</h1>
+
+<p><strong>Welcome to the Mutagen documentation!</strong></p>
+
+<p>This documentation is divided into sections that can be read independently or in
+order. You don&rsquo;t need to read all of it to use Mutagen — much of it just covers
+more specific or advanced features.</p>
+
+<p>For a general overview, start with the
+<a href="/documentation/design-and-usage">Design and usage</a> guide below.</p>
+
+<h2 id="getting-started">Getting started</h2>
+
+<p>For information on Mutagen&rsquo;s design, installation, and usage, check out the
+following guides:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="installation">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-download"></i> Installation
+            </h5>
+            <p class="card-text">
+                Discover how to install Mutagen on your system
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+    <a class="card link-card" href="design-and-usage">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-terminal"></i> Design and usage
+            </h5>
+            <p class="card-text">
+                Understand Mutagen's design, usage, and session lifecycle
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h2 id="transports">Transports</h2>
+
+<p>Mutagen supports a growing list of synchronization transports, which you can
+read about in the following guide:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="transports">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-exchange-alt"></i> Transports
+            </h5>
+            <p class="card-text">
+                Discover which transports Mutagen currently supports
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h2 id="configuration">Configuration</h2>
+
+<p>If Mutagen&rsquo;s out-of-the-box configuration doesn&rsquo;t meet your needs, it offers a
+flexible configuration system supporting a broad range of behavioral tweaks. All
+of these behaviors are configured using the same hierarchical configuration
+mechanisms. You can read about these mechanisms in the configuration guide:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="configuration">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-sliders-h"></i> Configuration
+            </h5>
+            <p class="card-text">
+                Learn how to configure Mutagen's behavior on a global,
+                per-session, and per-endpoint basis
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h3 id="synchronization-modes">Synchronization modes</h3>
+
+<p>One of Mutagen&rsquo;s most flexible design elements is its support for various
+synchronization modes with different directionalities and conflict resolution
+behaviors. You can read about these in the following guide:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="synchronization-modes">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-sync-alt"></i> Synchronization modes
+            </h5>
+            <p class="card-text">
+                Learn about Mutagen's basic synchronization modes and conflict
+                resolution behavior
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h3 id="ignoring-content">Ignoring content</h3>
+
+<p>With most development workflows, there&rsquo;s often a need to exclude content from
+synchronization. Mutagen has a flexible ignore specification system that will be
+familiar to most users. It also has support for ignoring certain classes of
+files without the need for manual specification. Learn more with the following
+guide:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="ignores">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-search-minus"></i> Ignoring content
+            </h5>
+            <p class="card-text">
+                Learn about Mutagen's ignore specification system
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h3 id="other-behavioral-settings">Other behavioral settings</h3>
+
+<p>Mutagen&rsquo;s out-of-the-box behavior is designed to be portable and
+developer-focused. Additional options to control specific behavior are also
+available and described in the following guides:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="permissions">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="fas fa-fingerprint"></i> Permissions
+            </h5>
+            <p class="card-text">
+                Read about Mutagen's configurable permission handling features
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+    <a class="card link-card" href="symbolic-links">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon fas fa-project-diagram"></i> Symbolic links
+            </h5>
+            <p class="card-text">
+                Understand Mutagen's symbolic link handling behaviors
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+    <a class="card link-card" href="filesystem-watching">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon far fa-eye"></i> Filesystem watching
+            </h5>
+            <p class="card-text">
+                Learn about Mutagen's filesystem watching architecture and
+                behaviors
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h2 id="version-control-systems">Version control systems</h2>
+
+<p>Mutagen is designed to be used in conjunction with, but orthogonally to, version
+control systems. The following guide outlines best practices for using Mutagen
+with these tools:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="version-control-systems">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="card-icon far fa-file-code"></i> Version control systems
+            </h5>
+            <p class="card-text">
+                Discover recommended best practices when dealing with content
+                under source control
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+<h2 id="safety">Safety</h2>
+
+<p>Mutagen comes with a number of best-effort safety mechanisms designed to prevent
+the accidental replacement or deletion of files. It&rsquo;s also designed for
+robustness to connection dropouts and comes with controls to limit file size. A
+quick summary of these features is available in the following guides:</p>
+
+<div class="card-group pb-5">
+    <a class="card link-card" href="safety-mechanisms">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="fas fa-life-ring"></i> Safety mechanisms
+            </h5>
+            <p class="card-text">
+                Learn about Mutagen's safety mechanisms
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+    <a class="card link-card" href="offline-behavior">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="fas fa-unlink"></i> Offline behavior
+            </h5>
+            <p class="card-text">
+                Understand Mutagen's offline behavior
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+    <a class="card link-card" href="size-limits">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="far fa-save"></i> Size limits
+            </h5>
+            <p class="card-text">
+                Read about Mutagen's size limiting controls
+            </p>
+        </div>
+        <div class="card-footer">
+            Read more →
+        </div>
+    </a>
+</div>
+
+        </div>
+    </div>
+</div>
+
+        </div>
+        <footer class="mt-auto">
+            <div class="container py-3">
+                <div class="row">
+                    <div class="col-md-4 py-3 text-muted">
+                        <strong>Copyright © 2016 – 2019 Jacob Howard.</strong><br />
+                        All rights reserved.
+                    </div>
+                    <div class="col-md-2 offset-md-2 py-3">
+                        <h4>Resources</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/documentation">Documentation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen-announce">Announcements</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://groups.google.com/forum/#!forum/mutagen">Forums</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen/blob/master/SECURITY.md">Security</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Legal</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="/third-party-trademark-notices">Third-party trademarks</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-2 py-3">
+                        <h4>Links</h4>
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://github.com/havoc-io/mutagen">GitHub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="https://twitter.com/mutagen_io">Twitter</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Top of page <i class="fas fa-caret-up"></i></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </body>
+</html>
