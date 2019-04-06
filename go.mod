@@ -6,6 +6,7 @@ require (
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef
 	github.com/golang/protobuf v0.0.0-20180814211427-aa810b61a9c7
 	github.com/google/uuid v0.0.0-20171129191014-dec09d789f3d
@@ -21,6 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.2
 	golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd // indirect
 	golang.org/x/net v0.0.0-20180511174649-2491c5de3490
+	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
 	golang.org/x/sys v0.0.0-20190204203706-41f3e6584952
 	golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5
 	google.golang.org/genproto v0.0.0-20180514194645-7bb2a897381c // indirect
