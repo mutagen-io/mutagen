@@ -12,6 +12,8 @@ import (
 	"golang.org/x/sys/windows"
 
 	aclapi "github.com/hectane/go-acl/api"
+
+	osvendor "github.com/havoc-io/mutagen/pkg/filesystem/os"
 )
 
 // ensureValidName verifies that the provided name does not reference the
@@ -138,6 +140,9 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	// Compute the target path.
 	path := filepath.Join(d.file.Name(), name)
 
+	// Fix long paths.
+	path = osvendor.FixLongPath(path)
+
 	// Set ownership information, if specified.
 	if ownership != nil && (ownership.ownerSID != nil || ownership.groupSID != nil) {
 		// Compute the information that we're going to set.
@@ -150,6 +155,22 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 		}
 
 		// Set the information.
+		//
+		// NOTE: As with other Windows API functions, calling
+		// SetNamedSecurityInfoW with a path name that exceeds the default
+		// Windows path length limit (without long-path formatting) will result
+		// in failure, and SetNamedSecurityInfoW will return a non-zero error
+		// code to indicate this failure. However, at least on some versions of
+		// Windows, SetNamedSecurityInfoW (and probably SetNamedSecurityInfoA as
+		// well) doesn't seem to call SetLastError to record the error (at least
+		// in this particular failure mode), and thus when Go's Windows syscall
+		// implementation invokes GetLastError to construct the error that it
+		// returns (see https://golang.org/pkg/syscall/?GOOS=windows#Proc.Call),
+		// it will receive ERROR_SUCCESS. The SetNamedSecurityInfo wrapper
+		// function will check for a non-zero return code, see that an error
+		// occurred, and thus return the Go-constructed error that wraps
+		// ERROR_SUCCESS, resulting in a very confusing error message. It's
+		// unfortunate, but at least the error condition is trackable.
 		if err := aclapi.SetNamedSecurityInfo(
 			path,
 			aclapi.SE_FILE_OBJECT,
@@ -185,6 +206,9 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 
 	// Compute the full path.
 	path := filepath.Join(d.file.Name(), name)
+
+	// Fix long paths.
+	path = osvendor.FixLongPath(path)
 
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
@@ -415,6 +439,9 @@ func (d *Directory) RemoveDirectory(name string) error {
 	// Compute the full path.
 	path := filepath.Join(d.file.Name(), name)
 
+	// Fix long paths.
+	path = osvendor.FixLongPath(path)
+
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -434,6 +461,9 @@ func (d *Directory) RemoveFile(name string) error {
 
 	// Compute the full path.
 	path := filepath.Join(d.file.Name(), name)
+
+	// Fix long paths.
+	path = osvendor.FixLongPath(path)
 
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
