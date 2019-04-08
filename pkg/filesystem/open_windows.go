@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
+
+	osvendor "github.com/havoc-io/mutagen/pkg/filesystem/os"
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
@@ -28,6 +30,9 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	if !filepath.IsAbs(path) {
 		return nil, nil, errors.New("path is not absolute")
 	}
+
+	// Fix long paths.
+	path = osvendor.FixLongPath(path)
 
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
