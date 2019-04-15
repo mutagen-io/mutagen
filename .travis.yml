@@ -42,7 +42,7 @@ addons:
 # than a float to be truncated:
 # https://github.com/travis-ci/travis-ci/issues/9247
 go:
-  - "1.11.8"
+  - "1.11.9"
 
 # Skip the default install step since it doesn't make sense for Mutagen.
 install: true
