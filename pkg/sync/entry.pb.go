@@ -45,7 +45,7 @@ func (x EntryKind) String() string {
 	return proto.EnumName(EntryKind_name, int32(x))
 }
 func (EntryKind) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_entry_29deca7dbfaed434, []int{0}
+	return fileDescriptor_entry_07922cdbfaad7ca7, []int{0}
 }
 
 // Entry represents a filesystem node (e.g. a directory, a file, or a symlink).
@@ -69,7 +69,7 @@ func (m *Entry) Reset()         { *m = Entry{} }
 func (m *Entry) String() string { return proto.CompactTextString(m) }
 func (*Entry) ProtoMessage()    {}
 func (*Entry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_entry_29deca7dbfaed434, []int{0}
+	return fileDescriptor_entry_07922cdbfaad7ca7, []int{0}
 }
 func (m *Entry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Entry.Unmarshal(m, b)
@@ -130,9 +130,9 @@ func init() {
 	proto.RegisterEnum("sync.EntryKind", EntryKind_name, EntryKind_value)
 }
 
-func init() { proto.RegisterFile("sync/entry.proto", fileDescriptor_entry_29deca7dbfaed434) }
+func init() { proto.RegisterFile("sync/entry.proto", fileDescriptor_entry_07922cdbfaad7ca7) }
 
-var fileDescriptor_entry_29deca7dbfaed434 = []byte{
+var fileDescriptor_entry_07922cdbfaad7ca7 = []byte{
 	// 288 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0xdb, 0x4b, 0xc3, 0x30,
 	0x18, 0xc5, 0xcd, 0x6e, 0xb6, 0x5f, 0x37, 0x2d, 0x79, 0x90, 0xe8, 0x83, 0xc4, 0x0b, 0x12, 0x04,

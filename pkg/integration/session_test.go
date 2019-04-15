@@ -20,6 +20,7 @@ import (
 
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/havoc-io/mutagen/pkg/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/protocols/kubectl"
 	_ "github.com/havoc-io/mutagen/pkg/protocols/local"
 	_ "github.com/havoc-io/mutagen/pkg/protocols/ssh"
 )

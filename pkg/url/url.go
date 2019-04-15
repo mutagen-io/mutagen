@@ -47,6 +47,21 @@ func (u *URL) EnsureValid() error {
 		} else if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
 			return errors.New("Docker URL with incorrect first path character")
 		}
+	} else if u.Protocol == Protocol_Kubectl {
+		// In the case of Kubectl, we intentionally avoid validating environment
+		// variables since the values used could change over time. Since we
+		// default to empty values for unspecified environment variables, this
+		// works out fine, at least so long as Kubectl continues to treat empty
+		// environment variables the same as unspecified ones.
+		if u.Hostname == "" {
+			return errors.New("Kubectl URL with empty container identifier")
+		} else if u.Port != 0 {
+			return errors.New("Kubectl URL with non-zero port")
+		} else if u.Path == "" {
+			return errors.New("Kubectl URL with empty path")
+		} else if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
+			return errors.New("Kubectl URL with incorrect first path character")
+		}
 	} else {
 		return errors.New("unknown or unsupported protocol")
 	}

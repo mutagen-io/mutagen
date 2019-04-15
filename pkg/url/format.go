@@ -12,6 +12,8 @@ func (u *URL) Format(environmentPrefix string) string {
 		return u.formatSSH()
 	} else if u.Protocol == Protocol_Docker {
 		return u.formatDocker(environmentPrefix)
+	} else if u.Protocol == Protocol_Kubectl {
+		return u.formatKubectl(environmentPrefix)
 	}
 	panic("unknown URL protocol")
 }
@@ -75,6 +77,41 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 	// Add environment variable information if requested.
 	if environmentPrefix != "" {
 		for _, variable := range DockerEnvironmentVariables {
+			result += fmt.Sprintf("%s%s=%s", environmentPrefix, variable, u.Environment[variable])
+		}
+	}
+
+	// Done.
+	return result
+}
+
+// invalidKubectlURLFormat is the value returned by formatKubectl when a URL is
+// provided that breaks invariants.
+const invalidKubectlURLFormat = "<invalid-kubectl-url>"
+
+// formatKubectl formats a Kubectl URL.
+func (u *URL) formatKubectl(environmentPrefix string) string {
+	// Start with the container name.
+	result := u.Hostname
+
+	// Append the path. If this is a home-directory-relative path or a Windows
+	// path, then we need to prepend a slash.
+	if u.Path == "" {
+		return invalidKubectlURLFormat
+	} else if u.Path[0] == '/' {
+		result += u.Path
+	} else if u.Path[0] == '~' || isWindowsPath(u.Path) {
+		result += fmt.Sprintf("/%s", u.Path)
+	} else {
+		return invalidKubectlURLFormat
+	}
+
+	// Add the scheme.
+	result = KubectlURLPrefix + result
+
+	// Add environment variable information if requested.
+	if environmentPrefix != "" {
+		for _, variable := range KubectlEnvironmentVariables {
 			result += fmt.Sprintf("%s%s=%s", environmentPrefix, variable, u.Environment[variable])
 		}
 	}

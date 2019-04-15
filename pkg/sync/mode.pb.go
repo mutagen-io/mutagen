@@ -72,16 +72,16 @@ func (x SynchronizationMode) String() string {
 	return proto.EnumName(SynchronizationMode_name, int32(x))
 }
 func (SynchronizationMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_mode_a8cfd4437324afd0, []int{0}
+	return fileDescriptor_mode_0acfe03050777921, []int{0}
 }
 
 func init() {
 	proto.RegisterEnum("sync.SynchronizationMode", SynchronizationMode_name, SynchronizationMode_value)
 }
 
-func init() { proto.RegisterFile("sync/mode.proto", fileDescriptor_mode_a8cfd4437324afd0) }
+func init() { proto.RegisterFile("sync/mode.proto", fileDescriptor_mode_0acfe03050777921) }
 
-var fileDescriptor_mode_a8cfd4437324afd0 = []byte{
+var fileDescriptor_mode_0acfe03050777921 = []byte{
 	// 186 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2f, 0xae, 0xcc, 0x4b,
 	0xd6, 0xcf, 0xcd, 0x4f, 0x49, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x01, 0x09, 0x68,

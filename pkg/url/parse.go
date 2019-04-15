@@ -18,6 +18,8 @@ func Parse(raw string, alpha bool) (*URL, error) {
 	// If we don't match anything, we assume the URL is a local path.
 	if isDockerURL(raw) {
 		return parseDocker(raw, alpha)
+	} else if isKubectlURL(raw) {
+		return parseKubectl(raw, alpha)
 	} else if isSCPSSHURL(raw) {
 		return parseSCPSSH(raw)
 	} else {

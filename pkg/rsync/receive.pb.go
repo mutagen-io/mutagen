@@ -35,7 +35,7 @@ func (m *ReceiverStatus) Reset()         { *m = ReceiverStatus{} }
 func (m *ReceiverStatus) String() string { return proto.CompactTextString(m) }
 func (*ReceiverStatus) ProtoMessage()    {}
 func (*ReceiverStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_receive_07d1908beade38c3, []int{0}
+	return fileDescriptor_receive_d911911ac6bf433b, []int{0}
 }
 func (m *ReceiverStatus) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReceiverStatus.Unmarshal(m, b)
@@ -80,9 +80,9 @@ func init() {
 	proto.RegisterType((*ReceiverStatus)(nil), "rsync.ReceiverStatus")
 }
 
-func init() { proto.RegisterFile("rsync/receive.proto", fileDescriptor_receive_07d1908beade38c3) }
+func init() { proto.RegisterFile("rsync/receive.proto", fileDescriptor_receive_d911911ac6bf433b) }
 
-var fileDescriptor_receive_07d1908beade38c3 = []byte{
+var fileDescriptor_receive_d911911ac6bf433b = []byte{
 	// 153 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2e, 0x2a, 0xae, 0xcc,
 	0x4b, 0xd6, 0x2f, 0x4a, 0x4d, 0x4e, 0xcd, 0x2c, 0x4b, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,

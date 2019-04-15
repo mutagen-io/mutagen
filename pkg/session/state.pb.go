@@ -73,7 +73,7 @@ func (x Status) String() string {
 	return proto.EnumName(Status_name, int32(x))
 }
 func (Status) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_state_cddd0f3d09b59394, []int{0}
+	return fileDescriptor_state_b5b8b2d50901bcd3, []int{0}
 }
 
 type State struct {
@@ -96,7 +96,7 @@ func (m *State) Reset()         { *m = State{} }
 func (m *State) String() string { return proto.CompactTextString(m) }
 func (*State) ProtoMessage()    {}
 func (*State) Descriptor() ([]byte, []int) {
-	return fileDescriptor_state_cddd0f3d09b59394, []int{0}
+	return fileDescriptor_state_b5b8b2d50901bcd3, []int{0}
 }
 func (m *State) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_State.Unmarshal(m, b)
@@ -191,9 +191,9 @@ func init() {
 	proto.RegisterEnum("session.Status", Status_name, Status_value)
 }
 
-func init() { proto.RegisterFile("session/state.proto", fileDescriptor_state_cddd0f3d09b59394) }
+func init() { proto.RegisterFile("session/state.proto", fileDescriptor_state_b5b8b2d50901bcd3) }
 
-var fileDescriptor_state_cddd0f3d09b59394 = []byte{
+var fileDescriptor_state_b5b8b2d50901bcd3 = []byte{
 	// 516 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x93, 0x5f, 0x6b, 0xdb, 0x3c,
 	0x14, 0xc6, 0x5f, 0x37, 0x89, 0x93, 0x9c, 0xfc, 0xf3, 0x7b, 0xd2, 0x0e, 0x13, 0x06, 0x33, 0x63,

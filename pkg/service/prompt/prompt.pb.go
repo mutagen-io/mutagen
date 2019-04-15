@@ -35,7 +35,7 @@ func (m *PromptRequest) Reset()         { *m = PromptRequest{} }
 func (m *PromptRequest) String() string { return proto.CompactTextString(m) }
 func (*PromptRequest) ProtoMessage()    {}
 func (*PromptRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prompt_be0c1c247412809f, []int{0}
+	return fileDescriptor_prompt_4a3e9c0b8728c311, []int{0}
 }
 func (m *PromptRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PromptRequest.Unmarshal(m, b)
@@ -80,7 +80,7 @@ func (m *PromptResponse) Reset()         { *m = PromptResponse{} }
 func (m *PromptResponse) String() string { return proto.CompactTextString(m) }
 func (*PromptResponse) ProtoMessage()    {}
 func (*PromptResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_prompt_be0c1c247412809f, []int{1}
+	return fileDescriptor_prompt_4a3e9c0b8728c311, []int{1}
 }
 func (m *PromptResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PromptResponse.Unmarshal(m, b)
@@ -184,9 +184,9 @@ var _Prompting_serviceDesc = grpc.ServiceDesc{
 	Metadata: "service/prompt/prompt.proto",
 }
 
-func init() { proto.RegisterFile("service/prompt/prompt.proto", fileDescriptor_prompt_be0c1c247412809f) }
+func init() { proto.RegisterFile("service/prompt/prompt.proto", fileDescriptor_prompt_4a3e9c0b8728c311) }
 
-var fileDescriptor_prompt_be0c1c247412809f = []byte{
+var fileDescriptor_prompt_4a3e9c0b8728c311 = []byte{
 	// 187 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2e, 0x4e, 0x2d, 0x2a,
 	0xcb, 0x4c, 0x4e, 0xd5, 0x2f, 0x28, 0xca, 0xcf, 0x2d, 0x28, 0x81, 0x52, 0x7a, 0x05, 0x45, 0xf9,

@@ -41,7 +41,7 @@ func (m *Transmission) Reset()         { *m = Transmission{} }
 func (m *Transmission) String() string { return proto.CompactTextString(m) }
 func (*Transmission) ProtoMessage()    {}
 func (*Transmission) Descriptor() ([]byte, []int) {
-	return fileDescriptor_transmission_adc3ca65fab2839b, []int{0}
+	return fileDescriptor_transmission_45093eb85235a9c4, []int{0}
 }
 func (m *Transmission) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Transmission.Unmarshal(m, b)
@@ -87,10 +87,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("rsync/transmission.proto", fileDescriptor_transmission_adc3ca65fab2839b)
+	proto.RegisterFile("rsync/transmission.proto", fileDescriptor_transmission_45093eb85235a9c4)
 }
 
-var fileDescriptor_transmission_adc3ca65fab2839b = []byte{
+var fileDescriptor_transmission_45093eb85235a9c4 = []byte{
 	// 180 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x8e, 0xb1, 0x0a, 0xc2, 0x30,
 	0x10, 0x86, 0x89, 0x5a, 0xb1, 0xd1, 0x41, 0x82, 0x43, 0x70, 0x2a, 0x82, 0xd8, 0xc5, 0x04, 0xf4,

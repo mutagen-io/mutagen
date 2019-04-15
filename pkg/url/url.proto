@@ -10,6 +10,7 @@ enum Protocol {
     // Enumeration value 2 is reserved for custom protocols.
     // Enumeration values 3-10 are reserved for core protocols.
     Docker = 11;
+    Kubectl = 12;
 }
 
 message URL {

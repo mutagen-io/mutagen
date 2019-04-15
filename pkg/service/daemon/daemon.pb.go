@@ -33,7 +33,7 @@ func (m *VersionRequest) Reset()         { *m = VersionRequest{} }
 func (m *VersionRequest) String() string { return proto.CompactTextString(m) }
 func (*VersionRequest) ProtoMessage()    {}
 func (*VersionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_cfcbff340fa2bcf6, []int{0}
+	return fileDescriptor_daemon_f43222bc400bf072, []int{0}
 }
 func (m *VersionRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionRequest.Unmarshal(m, b)
@@ -68,7 +68,7 @@ func (m *VersionResponse) Reset()         { *m = VersionResponse{} }
 func (m *VersionResponse) String() string { return proto.CompactTextString(m) }
 func (*VersionResponse) ProtoMessage()    {}
 func (*VersionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_cfcbff340fa2bcf6, []int{1}
+	return fileDescriptor_daemon_f43222bc400bf072, []int{1}
 }
 func (m *VersionResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionResponse.Unmarshal(m, b)
@@ -119,7 +119,7 @@ func (m *TerminateRequest) Reset()         { *m = TerminateRequest{} }
 func (m *TerminateRequest) String() string { return proto.CompactTextString(m) }
 func (*TerminateRequest) ProtoMessage()    {}
 func (*TerminateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_cfcbff340fa2bcf6, []int{2}
+	return fileDescriptor_daemon_f43222bc400bf072, []int{2}
 }
 func (m *TerminateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateRequest.Unmarshal(m, b)
@@ -149,7 +149,7 @@ func (m *TerminateResponse) Reset()         { *m = TerminateResponse{} }
 func (m *TerminateResponse) String() string { return proto.CompactTextString(m) }
 func (*TerminateResponse) ProtoMessage()    {}
 func (*TerminateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_daemon_cfcbff340fa2bcf6, []int{3}
+	return fileDescriptor_daemon_f43222bc400bf072, []int{3}
 }
 func (m *TerminateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateResponse.Unmarshal(m, b)
@@ -281,9 +281,9 @@ var _Daemon_serviceDesc = grpc.ServiceDesc{
 	Metadata: "service/daemon/daemon.proto",
 }
 
-func init() { proto.RegisterFile("service/daemon/daemon.proto", fileDescriptor_daemon_cfcbff340fa2bcf6) }
+func init() { proto.RegisterFile("service/daemon/daemon.proto", fileDescriptor_daemon_f43222bc400bf072) }
 
-var fileDescriptor_daemon_cfcbff340fa2bcf6 = []byte{
+var fileDescriptor_daemon_f43222bc400bf072 = []byte{
 	// 235 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xbf, 0x4e, 0x04, 0x21,
 	0x10, 0xc6, 0x5d, 0xff, 0xac, 0x71, 0x0a, 0x3d, 0xd1, 0xe8, 0x7a, 0x36, 0x66, 0x2b, 0x1b, 0xc1,

@@ -57,16 +57,16 @@ func (x SymlinkMode) String() string {
 	return proto.EnumName(SymlinkMode_name, int32(x))
 }
 func (SymlinkMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_symlink_4cd18dbde9e3800f, []int{0}
+	return fileDescriptor_symlink_d2d4a30957604e58, []int{0}
 }
 
 func init() {
 	proto.RegisterEnum("sync.SymlinkMode", SymlinkMode_name, SymlinkMode_value)
 }
 
-func init() { proto.RegisterFile("sync/symlink.proto", fileDescriptor_symlink_4cd18dbde9e3800f) }
+func init() { proto.RegisterFile("sync/symlink.proto", fileDescriptor_symlink_d2d4a30957604e58) }
 
-var fileDescriptor_symlink_4cd18dbde9e3800f = []byte{
+var fileDescriptor_symlink_d2d4a30957604e58 = []byte{
 	// 158 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2a, 0xae, 0xcc, 0x4b,
 	0xd6, 0x2f, 0xae, 0xcc, 0xcd, 0xc9, 0xcc, 0xcb, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62,

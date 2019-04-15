@@ -30,7 +30,7 @@ func (m *Conflict) Reset()         { *m = Conflict{} }
 func (m *Conflict) String() string { return proto.CompactTextString(m) }
 func (*Conflict) ProtoMessage()    {}
 func (*Conflict) Descriptor() ([]byte, []int) {
-	return fileDescriptor_conflict_0fab4c0309eb9cac, []int{0}
+	return fileDescriptor_conflict_50e18ec4b027ddc0, []int{0}
 }
 func (m *Conflict) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Conflict.Unmarshal(m, b)
@@ -68,9 +68,9 @@ func init() {
 	proto.RegisterType((*Conflict)(nil), "sync.Conflict")
 }
 
-func init() { proto.RegisterFile("sync/conflict.proto", fileDescriptor_conflict_0fab4c0309eb9cac) }
+func init() { proto.RegisterFile("sync/conflict.proto", fileDescriptor_conflict_50e18ec4b027ddc0) }
 
-var fileDescriptor_conflict_0fab4c0309eb9cac = []byte{
+var fileDescriptor_conflict_50e18ec4b027ddc0 = []byte{
 	// 154 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2e, 0xae, 0xcc, 0x4b,
 	0xd6, 0x4f, 0xce, 0xcf, 0x4b, 0xcb, 0xc9, 0x4c, 0x2e, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,

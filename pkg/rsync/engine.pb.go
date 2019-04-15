@@ -33,7 +33,7 @@ func (m *BlockHash) Reset()         { *m = BlockHash{} }
 func (m *BlockHash) String() string { return proto.CompactTextString(m) }
 func (*BlockHash) ProtoMessage()    {}
 func (*BlockHash) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_8893205e0be692e7, []int{0}
+	return fileDescriptor_engine_ef8171a960d3efe4, []int{0}
 }
 func (m *BlockHash) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_BlockHash.Unmarshal(m, b)
@@ -86,7 +86,7 @@ func (m *Signature) Reset()         { *m = Signature{} }
 func (m *Signature) String() string { return proto.CompactTextString(m) }
 func (*Signature) ProtoMessage()    {}
 func (*Signature) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_8893205e0be692e7, []int{1}
+	return fileDescriptor_engine_ef8171a960d3efe4, []int{1}
 }
 func (m *Signature) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Signature.Unmarshal(m, b)
@@ -149,7 +149,7 @@ func (m *Operation) Reset()         { *m = Operation{} }
 func (m *Operation) String() string { return proto.CompactTextString(m) }
 func (*Operation) ProtoMessage()    {}
 func (*Operation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_engine_8893205e0be692e7, []int{2}
+	return fileDescriptor_engine_ef8171a960d3efe4, []int{2}
 }
 func (m *Operation) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Operation.Unmarshal(m, b)
@@ -196,9 +196,9 @@ func init() {
 	proto.RegisterType((*Operation)(nil), "rsync.Operation")
 }
 
-func init() { proto.RegisterFile("rsync/engine.proto", fileDescriptor_engine_8893205e0be692e7) }
+func init() { proto.RegisterFile("rsync/engine.proto", fileDescriptor_engine_ef8171a960d3efe4) }
 
-var fileDescriptor_engine_8893205e0be692e7 = []byte{
+var fileDescriptor_engine_ef8171a960d3efe4 = []byte{
 	// 252 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x41, 0x4b, 0xf4, 0x30,
 	0x10, 0x86, 0xe9, 0x76, 0xb7, 0xd0, 0xf9, 0x76, 0xe1, 0x23, 0x88, 0xf4, 0xe0, 0xa1, 0x14, 0xc5,

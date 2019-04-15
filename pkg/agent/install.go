@@ -101,12 +101,13 @@ func install(transport Transport, prompter string) error {
 	}
 	var installCommand string
 	if posix {
-		installCommand = fmt.Sprintf("./%s %s", destination, ModeInstall)
+		// FIXME: This shouldn't be hardcoded to /root
+		installCommand = fmt.Sprintf("/root/%s %s", destination, ModeInstall)
 	} else {
 		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}
 	if err := run(transport, installCommand); err != nil {
-		return errors.Wrap(err, "unable to invoke agent installation")
+		return errors.Wrap(err, fmt.Sprintf("unable to invoke agent installation %s", installCommand))
 	}
 
 	// Success.

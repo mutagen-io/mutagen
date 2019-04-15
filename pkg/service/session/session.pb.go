@@ -41,7 +41,7 @@ func (m *CreateRequest) Reset()         { *m = CreateRequest{} }
 func (m *CreateRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()    {}
 func (*CreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{0}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{0}
 }
 func (m *CreateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateRequest.Unmarshal(m, b)
@@ -116,7 +116,7 @@ func (m *CreateResponse) Reset()         { *m = CreateResponse{} }
 func (m *CreateResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()    {}
 func (*CreateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{1}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{1}
 }
 func (m *CreateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateResponse.Unmarshal(m, b)
@@ -169,7 +169,7 @@ func (m *ListRequest) Reset()         { *m = ListRequest{} }
 func (m *ListRequest) String() string { return proto.CompactTextString(m) }
 func (*ListRequest) ProtoMessage()    {}
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{2}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{2}
 }
 func (m *ListRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListRequest.Unmarshal(m, b)
@@ -215,7 +215,7 @@ func (m *ListResponse) Reset()         { *m = ListResponse{} }
 func (m *ListResponse) String() string { return proto.CompactTextString(m) }
 func (*ListResponse) ProtoMessage()    {}
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{3}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{3}
 }
 func (m *ListResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListResponse.Unmarshal(m, b)
@@ -261,7 +261,7 @@ func (m *FlushRequest) Reset()         { *m = FlushRequest{} }
 func (m *FlushRequest) String() string { return proto.CompactTextString(m) }
 func (*FlushRequest) ProtoMessage()    {}
 func (*FlushRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{4}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{4}
 }
 func (m *FlushRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FlushRequest.Unmarshal(m, b)
@@ -306,7 +306,7 @@ func (m *FlushResponse) Reset()         { *m = FlushResponse{} }
 func (m *FlushResponse) String() string { return proto.CompactTextString(m) }
 func (*FlushResponse) ProtoMessage()    {}
 func (*FlushResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{5}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{5}
 }
 func (m *FlushResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FlushResponse.Unmarshal(m, b)
@@ -344,7 +344,7 @@ func (m *PauseRequest) Reset()         { *m = PauseRequest{} }
 func (m *PauseRequest) String() string { return proto.CompactTextString(m) }
 func (*PauseRequest) ProtoMessage()    {}
 func (*PauseRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{6}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{6}
 }
 func (m *PauseRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PauseRequest.Unmarshal(m, b)
@@ -382,7 +382,7 @@ func (m *PauseResponse) Reset()         { *m = PauseResponse{} }
 func (m *PauseResponse) String() string { return proto.CompactTextString(m) }
 func (*PauseResponse) ProtoMessage()    {}
 func (*PauseResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{7}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{7}
 }
 func (m *PauseResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PauseResponse.Unmarshal(m, b)
@@ -421,7 +421,7 @@ func (m *ResumeRequest) Reset()         { *m = ResumeRequest{} }
 func (m *ResumeRequest) String() string { return proto.CompactTextString(m) }
 func (*ResumeRequest) ProtoMessage()    {}
 func (*ResumeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{8}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{8}
 }
 func (m *ResumeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResumeRequest.Unmarshal(m, b)
@@ -467,7 +467,7 @@ func (m *ResumeResponse) Reset()         { *m = ResumeResponse{} }
 func (m *ResumeResponse) String() string { return proto.CompactTextString(m) }
 func (*ResumeResponse) ProtoMessage()    {}
 func (*ResumeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{9}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{9}
 }
 func (m *ResumeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ResumeResponse.Unmarshal(m, b)
@@ -512,7 +512,7 @@ func (m *TerminateRequest) Reset()         { *m = TerminateRequest{} }
 func (m *TerminateRequest) String() string { return proto.CompactTextString(m) }
 func (*TerminateRequest) ProtoMessage()    {}
 func (*TerminateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{10}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{10}
 }
 func (m *TerminateRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateRequest.Unmarshal(m, b)
@@ -550,7 +550,7 @@ func (m *TerminateResponse) Reset()         { *m = TerminateResponse{} }
 func (m *TerminateResponse) String() string { return proto.CompactTextString(m) }
 func (*TerminateResponse) ProtoMessage()    {}
 func (*TerminateResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_dd805e133a97b5e9, []int{11}
+	return fileDescriptor_session_2fb32d629bde28e1, []int{11}
 }
 func (m *TerminateResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TerminateResponse.Unmarshal(m, b)
@@ -991,10 +991,10 @@ var _Sessions_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("service/session/session.proto", fileDescriptor_session_dd805e133a97b5e9)
+	proto.RegisterFile("service/session/session.proto", fileDescriptor_session_2fb32d629bde28e1)
 }
 
-var fileDescriptor_session_dd805e133a97b5e9 = []byte{
+var fileDescriptor_session_2fb32d629bde28e1 = []byte{
 	// 600 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0xdd, 0x8e, 0xd2, 0x40,
 	0x14, 0xb6, 0x2c, 0x20, 0x3d, 0x50, 0xe2, 0x8e, 0x8a, 0xb5, 0xea, 0x86, 0xf4, 0xc2, 0xe0, 0xc5,

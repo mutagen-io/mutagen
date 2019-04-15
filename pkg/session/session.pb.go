@@ -46,7 +46,7 @@ func (x Version) String() string {
 	return proto.EnumName(Version_name, int32(x))
 }
 func (Version) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_session_46475c2b0f263013, []int{0}
+	return fileDescriptor_session_c57c0e64bd59ffb4, []int{0}
 }
 
 type Session struct {
@@ -97,7 +97,7 @@ func (m *Session) Reset()         { *m = Session{} }
 func (m *Session) String() string { return proto.CompactTextString(m) }
 func (*Session) ProtoMessage()    {}
 func (*Session) Descriptor() ([]byte, []int) {
-	return fileDescriptor_session_46475c2b0f263013, []int{0}
+	return fileDescriptor_session_c57c0e64bd59ffb4, []int{0}
 }
 func (m *Session) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Session.Unmarshal(m, b)
@@ -206,9 +206,9 @@ func init() {
 	proto.RegisterEnum("session.Version", Version_name, Version_value)
 }
 
-func init() { proto.RegisterFile("session/session.proto", fileDescriptor_session_46475c2b0f263013) }
+func init() { proto.RegisterFile("session/session.proto", fileDescriptor_session_c57c0e64bd59ffb4) }
 
-var fileDescriptor_session_46475c2b0f263013 = []byte{
+var fileDescriptor_session_c57c0e64bd59ffb4 = []byte{
 	// 392 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x53, 0x6f, 0x8b, 0x9b, 0x30,
 	0x18, 0x9f, 0x5b, 0x5b, 0xed, 0xd3, 0x76, 0x74, 0x61, 0x2b, 0xc1, 0x8d, 0x4e, 0xc6, 0x60, 0xae,

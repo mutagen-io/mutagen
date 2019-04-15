@@ -58,7 +58,7 @@ func (m *CacheEntry) Reset()         { *m = CacheEntry{} }
 func (m *CacheEntry) String() string { return proto.CompactTextString(m) }
 func (*CacheEntry) ProtoMessage()    {}
 func (*CacheEntry) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cache_713b5d5d73f5fd58, []int{0}
+	return fileDescriptor_cache_dc2b176cb23438c2, []int{0}
 }
 func (m *CacheEntry) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CacheEntry.Unmarshal(m, b)
@@ -127,7 +127,7 @@ func (m *Cache) Reset()         { *m = Cache{} }
 func (m *Cache) String() string { return proto.CompactTextString(m) }
 func (*Cache) ProtoMessage()    {}
 func (*Cache) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cache_713b5d5d73f5fd58, []int{1}
+	return fileDescriptor_cache_dc2b176cb23438c2, []int{1}
 }
 func (m *Cache) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Cache.Unmarshal(m, b)
@@ -160,9 +160,9 @@ func init() {
 	proto.RegisterMapType((map[string]*CacheEntry)(nil), "sync.Cache.EntriesEntry")
 }
 
-func init() { proto.RegisterFile("sync/cache.proto", fileDescriptor_cache_713b5d5d73f5fd58) }
+func init() { proto.RegisterFile("sync/cache.proto", fileDescriptor_cache_dc2b176cb23438c2) }
 
-var fileDescriptor_cache_713b5d5d73f5fd58 = []byte{
+var fileDescriptor_cache_dc2b176cb23438c2 = []byte{
 	// 300 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x90, 0xc1, 0x6a, 0x32, 0x31,
 	0x14, 0x85, 0x89, 0x8e, 0xfe, 0x18, 0xfd, 0x61, 0xc8, 0xa2, 0x04, 0x37, 0x1d, 0xa4, 0xc8, 0x6c,

@@ -58,16 +58,16 @@ func (x WatchMode) String() string {
 	return proto.EnumName(WatchMode_name, int32(x))
 }
 func (WatchMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_watch_532622a0488b6025, []int{0}
+	return fileDescriptor_watch_e811ad5dff8386ba, []int{0}
 }
 
 func init() {
 	proto.RegisterEnum("filesystem.WatchMode", WatchMode_name, WatchMode_value)
 }
 
-func init() { proto.RegisterFile("filesystem/watch.proto", fileDescriptor_watch_532622a0488b6025) }
+func init() { proto.RegisterFile("filesystem/watch.proto", fileDescriptor_watch_e811ad5dff8386ba) }
 
-var fileDescriptor_watch_532622a0488b6025 = []byte{
+var fileDescriptor_watch_e811ad5dff8386ba = []byte{
 	// 162 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x4b, 0xcb, 0xcc, 0x49,
 	0x2d, 0xae, 0x2c, 0x2e, 0x49, 0xcd, 0xd5, 0x2f, 0x4f, 0x2c, 0x49, 0xce, 0xd0, 0x2b, 0x28, 0xca,

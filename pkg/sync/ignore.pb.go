@@ -48,16 +48,16 @@ func (x IgnoreVCSMode) String() string {
 	return proto.EnumName(IgnoreVCSMode_name, int32(x))
 }
 func (IgnoreVCSMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_ignore_c0f021883f75df26, []int{0}
+	return fileDescriptor_ignore_69b171cb9d287eab, []int{0}
 }
 
 func init() {
 	proto.RegisterEnum("sync.IgnoreVCSMode", IgnoreVCSMode_name, IgnoreVCSMode_value)
 }
 
-func init() { proto.RegisterFile("sync/ignore.proto", fileDescriptor_ignore_c0f021883f75df26) }
+func init() { proto.RegisterFile("sync/ignore.proto", fileDescriptor_ignore_69b171cb9d287eab) }
 
-var fileDescriptor_ignore_c0f021883f75df26 = []byte{
+var fileDescriptor_ignore_69b171cb9d287eab = []byte{
 	// 142 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2c, 0xae, 0xcc, 0x4b,
 	0xd6, 0xcf, 0x4c, 0xcf, 0xcb, 0x2f, 0x4a, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x01,

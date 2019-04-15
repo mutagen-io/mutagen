@@ -31,7 +31,7 @@ func (m *Change) Reset()         { *m = Change{} }
 func (m *Change) String() string { return proto.CompactTextString(m) }
 func (*Change) ProtoMessage()    {}
 func (*Change) Descriptor() ([]byte, []int) {
-	return fileDescriptor_change_00ff205a4c51ecc4, []int{0}
+	return fileDescriptor_change_5d44c983f9d34050, []int{0}
 }
 func (m *Change) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Change.Unmarshal(m, b)
@@ -76,9 +76,9 @@ func init() {
 	proto.RegisterType((*Change)(nil), "sync.Change")
 }
 
-func init() { proto.RegisterFile("sync/change.proto", fileDescriptor_change_00ff205a4c51ecc4) }
+func init() { proto.RegisterFile("sync/change.proto", fileDescriptor_change_5d44c983f9d34050) }
 
-var fileDescriptor_change_00ff205a4c51ecc4 = []byte{
+var fileDescriptor_change_5d44c983f9d34050 = []byte{
 	// 162 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2c, 0xae, 0xcc, 0x4b,
 	0xd6, 0x4f, 0xce, 0x48, 0xcc, 0x4b, 0x4f, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x01,
