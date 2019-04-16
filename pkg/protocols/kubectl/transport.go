@@ -78,7 +78,7 @@ func newTransport(remote *url.URL, prompter string) (*transport, error) {
 func (t *transport) command(command string) *exec.Cmd {
 	// Tell Kubectl that we want to execute a command in an interactive (i.e.
 	// with standard input attached) fashion.
-	kubectlArguments := []string{"exec", "-it"}
+	kubectlArguments := []string{"exec", "-i"}
 
 	// Set the pod name (this is stored as the Hostname field in the URL).
 	// TODO: Add support to specify container
@@ -347,39 +347,20 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		return errors.Wrap(err, "unable to run Kubectl copy command")
 	}
 
-	// // The default ownership of files copied into containers is a bit uncertain.
-	// //
-	// // For POSIX containers, ownership of the file is supposed to default to the
-	// // default container user and their associated default group (usually
-	// // root:root, which isn't always the user/group that we want), but
-	// // apparently that's not the case with Kubectl anymore due to a bug or
-	// // regression or just a behavioral change (see
-	// // https://github.com/moby/moby/issues/34096). In any case, the ownership
-	// // may be inappropriate for the file inside a POSIX container, so we
-	// // manually invoke chmod to set user/group ownership when dealing with this
-	// // container type. We always run this chmod command as root to ensure that
-	// // it succeeds.
-	// //
-	// // For Windows containers, there's no documented behavior. Through
-	// // experimentation, it seems like Kubectl just lets the file inherit the
-	// // permissions based on the path that it's copied into, which for home
-	// // directories is fine. If they change this in the future, we may need to
-	// // similarly probe the USERNAME environment variable and use icacls to set
-	// // ownership. It's a little unclear what user would be appropriate for
-	// // running this command, perhaps ContainerAdministrator if it is guaranteed
-	// // to exist, because most built-in NT accounts don't seem to exist in
-	// // containers.
-	// if !t.containerIsWindows {
-	// 	chownCommand := fmt.Sprintf(
-	// 		"chown %s:%s %s",
-	// 		t.containerUsername,
-	// 		t.containerUserGroup,
-	// 		remoteName,
-	// 	)
-	// 	if err := t.command(chownCommand, t.containerHomeDirectory, "root").Run(); err != nil {
-	// 		return errors.Wrap(err, "unable to set ownership of copied file")
-	// 	}
-	// }
+	// When copying files, they preserve permissions and ownership. We want them to be to set to default container user.
+	// TODO: Is root always the default kubectl exec user?
+	if !t.containerIsWindows {
+		chownCommand := fmt.Sprintf(
+			"chown %s:%s %s/%s",
+			t.containerUsername,
+			t.containerUserGroup,
+			t.containerHomeDirectory,
+			remoteName,
+		)
+		if err := t.command(chownCommand).Run(); err != nil {
+			return errors.Wrap(err, fmt.Sprintf("unable to set ownership of copied file %s", chownCommand))
+		}
+	}
 
 	// If this is a Windows container, then we need to stop it from running
 	// while we copy the agent.

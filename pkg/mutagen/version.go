@@ -18,7 +18,8 @@ const (
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = "dev"
+	// FIXME: Failed if versiontag is specified!
+	VersionTag = ""
 )
 
 // Version provides a stringified version of the current Mutagen version.
