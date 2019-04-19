@@ -23,24 +23,10 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // CacheEntry represents cache data for a file on disk.
 type CacheEntry struct {
-	// Mode stores the value of the Go os package's FileMode type. The meaning
-	// of this value is defined to be stable (even if we'd have to implement its
-	// computation ourselves when porting to another language), so it's safe to
-	// use, and it's a relatively sane implementation based on POSIX mode bits.
-	// This information is currently used in scans and transitions, but only the
-	// type and executability bits are really used (or at least necessary) at
-	// the moment. It's not clear whether or not we'll eventually need the other
-	// permission bits, and it might be possible to get away with a type
-	// enumeration instead. This might be easier than trying to replicate
-	// FileMode values if moving to another language, though I'm not sure that
-	// would be too difficult. But I suppose it's better to just have this
-	// additional mode information available for the sake of generality and
-	// extensibility. We can always drop it later, but we can't add it back. It
-	// may (I'm not exactly sure how) come in useful if we want to implement
-	// permission propagation or need a better change detection heuristic. At
-	// the moment though, it's highly unlikely that we'll switch away from Go,
-	// and I'm willing to live with this slightly "unclean" design, especially
-	// given its potential and the relative ease of deprecating it if necessary.
+	// Mode stores the value of the POSIX mode bits (i.e. the st_mode member of
+	// struct stat). On Windows, this value is computed using the Go os.FileMode
+	// value retrieved through the os package (for which bit definitions are
+	// guaranteed to be stable).
 	Mode uint32 `protobuf:"varint,1,opt,name=mode,proto3" json:"mode,omitempty"`
 	// ModificationTime is the cached modification time.
 	ModificationTime *timestamp.Timestamp `protobuf:"bytes,2,opt,name=modificationTime,proto3" json:"modificationTime,omitempty"`
