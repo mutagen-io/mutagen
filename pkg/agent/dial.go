@@ -63,7 +63,6 @@ func connect(
 	}, pathSeparator)
 
 	// Compute the command to invoke.
-	// FIXME: This shouldn't be hardcoded to /root
 	command := fmt.Sprintf("%s %s", agentInvocationPath, ModeEndpoint)
 	if !cmdExe {
 		command = "./" + command
