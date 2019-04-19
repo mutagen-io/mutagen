@@ -298,6 +298,9 @@ func TestEfficientRescan(t *testing.T) {
 		t.Error("snapshot did not match expected")
 	}
 
+	// Hang on to the old cache.
+	oldCache := cache
+
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
 	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(root, hasher, cache, nil, nil, SymlinkMode_SymlinkPortable)
@@ -312,6 +315,19 @@ func TestEfficientRescan(t *testing.T) {
 		t.Fatal("nil second ignore cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("second snapshot did not match expected")
+	}
+
+	// Verify that we haven't allocated any new cache entries on rescan.
+	if len(cache.Entries) != len(oldCache.Entries) {
+		t.Error("cache length mismatch for identical scans:", len(cache.Entries), "!=", len(oldCache.Entries))
+	} else {
+		for p, e := range cache.Entries {
+			if oe, ok := oldCache.Entries[p]; !ok {
+				t.Error("new cache content missing from old cache for path:", p)
+			} else if e != oe {
+				t.Error("new cache entry pointer does not match old cache entry pointer for path:", p)
+			}
+		}
 	}
 }
 

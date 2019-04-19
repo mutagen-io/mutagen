@@ -82,23 +82,30 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 		return nil, errors.Wrap(err, "unable to convert modification time format")
 	}
 
-	// Try to find a cached digest. We require that type, modification time,
-	// file size, and file ID haven't changed in order to re-use digests. We
-	// don't check for permission bit changes since they don't affect content.
-	var digest []byte
+	// Try to find cached data (including a digest) for this path and then
+	// compute whether or not we can reuse the cached digest (in order to avoid
+	// recomputation) and the cache entry itself (in order to avoid allocation).
+	// In order for the cached digest to be considered valid, we require that
+	// type, modification time, file size, and file ID haven't changed. We don't
+	// check for permission bit changes when assessing digest reusability since
+	// they don't affect content, but we do check for full mode equivalence when
+	// assessing cache entry reusability since permission changes need to be
+	// detected during transition operations (where the cache is also used).
 	cached, hit := s.cache.Entries[path]
-	match := hit &&
+	cacheContentMatch := hit &&
 		(metadata.Mode&fs.ModeTypeMask) == (fs.Mode(cached.Mode)&fs.ModeTypeMask) &&
 		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
 		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
 		metadata.Size == cached.Size &&
 		metadata.FileID == cached.FileID
-	if match {
-		digest = cached.Digest
-	}
+	cacheEntryReusable := cacheContentMatch && fs.Mode(cached.Mode) == metadata.Mode
 
-	// If we weren't able to pull a digest from the cache, compute one manually.
-	if digest == nil {
+	// Compute the digest, either by pulling it from the cache or computing it
+	// from the on-disk contents.
+	var digest []byte
+	if cacheContentMatch {
+		digest = cached.Digest
+	} else {
 		// Open the file if it's not open already. If we do open it, then defer
 		// its closure.
 		if file == nil {
@@ -123,13 +130,19 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 		digest = s.hasher.Sum(nil)
 	}
 
-	// Add a cache entry.
-	s.newCache.Entries[path] = &CacheEntry{
-		Mode:             uint32(metadata.Mode),
-		ModificationTime: modificationTimeProto,
-		Size:             metadata.Size,
-		FileID:           metadata.FileID,
-		Digest:           digest,
+	// Add an entry to the new cache. We check to see if we can re-use the
+	// existing cache entry to avoid allocating. We've already performed most of
+	// this check above - we now just need to verify that all mode bits match.
+	if cacheEntryReusable {
+		s.newCache.Entries[path] = cached
+	} else {
+		s.newCache.Entries[path] = &CacheEntry{
+			Mode:             uint32(metadata.Mode),
+			ModificationTime: modificationTimeProto,
+			Size:             metadata.Size,
+			FileID:           metadata.FileID,
+			Digest:           digest,
+		}
 	}
 
 	// Success.
