@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -76,26 +77,33 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 	// Compute executability.
 	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
 
-	// Convert the timestamp to Protocol Buffers format.
-	modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to convert modification time format")
+	// Try to find cached data for this path.
+	cached, cacheHit := s.cache.Entries[path]
+
+	// Convert the timestamp for this cache entry (if there is one) to Go
+	// format. We go this way (instead of converting the metadata timestamp to
+	// Protocol Buffers format) because it avoids allocation (unlike the other
+	// direction).
+	var cachedModificationTime time.Time
+	var err error
+	if cacheHit {
+		cachedModificationTime, err = ptypes.Timestamp(cached.ModificationTime)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to convert cached modification time")
+		}
 	}
 
-	// Try to find cached data (including a digest) for this path and then
-	// compute whether or not we can reuse the cached digest (in order to avoid
-	// recomputation) and the cache entry itself (in order to avoid allocation).
-	// In order for the cached digest to be considered valid, we require that
-	// type, modification time, file size, and file ID haven't changed. We don't
-	// check for permission bit changes when assessing digest reusability since
-	// they don't affect content, but we do check for full mode equivalence when
+	// Check if we can reuse the cached digest (in order to avoid recomputation)
+	// and the cache entry itself (in order to avoid allocation). In order for
+	// the cached digest to be considered valid, we require that type,
+	// modification time, file size, and file ID haven't changed. We don't check
+	// for permission bit changes when assessing digest reusability since they
+	// don't affect content, but we do check for full mode equivalence when
 	// assessing cache entry reusability since permission changes need to be
 	// detected during transition operations (where the cache is also used).
-	cached, hit := s.cache.Entries[path]
-	cacheContentMatch := hit &&
+	cacheContentMatch := cacheHit &&
 		(metadata.Mode&fs.ModeTypeMask) == (fs.Mode(cached.Mode)&fs.ModeTypeMask) &&
-		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
-		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
+		metadata.ModificationTime.Equal(cachedModificationTime) &&
 		metadata.Size == cached.Size &&
 		metadata.FileID == cached.FileID
 	cacheEntryReusable := cacheContentMatch && fs.Mode(cached.Mode) == metadata.Mode
@@ -136,6 +144,13 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 	if cacheEntryReusable {
 		s.newCache.Entries[path] = cached
 	} else {
+		// Convert the new modification time to Protocol Buffers format.
+		modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to convert modification time")
+		}
+
+		// Create the new cache entry.
 		s.newCache.Entries[path] = &CacheEntry{
 			Mode:             uint32(metadata.Mode),
 			ModificationTime: modificationTimeProto,
