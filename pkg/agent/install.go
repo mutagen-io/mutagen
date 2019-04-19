@@ -101,8 +101,7 @@ func install(transport Transport, prompter string) error {
 	}
 	var installCommand string
 	if posix {
-		// FIXME: This shouldn't be hardcoded to /root
-		installCommand = fmt.Sprintf("/root/%s %s", destination, ModeInstall)
+		installCommand = fmt.Sprintf("./%s %s", destination, ModeInstall)
 	} else {
 		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}

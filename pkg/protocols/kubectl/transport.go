@@ -10,18 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/process"
-	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
-
-// windowsContainerNotification is a prompt about copying files into Windows
-// containers, which requires stopping and re-starting the container.
-const windowsContainerCopyNotification = `!!! ATTENTION !!!
-In order to install its agent binary inside a Windows container, Mutagen will
-need to stop and re-start the associated container. This is necessary because
-Hyper-V doesn't support copying files into running containers.
-
-Would you like to continue? (yes/no)? `
 
 // transport implements the agent.Transport interface using Kubectl.
 type transport struct {
@@ -42,14 +32,6 @@ type transport struct {
 	// containerHomeDirectory is the path to the specified user's home directory
 	// within the container.
 	containerHomeDirectory string
-	// containerUsername is the name of the user inside the container. This will
-	// be the same as the username in the remote URL, if any, but since the URL
-	// allows empty usernames (indicating a default user), we have to probe this
-	// separately. It only applies if containerIsWindows is false.
-	containerUsername string
-	// containerUserGroup is the name of the default group for the user inside
-	// the container. It only applies if containerIsWindows is false.
-	containerUserGroup string
 	// containerProbeError tracks any error that arose when probing the
 	// container.
 	containerProbeError error
@@ -71,10 +53,11 @@ func newTransport(remote *url.URL, prompter string) (*transport, error) {
 	}, nil
 }
 
-// command is an underlying command generation function that allows
-// specification of the working directory inside the container, as well as an
-// override of the executing user. An empty user specification means to use the
-// username specified in the remote URL, if any.
+// command executes provided command inside default pod using kubectl exec -i
+// If command starts with "./" then we replace "." with default users home directory
+// Else we just run command as is.
+// This makes it mutagen agent to execute file relative to home directory
+// without actualy knowing the location of home directory
 func (t *transport) command(command string) *exec.Cmd {
 	// Tell Kubectl that we want to execute a command in an interactive (i.e.
 	// with standard input attached) fashion.
@@ -86,6 +69,16 @@ func (t *transport) command(command string) *exec.Cmd {
 
 	// Split kubectl arguments from exec command arguments
 	kubectlArguments = append(kubectlArguments, "--")
+
+	// In case command starts with "./", we replace the "." with default users home directory.
+	// This way we have predictabile location of file to be executed. Always releative to default users home directory.
+	// Copying files is also relative to this directory. Which ensures we can copy and then access the agent.
+	if strings.HasPrefix(command, "./") {
+		command = fmt.Sprintf("%s/%s",
+			t.containerHomeDirectory,
+			strings.TrimPrefix(command, "."),
+		)
+	}
 
 	// Lex the command that we want to run since Kubectl, unlike SSH, wants the
 	// commands and arguments separately instead of as a single argument. All
@@ -188,80 +181,12 @@ func (t *transport) probeContainer() error {
 		return t.containerProbeError
 	}
 
-	// At this point, home directory probing has succeeded. If we're using a
-	// POSIX container, then attempt to extract the user's name and default
-	// group so that we can set permissions on copied files. In theory, the
-	// username should be the same as that passed in the URL, but we allow that
-	// to be empty, which means the default user, usually but not necessarily
-	// root. Since we need the explicit username to run our chown command, we
-	// need to query it.
-	var username, group string
-	if !windows {
-		// Query username.
-		if usernameBytes, err := t.command("id -un").Output(); err != nil {
-			t.containerProbeError = errors.New("unable to probe POSIX username")
-			return t.containerProbeError
-		} else if !utf8.Valid(usernameBytes) {
-			t.containerProbeError = errors.New("non-UTF-8 POSIX username")
-			return t.containerProbeError
-		} else if u := strings.TrimSpace(string(usernameBytes)); u == "" {
-			t.containerProbeError = errors.New("empty POSIX username")
-			return t.containerProbeError
-		} else {
-			username = u
-		}
-
-		// Query default group name.
-		if groupBytes, err := t.command("id -gn").Output(); err != nil {
-			t.containerProbeError = errors.New("unable to probe POSIX group name")
-			return t.containerProbeError
-		} else if !utf8.Valid(groupBytes) {
-			t.containerProbeError = errors.New("non-UTF-8 POSIX group name")
-			return t.containerProbeError
-		} else if g := strings.TrimSpace(string(groupBytes)); g == "" {
-			t.containerProbeError = errors.New("empty POSIX group name")
-			return t.containerProbeError
-		} else {
-			group = g
-		}
-	}
-
 	// Store values.
 	t.containerIsWindows = windows
 	t.containerHomeDirectory = home
-	t.containerUsername = username
-	t.containerUserGroup = group
 
 	// Success.
 	return nil
-}
-
-// changeContainerStatus stops or starts the container. It is required for
-// copying files on Windows when using Hyper-V.
-func (t *transport) changeContainerStatus(stop bool) error {
-	// Determine the correct Kubectl operation.
-	operation := "start"
-	if stop {
-		operation = "stop"
-	}
-
-	// Create the command.
-	kubectlCommand := exec.Command(t.kubectlExecutable, operation, t.remote.Hostname)
-
-	// Force it to run detached.
-	kubectlCommand.SysProcAttr = process.DetachedProcessAttributes()
-
-	// Create a copy of the current environment.
-	environment := os.Environ()
-
-	// Set Kubectl environment variables.
-	environment = setKubectlVariables(environment, t.remote)
-
-	// Set the environment for the command.
-	kubectlCommand.Env = environment
-
-	// Run the operation.
-	return kubectlCommand.Run()
 }
 
 // Copy implements the Copy method of agent.Transport.
@@ -271,33 +196,15 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		return errors.Wrap(err, "unable to probe container")
 	}
 
-	// If this is a Windows container, then we need to stop it from running
-	// while we copy the agent. But first, we'll prompt the user to ensure that
-	// they're okay with this.
-	if t.containerIsWindows {
-		if t.prompter == "" {
-			return errors.New("no prompter for Kubectl copy behavior confirmation")
-		}
-		for {
-			if response, err := prompt.Prompt(t.prompter, windowsContainerCopyNotification); err != nil {
-				return errors.Wrap(err, "unable to prompt for Kubectl copy behavior confirmation")
-			} else if response == "no" {
-				return errors.New("user cancelled copy operation")
-			} else if response == "yes" {
-				break
-			}
-		}
-		if err := t.changeContainerStatus(true); err != nil {
-			return errors.Wrap(err, "unable to stop Kubectl container")
-		}
-	}
-
 	// Compute the path inside the container. We don't bother trimming trailing
 	// slashes from the home directory, because both Windows and POSIX will work
 	// in their presence. The only case on Windows where \\ has special meaning
 	// is with UNC paths, an in that case they only occur at the beginning of a
 	// path, which they won't in this case since we've verified that the home
 	// directory is non-empty.
+	//
+	// We also check if path starts with / or \\. In case it is, we dont change it.
+	// But if it dose, then we prepend default users home directory.
 	var containerPath string
 	if t.containerIsWindows {
 		if strings.HasPrefix(remoteName, "\\") {
@@ -328,7 +235,8 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	}
 
 	// Create the command.
-	kubectlCommand := exec.Command(t.kubectlExecutable, "cp", localPath, containerPath)
+	// We dont want to preserve user from host user, but use default container user.
+	kubectlCommand := exec.Command(t.kubectlExecutable, "cp", "--no-preserve", localPath, containerPath)
 
 	// Force it to run detached.
 	kubectlCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -345,29 +253,6 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	// Run the operation.
 	if err := kubectlCommand.Run(); err != nil {
 		return errors.Wrap(err, "unable to run Kubectl copy command")
-	}
-
-	// When copying files, they preserve permissions and ownership. We want them to be to set to default container user.
-	// TODO: Is root always the default kubectl exec user?
-	if !t.containerIsWindows {
-		chownCommand := fmt.Sprintf(
-			"chown %s:%s %s/%s",
-			t.containerUsername,
-			t.containerUserGroup,
-			t.containerHomeDirectory,
-			remoteName,
-		)
-		if err := t.command(chownCommand).Run(); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("unable to set ownership of copied file %s", chownCommand))
-		}
-	}
-
-	// If this is a Windows container, then we need to stop it from running
-	// while we copy the agent.
-	if t.containerIsWindows {
-		if err := t.changeContainerStatus(false); err != nil {
-			return errors.Wrap(err, "unable to start Kubectl container")
-		}
 	}
 
 	// Success.
@@ -416,6 +301,9 @@ func (t *transport) ClassifyError(processState *os.ProcessState, errorOutput str
 	// Anyway, the exit code we need to look out for with both POSIX and Windows
 	// containers is 126, and since we know the remote platform already, we can
 	// return that information without needing to resort to the error string.
+	//
+	// TODO: This is copied from Docker, verify if it is still true!
+	//
 	if !process.IsPOSIXShellInvalidCommand(processState) {
 		return false, false, errors.New("unknown process exit error")
 	}
