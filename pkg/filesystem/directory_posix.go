@@ -327,6 +327,16 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 		return nil, errors.Wrap(err, "unable to read directory content names")
 	}
 
+	// Use parallel metadata query operations, if available.
+	if !parallelMetadataDisabled {
+		parallelReadContentMetadataRequests <- parallelReadContentMetadataRequest{
+			directory: d,
+			names:     names,
+		}
+		response := <-parallelReadContentMetadataResponses
+		return response.results, response.fatalError
+	}
+
 	// Allocate the result slice with enough capacity to accommodate all
 	// entries.
 	results := make([]*Metadata, 0, len(names))
