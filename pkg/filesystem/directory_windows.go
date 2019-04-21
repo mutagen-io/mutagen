@@ -344,12 +344,11 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 
 // ReadContents queries the directory contents and their associated metadata.
 // While the results of this function can be computed as a combination of
-// ReadContentNames and ReadContentMetadata (and this is indeed the mechanism by
-// which this function is implemented on POSIX systems), it may be significantly
-// faster than a naïve combination implementation on some platforms
-// (specifically Windows, where it relies on FindFirstFile/FindNextFile
-// infrastructure). This function doesn't not return metadata for "." or ".."
-// entries.
+// ReadContentNames and ReadContentMetadata, this function may be significantly
+// faster than a naïve combination of the two (e.g. due to parallelized fstatat
+// calls on POSIX systems and the usage of FindFirstFile/FindNextFile
+// infrastructure on Windows). This function doesn't return metadata for "." or
+// ".." entries.
 func (d *Directory) ReadContents() ([]*Metadata, error) {
 	// Read directory content. On Windows, we use the os.File implementation to
 	// read names and (an acceptable amount of metadata) in one fell swoop,
