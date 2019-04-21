@@ -39,11 +39,14 @@ func ensureValidName(name string) error {
 // the directory's contents. All of its operations avoid the traversal of
 // symbolic links.
 type Directory struct {
-	// file is the underlying os.File object corresponding to the directory.
-	file *os.File
-	// descriptor is the cached file descriptor extracted from the os.File
-	// object.
+	// descriptor is the file descriptor for the directory, designed to be used
+	// in conjunction with POSIX *at functions. It is wrapped by the os.File
+	// object below (file) and should not be closed directly.
 	descriptor int
+	// file is an os.File object which wraps the directory descriptor. It is
+	// required for its Readdirnames function, since there's no other portable
+	// way to do this from Go.
+	file *os.File
 }
 
 // Close closes the directory.
@@ -166,10 +169,10 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 
 // open is the underlying open implementation shared by OpenDirectory and
 // OpenFile.
-func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error) {
+func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error) {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
-		return nil, 0, err
+		return -1, nil, err
 	}
 
 	// Open the file for reading while avoiding symbolic link traversal. There
@@ -194,7 +197,7 @@ func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error)
 		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
 			continue
 		} else {
-			return nil, 0, err
+			return -1, nil, err
 		}
 	}
 
@@ -213,10 +216,10 @@ func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error)
 	var metadata unix.Stat_t
 	if err := unix.Fstat(descriptor, &metadata); err != nil {
 		unix.Close(descriptor)
-		return nil, 0, errors.Wrap(err, "unable to query file metadata")
+		return -1, nil, errors.Wrap(err, "unable to query file metadata")
 	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
 		unix.Close(descriptor)
-		return nil, 0, errors.New("path is not of the expected type")
+		return -1, nil, errors.New("path is not of the expected type")
 	}
 
 	// Wrap the descriptor up in a file object. We use the base name for the
@@ -226,21 +229,21 @@ func (d *Directory) open(name string, wantDirectory bool) (*os.File, int, error)
 	file := os.NewFile(uintptr(descriptor), name)
 
 	// Success.
-	return file, descriptor, nil
+	return descriptor, file, nil
 }
 
 // OpenDirectory opens the directory within the directory specified by name.
 func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Call the underlying open method.
-	file, descriptor, err := d.open(name, true)
+	descriptor, file, err := d.open(name, true)
 	if err != nil {
 		return nil, err
 	}
 
 	// Success.
 	return &Directory{
-		file:       file,
 		descriptor: descriptor,
+		file:       file,
 	}, nil
 }
 
@@ -350,7 +353,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 // OpenFile opens the file within the directory specified by name.
 func (d *Directory) OpenFile(name string) (ReadableFile, error) {
-	file, _, err := d.open(name, false)
+	_, file, err := d.open(name, false)
 	return file, err
 }
 

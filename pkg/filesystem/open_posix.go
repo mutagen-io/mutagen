@@ -6,9 +6,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
+	"runtime"
+	"time"
 
 	"github.com/pkg/errors"
+
+	"golang.org/x/sys/unix"
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
@@ -25,11 +28,10 @@ import (
 // regular file, and the returned object will still be either a Directory or
 // ReadableFile.
 func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
-	// Open the file using the os package's infrastructure. Unless explicitly
-	// allowed, we disable resolution of symbolic links at the leaf position of
-	// the path by specifying O_NOFOLLOW. Note that this flag only affects the
-	// leaf component of the path - intermediate symbolic links are still
-	// allowed and resolved.
+	// Open the file. Unless explicitly allowed, we disable resolution of
+	// symbolic links at the leaf position of the path by specifying O_NOFOLLOW.
+	// Note that this flag only affects the leaf component of the path -
+	// intermediate symbolic links are still allowed and resolved.
 	//
 	// Ideally, we'd want the open function to open the symbolic link itself
 	// in the event that O_NOFOLLOW is specified and the path leaf references a
@@ -46,50 +48,58 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// readlink and its ilk. Since ELOOP still sort of makes sense (we've
 	// encountered too many symbolic links at the path leaf), we return it
 	// unmodified.
-	flags := os.O_RDONLY | syscall.O_NOFOLLOW
+	//
+	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
+	flags := os.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
 	if allowSymbolicLinkLeaf {
-		flags = os.O_RDONLY
+		flags &^= unix.O_NOFOLLOW
 	}
-	file, err := os.OpenFile(path, flags, 0)
-	if err != nil {
-		return nil, nil, err
+	var descriptor int
+	for {
+		if d, err := unix.Open(path, flags, 0); err == nil {
+			descriptor = d
+			break
+		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
+			continue
+		} else {
+			return nil, nil, err
+		}
 	}
 
-	// Grab file metadata.
-	fileMetadata, err := file.Stat()
-	if err != nil {
-		file.Close()
+	// Grab metadata for the file.
+	var rawMetadata unix.Stat_t
+	if err := unix.Fstat(descriptor, &rawMetadata); err != nil {
+		unix.Close(descriptor)
 		return nil, nil, errors.Wrap(err, "unable to query file metadata")
 	}
 
-	// Extract the raw system-level metadata.
-	rawMetadata, ok := fileMetadata.Sys().(*syscall.Stat_t)
-	if !ok {
-		file.Close()
-		return nil, nil, errors.New("unable to extract raw file metadata")
-	}
+	// Extract modification time specification.
+	modificationTime := extractModificationTime(&rawMetadata)
 
 	// Convert the raw system-level metadata.
 	metadata := &Metadata{
 		Name:             filepath.Base(path),
 		Mode:             Mode(rawMetadata.Mode),
 		Size:             uint64(rawMetadata.Size),
-		ModificationTime: fileMetadata.ModTime(),
+		ModificationTime: time.Unix(modificationTime.Unix()),
 		DeviceID:         uint64(rawMetadata.Dev),
 		FileID:           uint64(rawMetadata.Ino),
 	}
+
+	// Wrap the descriptor up in an os.File object.
+	file := os.NewFile(uintptr(descriptor), path)
 
 	// Dispatch further construction according to type.
 	switch metadata.Mode & ModeTypeMask {
 	case ModeTypeDirectory:
 		return &Directory{
+			descriptor: descriptor,
 			file:       file,
-			descriptor: int(file.Fd()),
 		}, metadata, nil
 	case ModeTypeFile:
 		return file, metadata, nil
 	default:
-		file.Close()
+		unix.Close(descriptor)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 }
