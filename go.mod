@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Microsoft/go-winio v0.4.12
+	github.com/Microsoft/go-winio v0.4.13-0.20190422210507-3fe4fa31662f
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0
