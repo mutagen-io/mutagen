@@ -38,8 +38,8 @@ golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd h1:SuDTjBhSMCPRh1JuhAAzDb
 golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/net v0.0.0-20180511174649-2491c5de3490 h1:0Q0ESa4hjqMAXX5fW/YoKX7MlU1fWzl2ZNJrv7Yo3ZE=
 golang.org/x/net v0.0.0-20180511174649-2491c5de3490/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
-golang.org/x/sys v0.0.0-20190204203706-41f3e6584952 h1:FDfvYgoVsA7TTZSbgiqjAbfPbK47CNHdWl3h/PJtii0=
-golang.org/x/sys v0.0.0-20190204203706-41f3e6584952/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190422165155-953cdadca894 h1:Cz4ceDQGXuKRnVBDTS23GTn/pU5OE2C0WrNTOYK1Uuc=
+golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5 h1:23hw054QGj0KDkhDTmeMTzaawNqHp/Q5B65f8TTG3vg=
 golang.org/x/text v0.3.1-0.20180410181320-7922cc490dd5/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 google.golang.org/genproto v0.0.0-20180514194645-7bb2a897381c h1:R3jNsirp2C5jVsB8uNG/vYmFEyzB9SLTFUwE0Wsj0B8=
