@@ -127,7 +127,8 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 		// Reset the hash state.
 		s.hasher.Reset()
 
-		// Copy data into the hash and very that we copied as much as expected.
+		// Copy data into the hash and verify that we copied the amount
+		// expected.
 		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
 			return nil, errors.Wrap(err, "unable to hash file contents")
 		} else if uint64(copied) != metadata.Size {
