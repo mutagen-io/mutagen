@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v0.3.1-0.20170626110600-a368813c5e64 h1:Qe/XfSxGMmeTFfxjzmp7w++HA+ia7Rve7ey/dzDZQNM=
 github.com/BurntSushi/toml v0.3.1-0.20170626110600-a368813c5e64/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/Microsoft/go-winio v0.0.0-20180806200450-78a084671df1 h1:gDItTo6RKcc2y+oS5cOFBywpt6Aj80b1lw13plUhgXc=
-github.com/Microsoft/go-winio v0.0.0-20180806200450-78a084671df1/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
+github.com/Microsoft/go-winio v0.4.13-0.20190422210507-3fe4fa31662f h1:31ImnZJl8h3IVChRBtVIy6C0dfqariFCoM79mv9pLtA=
+github.com/Microsoft/go-winio v0.4.13-0.20190422210507-3fe4fa31662f/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/bmatcuk/doublestar v1.1.1 h1:YroD6BJCZBYx06yYFEWvUuKVWQn3vLLQAVmDmvTSaiQ=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
