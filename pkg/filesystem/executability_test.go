@@ -37,12 +37,12 @@ func (c *preservesExecutabilityByPathTestCase) run(t *testing.T) {
 	}
 }
 
-// TestPreservesExecutabilityByPathAssumed tests assumed executability
-// preservation behavior by path on the current directory.
-func TestPreservesExecutabilityByPathAssumed(t *testing.T) {
+// TestPreservesExecutabilityByPathAssumedHomeDirectory tests assumed
+// executability preservation behavior by path on the current directory.
+func TestPreservesExecutabilityByPathAssumedHomeDirectory(t *testing.T) {
 	// Create the test case.
 	testCase := &preservesExecutabilityByPathTestCase{
-		path:     ".",
+		path:     HomeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
 	}
@@ -127,12 +127,12 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	}
 }
 
-// TestPreservesExecutabilityAssumed tests assumed executability preservation
-// behavior on the current directory.
-func TestPreservesExecutabilityAssumed(t *testing.T) {
+// TestPreservesExecutabilityAssumedHomeDirectory tests assumed executability
+// preservation behavior on the home directory.
+func TestPreservesExecutabilityAssumedHomeDirectory(t *testing.T) {
 	// Create the test case.
 	testCase := &preservesExecutabilityTestCase{
-		path:     ".",
+		path:     HomeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
 	}

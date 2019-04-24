@@ -6,9 +6,13 @@ import (
 	"testing"
 )
 
-func TestDecomposesUnicodeByPathAssumed(t *testing.T) {
-	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicodeByPath(".", ProbeMode_ProbeModeAssume); err != nil {
+func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {
+	// Query the assumed behavior of the home directory and ensure it matches
+	// what's expected.
+	if decomposes, err := DecomposesUnicodeByPath(
+		HomeDirectory,
+		ProbeMode_ProbeModeAssume,
+	); err != nil {
 		t.Fatal("unable to query Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -113,12 +117,12 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 	}
 }
 
-// TestDecomposesUnicodeAssumed tests assumed Unicode decomposition behavior on
-// the current directory.
-func TestDecomposesUnicodeAssumed(t *testing.T) {
+// TestDecomposesUnicodeAssumedHomeDirectory tests assumed Unicode decomposition
+// behavior on the home directory.
+func TestDecomposesUnicodeAssumedHomeDirectory(t *testing.T) {
 	// Create the test case.
 	testCase := &decomposesUnicodeTestCase{
-		path:     ".",
+		path:     HomeDirectory,
 		assume:   true,
 		expected: false,
 	}
