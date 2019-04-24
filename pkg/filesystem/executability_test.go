@@ -11,6 +11,9 @@ import (
 type preservesExecutabilityByPathTestCase struct {
 	// path is the path to test.
 	path string
+	// assume indicates that an assumption should be generated as opposed to
+	// actual probing.
+	assume bool
 	// expected is the expected result of the executability preservation test.
 	expected bool
 }
@@ -20,12 +23,32 @@ func (c *preservesExecutabilityByPathTestCase) run(t *testing.T) {
 	// Mark ourselves as a helper function.
 	t.Helper()
 
+	// Determine the probing mode.
+	probeMode := ProbeMode_ProbeModeProbe
+	if c.assume {
+		probeMode = ProbeMode_ProbeModeAssume
+	}
+
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if preserves, err := PreservesExecutabilityByPath(c.path); err != nil {
+	if preserves, err := PreservesExecutabilityByPath(c.path, probeMode); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")
 	}
+}
+
+// TestPreservesExecutabilityByPathAssumed tests assumed executability
+// preservation behavior by path on the current directory.
+func TestPreservesExecutabilityByPathAssumed(t *testing.T) {
+	// Create the test case.
+	testCase := &preservesExecutabilityByPathTestCase{
+		path:     ".",
+		assume:   true,
+		expected: runtime.GOOS != "windows",
+	}
+
+	// Run the test case.
+	testCase.run(t)
 }
 
 // TestPreservesExecutabilityByPathHomeDirectory tests executability
@@ -65,6 +88,9 @@ func TestPreservesExecutabilityByPathFAT32(t *testing.T) {
 type preservesExecutabilityTestCase struct {
 	// path is the path to test.
 	path string
+	// assume indicates that an assumption should be generated as opposed to
+	// actual probing.
+	assume bool
 	// expected is the expected result of the executability preservation test.
 	expected bool
 }
@@ -87,12 +113,32 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	}
 	defer directory.Close()
 
+	// Determine the probing mode.
+	probeMode := ProbeMode_ProbeModeProbe
+	if c.assume {
+		probeMode = ProbeMode_ProbeModeAssume
+	}
+
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if preserves, err := PreservesExecutability(directory); err != nil {
+	if preserves, err := PreservesExecutability(directory, probeMode); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")
 	}
+}
+
+// TestPreservesExecutabilityAssumed tests assumed executability preservation
+// behavior on the current directory.
+func TestPreservesExecutabilityAssumed(t *testing.T) {
+	// Create the test case.
+	testCase := &preservesExecutabilityTestCase{
+		path:     ".",
+		assume:   true,
+		expected: runtime.GOOS != "windows",
+	}
+
+	// Run the test case.
+	testCase.run(t)
 }
 
 // TestPreservesExecutabilityHomeDirectory tests executability preservation

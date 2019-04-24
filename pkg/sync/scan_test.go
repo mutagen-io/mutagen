@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, ignores []string, symlinkMode SymlinkMode, expectEqual bool) error {
@@ -25,7 +27,15 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(root, hasher, nil, ignores, nil, symlinkMode)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+		root,
+		hasher,
+		nil,
+		ignores,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		symlinkMode,
+	)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, entry, snapshot)
 	}
@@ -251,7 +261,15 @@ func TestScanSymlinkRoot(t *testing.T) {
 	}
 
 	// Attempt a scan of the symlink.
-	if _, _, _, _, _, err := Scan(root, sha1.New(), nil, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, _, err := Scan(
+		root,
+		sha1.New(),
+		nil,
+		nil,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		SymlinkMode_SymlinkPortable,
+	); err == nil {
 		t.Error("scan of symlink root allowed")
 	}
 }
@@ -284,7 +302,15 @@ func TestEfficientRescan(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(root, hasher, nil, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+		root,
+		hasher,
+		nil,
+		nil,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		SymlinkMode_SymlinkPortable,
+	)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -303,7 +329,15 @@ func TestEfficientRescan(t *testing.T) {
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(root, hasher, cache, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(
+		root,
+		hasher,
+		cache,
+		nil,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		SymlinkMode_SymlinkPortable,
+	)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, testDirectory1Entry, snapshot)
 	}
@@ -346,7 +380,15 @@ func TestScanCrossDeviceFail(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Perform a scan and ensure that it fails.
-	if _, _, _, _, _, err := Scan(parent, hasher, nil, nil, nil, SymlinkMode_SymlinkPortable); err == nil {
+	if _, _, _, _, _, err := Scan(
+		parent,
+		hasher,
+		nil,
+		nil,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		SymlinkMode_SymlinkPortable,
+	); err == nil {
 		t.Error("scan across device boundary did not fail")
 	}
 }

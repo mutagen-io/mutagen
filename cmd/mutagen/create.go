@@ -70,6 +70,24 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate and convert probe mode specifications.
+	var probeMode, probeModeAlpha, probeModeBeta fs.ProbeMode
+	if createConfiguration.probeMode != "" {
+		if err := probeMode.UnmarshalText([]byte(createConfiguration.probeMode)); err != nil {
+			return errors.Wrap(err, "unable to parse probe mode")
+		}
+	}
+	if createConfiguration.probeModeAlpha != "" {
+		if err := probeModeAlpha.UnmarshalText([]byte(createConfiguration.probeModeAlpha)); err != nil {
+			return errors.Wrap(err, "unable to parse probe mode for alpha")
+		}
+	}
+	if createConfiguration.probeModeBeta != "" {
+		if err := probeModeBeta.UnmarshalText([]byte(createConfiguration.probeModeBeta)); err != nil {
+			return errors.Wrap(err, "unable to parse probe mode for beta")
+		}
+	}
+
 	// Validate and convert the symbolic link mode specification.
 	var symbolicLinkMode sync.SymlinkMode
 	if createConfiguration.symbolicLinkMode != "" {
@@ -237,6 +255,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			SynchronizationMode:    synchronizationMode,
 			MaximumEntryCount:      createConfiguration.maximumEntryCount,
 			MaximumStagingFileSize: maximumStagingFileSize,
+			ProbeMode:              probeMode,
 			SymlinkMode:            symbolicLinkMode,
 			WatchMode:              watchMode,
 			WatchPollingInterval:   createConfiguration.watchPollingInterval,
@@ -248,6 +267,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			DefaultGroup:           createConfiguration.defaultGroup,
 		},
 		ConfigurationAlpha: &sessionpkg.Configuration{
+			ProbeMode:            probeModeAlpha,
 			WatchMode:            watchModeAlpha,
 			WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
 			DefaultFileMode:      defaultFileModeAlpha,
@@ -256,6 +276,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
 		},
 		ConfigurationBeta: &sessionpkg.Configuration{
+			ProbeMode:            probeModeBeta,
 			WatchMode:            watchModeBeta,
 			WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
 			DefaultFileMode:      defaultFileModeBeta,
@@ -315,6 +336,14 @@ var createConfiguration struct {
 	// maximumStagingFileSize is the maximum file size that endpoints will
 	// stage. It can be specified in human-friendly units.
 	maximumStagingFileSize string
+	// probeMode specifies the filesystem probing mode to use for the session.
+	probeMode string
+	// probeModeAlpha specifies the filesystem probing mode to use for the
+	// session, taking priority over watchMode on alpha if specified.
+	probeModeAlpha string
+	// probeModeBeta specifies the filesystem probing mode to use for the
+	// session, taking priority over watchMode on beta if specified.
+	probeModeBeta string
 	// symbolicLinkMode specifies the symbolic link handling mode to use for
 	// the session.
 	symbolicLinkMode string
@@ -410,6 +439,9 @@ func init() {
 	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
 	flags.Uint64Var(&createConfiguration.maximumEntryCount, "max-entry-count", 0, "Specify the maximum number of entries that endpoints will manage")
 	flags.StringVar(&createConfiguration.maximumStagingFileSize, "max-staging-file-size", "", "Specify the maximum (individual) file size that endpoints will stage")
+	flags.StringVar(&createConfiguration.probeMode, "probe-mode", "", "Specify probe mode (probe|assume)")
+	flags.StringVar(&createConfiguration.probeModeAlpha, "probe-mode-alpha", "", "Specify probe mode for alpha (probe|assume)")
+	flags.StringVar(&createConfiguration.probeModeBeta, "probe-mode-beta", "", "Specify probe mode for beta (probe|assume)")
 
 	// Wire up symbolic link flags.
 	flags.StringVar(&createConfiguration.symbolicLinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")

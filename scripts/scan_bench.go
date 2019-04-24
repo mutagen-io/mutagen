@@ -15,6 +15,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/profile"
+	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -62,7 +63,13 @@ func main() {
 	}
 	start := time.Now()
 	snapshot, preservesExecutability, recomposeUnicode, cache, ignoreCache, err := sync.Scan(
-		path, sha1.New(), nil, ignores, nil, sync.SymlinkMode_SymlinkPortable,
+		path,
+		sha1.New(),
+		nil,
+		ignores,
+		nil,
+		fs.ProbeMode_ProbeModeProbe,
+		sync.SymlinkMode_SymlinkPortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -89,7 +96,13 @@ func main() {
 	}
 	start = time.Now()
 	snapshot, preservesExecutability, recomposeUnicode, _, _, err = sync.Scan(
-		path, sha1.New(), cache, ignores, ignoreCache, sync.SymlinkMode_SymlinkPortable,
+		path,
+		sha1.New(),
+		cache,
+		ignores,
+		ignoreCache,
+		fs.ProbeMode_ProbeModeProbe,
+		sync.SymlinkMode_SymlinkPortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))

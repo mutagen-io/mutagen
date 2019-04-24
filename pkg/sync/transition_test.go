@@ -162,7 +162,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 
 	// Determine whether or not we need to recompose Unicode when transitioning
 	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicodeByPath(parent)
+	recomposeUnicode, err := filesystem.DecomposesUnicodeByPath(parent, filesystem.ProbeMode_ProbeModeProbe)
 	if err != nil {
 		os.RemoveAll(parent)
 		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
@@ -236,7 +236,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	// Unicode recomposition behavior.
 	var recomposeUnicode bool
 	if expected != nil && expected.Kind == EntryKind_Directory {
-		if r, err := filesystem.DecomposesUnicodeByPath(root); err != nil {
+		if r, err := filesystem.DecomposesUnicodeByPath(root, filesystem.ProbeMode_ProbeModeProbe); err != nil {
 			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
 		} else {
 			recomposeUnicode = r
@@ -295,7 +295,15 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(root, newTestHasher(), nil, nil, nil, SymlinkMode_SymlinkPortable)
+	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+		root,
+		newTestHasher(),
+		nil,
+		nil,
+		nil,
+		filesystem.ProbeMode_ProbeModeProbe,
+		SymlinkMode_SymlinkPortable,
+	)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, expected, snapshot)
 	}
@@ -390,7 +398,15 @@ func TestTransitionSwapFile(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(root, newTestHasher(), nil, nil, nil, SymlinkMode_SymlinkPortable)
+		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+			root,
+			newTestHasher(),
+			nil,
+			nil,
+			nil,
+			filesystem.ProbeMode_ProbeModeProbe,
+			SymlinkMode_SymlinkPortable,
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {
@@ -455,7 +471,15 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(root, newTestHasher(), nil, nil, nil, SymlinkMode_SymlinkPortable)
+		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+			root,
+			newTestHasher(),
+			nil,
+			nil,
+			nil,
+			filesystem.ProbeMode_ProbeModeProbe,
+			SymlinkMode_SymlinkPortable,
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {
@@ -554,7 +578,15 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(root, newTestHasher(), nil, nil, nil, SymlinkMode_SymlinkPortable)
+		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+			root,
+			newTestHasher(),
+			nil,
+			nil,
+			nil,
+			filesystem.ProbeMode_ProbeModeProbe,
+			SymlinkMode_SymlinkPortable,
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {

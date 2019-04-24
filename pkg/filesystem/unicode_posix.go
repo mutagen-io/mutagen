@@ -21,7 +21,14 @@ const (
 
 // DecomposesUnicodeByPath determines whether or not the filesystem on which the
 // directory at the specified path resides decomposes Unicode filenames.
-func DecomposesUnicodeByPath(path string) (bool, error) {
+func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return false, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Create and close a temporary file using the composed filename.
 	file, err := ioutil.TempFile(path, composedFileNamePrefix)
 	if err != nil {
@@ -72,7 +79,14 @@ func DecomposesUnicodeByPath(path string) (bool, error) {
 
 // DecomposesUnicode determines whether or not the specified directory (and its
 // underlying filesystem) decomposes Unicode filenames.
-func DecomposesUnicode(directory *Directory) (bool, error) {
+func DecomposesUnicode(directory *Directory, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return false, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Create and close a temporary file using the composed filename.
 	composedName, file, err := directory.CreateTemporaryFile(composedFileNamePrefix)
 	if err != nil {
