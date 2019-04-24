@@ -249,6 +249,7 @@ func NewEndpoint(
 		root:                 root,
 		readOnly:             readOnly,
 		maximumEntryCount:    configuration.MaximumEntryCount,
+		probeMode:            probeMode,
 		watchCancel:          watchCancel,
 		watchEvents:          watchEvents,
 		symlinkMode:          symlinkMode,
