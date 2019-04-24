@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// IsDefault indicates whether or not the watch mode mode is
+// IsDefault indicates whether or not the watch mode is
 // WatchMode_WatchModeDefault.
 func (m WatchMode) IsDefault() bool {
 	return m == WatchMode_WatchModeDefault
@@ -18,7 +18,7 @@ func (m *WatchMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
-	// Convert to a VCS mode.
+	// Convert to a watch mode.
 	switch text {
 	case "portable":
 		*m = WatchMode_WatchModePortable
