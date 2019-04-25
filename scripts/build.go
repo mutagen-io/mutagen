@@ -245,6 +245,7 @@ var targets = []Target{
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
+	{"windows", "arm"},
 }
 
 // archiveBuilderCopyBufferSize determines the size of the copy buffer used when
