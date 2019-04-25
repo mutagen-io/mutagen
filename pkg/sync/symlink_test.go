@@ -4,80 +4,92 @@ import (
 	"testing"
 )
 
-func TestSymlinkModeUnmarshalIgnore(t *testing.T) {
-	var mode SymlinkMode
-	if err := mode.UnmarshalText([]byte("ignore")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != SymlinkMode_SymlinkModeIgnore {
-		t.Error("unmarshalled mode does not match expected")
+// TestSymlinkModeUnmarshal tests that unmarshaling from a string specification
+// succeeeds for SymlinkMode.
+func TestSymlinkModeUnmarshal(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Text          string
+		ExpectedMode  SymlinkMode
+		ExpectFailure bool
+	}{
+		{"", SymlinkMode_SymlinkModeDefault, true},
+		{"asdf", SymlinkMode_SymlinkModeDefault, true},
+		{"ignore", SymlinkMode_SymlinkModeIgnore, false},
+		{"portable", SymlinkMode_SymlinkModePortable, false},
+		{"posix-raw", SymlinkMode_SymlinkModePOSIXRaw, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var mode SymlinkMode
+		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
+			if !testCase.ExpectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+			}
+		} else if testCase.ExpectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
+		} else if mode != testCase.ExpectedMode {
+			t.Errorf(
+				"unmarshaled mode (%s) does not match expected (%s)",
+				mode,
+				testCase.ExpectedMode,
+			)
+		}
 	}
 }
 
-func TestSymlinkModeUnmarshalPortable(t *testing.T) {
-	var mode SymlinkMode
-	if err := mode.UnmarshalText([]byte("portable")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != SymlinkMode_SymlinkModePortable {
-		t.Error("unmarshalled mode does not match expected")
-	}
-}
-
-func TestSymlinkModeUnmarshalPOSIXRaw(t *testing.T) {
-	var mode SymlinkMode
-	if err := mode.UnmarshalText([]byte("posix-raw")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != SymlinkMode_SymlinkModePOSIXRaw {
-		t.Error("unmarshalled mode does not match expected")
-	}
-}
-
-func TestSymlinkModeUnmarshalEmpty(t *testing.T) {
-	var mode SymlinkMode
-	if mode.UnmarshalText([]byte("")) == nil {
-		t.Error("empty symlink mode successfully unmarshalled")
-	}
-}
-
-func TestSymlinkModeUnmarshalInvalid(t *testing.T) {
-	var mode SymlinkMode
-	if mode.UnmarshalText([]byte("invalid")) == nil {
-		t.Error("invalid symlink mode successfully unmarshalled")
-	}
-}
-
+// TestSymlinkModeSupported tests that SymlinkMode support detection works as
+// expected.
 func TestSymlinkModeSupported(t *testing.T) {
-	if SymlinkMode_SymlinkModeDefault.Supported() {
-		t.Error("default symlink mode considered supported")
+	// Set up test cases.
+	testCases := []struct {
+		Mode            SymlinkMode
+		ExpectSupported bool
+	}{
+		{SymlinkMode_SymlinkModeDefault, false},
+		{SymlinkMode_SymlinkModeIgnore, true},
+		{SymlinkMode_SymlinkModePortable, true},
+		{SymlinkMode_SymlinkModePOSIXRaw, true},
+		{(SymlinkMode_SymlinkModePOSIXRaw + 1), false},
 	}
-	if !SymlinkMode_SymlinkModePortable.Supported() {
-		t.Error("portable symlink mode considered unsupported")
-	}
-	if !SymlinkMode_SymlinkModeIgnore.Supported() {
-		t.Error("ignore symlink mode considered unsupported")
-	}
-	if !SymlinkMode_SymlinkModePOSIXRaw.Supported() {
-		t.Error("POSIX raw symlink mode considered unsupported")
-	}
-	if (SymlinkMode_SymlinkModePOSIXRaw + 1).Supported() {
-		t.Error("invalid symlink mode considered supported")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+			t.Errorf(
+				"mode support status (%t) does not match expected (%t)",
+				supported,
+				testCase.ExpectSupported,
+			)
+		}
 	}
 }
 
+// TestSymlinkModeDescription tests that SymlinkMode description generation
+// works as expected.
 func TestSymlinkModeDescription(t *testing.T) {
-	if description := SymlinkMode_SymlinkModeDefault.Description(); description != "Default" {
-		t.Error("default symlink mode description incorrect:", description, "!=", "Default")
+	// Set up test cases.
+	testCases := []struct {
+		Mode                SymlinkMode
+		ExpectedDescription string
+	}{
+		{SymlinkMode_SymlinkModeDefault, "Default"},
+		{SymlinkMode_SymlinkModeIgnore, "Ignore"},
+		{SymlinkMode_SymlinkModePortable, "Portable"},
+		{SymlinkMode_SymlinkModePOSIXRaw, "POSIX Raw"},
+		{(SymlinkMode_SymlinkModePOSIXRaw + 1), "Unknown"},
 	}
-	if description := SymlinkMode_SymlinkModePortable.Description(); description != "Portable" {
-		t.Error("symlink mode portable description incorrect:", description, "!=", "Portable")
-	}
-	if description := SymlinkMode_SymlinkModeIgnore.Description(); description != "Ignore" {
-		t.Error("symlink mode ignore description incorrect:", description, "!=", "Ignore")
-	}
-	if description := SymlinkMode_SymlinkModePOSIXRaw.Description(); description != "POSIX Raw" {
-		t.Error("symlink mode POSIX raw description incorrect:", description, "!=", "POSIX Raw")
-	}
-	if description := (SymlinkMode_SymlinkModePOSIXRaw + 1).Description(); description != "Unknown" {
-		t.Error("invalid symlink mode description incorrect:", description, "!=", "Unknown")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+			t.Errorf(
+				"mode description (%s) does not match expected (%s)",
+				description,
+				testCase.ExpectedDescription,
+			)
+		}
 	}
 }
 

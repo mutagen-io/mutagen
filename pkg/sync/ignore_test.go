@@ -4,65 +4,89 @@ import (
 	"testing"
 )
 
-func TestIgnoreVCSModeUnmarshalTrue(t *testing.T) {
-	var mode IgnoreVCSMode
-	if err := mode.UnmarshalText([]byte("true")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != IgnoreVCSMode_IgnoreVCSModeIgnore {
-		t.Error("unmarshalled mode does not match expected")
+// TestIgnoreVCSModeUnmarshal tests that unmarshaling from a string
+// specification succeeeds for IgnoreVCSMode.
+func TestIgnoreVCSModeUnmarshal(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Text          string
+		ExpectedMode  IgnoreVCSMode
+		ExpectFailure bool
+	}{
+		{"", IgnoreVCSMode_IgnoreVCSModeDefault, true},
+		{"asdf", IgnoreVCSMode_IgnoreVCSModeDefault, true},
+		{"true", IgnoreVCSMode_IgnoreVCSModeIgnore, false},
+		{"false", IgnoreVCSMode_IgnoreVCSModePropagate, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var mode IgnoreVCSMode
+		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
+			if !testCase.ExpectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+			}
+		} else if testCase.ExpectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
+		} else if mode != testCase.ExpectedMode {
+			t.Errorf(
+				"unmarshaled mode (%s) does not match expected (%s)",
+				mode,
+				testCase.ExpectedMode,
+			)
+		}
 	}
 }
 
-func TestIgnoreVCSModeUnmarshalFalse(t *testing.T) {
-	var mode IgnoreVCSMode
-	if err := mode.UnmarshalText([]byte("false")); err != nil {
-		t.Fatal("unable to unmarshal text:", err)
-	} else if mode != IgnoreVCSMode_IgnoreVCSModePropagate {
-		t.Error("unmarshalled mode does not match expected")
-	}
-}
-
-func TestIgnoreVCSModeUnmarshalEmpty(t *testing.T) {
-	var mode IgnoreVCSMode
-	if mode.UnmarshalText([]byte("")) == nil {
-		t.Error("empty VCS ignore mode successfully unmarshalled")
-	}
-}
-
-func TestIgnoreVCSModeUnmarshalInvalid(t *testing.T) {
-	var mode IgnoreVCSMode
-	if mode.UnmarshalText([]byte("invalid")) == nil {
-		t.Error("invalid VCS ignore mode successfully unmarshalled")
-	}
-}
-
+// TestIgnoreVCSModeSupported tests that IgnoreVCSMode support detection works
+// as expected.
 func TestIgnoreVCSModeSupported(t *testing.T) {
-	if IgnoreVCSMode_IgnoreVCSModeDefault.Supported() {
-		t.Error("default VCS ignore mode considered supported")
+	// Set up test cases.
+	testCases := []struct {
+		Mode            IgnoreVCSMode
+		ExpectSupported bool
+	}{
+		{IgnoreVCSMode_IgnoreVCSModeDefault, false},
+		{IgnoreVCSMode_IgnoreVCSModeIgnore, true},
+		{IgnoreVCSMode_IgnoreVCSModePropagate, true},
+		{(IgnoreVCSMode_IgnoreVCSModePropagate + 1), false},
 	}
-	if !IgnoreVCSMode_IgnoreVCSModeIgnore.Supported() {
-		t.Error("ignore VCS mode considered unsupported")
-	}
-	if !IgnoreVCSMode_IgnoreVCSModePropagate.Supported() {
-		t.Error("propagate VCS mode considered unsupported")
-	}
-	if (IgnoreVCSMode_IgnoreVCSModePropagate + 1).Supported() {
-		t.Error("invalid VCS ignore mode considered supported")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+			t.Errorf(
+				"mode support status (%t) does not match expected (%t)",
+				supported,
+				testCase.ExpectSupported,
+			)
+		}
 	}
 }
 
+// TestIgnoreVCSModeDescription tests that IgnoreVCSMode description generation
+// works as expected.
 func TestIgnoreVCSModeDescription(t *testing.T) {
-	if description := IgnoreVCSMode_IgnoreVCSModeDefault.Description(); description != "Default" {
-		t.Error("default VCS ignore mode description incorrect:", description, "!=", "Default")
+	// Set up test cases.
+	testCases := []struct {
+		Mode                IgnoreVCSMode
+		ExpectedDescription string
+	}{
+		{IgnoreVCSMode_IgnoreVCSModeDefault, "Default"},
+		{IgnoreVCSMode_IgnoreVCSModeIgnore, "Ignore"},
+		{IgnoreVCSMode_IgnoreVCSModePropagate, "Propagate"},
+		{(IgnoreVCSMode_IgnoreVCSModePropagate + 1), "Unknown"},
 	}
-	if description := IgnoreVCSMode_IgnoreVCSModeIgnore.Description(); description != "Ignore" {
-		t.Error("ignore VCS mode description incorrect:", description, "!=", "Ignore")
-	}
-	if description := IgnoreVCSMode_IgnoreVCSModePropagate.Description(); description != "Propagate" {
-		t.Error("propagate VCS mode description incorrect:", description, "!=", "Propagate")
-	}
-	if description := (IgnoreVCSMode_IgnoreVCSModePropagate + 1).Description(); description != "Unknown" {
-		t.Error("invalid VCS ignore mode description incorrect:", description, "!=", "Unknown")
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+			t.Errorf(
+				"mode description (%s) does not match expected (%s)",
+				description,
+				testCase.ExpectedDescription,
+			)
+		}
 	}
 }
 
