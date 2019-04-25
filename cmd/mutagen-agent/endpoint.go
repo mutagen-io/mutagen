@@ -12,8 +12,8 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/protocols/local"
-	"github.com/havoc-io/mutagen/pkg/remote"
+	"github.com/havoc-io/mutagen/pkg/session/endpoint/local"
+	"github.com/havoc-io/mutagen/pkg/session/endpoint/remote"
 )
 
 const (

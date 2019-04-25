@@ -1,3 +1,2 @@
-// Package local provides the default, in-memory, filesystem-based endpoint
-// implementation for local endpoints.
+// Package local provides the Mutagen local protocol implementation.
 package local

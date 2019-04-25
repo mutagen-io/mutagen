@@ -1,3 +1,2 @@
-// Package ssh provides SSH facilities on top of OpenSSH. It may additionally
-// extend to support other SSH implementations.
+// Package ssh provides the Mutagen SSH protocol implementation.
 package ssh

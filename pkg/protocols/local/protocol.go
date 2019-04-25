@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/session/endpoint/local"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -26,7 +27,7 @@ func (h *protocolHandler) Dial(
 	}
 
 	// Create a local endpoint.
-	endpoint, err := NewEndpoint(url.Path, session, version, configuration, alpha)
+	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create local endpoint")
 	}
