@@ -196,9 +196,9 @@ func handleParallelReadContentMetadataRequests() {
 var parallelMetadataDisabled bool
 
 func init() {
-	// Check if parallel metadata query operations have been disabled, otherwise
-	// start the handler Goroutine.
-	if os.Getenv("MUTAGEN_PARALLEL_METADATA_DISABLED") != "" {
+	// Disable parallel metadata query operations if we don't have multiple
+	// CPUs, because for a single-core system it only adds overhead.
+	if runtime.NumCPU() < 2 {
 		parallelMetadataDisabled = true
 	} else {
 		go handleParallelReadContentMetadataRequests()
