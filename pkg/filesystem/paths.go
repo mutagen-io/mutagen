@@ -30,7 +30,13 @@ var MutagenConfigurationPath string
 // init performs global initialization.
 func init() {
 	// Grab the current user's home directory.
-	HomeDirectory = mustComputeHomeDirectory()
+	if h, err := os.UserHomeDir(); err != nil {
+		panic(errors.Wrap(err, "unable to query user's home directory"))
+	} else if h == "" {
+		panic(errors.New("home directory path empty"))
+	} else {
+		HomeDirectory = h
+	}
 
 	// Compute the path to the configuration file.
 	MutagenConfigurationPath = filepath.Join(HomeDirectory, mutagenConfigurationName)
