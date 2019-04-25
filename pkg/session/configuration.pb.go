@@ -134,7 +134,7 @@ func (m *Configuration) GetSymlinkMode() sync.SymlinkMode {
 	if m != nil {
 		return m.SymlinkMode
 	}
-	return sync.SymlinkMode_SymlinkDefault
+	return sync.SymlinkMode_SymlinkModeDefault
 }
 
 func (m *Configuration) GetWatchMode() filesystem.WatchMode {
@@ -169,7 +169,7 @@ func (m *Configuration) GetIgnoreVCSMode() sync.IgnoreVCSMode {
 	if m != nil {
 		return m.IgnoreVCSMode
 	}
-	return sync.IgnoreVCSMode_IgnoreVCSDefault
+	return sync.IgnoreVCSMode_IgnoreVCSModeDefault
 }
 
 func (m *Configuration) GetDefaultFileMode() uint32 {

@@ -129,9 +129,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 	if createConfiguration.ignoreVCS && createConfiguration.noIgnoreVCS {
 		return errors.New("conflicting VCS ignore behavior specified")
 	} else if createConfiguration.ignoreVCS {
-		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCS
+		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCSModeIgnore
 	} else if createConfiguration.noIgnoreVCS {
-		ignoreVCSMode = sync.IgnoreVCSMode_PropagateVCS
+		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCSModePropagate
 	}
 
 	// Validate and convert default file mode specifications.

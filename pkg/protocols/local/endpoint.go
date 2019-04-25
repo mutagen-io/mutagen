@@ -188,7 +188,7 @@ func NewEndpoint(
 
 	// Compute a combined ignore list.
 	var ignores []string
-	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCS {
+	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSModeIgnore {
 		ignores = append(ignores, sync.DefaultVCSIgnores...)
 	}
 	ignores = append(ignores, configuration.DefaultIgnores...)

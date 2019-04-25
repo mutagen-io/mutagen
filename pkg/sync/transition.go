@@ -296,7 +296,7 @@ func (t *transitioner) ensureExpectedSymbolicLink(parent *filesystem.Directory, 
 	// If we're in portable symlink mode, then we need to normalize the target
 	// coming from disk, because some systems (e.g. Windows) won't round-trip
 	// the target correctly.
-	if t.symlinkMode == SymlinkMode_SymlinkPortable {
+	if t.symlinkMode == SymlinkMode_SymlinkModePortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
 			return errors.Wrap(err, "unable to normalize target in portable mode")
@@ -353,7 +353,7 @@ func (t *transitioner) removeFile(parent *filesystem.Directory, name, path strin
 func (t *transitioner) removeSymbolicLink(parent *filesystem.Directory, name, path string, expected *Entry) error {
 	// Ensure that this request is valid for the current symbolic link handling
 	// mode.
-	if t.symlinkMode == SymlinkMode_SymlinkIgnore {
+	if t.symlinkMode == SymlinkMode_SymlinkModeIgnore {
 		return errors.New("symbolic link removal requested with symbolic links ignored")
 	}
 
@@ -696,9 +696,9 @@ func (t *transitioner) createFile(parent *filesystem.Directory, name, path strin
 func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, path string, target *Entry) error {
 	// Verify that the symbolic link agrees with our symbolic link handling
 	// mode.
-	if t.symlinkMode == SymlinkMode_SymlinkIgnore {
+	if t.symlinkMode == SymlinkMode_SymlinkModeIgnore {
 		return errors.New("symbolic link creation requested with symbolic links ignored")
-	} else if t.symlinkMode == SymlinkMode_SymlinkPortable {
+	} else if t.symlinkMode == SymlinkMode_SymlinkModePortable {
 		if normalized, err := normalizeSymlinkAndEnsurePortable(path, target.Target); err != nil || normalized != target.Target {
 			return errors.New("symbolic link was not in normalized form or was not portable")
 		}

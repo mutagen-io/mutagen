@@ -55,7 +55,7 @@ func (v Version) DefaultProbeMode() filesystem.ProbeMode {
 func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {
 	case Version_Version1:
-		return sync.SymlinkMode_SymlinkPortable
+		return sync.SymlinkMode_SymlinkModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -87,7 +87,7 @@ func (v Version) DefaultWatchPollingInterval() uint32 {
 func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
 	switch v {
 	case Version_Version1:
-		return sync.IgnoreVCSMode_PropagateVCS
+		return sync.IgnoreVCSMode_IgnoreVCSModePropagate
 	default:
 		panic("unknown or unsupported session version")
 	}

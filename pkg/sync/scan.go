@@ -290,11 +290,11 @@ func (s *scanner) directory(path string, directory *fs.Directory, metadata *fs.M
 		if kind == EntryKind_File {
 			entry, err = s.file(contentPath, nil, c, directory)
 		} else if kind == EntryKind_Symlink {
-			if s.symlinkMode == SymlinkMode_SymlinkPortable {
+			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
 				entry, err = s.symbolicLink(contentPath, name, directory, true)
-			} else if s.symlinkMode == SymlinkMode_SymlinkIgnore {
+			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
 				continue
-			} else if s.symlinkMode == SymlinkMode_SymlinkPOSIXRaw {
+			} else if s.symlinkMode == SymlinkMode_SymlinkModePOSIXRaw {
 				entry, err = s.symbolicLink(contentPath, name, directory, false)
 			} else {
 				panic("unsupported symlink mode")
@@ -346,7 +346,7 @@ func Scan(
 	}
 
 	// Verify that the symlink mode is valid for this platform.
-	if symlinkMode == SymlinkMode_SymlinkPOSIXRaw && runtime.GOOS == "windows" {
+	if symlinkMode == SymlinkMode_SymlinkModePOSIXRaw && runtime.GOOS == "windows" {
 		return nil, false, false, nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 

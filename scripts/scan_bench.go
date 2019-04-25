@@ -69,7 +69,7 @@ func main() {
 		ignores,
 		nil,
 		fs.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkPortable,
+		sync.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -102,7 +102,7 @@ func main() {
 		ignores,
 		ignoreCache,
 		fs.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkPortable,
+		sync.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))

@@ -6,20 +6,21 @@ option go_package = "github.com/havoc-io/mutagen/pkg/sync";
 
 // SymlinkMode specifies the mode for handling the propagation of symlinks.
 enum SymlinkMode {
-    // SymlinkMode_SymlinkDefault represents an unspecified symlink mode. It is
-    // not valid for use with Scan or Transition. It should be converted to one
-    // of the following values based on the desired default behavior.
-    SymlinkDefault = 0;
-    // SymlinkMode_SymlinkIgnore specifies that all symlinks should be ignored.
-    SymlinkIgnore = 1;
-    // SymlinkMode_SymlinkPortable specifies that only portable symlinks should
-    // be synchronized. If a symlink is found during a scan operation that it is
-    // not portable, it halts the scan and synchronization. The reason for this
-    // is that it can't simply be ignored/unignored as desired without breaking
-    // the three-way merge.
-    SymlinkPortable = 2;
-    // SymlinkMode_SymlinkPOSIXRaw specifies that symlinks should be propagated
-    // in their raw form. It is only valid on POSIX systems and only makes sense
-    // in the context of POSIX-to-POSIX synchronization.
-    SymlinkPOSIXRaw = 3;
+    // SymlinkMode_SymlinkModeDefault represents an unspecified symlink mode. It
+    // is not valid for use with Scan or Transition. It should be converted to
+    // one of the following values based on the desired default behavior.
+    SymlinkModeDefault = 0;
+    // SymlinkMode_SymlinkModeIgnore specifies that all symlinks should be
+    // ignored.
+    SymlinkModeIgnore = 1;
+    // SymlinkMode_SymlinkModePortable specifies that only portable symlinks
+    // should be synchronized. If a symlink is found during a scan operation
+    // that it is not portable, it halts the scan and synchronization. The
+    // reason for this is that it can't simply be ignored/unignored as desired
+    // without breaking the three-way merge.
+    SymlinkModePortable = 2;
+    // SymlinkMode_SymlinkModePOSIXRaw specifies that symlinks should be
+    // propagated in their raw form. It is only valid on POSIX systems and only
+    // makes sense in the context of POSIX-to-POSIX synchronization.
+    SymlinkModePOSIXRaw = 3;
 }

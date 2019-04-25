@@ -8,9 +8,9 @@ import (
 )
 
 // IsDefault indicates whether or not the symbolic link handling mode is
-// SymlinkMode_SymlinkDefault.
+// SymlinkMode_SymlinkModeDefault.
 func (m SymlinkMode) IsDefault() bool {
-	return m == SymlinkMode_SymlinkDefault
+	return m == SymlinkMode_SymlinkModeDefault
 }
 
 // UnmarshalText implements the text unmarshalling interface used when loading
@@ -22,11 +22,11 @@ func (m *SymlinkMode) UnmarshalText(textBytes []byte) error {
 	// Convert to a VCS mode.
 	switch text {
 	case "ignore":
-		*m = SymlinkMode_SymlinkIgnore
+		*m = SymlinkMode_SymlinkModeIgnore
 	case "portable":
-		*m = SymlinkMode_SymlinkPortable
+		*m = SymlinkMode_SymlinkModePortable
 	case "posix-raw":
-		*m = SymlinkMode_SymlinkPOSIXRaw
+		*m = SymlinkMode_SymlinkModePOSIXRaw
 	default:
 		return errors.Errorf("unknown symlink mode specification: %s", text)
 	}
@@ -39,11 +39,11 @@ func (m *SymlinkMode) UnmarshalText(textBytes []byte) error {
 // non-default value.
 func (m SymlinkMode) Supported() bool {
 	switch m {
-	case SymlinkMode_SymlinkIgnore:
+	case SymlinkMode_SymlinkModeIgnore:
 		return true
-	case SymlinkMode_SymlinkPortable:
+	case SymlinkMode_SymlinkModePortable:
 		return true
-	case SymlinkMode_SymlinkPOSIXRaw:
+	case SymlinkMode_SymlinkModePOSIXRaw:
 		return true
 	default:
 		return false
@@ -53,13 +53,13 @@ func (m SymlinkMode) Supported() bool {
 // Description returns a human-readable description of a symlink mode.
 func (m SymlinkMode) Description() string {
 	switch m {
-	case SymlinkMode_SymlinkDefault:
+	case SymlinkMode_SymlinkModeDefault:
 		return "Default"
-	case SymlinkMode_SymlinkIgnore:
+	case SymlinkMode_SymlinkModeIgnore:
 		return "Ignore"
-	case SymlinkMode_SymlinkPortable:
+	case SymlinkMode_SymlinkModePortable:
 		return "Portable"
-	case SymlinkMode_SymlinkPOSIXRaw:
+	case SymlinkMode_SymlinkModePOSIXRaw:
 		return "POSIX Raw"
 	default:
 		return "Unknown"

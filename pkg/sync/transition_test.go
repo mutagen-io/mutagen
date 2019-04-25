@@ -195,7 +195,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 		root,
 		transitions,
 		nil,
-		SymlinkMode_SymlinkPOSIXRaw,
+		SymlinkMode_SymlinkModePOSIXRaw,
 		defaultFilePermissionMode,
 		defaultDirectoryPermissionMode,
 		nil,
@@ -302,7 +302,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 		nil,
 		nil,
 		filesystem.ProbeMode_ProbeModeProbe,
-		SymlinkMode_SymlinkPortable,
+		SymlinkMode_SymlinkModePortable,
 	)
 	if !preservesExecutability {
 		snapshot = PropagateExecutability(nil, expected, snapshot)
@@ -319,7 +319,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 
 	// Remove the test content. This will exercise the removal portion of
 	// Transition.
-	if err := testTransitionRemove(root, expected, cache, SymlinkMode_SymlinkPortable, decompose); err != nil {
+	if err := testTransitionRemove(root, expected, cache, SymlinkMode_SymlinkModePortable, decompose); err != nil {
 		return errors.Wrap(err, "unable to remove test content")
 	}
 
@@ -405,7 +405,7 @@ func TestTransitionSwapFile(t *testing.T) {
 			nil,
 			nil,
 			filesystem.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
@@ -440,7 +440,7 @@ func TestTransitionSwapFile(t *testing.T) {
 			root,
 			transitions,
 			cache,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 			defaultFilePermissionMode,
 			defaultDirectoryPermissionMode,
 			nil,
@@ -478,7 +478,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 			nil,
 			nil,
 			filesystem.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
@@ -505,7 +505,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 			root,
 			transitions,
 			cache,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 			defaultFilePermissionMode,
 			defaultDirectoryPermissionMode,
 			nil,
@@ -585,7 +585,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			nil,
 			nil,
 			filesystem.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to perform scan")
@@ -623,7 +623,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			root,
 			transitions,
 			cache,
-			SymlinkMode_SymlinkPortable,
+			SymlinkMode_SymlinkModePortable,
 			defaultFilePermissionMode,
 			defaultDirectoryPermissionMode,
 			nil,
@@ -719,7 +719,7 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 		root,
 		transitions,
 		nil,
-		SymlinkMode_SymlinkPortable,
+		SymlinkMode_SymlinkModePortable,
 		defaultFilePermissionMode,
 		defaultDirectoryPermissionMode,
 		nil,

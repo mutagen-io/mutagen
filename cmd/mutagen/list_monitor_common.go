@@ -110,7 +110,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := configuration.SymlinkMode.Description()
-		if configuration.SymlinkMode == sync.SymlinkMode_SymlinkDefault {
+		if configuration.SymlinkMode == sync.SymlinkMode_SymlinkModeDefault {
 			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 		}
@@ -118,7 +118,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
-		if configuration.IgnoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSDefault {
+		if configuration.IgnoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSModeDefault {
 			defaultIgnoreVCSMode := state.Session.Version.DefaultIgnoreVCSMode()
 			ignoreVCSModeDescription += fmt.Sprintf(" (%s)", defaultIgnoreVCSMode.Description())
 		}
