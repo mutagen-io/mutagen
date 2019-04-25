@@ -6,26 +6,6 @@ import (
 	"testing"
 )
 
-// TODO: It doesn't seem like there's anyway to test extraction of a
-// syscall.WaitStatus from an os.ProcessState, because we can't construct an
-// os.ProcessState (and it's not documented that we can rely on its zero value).
-// Maybe look into this further?
-
-// TestExitCode tests that ExitCodeForError works correctly for an error
-// returned on failed command execution.
-func TestExitCode(t *testing.T) {
-	// Run "go mutagen-test-invalid", which should return an error code of 2,
-	// and verify its exit code.
-	command := exec.Command("go", "mutagen-test-invalid")
-	if err := command.Run(); err == nil {
-		t.Fatal("expected non-nil error when running invalid Go command")
-	} else if code, err := ExitCodeForProcessState(command.ProcessState); err != nil {
-		t.Fatal("unable to extract error exit code:", err)
-	} else if code != 2 {
-		t.Error("exit code did not match expected")
-	}
-}
-
 // TestIsPOSIXShellInvalidCommand tests that the IsPOSIXShellInvalidCommand
 // function correctly identifiers an "invalid command" error from a POSIX shell.
 func TestIsPOSIXShellInvalidCommand(t *testing.T) {

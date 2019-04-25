@@ -7,8 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	isatty "github.com/mattn/go-isatty"
-
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 // HandleTerminalCompatibility automatically restarts the current process inside
@@ -50,8 +48,8 @@ func HandleTerminalCompatibility() {
 
 	// Run the command and terminate with its exit code.
 	if err := command.Run(); err != nil {
-		if exitCode, exitCodeErr := process.ExitCodeForProcessState(command.ProcessState); exitCodeErr == nil {
-			os.Exit(exitCode)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			os.Exit(exitError.ExitCode())
 		}
 		Fatal(errors.Wrap(err, "running inside mintty terminal and unable to restart process"))
 	} else {
