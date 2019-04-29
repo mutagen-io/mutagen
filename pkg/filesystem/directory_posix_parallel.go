@@ -7,6 +7,15 @@ import (
 	"runtime"
 )
 
+const (
+	// maximumReadContentMetadataWorkers provides an upper-bound on the number
+	// of Directory.ReadContentMetadata worker Goroutines. It is chosen somewhat
+	// arbitrarily, set high enough to allow parallelism but not so high that
+	// performance scaling breaks down or that many-core systems are
+	// overwhelmed.
+	maximumContentMetadataWorkers = 4
+)
+
 // batchReadContentMetadataRequest is a request type encoding a batch of
 // Directory.ReadContentMetadata operations to be performed serially.
 type batchReadContentMetadataRequest struct {
@@ -114,6 +123,9 @@ var parallelReadContentMetadataResponses = make(chan parallelReadContentMetadata
 func handleParallelReadContentMetadataRequests() {
 	// Compute the worker count.
 	workerCount := runtime.NumCPU()
+	if workerCount > maximumContentMetadataWorkers {
+		workerCount = maximumContentMetadataWorkers
+	}
 
 	// Create request/response channels and start workers.
 	batchRequestQueues := make([]chan batchReadContentMetadataRequest, workerCount)
