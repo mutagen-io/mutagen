@@ -223,6 +223,10 @@ func init() {
 		parallelMetadataDisabled = true
 	}
 
+	// Temporarily disable parallel metadata query operations on all platforms
+	// until later in the v0.9.0 release cycle.
+	parallelMetadataDisabled = true
+
 	// If parallel metadata query operations aren't disabled, then start the
 	// worker Goroutines.
 	if !parallelMetadataDisabled {
