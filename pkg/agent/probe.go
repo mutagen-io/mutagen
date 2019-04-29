@@ -133,7 +133,7 @@ func probeWindows(transport Transport) (string, string, error) {
 	// TODO: We might be able to switch this function to use a bufio.Scanner for
 	// greater efficiency.
 	output := string(outputBytes)
-	output = strings.Replace(output, "\r\n", "\n", -1)
+	output = strings.ReplaceAll(output, "\r\n", "\n")
 	output = strings.TrimSpace(output)
 	environment := strings.Split(output, "\n")
 

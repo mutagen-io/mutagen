@@ -124,7 +124,7 @@ func normalizeSymlinkAndEnsurePortable(path, target string) (string, error) {
 	// act as a path separator. That being said, we won't be able to round-trip
 	// them to a Windows system, so we have to avoid their presence.
 	if runtime.GOOS == "windows" {
-		target = strings.Replace(target, "\\", "/", -1)
+		target = strings.ReplaceAll(target, "\\", "/")
 	} else if strings.Index(target, "\\") != -1 {
 		return "", errors.New("backslash in target")
 	}

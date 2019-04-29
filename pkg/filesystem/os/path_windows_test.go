@@ -1,5 +1,5 @@
 // Windows path handling tests based on (but modified from)
-// https://github.com/golang/go/blob/2c5363d9c1cf51457d6d2466a63e6576e80327f8/src/os/path_windows_test.go
+// https://github.com/golang/go/blob/da0d1a44bac379f5acedb1933f85400de08f4ac6/src/os/path_windows_test.go
 //
 // The original code license:
 //
@@ -70,10 +70,10 @@ func TestFixLongPath(t *testing.T) {
 		{`\\?\c:\long\foo.txt`, `\\?\c:\long\foo.txt`},
 		{`\\?\c:\long/foo.txt`, `\\?\c:\long/foo.txt`},
 	} {
-		in := strings.Replace(test.in, "long", veryLong, -1)
-		want := strings.Replace(test.want, "long", veryLong, -1)
+		in := strings.ReplaceAll(test.in, "long", veryLong)
+		want := strings.ReplaceAll(test.want, "long", veryLong)
 		if got := FixLongPath(in); got != want {
-			got = strings.Replace(got, veryLong, "long", -1)
+			got = strings.ReplaceAll(got, veryLong, "long")
 			t.Errorf("fixLongPath(%q) = %q; want %q", test.in, got, test.want)
 		}
 	}

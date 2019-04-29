@@ -31,7 +31,7 @@ func findEnviromentVariable(outputBlock, variable string) (string, bool) {
 	// outer whitespace (e.g. trailing newlines), and then split on newlines.
 	// TODO: We might be able to switch this function to use a bufio.Scanner for
 	// greater efficiency.
-	outputBlock = strings.Replace(outputBlock, "\r\n", "\n", -1)
+	outputBlock = strings.ReplaceAll(outputBlock, "\r\n", "\n")
 	outputBlock = strings.TrimSpace(outputBlock)
 	environment := strings.Split(outputBlock, "\n")
 

@@ -1,5 +1,5 @@
 // Windows path handling utilities based on (but modified from)
-// https://github.com/golang/go/blob/2c5363d9c1cf51457d6d2466a63e6576e80327f8/src/os/path_windows.go
+// https://github.com/golang/go/blob/da0d1a44bac379f5acedb1933f85400de08f4ac6/src/os/path_windows.go
 //
 // The original code license:
 //
