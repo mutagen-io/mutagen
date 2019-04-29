@@ -13,7 +13,7 @@ const (
 	// arbitrarily, set high enough to allow parallelism but not so high that
 	// performance scaling breaks down or that many-core systems are
 	// overwhelmed.
-	maximumContentMetadataWorkers = 4
+	maximumReadContentMetadataWorkers = 4
 )
 
 // batchReadContentMetadataRequest is a request type encoding a batch of
@@ -123,8 +123,8 @@ var parallelReadContentMetadataResponses = make(chan parallelReadContentMetadata
 func handleParallelReadContentMetadataRequests() {
 	// Compute the worker count.
 	workerCount := runtime.NumCPU()
-	if workerCount > maximumContentMetadataWorkers {
-		workerCount = maximumContentMetadataWorkers
+	if workerCount > maximumReadContentMetadataWorkers {
+		workerCount = maximumReadContentMetadataWorkers
 	}
 
 	// Create request/response channels and start workers.
