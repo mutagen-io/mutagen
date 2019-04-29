@@ -208,11 +208,24 @@ func handleParallelReadContentMetadataRequests() {
 var parallelMetadataDisabled bool
 
 func init() {
+	// Disable parallel metadata query operations if this platform isn't
+	// whitelisted for support. For now this whitelist is just the set of POSIX
+	// platforms for which we run tests, because POSIX doesn't explicitly
+	// guarantee that fstatat is safe for concurrent invocation on the same file
+	// descriptor and we require confirmation of this behavior through
+	// observation. We'll expand this list as we bring more builders online and
+	// this code has more shakedown time.
+	parallelMetadataDisabled = !(runtime.GOOS == "linux" || runtime.GOOS == "darwin")
+
 	// Disable parallel metadata query operations if we don't have multiple
 	// CPUs, because for a single-core system it only adds overhead.
 	if runtime.NumCPU() < 2 {
 		parallelMetadataDisabled = true
-	} else {
+	}
+
+	// If parallel metadata query operations aren't disabled, then start the
+	// worker Goroutines.
+	if !parallelMetadataDisabled {
 		go handleParallelReadContentMetadataRequests()
 	}
 }
