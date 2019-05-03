@@ -19,7 +19,7 @@ func ExtractAndSortLabelKeys(labels map[string]string) []string {
 
 	// Create and populate the key slice.
 	keys := make([]string, 0, len(labels))
-	for key, _ := range labels {
+	for key := range labels {
 		keys = append(keys, key)
 	}
 
