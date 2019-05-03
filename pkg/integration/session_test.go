@@ -59,15 +59,17 @@ func init() {
 }
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
-	// Create a session specification.
-	specification := []string{sessionId}
+	// Create a session selection specification.
+	selection := &session.Selection{
+		Specifications: []string{sessionId},
+	}
 
 	// Perform waiting.
 	var previousStateIndex uint64
 	var states []*session.State
 	var err error
 	for {
-		previousStateIndex, states, err = sessionManager.List(previousStateIndex, specification)
+		previousStateIndex, states, err = sessionManager.List(selection, previousStateIndex)
 		if err != nil {
 			return errors.Wrap(err, "unable to list session states")
 		} else if len(states) != 1 {
@@ -88,14 +90,12 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	sessionId, err := sessionManager.Create(
 		alpha, beta,
 		configuration, &session.Configuration{}, &session.Configuration{},
+		nil,
 		prompter,
 	)
 	if err != nil {
 		return errors.Wrap(err, "unable to create session")
 	}
-
-	// Create a session specification.
-	specification := []string{sessionId}
 
 	// Wait for the session to have at least one successful synchronization
 	// cycle.
@@ -111,13 +111,18 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	// waitForSuccessfulSynchronizationCycle (maybe have it pass back the
 	// relevant state).
 
+	// Create a session selection specification.
+	selection := &session.Selection{
+		Specifications: []string{sessionId},
+	}
+
 	// Pause the session.
-	if err := sessionManager.Pause(specification, ""); err != nil {
+	if err := sessionManager.Pause(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to pause session")
 	}
 
 	// Resume the session.
-	if err := sessionManager.Resume(specification, ""); err != nil {
+	if err := sessionManager.Resume(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to resume session")
 	}
 
@@ -129,12 +134,12 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	}
 
 	// Attempt an additional resume (this should be a no-op).
-	if err := sessionManager.Resume(specification, ""); err != nil {
+	if err := sessionManager.Resume(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to perform additional resume")
 	}
 
 	// Terminate the session.
-	if err := sessionManager.Terminate(specification, ""); err != nil {
+	if err := sessionManager.Terminate(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to terminate session")
 	}
 
