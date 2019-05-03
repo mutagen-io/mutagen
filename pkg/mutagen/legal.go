@@ -4,7 +4,7 @@ package mutagen
 // dependencies.
 const LegalNotice = `Mutagen
 
-Copyright (c) 2016 - 2018 Jacob Howard
+Copyright (c) 2016 - 2019 Jacob Howard
 
 Licensed under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.
