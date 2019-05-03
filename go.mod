@@ -26,4 +26,6 @@ require (
 	golang.org/x/sys v0.0.0-20190418153312-f0ce4c0180be
 	golang.org/x/text v0.3.0
 	google.golang.org/grpc v1.20.0
+	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
+	k8s.io/klog v0.3.0 // indirect
 )

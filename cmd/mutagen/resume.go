@@ -10,18 +10,18 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {
-	// Parse session specifications.
-	var specifications []string
-	if len(arguments) > 0 {
-		if resumeConfiguration.all {
-			return errors.New("-a/--all specified with specific sessions")
-		}
-		specifications = arguments
-	} else if !resumeConfiguration.all {
-		return errors.New("no sessions specified")
+	// Create session selection specification.
+	selection := &session.Selection{
+		All:            resumeConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  resumeConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -45,7 +45,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.ResumeRequest{
-		Specifications: specifications,
+		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send resume request")
@@ -94,6 +94,9 @@ var resumeConfiguration struct {
 	help bool
 	// all indicates whether or not all sessions should be resumed.
 	all bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 }
 
 func init() {
@@ -106,4 +109,5 @@ func init() {
 
 	// Wire up resume flags.
 	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
+	flags.StringVar(&resumeConfiguration.labelSelector, "label-selector", "", "Resume sessions matching the specified label selector")
 }

@@ -57,14 +57,22 @@ func computeMonitorStatusLine(state *sessionpkg.State) string {
 }
 
 func monitorMain(command *cobra.Command, arguments []string) error {
-	// Parse session specification.
+	// Create session selection specification. If we don't extract an explicit
+	// session specifier now, then it'll be determined automatically after the
+	// first listing.
 	var session string
-	var specifications []string
 	if len(arguments) == 1 {
 		session = arguments[0]
-		specifications = []string{session}
 	} else if len(arguments) > 1 {
 		return errors.New("multiple session specification not allowed")
+	}
+	selection := &sessionpkg.Selection{
+		All:            len(arguments) == 0 && monitorConfiguration.labelSelector == "",
+		Specifications: arguments,
+		LabelSelector:  monitorConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -89,8 +97,8 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// need to grab all sessions and identify the most recently created one
 		// for future queries.
 		request := &sessionsvcpkg.ListRequest{
+			Selection:          selection,
 			PreviousStateIndex: previousStateIndex,
-			Specifications:     specifications,
 		}
 
 		// Invoke list.
@@ -115,11 +123,17 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		previousStateIndex = response.StateIndex
 		if session == "" {
 			if len(response.SessionStates) == 0 {
-				err = errors.New("no sessions exist")
+				if monitorConfiguration.labelSelector != "" {
+					err = errors.New("no matching sessions exist")
+				} else {
+					err = errors.New("no sessions exist")
+				}
 			} else {
 				state = response.SessionStates[len(response.SessionStates)-1]
 				session = state.Session.Identifier
-				specifications = []string{session}
+				selection = &sessionpkg.Selection{
+					Specifications: []string{session},
+				}
 			}
 		} else if len(response.SessionStates) != 1 {
 			err = errors.New("invalid list response")
@@ -156,7 +170,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 
 var monitorCommand = &cobra.Command{
 	Use:   "monitor [<session>]",
-	Short: "Shows a dynamic status display for the specified session",
+	Short: "Shows a dynamic status display for a single session",
 	Run:   cmd.Mainify(monitorMain),
 }
 
@@ -166,6 +180,9 @@ var monitorConfiguration struct {
 	help bool
 	// long indicates whether or not to use long-format monitoring.
 	long bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 }
 
 func init() {
@@ -178,4 +195,5 @@ func init() {
 
 	// Wire up monitor flags.
 	flags.BoolVarP(&monitorConfiguration.long, "long", "l", false, "Show detailed session information")
+	flags.StringVar(&monitorConfiguration.labelSelector, "label-selector", "", "Monitor the most recently created session matching the specified label selector")
 }

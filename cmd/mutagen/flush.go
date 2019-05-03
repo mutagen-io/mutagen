@@ -9,18 +9,18 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func flushMain(command *cobra.Command, arguments []string) error {
-	// Parse session specifications.
-	var specifications []string
-	if len(arguments) > 0 {
-		if flushConfiguration.all {
-			return errors.New("-a/--all specified with specific sessions")
-		}
-		specifications = arguments
-	} else if !flushConfiguration.all {
-		return errors.New("no sessions specified")
+	// Create session selection specification.
+	selection := &session.Selection{
+		All:            flushConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  flushConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -44,8 +44,8 @@ func flushMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.FlushRequest{
-		Specifications: specifications,
-		SkipWait:       flushConfiguration.skipWait,
+		Selection: selection,
+		SkipWait:  flushConfiguration.skipWait,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send flush request")
@@ -86,6 +86,9 @@ var flushConfiguration struct {
 	help bool
 	// all indicates whether or not all sessions should be flushed.
 	all bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 	// skipWait indicates whether or not the flush operation should block until
 	// a synchronization cycle completes for each sesion requested.
 	skipWait bool
@@ -101,5 +104,6 @@ func init() {
 
 	// Wire up flush flags.
 	flags.BoolVarP(&flushConfiguration.all, "all", "a", false, "Flush all sessions")
+	flags.StringVar(&flushConfiguration.labelSelector, "label-selector", "", "Flush sessions matching the specified label selector")
 	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle to complete")
 }

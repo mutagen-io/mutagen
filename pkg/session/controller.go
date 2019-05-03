@@ -86,6 +86,7 @@ func newSession(
 	tracker *state.Tracker,
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
+	labels map[string]string,
 	prompter string,
 ) (*controller, error) {
 	// Update status.
@@ -145,6 +146,7 @@ func newSession(
 		Configuration:        mergedConfiguration,
 		ConfigurationAlpha:   configurationAlpha,
 		ConfigurationBeta:    configurationBeta,
+		Labels:               labels,
 	}
 	archive := &sync.Archive{}
 

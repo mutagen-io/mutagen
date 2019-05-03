@@ -9,18 +9,18 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func terminateMain(command *cobra.Command, arguments []string) error {
-	// Parse session specifications.
-	var specifications []string
-	if len(arguments) > 0 {
-		if terminateConfiguration.all {
-			return errors.New("-a/--all specified with specific sessions")
-		}
-		specifications = arguments
-	} else if !terminateConfiguration.all {
-		return errors.New("no sessions specified")
+	// Create session selection specification.
+	selection := &session.Selection{
+		All:            terminateConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  terminateConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -44,7 +44,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.TerminateRequest{
-		Specifications: specifications,
+		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send terminate request")
@@ -85,6 +85,9 @@ var terminateConfiguration struct {
 	help bool
 	// all indicates whether or not all sessions should be terminated.
 	all bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 }
 
 func init() {
@@ -97,4 +100,5 @@ func init() {
 
 	// Wire up terminate flags.
 	flags.BoolVarP(&terminateConfiguration.all, "all", "a", false, "Terminate all sessions")
+	flags.StringVar(&terminateConfiguration.labelSelector, "label-selector", "", "Terminate sessions matching the specified label selector")
 }

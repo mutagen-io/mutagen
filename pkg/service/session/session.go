@@ -6,6 +6,51 @@ import (
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
+// ensureValid verifies that a CreationSpecification is valid.
+func (s *CreationSpecification) ensureValid() error {
+	// A nil creation specification is not valid.
+	if s == nil {
+		return errors.New("nil creation specification")
+	}
+
+	// Verify that the alpha URL is valid.
+	if err := s.Alpha.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid alpha URL")
+	}
+
+	// Verify that the beta URL is valid.
+	if err := s.Beta.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid beta URL")
+	}
+
+	// Verify that the configuration is valid.
+	if err := s.Configuration.EnsureValid(session.ConfigurationSourceTypeCreate); err != nil {
+		return errors.Wrap(err, "invalid session configuration")
+	}
+
+	// Verify that the alpha-specific configuration is valid.
+	if err := s.ConfigurationAlpha.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+		return errors.Wrap(err, "invalid alpha-specific configuration")
+	}
+
+	// Verify that the beta-specific configuration is valid.
+	if err := s.ConfigurationBeta.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+		return errors.Wrap(err, "invalid beta-specific configuration")
+	}
+
+	// Verify that labels are valid.
+	for k, v := range s.Labels {
+		if err := session.EnsureLabelKeyValid(k); err != nil {
+			return errors.Wrap(err, "invalid label key")
+		} else if err = session.EnsureLabelValueValid(v); err != nil {
+			return errors.Wrap(err, "invalid label value")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
 // ensureValid verifies that a CreateRequest is valid.
 func (r *CreateRequest) ensureValid(first bool) error {
 	// A nil create request is not valid.
@@ -16,59 +61,19 @@ func (r *CreateRequest) ensureValid(first bool) error {
 	// Handle validation based on whether or not this is the first request in
 	// the stream.
 	if first {
-		// Verify that the alpha URL is valid.
-		if err := r.Alpha.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid alpha URL")
-		}
-
-		// Verify that the beta URL is valid.
-		if err := r.Beta.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid beta URL")
-		}
-
-		// Verify that the configuration is valid.
-		if err := r.Configuration.EnsureValid(session.ConfigurationSourceTypeCreate); err != nil {
-			return errors.Wrap(err, "invalid session configuration")
-		}
-
-		// Verify that the alpha-specific configuration is valid.
-		if err := r.ConfigurationAlpha.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
-			return errors.Wrap(err, "invalid alpha-specific configuration")
-		}
-
-		// Verify that the beta-specific configuration is valid.
-		if err := r.ConfigurationBeta.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
-			return errors.Wrap(err, "invalid beta-specific configuration")
+		// Verify that the creation specification is valid.
+		if err := r.Specification.ensureValid(); err != nil {
+			return err
 		}
 
 		// Verify that the response field is empty.
 		if r.Response != "" {
-			return errors.New("non-empty response")
+			return errors.New("non-empty prompt response")
 		}
 	} else {
-		// Verify that the alpha URL is nil.
-		if r.Alpha != nil {
-			return errors.New("alpha URL present")
-		}
-
-		// Verify that the beta URL is nil.
-		if r.Beta != nil {
-			return errors.New("beta URL present")
-		}
-
-		// Verify that the configuration is nil.
-		if r.Configuration != nil {
-			return errors.New("configuration present")
-		}
-
-		// Verify that the alpha-specific configuration is nil.
-		if r.ConfigurationAlpha != nil {
-			return errors.New("alpha-specific configuration present")
-		}
-
-		// Verify that the beta-specific configuration is nil.
-		if r.ConfigurationBeta != nil {
-			return errors.New("beta-specific configuration present")
+		// Verify that the creation specification is nil.
+		if r.Specification != nil {
+			return errors.New("creation specification present")
 		}
 
 		// We can't really validate the response field, and an empty value may
@@ -87,8 +92,8 @@ func (r *CreateResponse) EnsureValid() error {
 		return errors.New("nil create response")
 	}
 
-	// Ensure that exactly one field is set.
-	var fieldsSet int
+	// Count the number of fields that are set.
+	var fieldsSet uint
 	if r.Session != "" {
 		fieldsSet++
 	}
@@ -98,6 +103,8 @@ func (r *CreateResponse) EnsureValid() error {
 	if r.Prompt != "" {
 		fieldsSet++
 	}
+
+	// Enforce that exactly one field is set.
 	if fieldsSet != 1 {
 		return errors.New("incorrect number of fields set")
 	}
@@ -113,8 +120,12 @@ func (r *ListRequest) ensureValid() error {
 		return errors.New("nil list request")
 	}
 
-	// We can't really verify specifications, but any values are valid, even if
-	// they might not be correct.
+	// Validate the session specification.
+	if err := r.Selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session specification")
+	}
+
+	// There's no need to validate the state index - any value is valid.
 
 	// Success.
 	return nil
@@ -148,12 +159,15 @@ func (r *FlushRequest) ensureValid(first bool) error {
 	// Handle validation based on whether or not this is the first request in
 	// the stream.
 	if first {
-		// We can't really verify specifications, but any values are valid, even
-		// if they might not be correct.
+		// Validate the session selection specification.
+		if err := r.Selection.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session selection specification")
+		}
 	} else {
-		// Ensure that specifications are empty when acknowledging messages.
-		if r.Specifications != nil {
-			return errors.New("non-empty specifications on message acknowledgement")
+		// Ensure that no session selection specification is present when
+		// acknowledging messages.
+		if r.Selection != nil {
+			return errors.New("non-nil session selection specification on message acknowledgement")
 		}
 	}
 
@@ -185,12 +199,15 @@ func (r *PauseRequest) ensureValid(first bool) error {
 	// Handle validation based on whether or not this is the first request in
 	// the stream.
 	if first {
-		// We can't really verify specifications, but any values are valid, even
-		// if they might not be correct.
+		// Validate the session selection specification.
+		if err := r.Selection.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session selection specification")
+		}
 	} else {
-		// Ensure that specifications are empty when acknowledging messages.
-		if r.Specifications != nil {
-			return errors.New("non-empty specifications on message acknowledgement")
+		// Ensure that no session selection specification is present when
+		// acknowledging messages.
+		if r.Selection != nil {
+			return errors.New("non-nil session selection specification on message acknowledgement")
 		}
 	}
 
@@ -222,13 +239,25 @@ func (r *ResumeRequest) ensureValid(first bool) error {
 	// Handle validation based on whether or not this is the first request in
 	// the stream.
 	if first {
-		// We can't really verify specifications, but any values are valid, even
-		// if they might not be correct.
-	} else {
-		// Ensure that specifications are empty when acknowledging messages.
-		if r.Specifications != nil {
-			return errors.New("non-empty specifications on message acknowledgement")
+		// Validate the session selection specification.
+		if err := r.Selection.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session selection specification")
 		}
+
+		// Verify that the response field is empty.
+		if r.Response != "" {
+			return errors.New("non-empty prompt response")
+		}
+	} else {
+		// Ensure that no session selection specification is present when
+		// acknowledging messages.
+		if r.Selection != nil {
+			return errors.New("non-nil session selection specification on message acknowledgement")
+		}
+
+		// We can't really validate the response field, and an empty value may
+		// be appropriate. It's up to the process performing the prompting to
+		// decide.
 	}
 
 	// Success.
@@ -242,16 +271,18 @@ func (r *ResumeResponse) EnsureValid() error {
 		return errors.New("nil resume response")
 	}
 
-	// Ensure that at most a single field is set. Unlike CreateResponse, we
-	// allow neither to be set, which indicates completion. In CreateResponse,
-	// this completion is indicated by the session identifier being set.
-	var fieldsSet int
+	// Count the number of fields that are set.
+	var fieldsSet uint
 	if r.Message != "" {
 		fieldsSet++
 	}
 	if r.Prompt != "" {
 		fieldsSet++
 	}
+
+	// Enforce that at most a single field is set. Unlike CreateResponse, we
+	// allow neither to be set, which indicates completion. In CreateResponse,
+	// this completion is indicated by the session identifier being set.
 	if fieldsSet > 1 {
 		return errors.New("multiple fields set")
 	}
@@ -270,12 +301,15 @@ func (r *TerminateRequest) ensureValid(first bool) error {
 	// Handle validation based on whether or not this is the first request in
 	// the stream.
 	if first {
-		// We can't really verify specifications, but any values are valid, even
-		// if they might not be correct.
+		// Validate the session selection specification.
+		if err := r.Selection.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session selection specification")
+		}
 	} else {
-		// Ensure that specifications are empty when responding.
-		if r.Specifications != nil {
-			return errors.New("non-empty specifications on message acknowledgement")
+		// Ensure that no session selection specification is present when
+		// acknowledging messages.
+		if r.Selection != nil {
+			return errors.New("non-nil session selection specification on message acknowledgement")
 		}
 
 		// We can't really validate the response field, and an empty value may

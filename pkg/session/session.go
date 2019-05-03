@@ -188,6 +188,15 @@ func (s *Session) EnsureValid() error {
 		return errors.Wrap(err, "invalid beta-specific configuration")
 	}
 
+	// Ensure that labels are valid.
+	for k, v := range s.Labels {
+		if err := EnsureLabelKeyValid(k); err != nil {
+			return errors.Wrap(err, "invalid label key")
+		} else if err = EnsureLabelValueValid(v); err != nil {
+			return errors.Wrap(err, "invalid label value")
+		}
+	}
+
 	// Success.
 	return nil
 }

@@ -156,5 +156,16 @@ func printSession(state *sessionpkg.State, long bool) {
 			state.Session.ConfigurationBeta,
 		)
 		printEndpoint("Beta", state.Session.Beta, betaConfigurationMerged, state.Session.Version)
+
+		// Print labels.
+		if len(state.Session.Labels) > 0 {
+			fmt.Println("\tLabels:")
+			keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
+			for _, key := range keys {
+				fmt.Printf("\t\t%s: %s\n", key, state.Session.Labels[key])
+			}
+		} else {
+			fmt.Println("\tLabels: None")
+		}
 	}
 }

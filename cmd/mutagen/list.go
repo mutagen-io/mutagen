@@ -118,6 +118,16 @@ func printConflicts(conflicts []*sync.Conflict) {
 }
 
 func listMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &sessionpkg.Selection{
+		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
+		Specifications: arguments,
+		LabelSelector:  listConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection()
 	if err != nil {
@@ -130,7 +140,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke list.
 	request := &sessionsvcpkg.ListRequest{
-		Specifications: arguments,
+		Selection: selection,
 	}
 	response, err := sessionService.List(context.Background(), request)
 	if err != nil {
@@ -179,6 +189,9 @@ var listConfiguration struct {
 	help bool
 	// long indicates whether or not to use long-format listing.
 	long bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 }
 
 func init() {
@@ -191,4 +204,5 @@ func init() {
 
 	// Wire up list flags.
 	flags.BoolVarP(&listConfiguration.long, "long", "l", false, "Show detailed session information")
+	flags.StringVar(&listConfiguration.labelSelector, "label-selector", "", "List sessions matching the specified label selector")
 }

@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/state"
 	"github.com/havoc-io/mutagen/pkg/url"
@@ -82,9 +84,9 @@ const (
 	minimumSessionSpecificationLength = 5
 )
 
-// findControllers generates a list of controllers matching the given
-// specifications.
-func (m *Manager) findControllers(specifications []string) ([]*controller, error) {
+// findControllersBySpecification generates a list of controllers matching the
+// given specifications.
+func (m *Manager) findControllersBySpecification(specifications []string) ([]*controller, error) {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
 	defer m.sessionsLock.UnlockWithoutNotify()
@@ -134,6 +136,47 @@ func (m *Manager) findControllers(specifications []string) ([]*controller, error
 	return controllers, nil
 }
 
+// findControllersByLabelSelector generates a list of controllers using the
+// specified label selector.
+func (m *Manager) findControllersByLabelSelector(rawSelector string) ([]*controller, error) {
+	// Parse the label selector.
+	selector, err := labels.Parse(rawSelector)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to parse label selector")
+	}
+
+	// Grab the registry lock and defer its release.
+	m.sessionsLock.Lock()
+	defer m.sessionsLock.UnlockWithoutNotify()
+
+	// Loop over controllers and look for matches.
+	var controllers []*controller
+	for _, controller := range m.sessions {
+		if selector.Matches(labels.Set(controller.session.Labels)) {
+			controllers = append(controllers, controller)
+		}
+	}
+
+	// Done.
+	return controllers, nil
+}
+
+// selectControllers generates a list of controllers using the mechanism
+// specified by the provided selection.
+func (m *Manager) selectControllers(selection *Selection) ([]*controller, error) {
+	// Dispatch selection based on the requested mechanism.
+	if selection.All {
+		return m.allControllers(), nil
+	} else if len(selection.Specifications) > 0 {
+		return m.findControllersBySpecification(selection.Specifications)
+	} else if selection.LabelSelector != "" {
+		return m.findControllersByLabelSelector(selection.LabelSelector)
+	} else {
+		// TODO: Should we panic here instead?
+		return nil, errors.New("invalid session selection")
+	}
+}
+
 // Shutdown tells the manager to gracefully halt sessions.
 func (m *Manager) Shutdown() {
 	// Poison state tracking to terminate monitoring.
@@ -156,6 +199,7 @@ func (m *Manager) Shutdown() {
 func (m *Manager) Create(
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
+	labels map[string]string,
 	prompter string,
 ) (string, error) {
 	// Attempt to create a session.
@@ -163,6 +207,7 @@ func (m *Manager) Create(
 		m.tracker,
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
+		labels,
 		prompter,
 	)
 	if err != nil {
@@ -179,7 +224,7 @@ func (m *Manager) Create(
 }
 
 // List requests a state snapshot for the specified sessions.
-func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint64, []*State, error) {
+func (m *Manager) List(selection *Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
 	if poisoned {
@@ -187,13 +232,9 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 	}
 
 	// Extract the controllers for the sessions of interest.
-	var controllers []*controller
-	if len(specifications) == 0 {
-		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(specifications); err != nil {
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
 		return 0, nil, errors.Wrap(err, "unable to locate requested sessions")
-	} else {
-		controllers = cs
 	}
 
 	// Extract the state from each controller.
@@ -215,15 +256,11 @@ func (m *Manager) List(previousStateIndex uint64, specifications []string) (uint
 }
 
 // Flush tells the manager to flush sessions matching the given specifications.
-func (m *Manager) Flush(specifications []string, prompter string, skipWait bool, context contextpkg.Context) error {
+func (m *Manager) Flush(selection *Selection, prompter string, skipWait bool, context contextpkg.Context) error {
 	// Extract the controllers for the sessions of interest.
-	var controllers []*controller
-	if len(specifications) == 0 {
-		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(specifications); err != nil {
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
-	} else {
-		controllers = cs
 	}
 
 	// Attempt to flush the sessions.
@@ -238,15 +275,11 @@ func (m *Manager) Flush(specifications []string, prompter string, skipWait bool,
 }
 
 // Pause tells the manager to pause sessions matching the given specifications.
-func (m *Manager) Pause(specifications []string, prompter string) error {
+func (m *Manager) Pause(selection *Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
-	var controllers []*controller
-	if len(specifications) == 0 {
-		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(specifications); err != nil {
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
-	} else {
-		controllers = cs
 	}
 
 	// Attempt to pause the sessions.
@@ -262,15 +295,11 @@ func (m *Manager) Pause(specifications []string, prompter string) error {
 
 // Resume tells the manager to resume sessions matching the given
 // specifications.
-func (m *Manager) Resume(specifications []string, prompter string) error {
+func (m *Manager) Resume(selection *Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
-	var controllers []*controller
-	if len(specifications) == 0 {
-		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(specifications); err != nil {
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
-	} else {
-		controllers = cs
 	}
 
 	// Attempt to resume.
@@ -286,15 +315,11 @@ func (m *Manager) Resume(specifications []string, prompter string) error {
 
 // Terminate tells the manager to terminate sessions matching the given
 // specifications.
-func (m *Manager) Terminate(specifications []string, prompter string) error {
+func (m *Manager) Terminate(selection *Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
-	var controllers []*controller
-	if len(specifications) == 0 {
-		controllers = m.allControllers()
-	} else if cs, err := m.findControllers(specifications); err != nil {
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
 		return errors.Wrap(err, "unable to locate requested sessions")
-	} else {
-		controllers = cs
 	}
 
 	// Attempt to terminate the sessions. Since we're terminating them, we're

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -47,6 +48,26 @@ func createMain(command *cobra.Command, arguments []string) error {
 		} else {
 			beta.Path = betaPath
 		}
+	}
+
+	// Parse, validate, and record labels.
+	var labels map[string]string
+	if len(createConfiguration.labels) > 0 {
+		labels = make(map[string]string, len(createConfiguration.labels))
+	}
+	for _, label := range createConfiguration.labels {
+		components := strings.SplitN(label, "=", 2)
+		var key, value string
+		key = components[0]
+		if len(components) == 2 {
+			value = components[1]
+		}
+		if err := sessionpkg.EnsureLabelKeyValid(key); err != nil {
+			return errors.Wrap(err, "invalid label key")
+		} else if err := sessionpkg.EnsureLabelValueValid(value); err != nil {
+			return errors.Wrap(err, "invalid label value")
+		}
+		labels[key] = value
 	}
 
 	// Validate and convert the synchronization mode specification.
@@ -249,40 +270,43 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.CreateRequest{
-		Alpha: alpha,
-		Beta:  beta,
-		Configuration: &sessionpkg.Configuration{
-			SynchronizationMode:    synchronizationMode,
-			MaximumEntryCount:      createConfiguration.maximumEntryCount,
-			MaximumStagingFileSize: maximumStagingFileSize,
-			ProbeMode:              probeMode,
-			SymlinkMode:            symbolicLinkMode,
-			WatchMode:              watchMode,
-			WatchPollingInterval:   createConfiguration.watchPollingInterval,
-			Ignores:                createConfiguration.ignores,
-			IgnoreVCSMode:          ignoreVCSMode,
-			DefaultFileMode:        defaultFileMode,
-			DefaultDirectoryMode:   defaultDirectoryMode,
-			DefaultOwner:           createConfiguration.defaultOwner,
-			DefaultGroup:           createConfiguration.defaultGroup,
-		},
-		ConfigurationAlpha: &sessionpkg.Configuration{
-			ProbeMode:            probeModeAlpha,
-			WatchMode:            watchModeAlpha,
-			WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
-			DefaultFileMode:      defaultFileModeAlpha,
-			DefaultDirectoryMode: defaultDirectoryModeAlpha,
-			DefaultOwner:         createConfiguration.defaultOwnerAlpha,
-			DefaultGroup:         createConfiguration.defaultGroupAlpha,
-		},
-		ConfigurationBeta: &sessionpkg.Configuration{
-			ProbeMode:            probeModeBeta,
-			WatchMode:            watchModeBeta,
-			WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
-			DefaultFileMode:      defaultFileModeBeta,
-			DefaultDirectoryMode: defaultDirectoryModeBeta,
-			DefaultOwner:         createConfiguration.defaultOwnerBeta,
-			DefaultGroup:         createConfiguration.defaultGroupBeta,
+		Specification: &sessionsvcpkg.CreationSpecification{
+			Alpha: alpha,
+			Beta:  beta,
+			Configuration: &sessionpkg.Configuration{
+				SynchronizationMode:    synchronizationMode,
+				MaximumEntryCount:      createConfiguration.maximumEntryCount,
+				MaximumStagingFileSize: maximumStagingFileSize,
+				ProbeMode:              probeMode,
+				SymlinkMode:            symbolicLinkMode,
+				WatchMode:              watchMode,
+				WatchPollingInterval:   createConfiguration.watchPollingInterval,
+				Ignores:                createConfiguration.ignores,
+				IgnoreVCSMode:          ignoreVCSMode,
+				DefaultFileMode:        defaultFileMode,
+				DefaultDirectoryMode:   defaultDirectoryMode,
+				DefaultOwner:           createConfiguration.defaultOwner,
+				DefaultGroup:           createConfiguration.defaultGroup,
+			},
+			ConfigurationAlpha: &sessionpkg.Configuration{
+				ProbeMode:            probeModeAlpha,
+				WatchMode:            watchModeAlpha,
+				WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
+				DefaultFileMode:      defaultFileModeAlpha,
+				DefaultDirectoryMode: defaultDirectoryModeAlpha,
+				DefaultOwner:         createConfiguration.defaultOwnerAlpha,
+				DefaultGroup:         createConfiguration.defaultGroupAlpha,
+			},
+			ConfigurationBeta: &sessionpkg.Configuration{
+				ProbeMode:            probeModeBeta,
+				WatchMode:            watchModeBeta,
+				WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
+				DefaultFileMode:      defaultFileModeBeta,
+				DefaultDirectoryMode: defaultDirectoryModeBeta,
+				DefaultOwner:         createConfiguration.defaultOwnerBeta,
+				DefaultGroup:         createConfiguration.defaultGroupBeta,
+			},
+			Labels: labels,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -328,6 +352,8 @@ var createConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
+	// labels are the label specifications for the session.
+	labels []string
 	// synchronizationMode specifies the synchronization mode for the session.
 	synchronizationMode string
 	// maximumEntryCount specifies the maximum number of filesystem entries that
@@ -430,6 +456,9 @@ var createConfiguration struct {
 func init() {
 	// Grab a handle for the command line flags.
 	flags := createCommand.Flags()
+
+	// Wire up label flags.
+	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.

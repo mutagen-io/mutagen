@@ -9,18 +9,18 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func pauseMain(command *cobra.Command, arguments []string) error {
-	// Parse session specifications.
-	var specifications []string
-	if len(arguments) > 0 {
-		if pauseConfiguration.all {
-			return errors.New("-a/--all specified with specific sessions")
-		}
-		specifications = arguments
-	} else if !pauseConfiguration.all {
-		return errors.New("no sessions specified")
+	// Create session selection specification.
+	selection := &session.Selection{
+		All:            pauseConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  pauseConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -44,7 +44,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 
 	// Send the initial request.
 	request := &sessionsvcpkg.PauseRequest{
-		Specifications: specifications,
+		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send pause request")
@@ -85,6 +85,9 @@ var pauseConfiguration struct {
 	help bool
 	// all indicates whether or not all sessions should be paused.
 	all bool
+	// labelSelector encodes a label selector to be used in identifying which
+	// sessions should be paused.
+	labelSelector string
 }
 
 func init() {
@@ -97,4 +100,5 @@ func init() {
 
 	// Wire up pause flags.
 	flags.BoolVarP(&pauseConfiguration.all, "all", "a", false, "Pause all sessions")
+	flags.StringVar(&pauseConfiguration.labelSelector, "label-selector", "", "Pause sessions matching the specified label selector")
 }

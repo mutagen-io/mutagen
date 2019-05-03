@@ -54,11 +54,12 @@ func (s *Server) Create(stream Sessions_CreateServer) error {
 	// Perform creation.
 	// TODO: Figure out a way to monitor for cancellation.
 	session, err := s.manager.Create(
-		request.Alpha,
-		request.Beta,
-		request.Configuration,
-		request.ConfigurationAlpha,
-		request.ConfigurationBeta,
+		request.Specification.Alpha,
+		request.Specification.Beta,
+		request.Specification.Configuration,
+		request.Specification.ConfigurationAlpha,
+		request.Specification.ConfigurationBeta,
+		request.Specification.Labels,
 		prompter,
 	)
 
@@ -88,7 +89,7 @@ func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, e
 
 	// Perform listing.
 	// TODO: Figure out a way to monitor for cancellation.
-	stateIndex, states, err := s.manager.List(request.PreviousStateIndex, request.Specifications)
+	stateIndex, states, err := s.manager.List(request.Selection, request.PreviousStateIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (s *Server) Flush(stream Sessions_FlushServer) error {
 	}
 
 	// Perform flush.
-	err = s.manager.Flush(request.Specifications, prompter, request.SkipWait, stream.Context())
+	err = s.manager.Flush(request.Selection, prompter, request.SkipWait, stream.Context())
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)
@@ -154,7 +155,7 @@ func (s *Server) Pause(stream Sessions_PauseServer) error {
 
 	// Perform termination.
 	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Pause(request.Specifications, prompter)
+	err = s.manager.Pause(request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)
@@ -191,7 +192,7 @@ func (s *Server) Resume(stream Sessions_ResumeServer) error {
 
 	// Perform resuming.
 	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Resume(request.Specifications, prompter)
+	err = s.manager.Resume(request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)
@@ -228,7 +229,7 @@ func (s *Server) Terminate(stream Sessions_TerminateServer) error {
 
 	// Perform termination.
 	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Terminate(request.Specifications, prompter)
+	err = s.manager.Terminate(request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)

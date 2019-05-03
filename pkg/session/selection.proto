@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
+// Selection encodes a selection mechanism that can be used to select a
+// collection of sessions. It should have exactly one member set.
+message Selection {
+    // All, if true, indicates that all sessions should be selected.
+    bool all = 1;
+    // Specifications is a list of standard Mutagen specifications (identifiers
+    // and/or fragments). If non-empty, it indicates that these specifications
+    // should be used to select sessions.
+    repeated string specifications = 2;
+    // LabelSelector is a label selector specification. If present (non-empty),
+    // it indicates that this selector should be used to select sessions.
+    string labelSelector = 3;
+}
