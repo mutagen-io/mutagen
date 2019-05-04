@@ -16,23 +16,10 @@ type Server struct {
 }
 
 // NewServer creates an instances of the sessions server.
-func NewServer() (*Server, error) {
-	// Create the session manager.
-	manager, err := session.NewManager()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create session manager")
-	}
-
-	// Create the server.
+func NewServer(manager *session.Manager) *Server {
 	return &Server{
 		manager: manager,
-	}, nil
-}
-
-// Shutdown gracefully shuts down server resources.
-func (s *Server) Shutdown() {
-	// Forward the shutdown request to the session manager.
-	s.manager.Shutdown()
+	}
 }
 
 // Create creates a new session.

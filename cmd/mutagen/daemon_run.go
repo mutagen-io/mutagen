@@ -16,6 +16,7 @@ import (
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
+	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func daemonRunMain(command *cobra.Command, arguments []string) error {
@@ -54,13 +55,15 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	// Create and register the prompt service.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
 
-	// Create and register the session service and defer its shutdown.
-	sessionsServer, err := sessionsvc.NewServer()
+	// Create a session manager and defer its shutdown.
+	sessionManager, err := session.NewManager()
 	if err != nil {
-		return errors.Wrap(err, "unable to create sessions service")
+		return errors.Wrap(err, "unable to create session manager")
 	}
-	sessionsvc.RegisterSessionsServer(server, sessionsServer)
-	defer sessionsServer.Shutdown()
+	defer sessionManager.Shutdown()
+
+	// Create and register the session service.
+	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
 	// Create the daemon listener and defer its closure.
 	listener, err := daemon.NewListener()
