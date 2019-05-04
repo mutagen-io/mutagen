@@ -47,15 +47,15 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	)
 
 	// Create and register the daemon service and defer its shutdown.
-	daemonServer := daemonsvc.New()
+	daemonServer := daemonsvc.NewServer()
 	daemonsvc.RegisterDaemonServer(server, daemonServer)
 	defer daemonServer.Shutdown()
 
 	// Create and register the prompt service.
-	promptsvc.RegisterPromptingServer(server, promptsvc.New())
+	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
 
 	// Create and register the session service and defer its shutdown.
-	sessionsServer, err := sessionsvc.New()
+	sessionsServer, err := sessionsvc.NewServer()
 	if err != nil {
 		return errors.Wrap(err, "unable to create sessions service")
 	}

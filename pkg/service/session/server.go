@@ -15,8 +15,8 @@ type Server struct {
 	manager *session.Manager
 }
 
-// New creates an instances of the sessions server.
-func New() (*Server, error) {
+// NewServer creates an instances of the sessions server.
+func NewServer() (*Server, error) {
 	// Create the session manager.
 	manager, err := session.NewManager()
 	if err != nil {

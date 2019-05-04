@@ -44,8 +44,8 @@ type Server struct {
 	shutdown context.CancelFunc
 }
 
-// New creates an instance of the daemon server.
-func New() *Server {
+// NewServer creates an instance of the daemon server.
+func NewServer() *Server {
 	// Create a cancellable context for daemon background operations.
 	context, shutdown := context.WithCancel(context.Background())
 
