@@ -315,25 +315,14 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 // ReadContents queries the directory contents and their associated metadata.
 // While the results of this function can be computed as a combination of
 // ReadContentNames and ReadContentMetadata, this function may be significantly
-// faster than a naïve combination of the two (e.g. due to parallelized fstatat
-// calls on POSIX systems and the usage of FindFirstFile/FindNextFile
-// infrastructure on Windows). This function doesn't return metadata for "." or
-// ".." entries.
+// faster than a naïve combination of the two (e.g. due to the usage of
+// FindFirstFile/FindNextFile infrastructure on Windows). This function doesn't
+// return metadata for "." or ".." entries.
 func (d *Directory) ReadContents() ([]*Metadata, error) {
 	// Read content names.
 	names, err := d.ReadContentNames()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read directory content names")
-	}
-
-	// Use parallel metadata query operations, if available.
-	if !parallelMetadataDisabled {
-		parallelReadContentMetadataRequests <- parallelReadContentMetadataRequest{
-			directory: d,
-			names:     names,
-		}
-		response := <-parallelReadContentMetadataResponses
-		return response.results, response.fatalError
 	}
 
 	// Allocate the result slice with enough capacity to accommodate all
