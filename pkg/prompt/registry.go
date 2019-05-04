@@ -9,7 +9,7 @@ import (
 )
 
 // registryLock is the lock on the global prompter registry.
-var registryLock sync.Mutex
+var registryLock sync.RWMutex
 
 // registry is the global prompter registry.
 var registry = make(map[string]chan Prompter)
@@ -68,9 +68,9 @@ func Message(identifier, message string) error {
 	}
 
 	// Grab the holder for the specified prompter.
-	registryLock.Lock()
+	registryLock.RLock()
 	holder, ok := registry[identifier]
-	registryLock.Unlock()
+	registryLock.RUnlock()
 	if !ok {
 		return errors.New("prompter not found")
 	}
@@ -99,9 +99,9 @@ func Message(identifier, message string) error {
 // Prompt invokes the Prompt method on a prompter in the global registry.
 func Prompt(identifier, prompt string) (string, error) {
 	// Grab the holder for the specified prompter.
-	registryLock.Lock()
+	registryLock.RLock()
 	holder, ok := registry[identifier]
-	registryLock.Unlock()
+	registryLock.RUnlock()
 	if !ok {
 		return "", errors.New("prompter not found")
 	}
