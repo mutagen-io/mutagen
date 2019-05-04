@@ -407,10 +407,3 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
-
-// TODO: Implement end-to-end tests that work via the gRPC service endpoints.
-// This will obviously require setting up the whole service architecture. Maybe
-// we can modify the session service to take a session manager as an argument
-// (instead of creating it internally) so that we don't need to tear down the
-// other manager before trying the gRPC version? Manager is already safe for
-// concurrent usage.
