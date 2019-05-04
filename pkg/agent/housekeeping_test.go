@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// TestHousekeeping tests that Housekeeping succeeds without panicing.
-func TestHousekeeping(t *testing.T) {
-	// Invoke housekeeping.
+// TestHousekeep tests that Housekeep succeeds without panicking.
+func TestHousekeep(_ *testing.T) {
 	Housekeep()
 }
