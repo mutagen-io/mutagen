@@ -29,6 +29,11 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
 		panic("invalid probe mode")
 	}
 
+	// Check if we have a fast test that will work.
+	if result, ok := probeUnicodeDecompositionFastByPath(path); ok {
+		return result, nil
+	}
+
 	// Create and close a temporary file using the composed filename.
 	file, err := ioutil.TempFile(path, composedFileNamePrefix)
 	if err != nil {
@@ -85,6 +90,11 @@ func DecomposesUnicode(directory *Directory, probeMode ProbeMode) (bool, error) 
 		return false, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
+	}
+
+	// Check if we have a fast test that will work.
+	if result, ok := probeUnicodeDecompositionFast(directory); ok {
+		return result, nil
 	}
 
 	// Create and close a temporary file using the composed filename.

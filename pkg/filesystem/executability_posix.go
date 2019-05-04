@@ -26,6 +26,11 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 		panic("invalid probe mode")
 	}
 
+	// Check if we have a fast test that will work.
+	if result, ok := probeExecutabilityPreservationFastByPath(path); ok {
+		return result, nil
+	}
+
 	// Create a temporary file.
 	file, err := ioutil.TempFile(path, executabilityProbeFileNamePrefix)
 	if err != nil {
@@ -66,6 +71,11 @@ func PreservesExecutability(directory *Directory, probeMode ProbeMode) (bool, er
 		return true, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
+	}
+
+	// Check if we have a fast test that will work.
+	if result, ok := probeExecutabilityPreservationFast(directory); ok {
+		return result, nil
 	}
 
 	// Create a temporary file.
