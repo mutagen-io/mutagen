@@ -48,11 +48,13 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	}
 	defer sessionManager.Shutdown()
 
-	// Create the gRPC server.
+	// Create the gRPC server and defer its stoppage. We use a hard stop rather
+	// than a graceful stop so that it doesn't hang on open requests.
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(mgrpc.MaximumIPCMessageSize),
 		grpc.MaxRecvMsgSize(mgrpc.MaximumIPCMessageSize),
 	)
+	defer server.Stop()
 
 	// Create and register the daemon service and defer its shutdown.
 	daemonServer := daemonsvc.NewServer()
