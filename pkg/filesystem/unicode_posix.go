@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -123,8 +124,30 @@ func DecomposesUnicode(directory *Directory, probeMode ProbeMode) (bool, error) 
 		}
 	}()
 
+	// HACK: If we're on Linux, then re-open the directory after creating the
+	// temporary file (and defer closure of the re-opened copy). This is
+	// necessary to work around an issue with osxfs where a directory descriptor
+	// can't be used to list contents created after the descriptor was opened
+	// (due either to aggressive caching or some sort of implementation bug).
+	// See issue #73 for more details. Ideally we'd restrict this workaround to
+	// osxfs, but we can't actually detect osxfs specifically because the statfs
+	// type field just indicates that it's a FUSE filesystem. Even if we wanted
+	// to restrict this behavior to just FUSE filesystems, the statfs call is
+	// going to be about the same cost (if not more expensive) than the re-open
+	// call, so it's best to just do this in all cases on Linux. This isn't such
+	// a big deal since this function is only called once per scan, and we may
+	// hit a fast path above anyway.
+	directoryForContentRead := directory
+	if runtime.GOOS == "linux" {
+		directoryForContentRead, err = directory.OpenDirectory(".")
+		if err != nil {
+			return false, errors.Wrap(err, "unable to re-open directory")
+		}
+		defer directoryForContentRead.Close()
+	}
+
 	// Grab the content names in the directory.
-	names, err := directory.ReadContentNames()
+	names, err := directoryForContentRead.ReadContentNames()
 	if err != nil {
 		return false, errors.Wrap(err, "unable to read directory content names")
 	}

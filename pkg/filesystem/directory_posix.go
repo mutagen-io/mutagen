@@ -171,7 +171,10 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 // OpenFile.
 func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error) {
 	// Verify that the name is valid.
-	if err := ensureValidName(name); err != nil {
+	if wantDirectory && name == "." {
+		// As a special case, we allow directories to be re-opened on POSIX
+		// systems. This is safe since it doesn't allow traversal.
+	} else if err := ensureValidName(name); err != nil {
 		return -1, nil, err
 	}
 
@@ -232,7 +235,10 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	return descriptor, file, nil
 }
 
-// OpenDirectory opens the directory within the directory specified by name.
+// OpenDirectory opens the directory within the directory specified by name. On
+// POSIX systems, the directory itself can be re-opened (with a different
+// underlying file handle pointing to the same directory) by passing "." to this
+// function.
 func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Call the underlying open method.
 	descriptor, file, err := d.open(name, true)
