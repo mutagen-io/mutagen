@@ -329,7 +329,6 @@ func Scan(
 	cache *Cache,
 	ignores []string,
 	ignoreCache IgnoreCache,
-	probeMode fs.ProbeMode,
 	symlinkMode SymlinkMode,
 ) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
@@ -406,7 +405,7 @@ func Scan(
 		}
 
 		// Probe and set Unicode decomposition behavior for the root directory.
-		if decomposes, err := fs.DecomposesUnicode(rootDirectory, probeMode); err != nil {
+		if decomposes, err := fs.DecomposesUnicode(rootDirectory); err != nil {
 			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
 		} else {
@@ -415,7 +414,7 @@ func Scan(
 
 		// Probe and set executability preservation behavior for the root
 		// directory.
-		if preserves, err := fs.PreservesExecutability(rootDirectory, probeMode); err != nil {
+		if preserves, err := fs.PreservesExecutability(rootDirectory); err != nil {
 			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
 		} else {
@@ -452,7 +451,7 @@ func Scan(
 		// each platform. Even on platforms where detailed metadata is provided,
 		// the filesystem identifier alone may not be enough to determine this
 		// behavior.
-		if preserves, err := fs.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
+		if preserves, err := fs.PreservesExecutabilityByPath(filepath.Dir(root)); err != nil {
 			rootFile.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
 		} else {

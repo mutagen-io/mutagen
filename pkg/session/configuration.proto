@@ -4,7 +4,6 @@ package session;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
-import "filesystem/probe.proto";
 import "filesystem/watch.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
@@ -31,10 +30,7 @@ message Configuration {
     // endpoints will stage. A zero value indicates no limit.
     uint64 maximumStagingFileSize = 13;
 
-    // ProbeMode specifies the filesystem probing mode.
-    filesystem.ProbeMode probeMode = 14;
-
-    // Fields 15-20 are reserved for future synchronization configuration
+    // Fields 14-20 are reserved for future synchronization configuration
     // parameters.
 
 

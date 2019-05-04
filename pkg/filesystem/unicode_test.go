@@ -6,19 +6,6 @@ import (
 	"testing"
 )
 
-func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {
-	// Query the assumed behavior of the home directory and ensure it matches
-	// what's expected.
-	if decomposes, err := DecomposesUnicodeByPath(
-		HomeDirectory,
-		ProbeMode_ProbeModeAssume,
-	); err != nil {
-		t.Fatal("unable to query Unicode decomposition:", err)
-	} else if decomposes {
-		t.Error("Unicode decomposition behavior does not match expected")
-	}
-}
-
 func TestDecomposesUnicodeByPathDarwinHFS(t *testing.T) {
 	// If we're not on Darwin, skip this test. We may have an HFS+ root (e.g. on
 	// Linux), but Linux's HFS+ implementation can either compose or decompose
@@ -34,7 +21,7 @@ func TestDecomposesUnicodeByPathDarwinHFS(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicodeByPath(hfsRoot, ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath(hfsRoot); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if !decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -49,7 +36,7 @@ func TestDecomposesUnicodeByPathDarwinAPFS(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicodeByPath(apfsRoot, ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath(apfsRoot); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -67,7 +54,7 @@ func TestDecomposesUnicodeByPathOSPartition(t *testing.T) {
 	// Probe the behavior of the root and ensure it matches what's expected. The
 	// only case we expect to decompose is HFS+ on Darwin, which we won't
 	// encounter in this test.
-	if decomposes, err := DecomposesUnicodeByPath(".", ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath("."); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -78,9 +65,6 @@ func TestDecomposesUnicodeByPathOSPartition(t *testing.T) {
 type decomposesUnicodeTestCase struct {
 	// path is the path to test.
 	path string
-	// assume indicates that an assumption should be generated as opposed to
-	// actual probing.
-	assume bool
 	// expected is the expected result of the Unicode decomposition test.
 	expected bool
 }
@@ -103,32 +87,12 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 	}
 	defer directory.Close()
 
-	// Determine the probing mode.
-	probeMode := ProbeMode_ProbeModeProbe
-	if c.assume {
-		probeMode = ProbeMode_ProbeModeAssume
-	}
-
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if decomposes, err := DecomposesUnicode(directory, probeMode); err != nil {
+	if decomposes, err := DecomposesUnicode(directory); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes != c.expected {
 		t.Error("Unicode decomposition behavior does not match expected")
 	}
-}
-
-// TestDecomposesUnicodeAssumedHomeDirectory tests assumed Unicode decomposition
-// behavior on the home directory.
-func TestDecomposesUnicodeAssumedHomeDirectory(t *testing.T) {
-	// Create the test case.
-	testCase := &decomposesUnicodeTestCase{
-		path:     HomeDirectory,
-		assume:   true,
-		expected: false,
-	}
-
-	// Run the test case.
-	testCase.run(t)
 }
 
 // TestDecomposesUnicodeDarwinHFS tests Unicode decomposition behavior on an

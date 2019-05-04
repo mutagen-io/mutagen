@@ -1,5 +1,5 @@
 //go:generate go build github.com/golang/protobuf/protoc-gen-go
-//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. filesystem/probe.proto filesystem/watch.proto
+//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. filesystem/watch.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. rsync/engine.proto rsync/receive.proto rsync/transmission.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. service/daemon/daemon.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. service/prompt/prompt.proto

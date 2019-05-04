@@ -65,11 +65,6 @@ func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
 	// The maximum staging file size doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the probe mode is unspecified or supported for usage.
-	if !(c.ProbeMode.IsDefault() || c.ProbeMode.Supported()) {
-		return errors.New("unknown or unsupported probe mode")
-	}
-
 	// Verify that the symlink mode.
 	if endpointSpecific {
 		if !c.SymlinkMode.IsDefault() {
@@ -171,7 +166,6 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 		SynchronizationMode:    configuration.Synchronization.Mode,
 		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
 		MaximumStagingFileSize: uint64(configuration.Synchronization.MaximumStagingFileSize),
-		ProbeMode:              configuration.Synchronization.ProbeMode,
 		SymlinkMode:            configuration.Symlink.Mode,
 		WatchMode:              configuration.Watch.Mode,
 		WatchPollingInterval:   configuration.Watch.PollingInterval,
@@ -217,13 +211,6 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.MaximumStagingFileSize = higher.MaximumStagingFileSize
 	} else {
 		result.MaximumStagingFileSize = lower.MaximumStagingFileSize
-	}
-
-	// Merge probe mode.
-	if !higher.ProbeMode.IsDefault() {
-		result.ProbeMode = higher.ProbeMode
-	} else {
-		result.ProbeMode = lower.ProbeMode
 	}
 
 	// Merge symlink mode.

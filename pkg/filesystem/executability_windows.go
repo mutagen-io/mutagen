@@ -3,13 +3,7 @@ package filesystem
 // PreservesExecutabilityByPath determines whether or not the directory at the
 // specified path preserves POSIX executability bits. On Windows this function
 // always returns false since POSIX executability bits are never preserved.
-func PreservesExecutabilityByPath(_ string, probeMode ProbeMode) (bool, error) {
-	// Check for invalid probe modes.
-	if !probeMode.Supported() {
-		panic("invalid probe mode")
-	}
-
-	// Return the well-known behavior.
+func PreservesExecutabilityByPath(_ string) (bool, error) {
 	return false, nil
 }
 
@@ -17,12 +11,6 @@ func PreservesExecutabilityByPath(_ string, probeMode ProbeMode) (bool, error) {
 // its underlying filesystem) preserves POSIX executability bits. On Windows
 // this function always returns false since POSIX executability bits are never
 // preserved.
-func PreservesExecutability(_ *Directory, probeMode ProbeMode) (bool, error) {
-	// Check for invalid probe modes.
-	if !probeMode.Supported() {
-		panic("invalid probe mode")
-	}
-
-	// Return the well-known behavior.
+func PreservesExecutability(_ *Directory) (bool, error) {
 	return false, nil
 }
