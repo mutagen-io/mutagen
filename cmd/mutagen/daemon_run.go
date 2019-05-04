@@ -41,6 +41,13 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Create a session manager and defer its shutdown.
+	sessionManager, err := session.NewManager()
+	if err != nil {
+		return errors.Wrap(err, "unable to create session manager")
+	}
+	defer sessionManager.Shutdown()
+
 	// Create the gRPC server.
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(mgrpc.MaximumIPCMessageSize),
@@ -54,13 +61,6 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 
 	// Create and register the prompt service.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
-
-	// Create a session manager and defer its shutdown.
-	sessionManager, err := session.NewManager()
-	if err != nil {
-		return errors.Wrap(err, "unable to create session manager")
-	}
-	defer sessionManager.Shutdown()
 
 	// Create and register the session service.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
