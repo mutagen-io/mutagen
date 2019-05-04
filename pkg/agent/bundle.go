@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/process"
 )
 
@@ -20,6 +21,27 @@ const (
 	BundleName = "mutagen-agents.tar.gz"
 )
 
+// BundleLocation encodes an expected location for the agent bundle.
+type BundleLocation uint8
+
+const (
+	// BundleLocationSameDirectory specifies that the Mutagen executable in
+	// which the agent package resides should expect to find the agent bundle in
+	// the same directory as said executable.
+	BundleLocationSameDirectory BundleLocation = iota
+	// BundleLocationBuildDirectory specifies that the Mutagen executable in
+	// which the agent package resides should expect to find the agent bundle in
+	// the Mutagen build directory. This mode should only be used during
+	// testing.
+	BundleLocationBuildDirectory
+)
+
+// ExpectedBundleLocation specifies the expected agent bundle location. It is
+// set by the time that init functions have completed. After that, it should
+// only be set at the process entry point, before any code calls into the agent
+// package.
+var ExpectedBundleLocation BundleLocation
+
 // executableForPlatform attempts to locate the agent bundle and extract an
 // agent executable for the specified target platform. The extracted file will
 // be in a temporary location accessible to only the user, and will have the
@@ -27,14 +49,27 @@ const (
 // be returned, and the caller is responsible for cleaning up the file if this
 // function returns a nil error.
 func executableForPlatform(goos, goarch string) (string, error) {
-	// Compute the path to the current executable.
-	executablePath, err := os.Executable()
-	if err != nil {
-		return "", errors.Wrap(err, "unable to determine executable path")
+	// Compute the path to the location in which we expect to find the agent
+	// bundle.
+	var bundleLocationPath string
+	if ExpectedBundleLocation == BundleLocationSameDirectory {
+		if executablePath, err := os.Executable(); err != nil {
+			return "", errors.Wrap(err, "unable to determine executable path")
+		} else {
+			bundleLocationPath = filepath.Dir(executablePath)
+		}
+	} else if ExpectedBundleLocation == BundleLocationBuildDirectory {
+		if sourceTreePath, err := mutagen.SourceTreePath(); err != nil {
+			return "", errors.Wrap(err, "unable to determine Mutagen source tree path")
+		} else {
+			bundleLocationPath = filepath.Join(sourceTreePath, mutagen.BuildDirectoryName)
+		}
+	} else {
+		panic("invalid bundle location specification")
 	}
 
 	// Compute the path to the agent bundle.
-	bundlePath := filepath.Join(filepath.Dir(executablePath), BundleName)
+	bundlePath := filepath.Join(bundleLocationPath, BundleName)
 
 	// Open the bundle path and ensure its closure.
 	bundle, err := os.Open(bundlePath)

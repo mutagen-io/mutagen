@@ -4,18 +4,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
-
-	"github.com/pkg/errors"
 )
-
-func init() {
-	// Copy the agent bundle for testing.
-	// HACK: We're relying on the fact that Go will clean this up when it
-	// removes the testing temporary directory.
-	if err := CopyBundleForTesting(); err != nil {
-		panic(errors.Wrap(err, "unable to copy agent bundle for testing"))
-	}
-}
 
 // TestExecutableForInvalidOS tests that executableForPlatform fails for an
 // invalid OS specification.

@@ -11,52 +11,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/session/endpoint/local"
 	"github.com/havoc-io/mutagen/pkg/url"
-
-	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/havoc-io/mutagen/pkg/protocols/docker"
-	_ "github.com/havoc-io/mutagen/pkg/protocols/local"
-	_ "github.com/havoc-io/mutagen/pkg/protocols/ssh"
 )
-
-// daemonLock is the daemon lock manager.
-var daemonLock *daemon.Lock
-
-// sessionManager is the session manager.
-var sessionManager *session.Manager
-
-func init() {
-	// Copy the agent bundle for testing.
-	// HACK: We're relying on the fact that Go will clean this up when it
-	// removes the testing temporary directory.
-	if err := agent.CopyBundleForTesting(); err != nil {
-		panic(errors.Wrap(err, "unable to copy agent bundle for testing"))
-	}
-
-	// Acquire the daemon lock.
-	if l, err := daemon.AcquireLock(); err != nil {
-		panic(errors.Wrap(err, "unable to acquire daemon lock"))
-	} else {
-		daemonLock = l
-	}
-
-	// Create a session manager.
-	if m, err := session.NewManager(); err != nil {
-		panic(errors.Wrap(err, "unable to create session manager"))
-	} else {
-		sessionManager = m
-	}
-
-	// Perform housekeeping.
-	agent.Housekeep()
-	local.HousekeepCaches()
-	local.HousekeepStaging()
-}
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
 	// Create a session selection specification.
@@ -294,7 +253,7 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	// handler to indicate an in-memory connection.
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{
-		Protocol: inMemoryProtocol,
+		Protocol: netpipe.Protocol_Netpipe,
 		Path:     betaRoot,
 	}
 

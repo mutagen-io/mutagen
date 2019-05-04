@@ -1,4 +1,4 @@
-package integration
+package netpipe
 
 import (
 	"net"
@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	// inMemoryProtocol is a fake protocol used to perform integration tests
+	// Protocol_Netpipe is a fake protocol used to perform integration tests
 	// over an in-memory setup of the remote client/server architecture.
-	inMemoryProtocol urlpkg.Protocol = -1
+	Protocol_Netpipe urlpkg.Protocol = -1
 )
 
 // protocolHandler implements the session.ProtocolHandler interface for
@@ -32,8 +32,8 @@ func (h *protocolHandler) Dial(
 	alpha bool,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
-	if url.Protocol != inMemoryProtocol {
-		panic("non-in-memory URL dispatched to in-memory protocol handler")
+	if url.Protocol != Protocol_Netpipe {
+		panic("non-netpipe URL dispatched to netpipe protocol handler")
 	}
 
 	// Create an in-memory network connection.
@@ -61,6 +61,6 @@ func (h *protocolHandler) Dial(
 }
 
 func init() {
-	// Register the in-memory protocol handler with the session package.
-	session.ProtocolHandlers[inMemoryProtocol] = &protocolHandler{}
+	// Register the netpipe protocol handler with the session package.
+	session.ProtocolHandlers[Protocol_Netpipe] = &protocolHandler{}
 }

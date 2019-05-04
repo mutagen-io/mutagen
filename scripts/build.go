@@ -30,10 +30,6 @@ const (
 	// cliPackage is the Go package URL to use for building Mutagen binaries.
 	cliPackage = "github.com/havoc-io/mutagen/cmd/mutagen"
 
-	// buildDirectoryName is the name of the build directory to create inside
-	// the root of the Mutagen source tree.
-	buildDirectoryName = "build"
-
 	// agentBuildSubdirectoryName is the name of the build subdirectory where
 	// agent binaries are built.
 	agentBuildSubdirectoryName = "agent"
@@ -418,7 +414,7 @@ func main() {
 	}
 
 	// Compute the path to the build directory and ensure that it exists.
-	buildPath := filepath.Join(mutagenSourcePath, buildDirectoryName)
+	buildPath := filepath.Join(mutagenSourcePath, mutagen.BuildDirectoryName)
 	if err := os.MkdirAll(buildPath, 0700); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create build directory"))
 	}
