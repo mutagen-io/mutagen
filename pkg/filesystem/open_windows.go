@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	osvendor "github.com/havoc-io/mutagen/pkg/filesystem/os"
+	osvendor "github.com/havoc-io/mutagen/pkg/filesystem/third_party/os"
 )
 
 // Open opens a filesystem path for traversal and operations. It will return

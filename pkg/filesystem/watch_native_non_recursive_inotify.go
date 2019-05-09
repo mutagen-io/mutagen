@@ -5,7 +5,7 @@ package filesystem
 import (
 	"context"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem/notify"
+	"github.com/havoc-io/mutagen/pkg/filesystem/third_party/notify"
 )
 
 // nonRecursiveWatcher represents a non-recursive native watcher that can watch
