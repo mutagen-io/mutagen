@@ -13,6 +13,8 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
@@ -92,7 +94,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert probe mode specifications.
-	var probeMode, probeModeAlpha, probeModeBeta fs.ProbeMode
+	var probeMode, probeModeAlpha, probeModeBeta behavior.ProbeMode
 	if createConfiguration.probeMode != "" {
 		if err := probeMode.UnmarshalText([]byte(createConfiguration.probeMode)); err != nil {
 			return errors.Wrap(err, "unable to parse probe mode")
@@ -118,7 +120,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert watch mode specifications.
-	var watchMode, watchModeAlpha, watchModeBeta fs.WatchMode
+	var watchMode, watchModeAlpha, watchModeBeta watching.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")

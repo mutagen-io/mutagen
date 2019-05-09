@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 )
 
 const (
@@ -162,7 +163,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 
 	// Determine whether or not we need to recompose Unicode when transitioning
 	// inside this directory.
-	recomposeUnicode, err := filesystem.DecomposesUnicodeByPath(parent, filesystem.ProbeMode_ProbeModeProbe)
+	recomposeUnicode, err := behavior.DecomposesUnicodeByPath(parent, behavior.ProbeMode_ProbeModeProbe)
 	if err != nil {
 		os.RemoveAll(parent)
 		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
@@ -236,7 +237,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	// Unicode recomposition behavior.
 	var recomposeUnicode bool
 	if expected != nil && expected.Kind == EntryKind_Directory {
-		if r, err := filesystem.DecomposesUnicodeByPath(root, filesystem.ProbeMode_ProbeModeProbe); err != nil {
+		if r, err := behavior.DecomposesUnicodeByPath(root, behavior.ProbeMode_ProbeModeProbe); err != nil {
 			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
 		} else {
 			recomposeUnicode = r
@@ -301,7 +302,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 		nil,
 		nil,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		SymlinkMode_SymlinkModePortable,
 	)
 	if !preservesExecutability {
@@ -404,7 +405,7 @@ func TestTransitionSwapFile(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			filesystem.ProbeMode_ProbeModeProbe,
+			behavior.ProbeMode_ProbeModeProbe,
 			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {
@@ -477,7 +478,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			filesystem.ProbeMode_ProbeModeProbe,
+			behavior.ProbeMode_ProbeModeProbe,
 			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {
@@ -584,7 +585,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			filesystem.ProbeMode_ProbeModeProbe,
+			behavior.ProbeMode_ProbeModeProbe,
 			SymlinkMode_SymlinkModePortable,
 		)
 		if err != nil {

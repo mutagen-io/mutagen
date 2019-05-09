@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 )
 
 func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, ignores []string, symlinkMode SymlinkMode, expectEqual bool) error {
@@ -33,7 +33,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 		nil,
 		ignores,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		symlinkMode,
 	)
 	if !preservesExecutability {
@@ -267,7 +267,7 @@ func TestScanSymlinkRoot(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		SymlinkMode_SymlinkModePortable,
 	); err == nil {
 		t.Error("scan of symlink root allowed")
@@ -308,7 +308,7 @@ func TestEfficientRescan(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		SymlinkMode_SymlinkModePortable,
 	)
 	if !preservesExecutability {
@@ -335,7 +335,7 @@ func TestEfficientRescan(t *testing.T) {
 		cache,
 		nil,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		SymlinkMode_SymlinkModePortable,
 	)
 	if !preservesExecutability {
@@ -386,7 +386,7 @@ func TestScanCrossDeviceFail(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		filesystem.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		SymlinkMode_SymlinkModePortable,
 	); err == nil {
 		t.Error("scan across device boundary did not fail")

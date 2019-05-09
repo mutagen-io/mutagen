@@ -5,7 +5,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
@@ -27,7 +27,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Confi
 
 	// Compute and print the watch polling interval, so long as we're not in
 	// no-watch mode.
-	if configuration.WatchMode != filesystem.WatchMode_WatchModeNoWatch {
+	if configuration.WatchMode != watching.WatchMode_WatchModeNoWatch {
 		var watchPollingIntervalDescription string
 		if configuration.WatchPollingInterval == 0 {
 			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", version.DefaultWatchPollingInterval())

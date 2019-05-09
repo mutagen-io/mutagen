@@ -15,7 +15,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/profile"
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -68,7 +68,7 @@ func main() {
 		nil,
 		ignores,
 		nil,
-		fs.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		sync.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
@@ -101,7 +101,7 @@ func main() {
 		cache,
 		ignores,
 		ignoreCache,
-		fs.ProbeMode_ProbeModeProbe,
+		behavior.ProbeMode_ProbeModeProbe,
 		sync.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {

@@ -7,6 +7,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -42,10 +44,10 @@ func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
 }
 
 // DefaultProbeMode returns the default probe mode for the session version.
-func (v Version) DefaultProbeMode() filesystem.ProbeMode {
+func (v Version) DefaultProbeMode() behavior.ProbeMode {
 	switch v {
 	case Version_Version1:
-		return filesystem.ProbeMode_ProbeModeProbe
+		return behavior.ProbeMode_ProbeModeProbe
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -62,10 +64,10 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 }
 
 // DefaultWatchMode returns the default watch mode for the session version.
-func (v Version) DefaultWatchMode() filesystem.WatchMode {
+func (v Version) DefaultWatchMode() watching.WatchMode {
 	switch v {
 	case Version_Version1:
-		return filesystem.WatchMode_WatchModePortable
+		return watching.WatchMode_WatchModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}

@@ -5,6 +5,8 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -21,7 +23,7 @@ type Configuration struct {
 		// endpoints will stage. It can be specified in human-friendly units.
 		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize"`
 		// ProbeMode specifies the filesystem probing mode.
-		ProbeMode filesystem.ProbeMode `toml:"probeMode"`
+		ProbeMode behavior.ProbeMode `toml:"probeMode"`
 	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore
@@ -43,7 +45,7 @@ type Configuration struct {
 	// Watch contains parameters related to filesystem monitoring.
 	Watch struct {
 		// Mode specifies the file watching mode.
-		Mode filesystem.WatchMode `toml:"mode"`
+		Mode watching.WatchMode `toml:"mode"`
 
 		// PollingInterval specifies the interval (in seconds) for poll-based
 		// file monitoring. A value of 0 specifies that Mutagen's internal

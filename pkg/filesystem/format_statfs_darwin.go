@@ -28,9 +28,8 @@ func metadataRepresentsHFS(metadata *unix.Statfs_t) bool {
 		metadata.Fstypename[2] == 's'
 }
 
-// formatFromMetadata extracts the filesystem format from the filesystem
-// metadata.
-func formatFromMetadata(metadata *unix.Statfs_t) Format {
+// formatFromStatfs extracts the filesystem format from the filesystem metadata.
+func formatFromStatfs(metadata *unix.Statfs_t) Format {
 	// Check if this is a well-known filesystem format.
 	if metadataRepresentsAPFS(metadata) {
 		return FormatAPFS

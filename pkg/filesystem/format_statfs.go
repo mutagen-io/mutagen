@@ -17,11 +17,12 @@ func QueryFormatByPath(path string) (Format, error) {
 	}
 
 	// Classify the filesystem.
-	return formatFromMetadata(&metadata), nil
+	return formatFromStatfs(&metadata), nil
 }
 
-// QueryFormat queries the filesystem format for the specified directory.
-func QueryFormat(directory *Directory) (Format, error) {
+// QueryFormatByDirectory queries the filesystem format for the specified
+// directory.
+func QueryFormatByDirectory(directory *Directory) (Format, error) {
 	// Perform a filesystem metadata query on the directory.
 	var metadata unix.Statfs_t
 	if err := unix.Fstatfs(directory.descriptor, &metadata); err != nil {
@@ -29,5 +30,10 @@ func QueryFormat(directory *Directory) (Format, error) {
 	}
 
 	// Classify the filesystem.
-	return formatFromMetadata(&metadata), nil
+	return formatFromStatfs(&metadata), nil
 }
+
+// TODO: Should we add QueryFormatByFile? Would this use os.File? ReadableFile?
+// WritableFile? Would we have variants for each? Would this be portable to
+// non-(f)statfs-based mechanisms? I guess we could just return "unsupported"
+// errors in those cases.

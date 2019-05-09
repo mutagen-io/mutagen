@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/rsync"
@@ -716,8 +716,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 	if βWatchMode.IsDefault() {
 		βWatchMode = c.session.Version.DefaultWatchMode()
 	}
-	αDisablePolling := (αWatchMode == filesystem.WatchMode_WatchModeNoWatch)
-	βDisablePolling := (βWatchMode == filesystem.WatchMode_WatchModeNoWatch)
+	αDisablePolling := (αWatchMode == watching.WatchMode_WatchModeNoWatch)
+	βDisablePolling := (βWatchMode == watching.WatchMode_WatchModeNoWatch)
 
 	// Track whether or not we should skip over polling (and go straight to a
 	// synchronization cycle). This variable is normally used to continue a

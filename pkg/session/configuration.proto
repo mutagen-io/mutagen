@@ -4,8 +4,8 @@ package session;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
-import "filesystem/probe.proto";
-import "filesystem/watch.proto";
+import "filesystem/behavior/probe.proto";
+import "filesystem/watching/watch.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
 import "sync/symlink.proto";
@@ -32,7 +32,7 @@ message Configuration {
     uint64 maximumStagingFileSize = 13;
 
     // ProbeMode specifies the filesystem probing mode.
-    filesystem.ProbeMode probeMode = 14;
+    behavior.ProbeMode probeMode = 14;
 
     // Fields 15-20 are reserved for future synchronization configuration
     // parameters.
@@ -53,7 +53,7 @@ message Configuration {
     // Watch configuration parameters (fields 21-30).
 
     // WatchMode specifies the filesystem watching mode.
-    filesystem.WatchMode watchMode = 21;
+    watching.WatchMode watchMode = 21;
 
     // WatchPollingInterval specifies the interval (in seconds) for poll-based
     // file monitoring. A value of 0 specifies that the default interval should

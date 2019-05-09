@@ -15,7 +15,8 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 )
 
 const (
@@ -68,7 +69,12 @@ type scanner struct {
 // file performs processing of a file entry. Exactly one of file or parent will
 // be non-nil, depending on whether or not the file represents the root path.
 // If file is non-nil, this function is responsible for closing it.
-func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata, parent *fs.Directory) (*Entry, error) {
+func (s *scanner) file(
+	path string,
+	file filesystem.ReadableFile,
+	metadata *filesystem.Metadata,
+	parent *filesystem.Directory,
+) (*Entry, error) {
 	// If the file is non-nil, defer its closure.
 	if file != nil {
 		defer file.Close()
@@ -102,11 +108,11 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 	// assessing cache entry reusability since permission changes need to be
 	// detected during transition operations (where the cache is also used).
 	cacheContentMatch := cacheHit &&
-		(metadata.Mode&fs.ModeTypeMask) == (fs.Mode(cached.Mode)&fs.ModeTypeMask) &&
+		(metadata.Mode&filesystem.ModeTypeMask) == (filesystem.Mode(cached.Mode)&filesystem.ModeTypeMask) &&
 		metadata.ModificationTime.Equal(cachedModificationTime) &&
 		metadata.Size == cached.Size &&
 		metadata.FileID == cached.FileID
-	cacheEntryReusable := cacheContentMatch && fs.Mode(cached.Mode) == metadata.Mode
+	cacheEntryReusable := cacheContentMatch && filesystem.Mode(cached.Mode) == metadata.Mode
 
 	// Compute the digest, either by pulling it from the cache or computing it
 	// from the on-disk contents.
@@ -170,7 +176,12 @@ func (s *scanner) file(path string, file fs.ReadableFile, metadata *fs.Metadata,
 }
 
 // symbolicLink performs processing of a symbolic link entry.
-func (s *scanner) symbolicLink(path, name string, parent *fs.Directory, enforcePortable bool) (*Entry, error) {
+func (s *scanner) symbolicLink(
+	path,
+	name string,
+	parent *filesystem.Directory,
+	enforcePortable bool,
+) (*Entry, error) {
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
@@ -199,7 +210,12 @@ func (s *scanner) symbolicLink(path, name string, parent *fs.Directory, enforceP
 // or parent will be non-nil, depending on whether or not the directory
 // represents the root path. If directory is non-nil, then this function is
 // responsible for closing it.
-func (s *scanner) directory(path string, directory *fs.Directory, metadata *fs.Metadata, parent *fs.Directory) (*Entry, error) {
+func (s *scanner) directory(
+	path string,
+	directory *filesystem.Directory,
+	metadata *filesystem.Metadata,
+	parent *filesystem.Directory,
+) (*Entry, error) {
 	// If the directory has already been opened, then defer its closure.
 	if directory != nil {
 		defer directory.Close()
@@ -247,7 +263,7 @@ func (s *scanner) directory(path string, directory *fs.Directory, metadata *fs.M
 		name := c.Name
 
 		// If this is an intermediate temporary file, then ignore it.
-		if fs.IsTemporaryFileName(name) {
+		if filesystem.IsTemporaryFileName(name) {
 			continue
 		}
 
@@ -261,12 +277,12 @@ func (s *scanner) directory(path string, directory *fs.Directory, metadata *fs.M
 
 		// Compute the kind for this content, skipping if unsupported.
 		var kind EntryKind
-		switch c.Mode & fs.ModeTypeMask {
-		case fs.ModeTypeDirectory:
+		switch c.Mode & filesystem.ModeTypeMask {
+		case filesystem.ModeTypeDirectory:
 			kind = EntryKind_Directory
-		case fs.ModeTypeFile:
+		case filesystem.ModeTypeFile:
 			kind = EntryKind_File
-		case fs.ModeTypeSymbolicLink:
+		case filesystem.ModeTypeSymbolicLink:
 			kind = EntryKind_Symlink
 		default:
 			continue
@@ -329,7 +345,7 @@ func Scan(
 	cache *Cache,
 	ignores []string,
 	ignoreCache IgnoreCache,
-	probeMode fs.ProbeMode,
+	probeMode behavior.ProbeMode,
 	symlinkMode SymlinkMode,
 ) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
 	// A nil cache is technically valid, but if the provided cache is nil,
@@ -385,7 +401,7 @@ func Scan(
 
 	// Open the root. We explicitly disallow symbolic links at the root path,
 	// though intermediate symbolic links are fine.
-	rootObject, metadata, err := fs.Open(root, false)
+	rootObject, metadata, err := filesystem.Open(root, false)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, false, newCache, newIgnoreCache, nil
@@ -398,15 +414,15 @@ func Scan(
 	s.deviceID = metadata.DeviceID
 
 	// Handle the scan based on the root type.
-	if rootType := metadata.Mode & fs.ModeTypeMask; rootType == fs.ModeTypeDirectory {
+	if rootType := metadata.Mode & filesystem.ModeTypeMask; rootType == filesystem.ModeTypeDirectory {
 		// Extract the directory object.
-		rootDirectory, ok := rootObject.(*fs.Directory)
+		rootDirectory, ok := rootObject.(*filesystem.Directory)
 		if !ok {
 			panic("invalid directory object returned from root open operation")
 		}
 
 		// Probe and set Unicode decomposition behavior for the root directory.
-		if decomposes, err := fs.DecomposesUnicode(rootDirectory, probeMode); err != nil {
+		if decomposes, err := behavior.DecomposesUnicode(rootDirectory, probeMode); err != nil {
 			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
 		} else {
@@ -415,7 +431,7 @@ func Scan(
 
 		// Probe and set executability preservation behavior for the root
 		// directory.
-		if preserves, err := fs.PreservesExecutability(rootDirectory, probeMode); err != nil {
+		if preserves, err := behavior.PreservesExecutability(rootDirectory, probeMode); err != nil {
 			rootDirectory.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
 		} else {
@@ -429,9 +445,9 @@ func Scan(
 		} else {
 			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
 		}
-	} else if rootType == fs.ModeTypeFile {
+	} else if rootType == filesystem.ModeTypeFile {
 		// Extract the file object.
-		rootFile, ok := rootObject.(fs.ReadableFile)
+		rootFile, ok := rootObject.(filesystem.ReadableFile)
 		if !ok {
 			panic("invalid file object returned from root open operation")
 		}
@@ -452,7 +468,7 @@ func Scan(
 		// each platform. Even on platforms where detailed metadata is provided,
 		// the filesystem identifier alone may not be enough to determine this
 		// behavior.
-		if preserves, err := fs.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
+		if preserves, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
 			rootFile.Close()
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
 		} else {

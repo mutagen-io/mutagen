@@ -11,9 +11,8 @@ const (
 	FormatNFS
 )
 
-// formatFromMetadata extracts the filesystem format from the filesystem
-// metadata.
-func formatFromMetadata(metadata *unix.Statfs_t) Format {
+// formatFromStatfs extracts the filesystem format from the filesystem metadata.
+func formatFromStatfs(metadata *unix.Statfs_t) Format {
 	switch metadata.Type {
 	case unix.EXT4_SUPER_MAGIC:
 		return FormatEXT

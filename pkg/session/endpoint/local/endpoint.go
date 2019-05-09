@@ -10,6 +10,8 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -33,7 +35,7 @@ type endpoint struct {
 	// zero value means that the size is unlimited.
 	maximumEntryCount uint64
 	// probeMode is the probe mode for the session. It is static.
-	probeMode filesystem.ProbeMode
+	probeMode behavior.ProbeMode
 	// watchCancel cancels filesystem monitoring. It is static.
 	watchCancel context.CancelFunc
 	// watchEvents is the filesystem monitoring channel. It is static.
@@ -200,7 +202,7 @@ func NewEndpoint(
 	if endpointOptions.watchingMechanism != nil {
 		go endpointOptions.watchingMechanism(watchContext, root, watchEvents)
 	} else {
-		go filesystem.Watch(
+		go watching.Watch(
 			watchContext,
 			root,
 			watchEvents,
@@ -296,7 +298,13 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
 	result, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
-		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.probeMode, e.symlinkMode,
+		e.root,
+		e.scanHasher,
+		e.cache,
+		e.ignores,
+		e.ignoreCache,
+		e.probeMode,
+		e.symlinkMode,
 	)
 	if err != nil {
 		e.cacheLock.Unlock()
