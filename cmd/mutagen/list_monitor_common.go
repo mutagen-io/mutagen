@@ -37,6 +37,13 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Confi
 		fmt.Println("\tWatch polling interval:", watchPollingIntervalDescription)
 	}
 
+	// Compute and print the probe mode.
+	probeModeDescription := configuration.ProbeMode.Description()
+	if configuration.ProbeMode.IsDefault() {
+		probeModeDescription += fmt.Sprintf(" (%s)", version.DefaultProbeMode().Description())
+	}
+	fmt.Println("\tProbe mode:", probeModeDescription)
+
 	// Compute and print the default file mode.
 	var defaultFileModeDescription string
 	if configuration.DefaultFileMode == 0 {
