@@ -22,7 +22,14 @@ const (
 
 // DecomposesUnicodeByPath determines whether or not the filesystem on which the
 // directory at the specified path resides decomposes Unicode filenames.
-func DecomposesUnicodeByPath(path string) (bool, error) {
+func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return false, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Check if we have a fast test that will work.
 	if result, ok := probeUnicodeDecompositionFastByPath(path); ok {
 		return result, nil
@@ -78,7 +85,14 @@ func DecomposesUnicodeByPath(path string) (bool, error) {
 
 // DecomposesUnicode determines whether or not the specified directory (and its
 // underlying filesystem) decomposes Unicode filenames.
-func DecomposesUnicode(directory *Directory) (bool, error) {
+func DecomposesUnicode(directory *Directory, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return false, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Check if we have a fast test that will work.
 	if result, ok := probeUnicodeDecompositionFast(directory); ok {
 		return result, nil

@@ -41,6 +41,16 @@ func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
 	}
 }
 
+// DefaultProbeMode returns the default probe mode for the session version.
+func (v Version) DefaultProbeMode() filesystem.ProbeMode {
+	switch v {
+	case Version_Version1:
+		return filesystem.ProbeMode_ProbeModeProbe
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultSymlinkMode returns the default symlink mode for the session version.
 func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 	switch v {

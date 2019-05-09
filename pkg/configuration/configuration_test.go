@@ -12,6 +12,7 @@ const (
 mode = "two-way-resolved"
 maxEntryCount = 500
 maxStagingFileSize = "1000 GB"
+probeMode = "assume"
 
 [symlink]
 mode = "portable"

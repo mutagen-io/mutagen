@@ -20,6 +20,8 @@ type Configuration struct {
 		// MaximumStagingFileSize is the maximum (individual) file size that
 		// endpoints will stage. It can be specified in human-friendly units.
 		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize"`
+		// ProbeMode specifies the filesystem probing mode.
+		ProbeMode filesystem.ProbeMode `toml:"probeMode"`
 	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore

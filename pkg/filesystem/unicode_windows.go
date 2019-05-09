@@ -11,7 +11,13 @@ func IsUnicodeProbeFileName(_ string) bool {
 // directory at the specified path resides decomposes Unicode filenames. On
 // Windows this function always returns false since Windows filesystems preserve
 // Unicode filename normalization.
-func DecomposesUnicodeByPath(_ string) (bool, error) {
+func DecomposesUnicodeByPath(_ string, probeMode ProbeMode) (bool, error) {
+	// Check for invalid probe modes.
+	if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
+	// Return the well-known behavior.
 	return false, nil
 }
 
@@ -19,6 +25,12 @@ func DecomposesUnicodeByPath(_ string) (bool, error) {
 // underlying filesystem) decomposes Unicode filenames. On Windows this function
 // always returns false since Windows filesystems preserve Unicode filename
 // normalization.
-func DecomposesUnicode(_ *Directory) (bool, error) {
+func DecomposesUnicode(_ *Directory, probeMode ProbeMode) (bool, error) {
+	// Check for invalid probe modes.
+	if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
+	// Return the well-known behavior.
 	return false, nil
 }

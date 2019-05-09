@@ -18,7 +18,14 @@ const (
 // PreservesExecutabilityByPath determines whether or not the filesystem on
 // which the directory at the specified path resides preserves POSIX
 // executability bits. It allows for the path leaf to be a symbolic link.
-func PreservesExecutabilityByPath(path string) (bool, error) {
+func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return true, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Check if we have a fast test that will work.
 	if result, ok := probeExecutabilityPreservationFastByPath(path); ok {
 		return result, nil
@@ -58,7 +65,14 @@ func PreservesExecutabilityByPath(path string) (bool, error) {
 
 // PreservesExecutability determines whether or not the specified directory (and
 // its underlying filesystem) preserves POSIX executability bits.
-func PreservesExecutability(directory *Directory) (bool, error) {
+func PreservesExecutability(directory *Directory, probeMode ProbeMode) (bool, error) {
+	// Check the filesystem probing mode and see if we can return an assumption.
+	if probeMode == ProbeMode_ProbeModeAssume {
+		return true, nil
+	} else if !probeMode.Supported() {
+		panic("invalid probe mode")
+	}
+
 	// Check if we have a fast test that will work.
 	if result, ok := probeExecutabilityPreservationFast(directory); ok {
 		return result, nil

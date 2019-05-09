@@ -32,6 +32,8 @@ type endpoint struct {
 	// synchronization root that this endpoint will support synchronizing. A
 	// zero value means that the size is unlimited.
 	maximumEntryCount uint64
+	// probeMode is the probe mode for the session. It is static.
+	probeMode filesystem.ProbeMode
 	// watchCancel cancels filesystem monitoring. It is static.
 	watchCancel context.CancelFunc
 	// watchEvents is the filesystem monitoring channel. It is static.
@@ -120,6 +122,12 @@ func NewEndpoint(
 	unidirectional := synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWaySafe ||
 		synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWayReplica
 	readOnly := alpha && unidirectional
+
+	// Compute the effective probe mode.
+	probeMode := configuration.ProbeMode
+	if probeMode.IsDefault() {
+		probeMode = version.DefaultProbeMode()
+	}
 
 	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
@@ -241,6 +249,7 @@ func NewEndpoint(
 		root:                 root,
 		readOnly:             readOnly,
 		maximumEntryCount:    configuration.MaximumEntryCount,
+		probeMode:            probeMode,
 		watchCancel:          watchCancel,
 		watchEvents:          watchEvents,
 		symlinkMode:          symlinkMode,
@@ -287,7 +296,7 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// Perform the scan. If there's an error, we have to assume it's a
 	// concurrent modification and just suggest a retry.
 	result, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
-		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.symlinkMode,
+		e.root, e.scanHasher, e.cache, e.ignores, e.ignoreCache, e.probeMode, e.symlinkMode,
 	)
 	if err != nil {
 		e.cacheLock.Unlock()
