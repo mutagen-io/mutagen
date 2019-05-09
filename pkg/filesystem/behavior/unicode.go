@@ -1,5 +1,3 @@
-// +build !windows
-
 package behavior
 
 import (
@@ -27,7 +25,7 @@ const (
 func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return false, nil
+		return assumeUnicodeDecomposition, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
@@ -90,7 +88,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
 func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return false, nil
+		return assumeUnicodeDecomposition, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}

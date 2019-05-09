@@ -1,10 +1,9 @@
-// +build !windows
-
 package behavior
 
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -23,14 +22,20 @@ const (
 func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return true, nil
+		return assumeExecutabilityPreservation, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
 
-	// Check if we have a fast test that will work.
+	// Check if we have a fast test that will work. If we're on Windows, we
+	// enforce that the fast path was used. There is some code below, namely the
+	// use of os.File's Chmod method (and possibly the os.File's Stat method,
+	// which may be racey on Windows), that won't work on Windows (though it
+	// could possibly be adapted in case we add a force-probe probe mode).
 	if result, ok := probeExecutabilityPreservationFastByPath(path); ok {
 		return result, nil
+	} else if runtime.GOOS == "windows" {
+		panic("fast path not used on Windows")
 	}
 
 	// Create a temporary file.
@@ -45,7 +50,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 		os.Remove(file.Name())
 	}()
 
-	// Mark the file as user executable. We use the os.File-based Chmod here
+	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = file.Chmod(0700); err != nil {
 		return false, errors.Wrap(err, "unable to mark test file as executable")
@@ -70,14 +75,20 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode) (bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return true, nil
+		return assumeExecutabilityPreservation, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
 
-	// Check if we have a fast test that will work.
+	// Check if we have a fast test that will work. If we're on Windows, we
+	// enforce that the fast path was used. There is some code below, namely the
+	// use of os.File's Chmod method (and possibly the os.File's Stat method,
+	// which may be racey on Windows), that won't work on Windows (though it
+	// could possibly be adapted in case we add a force-probe probe mode).
 	if result, ok := probeExecutabilityPreservationFast(directory); ok {
 		return result, nil
+	} else if runtime.GOOS == "windows" {
+		panic("fast path not used on Windows")
 	}
 
 	// Create a temporary file.
@@ -100,7 +111,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 		panic("opened file is not an os.File object")
 	}
 
-	// Mark the file as user executable. We use the os.File-based Chmod here
+	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = osFile.Chmod(0700); err != nil {
 		return false, errors.Wrap(err, "unable to mark test file as executable")
