@@ -1,7 +1,7 @@
 package behavior
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem/format"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior/internal/format"
 )
 
 // probeExecutabilityPreservationFastByFormat checks if the specified format

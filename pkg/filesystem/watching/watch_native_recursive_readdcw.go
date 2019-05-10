@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching/third_party/winfsnotify"
+	"github.com/havoc-io/mutagen/pkg/filesystem/watching/internal/third_party/winfsnotify"
 )
 
 const (

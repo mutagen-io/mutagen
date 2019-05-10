@@ -4,7 +4,7 @@ package behavior
 
 import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/filesystem/format"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior/internal/format"
 )
 
 // probeUnicodeDecompositionFast attempts to perform a fast Unicode
