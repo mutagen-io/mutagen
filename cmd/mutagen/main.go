@@ -38,16 +38,19 @@ var rootConfiguration struct {
 }
 
 func init() {
+	// Disable alphabetical sorting of commands in help output. This is a global
+	// setting that affects all Cobra command instances.
+	cobra.EnableCommandSorting = false
+
 	// Grab a handle for the command line flags.
 	flags := rootCommand.Flags()
+
+	// Disable alphabetical sorting of flags in help output.
+	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
-
-	// Disable Cobra's command sorting behavior. By default, it sorts commands
-	// alphabetically in the help output.
-	cobra.EnableCommandSorting = false
 
 	// Disable Cobra's use of mousetrap. This breaks daemon registration on
 	// Windows because it tries to enforce that the CLI only be launched from

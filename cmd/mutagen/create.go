@@ -459,6 +459,9 @@ func init() {
 	// Grab a handle for the command line flags.
 	flags := createCommand.Flags()
 
+	// Disable alphabetical sorting of flags in help output.
+	flags.SortFlags = false
+
 	// Wire up label flags.
 	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
 
