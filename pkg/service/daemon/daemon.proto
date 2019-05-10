@@ -12,6 +12,7 @@ message VersionResponse {
     uint64 major = 1;
     uint64 minor = 2;
     uint64 patch = 3;
+    string tag = 4;
 }
 
 message TerminateRequest{}

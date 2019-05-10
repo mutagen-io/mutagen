@@ -97,6 +97,7 @@ func (s *Server) Version(_ context.Context, _ *VersionRequest) (*VersionResponse
 		Major: mutagen.VersionMajor,
 		Minor: mutagen.VersionMinor,
 		Patch: mutagen.VersionPatch,
+		Tag:   mutagen.VersionTag,
 	}, nil
 }
 
