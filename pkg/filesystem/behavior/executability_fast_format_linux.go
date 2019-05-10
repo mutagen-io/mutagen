@@ -1,16 +1,16 @@
 package behavior
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/format"
 )
 
 // probeExecutabilityPreservationFastByFormat checks if the specified format
 // matches well-known executability preservation behavior.
-func probeExecutabilityPreservationFastByFormat(format filesystem.Format) (bool, bool) {
-	switch format {
-	case filesystem.FormatEXT:
+func probeExecutabilityPreservationFastByFormat(f format.Format) (bool, bool) {
+	switch f {
+	case format.FormatEXT:
 		return true, true
-	case filesystem.FormatNFS:
+	case format.FormatNFS:
 		return true, true
 	default:
 		return false, false

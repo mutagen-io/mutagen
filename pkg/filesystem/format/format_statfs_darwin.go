@@ -1,4 +1,4 @@
-package filesystem
+package format
 
 import (
 	"golang.org/x/sys/unix"

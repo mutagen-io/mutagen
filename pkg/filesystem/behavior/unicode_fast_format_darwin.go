@@ -1,16 +1,16 @@
 package behavior
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/format"
 )
 
 // probeUnicodeDecompositionFastByFormat checks if the specified format matches
 // well-known Unicode decomposition behavior.
-func probeUnicodeDecompositionFastByFormat(format filesystem.Format) (bool, bool) {
-	switch format {
-	case filesystem.FormatAPFS:
+func probeUnicodeDecompositionFastByFormat(f format.Format) (bool, bool) {
+	switch f {
+	case format.FormatAPFS:
 		return false, true
-	case filesystem.FormatHFS:
+	case format.FormatHFS:
 		return true, true
 	default:
 		return false, false

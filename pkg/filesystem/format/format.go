@@ -1,4 +1,4 @@
-package filesystem
+package format
 
 // Format represents a filesystem volume format.
 type Format uint8

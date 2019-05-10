@@ -72,6 +72,15 @@ func (d *Directory) Close() error {
 	return nil
 }
 
+// Handle provides access to the raw Windows handle underlying the directory. It
+// should not be used or retained beyond the point in time where the Close
+// method is called, and it should not be closed externally. Its usefulness is
+// to code which relies on handle-based operations. This method does not exist
+// on POSIX systems, so it should only be used in Windows-specific code.
+func (d *Directory) Handle() windows.Handle {
+	return d.handle
+}
+
 // CreateDirectory creates a new directory with the specified name inside the
 // directory. The directory will be created with user-only read/write/execute
 // permissions.

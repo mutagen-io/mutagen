@@ -54,6 +54,16 @@ func (d *Directory) Close() error {
 	return d.file.Close()
 }
 
+// Descriptor provides access to the raw file descriptor underlying the
+// directory. It should not be used or retained beyond the point in time where
+// the Close method is called, and it should not be closed externally. Its
+// usefulness is to code which relies on file-descriptor-based operations. This
+// method does not exist on Windows systems, so it should only be used in
+// POSIX-specific code.
+func (d *Directory) Descriptor() int {
+	return d.descriptor
+}
+
 // CreateDirectory creates a new directory with the specified name inside the
 // directory. The directory will be created with user-only read/write/execute
 // permissions.
