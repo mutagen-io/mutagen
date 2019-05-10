@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/unix"
+
+	fssyscall "github.com/havoc-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // ensureValidName verifies that the provided name does not reference the
@@ -74,7 +76,7 @@ func (d *Directory) CreateDirectory(name string) error {
 	}
 
 	// Create the directory.
-	return mkdirat(d.descriptor, name, 0700)
+	return unix.Mkdirat(d.descriptor, name, 0700)
 }
 
 // maximumTemporaryFileRetries is the maximum number of retries that we'll
@@ -111,7 +113,12 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 
 		// Attempt to open the file. Note that we needn't specify O_NOFOLLOW
 		// here since we're enforcing that the file doesn't already exist.
-		descriptor, err := openat(d.descriptor, name, os.O_RDWR|os.O_CREATE|os.O_EXCL|unix.O_CLOEXEC, 0600)
+		descriptor, err := unix.Openat(
+			d.descriptor,
+			name,
+			os.O_RDWR|os.O_CREATE|os.O_EXCL|unix.O_CLOEXEC,
+			0600,
+		)
 		if err != nil {
 			if os.IsExist(err) {
 				continue
@@ -141,7 +148,7 @@ func (d *Directory) CreateSymbolicLink(name, target string) error {
 	}
 
 	// Create the symbolic link.
-	return symlinkat(target, d.descriptor, name)
+	return fssyscall.Symlinkat(target, d.descriptor, name)
 }
 
 // SetPermissions sets the permissions on the content within the directory
@@ -160,16 +167,33 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 
 	// Set ownership information, if specified.
 	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
-		if err := fchownat(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		if err := unix.Fchownat(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 			return errors.Wrap(err, "unable to set ownership information")
 		}
 	}
 
 	// Set permissions, if specified.
-	mode = mode & ModePermissionsMask
+	//
+	// HACK: On Linux, the AT_SYMLINK_NOFOLLOW flag is not supported by fchmodat
+	// and will result in an ENOTSUP error, so we have to use a workaround that
+	// opens a file and then uses fchmod in order to avoid setting permissions
+	// across a symbolic link. Fortunately, because we're on Linux, we don't
+	// need the looping construct used above to avoid golang/go#11180.
+	mode &= ModePermissionsMask
 	if mode != 0 {
-		if err := fchmodat(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
-			return errors.Wrap(err, "unable to set permission bits")
+		if runtime.GOOS == "linux" {
+			if f, err := unix.Openat(d.descriptor, name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
+				return errors.Wrap(err, "unable to open file")
+			} else if err = unix.Fchmod(f, uint32(mode)); err != nil {
+				unix.Close(f)
+				return errors.Wrap(err, "unable to set permission bits on file")
+			} else if err = unix.Close(f); err != nil {
+				return errors.Wrap(err, "unable to close file")
+			}
+		} else {
+			if err := unix.Fchmodat(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
+				return errors.Wrap(err, "unable to set permission bits")
+			}
 		}
 	}
 
@@ -204,7 +228,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
 	var descriptor int
 	for {
-		if d, err := openat(int(d.descriptor), name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
+		if d, err := unix.Openat(d.descriptor, name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
 			descriptor = d
 			break
 		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
@@ -310,7 +334,7 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 
 	// Query metadata.
 	var metadata unix.Stat_t
-	if err := fstatat(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	if err := unix.Fstatat(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return nil, err
 	}
 
@@ -404,7 +428,7 @@ func (d *Directory) ReadSymbolicLink(name string) (string, error) {
 		// indicate inadequate buffer space. Watch for this error and continue
 		// growing the buffer in that case. See the os.Readlink implementation
 		// (for Go 1.12+) for an example of how this is handled.
-		count, err := readlinkat(d.descriptor, name, buffer)
+		count, err := fssyscall.Readlinkat(d.descriptor, name, buffer)
 		if err != nil {
 			return "", &os.PathError{
 				Op:   "readlinkat",
@@ -435,7 +459,7 @@ func (d *Directory) RemoveDirectory(name string) error {
 	}
 
 	// Remove the directory.
-	return unlinkat(d.descriptor, name, _AT_REMOVEDIR)
+	return unix.Unlinkat(d.descriptor, name, fssyscall.AT_REMOVEDIR)
 }
 
 // RemoveFile deletes a file with the specified name inside the directory.
@@ -446,7 +470,7 @@ func (d *Directory) RemoveFile(name string) error {
 	}
 
 	// Remove the file.
-	return unlinkat(d.descriptor, name, 0)
+	return unix.Unlinkat(d.descriptor, name, 0)
 }
 
 // RemoveSymbolicLink deletes a symbolic link with the specified name inside the
@@ -494,7 +518,7 @@ func Rename(
 	}
 
 	// Perform an atomic rename.
-	return renameat(
+	return unix.Renameat(
 		sourceDescriptor, sourceNameOrPath,
 		targetDescriptor, targetNameOrPath,
 	)
