@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	"github.com/havoc-io/mutagen/pkg/session"
@@ -40,7 +41,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke resume")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}
 
 	// Send the initial request.
@@ -48,7 +49,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send resume request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
 	// Create a status line printer.
@@ -58,7 +59,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "resume failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "resume failed")
 		} else if err = response.EnsureValid(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
 			return errors.Wrap(err, "invalid resume response received")
@@ -69,14 +70,14 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.ResumeRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
 	}

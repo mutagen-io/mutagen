@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
@@ -39,7 +40,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Flush(flushContext)
 	if err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke flush")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
 	}
 
 	// Send the initial request.
@@ -48,7 +49,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 		SkipWait:  flushConfiguration.skipWait,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send flush request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send flush request")
 	}
 
 	// Create a status line printer.
@@ -58,7 +59,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "flush failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "flush failed")
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid flush response received")
 		} else if response.Message == "" {
@@ -68,7 +69,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.FlushRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		}
 	}

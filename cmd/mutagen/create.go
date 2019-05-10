@@ -15,6 +15,7 @@ import (
 	fs "github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
@@ -267,7 +268,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Create(createContext)
 	if err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke create")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
 	}
 
 	// Send the initial request.
@@ -312,7 +313,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		},
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send create request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
 	}
 
 	// Create a status line printer and defer a break.
@@ -322,7 +323,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Receive and process responses until we're done.
 	for {
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "create failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid create response received")
 		} else if response.Session != "" {
@@ -331,14 +332,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.CreateRequest{}); err != nil {
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send prompt response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
 	}

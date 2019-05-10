@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
@@ -104,7 +105,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// Invoke list.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "list failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid list response received")
 		}

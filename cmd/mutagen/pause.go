@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
@@ -39,7 +40,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	defer cancel()
 	stream, err := sessionService.Pause(pauseContext)
 	if err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to invoke pause")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
 	}
 
 	// Send the initial request.
@@ -47,7 +48,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send pause request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
 	}
 
 	// Create a status line printer.
@@ -57,7 +58,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(peelAwayRPCErrorLayer(err), "pause failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid pause response received")
 		} else if response.Message == "" {
@@ -67,7 +68,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&sessionsvcpkg.PauseRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(peelAwayRPCErrorLayer(err), "unable to send message response")
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		}
 	}
