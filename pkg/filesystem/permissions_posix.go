@@ -37,20 +37,24 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 		case OwnershipIdentifierKindPOSIXID:
 			if _, err := userpkg.LookupId(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup user by ID")
-			} else if userID, err := strconv.Atoi(identifier); err != nil {
+			} else if u, err := strconv.Atoi(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
+			} else if u < 0 {
+				return nil, errors.New("negative user ID")
 			} else {
-				ownerID = userID
+				ownerID = u
 			}
 		case OwnershipIdentifierKindWindowsSID:
 			return nil, errors.New("Windows SIDs not supported on POSIX systems")
 		case OwnershipIdentifierKindName:
 			if userObject, err := userpkg.Lookup(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to lookup user by ID")
-			} else if userID, err := strconv.Atoi(userObject.Uid); err != nil {
+			} else if u, err := strconv.Atoi(userObject.Uid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
+			} else if u < 0 {
+				return nil, errors.New("negative user ID retrieved")
 			} else {
-				ownerID = userID
+				ownerID = u
 			}
 		default:
 			panic("unhandled ownership identifier kind")
@@ -68,6 +72,8 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 				return nil, errors.Wrap(err, "unable to lookup group by ID")
 			} else if g, err := strconv.Atoi(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
+			} else if g < 0 {
+				return nil, errors.New("negative group ID")
 			} else {
 				groupID = g
 			}
@@ -78,6 +84,8 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 				return nil, errors.Wrap(err, "unable to lookup group by ID")
 			} else if g, err := strconv.Atoi(groupObject.Gid); err != nil {
 				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
+			} else if g < 0 {
+				return nil, errors.New("negative group ID retrieved")
 			} else {
 				groupID = g
 			}
