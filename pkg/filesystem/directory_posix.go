@@ -116,7 +116,7 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 		descriptor, err := unix.Openat(
 			d.descriptor,
 			name,
-			os.O_RDWR|os.O_CREATE|os.O_EXCL|unix.O_CLOEXEC,
+			unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC,
 			0600,
 		)
 		if err != nil {
@@ -182,7 +182,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	mode &= ModePermissionsMask
 	if mode != 0 {
 		if runtime.GOOS == "linux" {
-			if f, err := unix.Openat(d.descriptor, name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
+			if f, err := unix.Openat(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
 				return errors.Wrap(err, "unable to open file")
 			} else if err = unix.Fchmod(f, uint32(mode)); err != nil {
 				unix.Close(f)
@@ -228,7 +228,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
 	var descriptor int
 	for {
-		if d, err := unix.Openat(d.descriptor, name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
+		if d, err := unix.Openat(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
 			descriptor = d
 			break
 		} else if runtime.GOOS == "darwin" && err == unix.EINTR {

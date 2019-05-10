@@ -50,7 +50,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// unmodified.
 	//
 	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
-	flags := os.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
 	if allowSymbolicLinkLeaf {
 		flags &^= unix.O_NOFOLLOW
 	}
