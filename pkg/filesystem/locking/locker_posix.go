@@ -4,7 +4,7 @@
 // but we might be able to ~emulate it with os.O_EXCL, but that wouldn't allow
 // us to automatically release locks if a process dies.
 
-package filesystem
+package locking
 
 import (
 	"os"

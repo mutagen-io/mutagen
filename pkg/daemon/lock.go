@@ -3,7 +3,7 @@ package daemon
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/locking"
 )
 
 const (
@@ -17,7 +17,7 @@ type Lock struct {
 	// locker is the daemon file lock, uniquely held by a single daemon
 	// instance. Because the locking semantics vary by platform, hosting
 	// processes should only attempt to create a single daemon lock at a time.
-	locker *filesystem.Locker
+	locker *locking.Locker
 }
 
 // AcquireLock attempts to acquire the daemon lock. It is the only way to
@@ -30,7 +30,7 @@ func AcquireLock() (*Lock, error) {
 	}
 
 	// Create the daemon locker and attempt to acquire the lock.
-	locker, err := filesystem.NewLocker(lockPath, 0600)
+	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create daemon locker")
 	} else if err = locker.Lock(false); err != nil {
