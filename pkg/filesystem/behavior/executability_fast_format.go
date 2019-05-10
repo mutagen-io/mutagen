@@ -21,7 +21,7 @@ func probeExecutabilityPreservationFastByPath(path string) (bool, bool) {
 // preservation test, without probe files. The successfulness of the test is
 // indicated by the second return parameter.
 func probeExecutabilityPreservationFast(directory *filesystem.Directory) (bool, bool) {
-	if f, err := filesystem.QueryFormatByDirectory(directory); err != nil {
+	if f, err := filesystem.QueryFormat(directory); err != nil {
 		return false, false
 	} else {
 		return probeExecutabilityPreservationFastByFormat(f)
