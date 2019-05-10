@@ -1,4 +1,3 @@
-// Package filesystem provides various filesystem utility methods either not
-// provided by the Go standard library or requiring a more optimized
-// implementation. It also provides filesystem watching facilities.
+// Package filesystem provides low-level race-free traversal mechanisms and
+// modification operations for filesystems.
 package filesystem
