@@ -113,12 +113,7 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 
 		// Attempt to open the file. Note that we needn't specify O_NOFOLLOW
 		// here since we're enforcing that the file doesn't already exist.
-		descriptor, err := unix.Openat(
-			d.descriptor,
-			name,
-			unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC,
-			0600,
-		)
+		descriptor, err := unix.Openat(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
 		if err != nil {
 			if os.IsExist(err) {
 				continue
