@@ -27,7 +27,7 @@ func createDaemonClientConnection() (*grpc.ClientConn, error) {
 	defer cancel()
 
 	// Perform dialing.
-	return grpc.DialContext(
+	connection, err := grpc.DialContext(
 		dialContext,
 		"",
 		grpc.WithInsecure(),
@@ -36,6 +36,15 @@ func createDaemonClientConnection() (*grpc.ClientConn, error) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(mgrpc.MaximumIPCMessageSize)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(mgrpc.MaximumIPCMessageSize)),
 	)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			return nil, errors.New("connection timed out (is the daemon running?)")
+		}
+		return nil, err
+	}
+
+	// Success.
+	return connection, nil
 }
 
 func peelAwayRPCErrorLayer(err error) error {
