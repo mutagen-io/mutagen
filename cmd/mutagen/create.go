@@ -463,12 +463,12 @@ func init() {
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
-	// Wire up label flags.
-	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
-
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up label flags.
+	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
 
 	// Wire up synchronization flags.
 	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
