@@ -107,9 +107,7 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	// If configuration overrides have been provided, then validate them and
 	// merge them into the main configuration.
 	if endpointServerOptions.configuration != nil {
-		if err := endpointServerOptions.configuration.EnsureValid(
-			session.ConfigurationSourceTypeAPIEndpointSpecific,
-		); err != nil {
+		if err := endpointServerOptions.configuration.EnsureValid(true); err != nil {
 			err = errors.Wrap(err, "override configuration invalid")
 			encoder.Encode(&InitializeResponse{Error: err.Error()})
 			return err

@@ -12,8 +12,16 @@ import "url/url.proto";
 message CreationSpecification {
     url.URL alpha = 1;
     url.URL beta = 2;
+    // Configuration is the base session configuration. It is the result of
+    // merging the global configuration (unless disabled), any manually
+    // specified configuration file, and any command line configuration
+    // parameters.
     session.Configuration configuration = 3;
+    // ConfigurationAlpha is the alpha-specific session configuration. It is
+    // determined based on command line configuration parameters.
     session.Configuration configurationAlpha = 4;
+    // ConfigurationBeta is the beta-specific session configuration. It is
+    // determined based on command line configuration parameters.
     session.Configuration configurationBeta = 5;
     map<string, string> labels = 6;
 }

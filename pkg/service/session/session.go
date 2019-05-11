@@ -24,17 +24,17 @@ func (s *CreationSpecification) ensureValid() error {
 	}
 
 	// Verify that the configuration is valid.
-	if err := s.Configuration.EnsureValid(session.ConfigurationSourceTypeCreate); err != nil {
+	if err := s.Configuration.EnsureValid(false); err != nil {
 		return errors.Wrap(err, "invalid session configuration")
 	}
 
 	// Verify that the alpha-specific configuration is valid.
-	if err := s.ConfigurationAlpha.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+	if err := s.ConfigurationAlpha.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid alpha-specific configuration")
 	}
 
 	// Verify that the beta-specific configuration is valid.
-	if err := s.ConfigurationBeta.EnsureValid(session.ConfigurationSourceTypeCreateEndpointSpecific); err != nil {
+	if err := s.ConfigurationBeta.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid beta-specific configuration")
 	}
 

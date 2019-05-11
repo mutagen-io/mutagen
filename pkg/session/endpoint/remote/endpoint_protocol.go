@@ -2,8 +2,6 @@ package remote
 
 import (
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 // ensureValid ensures that the InitializeRequest's invariants are respected.
@@ -29,7 +27,7 @@ func (r *InitializeRequest) ensureValid() error {
 	}
 
 	// Ensure that the configuration is valid.
-	if err := r.Configuration.EnsureValid(session.ConfigurationSourceTypeSession); err != nil {
+	if err := r.Configuration.EnsureValid(false); err != nil {
 		return errors.Wrap(err, "invalid configuration")
 	}
 

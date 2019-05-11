@@ -8,45 +8,14 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
-// ConfigurationSourceType specifies the source and type of a Configuration
-// object. Knowledge of this information is required to appropriately validate a
-// Configuration object.
-type ConfigurationSourceType uint8
-
-const (
-	// ConfigurationSourceTypeSession indicates a session Configuration object
-	// sourced from a Session object stored on disk.
-	ConfigurationSourceTypeSession ConfigurationSourceType = iota
-	// ConfigurationSourceTypeGlobal indicates a session Configuration object
-	// sourced from the global configuration file.
-	ConfigurationSourceTypeGlobal
-	// ConfigurationSourceTypeCreate indicates a session Configuration object
-	// sourced from a create RPC request.
-	ConfigurationSourceTypeCreate
-	// ConfigurationSourceTypeSessionEndpointSpecific indicates an endpoint-
-	// specific session Configuration object sourced from a Session object
-	// stored on disk.
-	ConfigurationSourceTypeSessionEndpointSpecific
-	// ConfigurationSourceTypeCreateEndpointSpecific indicates an endpoint-
-	// specific session Configuration object sourced from a create RPC request.
-	ConfigurationSourceTypeCreateEndpointSpecific
-	// ConfigurationSourceTypeAPIEndpointSpecific indicates an endpoint-specific
-	// session Configuration object provided directly to an endpoint.
-	ConfigurationSourceTypeAPIEndpointSpecific
-)
-
-// EnsureValid ensures that Configuration's invariants are respected.
-func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
+// EnsureValid ensures that Configuration's invariants are respected. The
+// validation of the configuration depends on whether or not it is
+// endpoint-specific.
+func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// A nil configuration is not considered valid.
 	if c == nil {
 		return errors.New("nil configuration")
 	}
-
-	// Determine whether or not this is an endpoint-specific Configuration
-	// object.
-	endpointSpecific := source == ConfigurationSourceTypeSessionEndpointSpecific ||
-		source == ConfigurationSourceTypeCreateEndpointSpecific ||
-		source == ConfigurationSourceTypeAPIEndpointSpecific
 
 	// Validate the synchronization mode.
 	if endpointSpecific {
@@ -89,12 +58,13 @@ func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that default ignores are unset, unless this is a Configuration
-	// object sourced from an existing Session. If there are any allowed
-	// DefaultIgnores, verify that they're valid. This field is deprecated and
-	// no longer used.
-	if source != ConfigurationSourceTypeSession && len(c.DefaultIgnores) > 0 {
-		return errors.New("deprecated default ignores configuration field specified")
+	// Verify that default ignores are unset for endpoint-specific
+	// configurations and that any specified ignores are valid. This field is
+	// deprecated, but existing sessions may have it set, in which case we'll
+	// just prepend it to the nominal list of ignores when running the session.
+	// We don't bother rejecting its presence based on source.
+	if endpointSpecific && len(c.DefaultIgnores) > 0 {
+		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
 	}
 	for _, ignore := range c.DefaultIgnores {
 		if !sync.ValidIgnorePattern(ignore) {
@@ -156,14 +126,15 @@ func (c *Configuration) EnsureValid(source ConfigurationSourceType) error {
 	return nil
 }
 
-// snapshotGlobalConfiguration loads the global configuration, transfers the
-// relevant parameters to a session configuration, and returns the resulting
-// value. It does not validate the
-func snapshotGlobalConfiguration() (*Configuration, error) {
-	// Load the global configuration.
-	configuration, err := configuration.Load()
+// LoadConfiguration loads a TOML-based Mutagen configuration and extracts a
+// corresponding session configuration, verifying that it's a valid
+// non-endpoint-specific session configuration. If the path doesn't exist, this
+// function simply returns a default configuration object.
+func LoadConfiguration(path string) (*Configuration, error) {
+	// Load the TOML-based configuration.
+	configuration, err := configuration.LoadFromPath(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to load global configuration")
+		return nil, errors.Wrap(err, "unable to load TOML-based configuration")
 	}
 
 	// Create a session configuration object.
@@ -184,8 +155,8 @@ func snapshotGlobalConfiguration() (*Configuration, error) {
 	}
 
 	// Verify that the resulting configuration is valid.
-	if err := result.EnsureValid(ConfigurationSourceTypeGlobal); err != nil {
-		return nil, errors.Wrap(err, "global configuration invalid")
+	if err := result.EnsureValid(false); err != nil {
+		return nil, errors.Wrap(err, "configuration invalid")
 	}
 
 	// Success.

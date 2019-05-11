@@ -92,19 +92,6 @@ func newSession(
 	// Update status.
 	prompt.Message(prompter, "Creating session...")
 
-	// Create a snapshot of the global configuration.
-	globalConfiguration, err := snapshotGlobalConfiguration()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to snapshot global configuration")
-	}
-
-	// Create an effective merged configuration.
-	mergedConfiguration := MergeConfigurations(globalConfiguration, configuration)
-
-	// Compute endpoint-specific merged configurations.
-	mergedAlphaConfiguration := MergeConfigurations(mergedConfiguration, configurationAlpha)
-	mergedBetaConfiguration := MergeConfigurations(mergedConfiguration, configurationBeta)
-
 	// Create a unique session identifier.
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
@@ -121,6 +108,10 @@ func newSession(
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to convert creation time format")
 	}
+
+	// Compute merged endpoint configurations.
+	mergedAlphaConfiguration := MergeConfigurations(configuration, configurationAlpha)
+	mergedBetaConfiguration := MergeConfigurations(configuration, configurationBeta)
 
 	// Attempt to connect. Session creation is only allowed after if successful.
 	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true)
@@ -143,7 +134,7 @@ func newSession(
 		CreatingVersionPatch: mutagen.VersionPatch,
 		Alpha:                alpha,
 		Beta:                 beta,
-		Configuration:        mergedConfiguration,
+		Configuration:        configuration,
 		ConfigurationAlpha:   configurationAlpha,
 		ConfigurationBeta:    configurationBeta,
 		Labels:               labels,

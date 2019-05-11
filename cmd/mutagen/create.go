@@ -73,6 +73,29 @@ func createMain(command *cobra.Command, arguments []string) error {
 		labels[key] = value
 	}
 
+	// Create a default session configuration.
+	configuration := &sessionpkg.Configuration{}
+
+	// Unless disabled, load configuration from the global configuration file
+	// and merge it into our configuration.
+	if !createConfiguration.noGlobalConfiguration {
+		if c, err := sessionpkg.LoadConfiguration(fs.MutagenConfigurationPath); err != nil {
+			return errors.Wrap(err, "unable to load global configuration")
+		} else {
+			configuration = sessionpkg.MergeConfigurations(configuration, c)
+		}
+	}
+
+	// If a configuration file has been specified, then load it and merge it
+	// into our configuration.
+	if createConfiguration.configurationFile != "" {
+		if c, err := sessionpkg.LoadConfiguration(createConfiguration.configurationFile); err != nil {
+			return errors.Wrap(err, "unable to load configuration file")
+		} else {
+			configuration = sessionpkg.MergeConfigurations(configuration, c)
+		}
+	}
+
 	// Validate and convert the synchronization mode specification.
 	var synchronizationMode sync.SynchronizationMode
 	if createConfiguration.synchronizationMode != "" {
@@ -252,6 +275,24 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Create the command line configuration and merge it into our
+	// configuration.
+	configuration = sessionpkg.MergeConfigurations(configuration, &sessionpkg.Configuration{
+		SynchronizationMode:    synchronizationMode,
+		MaximumEntryCount:      createConfiguration.maximumEntryCount,
+		MaximumStagingFileSize: maximumStagingFileSize,
+		ProbeMode:              probeMode,
+		SymlinkMode:            symbolicLinkMode,
+		WatchMode:              watchMode,
+		WatchPollingInterval:   createConfiguration.watchPollingInterval,
+		Ignores:                createConfiguration.ignores,
+		IgnoreVCSMode:          ignoreVCSMode,
+		DefaultFileMode:        defaultFileMode,
+		DefaultDirectoryMode:   defaultDirectoryMode,
+		DefaultOwner:           createConfiguration.defaultOwner,
+		DefaultGroup:           createConfiguration.defaultGroup,
+	})
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := createDaemonClientConnection(true)
 	if err != nil {
@@ -274,23 +315,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Send the initial request.
 	request := &sessionsvcpkg.CreateRequest{
 		Specification: &sessionsvcpkg.CreationSpecification{
-			Alpha: alpha,
-			Beta:  beta,
-			Configuration: &sessionpkg.Configuration{
-				SynchronizationMode:    synchronizationMode,
-				MaximumEntryCount:      createConfiguration.maximumEntryCount,
-				MaximumStagingFileSize: maximumStagingFileSize,
-				ProbeMode:              probeMode,
-				SymlinkMode:            symbolicLinkMode,
-				WatchMode:              watchMode,
-				WatchPollingInterval:   createConfiguration.watchPollingInterval,
-				Ignores:                createConfiguration.ignores,
-				IgnoreVCSMode:          ignoreVCSMode,
-				DefaultFileMode:        defaultFileMode,
-				DefaultDirectoryMode:   defaultDirectoryMode,
-				DefaultOwner:           createConfiguration.defaultOwner,
-				DefaultGroup:           createConfiguration.defaultGroup,
-			},
+			Alpha:         alpha,
+			Beta:          beta,
+			Configuration: configuration,
 			ConfigurationAlpha: &sessionpkg.Configuration{
 				ProbeMode:            probeModeAlpha,
 				WatchMode:            watchModeAlpha,
@@ -357,6 +384,12 @@ var createConfiguration struct {
 	help bool
 	// labels are the label specifications for the session.
 	labels []string
+	// noGlobalConfiguration specifies whether or not the global configuration
+	// file should be ignored.
+	noGlobalConfiguration bool
+	// configurationFile specifies a file from which to load configuration. It
+	// should be a path relative to the working directory.
+	configurationFile string
 	// synchronizationMode specifies the synchronization mode for the session.
 	synchronizationMode string
 	// maximumEntryCount specifies the maximum number of filesystem entries that
@@ -469,6 +502,10 @@ func init() {
 
 	// Wire up label flags.
 	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
+
+	// Wire up general configuration flags.
+	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
+	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load session configuration")
 
 	// Wire up synchronization flags.
 	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")

@@ -176,17 +176,17 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the configuration is valid.
-	if err := s.Configuration.EnsureValid(ConfigurationSourceTypeSession); err != nil {
+	if err := s.Configuration.EnsureValid(false); err != nil {
 		return errors.Wrap(err, "invalid configuration")
 	}
 
 	// Ensure that the alpha-specific configuration is valid.
-	if err := s.ConfigurationAlpha.EnsureValid(ConfigurationSourceTypeSessionEndpointSpecific); err != nil {
+	if err := s.ConfigurationAlpha.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid alpha-specific configuration")
 	}
 
 	// Ensure that the beta-specific configuration is valid.
-	if err := s.ConfigurationBeta.EnsureValid(ConfigurationSourceTypeSessionEndpointSpecific); err != nil {
+	if err := s.ConfigurationBeta.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid beta-specific configuration")
 	}
 

@@ -25,10 +25,18 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type CreationSpecification struct {
-	Alpha                *url.URL               `protobuf:"bytes,1,opt,name=alpha,proto3" json:"alpha,omitempty"`
-	Beta                 *url.URL               `protobuf:"bytes,2,opt,name=beta,proto3" json:"beta,omitempty"`
-	Configuration        *session.Configuration `protobuf:"bytes,3,opt,name=configuration,proto3" json:"configuration,omitempty"`
-	ConfigurationAlpha   *session.Configuration `protobuf:"bytes,4,opt,name=configurationAlpha,proto3" json:"configurationAlpha,omitempty"`
+	Alpha *url.URL `protobuf:"bytes,1,opt,name=alpha,proto3" json:"alpha,omitempty"`
+	Beta  *url.URL `protobuf:"bytes,2,opt,name=beta,proto3" json:"beta,omitempty"`
+	// Configuration is the base session configuration. It is the result of
+	// merging the global configuration (unless disabled), any manually
+	// specified configuration file, and any command line configuration
+	// parameters.
+	Configuration *session.Configuration `protobuf:"bytes,3,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	// ConfigurationAlpha is the alpha-specific session configuration. It is
+	// determined based on command line configuration parameters.
+	ConfigurationAlpha *session.Configuration `protobuf:"bytes,4,opt,name=configurationAlpha,proto3" json:"configurationAlpha,omitempty"`
+	// ConfigurationBeta is the beta-specific session configuration. It is
+	// determined based on command line configuration parameters.
 	ConfigurationBeta    *session.Configuration `protobuf:"bytes,5,opt,name=configurationBeta,proto3" json:"configurationBeta,omitempty"`
 	Labels               map[string]string      `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
