@@ -12,7 +12,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/havoc-io/mutagen/cmd"
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
@@ -39,14 +39,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// If either URL is a local path, make sure it's normalized.
 	if alpha.Protocol == url.Protocol_Local {
-		if alphaPath, err := fs.Normalize(alpha.Path); err != nil {
+		if alphaPath, err := filesystem.Normalize(alpha.Path); err != nil {
 			return errors.Wrap(err, "unable to normalize alpha path")
 		} else {
 			alpha.Path = alphaPath
 		}
 	}
 	if beta.Protocol == url.Protocol_Local {
-		if betaPath, err := fs.Normalize(beta.Path); err != nil {
+		if betaPath, err := filesystem.Normalize(beta.Path); err != nil {
 			return errors.Wrap(err, "unable to normalize beta path")
 		} else {
 			beta.Path = betaPath
@@ -79,7 +79,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		if c, err := sessionpkg.LoadConfiguration(fs.MutagenConfigurationPath); err != nil {
+		if c, err := sessionpkg.LoadConfiguration(filesystem.MutagenConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)
@@ -182,95 +182,93 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert default file mode specifications.
-	var defaultFileMode, defaultFileModeAlpha, defaultFileModeBeta uint32
+	var defaultFileMode, defaultFileModeAlpha, defaultFileModeBeta filesystem.Mode
 	if createConfiguration.defaultFileMode != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultFileMode, fs.ModePermissionsMask); err != nil {
+		if err := defaultFileMode.UnmarshalText([]byte(createConfiguration.defaultFileMode)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode")
-		} else if err = sync.EnsureDefaultFileModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultFileModeValid(defaultFileMode); err != nil {
 			return errors.Wrap(err, "invalid default file mode")
-		} else {
-			defaultFileMode = uint32(m)
 		}
 	}
 	if createConfiguration.defaultFileModeAlpha != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultFileModeAlpha, fs.ModePermissionsMask); err != nil {
+		if err := defaultFileModeAlpha.UnmarshalText([]byte(createConfiguration.defaultFileModeAlpha)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode for alpha")
-		} else if err = sync.EnsureDefaultFileModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultFileModeValid(defaultFileModeAlpha); err != nil {
 			return errors.Wrap(err, "invalid default file mode for alpha")
-		} else {
-			defaultFileModeAlpha = uint32(m)
 		}
 	}
 	if createConfiguration.defaultFileModeBeta != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultFileModeBeta, fs.ModePermissionsMask); err != nil {
+		if err := defaultFileModeBeta.UnmarshalText([]byte(createConfiguration.defaultFileModeBeta)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode for beta")
-		} else if err = sync.EnsureDefaultFileModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultFileModeValid(defaultFileModeBeta); err != nil {
 			return errors.Wrap(err, "invalid default file mode for beta")
-		} else {
-			defaultFileModeBeta = uint32(m)
 		}
 	}
 
 	// Validate and convert default directory mode specifications.
-	var defaultDirectoryMode, defaultDirectoryModeAlpha, defaultDirectoryModeBeta uint32
+	var defaultDirectoryMode, defaultDirectoryModeAlpha, defaultDirectoryModeBeta filesystem.Mode
 	if createConfiguration.defaultDirectoryMode != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultDirectoryMode, fs.ModePermissionsMask); err != nil {
+		if err := defaultDirectoryMode.UnmarshalText([]byte(createConfiguration.defaultDirectoryMode)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryMode); err != nil {
 			return errors.Wrap(err, "invalid default directory mode")
-		} else {
-			defaultDirectoryMode = uint32(m)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeAlpha != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultDirectoryModeAlpha, fs.ModePermissionsMask); err != nil {
+		if err := defaultDirectoryModeAlpha.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeAlpha)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode for alpha")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryModeAlpha); err != nil {
 			return errors.Wrap(err, "invalid default directory mode for alpha")
-		} else {
-			defaultDirectoryModeAlpha = uint32(m)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeBeta != "" {
-		if m, err := fs.ParseMode(createConfiguration.defaultDirectoryModeBeta, fs.ModePermissionsMask); err != nil {
+		if err := defaultDirectoryModeBeta.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeBeta)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode for beta")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(m); err != nil {
+		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryModeBeta); err != nil {
 			return errors.Wrap(err, "invalid default directory mode for beta")
-		} else {
-			defaultDirectoryModeBeta = uint32(m)
 		}
 	}
 
 	// Validate default file owner owner specifications.
 	if createConfiguration.defaultOwner != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwner); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(createConfiguration.defaultOwner); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid ownership specification")
 		}
 	}
 	if createConfiguration.defaultOwnerAlpha != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwnerAlpha); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultOwnerAlpha,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid ownership specification for alpha")
 		}
 	}
 	if createConfiguration.defaultOwnerBeta != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultOwnerBeta); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultOwnerBeta,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid ownership specification for beta")
 		}
 	}
 
 	// Validate default file owner group specifications.
 	if createConfiguration.defaultGroup != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultGroup); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultGroup,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid group ownership specification")
 		}
 	}
 	if createConfiguration.defaultGroupAlpha != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultGroupAlpha); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultGroupAlpha,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid group ownership specification for alpha")
 		}
 	}
 	if createConfiguration.defaultGroupBeta != "" {
-		if kind, _ := fs.ParseOwnershipIdentifier(createConfiguration.defaultGroupBeta); kind == fs.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultGroupBeta,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid group ownership specification for beta")
 		}
 	}
@@ -287,8 +285,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 		WatchPollingInterval:   createConfiguration.watchPollingInterval,
 		Ignores:                createConfiguration.ignores,
 		IgnoreVCSMode:          ignoreVCSMode,
-		DefaultFileMode:        defaultFileMode,
-		DefaultDirectoryMode:   defaultDirectoryMode,
+		DefaultFileMode:        uint32(defaultFileMode),
+		DefaultDirectoryMode:   uint32(defaultDirectoryMode),
 		DefaultOwner:           createConfiguration.defaultOwner,
 		DefaultGroup:           createConfiguration.defaultGroup,
 	})
@@ -322,8 +320,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 				ProbeMode:            probeModeAlpha,
 				WatchMode:            watchModeAlpha,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
-				DefaultFileMode:      defaultFileModeAlpha,
-				DefaultDirectoryMode: defaultDirectoryModeAlpha,
+				DefaultFileMode:      uint32(defaultFileModeAlpha),
+				DefaultDirectoryMode: uint32(defaultDirectoryModeAlpha),
 				DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 				DefaultGroup:         createConfiguration.defaultGroupAlpha,
 			},
@@ -331,8 +329,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 				ProbeMode:            probeModeBeta,
 				WatchMode:            watchModeBeta,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
-				DefaultFileMode:      defaultFileModeBeta,
-				DefaultDirectoryMode: defaultDirectoryModeBeta,
+				DefaultFileMode:      uint32(defaultFileModeBeta),
+				DefaultDirectoryMode: uint32(defaultDirectoryModeBeta),
 				DefaultOwner:         createConfiguration.defaultOwnerBeta,
 				DefaultGroup:         createConfiguration.defaultGroupBeta,
 			},

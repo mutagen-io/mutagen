@@ -43,7 +43,7 @@ func (c *parseModeTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Perform parsing and verify that the expected behavior is observed.
-	if result, err := ParseMode(c.value, c.mask); err == nil && c.expectFailure {
+	if result, err := parseMode(c.value, c.mask); err == nil && c.expectFailure {
 		t.Fatal("parsing succeeded when failure was expected")
 	} else if err != nil && !c.expectFailure {
 		t.Fatal("parsing failed unexpectedly:", err)
@@ -52,7 +52,7 @@ func (c *parseModeTestCase) run(t *testing.T) {
 	}
 }
 
-// TestParseModeEmpty verifies that ParseMode fails on an empty string.
+// TestParseModeEmpty verifies that parseMode fails on an empty string.
 func TestParseModeEmpty(t *testing.T) {
 	// Create the test case.
 	testCase := &parseModeTestCase{
@@ -64,7 +64,7 @@ func TestParseModeEmpty(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeInvalid verifies that ParseMode fails on an invalid string.
+// TestParseModeInvalid verifies that parseMode fails on an invalid string.
 func TestParseModeInvalid(t *testing.T) {
 	// Create the test case.
 	testCase := &parseModeTestCase{
@@ -77,7 +77,7 @@ func TestParseModeInvalid(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeOverflow verifies that ParseMode fails on a mode specification
+// TestParseModeOverflow verifies that parseMode fails on a mode specification
 // that overflows an unsigned 32-bit integer.
 func TestParseModeOverflow(t *testing.T) {
 	// Create the test case.
@@ -91,7 +91,7 @@ func TestParseModeOverflow(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeInvalidBits verifies that ParseMode fails on a mode that doesn't
+// TestParseModeInvalidBits verifies that parseMode fails on a mode that doesn't
 // fit within to the specified bit mask.
 func TestParseModeInvalidBits(t *testing.T) {
 	// Create the test case.
@@ -105,7 +105,7 @@ func TestParseModeInvalidBits(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeValid verifies that ParseMode succeeds on a valid string.
+// TestParseModeValid verifies that parseMode succeeds on a valid string.
 func TestParseModeValid(t *testing.T) {
 	// Create the test case.
 	testCase := &parseModeTestCase{
@@ -118,7 +118,7 @@ func TestParseModeValid(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeValidWithZeroPrefix verifies that ParseMode succeeds on a valid
+// TestParseModeValidWithZeroPrefix verifies that parseMode succeeds on a valid
 // string with a zero prefix
 func TestParseModeValidWithZeroPrefix(t *testing.T) {
 	// Create the test case.
@@ -132,7 +132,7 @@ func TestParseModeValidWithZeroPrefix(t *testing.T) {
 	testCase.run(t)
 }
 
-// TestParseModeValidWithMultiZeroPrefix verifies that ParseMode succeeds on a
+// TestParseModeValidWithMultiZeroPrefix verifies that parseMode succeeds on a
 // valid string with a multi-zero prefix
 func TestParseModeValidWithMultiZeroPrefix(t *testing.T) {
 	// Create the test case.
@@ -144,4 +144,18 @@ func TestParseModeValidWithMultiZeroPrefix(t *testing.T) {
 
 	// Run the test case.
 	testCase.run(t)
+}
+
+// TestModeUnmarshalTextUnmodifiedOnFailure verifies that Mode.UnmarshalText
+// leaves the underlying mode unmodified in the case of failure.
+func TestModeUnmarshalTextUnmodifiedOnFailure(t *testing.T) {
+	// Create a zero-valued mode.
+	var mode Mode
+
+	// Unmarshal an invalid value.
+	if mode.UnmarshalText([]byte("0888")) == nil {
+		t.Fatal("mode unmarshalling succeeded unexpectedly")
+	} else if mode != 0 {
+		t.Error("mode modified during unsuccessful unmarshalling operation")
+	}
 }

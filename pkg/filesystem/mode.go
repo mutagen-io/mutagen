@@ -30,11 +30,11 @@ const (
 	ModePermissionOthersExecute = Mode(0001)
 )
 
-// ParseMode parses a user-specified octal string and verifies that it is
+// parseMode parses a user-specified octal string and verifies that it is
 // limited to the bits specified in mask. It allows, but does not require, the
 // string to begin with a 0 (or several 0s). The provided string must not be
 // empty.
-func ParseMode(value string, mask Mode) (Mode, error) {
+func parseMode(value string, mask Mode) (Mode, error) {
 	if m, err := strconv.ParseUint(value, 8, 32); err != nil {
 		return 0, errors.Wrap(err, "unable to parse numeric value")
 	} else if mode := Mode(m); mode&mask != mode {
@@ -45,13 +45,16 @@ func ParseMode(value string, mask Mode) (Mode, error) {
 }
 
 // UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// from TOML files. It requires that the specified mode bits lie within
+// ModePermissionsMask, otherwise an error is returned. If an error is returned,
+// the mode is unmodified.
 func (m *Mode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
-	// Perform parsing.
-	if result, err := ParseMode(text, ModePermissionsMask); err != nil {
+	// Perform parsing. We only allow the mode itself to be modified if parsing
+	// is successful.
+	if result, err := parseMode(text, ModePermissionsMask); err != nil {
 		return err
 	} else {
 		*m = result
