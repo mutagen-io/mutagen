@@ -21,8 +21,9 @@ func daemonDialer(_ string, timeout time.Duration) (net.Conn, error) {
 }
 
 // createDaemonClientConnection creates a new daemon client connection and
-// verifies that the daemon version matches the current process' version.
-func createDaemonClientConnection() (*grpc.ClientConn, error) {
+// optionally verifies that the daemon version matches the current process'
+// version.
+func createDaemonClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Create a context to timeout the dial.
 	dialContext, cancel := context.WithTimeout(
 		context.Background(),
@@ -47,22 +48,25 @@ func createDaemonClientConnection() (*grpc.ClientConn, error) {
 		return nil, err
 	}
 
-	// Verify that the daemon version matches the current process' version.
-	// We'll perform this call within the dialing context since it should be
-	// more than long enough to dial the daemon and perform a version check.
-	daemonService := daemonsvcpkg.NewDaemonClient(connection)
-	version, err := daemonService.Version(dialContext, &daemonsvcpkg.VersionRequest{})
-	if err != nil {
-		connection.Close()
-		return nil, errors.Wrap(err, "unable to query daemon version")
-	}
-	versionMatch := version.Major == mutagen.VersionMajor &&
-		version.Minor == mutagen.VersionMinor &&
-		version.Patch == mutagen.VersionPatch &&
-		version.Tag == mutagen.VersionTag
-	if !versionMatch {
-		connection.Close()
-		return nil, errors.New("client/daemon version mismatch (daemon restart recommended)")
+	// If requested, verify that the daemon version matches the current process'
+	// version. We'll perform this call within the dialing context since it
+	// should be more than long enough to dial the daemon and perform a version
+	// check.
+	if enforceVersionMatch {
+		daemonService := daemonsvcpkg.NewDaemonClient(connection)
+		version, err := daemonService.Version(dialContext, &daemonsvcpkg.VersionRequest{})
+		if err != nil {
+			connection.Close()
+			return nil, errors.Wrap(err, "unable to query daemon version")
+		}
+		versionMatch := version.Major == mutagen.VersionMajor &&
+			version.Minor == mutagen.VersionMinor &&
+			version.Patch == mutagen.VersionPatch &&
+			version.Tag == mutagen.VersionTag
+		if !versionMatch {
+			connection.Close()
+			return nil, errors.New("client/daemon version mismatch (daemon restart recommended)")
+		}
 	}
 
 	// Success.
