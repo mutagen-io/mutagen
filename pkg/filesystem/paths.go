@@ -39,10 +39,6 @@ const (
 	// MutagenStagingDirectoryName is the name of the staging subdirectory
 	// within the Mutagen data directory.
 	MutagenStagingDirectoryName = "staging"
-
-	// mutagenDirectoryPermissions are the permissions for the Mutagen control
-	// directory and its subdirectories.
-	mutagenDirectoryPermissions os.FileMode = 0700
 )
 
 // HomeDirectory is the cached path to the current user's home directory.
@@ -83,7 +79,7 @@ func Mutagen(create bool, subpath ...string) (string, error) {
 	// suppose the user may have changed them for whatever reason (though I
 	// can't imagine any).
 	if create {
-		if err := os.MkdirAll(result, mutagenDirectoryPermissions); err != nil {
+		if err := os.MkdirAll(result, 0700); err != nil {
 			return "", errors.Wrap(err, "unable to create subpath")
 		} else if err := MarkHidden(root); err != nil {
 			return "", errors.Wrap(err, "unable to hide Mutagen directory")
