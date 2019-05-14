@@ -74,11 +74,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 		labels[key] = value
 	}
 
-	// Create a default session configuration.
+	// Create a default session configuration which will form the basis of our
+	// cumulative configuration.
 	configuration := &sessionpkg.Configuration{}
 
 	// Unless disabled, load configuration from the global configuration file
-	// and merge it into our configuration.
+	// and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
 		if c, err := sessionpkg.LoadConfiguration(filesystem.MutagenConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
@@ -88,7 +89,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// If a configuration file has been specified, then load it and merge it
-	// into our configuration.
+	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
 		if c, err := sessionpkg.LoadConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
@@ -292,7 +293,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Create the command line configuration and merge it into our
+	// Create the command line configuration and merge it into our cumulative
 	// configuration.
 	configuration = sessionpkg.MergeConfigurations(configuration, &sessionpkg.Configuration{
 		SynchronizationMode:    synchronizationMode,
