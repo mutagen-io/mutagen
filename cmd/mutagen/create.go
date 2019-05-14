@@ -421,10 +421,10 @@ var createConfiguration struct {
 	// probeMode specifies the filesystem probing mode to use for the session.
 	probeMode string
 	// probeModeAlpha specifies the filesystem probing mode to use for the
-	// session, taking priority over watchMode on alpha if specified.
+	// session, taking priority over probeMode on alpha if specified.
 	probeModeAlpha string
 	// probeModeBeta specifies the filesystem probing mode to use for the
-	// session, taking priority over watchMode on beta if specified.
+	// session, taking priority over probeMode on beta if specified.
 	probeModeBeta string
 	// stagingMode specifies the file staging mode to use for the session.
 	stagingMode string

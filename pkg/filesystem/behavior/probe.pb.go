@@ -29,9 +29,9 @@ const (
 	// default behavior.
 	ProbeMode_ProbeModeDefault ProbeMode = 0
 	// ProbeMode_ProbeModeProbe specifies that filesystem behavior should be
-	// probed using temporary files to determine behavior. On some platforms,
-	// especially Windows, where behavior is well-known, this flag results in
-	// the same behavior as ProbeMode_ProbeModeAssume.
+	// determined using temporary files or, if possible, a "fast-path" mechanism
+	// (such as filesystem format detection) that provides quick but certain
+	// determination of filesystem behavior.
 	ProbeMode_ProbeModeProbe ProbeMode = 1
 	// ProbeMode_ProbeModeAssume specifies that filesystem behavior should be
 	// assumed based on the underlying platform. This is not as accurate as
