@@ -16,6 +16,10 @@ const (
 	// user's home directory.
 	MutagenDirectoryName = ".mutagen"
 
+	// MutagenDaemonDirectoryName is the name of the daemon subdirectory within
+	// the Mutagen data directory.
+	MutagenDaemonDirectoryName = "daemon"
+
 	// MutagenAgentsDirectoryName is the subdirectory of the Mutagen directory
 	// in which agents should be stored.
 	MutagenAgentsDirectoryName = "agents"
