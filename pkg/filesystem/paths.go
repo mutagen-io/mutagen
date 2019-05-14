@@ -12,9 +12,29 @@ const (
 	// inside the user's home directory.
 	mutagenConfigurationName = ".mutagen.toml"
 
-	// MutagenDirectoryName is the name of the Mutagen control directory inside
-	// the user's home directory.
+	// MutagenDirectoryName is the name of the Mutagen data directory inside the
+	// user's home directory.
 	MutagenDirectoryName = ".mutagen"
+
+	// MutagenAgentsDirectoryName is the subdirectory of the Mutagen directory
+	// in which agents should be stored.
+	MutagenAgentsDirectoryName = "agents"
+
+	// MutagenSessionsDirectoryName is the name of the sessions subdirectory
+	// within the Mutagen data directory.
+	MutagenSessionsDirectoryName = "sessions"
+
+	// MutagenCachesDirectoryName is the name of the caches subdirectory within
+	// the Mutagen data directory.
+	MutagenCachesDirectoryName = "caches"
+
+	// MutagenArchivesDirectoryName is the name of the archives subdirectory
+	// within the Mutagen data directory.
+	MutagenArchivesDirectoryName = "archives"
+
+	// MutagenStagingDirectoryName is the name of the staging subdirectory
+	// within the Mutagen data directory.
+	MutagenStagingDirectoryName = "staging"
 
 	// mutagenDirectoryPermissions are the permissions for the Mutagen control
 	// directory and its subdirectories.
@@ -61,7 +81,7 @@ func Mutagen(create bool, subpath ...string) (string, error) {
 	if create {
 		if err := os.MkdirAll(result, mutagenDirectoryPermissions); err != nil {
 			return "", errors.Wrap(err, "unable to create subpath")
-		} else if err := markHidden(root); err != nil {
+		} else if err := MarkHidden(root); err != nil {
 			return "", errors.Wrap(err, "unable to hide Mutagen directory")
 		}
 	}

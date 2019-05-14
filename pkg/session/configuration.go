@@ -39,6 +39,11 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("unknown or unsupported probe mode")
 	}
 
+	// Verify that the staging mode is unspecified or supported for usage.
+	if !(c.StagingMode.IsDefault() || c.StagingMode.Supported()) {
+		return errors.New("unknown or unsupported staging mode")
+	}
+
 	// Verify that the symlink mode.
 	if endpointSpecific {
 		if !c.SymlinkMode.IsDefault() {
@@ -143,6 +148,7 @@ func LoadConfiguration(path string) (*Configuration, error) {
 		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
 		MaximumStagingFileSize: uint64(configuration.Synchronization.MaximumStagingFileSize),
 		ProbeMode:              configuration.Synchronization.ProbeMode,
+		StagingMode:            configuration.Synchronization.StagingMode,
 		SymlinkMode:            configuration.Symlink.Mode,
 		WatchMode:              configuration.Watch.Mode,
 		WatchPollingInterval:   configuration.Watch.PollingInterval,
@@ -195,6 +201,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.ProbeMode = higher.ProbeMode
 	} else {
 		result.ProbeMode = lower.ProbeMode
+	}
+
+	// Merge staging mode.
+	if !higher.StagingMode.IsDefault() {
+		result.StagingMode = higher.StagingMode
+	} else {
+		result.StagingMode = lower.StagingMode
 	}
 
 	// Merge symlink mode.

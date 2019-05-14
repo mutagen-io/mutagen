@@ -7,6 +7,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
+	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -24,6 +25,8 @@ type Configuration struct {
 		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize"`
 		// ProbeMode specifies the filesystem probing mode.
 		ProbeMode behavior.ProbeMode `toml:"probeMode"`
+		// StagingMode specifies the filesystem staging mode.
+		StagingMode staging.StagingMode `toml:"stagingMode"`
 	} `toml:"sync"`
 
 	// Ignore contains parameters related to synchronization ignore

@@ -16,7 +16,7 @@ func TestMarkHidden(t *testing.T) {
 	defer os.Remove(hiddenFile.Name())
 
 	// Ensure that we can mark it as hidden.
-	if err := markHidden(hiddenFile.Name()); err != nil {
+	if err := MarkHidden(hiddenFile.Name()); err != nil {
 		t.Fatal("unable to mark file as hidden")
 	}
 

@@ -14,6 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -83,7 +84,7 @@ type endpoint struct {
 	// scanHasher is the hasher used for scans.
 	scanHasher hash.Hash
 	// stager is the staging coordinator.
-	stager *stager
+	stager *staging.Stager
 	// lastScanCount is the entry count at the time of the last scan.
 	lastScanCount uint64
 	// scannedSinceLastStageCall tracks whether or not a scan operation has
@@ -129,6 +130,12 @@ func NewEndpoint(
 	probeMode := configuration.ProbeMode
 	if probeMode.IsDefault() {
 		probeMode = version.DefaultProbeMode()
+	}
+
+	// Compute the effective staging mode.
+	stagingMode := configuration.StagingMode
+	if stagingMode.IsDefault() {
+		stagingMode = version.DefaultStagingMode()
 	}
 
 	// Compute the effective symlink mode.
@@ -234,12 +241,18 @@ func NewEndpoint(
 		cache = &sync.Cache{}
 	}
 
-	// Compute the staging root path.
+	// Compute the staging root path and whether or not it should be hidden.
 	var stagingRoot string
+	var hideStagingRoot bool
 	if endpointOptions.stagingRootCallback != nil {
-		stagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
+		stagingRoot, hideStagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
+	} else if stagingMode == staging.StagingMode_StagingModeMutagen {
+		stagingRoot, err = pathForMutagenStagingRoot(sessionIdentifier, alpha)
+	} else if stagingMode == staging.StagingMode_StagingModeNeighboring {
+		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
+		hideStagingRoot = true
 	} else {
-		stagingRoot, err = pathForStagingRoot(sessionIdentifier, alpha)
+		panic("unhandled staging mode")
 	}
 	if err != nil {
 		watchCancel()
@@ -262,7 +275,12 @@ func NewEndpoint(
 		cachePath:            cachePath,
 		cache:                cache,
 		scanHasher:           version.Hasher(),
-		stager:               newStager(version, stagingRoot, configuration.MaximumStagingFileSize),
+		stager: staging.NewStager(
+			stagingRoot,
+			hideStagingRoot,
+			version.Hasher(),
+			configuration.MaximumStagingFileSize,
+		),
 	}, nil
 }
 
@@ -550,7 +568,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// staging directory? It could be due to an easily correctable error, at
 	// which point you wouldn't want to restage if you're talking about lots of
 	// files.
-	e.stager.wipe()
+	e.stager.Wipe()
 
 	// Done.
 	return results, problems, nil

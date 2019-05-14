@@ -57,9 +57,9 @@ func connect(
 	}
 	agentInvocationPath := strings.Join([]string{
 		filesystem.MutagenDirectoryName,
-		agentsDirectoryName,
+		filesystem.MutagenAgentsDirectoryName,
 		mutagen.Version,
-		agentBaseName,
+		BaseName,
 	}, pathSeparator)
 
 	// Compute the command to invoke.

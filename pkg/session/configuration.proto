@@ -6,6 +6,7 @@ option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
 import "filesystem/behavior/probe.proto";
 import "filesystem/watching/watch.proto";
+import "staging/staging.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
 import "sync/symlink.proto";
@@ -34,7 +35,12 @@ message Configuration {
     // ProbeMode specifies the filesystem probing mode.
     behavior.ProbeMode probeMode = 14;
 
-    // Fields 15-20 are reserved for future synchronization configuration
+    // Field 15 is reserved for scan mode.
+
+    // StagingMode specifies the file staging mode.
+    staging.StagingMode stagingMode = 16;
+
+    // Fields 17-20 are reserved for future synchronization configuration
     // parameters.
 
 

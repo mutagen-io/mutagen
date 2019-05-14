@@ -68,7 +68,7 @@ func install(transport Transport, prompter string) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to generate UUID for agent copying")
 	}
-	destination := agentBaseName + randomUUID.String()
+	destination := BaseName + randomUUID.String()
 	if goos == "windows" {
 		destination += ".exe"
 	}

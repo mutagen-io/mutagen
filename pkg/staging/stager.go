@@ -1,4 +1,4 @@
-package local
+package staging
 
 import (
 	"hash"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 // stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
 	// stager is the parent stager.
-	stager *stager
+	stager *Stager
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
 	path string
@@ -92,15 +92,19 @@ func (s *stagingSink) Close() error {
 	return nil
 }
 
-// stager coordinates the reception of files via rsync (by implementing
-// rsync.Sinker) and the provision of those files to transitions (by
-// implementing sync.Provider). It is not safe for concurrent access, and each
-// stagingSink it produces should be closed before another is created.
-type stager struct {
-	// version is the session version.
-	version session.Version
-	// root is the staging root.
+// Stager is an ephemeral content-addressable store implementation. It allows
+// files to be staged in a load-balanced fashion in a temporary directory and
+// then rapidly located by their digests. It implements both rsync.Sinker and
+// sync.Provider. It is not safe for concurrent access, and each sink that it
+// produces should be closed before any other method is invoked.
+type Stager struct {
+	// root is the staging root path.
 	root string
+	// hideRoot indicates whether or not the staging root should be marked as
+	// hidden.
+	hideRoot bool
+	// digester is the hash function to use when processing files.
+	digester hash.Hash
 	// maximumFileSize is the maximum allowed size for a single staged file. A
 	// zero value means that the size is unlimited.
 	maximumFileSize uint64
@@ -113,12 +117,15 @@ type stager struct {
 	prefixCreated map[string]bool
 }
 
-// newStager creates a new stager instance. If maximumFileSize is 0, then no
-// size limit is imposed on files.
-func newStager(version session.Version, root string, maximumFileSize uint64) *stager {
-	return &stager{
-		version:         version,
+// NewStager creates a new stager. Parent should be a common directory in which
+// staging roots are created, and rootName should be the endpoint-unique name of
+// the staging root to create/delete within the parent. If maximumFileSize is 0,
+// then no size limit is imposed on files.
+func NewStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *Stager {
+	return &Stager{
 		root:            root,
+		hideRoot:        hideRoot,
+		digester:        digester,
 		maximumFileSize: maximumFileSize,
 		prefixCreated:   make(map[string]bool, numberOfByteValues),
 	}
@@ -126,7 +133,7 @@ func newStager(version session.Version, root string, maximumFileSize uint64) *st
 
 // ensurePrefixExists ensures that the specified prefix directory exists within
 // the staging root, using a cache to avoid inefficient recreation.
-func (s *stager) ensurePrefixExists(prefix string) error {
+func (s *Stager) ensurePrefixExists(prefix string) error {
 	// Check if we've already created that prefix.
 	if s.prefixCreated[prefix] {
 		return nil
@@ -134,7 +141,7 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 
 	// Otherwise create it and mark it as created. We can also mark the root as
 	// created since it'll be an intermediate directory.
-	if err := os.MkdirAll(filepath.Join(s.root, prefix), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(s.root, prefix), 0700); err != nil {
 		return err
 	}
 	s.rootCreated = true
@@ -144,8 +151,8 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 	return nil
 }
 
-// wipe removes the staging root.
-func (s *stager) wipe() error {
+// Wipe removes the staging root.
+func (s *Stager) Wipe() error {
 	// Reset the prefix creation tracker.
 	s.prefixCreated = make(map[string]bool, numberOfByteValues)
 
@@ -162,12 +169,22 @@ func (s *stager) wipe() error {
 }
 
 // Sink implements the Sink method of rsync.Sinker.
-func (s *stager) Sink(path string) (io.WriteCloser, error) {
+func (s *Stager) Sink(path string) (io.WriteCloser, error) {
 	// Create the staging root if we haven't already.
 	if !s.rootCreated {
-		if err := os.MkdirAll(s.root, 0700); err != nil {
+		// Attempt to create the directory.
+		if err := os.Mkdir(s.root, 0700); err != nil {
 			return nil, errors.Wrap(err, "unable to create staging root")
 		}
+
+		// Mark the directory as hidden, if requested.
+		if s.hideRoot {
+			if err := filesystem.MarkHidden(s.root); err != nil {
+				return nil, errors.Wrap(err, "unable to make staging root as hidden")
+			}
+		}
+
+		// Update our creation tracking.
 		s.rootCreated = true
 	}
 
@@ -177,18 +194,21 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 		return nil, errors.Wrap(err, "unable to create temporary storage file")
 	}
 
+	// Reset the hash function state.
+	s.digester.Reset()
+
 	// Success.
 	return &stagingSink{
 		stager:      s,
 		path:        path,
 		storage:     storage,
-		digester:    s.version.Hasher(),
+		digester:    s.digester,
 		maximumSize: s.maximumFileSize,
 	}, nil
 }
 
 // Provide implements the Provide method of sync.Provider.
-func (s *stager) Provide(path string, digest []byte) (string, error) {
+func (s *Stager) Provide(path string, digest []byte) (string, error) {
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, digest)
 	if err != nil {

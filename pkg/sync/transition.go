@@ -112,7 +112,6 @@ func (t *transitioner) nameExistsInDirectoryWithProperCase(
 // filesystem.
 func (t *transitioner) walkToParentAndComputeLeafName(
 	path string,
-	createRootParent bool,
 	validateLeafCasing bool,
 ) (*filesystem.Directory, string, error) {
 	// Handle the special case of a root path. In this case we open the parent
@@ -136,23 +135,6 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		if rootName == "" {
 			return nil, "", errors.New("root path is a filesystem root")
 		}
-
-		// If creation of the root parent has been requested, then make sure it
-		// exists. This is a no-op if the parent does exist.
-		//
-		// RACE: The os.MkdirAll function is technically racy since it's purely
-		// path-based, but it's fine for our out-of-synchronization-root
-		// behavior.
-		if createRootParent {
-			if err := os.MkdirAll(rootParentPath, os.FileMode(t.defaultDirectoryPermissionMode)); err != nil {
-				return nil, "", errors.Wrap(err, "unable to create parent component of root path")
-			}
-		}
-
-		// RACE: There is also technically a race condition here because we're
-		// doing a Mkdir operation (potentially) and then opening the parent,
-		// but it's inconsequential since we'll ensure that it exists once open
-		// and that it's a directory.
 
 		// Open the parent. We do allow the parent path to be a symbolic link
 		// since we allow symbolic link resolution for parent components of the
@@ -491,7 +473,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 
 	// Walk down to the parent of the target and compute the target's leaf name.
 	// If we are successful, defer closure of the parent.
-	parent, name, err := t.walkToParentAndComputeLeafName(path, false, true)
+	parent, name, err := t.walkToParentAndComputeLeafName(path, true)
 	if err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root"))
 		return entry
@@ -628,7 +610,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	// Walk down to the parent of the target and compute the target's leaf name.
 	// If we are successful, defer closure of the parent.
-	parent, name, err := t.walkToParentAndComputeLeafName(path, false, true)
+	parent, name, err := t.walkToParentAndComputeLeafName(path, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to walk to transition root")
 	}
@@ -816,7 +798,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 
 	// Walk down to the parent of the target and compute the target's leaf name.
 	// If we are successful, defer closure of the parent.
-	parent, name, err := t.walkToParentAndComputeLeafName(path, false, false)
+	parent, name, err := t.walkToParentAndComputeLeafName(path, false)
 	if err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root parent"))
 		return nil

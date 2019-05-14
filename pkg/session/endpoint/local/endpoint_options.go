@@ -11,7 +11,7 @@ type endpointOptions struct {
 	cachePathCallback func(string, bool) (string, error)
 	// stagingRootCallback can specify a callback that will be used to compute
 	// the staging root.
-	stagingRootCallback func(string, bool) (string, error)
+	stagingRootCallback func(string, bool) (string, bool, error)
 	// watchingMechanism can specify a callback that will be used as an
 	// alternative mechanism for filesystem watching.
 	watchingMechanism func(context.Context, string, chan<- struct{})
@@ -60,8 +60,10 @@ func WithCachePathCallback(callback func(string, bool) (string, error)) Endpoint
 // arguments: the session identifier (a UUID) and a boolean indicating whether
 // or not this is the alpha endpoint (if false, it's the beta endpoint). The
 // function should return a path that is consistent but unique in terms of these
-// two arguments. The path may exist, but if it does must be a directory.
-func WithStagingRootCallback(callback func(string, bool) (string, error)) EndpointOption {
+// two arguments, as well as whether or not the generated staging root should be
+// marked as hidden when re-created. The path may exist, but if it does must be
+// a directory, and it will be regularly deleted/re-created.
+func WithStagingRootCallback(callback func(string, bool) (string, bool, error)) EndpointOption {
 	return newFunctionEndpointOption(func(options *endpointOptions) {
 		options.stagingRootCallback = callback
 	})

@@ -108,7 +108,7 @@ func executableForPlatform(goos, goarch string) (string, error) {
 	}
 
 	// Compute the base name for the output file.
-	targetBaseName := process.ExecutableName(agentBaseName, goos)
+	targetBaseName := process.ExecutableName(BaseName, goos)
 
 	// Create a temporary file in which to receive the agent on disk.
 	file, err := ioutil.TempFile("", targetBaseName)

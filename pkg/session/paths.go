@@ -8,21 +8,12 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
-const (
-	// sessionsDirectoryName is the name of the sessions subdirectory within the
-	// Mutagen directory.
-	sessionsDirectoryName = "sessions"
-	// archivesDirectoryName is the name of the archives subdirectory within the
-	// Mutagen directory.
-	archivesDirectoryName = "archives"
-)
-
 // pathForSession computes the path to the serialized session for the given
 // session identifier. An empty session identifier will return the sessions
 // directory path.
 func pathForSession(sessionIdentifier string) (string, error) {
 	// Compute/create the sessions directory.
-	sessionsDirectoryPath, err := filesystem.Mutagen(true, sessionsDirectoryName)
+	sessionsDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSessionsDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create sessions directory")
 	}
@@ -35,7 +26,7 @@ func pathForSession(sessionIdentifier string) (string, error) {
 // session identifier.
 func pathForArchive(session string) (string, error) {
 	// Compute/create the archives directory.
-	archivesDirectoryPath, err := filesystem.Mutagen(true, archivesDirectoryName)
+	archivesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenArchivesDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create archives directory")
 	}

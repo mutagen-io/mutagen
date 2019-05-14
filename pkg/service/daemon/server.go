@@ -4,9 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/housekeeping"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/session/endpoint/local"
 )
 
 const (
@@ -14,18 +13,6 @@ const (
 	// invoked by the daemon.
 	housekeepingInterval = 24 * time.Hour
 )
-
-// housekeep performs a combined housekeeping operation.
-func housekeep() {
-	// Perform agent housekeeping.
-	agent.Housekeep()
-
-	// Perform cache housekeeping.
-	local.HousekeepCaches()
-
-	// Perform staging directory housekeeping.
-	local.HousekeepStaging()
-}
 
 // Server provides an implementation of the Daemon service.
 type Server struct {
@@ -67,7 +54,7 @@ func NewServer() *Server {
 func (s *Server) housekeep() {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
-	housekeep()
+	housekeeping.Housekeep()
 
 	// Create a ticker to regulate housekeeping and defer its shutdown.
 	ticker := time.NewTicker(housekeepingInterval)
@@ -79,7 +66,7 @@ func (s *Server) housekeep() {
 		case <-s.context.Done():
 			return
 		case <-ticker.C:
-			housekeep()
+			housekeeping.Housekeep()
 		}
 	}
 }
