@@ -317,6 +317,8 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// concurrent modification and just suggest a retry.
 	result, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
 		e.root,
+		nil,
+		nil,
 		e.scanHasher,
 		e.cache,
 		e.ignores,

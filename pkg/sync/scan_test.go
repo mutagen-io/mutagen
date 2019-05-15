@@ -29,6 +29,8 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	// Perform a scan.
 	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
 		root,
+		nil,
+		nil,
 		hasher,
 		nil,
 		ignores,
@@ -263,6 +265,8 @@ func TestScanSymlinkRoot(t *testing.T) {
 	// Attempt a scan of the symlink.
 	if _, _, _, _, _, err := Scan(
 		root,
+		nil,
+		nil,
 		sha1.New(),
 		nil,
 		nil,
@@ -304,6 +308,8 @@ func TestEfficientRescan(t *testing.T) {
 	// Create an initial snapshot and validate the results.
 	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
 		root,
+		nil,
+		nil,
 		hasher,
 		nil,
 		nil,
@@ -331,6 +337,8 @@ func TestEfficientRescan(t *testing.T) {
 	hasher = &rescanHashProxy{hasher, t}
 	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(
 		root,
+		nil,
+		nil,
 		hasher,
 		cache,
 		nil,
@@ -382,6 +390,8 @@ func TestScanCrossDeviceFail(t *testing.T) {
 	// Perform a scan and ensure that it fails.
 	if _, _, _, _, _, err := Scan(
 		parent,
+		nil,
+		nil,
 		hasher,
 		nil,
 		nil,

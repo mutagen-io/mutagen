@@ -39,6 +39,9 @@ const (
 type scanner struct {
 	// root is the path to the synchronization root.
 	root string
+	// dirtyPaths is the set of tainted paths for which a baseline snapshot
+	// can't be trusted.
+	dirtyPaths map[string]bool
 	// hasher is the hashing function to use for computing file digests.
 	hasher hash.Hash
 	// cache is the existing cache to use for fast digest lookups.
@@ -67,22 +70,18 @@ type scanner struct {
 }
 
 // file performs processing of a file entry. Exactly one of parent or file will
-// be non-nil, depending on whether or not the file represents the root path. If
-// the file does represent the root path, then file will be provided and this
-// function will be responsible for its closure. Otherwise, the parent of the
-// file is provided and this function is responsible for opening and closing the
-// file if necessary (using the parent and metadata).
+// be non-nil, depending on whether or not the path represents the
+// synchronization root. If the path represents the synchronization root, then
+// file will be provided and the caller will be responsible for its closure
+// (i.e. this function should not close it). Otherwise, the parent of the path
+// is provided and this function is responsible for opening and closing the file
+// as necessary.
 func (s *scanner) file(
 	path string,
 	parent *filesystem.Directory,
 	metadata *filesystem.Metadata,
 	file filesystem.ReadableFile,
 ) (*Entry, error) {
-	// If the file is non-nil, defer its closure.
-	if file != nil {
-		defer file.Close()
-	}
-
 	// Compute executability.
 	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
 
@@ -209,21 +208,40 @@ func (s *scanner) symbolicLink(
 	}, nil
 }
 
-// directory performs processing of a directory entry. This function is
-// responsible for closing the provided directory.
+// directory performs processing of a directory entry. Exactly one of parent or
+// directory will be non-nil, depending on whether or not the path represents
+// the synchronization root. If the path represents the synchronization root,
+// then directory will be provided and the caller will be responsible for its
+// closure (i.e. this function should not close it). Otherwise, the parent of
+// the path is provided and this function is responsible for opening and closing
+// the directory as necessary.
 func (s *scanner) directory(
 	path string,
-	directory *filesystem.Directory,
+	parent *filesystem.Directory,
 	metadata *filesystem.Metadata,
+	directory *filesystem.Directory,
+	baseline *Entry,
 ) (*Entry, error) {
-	// Defer closure of the directory.
-	defer directory.Close()
+	// Verify that the baseline, if any, is sane.
+	if baseline != nil && baseline.Kind != EntryKind_Directory {
+		panic("non-directory baseline passed to directory handler")
+	}
 
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
 	if metadata.DeviceID != s.deviceID {
 		return nil, errors.New("scan crossed filesystem boundary")
+	}
+
+	// If the directory is not yet opened, then open it and defer its closure.
+	if directory == nil {
+		if d, err := parent.OpenDirectory(metadata.Name); err != nil {
+			return nil, errors.Wrap(err, "unable to open directory")
+		} else {
+			directory = d
+			defer directory.Close()
+		}
 	}
 
 	// Read directory contents.
@@ -288,6 +306,28 @@ func (s *scanner) directory(
 			continue
 		}
 
+		// If we have a baseline, then check if that baseline has content with
+		// the same name and kind as what we see on disk. If so, then we can use
+		// that as a baseline for the content.
+		var contentBaseline *Entry
+		if baseline != nil {
+			contentBaseline = baseline.Contents[name]
+			if contentBaseline != nil && contentBaseline.Kind != kind {
+				contentBaseline = nil
+			}
+		}
+
+		// Check if the content path is marked as dirty.
+		_, contentDirty := s.dirtyPaths[contentPath]
+
+		// If we have a baseline entry for the content and the content path
+		// isn't marked as dirty, then we can just re-use that baseline entry
+		// directly.
+		if contentBaseline != nil && !contentDirty {
+			contents[name] = contentBaseline
+			continue
+		}
+
 		// Handle based on kind.
 		var entry *Entry
 		var err error
@@ -304,11 +344,7 @@ func (s *scanner) directory(
 				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			if d, openErr := directory.OpenDirectory(name); openErr != nil {
-				err = openErr
-			} else {
-				entry, err = s.directory(contentPath, d, contentMetadata)
-			}
+			entry, err = s.directory(contentPath, directory, contentMetadata, nil, contentBaseline)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -333,6 +369,8 @@ func (s *scanner) directory(
 // roots.
 func Scan(
 	root string,
+	baseline *Entry,
+	recheckPaths []string,
 	hasher hash.Hash,
 	cache *Cache,
 	ignores []string,
@@ -340,9 +378,119 @@ func Scan(
 	probeMode behavior.ProbeMode,
 	symlinkMode SymlinkMode,
 ) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
-	// A nil cache is technically valid, but if the provided cache is nil,
-	// replace it with an empty one, that way we don't have to use the
-	// GetEntries accessor everywhere.
+	// Verify that the symlink mode is valid for this platform.
+	if symlinkMode == SymlinkMode_SymlinkModePOSIXRaw && runtime.GOOS == "windows" {
+		return nil, false, false, nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
+	}
+
+	// Open the root and defer its closure. We explicitly disallow symbolic
+	// links at the root path, though intermediate symbolic links are fine.
+	rootObject, metadata, err := filesystem.Open(root, false)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, false, &Cache{}, make(IgnoreCache), nil
+		} else {
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe scan root")
+		}
+	}
+	defer rootObject.Close()
+
+	// Determine the root kind and extract the underlying object.
+	var rootKind EntryKind
+	var directoryRoot *filesystem.Directory
+	var fileRoot filesystem.ReadableFile
+	switch metadata.Mode & filesystem.ModeTypeMask {
+	case filesystem.ModeTypeDirectory:
+		rootKind = EntryKind_Directory
+		if d, ok := rootObject.(*filesystem.Directory); !ok {
+			panic("invalid directory object returned from root open operation")
+		} else {
+			directoryRoot = d
+		}
+	case filesystem.ModeTypeFile:
+		rootKind = EntryKind_File
+		if f, ok := rootObject.(filesystem.ReadableFile); !ok {
+			panic("invalid file object returned from root open operation")
+		} else {
+			fileRoot = f
+		}
+	default:
+		panic("invalid filesystem type returned from root open operation")
+	}
+
+	// Probe the behavior of the synchronization root.
+	var decomposesUnicode, preservesExecutability bool
+	if rootKind == EntryKind_Directory {
+		// Probe and set Unicode decomposition behavior.
+		if decomposes, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
+		} else {
+			decomposesUnicode = decomposes
+		}
+
+		// Probe and set executability preservation behavior.
+		if preserves, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
+		} else {
+			preservesExecutability = preserves
+		}
+	} else if rootKind == EntryKind_File {
+		// Probe and set executability preservation behavior for the parent of
+		// the root path.
+		//
+		// RACE: There is technically a race condition here on POSIX because the
+		// root file that we have open may have been unlinked and the parent
+		// directory path removed or replaced. Even if the file hasn't been
+		// unlinked, we still have to make this probe by path since there's no
+		// way (both due to API and underlying design) to grab a parent
+		// directory by file descriptor on POSIX (it's not a well-defined
+		// concept (due at least to the existence of hard links)). Anyway, this
+		// race does not have any significant risk. The only other option would
+		// be to switch executability preservation detection to use fstatfs, but
+		// this is a non-standardized call that returns different metadata on
+		// each platform. Even on platforms where detailed metadata is provided,
+		// the filesystem identifier alone may not be enough to determine this
+		// behavior.
+		if preserves, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
+		} else {
+			preservesExecutability = preserves
+		}
+	} else {
+		panic("unhandled root kind")
+	}
+
+	// If a baseline has been provided but its kind doesn't match that of the
+	// synchronization root, then we can ignore it.
+	if baseline != nil && baseline.Kind != rootKind {
+		baseline = nil
+	}
+
+	// If a baseline of the correct kind is available, and there aren't any
+	// re-check paths specified, then we can just re-use that baseline directly.
+	if baseline != nil && len(recheckPaths) == 0 {
+		return baseline, preservesExecutability, decomposesUnicode, cache, ignoreCache, nil
+	}
+
+	// Convert the list of re-check paths into a set of dirty paths. The rule is
+	// that we add any re-check path as well as any parent component of any
+	// re-check path.
+	var dirtyPaths map[string]bool
+	if len(recheckPaths) > 0 {
+		dirtyPaths := make(map[string]bool)
+		for _, path := range recheckPaths {
+			for {
+				dirtyPaths[path] = true
+				if path == "" {
+					break
+				}
+				path = pathDir(path)
+			}
+		}
+	}
+
+	// If a nil cache has been provided, convert it to an empty but non-nil
+	// version to avoid needing to use the GetEntries accessor everywhere.
 	if cache == nil {
 		cache = &Cache{}
 	}
@@ -351,11 +499,6 @@ func Scan(
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
 		return nil, false, false, nil, nil, errors.Wrap(err, "unable to create ignorer")
-	}
-
-	// Verify that the symlink mode is valid for this platform.
-	if symlinkMode == SymlinkMode_SymlinkModePOSIXRaw && runtime.GOOS == "windows" {
-		return nil, false, false, nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -380,101 +523,35 @@ func Scan(
 
 	// Create a scanner.
 	s := &scanner{
-		root:           root,
-		hasher:         hasher,
-		cache:          cache,
-		ignorer:        ignorer,
-		ignoreCache:    ignoreCache,
-		symlinkMode:    symlinkMode,
-		newCache:       newCache,
-		newIgnoreCache: newIgnoreCache,
-		buffer:         make([]byte, scannerCopyBufferSize),
+		root:                   root,
+		dirtyPaths:             dirtyPaths,
+		hasher:                 hasher,
+		cache:                  cache,
+		ignorer:                ignorer,
+		ignoreCache:            ignoreCache,
+		symlinkMode:            symlinkMode,
+		newCache:               newCache,
+		newIgnoreCache:         newIgnoreCache,
+		buffer:                 make([]byte, scannerCopyBufferSize),
+		deviceID:               metadata.DeviceID,
+		recomposeUnicode:       decomposesUnicode,
+		preservesExecutability: preservesExecutability,
 	}
-
-	// Open the root. We explicitly disallow symbolic links at the root path,
-	// though intermediate symbolic links are fine.
-	rootObject, metadata, err := filesystem.Open(root, false)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, false, false, newCache, newIgnoreCache, nil
-		} else {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe scan root")
-		}
-	}
-
-	// Store the device ID for the root.
-	s.deviceID = metadata.DeviceID
 
 	// Handle the scan based on the root type.
-	if rootType := metadata.Mode & filesystem.ModeTypeMask; rootType == filesystem.ModeTypeDirectory {
-		// Extract the directory object.
-		rootDirectory, ok := rootObject.(*filesystem.Directory)
-		if !ok {
-			panic("invalid directory object returned from root open operation")
-		}
-
-		// Probe and set Unicode decomposition behavior for the root directory.
-		if decomposes, err := behavior.DecomposesUnicode(rootDirectory, probeMode); err != nil {
-			rootDirectory.Close()
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
-		} else {
-			s.recomposeUnicode = decomposes
-		}
-
-		// Probe and set executability preservation behavior for the root
-		// directory.
-		if preserves, err := behavior.PreservesExecutability(rootDirectory, probeMode); err != nil {
-			rootDirectory.Close()
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
-		} else {
-			s.preservesExecutability = preserves
-		}
-
-		// Perform a recursive scan. The directory function is responsible for
-		// closing the directory object, regardless of errors.
-		if rootEntry, err := s.directory("", rootDirectory, metadata); err != nil {
+	if rootKind == EntryKind_Directory {
+		if result, err := s.directory("", nil, metadata, directoryRoot, baseline); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
+			return result, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, nil
 		}
-	} else if rootType == filesystem.ModeTypeFile {
-		// Extract the file object.
-		rootFile, ok := rootObject.(filesystem.ReadableFile)
-		if !ok {
-			panic("invalid file object returned from root open operation")
-		}
-
-		// Probe and set executability preservation behavior for the parent of
-		// the root path.
-		//
-		// RACE: There is technically a race condition here on POSIX because the
-		// root file that we have open may have been unlinked and the parent
-		// directory path removed or replaced. Even if the file hasn't been
-		// unlinked, we still have to make this probe by path since there's no
-		// way (both due to API and underlying design) to grab a parent
-		// directory by file descriptor on POSIX (it's not a well-defined
-		// concept (due at least to the existence of hard links)). Anyway, this
-		// race does not have any significant risk. The only other option would
-		// be to switch executability preservation detection to use fstatfs, but
-		// this is a non-standardized call that returns different metadata on
-		// each platform. Even on platforms where detailed metadata is provided,
-		// the filesystem identifier alone may not be enough to determine this
-		// behavior.
-		if preserves, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
-			rootFile.Close()
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
-		} else {
-			s.preservesExecutability = preserves
-		}
-
-		// Perform a scan of the root file. The file function is responsible for
-		// closing the file object, regardless of errors.
-		if rootEntry, err := s.file("", nil, metadata, rootFile); err != nil {
+	} else if rootKind == EntryKind_File {
+		if result, err := s.file("", nil, metadata, fileRoot); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
-			return rootEntry, s.preservesExecutability, false, newCache, newIgnoreCache, nil
+			return result, preservesExecutability, false, newCache, newIgnoreCache, nil
 		}
 	} else {
-		panic("invalid type returned from root open operation")
+		panic("unhandled root kind")
 	}
 }
