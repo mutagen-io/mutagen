@@ -66,14 +66,17 @@ type scanner struct {
 	preservesExecutability bool
 }
 
-// file performs processing of a file entry. Exactly one of file or parent will
-// be non-nil, depending on whether or not the file represents the root path.
-// If file is non-nil, this function is responsible for closing it.
+// file performs processing of a file entry. Exactly one of parent or file will
+// be non-nil, depending on whether or not the file represents the root path. If
+// the file does represent the root path, then file will be provided and this
+// function will be responsible for its closure. Otherwise, the parent of the
+// file is provided and this function is responsible for opening and closing the
+// file if necessary (using the parent and metadata).
 func (s *scanner) file(
 	path string,
-	file filesystem.ReadableFile,
-	metadata *filesystem.Metadata,
 	parent *filesystem.Directory,
+	metadata *filesystem.Metadata,
+	file filesystem.ReadableFile,
 ) (*Entry, error) {
 	// If the file is non-nil, defer its closure.
 	if file != nil {
@@ -177,9 +180,9 @@ func (s *scanner) file(
 
 // symbolicLink performs processing of a symbolic link entry.
 func (s *scanner) symbolicLink(
-	path,
-	name string,
+	path string,
 	parent *filesystem.Directory,
+	name string,
 	enforcePortable bool,
 ) (*Entry, error) {
 	// Read the link target.
@@ -206,37 +209,21 @@ func (s *scanner) symbolicLink(
 	}, nil
 }
 
-// directory performs processing of a directory entry. Exactly one of directory
-// or parent will be non-nil, depending on whether or not the directory
-// represents the root path. If directory is non-nil, then this function is
-// responsible for closing it.
+// directory performs processing of a directory entry. This function is
+// responsible for closing the provided directory.
 func (s *scanner) directory(
 	path string,
 	directory *filesystem.Directory,
 	metadata *filesystem.Metadata,
-	parent *filesystem.Directory,
 ) (*Entry, error) {
-	// If the directory has already been opened, then defer its closure.
-	if directory != nil {
-		defer directory.Close()
-	}
+	// Defer closure of the directory.
+	defer directory.Close()
 
 	// Verify that we haven't crossed a directory boundary (which might
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
 	if metadata.DeviceID != s.deviceID {
 		return nil, errors.New("scan crossed filesystem boundary")
-	}
-
-	// If the directory is not yet opened, then open it. If we do open it, then
-	// defer its closure.
-	var err error
-	if directory == nil {
-		directory, err = parent.OpenDirectory(metadata.Name)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to open directory")
-		}
-		defer directory.Close()
 	}
 
 	// Read directory contents.
@@ -258,9 +245,9 @@ func (s *scanner) directory(
 
 	// Compute entries.
 	contents := make(map[string]*Entry, len(directoryContents))
-	for _, c := range directoryContents {
+	for _, contentMetadata := range directoryContents {
 		// Extract the content name.
-		name := c.Name
+		name := contentMetadata.Name
 
 		// If this is an intermediate temporary file, then ignore it.
 		if filesystem.IsTemporaryFileName(name) {
@@ -277,7 +264,7 @@ func (s *scanner) directory(
 
 		// Compute the kind for this content, skipping if unsupported.
 		var kind EntryKind
-		switch c.Mode & filesystem.ModeTypeMask {
+		switch contentMetadata.Mode & filesystem.ModeTypeMask {
 		case filesystem.ModeTypeDirectory:
 			kind = EntryKind_Directory
 		case filesystem.ModeTypeFile:
@@ -303,20 +290,25 @@ func (s *scanner) directory(
 
 		// Handle based on kind.
 		var entry *Entry
+		var err error
 		if kind == EntryKind_File {
-			entry, err = s.file(contentPath, nil, c, directory)
+			entry, err = s.file(contentPath, directory, contentMetadata, nil)
 		} else if kind == EntryKind_Symlink {
 			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
-				entry, err = s.symbolicLink(contentPath, name, directory, true)
+				entry, err = s.symbolicLink(contentPath, directory, name, true)
 			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
 				continue
 			} else if s.symlinkMode == SymlinkMode_SymlinkModePOSIXRaw {
-				entry, err = s.symbolicLink(contentPath, name, directory, false)
+				entry, err = s.symbolicLink(contentPath, directory, name, false)
 			} else {
 				panic("unsupported symlink mode")
 			}
 		} else if kind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, nil, c, directory)
+			if d, openErr := directory.OpenDirectory(name); openErr != nil {
+				err = openErr
+			} else {
+				entry, err = s.directory(contentPath, d, contentMetadata)
+			}
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -440,7 +432,7 @@ func Scan(
 
 		// Perform a recursive scan. The directory function is responsible for
 		// closing the directory object, regardless of errors.
-		if rootEntry, err := s.directory("", rootDirectory, metadata, nil); err != nil {
+		if rootEntry, err := s.directory("", rootDirectory, metadata); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, s.recomposeUnicode, newCache, newIgnoreCache, nil
@@ -477,7 +469,7 @@ func Scan(
 
 		// Perform a scan of the root file. The file function is responsible for
 		// closing the file object, regardless of errors.
-		if rootEntry, err := s.file("", rootFile, metadata, nil); err != nil {
+		if rootEntry, err := s.file("", nil, metadata, rootFile); err != nil {
 			return nil, false, false, nil, nil, err
 		} else {
 			return rootEntry, s.preservesExecutability, false, newCache, newIgnoreCache, nil
