@@ -281,25 +281,25 @@ func (s *scanner) directory(
 		contentPath := pathJoin(path, name)
 
 		// Compute the kind for this content, skipping if unsupported.
-		var kind EntryKind
+		var contentKind EntryKind
 		switch contentMetadata.Mode & filesystem.ModeTypeMask {
 		case filesystem.ModeTypeDirectory:
-			kind = EntryKind_Directory
+			contentKind = EntryKind_Directory
 		case filesystem.ModeTypeFile:
-			kind = EntryKind_File
+			contentKind = EntryKind_File
 		case filesystem.ModeTypeSymbolicLink:
-			kind = EntryKind_Symlink
+			contentKind = EntryKind_Symlink
 		default:
 			continue
 		}
 
 		// Determine whether or not this path is ignored and update the new
 		// ignore cache.
-		isDirectory := kind == EntryKind_Directory
-		ignoreCacheKey := IgnoreCacheKey{contentPath, isDirectory}
+		contentIsDirectory := contentKind == EntryKind_Directory
+		ignoreCacheKey := IgnoreCacheKey{contentPath, contentIsDirectory}
 		ignored, ok := s.ignoreCache[ignoreCacheKey]
 		if !ok {
-			ignored = s.ignorer.ignored(contentPath, isDirectory)
+			ignored = s.ignorer.ignored(contentPath, contentIsDirectory)
 		}
 		s.newIgnoreCache[ignoreCacheKey] = ignored
 		if ignored {
@@ -312,7 +312,7 @@ func (s *scanner) directory(
 		var contentBaseline *Entry
 		if baseline != nil {
 			contentBaseline = baseline.Contents[name]
-			if contentBaseline != nil && contentBaseline.Kind != kind {
+			if contentBaseline != nil && contentBaseline.Kind != contentKind {
 				contentBaseline = nil
 			}
 		}
@@ -331,9 +331,9 @@ func (s *scanner) directory(
 		// Handle based on kind.
 		var entry *Entry
 		var err error
-		if kind == EntryKind_File {
+		if contentKind == EntryKind_File {
 			entry, err = s.file(contentPath, directory, contentMetadata, nil)
-		} else if kind == EntryKind_Symlink {
+		} else if contentKind == EntryKind_Symlink {
 			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
 				entry, err = s.symbolicLink(contentPath, directory, name, true)
 			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
@@ -343,7 +343,7 @@ func (s *scanner) directory(
 			} else {
 				panic("unsupported symlink mode")
 			}
-		} else if kind == EntryKind_Directory {
+		} else if contentKind == EntryKind_Directory {
 			entry, err = s.directory(contentPath, directory, contentMetadata, nil, contentBaseline)
 		} else {
 			panic("unhandled entry kind")
