@@ -75,6 +75,26 @@ func (e *Entry) EnsureValid() error {
 	return nil
 }
 
+// entryVisitor is a callback type used for Entry.walk. It receives two
+// arguments: the path of the entry within the entry hierarchy and the entry
+// itself.
+type entryVisitor func(string, *Entry)
+
+// walk performs a DFS-traversal of the entry, invoking the specified visitor on
+// each element. The path argument specifies the path at which the entry should
+// be treated as residing.
+func (e *Entry) walk(path string, visitor entryVisitor) {
+	// Otherwise visit ourselves.
+	visitor(path, e)
+
+	// If we're non-nil and a directory, visit our children.
+	if e != nil && e.Kind == EntryKind_Directory {
+		for name, entry := range e.Contents {
+			entry.walk(pathJoin(path, name), visitor)
+		}
+	}
+}
+
 // Count returns the total number of entries within the entry hierarchy rooted
 // at the entry.
 func (e *Entry) Count() uint64 {

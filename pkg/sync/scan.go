@@ -468,6 +468,9 @@ func Scan(
 
 	// If a baseline of the correct kind is available, and there aren't any
 	// re-check paths specified, then we can just re-use that baseline directly.
+	// We don't explicitly check here that the digest cache and ignore cache
+	// correspond to the baseline, because doing so is expensive. We place the
+	// burden of enforcing that invariant on the caller.
 	if baseline != nil && len(recheckPaths) == 0 {
 		return baseline, preservesExecutability, decomposesUnicode, cache, ignoreCache, nil
 	}
@@ -539,19 +542,68 @@ func Scan(
 	}
 
 	// Handle the scan based on the root type.
+	var result *Entry
 	if rootKind == EntryKind_Directory {
-		if result, err := s.directory("", nil, metadata, directoryRoot, baseline); err != nil {
-			return nil, false, false, nil, nil, err
-		} else {
-			return result, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, nil
-		}
+		result, err = s.directory("", nil, metadata, directoryRoot, baseline)
 	} else if rootKind == EntryKind_File {
-		if result, err := s.file("", nil, metadata, fileRoot); err != nil {
-			return nil, false, false, nil, nil, err
-		} else {
-			return result, preservesExecutability, false, newCache, newIgnoreCache, nil
-		}
+		result, err = s.file("", nil, metadata, fileRoot)
 	} else {
 		panic("unhandled root kind")
 	}
+	if err != nil {
+		return nil, false, false, nil, nil, err
+	}
+
+	// If we have a baseline, then backfill the ignore and digest caches to
+	// include entries for paths that exist in our result but which we may not
+	// have explicitly visited.
+	//
+	// In the case of the ignore cache, we just add false entries for each path
+	// that we see in the result since (a) these are the only paths that we'd be
+	// able to propagate from the old ignore cache anyway and (b) we know their
+	// ignore cache value would be false (since they aren't ignored). Obviously
+	// we miss out on any true entries in the ignore cache (from previously
+	// ignored content), but this is generally fine because (a) the bulk of the
+	// ignore cache is non-ignored content anyway (because most ignored content
+	// is ignored as the result of a single parent path) and (b) these single
+	// missing paths will be cheap enough to re-process later.
+	//
+	// In the case of the digest cache, we have to ensure correct propagation
+	// from the old cache to the new in the case of entries that we didn't
+	// explicitly revisit, which we can do because we have the paths for all
+	// cache entries which need to be propagated (i.e. those in the result but
+	// not in the new cache). We don't perform total validation that the old
+	// digest cache corresponds to the baseline (e.g. we don't check digest
+	// value matches) because it's too expensive, though we do detect the case
+	// of missing entries since it's relatively cheap. The burden of ensuring
+	// cache/baseline correspondence technically falls on the caller.
+	if baseline != nil {
+		// Track missing cache entries.
+		var missingCacheEntries bool
+
+		// Perform propagation.
+		result.walk("", func(path string, entry *Entry) {
+			// Create an ignore cache entry for this path.
+			newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+
+			// Propagate digest cache entries.
+			if entry.Kind == EntryKind_File {
+				if _, ok := newCache.Entries[path]; !ok {
+					if oldCacheEntry, ok := cache.Entries[path]; ok {
+						newCache.Entries[path] = oldCacheEntry
+					} else {
+						missingCacheEntries = true
+					}
+				}
+			}
+		})
+
+		// Abort if we encountered missing cache entries.
+		if missingCacheEntries {
+			return nil, false, false, nil, nil, errors.New("old cache entries don't correspond to baseline")
+		}
+	}
+
+	// Success.
+	return result, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, nil
 }

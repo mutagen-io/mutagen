@@ -124,9 +124,8 @@ func main() {
 	fmt.Println("Root preserves executability:", preservesExecutability)
 	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
 
-	// Create a snapshot with a baseline and no re-check paths. We also
-	// purposely exclude all caches here. If requested, enable CPU and memory
-	// profiling.
+	// Create a snapshot with a baseline and one re-check path. If requested,
+	// enable CPU and memory profiling.
 	if enableProfile {
 		if profiler, err = profile.New("scan_fast"); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
@@ -136,11 +135,11 @@ func main() {
 	snapshot, preservesExecutability, recomposeUnicode, _, _, err = sync.Scan(
 		path,
 		snapshot,
-		nil,
+		[]string{"re-check"},
 		sha1.New(),
-		nil,
+		cache,
 		ignores,
-		nil,
+		ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		sync.SymlinkMode_SymlinkModePortable,
 	)
@@ -157,6 +156,41 @@ func main() {
 		profiler = nil
 	}
 	fmt.Println("Fast scan took", stop.Sub(start))
+	fmt.Println("Root preserves executability:", preservesExecutability)
+	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
+
+	// Create a snapshot with a baseline and no re-check paths. If requested,
+	// enable CPU and memory profiling.
+	if enableProfile {
+		if profiler, err = profile.New("scan_ultra_fast"); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+		}
+	}
+	start = time.Now()
+	snapshot, preservesExecutability, recomposeUnicode, _, _, err = sync.Scan(
+		path,
+		snapshot,
+		nil,
+		sha1.New(),
+		cache,
+		ignores,
+		ignoreCache,
+		behavior.ProbeMode_ProbeModeProbe,
+		sync.SymlinkMode_SymlinkModePortable,
+	)
+	if err != nil {
+		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+	} else if snapshot == nil {
+		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
+	}
+	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+		}
+		profiler = nil
+	}
+	fmt.Println("Ultra fast scan took", stop.Sub(start))
 	fmt.Println("Root preserves executability:", preservesExecutability)
 	fmt.Println("Root requires Unicode recomposition:", recomposeUnicode)
 
