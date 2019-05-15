@@ -39,7 +39,7 @@ func pathDir(path string) string {
 	}
 
 	// Identify the index of the last slash in the path.
-	lastSlashIndex := strings.LastIndex(path, "/")
+	lastSlashIndex := strings.LastIndexByte(path, '/')
 
 	// If there is no slash, then the parent is the synchronization root.
 	if lastSlashIndex == -1 {
