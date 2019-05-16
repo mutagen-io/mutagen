@@ -390,7 +390,7 @@ func Scan(
 		if os.IsNotExist(err) {
 			return nil, false, false, &Cache{}, make(IgnoreCache), nil
 		} else {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe scan root")
+			return nil, false, false, nil, nil, errors.Wrap(err, "unable to open synchronization root")
 		}
 	}
 	defer rootObject.Close()
