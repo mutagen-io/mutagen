@@ -127,8 +127,10 @@ func (e *Entry) Count() uint64 {
 // and digest of the two entries are equivalent. It pays no attention to the
 // contents of either entry.
 func (e *Entry) equalShallow(other *Entry) bool {
-	// If both are nil, they can be considered equal.
-	if e == nil && other == nil {
+	// If the pointers are equal, then the entries are equal. Even in the case
+	// of two nil pointers, we still consider the entries to be equal since they
+	// both express absence.
+	if e == other {
 		return true
 	}
 
@@ -147,15 +149,21 @@ func (e *Entry) equalShallow(other *Entry) bool {
 // Equal determines whether or not another entry is entirely (recursively) equal
 // to this one.
 func (e *Entry) Equal(other *Entry) bool {
+	// If the pointers are equal, then the entries are equal. Even in the case
+	// of two nil pointers, we still consider the entries to be equal since they
+	// both express absence.
+	if e == other {
+		return true
+	}
+
 	// Verify that the entries are shallow equal first.
 	if !e.equalShallow(other) {
 		return false
 	}
 
-	// If both are nil, then we're done.
-	if e == nil && other == nil {
-		return true
-	}
+	// At this point, we know that both pointers are non-nil, because shallow
+	// equivalence ensures that either both pointers are nil or both pointers
+	// are non-nil, and we exclude the both-nil case above.
 
 	// Compare contents.
 	if len(e.Contents) != len(other.Contents) {
