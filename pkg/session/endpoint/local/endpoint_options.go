@@ -1,9 +1,5 @@
 package local
 
-import (
-	"context"
-)
-
 // endpointOptions controls the override behavior for a local endpoint.
 type endpointOptions struct {
 	// cachePathCallback can specify a callback that will be used to compute the
@@ -12,9 +8,6 @@ type endpointOptions struct {
 	// stagingRootCallback can specify a callback that will be used to compute
 	// the staging root.
 	stagingRootCallback func(string, bool) (string, bool, error)
-	// watchingMechanism can specify a callback that will be used as an
-	// alternative mechanism for filesystem watching.
-	watchingMechanism func(context.Context, string, chan<- struct{})
 }
 
 // EndpointOption is the interface for specifying endpoint options. It cannot be
@@ -66,18 +59,5 @@ func WithCachePathCallback(callback func(string, bool) (string, error)) Endpoint
 func WithStagingRootCallback(callback func(string, bool) (string, bool, error)) EndpointOption {
 	return newFunctionEndpointOption(func(options *endpointOptions) {
 		options.stagingRootCallback = callback
-	})
-}
-
-// WithWatchingMechanism overrides the filesystem watching function that the
-// endpoint uses to monitor for filesystem changes. The specified function will
-// be provided with three arguments: a context to indicate watch cancellation,
-// the path to be watched (recursively), and an events channel that should be
-// populated in a non-blocking fashion every time an event occurs. If an error
-// occurs during watching, the event channel should be closed. It should also be
-// closed on cancellation.
-func WithWatchingMechanism(callback func(context.Context, string, chan<- struct{})) EndpointOption {
-	return newFunctionEndpointOption(func(options *endpointOptions) {
-		options.watchingMechanism = callback
 	})
 }

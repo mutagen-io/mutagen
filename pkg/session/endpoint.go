@@ -9,7 +9,7 @@ import (
 
 // Endpoint defines the interface to which synchronization endpoints must
 // adhere for a single session. It provides all primitives necessary to support
-// synchronization. None of its methods need to be safe for concurrent
+// synchronization. None of its methods should be considered safe for concurrent
 // invocation except Shutdown. If any method returns an error, the endpoint
 // should be considered failed and no more of its methods (other than Shutdown)
 // should be invoked.

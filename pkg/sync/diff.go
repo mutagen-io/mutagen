@@ -38,3 +38,9 @@ func diff(path string, base, target *Entry) []*Change {
 	// Done.
 	return d.changes
 }
+
+// Diff performs a diff operation from the base to the target entry, generating
+// a list of changes.
+func Diff(base, target *Entry) []*Change {
+	return diff("", base, target)
+}

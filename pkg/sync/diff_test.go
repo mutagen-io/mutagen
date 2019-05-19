@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestDiffCreationIdentity(t *testing.T) {
+func TestDiffInternalCreationIdentity(t *testing.T) {
 	if changes := diff("", nil, testDirectory1Entry); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
@@ -16,7 +16,7 @@ func TestDiffCreationIdentity(t *testing.T) {
 	}
 }
 
-func TestDiffDeletionIdentity(t *testing.T) {
+func TestDiffInternalDeletionIdentity(t *testing.T) {
 	if changes := diff("", testDirectory1Entry, nil); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
@@ -28,7 +28,7 @@ func TestDiffDeletionIdentity(t *testing.T) {
 	}
 }
 
-func TestDiffFileToDirectory(t *testing.T) {
+func TestDiffInternalFileToDirectory(t *testing.T) {
 	if changes := diff("", testFile1Entry, testDirectory1Entry); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
@@ -40,7 +40,7 @@ func TestDiffFileToDirectory(t *testing.T) {
 	}
 }
 
-func TestDiffDirectoryToFile(t *testing.T) {
+func TestDiffInternalDirectoryToFile(t *testing.T) {
 	if changes := diff("", testDirectory1Entry, testFile1Entry); len(changes) != 1 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
 	} else if changes[0].Path != "" {
@@ -52,8 +52,14 @@ func TestDiffDirectoryToFile(t *testing.T) {
 	}
 }
 
-func TestDiffDirectories(t *testing.T) {
+func TestDiffInternalDirectories(t *testing.T) {
 	if changes := diff("", testDirectory1Entry, testDirectory2Entry); len(changes) != 8 {
+		t.Fatal("unexpected number of changes:", len(changes), "!=", 8)
+	}
+}
+
+func TestDiffDirectories(t *testing.T) {
+	if changes := Diff(testDirectory1Entry, testDirectory2Entry); len(changes) != 8 {
 		t.Fatal("unexpected number of changes:", len(changes), "!=", 8)
 	}
 }
