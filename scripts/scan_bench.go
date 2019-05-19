@@ -135,7 +135,7 @@ func main() {
 	snapshot, preservesExecutability, recomposeUnicode, _, _, err = sync.Scan(
 		path,
 		snapshot,
-		[]string{"re-check"},
+		map[string]bool{"fake path": true},
 		sha1.New(),
 		cache,
 		ignores,

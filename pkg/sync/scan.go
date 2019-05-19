@@ -370,7 +370,7 @@ func (s *scanner) directory(
 func Scan(
 	root string,
 	baseline *Entry,
-	recheckPaths []string,
+	recheckPaths map[string]bool,
 	hasher hash.Hash,
 	cache *Cache,
 	ignores []string,
@@ -480,8 +480,8 @@ func Scan(
 	// re-check path.
 	var dirtyPaths map[string]bool
 	if len(recheckPaths) > 0 {
-		dirtyPaths := make(map[string]bool)
-		for _, path := range recheckPaths {
+		dirtyPaths = make(map[string]bool)
+		for path := range recheckPaths {
 			for {
 				dirtyPaths[path] = true
 				if path == "" {
