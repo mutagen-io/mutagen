@@ -4,13 +4,13 @@ package session;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
-import "filesystem/behavior/probe.proto";
+import "filesystem/behavior/probe_mode.proto";
 import "session/scan_mode.proto";
-import "session/stage.proto";
-import "session/watch.proto";
-import "sync/ignore.proto";
+import "session/stage_mode.proto";
+import "session/watch_mode.proto";
+import "sync/ignore_vcs_mode.proto";
 import "sync/mode.proto";
-import "sync/symlink.proto";
+import "sync/symlink_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
