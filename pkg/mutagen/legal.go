@@ -299,6 +299,20 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
+klog (Kubernetes package)
+
+https://github.com/kubernetes/klog
+
+Fork of glog (https://github.com/golang/glog)
+
+Copyright 2013 Google Inc. All Rights Reserved.
+
+Used under the terms of the Apache License, Version 2.0. A copy of this license
+can be found later in this text or online at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+
 extstat
 
 https://github.com/shibukawa/extstat
