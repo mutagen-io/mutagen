@@ -19,7 +19,6 @@ import (
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
@@ -138,19 +137,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert staging mode specifications.
-	var stagingMode, stagingModeAlpha, stagingModeBeta staging.StagingMode
-	if createConfiguration.stagingMode != "" {
-		if err := stagingMode.UnmarshalText([]byte(createConfiguration.stagingMode)); err != nil {
+	var stageMode, stageModeAlpha, stageModeBeta sessionpkg.StageMode
+	if createConfiguration.stageMode != "" {
+		if err := stageMode.UnmarshalText([]byte(createConfiguration.stageMode)); err != nil {
 			return errors.Wrap(err, "unable to parse staging mode")
 		}
 	}
-	if createConfiguration.stagingModeAlpha != "" {
-		if err := stagingModeAlpha.UnmarshalText([]byte(createConfiguration.stagingModeAlpha)); err != nil {
+	if createConfiguration.stageModeAlpha != "" {
+		if err := stageModeAlpha.UnmarshalText([]byte(createConfiguration.stageModeAlpha)); err != nil {
 			return errors.Wrap(err, "unable to parse staging mode for alpha")
 		}
 	}
-	if createConfiguration.stagingModeBeta != "" {
-		if err := stagingModeBeta.UnmarshalText([]byte(createConfiguration.stagingModeBeta)); err != nil {
+	if createConfiguration.stageModeBeta != "" {
+		if err := stageModeBeta.UnmarshalText([]byte(createConfiguration.stageModeBeta)); err != nil {
 			return errors.Wrap(err, "unable to parse staging mode for beta")
 		}
 	}
@@ -300,7 +299,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		MaximumEntryCount:      createConfiguration.maximumEntryCount,
 		MaximumStagingFileSize: maximumStagingFileSize,
 		ProbeMode:              probeMode,
-		StagingMode:            stagingMode,
+		StageMode:              stageMode,
 		SymlinkMode:            symbolicLinkMode,
 		WatchMode:              watchMode,
 		WatchPollingInterval:   createConfiguration.watchPollingInterval,
@@ -339,7 +338,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			Configuration: configuration,
 			ConfigurationAlpha: &sessionpkg.Configuration{
 				ProbeMode:            probeModeAlpha,
-				StagingMode:          stagingModeAlpha,
+				StageMode:            stageModeAlpha,
 				WatchMode:            watchModeAlpha,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
 				DefaultFileMode:      uint32(defaultFileModeAlpha),
@@ -349,7 +348,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			},
 			ConfigurationBeta: &sessionpkg.Configuration{
 				ProbeMode:            probeModeBeta,
-				StagingMode:          stagingModeBeta,
+				StageMode:            stageModeBeta,
 				WatchMode:            watchModeBeta,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
 				DefaultFileMode:      uint32(defaultFileModeBeta),
@@ -427,14 +426,14 @@ var createConfiguration struct {
 	// probeModeBeta specifies the filesystem probing mode to use for the
 	// session, taking priority over probeMode on beta if specified.
 	probeModeBeta string
-	// stagingMode specifies the file staging mode to use for the session.
-	stagingMode string
-	// stagingModeAlpha specifies the file staging mode to use for the session,
-	// taking priority over stagingMode on alpha if specified.
-	stagingModeAlpha string
-	// stagingModeBeta specifies the file staging mode to use for the session,
-	// taking priority over stagingMode on beta if specified.
-	stagingModeBeta string
+	// stageMode specifies the file staging mode to use for the session.
+	stageMode string
+	// stageModeAlpha specifies the file staging mode to use for the session,
+	// taking priority over stageMode on alpha if specified.
+	stageModeAlpha string
+	// stageModeBeta specifies the file staging mode to use for the session,
+	// taking priority over stageMode on beta if specified.
+	stageModeBeta string
 	// symbolicLinkMode specifies the symbolic link handling mode to use for
 	// the session.
 	symbolicLinkMode string
@@ -543,9 +542,9 @@ func init() {
 	flags.StringVar(&createConfiguration.probeMode, "probe-mode", "", "Specify probe mode (probe|assume)")
 	flags.StringVar(&createConfiguration.probeModeAlpha, "probe-mode-alpha", "", "Specify probe mode for alpha (probe|assume)")
 	flags.StringVar(&createConfiguration.probeModeBeta, "probe-mode-beta", "", "Specify probe mode for beta (probe|assume)")
-	flags.StringVar(&createConfiguration.stagingMode, "staging-mode", "", "Specify staging mode (mutagen|neighboring)")
-	flags.StringVar(&createConfiguration.stagingModeAlpha, "staging-mode-alpha", "", "Specify staging mode for alpha (mutagen|neighboring)")
-	flags.StringVar(&createConfiguration.stagingModeBeta, "staging-mode-beta", "", "Specify staging mode for beta (mutagen|neighboring)")
+	flags.StringVar(&createConfiguration.stageMode, "stage-mode", "", "Specify staging mode (mutagen|neighboring)")
+	flags.StringVar(&createConfiguration.stageModeAlpha, "stage-mode-alpha", "", "Specify staging mode for alpha (mutagen|neighboring)")
+	flags.StringVar(&createConfiguration.stageModeBeta, "stage-mode-beta", "", "Specify staging mode for beta (mutagen|neighboring)")
 
 	// Wire up symbolic link flags.
 	flags.StringVar(&createConfiguration.symbolicLinkMode, "symlink-mode", "", "Specify symlink mode (ignore|portable|posix-raw)")

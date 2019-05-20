@@ -7,7 +7,7 @@ mode = "two-way-resolved"
 maxEntryCount = 500
 maxStagingFileSize = "1000 GB"
 probeMode = "assume"
-stagingMode = "neighboring"
+stageMode = "neighboring"
 
 [symlink]
 mode = "portable"

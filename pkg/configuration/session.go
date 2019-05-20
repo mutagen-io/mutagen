@@ -22,7 +22,7 @@ func LoadSessionConfiguration(path string) (*session.Configuration, error) {
 		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
 		MaximumStagingFileSize: uint64(configuration.Synchronization.MaximumStagingFileSize),
 		ProbeMode:              configuration.Synchronization.ProbeMode,
-		StagingMode:            configuration.Synchronization.StagingMode,
+		StageMode:              configuration.Synchronization.StageMode,
 		SymlinkMode:            configuration.Symlink.Mode,
 		WatchMode:              configuration.Watch.Mode,
 		WatchPollingInterval:   configuration.Watch.PollingInterval,

@@ -5,8 +5,8 @@ package session;
 option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
 import "filesystem/behavior/probe.proto";
+import "session/stage.proto";
 import "session/watch.proto";
-import "staging/staging.proto";
 import "sync/ignore.proto";
 import "sync/mode.proto";
 import "sync/symlink.proto";
@@ -37,8 +37,8 @@ message Configuration {
 
     // Field 15 is reserved for scan mode.
 
-    // StagingMode specifies the file staging mode.
-    staging.StagingMode stagingMode = 16;
+    // StageMode specifies the file staging mode.
+    StageMode stageMode = 16;
 
     // Fields 17-20 are reserved for future synchronization configuration
     // parameters.
@@ -59,7 +59,7 @@ message Configuration {
     // Watch configuration parameters (fields 21-30).
 
     // WatchMode specifies the filesystem watching mode.
-    session.WatchMode watchMode = 21;
+    WatchMode watchMode = 21;
 
     // WatchPollingInterval specifies the interval (in seconds) for poll-based
     // file monitoring. A value of 0 specifies that the default interval should

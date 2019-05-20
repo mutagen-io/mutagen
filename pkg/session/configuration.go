@@ -39,7 +39,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	}
 
 	// Verify that the staging mode is unspecified or supported for usage.
-	if !(c.StagingMode.IsDefault() || c.StagingMode.Supported()) {
+	if !(c.StageMode.IsDefault() || c.StageMode.Supported()) {
 		return errors.New("unknown or unsupported staging mode")
 	}
 
@@ -165,10 +165,10 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 	}
 
 	// Merge staging mode.
-	if !higher.StagingMode.IsDefault() {
-		result.StagingMode = higher.StagingMode
+	if !higher.StageMode.IsDefault() {
+		result.StageMode = higher.StageMode
 	} else {
-		result.StagingMode = lower.StagingMode
+		result.StageMode = lower.StageMode
 	}
 
 	// Merge symlink mode.

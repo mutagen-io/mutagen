@@ -16,7 +16,6 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -153,7 +152,7 @@ type endpoint struct {
 	// but since Endpoint doesn't allow concurrent usage, we know that the
 	// stager will only be used in at most one of Stage or Transition methods at
 	// any given time.
-	stager *staging.Stager
+	stager *stager
 }
 
 // NewEndpoint creates a new local endpoint instance using the specified session
@@ -269,9 +268,9 @@ func NewEndpoint(
 	}
 
 	// Compute the effective staging mode.
-	stagingMode := configuration.StagingMode
-	if stagingMode.IsDefault() {
-		stagingMode = version.DefaultStagingMode()
+	stageMode := configuration.StageMode
+	if stageMode.IsDefault() {
+		stageMode = version.DefaultStageMode()
 	}
 
 	// Compute the staging root path and whether or not it should be hidden.
@@ -279,9 +278,9 @@ func NewEndpoint(
 	var hideStagingRoot bool
 	if endpointOptions.stagingRootCallback != nil {
 		stagingRoot, hideStagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
-	} else if stagingMode == staging.StagingMode_StagingModeMutagen {
+	} else if stageMode == session.StageMode_StageModeMutagen {
 		stagingRoot, err = pathForMutagenStagingRoot(sessionIdentifier, alpha)
-	} else if stagingMode == staging.StagingMode_StagingModeNeighboring {
+	} else if stageMode == session.StageMode_StageModeNeighboring {
 		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
 		hideStagingRoot = true
 	} else {
@@ -323,7 +322,7 @@ func NewEndpoint(
 		recheckPaths:                       make(map[string]bool, recheckPathsMaximumCapacity),
 		hasher:                             version.Hasher(),
 		cache:                              cache,
-		stager: staging.NewStager(
+		stager: newStager(
 			stagingRoot,
 			hideStagingRoot,
 			version.Hasher(),
@@ -1107,7 +1106,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// staging directory? It could be due to an easily correctable error, at
 	// which point you wouldn't want to restage if you're talking about lots of
 	// files.
-	e.stager.Wipe()
+	e.stager.wipe()
 
 	// Done.
 	return results, problems, nil

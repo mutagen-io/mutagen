@@ -1,27 +1,27 @@
-package staging
+package session
 
 import (
 	"testing"
 )
 
-// TestStagingModeUnmarshal tests that unmarshaling from a string specification
-// succeeeds for StagingMode.
-func TestStagingModeUnmarshal(t *testing.T) {
+// TestStageModeUnmarshal tests that unmarshaling from a string specification
+// succeeeds for StageMode.
+func TestStageModeUnmarshal(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
 		Text          string
-		ExpectedMode  StagingMode
+		ExpectedMode  StageMode
 		ExpectFailure bool
 	}{
-		{"", StagingMode_StagingModeDefault, true},
-		{"asdf", StagingMode_StagingModeDefault, true},
-		{"mutagen", StagingMode_StagingModeMutagen, false},
-		{"neighboring", StagingMode_StagingModeNeighboring, false},
+		{"", StageMode_StageModeDefault, true},
+		{"asdf", StageMode_StageModeDefault, true},
+		{"mutagen", StageMode_StageModeMutagen, false},
+		{"neighboring", StageMode_StageModeNeighboring, false},
 	}
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		var mode StagingMode
+		var mode StageMode
 		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
 			if !testCase.ExpectFailure {
 				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
@@ -38,18 +38,18 @@ func TestStagingModeUnmarshal(t *testing.T) {
 	}
 }
 
-// TestStagingModeSupported tests that StagingMode support detection works as
+// TestStageModeSupported tests that StageMode support detection works as
 // expected.
-func TestStagingModeSupported(t *testing.T) {
+func TestStageModeSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode            StagingMode
+		Mode            StageMode
 		ExpectSupported bool
 	}{
-		{StagingMode_StagingModeDefault, false},
-		{StagingMode_StagingModeMutagen, true},
-		{StagingMode_StagingModeNeighboring, true},
-		{(StagingMode_StagingModeNeighboring + 1), false},
+		{StageMode_StageModeDefault, false},
+		{StageMode_StageModeMutagen, true},
+		{StageMode_StageModeNeighboring, true},
+		{(StageMode_StageModeNeighboring + 1), false},
 	}
 
 	// Process test cases.
@@ -64,18 +64,18 @@ func TestStagingModeSupported(t *testing.T) {
 	}
 }
 
-// TestStagingModeDescription tests that StagingMode description generation
-// works as expected.
-func TestStagingModeDescription(t *testing.T) {
+// TestStageModeDescription tests that StageMode description generation works as
+// expected.
+func TestStageModeDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode                StagingMode
+		Mode                StageMode
 		ExpectedDescription string
 	}{
-		{StagingMode_StagingModeDefault, "Default"},
-		{StagingMode_StagingModeMutagen, "Mutagen"},
-		{StagingMode_StagingModeNeighboring, "Neighboring"},
-		{(StagingMode_StagingModeNeighboring + 1), "Unknown"},
+		{StageMode_StageModeDefault, "Default"},
+		{StageMode_StageModeMutagen, "Mutagen"},
+		{StageMode_StageModeNeighboring, "Neighboring"},
+		{(StageMode_StageModeNeighboring + 1), "Unknown"},
 	}
 
 	// Process test cases.

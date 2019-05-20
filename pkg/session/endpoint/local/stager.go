@@ -1,4 +1,4 @@
-package staging
+package local
 
 import (
 	"hash"
@@ -20,7 +20,7 @@ const (
 // stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
 	// stager is the parent stager.
-	stager *Stager
+	stager *stager
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
 	path string
@@ -92,12 +92,12 @@ func (s *stagingSink) Close() error {
 	return nil
 }
 
-// Stager is an ephemeral content-addressable store implementation. It allows
+// stager is an ephemeral content-addressable store implementation. It allows
 // files to be staged in a load-balanced fashion in a temporary directory and
 // then rapidly located by their digests. It implements both rsync.Sinker and
 // sync.Provider. It is not safe for concurrent access, and each sink that it
 // produces should be closed before any other method is invoked.
-type Stager struct {
+type stager struct {
 	// root is the staging root path.
 	root string
 	// hideRoot indicates whether or not the staging root should be marked as
@@ -117,12 +117,12 @@ type Stager struct {
 	prefixCreated map[string]bool
 }
 
-// NewStager creates a new stager. Parent should be a common directory in which
+// newStager creates a new stager. Parent should be a common directory in which
 // staging roots are created, and rootName should be the endpoint-unique name of
 // the staging root to create/delete within the parent. If maximumFileSize is 0,
 // then no size limit is imposed on files.
-func NewStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *Stager {
-	return &Stager{
+func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *stager {
+	return &stager{
 		root:            root,
 		hideRoot:        hideRoot,
 		digester:        digester,
@@ -133,7 +133,7 @@ func NewStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize u
 
 // ensurePrefixExists ensures that the specified prefix directory exists within
 // the staging root, using a cache to avoid inefficient recreation.
-func (s *Stager) ensurePrefixExists(prefix string) error {
+func (s *stager) ensurePrefixExists(prefix string) error {
 	// Check if we've already created that prefix.
 	if s.prefixCreated[prefix] {
 		return nil
@@ -151,8 +151,8 @@ func (s *Stager) ensurePrefixExists(prefix string) error {
 	return nil
 }
 
-// Wipe removes the staging root.
-func (s *Stager) Wipe() error {
+// wipe removes the staging root.
+func (s *stager) wipe() error {
 	// Reset the prefix creation tracker.
 	s.prefixCreated = make(map[string]bool, numberOfByteValues)
 
@@ -169,7 +169,7 @@ func (s *Stager) Wipe() error {
 }
 
 // Sink implements the Sink method of rsync.Sinker.
-func (s *Stager) Sink(path string) (io.WriteCloser, error) {
+func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	// Create the staging root if we haven't already.
 	if !s.rootCreated {
 		// Attempt to create the directory.
@@ -208,7 +208,7 @@ func (s *Stager) Sink(path string) (io.WriteCloser, error) {
 }
 
 // Provide implements the Provide method of sync.Provider.
-func (s *Stager) Provide(path string, digest []byte) (string, error) {
+func (s *stager) Provide(path string, digest []byte) (string, error) {
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, digest)
 	if err != nil {

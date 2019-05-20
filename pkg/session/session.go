@@ -8,7 +8,6 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -53,11 +52,11 @@ func (v Version) DefaultProbeMode() behavior.ProbeMode {
 	}
 }
 
-// DefaultStagingMode returns the default staging mode for the session version.
-func (v Version) DefaultStagingMode() staging.StagingMode {
+// DefaultStageMode returns the default staging mode for the session version.
+func (v Version) DefaultStageMode() StageMode {
 	switch v {
 	case Version_Version1:
-		return staging.StagingMode_StagingModeMutagen
+		return StageMode_StageModeMutagen
 	default:
 		panic("unknown or unsupported session version")
 	}

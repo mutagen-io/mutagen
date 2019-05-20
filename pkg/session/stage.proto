@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
+// StageMode specifies the mode for file staging.
+enum StageMode {
+    // StageMode_StageModeDefault represents an unspecified staging mode. It
+    // should be converted to one of the following values based on the desired
+    // default behavior.
+    StageModeDefault = 0;
+    // StageMode_StageModeMutagen specifies that files should be staged in the
+    // Mutagen data directory.
+    StageModeMutagen = 1;
+    // StageMode_StageModeNeighboring specifies that files should be staged in a
+    // directory which neighbors the synchronization root.
+    StageModeNeighboring = 2;
+}

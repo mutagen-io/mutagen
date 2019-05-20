@@ -44,11 +44,11 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Confi
 	fmt.Println("\tProbe mode:", probeModeDescription)
 
 	// Compute and print the staging mode.
-	stagingModeDescription := configuration.StagingMode.Description()
-	if configuration.StagingMode.IsDefault() {
-		stagingModeDescription += fmt.Sprintf(" (%s)", version.DefaultStagingMode().Description())
+	stageModeDescription := configuration.StageMode.Description()
+	if configuration.StageMode.IsDefault() {
+		stageModeDescription += fmt.Sprintf(" (%s)", version.DefaultStageMode().Description())
 	}
-	fmt.Println("\tStaging mode:", stagingModeDescription)
+	fmt.Println("\tStage mode:", stageModeDescription)
 
 	// Compute and print the default file mode.
 	var defaultFileModeDescription string
