@@ -870,8 +870,8 @@ func (e *endpoint) Scan(_ *sync.Entry, full bool) (*sync.Entry, bool, error, boo
 	// just perform a full (warm) scan. We also avoid acceleration in the event
 	// that a full scan has been explicitly requested, but we don't make any
 	// change to the state of acceleration availability, because performing a
-	// full warm scan will only improve the accuracy of the baseline or most
-	// recent scan, so acceleration will still work.
+	// full warm scan will only improve the accuracy of the baseline (most
+	// recent) snapshot, so acceleration will still work.
 	//
 	// If we see any error while scanning, we just have to assume that it's due
 	// to concurrent modifications and suggest a retry.
