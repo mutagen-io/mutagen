@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package watching;
+package session;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/filesystem/watching";
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
 
 // WatchMode specifies the mode for filesystem watching.
 enum WatchMode {

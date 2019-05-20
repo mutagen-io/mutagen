@@ -8,7 +8,6 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
@@ -75,10 +74,10 @@ func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
 }
 
 // DefaultWatchMode returns the default watch mode for the session version.
-func (v Version) DefaultWatchMode() watching.WatchMode {
+func (v Version) DefaultWatchMode() WatchMode {
 	switch v {
 	case Version_Version1:
-		return watching.WatchMode_WatchModePortable
+		return WatchMode_WatchModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}

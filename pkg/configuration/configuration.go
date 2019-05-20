@@ -6,7 +6,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
+	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/staging"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
@@ -48,7 +48,7 @@ type Configuration struct {
 	// Watch contains parameters related to filesystem monitoring.
 	Watch struct {
 		// Mode specifies the file watching mode.
-		Mode watching.WatchMode `toml:"mode"`
+		Mode session.WatchMode `toml:"mode"`
 
 		// PollingInterval specifies the interval (in seconds) for poll-based
 		// file monitoring. A value of 0 specifies that Mutagen's internal

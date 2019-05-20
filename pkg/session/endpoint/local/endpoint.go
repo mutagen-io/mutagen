@@ -298,7 +298,7 @@ func NewEndpoint(
 	}
 
 	// Compute whether or not we're going to use native recursive watching.
-	watchIsRecursive := watchMode == watching.WatchMode_WatchModePortable &&
+	watchIsRecursive := watchMode == session.WatchMode_WatchModePortable &&
 		watching.RecursiveWatchingSupported
 
 	// Create a cancellable context in which the endpoint's background worker
@@ -341,7 +341,7 @@ func NewEndpoint(
 	}
 
 	// Start the appropriate watching mechanism.
-	if watchMode == watching.WatchMode_WatchModePortable {
+	if watchMode == session.WatchMode_WatchModePortable {
 		if watching.RecursiveWatchingSupported {
 			go endpoint.watchRecursive(workerContext, watchPollingInterval)
 		} else {
@@ -351,9 +351,9 @@ func NewEndpoint(
 				watching.NonRecursiveWatchingSupported,
 			)
 		}
-	} else if watchMode == watching.WatchMode_WatchModeForcePoll {
+	} else if watchMode == session.WatchMode_WatchModeForcePoll {
 		go endpoint.watchPoll(workerContext, watchPollingInterval, false)
-	} else if watchMode == watching.WatchMode_WatchModeNoWatch {
+	} else if watchMode == session.WatchMode_WatchModeNoWatch {
 		// Don't start any watcher.
 	} else {
 		panic("unhandled watch mode")

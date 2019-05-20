@@ -1,4 +1,4 @@
-package watching
+package session
 
 import (
 	"github.com/pkg/errors"

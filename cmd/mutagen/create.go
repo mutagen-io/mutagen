@@ -15,7 +15,6 @@ import (
 	configurationpkg "github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
@@ -165,7 +164,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert watch mode specifications.
-	var watchMode, watchModeAlpha, watchModeBeta watching.WatchMode
+	var watchMode, watchModeAlpha, watchModeBeta sessionpkg.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")
