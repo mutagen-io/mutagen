@@ -284,9 +284,17 @@ func main() {
 	stop = time.Now()
 	fmt.Println("SHA-1 snapshot digest took", stop.Sub(start))
 
-	// TODO: I'd like to add a copy benchmark since copying is used in a lot of
-	// our transformation functions, but I also don't want to expose this
-	// function publicly.
+	// Count entries.
+	start = time.Now()
+	snapshot.Count()
+	stop = time.Now()
+	fmt.Println("Snapshot entry counting took", stop.Sub(start))
+
+	// Perform a deep copy of the snapshot.
+	start = time.Now()
+	snapshot.Copy()
+	stop = time.Now()
+	fmt.Println("Snapshot copying took", stop.Sub(start))
 
 	// Serialize the cache.
 	if enableProfile {
