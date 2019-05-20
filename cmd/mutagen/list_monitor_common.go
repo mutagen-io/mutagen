@@ -6,7 +6,6 @@ import (
 	"github.com/dustin/go-humanize"
 
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -130,7 +129,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := configuration.SymlinkMode.Description()
-		if configuration.SymlinkMode == sync.SymlinkMode_SymlinkModeDefault {
+		if configuration.SymlinkMode.IsDefault() {
 			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
 			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
 		}
@@ -138,7 +137,7 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
-		if configuration.IgnoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSModeDefault {
+		if configuration.IgnoreVCSMode.IsDefault() {
 			defaultIgnoreVCSMode := state.Session.Version.DefaultIgnoreVCSMode()
 			ignoreVCSModeDescription += fmt.Sprintf(" (%s)", defaultIgnoreVCSMode.Description())
 		}
