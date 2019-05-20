@@ -91,3 +91,46 @@ func TestPathDir(t *testing.T) {
 		}
 	}
 }
+
+// pathBasePanicFree is a wrapper around PathBase that allows the caller to
+// track panics.
+func pathBasePanicFree(path string, panicked *bool) string {
+	// Track panics.
+	defer func() {
+		if recover() != nil {
+			*panicked = true
+		}
+	}()
+
+	// Invoke PathBase.
+	return PathBase(path)
+}
+
+// TestPathBase verifies that pathDir behaves correctly in a number of test
+// cases.
+func TestPathBase(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		Path        string
+		Expected    string
+		ExpectPanic bool
+	}{
+		{"", "", false},
+		{"a/", "", true},
+		{"a", "a", false},
+		{"a/b", "b", false},
+		{"a/b/c", "c", false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var panicked bool
+		if result := pathBasePanicFree(testCase.Path, &panicked); result != testCase.Expected {
+			t.Error("PathBase result did not match expected:", result, "!=", testCase.Expected)
+		} else if panicked && !testCase.ExpectPanic {
+			t.Error("PathBase panicked unexpectedly")
+		} else if !panicked && testCase.ExpectPanic {
+			t.Error("PathBase did not panic as expected")
+		}
+	}
+}
