@@ -847,7 +847,7 @@ func (e *endpoint) scan(baseline *sync.Entry, recheckPaths map[string]bool) erro
 }
 
 // Scan implements the Scan method for local endpoints.
-func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
+func (e *endpoint) Scan(_ *sync.Entry, full bool) (*sync.Entry, bool, error, bool) {
 	// Grab the scan lock and defer its release.
 	e.scanLock.Lock()
 	defer e.scanLock.Unlock()
@@ -859,19 +859,23 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 		return nil, false, errors.Wrap(e.cacheWriteError, "unable to save cache to disk"), false
 	}
 
-	// Perform a scan. We check to see if we can accelerate the scanning process
-	// by using information from a background watching Goroutine. For recursive
-	// watching, this means performing a re-scan using a baseline and a set of
-	// re-check paths. For poll-based watching, this just means re-using the
-	// last scan, so no action is needed here. If we can't accelerate the scan,
-	// we just perform a full (warm) scan. If we see any error while scanning,
-	// we just have to assume that it's due to concurrent modifications and
-	// suggest a retry.
-	// TODO: Disable use of acceleration if flush has been specified. If we do
-	// this, should we clear re-check paths? I don't think so, I think they
-	// should live on regardless - we'd just have a better baseline at that
-	// point.
-	if e.accelerateScan {
+	// Perform a scan.
+	//
+	// We check to see if we can accelerate the scanning process by using
+	// information from a background watching Goroutine. For recursive watching,
+	// this means performing a re-scan using a baseline and a set of re-check
+	// paths. For poll-based watching, this just means re-using the last scan,
+	// so no action is needed here. If acceleration isn't available (due to the
+	// state of the watcher or because it's disallowed on the endpoint), then we
+	// just perform a full (warm) scan. We also avoid acceleration in the event
+	// that a full scan has been explicitly requested, but we don't make any
+	// change to the state of acceleration availability, because performing a
+	// full warm scan will only improve the accuracy of the baseline or most
+	// recent scan, so acceleration will still work.
+	//
+	// If we see any error while scanning, we just have to assume that it's due
+	// to concurrent modifications and suggest a retry.
+	if e.accelerateScan && !full {
 		if e.watchIsRecursive {
 			if err := e.scan(e.snapshot, e.recheckPaths); err != nil {
 				return nil, false, err, true

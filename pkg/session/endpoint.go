@@ -23,13 +23,14 @@ type Endpoint interface {
 	// Scan performs a scan of the endpoint's synchronization root. It requires
 	// the ancestor to be passed in for optimized snapshot transfers if the
 	// endpoint is remote. The ancestor may be nil, in which transfers from
-	// remote endpoints may be less than optimal. It returns the scan result, a
-	// bool indicating whether or not to re-try the scan, and any error that
-	// occurred while trying to create the scan. Only one of these values will
-	// be non-nil/false. If all are nil, it indicates that the synchronization
-	// root doesn't exist on the endpoint, but that the scan otherwise completed
-	// successfully.
-	Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool)
+	// remote endpoints may be less than optimal. The full parameter forces the
+	// function to perform a full (warm) scan, avoiding any acceleration that
+	// might be available on the endpoint. The function returns the scan result,
+	// a boolean indicating whether or not the synchronization root preserves
+	// POSIX executability bits, any error that occurred while trying to create
+	// the scan, and a boolean indicating whether or not to re-try the scan (in
+	// the event of an error).
+	Scan(ancestor *sync.Entry, full bool) (*sync.Entry, bool, error, bool)
 
 	// Stage performs staging on the endpoint. It accepts a list of file paths
 	// and a separate list of desired digests corresponding to those paths. For

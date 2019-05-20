@@ -196,7 +196,7 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 }
 
 // Scan implements the Scan method for remote endpoints.
-func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, bool) {
+func (e *endpointClient) Scan(ancestor *sync.Entry, full bool) (*sync.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
@@ -222,6 +222,7 @@ func (e *endpointClient) Scan(ancestor *sync.Entry) (*sync.Entry, bool, error, b
 	request := &EndpointRequest{
 		Scan: &ScanRequest{
 			BaseSnapshotSignature: baseSignature,
+			Full:                  full,
 		},
 	}
 	if err := e.encoder.Encode(request); err != nil {

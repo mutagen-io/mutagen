@@ -292,7 +292,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
 	// endpoints anyway. If a retry is requested or an error occurs, send a
 	// response.
-	snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(nil)
+	snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(nil, request.Full)
 	if tryAgain {
 		response := &ScanResponse{
 			Error:    err.Error(),

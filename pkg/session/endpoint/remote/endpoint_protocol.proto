@@ -50,6 +50,9 @@ message ScanRequest {
     // BaseSnapshotSignature is the rsync signature to use as the base for
     // differentially transmitting snapshots.
     rsync.Signature baseSnapshotSignature = 1;
+    // Full indicates whether or not to force a full (warm) scan, temporarily
+    // avoiding any acceleration that might be available on the endpoint.
+    bool full = 2;
 }
 
 // ScanResponse encodes the results of a scan.

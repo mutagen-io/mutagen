@@ -798,10 +798,13 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			skipPolling = false
 		}
 
-		// Scan both endpoints in parallel and check for errors.
+		// Scan both endpoints in parallel and check for errors. If a flush
+		// request is present, then force both endpoints to perform a full
+		// (warm) re-scan rather than using acceleration.
 		c.stateLock.Lock()
 		c.state.Status = Status_Scanning
 		c.stateLock.Unlock()
+		forceFullScan := flushRequest != nil
 		var αSnapshot, βSnapshot *sync.Entry
 		var αPreservesExecutability, βPreservesExecutability bool
 		var αScanErr, βScanErr error
@@ -809,11 +812,17 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		scanDone := &syncpkg.WaitGroup{}
 		scanDone.Add(2)
 		go func() {
-			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(ancestor)
+			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(
+				ancestor,
+				forceFullScan,
+			)
 			scanDone.Done()
 		}()
 		go func() {
-			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(ancestor)
+			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(
+				ancestor,
+				forceFullScan,
+			)
 			scanDone.Done()
 		}()
 		scanDone.Wait()

@@ -91,6 +91,8 @@ func (r *ScanRequest) ensureValid() error {
 		return errors.Wrap(err, "invalid base snapshot signature")
 	}
 
+	// Full is correct regardless of value, so no validation is required.
+
 	// Success.
 	return nil
 }
