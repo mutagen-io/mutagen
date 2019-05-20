@@ -112,7 +112,7 @@ type endpoint struct {
 	recursiveWatchReenableAcceleration chan struct{}
 	// scanLock locks the endpoint's scan-related fields, specifically
 	// accelerateScan, snapshot, recheckPaths, hasher, cache, ignoreCache,
-	// cacheWriteError, preservesExecutability, recomposeUnicode,
+	// cacheWriteError, preservesExecutability, decomposesUnicode,
 	// lastScanEntryCount, scannedSinceLastStageCall, and
 	// scannedSinceLastTransitionCall. This lock is not necessitated by the
 	// Endpoint interface (since it doesn't allow concurrent usage), but rather
@@ -141,9 +141,9 @@ type endpoint struct {
 	// preservesExecutability is the executability preservation behavior
 	// detected by the last successful scan on the endpoint.
 	preservesExecutability bool
-	// recomposeUnicode is the Unicode recomposition behavior recommended by the
+	// decomposesUnicode is the Unicode decomposition behavior detected by the
 	// last successful scan on the endpoint.
-	recomposeUnicode bool
+	decomposesUnicode bool
 	// lastScanEntryCount is the entry count at the time of the last scan.
 	lastScanEntryCount uint64
 	// scannedSinceLastStageCall tracks whether or not a scan operation has
@@ -742,15 +742,15 @@ func (e *endpoint) watchPoll(
 		// Extract scan parameters so that we can release the scan lock.
 		snapshot := e.snapshot
 		preservesExecutability := e.preservesExecutability
-		decomposesUnicode := e.recomposeUnicode
+		decomposesUnicode := e.decomposesUnicode
 
 		// Release the scan lock.
 		e.scanLock.Unlock()
 
 		// Check for modifications.
-		modified := !e.snapshot.Equal(previousSnapshot) ||
-			e.preservesExecutability != previousPreservesExecutability ||
-			e.recomposeUnicode != previousDecomposesUnicode
+		modified := !snapshot.Equal(previousSnapshot) ||
+			preservesExecutability != previousPreservesExecutability ||
+			decomposesUnicode != previousDecomposesUnicode
 
 		// If we have a working non-recursive watcher, then perform a full diff
 		// to determine new watch paths, and then start the new watches. Any
@@ -804,7 +804,7 @@ func (e *endpoint) Poll(context context.Context) error {
 // scan lock.
 func (e *endpoint) scan(baseline *sync.Entry, recheckPaths map[string]bool) error {
 	// Perform a full (warm) scan, watching for errors.
-	snapshot, preservesExecutability, recomposeUnicode, newCache, newIgnoreCache, err := sync.Scan(
+	snapshot, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, err := sync.Scan(
 		e.root,
 		baseline, recheckPaths,
 		e.hasher, e.cache,
@@ -825,7 +825,7 @@ func (e *endpoint) scan(baseline *sync.Entry, recheckPaths map[string]bool) erro
 
 	// Update behavior data.
 	e.preservesExecutability = preservesExecutability
-	e.recomposeUnicode = recomposeUnicode
+	e.decomposesUnicode = decomposesUnicode
 
 	// Update the last scan entry count.
 	e.lastScanEntryCount = snapshot.Count()
@@ -1088,7 +1088,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		e.defaultFileMode,
 		e.defaultDirectoryMode,
 		e.defaultOwnership,
-		e.recomposeUnicode,
+		e.decomposesUnicode,
 		e.stager,
 	)
 
