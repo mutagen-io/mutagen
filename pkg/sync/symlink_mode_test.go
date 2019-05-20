@@ -9,9 +9,9 @@ import (
 func TestSymlinkModeUnmarshal(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Text          string
-		ExpectedMode  SymlinkMode
-		ExpectFailure bool
+		text          string
+		expectedMode  SymlinkMode
+		expectFailure bool
 	}{
 		{"", SymlinkMode_SymlinkModeDefault, true},
 		{"asdf", SymlinkMode_SymlinkModeDefault, true},
@@ -23,17 +23,17 @@ func TestSymlinkModeUnmarshal(t *testing.T) {
 	// Process test cases.
 	for _, testCase := range testCases {
 		var mode SymlinkMode
-		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
-			if !testCase.ExpectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
+			if !testCase.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
 			}
-		} else if testCase.ExpectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
-		} else if mode != testCase.ExpectedMode {
+		} else if testCase.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
+		} else if mode != testCase.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.ExpectedMode,
+				testCase.expectedMode,
 			)
 		}
 	}
@@ -44,8 +44,8 @@ func TestSymlinkModeUnmarshal(t *testing.T) {
 func TestSymlinkModeSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode            SymlinkMode
-		ExpectSupported bool
+		mode            SymlinkMode
+		expectSupported bool
 	}{
 		{SymlinkMode_SymlinkModeDefault, false},
 		{SymlinkMode_SymlinkModeIgnore, true},
@@ -56,11 +56,11 @@ func TestSymlinkModeSupported(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+		if supported := testCase.mode.Supported(); supported != testCase.expectSupported {
 			t.Errorf(
 				"mode support status (%t) does not match expected (%t)",
 				supported,
-				testCase.ExpectSupported,
+				testCase.expectSupported,
 			)
 		}
 	}
@@ -71,8 +71,8 @@ func TestSymlinkModeSupported(t *testing.T) {
 func TestSymlinkModeDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode                SymlinkMode
-		ExpectedDescription string
+		mode                SymlinkMode
+		expectedDescription string
 	}{
 		{SymlinkMode_SymlinkModeDefault, "Default"},
 		{SymlinkMode_SymlinkModeIgnore, "Ignore"},
@@ -83,11 +83,11 @@ func TestSymlinkModeDescription(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+		if description := testCase.mode.Description(); description != testCase.expectedDescription {
 			t.Errorf(
 				"mode description (%s) does not match expected (%s)",
 				description,
-				testCase.ExpectedDescription,
+				testCase.expectedDescription,
 			)
 		}
 	}

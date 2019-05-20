@@ -9,9 +9,9 @@ import (
 func TestIgnoreVCSModeUnmarshal(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Text          string
-		ExpectedMode  IgnoreVCSMode
-		ExpectFailure bool
+		text          string
+		expectedMode  IgnoreVCSMode
+		expectFailure bool
 	}{
 		{"", IgnoreVCSMode_IgnoreVCSModeDefault, true},
 		{"asdf", IgnoreVCSMode_IgnoreVCSModeDefault, true},
@@ -22,17 +22,17 @@ func TestIgnoreVCSModeUnmarshal(t *testing.T) {
 	// Process test cases.
 	for _, testCase := range testCases {
 		var mode IgnoreVCSMode
-		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
-			if !testCase.ExpectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
+			if !testCase.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
 			}
-		} else if testCase.ExpectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
-		} else if mode != testCase.ExpectedMode {
+		} else if testCase.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
+		} else if mode != testCase.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.ExpectedMode,
+				testCase.expectedMode,
 			)
 		}
 	}
@@ -43,8 +43,8 @@ func TestIgnoreVCSModeUnmarshal(t *testing.T) {
 func TestIgnoreVCSModeSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode            IgnoreVCSMode
-		ExpectSupported bool
+		mode            IgnoreVCSMode
+		expectSupported bool
 	}{
 		{IgnoreVCSMode_IgnoreVCSModeDefault, false},
 		{IgnoreVCSMode_IgnoreVCSModeIgnore, true},
@@ -54,11 +54,11 @@ func TestIgnoreVCSModeSupported(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+		if supported := testCase.mode.Supported(); supported != testCase.expectSupported {
 			t.Errorf(
 				"mode support status (%t) does not match expected (%t)",
 				supported,
-				testCase.ExpectSupported,
+				testCase.expectSupported,
 			)
 		}
 	}
@@ -69,8 +69,8 @@ func TestIgnoreVCSModeSupported(t *testing.T) {
 func TestIgnoreVCSModeDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode                IgnoreVCSMode
-		ExpectedDescription string
+		mode                IgnoreVCSMode
+		expectedDescription string
 	}{
 		{IgnoreVCSMode_IgnoreVCSModeDefault, "Default"},
 		{IgnoreVCSMode_IgnoreVCSModeIgnore, "Ignore"},
@@ -80,11 +80,11 @@ func TestIgnoreVCSModeDescription(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+		if description := testCase.mode.Description(); description != testCase.expectedDescription {
 			t.Errorf(
 				"mode description (%s) does not match expected (%s)",
 				description,
-				testCase.ExpectedDescription,
+				testCase.expectedDescription,
 			)
 		}
 	}

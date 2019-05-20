@@ -9,9 +9,9 @@ import (
 func TestWatchModeUnmarshal(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Text          string
-		ExpectedMode  WatchMode
-		ExpectFailure bool
+		text          string
+		expectedMode  WatchMode
+		expectFailure bool
 	}{
 		{"", WatchMode_WatchModeDefault, true},
 		{"asdf", WatchMode_WatchModeDefault, true},
@@ -23,17 +23,17 @@ func TestWatchModeUnmarshal(t *testing.T) {
 	// Process test cases.
 	for _, testCase := range testCases {
 		var mode WatchMode
-		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
-			if !testCase.ExpectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
+			if !testCase.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
 			}
-		} else if testCase.ExpectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
-		} else if mode != testCase.ExpectedMode {
+		} else if testCase.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
+		} else if mode != testCase.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.ExpectedMode,
+				testCase.expectedMode,
 			)
 		}
 	}
@@ -44,8 +44,8 @@ func TestWatchModeUnmarshal(t *testing.T) {
 func TestWatchModeSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode            WatchMode
-		ExpectSupported bool
+		mode            WatchMode
+		expectSupported bool
 	}{
 		{WatchMode_WatchModeDefault, false},
 		{WatchMode_WatchModePortable, true},
@@ -56,11 +56,11 @@ func TestWatchModeSupported(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+		if supported := testCase.mode.Supported(); supported != testCase.expectSupported {
 			t.Errorf(
 				"mode support status (%t) does not match expected (%t)",
 				supported,
-				testCase.ExpectSupported,
+				testCase.expectSupported,
 			)
 		}
 	}
@@ -71,8 +71,8 @@ func TestWatchModeSupported(t *testing.T) {
 func TestWatchModeDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode                WatchMode
-		ExpectedDescription string
+		mode                WatchMode
+		expectedDescription string
 	}{
 		{WatchMode_WatchModeDefault, "Default"},
 		{WatchMode_WatchModePortable, "Portable"},
@@ -83,11 +83,11 @@ func TestWatchModeDescription(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+		if description := testCase.mode.Description(); description != testCase.expectedDescription {
 			t.Errorf(
 				"mode description (%s) does not match expected (%s)",
 				description,
-				testCase.ExpectedDescription,
+				testCase.expectedDescription,
 			)
 		}
 	}

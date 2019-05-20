@@ -23,10 +23,10 @@ func pathJoinPanicFree(base, leaf string, panicked *bool) string {
 func TestPathJoin(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Base        string
-		Leaf        string
-		Expected    string
-		ExpectPanic bool
+		base        string
+		leaf        string
+		expected    string
+		expectPanic bool
 	}{
 		{"", "", "", true},
 		{"a", "", "", true},
@@ -38,12 +38,16 @@ func TestPathJoin(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
+		// Compute the result and track panics.
 		var panicked bool
-		if result := pathJoinPanicFree(testCase.Base, testCase.Leaf, &panicked); result != testCase.Expected {
-			t.Error("pathJoin result did not match expected:", result, "!=", testCase.Expected)
-		} else if panicked && !testCase.ExpectPanic {
+		if result := pathJoinPanicFree(testCase.base, testCase.leaf, &panicked); result != testCase.expected {
+			t.Error("pathJoin result did not match expected:", result, "!=", testCase.expected)
+		}
+
+		// Check panic behavior.
+		if panicked && !testCase.expectPanic {
 			t.Error("pathJoin panicked unexpectedly")
-		} else if !panicked && testCase.ExpectPanic {
+		} else if !panicked && testCase.expectPanic {
 			t.Error("pathJoin did not panic as expected")
 		}
 	}
@@ -68,9 +72,9 @@ func pathDirPanicFree(path string, panicked *bool) string {
 func TestPathDir(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Path        string
-		Expected    string
-		ExpectPanic bool
+		path        string
+		expected    string
+		expectPanic bool
 	}{
 		{"", "", true},
 		{"/a", "", true},
@@ -81,12 +85,16 @@ func TestPathDir(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
+		// Compute the result and track panics.
 		var panicked bool
-		if result := pathDirPanicFree(testCase.Path, &panicked); result != testCase.Expected {
-			t.Error("pathDir result did not match expected:", result, "!=", testCase.Expected)
-		} else if panicked && !testCase.ExpectPanic {
+		if result := pathDirPanicFree(testCase.path, &panicked); result != testCase.expected {
+			t.Error("pathDir result did not match expected:", result, "!=", testCase.expected)
+		}
+
+		// Check panic behavior.
+		if panicked && !testCase.expectPanic {
 			t.Error("pathDir panicked unexpectedly")
-		} else if !panicked && testCase.ExpectPanic {
+		} else if !panicked && testCase.expectPanic {
 			t.Error("pathDir did not panic as expected")
 		}
 	}
@@ -111,9 +119,9 @@ func pathBasePanicFree(path string, panicked *bool) string {
 func TestPathBase(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Path        string
-		Expected    string
-		ExpectPanic bool
+		path        string
+		expected    string
+		expectPanic bool
 	}{
 		{"", "", false},
 		{"a/", "", true},
@@ -124,12 +132,16 @@ func TestPathBase(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
+		// Compute the result and track panics.
 		var panicked bool
-		if result := pathBasePanicFree(testCase.Path, &panicked); result != testCase.Expected {
-			t.Error("PathBase result did not match expected:", result, "!=", testCase.Expected)
-		} else if panicked && !testCase.ExpectPanic {
+		if result := pathBasePanicFree(testCase.path, &panicked); result != testCase.expected {
+			t.Error("PathBase result did not match expected:", result, "!=", testCase.expected)
+		}
+
+		// Check panic behavior.
+		if panicked && !testCase.expectPanic {
 			t.Error("PathBase panicked unexpectedly")
-		} else if !panicked && testCase.ExpectPanic {
+		} else if !panicked && testCase.expectPanic {
 			t.Error("PathBase did not panic as expected")
 		}
 	}

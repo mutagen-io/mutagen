@@ -9,9 +9,9 @@ import (
 func TestProbeModeUnmarshal(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Text          string
-		ExpectedMode  ProbeMode
-		ExpectFailure bool
+		text          string
+		expectedMode  ProbeMode
+		expectFailure bool
 	}{
 		{"", ProbeMode_ProbeModeDefault, true},
 		{"asdf", ProbeMode_ProbeModeDefault, true},
@@ -22,17 +22,17 @@ func TestProbeModeUnmarshal(t *testing.T) {
 	// Process test cases.
 	for _, testCase := range testCases {
 		var mode ProbeMode
-		if err := mode.UnmarshalText([]byte(testCase.Text)); err != nil {
-			if !testCase.ExpectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.Text, err)
+		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
+			if !testCase.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
 			}
-		} else if testCase.ExpectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.Text)
-		} else if mode != testCase.ExpectedMode {
+		} else if testCase.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
+		} else if mode != testCase.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.ExpectedMode,
+				testCase.expectedMode,
 			)
 		}
 	}
@@ -43,8 +43,8 @@ func TestProbeModeUnmarshal(t *testing.T) {
 func TestProbeModeSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode            ProbeMode
-		ExpectSupported bool
+		mode            ProbeMode
+		expectSupported bool
 	}{
 		{ProbeMode_ProbeModeDefault, false},
 		{ProbeMode_ProbeModeProbe, true},
@@ -54,11 +54,11 @@ func TestProbeModeSupported(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if supported := testCase.Mode.Supported(); supported != testCase.ExpectSupported {
+		if supported := testCase.mode.Supported(); supported != testCase.expectSupported {
 			t.Errorf(
 				"mode support status (%t) does not match expected (%t)",
 				supported,
-				testCase.ExpectSupported,
+				testCase.expectSupported,
 			)
 		}
 	}
@@ -69,8 +69,8 @@ func TestProbeModeSupported(t *testing.T) {
 func TestProbeModeDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		Mode                ProbeMode
-		ExpectedDescription string
+		mode                ProbeMode
+		expectedDescription string
 	}{
 		{ProbeMode_ProbeModeDefault, "Default"},
 		{ProbeMode_ProbeModeProbe, "Probe"},
@@ -80,11 +80,11 @@ func TestProbeModeDescription(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if description := testCase.Mode.Description(); description != testCase.ExpectedDescription {
+		if description := testCase.mode.Description(); description != testCase.expectedDescription {
 			t.Errorf(
 				"mode description (%s) does not match expected (%s)",
 				description,
-				testCase.ExpectedDescription,
+				testCase.expectedDescription,
 			)
 		}
 	}
