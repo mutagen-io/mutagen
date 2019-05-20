@@ -6,7 +6,7 @@ option go_package = "github.com/havoc-io/mutagen/pkg/session/endpoint/remote";
 
 import "rsync/engine.proto";
 import "session/configuration.proto";
-import "session/session.proto";
+import "session/version.proto";
 import "sync/archive.proto";
 import "sync/change.proto";
 import "sync/problem.proto";

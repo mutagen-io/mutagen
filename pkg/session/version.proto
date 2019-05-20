@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
+// Version specifies a session version, providing default behavior that can vary
+// without affecting existing sessions.
+enum Version {
+    // Invalid is the default session version and represents an unspecfied and
+    // invalid version. It is used as a sanity check to ensure that version is
+    // set for a session.
+    Invalid = 0;
+    // Version1 represents session version 1.
+    Version1 = 1;
+}
