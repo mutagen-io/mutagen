@@ -388,7 +388,7 @@ func Scan(
 	rootObject, metadata, err := filesystem.Open(root, false)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, false, false, &Cache{}, make(IgnoreCache), nil
+			return nil, false, false, &Cache{}, nil, nil
 		} else {
 			return nil, false, false, nil, nil, errors.Wrap(err, "unable to open synchronization root")
 		}

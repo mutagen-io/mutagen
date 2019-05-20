@@ -27,7 +27,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+	snapshot, preservesExecutability, _, cache, _, err := Scan(
 		root,
 		nil,
 		nil,
@@ -45,8 +45,6 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
-	} else if ignoreCache == nil {
-		return errors.New("nil ignore cache returned")
 	} else if expectEqual && !snapshot.Equal(entry) {
 		return errors.New("snapshot not equal to expected")
 	} else if !expectEqual && snapshot.Equal(entry) {
@@ -306,7 +304,7 @@ func TestEfficientRescan(t *testing.T) {
 	hasher := newTestHasher()
 
 	// Create an initial snapshot and validate the results.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+	snapshot, preservesExecutability, _, cache, _, err := Scan(
 		root,
 		nil,
 		nil,
@@ -324,8 +322,6 @@ func TestEfficientRescan(t *testing.T) {
 		t.Fatal("unable to create snapshot:", err)
 	} else if cache == nil {
 		t.Fatal("nil cache returned")
-	} else if ignoreCache == nil {
-		t.Fatal("nil ignore cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("snapshot did not match expected")
 	}
@@ -335,7 +331,7 @@ func TestEfficientRescan(t *testing.T) {
 
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
-	snapshot, preservesExecutability, _, cache, ignoreCache, err = Scan(
+	snapshot, preservesExecutability, _, cache, _, err = Scan(
 		root,
 		nil,
 		nil,
@@ -353,8 +349,6 @@ func TestEfficientRescan(t *testing.T) {
 		t.Fatal("unable to rescan:", err)
 	} else if cache == nil {
 		t.Fatal("nil second cache returned")
-	} else if ignoreCache == nil {
-		t.Fatal("nil second ignore cache returned")
 	} else if !snapshot.Equal(testDirectory1Entry) {
 		t.Error("second snapshot did not match expected")
 	}

@@ -296,7 +296,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 	}
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, ignoreCache, err := Scan(
+	snapshot, preservesExecutability, _, cache, _, err := Scan(
 		root,
 		nil,
 		nil,
@@ -314,8 +314,6 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 		return errors.Wrap(err, "unable to perform scan")
 	} else if cache == nil {
 		return errors.New("nil cache returned")
-	} else if ignoreCache == nil {
-		return errors.New("nil ignore cache returned")
 	} else if modifier == nil && !snapshot.Equal(expected) {
 		return errors.New("snapshot not equal to expected")
 	}
@@ -401,7 +399,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+		_, _, recomposeUnicode, cache, _, err := Scan(
 			root,
 			nil,
 			nil,
@@ -416,8 +414,6 @@ func TestTransitionSwapFile(t *testing.T) {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {
 			return nil, errors.New("nil cache returned")
-		} else if ignoreCache == nil {
-			return nil, errors.New("nil ignore cache returned")
 		}
 
 		// Attempt to switch the content of a file.
@@ -476,7 +472,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+		_, _, recomposeUnicode, cache, _, err := Scan(
 			root,
 			nil,
 			nil,
@@ -491,8 +487,6 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {
 			return nil, errors.New("nil cache returned")
-		} else if ignoreCache == nil {
-			return nil, errors.New("nil ignore cache returned")
 		}
 
 		// Create a copy of the current entry and mark it as executable.
@@ -585,7 +579,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 	// attempt an additional create transition.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, ignoreCache, err := Scan(
+		_, _, recomposeUnicode, cache, _, err := Scan(
 			root,
 			nil,
 			nil,
@@ -600,8 +594,6 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			return nil, errors.Wrap(err, "unable to perform scan")
 		} else if cache == nil {
 			return nil, errors.New("nil cache returned")
-		} else if ignoreCache == nil {
-			return nil, errors.New("nil ignore cache returned")
 		}
 
 		// Change the directory case.
