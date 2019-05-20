@@ -78,9 +78,8 @@ type Configuration struct {
 	} `toml:"permissions"`
 }
 
-// LoadFromPath loads a TOML-based Mutagen configuration file from the specified
-// path.
-func LoadFromPath(path string) (*Configuration, error) {
+// Load loads a TOML-based Mutagen configuration file from the specified path.
+func Load(path string) (*Configuration, error) {
 	// Create a configuration object into which we can decode.
 	result := &Configuration{}
 

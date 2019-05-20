@@ -3,7 +3,6 @@ package session
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
@@ -129,44 +128,6 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 
 	// Success.
 	return nil
-}
-
-// LoadConfiguration loads a TOML-based Mutagen configuration and extracts a
-// corresponding session configuration, verifying that it's a valid
-// non-endpoint-specific session configuration. If the path doesn't exist, this
-// function simply returns a default configuration object.
-func LoadConfiguration(path string) (*Configuration, error) {
-	// Load the TOML-based configuration.
-	configuration, err := configuration.LoadFromPath(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to load TOML-based configuration")
-	}
-
-	// Create a session configuration object.
-	result := &Configuration{
-		SynchronizationMode:    configuration.Synchronization.Mode,
-		MaximumEntryCount:      configuration.Synchronization.MaximumEntryCount,
-		MaximumStagingFileSize: uint64(configuration.Synchronization.MaximumStagingFileSize),
-		ProbeMode:              configuration.Synchronization.ProbeMode,
-		StagingMode:            configuration.Synchronization.StagingMode,
-		SymlinkMode:            configuration.Symlink.Mode,
-		WatchMode:              configuration.Watch.Mode,
-		WatchPollingInterval:   configuration.Watch.PollingInterval,
-		Ignores:                configuration.Ignore.Default,
-		IgnoreVCSMode:          configuration.Ignore.VCS,
-		DefaultFileMode:        uint32(configuration.Permissions.DefaultFileMode),
-		DefaultDirectoryMode:   uint32(configuration.Permissions.DefaultDirectoryMode),
-		DefaultOwner:           configuration.Permissions.DefaultOwner,
-		DefaultGroup:           configuration.Permissions.DefaultGroup,
-	}
-
-	// Verify that the resulting configuration is valid.
-	if err := result.EnsureValid(false); err != nil {
-		return nil, errors.Wrap(err, "configuration invalid")
-	}
-
-	// Success.
-	return result, nil
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both

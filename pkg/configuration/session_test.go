@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func TestLoadNonExistent(t *testing.T) {
-	if c, err := Load("/this/does/not/exist"); err != nil {
+func TestLoadSessionConfigurationNonExistent(t *testing.T) {
+	if c, err := LoadSessionConfiguration("/this/does/not/exist"); err != nil {
 		t.Error("load from non-existent path failed:", err)
 	} else if c == nil {
 		t.Error("load from non-existent path returned nil configuration")
 	}
 }
 
-func TestLoadEmpty(t *testing.T) {
+func TestLoadSessionConfigurationEmpty(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_configuration")
 	if err != nil {
@@ -25,14 +25,14 @@ func TestLoadEmpty(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	// Attempt to load.
-	if c, err := Load(file.Name()); err != nil {
+	if c, err := LoadSessionConfiguration(file.Name()); err != nil {
 		t.Error("load from empty file failed:", err)
 	} else if c == nil {
 		t.Error("load from empty file returned nil configuration")
 	}
 }
 
-func TestLoadGibberish(t *testing.T) {
+func TestLoadSessionConfigurationGibberish(t *testing.T) {
 	// Write gibberish to a temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_configuration")
 	if err != nil {
@@ -50,7 +50,7 @@ func TestLoadGibberish(t *testing.T) {
 	}
 }
 
-func TestLoadDirectory(t *testing.T) {
+func TestLoadSessionConfigurationDirectory(t *testing.T) {
 	// Create a temporary directory and defer its cleanup.
 	directory, err := ioutil.TempDir("", "mutagen_configuration")
 	if err != nil {
@@ -64,7 +64,7 @@ func TestLoadDirectory(t *testing.T) {
 	}
 }
 
-func TestLoadValidConfiguration(t *testing.T) {
+func TestLoadSessionConfigurationValidConfiguration(t *testing.T) {
 	// Write a valid configuration to a temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_configuration")
 	if err != nil {
@@ -83,3 +83,6 @@ func TestLoadValidConfiguration(t *testing.T) {
 		t.Error("load from valid configuration returned nil configuration")
 	}
 }
+
+// TODO: Add reflection-based test to ensure that all session configuration
+// fields are populated.

@@ -12,6 +12,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/havoc-io/mutagen/cmd"
+	configurationpkg "github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
@@ -81,7 +82,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		if c, err := sessionpkg.LoadConfiguration(filesystem.MutagenConfigurationPath); err != nil {
+		if c, err := configurationpkg.LoadSessionConfiguration(filesystem.MutagenConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)
@@ -91,7 +92,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// If a configuration file has been specified, then load it and merge it
 	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
-		if c, err := sessionpkg.LoadConfiguration(createConfiguration.configurationFile); err != nil {
+		if c, err := configurationpkg.LoadSessionConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)
