@@ -38,6 +38,11 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("unknown or unsupported probe mode")
 	}
 
+	// Verify that the scan mode is unspecified or supported for usage.
+	if !(c.ScanMode.IsDefault() || c.ScanMode.Supported()) {
+		return errors.New("unknown or unsupported scan mode")
+	}
+
 	// Verify that the staging mode is unspecified or supported for usage.
 	if !(c.StageMode.IsDefault() || c.StageMode.Supported()) {
 		return errors.New("unknown or unsupported staging mode")
@@ -162,6 +167,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.ProbeMode = higher.ProbeMode
 	} else {
 		result.ProbeMode = lower.ProbeMode
+	}
+
+	// Merge scan mode.
+	if !higher.ScanMode.IsDefault() {
+		result.ScanMode = higher.ScanMode
+	} else {
+		result.ScanMode = lower.ScanMode
 	}
 
 	// Merge staging mode.

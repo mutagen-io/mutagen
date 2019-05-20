@@ -136,6 +136,24 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate and convert scan mode specifications.
+	var scanMode, scanModeAlpha, scanModeBeta sessionpkg.ScanMode
+	if createConfiguration.scanMode != "" {
+		if err := scanMode.UnmarshalText([]byte(createConfiguration.scanMode)); err != nil {
+			return errors.Wrap(err, "unable to parse scan mode")
+		}
+	}
+	if createConfiguration.scanModeAlpha != "" {
+		if err := scanModeAlpha.UnmarshalText([]byte(createConfiguration.scanModeAlpha)); err != nil {
+			return errors.Wrap(err, "unable to parse scan mode for alpha")
+		}
+	}
+	if createConfiguration.scanModeBeta != "" {
+		if err := scanModeBeta.UnmarshalText([]byte(createConfiguration.scanModeBeta)); err != nil {
+			return errors.Wrap(err, "unable to parse scan mode for beta")
+		}
+	}
+
 	// Validate and convert staging mode specifications.
 	var stageMode, stageModeAlpha, stageModeBeta sessionpkg.StageMode
 	if createConfiguration.stageMode != "" {
@@ -299,6 +317,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		MaximumEntryCount:      createConfiguration.maximumEntryCount,
 		MaximumStagingFileSize: maximumStagingFileSize,
 		ProbeMode:              probeMode,
+		ScanMode:               scanMode,
 		StageMode:              stageMode,
 		SymlinkMode:            symbolicLinkMode,
 		WatchMode:              watchMode,
@@ -338,6 +357,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			Configuration: configuration,
 			ConfigurationAlpha: &sessionpkg.Configuration{
 				ProbeMode:            probeModeAlpha,
+				ScanMode:             scanModeAlpha,
 				StageMode:            stageModeAlpha,
 				WatchMode:            watchModeAlpha,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalAlpha,
@@ -348,6 +368,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			},
 			ConfigurationBeta: &sessionpkg.Configuration{
 				ProbeMode:            probeModeBeta,
+				ScanMode:             scanModeBeta,
 				StageMode:            stageModeBeta,
 				WatchMode:            watchModeBeta,
 				WatchPollingInterval: createConfiguration.watchPollingIntervalBeta,
@@ -426,6 +447,14 @@ var createConfiguration struct {
 	// probeModeBeta specifies the filesystem probing mode to use for the
 	// session, taking priority over probeMode on beta if specified.
 	probeModeBeta string
+	// scanMode specifies the scan mode to use for the session.
+	scanMode string
+	// scanModeAlpha specifies the scan mode to use for the session, taking
+	// priority over scanMode on alpha if specified.
+	scanModeAlpha string
+	// scanModeBeta specifies the scan mode to use for the session, taking
+	// priority over scanMode on beta if specified.
+	scanModeBeta string
 	// stageMode specifies the file staging mode to use for the session.
 	stageMode string
 	// stageModeAlpha specifies the file staging mode to use for the session,
@@ -542,6 +571,9 @@ func init() {
 	flags.StringVar(&createConfiguration.probeMode, "probe-mode", "", "Specify probe mode (probe|assume)")
 	flags.StringVar(&createConfiguration.probeModeAlpha, "probe-mode-alpha", "", "Specify probe mode for alpha (probe|assume)")
 	flags.StringVar(&createConfiguration.probeModeBeta, "probe-mode-beta", "", "Specify probe mode for beta (probe|assume)")
+	flags.StringVar(&createConfiguration.scanMode, "scan-mode", "", "Specify scan mode (full|accelerated)")
+	flags.StringVar(&createConfiguration.scanModeAlpha, "scan-mode-alpha", "", "Specify scan mode for alpha (full|accelerated)")
+	flags.StringVar(&createConfiguration.scanModeBeta, "scan-mode-beta", "", "Specify scan mode for beta (full|accelerated)")
 	flags.StringVar(&createConfiguration.stageMode, "stage-mode", "", "Specify staging mode (mutagen|neighboring)")
 	flags.StringVar(&createConfiguration.stageModeAlpha, "stage-mode-alpha", "", "Specify staging mode for alpha (mutagen|neighboring)")
 	flags.StringVar(&createConfiguration.stageModeBeta, "stage-mode-beta", "", "Specify staging mode for beta (mutagen|neighboring)")

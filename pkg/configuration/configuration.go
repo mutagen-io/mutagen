@@ -24,6 +24,8 @@ type Configuration struct {
 		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize"`
 		// ProbeMode specifies the filesystem probing mode.
 		ProbeMode behavior.ProbeMode `toml:"probeMode"`
+		// ScanMode specifies the filesystem scanning mode.
+		ScanMode session.ScanMode `toml:"scanMode"`
 		// StageMode specifies the filesystem staging mode.
 		StageMode session.StageMode `toml:"stageMode"`
 	} `toml:"sync"`

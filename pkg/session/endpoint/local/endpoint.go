@@ -65,6 +65,10 @@ type endpoint struct {
 	// probeMode is the probe mode for the session. This field is static and
 	// thus safe for concurrent reads.
 	probeMode behavior.ProbeMode
+	// accelerationAllowed indicates whether or not scan acceleration is allowed
+	// for the endpoint. This is computed based off of the scan mode. This field
+	// is static and thus safe for concurrent reads.
+	accelerationAllowed bool
 	// symlinkMode is the symlink mode for the session. This field is static and
 	// thus safe for concurrent reads.
 	symlinkMode sync.SymlinkMode
@@ -192,6 +196,14 @@ func NewEndpoint(
 		probeMode = version.DefaultProbeMode()
 	}
 
+	// Compute the effective scan mode and whether or not scan acceleration is
+	// allowed.
+	scanMode := configuration.ScanMode
+	if scanMode.IsDefault() {
+		scanMode = version.DefaultScanMode()
+	}
+	accelerationAllowed := scanMode == session.ScanMode_ScanModeAccelerated
+
 	// Compute the effective symlink mode.
 	symlinkMode := configuration.SymlinkMode
 	if symlinkMode.IsDefault() {
@@ -310,6 +322,7 @@ func NewEndpoint(
 		readOnly:                           readOnly,
 		maximumEntryCount:                  configuration.MaximumEntryCount,
 		probeMode:                          probeMode,
+		accelerationAllowed:                accelerationAllowed,
 		symlinkMode:                        symlinkMode,
 		ignores:                            ignores,
 		defaultFileMode:                    defaultFileMode,
@@ -484,11 +497,19 @@ WatchEstablishment:
 			case <-context.Done():
 				return
 			case <-scanTimer.C:
-				// Attempt to perform a full (warm) scan. If this succeeds, then
-				// we can enable accelerated scanning since we know we'll see
-				// all events after the baseline scan time. If this fails, we'll
-				// reset the scan timer (which won't be running) and try again
-				// after the polling interval.
+				// If acceleration isn't allowed on the endpoint, then we don't
+				// need to perform a baseline scan, so we can just continue
+				// watching.
+				if !e.accelerationAllowed {
+					continue
+				}
+
+				// Attempt to perform a full (warm) baseline scan. If this
+				// succeeds, then we can enable accelerated scanning (since our
+				// watch is established and we'll see all events after the
+				// baseline scan time). If this fails, then we'll reset the scan
+				// timer (which won't be running) and try again after the
+				// polling interval.
 				e.scanLock.Lock()
 				if err := e.scan(nil, nil); err != nil {
 					scanTimer.Reset(pollingDuration)
@@ -497,15 +518,22 @@ WatchEstablishment:
 				}
 				e.scanLock.Unlock()
 			case <-e.recursiveWatchReenableAcceleration:
-				// We've been signaled that scan acceleration has been disabled
-				// (e.g. by Transition) and that we need to re-enable it by
-				// performing a full (warm) scan. It's possible that the scan
-				// timer is running (e.g. if we receive this signal before we
-				// even finish the initial acceleration-enabling scan), so we
-				// stop it first. If scanning succeeds, then we can (re-)enable
-				// accelerated scanning, and if it fails then we'll schedule
-				// another attempt with the scanTimer.
+				// If acceleration isn't allowed on the endpoint, then we don't
+				// need to re-enable it, so we can just continue watching.
+				if !e.accelerationAllowed {
+					continue
+				}
+
+				// It's possible that the scan timer is running (e.g. if we
+				// receive this signal before we finish the initial
+				// acceleration-enabling scan), so we ensure it's stopped (since
+				// the following scan will serve the same purpose).
 				stopAndDrainTimer(scanTimer)
+
+				// Attempt to perform a full (warm) baseline scan. If this
+				// succeeds, then we can re-enable acceleration. If this fails,
+				// then we'll reset the scan timer (which won't be running) and
+				// try again after the polling interval.
 				e.scanLock.Lock()
 				if err := e.scan(nil, nil); err != nil {
 					scanTimer.Reset(pollingDuration)
@@ -514,12 +542,14 @@ WatchEstablishment:
 				}
 				e.scanLock.Unlock()
 			case <-watchErrors:
-				// Disable scan acceleration and clear out the re-check path
-				// set.
-				e.scanLock.Lock()
-				e.accelerateScan = false
-				e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
-				e.scanLock.Unlock()
+				// If acceleration is allowed on the endpoint, then disable scan
+				// acceleration and clear out the re-check path set.
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					e.accelerateScan = false
+					e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
+					e.scanLock.Unlock()
+				}
 
 				// Stop and drain any timers that might be running.
 				stopAndDrainTimer(scanTimer)
@@ -547,24 +577,23 @@ WatchEstablishment:
 					continue WatchEstablishment
 				}
 			case path := <-events:
-				// Register the event path as a re-check path. If the re-check
-				// paths set would overflow its allowed size, then temporarily
-				// disable acceleration, clear out the re-check path set, and
-				// reset the scan timer (which may or may not be running) to
-				// force a full (warm) scan and re-enable acceleration.
-				// TODO: Avoid registering the path if acceleration is disabled
-				// by the scan mode. We could probably also avoid some other
-				// stuff, like performing an initial scan after the watch is
-				// established.
-				e.scanLock.Lock()
-				if len(e.recheckPaths) == recheckPathsMaximumCapacity {
-					e.accelerateScan = false
-					e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
-					stopAndDrainTimer(scanTimer)
-					scanTimer.Reset(pollingDuration)
+				// If acceleration is allowed on the endpoint, then register the
+				// event path as a re-check path. If the re-check paths set
+				// would overflow its allowed size, then temporarily disable
+				// acceleration, clear out the re-check path set, and reset the
+				// scan timer (which may or may not be running) to force a full
+				// (warm) scan (and re-enable acceleration).
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					if len(e.recheckPaths) == recheckPathsMaximumCapacity {
+						e.accelerateScan = false
+						e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
+						stopAndDrainTimer(scanTimer)
+						scanTimer.Reset(pollingDuration)
+					}
+					e.recheckPaths[path] = true
+					e.scanLock.Unlock()
 				}
-				e.recheckPaths[path] = true
-				e.scanLock.Unlock()
 
 				// Reset the coalescing timer (which may or may not be running).
 				stopAndDrainTimer(coalescingTimer)
@@ -706,8 +735,9 @@ func (e *endpoint) watchPoll(
 		}
 
 		// If our scan was successful, then we know that the scan results
-		// will be okay to return for the next Scan call.
-		e.accelerateScan = true
+		// will be okay to return for the next Scan call, though we only
+		// indicate that acceleration should be used if the endpoint allows it.
+		e.accelerateScan = e.accelerationAllowed
 
 		// Extract scan parameters so that we can release the scan lock.
 		snapshot := e.snapshot
@@ -833,8 +863,6 @@ func (e *endpoint) Scan(_ *sync.Entry) (*sync.Entry, bool, error, bool) {
 	// this, should we clear re-check paths? I don't think so, I think they
 	// should live on regardless - we'd just have a better baseline at that
 	// point.
-	// TODO: We should also avoid acceleration if the scan mode indicates that
-	// full scanning should always be used.
 	if e.accelerateScan {
 		if e.watchIsRecursive {
 			if err := e.scan(e.snapshot, e.recheckPaths); err != nil {
@@ -1087,8 +1115,6 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// scanning, acceleration will be re-enabled the next time it performs a
 	// scan, while for recursive watching we need to manually signal that it
 	// should attempt to re-enable accelated scanning.
-	// TODO: We can gate this signaling on whether or not acceleration is
-	// enabled.
 	e.accelerateScan = false
 	if e.watchIsRecursive {
 		select {

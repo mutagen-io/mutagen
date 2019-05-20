@@ -52,6 +52,16 @@ func (v Version) DefaultProbeMode() behavior.ProbeMode {
 	}
 }
 
+// DefaultScanMode returns the default scan mode for the session version.
+func (v Version) DefaultScanMode() ScanMode {
+	switch v {
+	case Version_Version1:
+		return ScanMode_ScanModeFull
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultStageMode returns the default staging mode for the session version.
 func (v Version) DefaultStageMode() StageMode {
 	switch v {

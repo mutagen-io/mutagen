@@ -7,6 +7,7 @@ mode = "two-way-resolved"
 maxEntryCount = 500
 maxStagingFileSize = "1000 GB"
 probeMode = "assume"
+scanMode = "accelerated"
 stageMode = "neighboring"
 
 [symlink]

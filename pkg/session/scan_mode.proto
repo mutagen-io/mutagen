@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package session;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/session";
+
+// ScanMode specifies the mode for synchronization root scanning.
+enum ScanMode {
+    // ScanMode_ScanModeDefault represents an unspecified scan mode. It should
+    // be converted to one of the following values based on the desired default
+    // behavior.
+    ScanModeDefault = 0;
+    // ScanMode_ScanModeFull specifies that full scans should be performed on
+    // each synchronization cycle.
+    ScanModeFull = 1;
+    // ScanMode_ScanModeAccelerated specifies that scans should attempt to use
+    // watch-based acceleration.
+    ScanModeAccelerated = 2;
+}

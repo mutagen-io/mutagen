@@ -43,6 +43,13 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Confi
 	}
 	fmt.Println("\tProbe mode:", probeModeDescription)
 
+	// Compute and print the scan mode.
+	scanModeDescription := configuration.ScanMode.Description()
+	if configuration.ScanMode.IsDefault() {
+		scanModeDescription += fmt.Sprintf(" (%s)", version.DefaultScanMode().Description())
+	}
+	fmt.Println("\tScan mode:", scanModeDescription)
+
 	// Compute and print the staging mode.
 	stageModeDescription := configuration.StageMode.Description()
 	if configuration.StageMode.IsDefault() {
