@@ -49,7 +49,7 @@ func (m StageMode) Description() string {
 	case StageMode_StageModeDefault:
 		return "Default"
 	case StageMode_StageModeMutagen:
-		return "Mutagen"
+		return "Mutagen Data Directory"
 	case StageMode_StageModeNeighboring:
 		return "Neighboring"
 	default:

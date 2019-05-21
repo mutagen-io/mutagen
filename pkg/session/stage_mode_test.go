@@ -73,7 +73,7 @@ func TestStageModeDescription(t *testing.T) {
 		expectedDescription string
 	}{
 		{StageMode_StageModeDefault, "Default"},
-		{StageMode_StageModeMutagen, "Mutagen"},
+		{StageMode_StageModeMutagen, "Mutagen Data Directory"},
 		{StageMode_StageModeNeighboring, "Neighboring"},
 		{(StageMode_StageModeNeighboring + 1), "Unknown"},
 	}
