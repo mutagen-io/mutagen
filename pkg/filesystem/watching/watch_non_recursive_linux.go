@@ -141,7 +141,9 @@ func (w *NonRecursiveMRUWatcher) Watch(path string) {
 	}
 
 	// Start the watch. If it fails, report the error via the errors channel,
-	// otherwise record the watch in the cache.
+	// otherwise record the watch in the cache. We could return the error
+	// directly, but for consistency with the rest of the code (and to make
+	// error monitoring easier), we report it via the errors channel.
 	err := w.watcher.Watch(
 		path,
 		notify.InModify|notify.InAttrib|
