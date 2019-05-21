@@ -349,7 +349,7 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 }
 
 // Transition implements the Transition method for remote endpoints.
-func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error) {
 	// Create and send the transition request.
 	request := &EndpointRequest{
 		Transition: &TransitionRequest{
@@ -357,17 +357,17 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 		},
 	}
 	if err := e.encoder.Encode(request); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to send transition request")
+		return nil, nil, false, errors.Wrap(err, "unable to send transition request")
 	}
 
 	// Receive the response and check for remote errors.
 	response := &TransitionResponse{}
 	if err := e.decoder.Decode(response); err != nil {
-		return nil, nil, errors.Wrap(err, "unable to receive transition response")
+		return nil, nil, false, errors.Wrap(err, "unable to receive transition response")
 	} else if err = response.ensureValid(len(transitions)); err != nil {
-		return nil, nil, errors.Wrap(err, "invalid transition response")
+		return nil, nil, false, errors.Wrap(err, "invalid transition response")
 	} else if response.Error != "" {
-		return nil, nil, errors.Errorf("remote error: %s", response.Error)
+		return nil, nil, false, errors.Errorf("remote error: %s", response.Error)
 	}
 
 	// HACK: Extract the wrapped results.
@@ -377,7 +377,7 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 	}
 
 	// Success.
-	return results, response.Problems, nil
+	return results, response.Problems, response.StagerMissingFiles, nil
 }
 
 // Shutdown implements the Shutdown method for remote endpoints.

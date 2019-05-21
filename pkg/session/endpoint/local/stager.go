@@ -216,7 +216,7 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 	// expected contents (the digest of which are encoded in the location)).
 	if _, err := os.Lstat(expectedLocation); err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.New("file does not exist at expected location")
+			return "", err
 		}
 		return "", errors.Wrap(err, "unable to query staged file metadata")
 	}

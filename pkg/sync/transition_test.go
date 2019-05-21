@@ -192,7 +192,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	// operation, we operate in POSIX raw symbolic link handling, because we
 	// want to be able to create symbolic links for testing that would be
 	// invalid under portable mode.
-	if entries, problems := Transition(
+	if entries, problems, providerMissingFiles := Transition(
 		root,
 		transitions,
 		nil,
@@ -208,6 +208,9 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	} else if len(entries) != len(transitions) {
 		os.RemoveAll(parent)
 		return "", "", errors.New("unexpected number of entries returned from creation transition")
+	} else if providerMissingFiles {
+		os.RemoveAll(parent)
+		return "", "", errors.New("provider indicated missing files")
 	} else {
 		for e, entry := range entries {
 			if !entry.Equal(transitions[e].New) {
@@ -245,7 +248,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 	}
 
 	// Perform the removal transition.
-	if entries, problems := Transition(
+	if entries, problems, _ := Transition(
 		root,
 		transitions,
 		cache,
@@ -437,7 +440,7 @@ func TestTransitionSwapFile(t *testing.T) {
 
 		// Perform the swap transition, ensure that it succeeds, and update the
 		// expected contents.
-		if entries, problems := Transition(
+		if entries, problems, providerMissingFiles := Transition(
 			root,
 			transitions,
 			cache,
@@ -449,6 +452,8 @@ func TestTransitionSwapFile(t *testing.T) {
 			provider,
 		); len(problems) != 0 {
 			return nil, errors.New("file swap transition failed")
+		} else if providerMissingFiles {
+			return nil, errors.New("provider indicated missing files")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from swap transition")
 		} else if !entries[0].Equal(testFile2Entry) {
@@ -502,7 +507,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 
 		// Perform the swap transition with a nil provider (since it shouldn't
 		// be used), ensure that it succeeds, and update the expected contents.
-		if entries, problems := Transition(
+		if entries, problems, _ := Transition(
 			root,
 			transitions,
 			cache,
@@ -619,8 +624,9 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 		}
 		defer provider.finalize()
 
-		// Perform the create transition and ensure that it fails.
-		if entries, problems := Transition(
+		// Perform the create transition and ensure that it fails (with an error
+		// other than missing files).
+		if entries, problems, providerMissingFiles := Transition(
 			root,
 			transitions,
 			cache,
@@ -632,6 +638,8 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 			provider,
 		); len(problems) == 0 {
 			return nil, errors.New("transition succeeded unexpectedly")
+		} else if providerMissingFiles {
+			return nil, errors.New("provider indicated missing files")
 		} else if len(entries) != 1 {
 			return nil, errors.New("unexpected number of entries returned from creation transition")
 		} else if entries[0] != nil {
@@ -715,8 +723,9 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	}
 	defer provider.finalize()
 
-	// Perform the creation transition and ensure that it encounters a problem.
-	if entries, problems := Transition(
+	// Perform the creation transition and ensure that it encounters a problem
+	// (other than missing files).
+	if entries, problems, providerMissingFiles := Transition(
 		root,
 		transitions,
 		nil,
@@ -728,6 +737,8 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 		provider,
 	); len(problems) != 1 {
 		t.Error("transition succeeded unexpectedly")
+	} else if providerMissingFiles {
+		t.Error("provider indicated missing files")
 	} else if len(entries) != 1 {
 		t.Error("transition returned invalid number of entries")
 	} else if entries[0] != nil {

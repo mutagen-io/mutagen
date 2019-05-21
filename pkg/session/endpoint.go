@@ -63,7 +63,7 @@ type Endpoint interface {
 	// usually the long-blocking transitions are going to be the ones where
 	// we're creating the root with a huge number of files and wouldn't catch
 	// cancellation until they're all done anyway.
-	Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error)
+	Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error)
 
 	// Shutdown terminates any resources associated with the endpoint. For local
 	// endpoints, Shutdown will not preempt calls, but for remote endpoints it

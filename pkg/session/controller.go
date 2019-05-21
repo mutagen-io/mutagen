@@ -1039,6 +1039,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Unlock()
 		var αResults, βResults []*sync.Entry
 		var αProblems, βProblems []*sync.Problem
+		var αMissingFiles, βMissingFiles bool
 		var αTransitionErr, βTransitionErr error
 		var αChanges, βChanges []*sync.Change
 		transitionDone := &syncpkg.WaitGroup{}
@@ -1050,7 +1051,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		}
 		if len(αTransitions) > 0 {
 			go func() {
-				αResults, αProblems, αTransitionErr = alpha.Transition(αTransitions)
+				αResults, αProblems, αMissingFiles, αTransitionErr = alpha.Transition(αTransitions)
 				if αTransitionErr == nil {
 					for t, transition := range αTransitions {
 						αChanges = append(αChanges, &sync.Change{Path: transition.Path, New: αResults[t]})
@@ -1061,7 +1062,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		}
 		if len(βTransitions) > 0 {
 			go func() {
-				βResults, βProblems, βTransitionErr = beta.Transition(βTransitions)
+				βResults, βProblems, βMissingFiles, βTransitionErr = beta.Transition(βTransitions)
 				if βTransitionErr == nil {
 					for t, transition := range βTransitions {
 						βChanges = append(βChanges, &sync.Change{Path: transition.Path, New: βResults[t]})
@@ -1112,6 +1113,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			return errors.Wrap(αTransitionErr, "unable to apply changes to alpha")
 		} else if βTransitionErr != nil {
 			return errors.Wrap(βTransitionErr, "unable to apply changes to beta")
+		}
+
+		// If there were files missing from either endpoint's stager during the
+		// transition operations, then there were likely concurrent
+		// modifications during staging. Attempt to run another synchronization
+		// cycle immediately.
+		if αMissingFiles || βMissingFiles {
+			skipPolling = true
 		}
 
 		// Increment the synchronization cycle count.

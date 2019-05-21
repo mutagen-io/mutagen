@@ -1071,10 +1071,10 @@ func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receive
 }
 
 // Transition implements the Transition method for local endpoints.
-func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, error) {
+func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error) {
 	// If we're in a read-only mode, we shouldn't be performing transitions.
 	if e.readOnly {
-		return nil, nil, errors.New("endpoint is in read-only mode")
+		return nil, nil, false, errors.New("endpoint is in read-only mode")
 	}
 
 	// Grab the scan lock and defer its release.
@@ -1085,7 +1085,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// that way our count check is valid. If we haven't, then the controller is
 	// either malfunctioning or malicious.
 	if !e.scannedSinceLastTransitionCall {
-		return nil, nil, errors.New("multiple transition operations performed without scan")
+		return nil, nil, false, errors.New("multiple transition operations performed without scan")
 	}
 	e.scannedSinceLastTransitionCall = false
 
@@ -1098,7 +1098,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		resultingEntryCount := e.lastScanEntryCount
 		for _, transition := range transitions {
 			if removed := transition.Old.Count(); removed > resultingEntryCount {
-				return nil, nil, errors.New("transition requires removing more entries than exist")
+				return nil, nil, false, errors.New("transition requires removing more entries than exist")
 			} else {
 				resultingEntryCount -= removed
 			}
@@ -1114,12 +1114,12 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		}
 		problems := []*sync.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 		if e.maximumEntryCount < resultingEntryCount {
-			return results, problems, nil
+			return results, problems, false, nil
 		}
 	}
 
 	// Perform the transition.
-	results, problems := sync.Transition(
+	results, problems, stagerMissingFiles := sync.Transition(
 		e.root,
 		transitions,
 		e.cache,
@@ -1174,7 +1174,7 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	e.stager.wipe()
 
 	// Done.
-	return results, problems, nil
+	return results, problems, stagerMissingFiles, nil
 }
 
 // Shutdown implements the Shutdown method for local endpoints.

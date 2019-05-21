@@ -27,7 +27,9 @@ const (
 type Provider interface {
 	// Provide returns a filesystem path to a file containing the contents for
 	// the path given as the first argument with the digest specified by the
-	// second argument.
+	// second argument. If the provider is unable to locate a file matching the
+	// specified parameters in its internal storage, it should return an error
+	// for which os.IsNotExist evaluates to true.
 	Provide(path string, digest []byte) (string, error)
 }
 
@@ -57,6 +59,9 @@ type transitioner struct {
 	provider Provider
 	// problems are the problems currently being tracked.
 	problems []*Problem
+	// providerMissingFiles indicates that the staged file provider returned an
+	// os.IsNotExist error for at least one file that was expected to be staged.
+	providerMissingFiles bool
 }
 
 // recordProblem records a new problem.
@@ -527,9 +532,14 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 		mode = markExecutableForReaders(mode)
 	}
 
-	// Compute the path to the staged file.
+	// Compute the path to the staged file. If the provider indicates that no
+	// staged file exists with the specified parameters, then update our missing
+	// file tracking.
 	stagedPath, err := t.provider.Provide(path, target.Digest)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.providerMissingFiles = true
+		}
 		return errors.Wrap(err, "unable to locate staged file")
 	}
 
@@ -831,7 +841,9 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 // Transition provides recursive filesystem transitioning facilities for
 // synchronization roots, allowing the application of changes after
 // reconciliation. The path to the provided synchronization root must be
-// absolute and normalized (using filepath.Clean).
+// absolute and normalized (using filepath.Clean). The function returns a slice
+// of the resulting entries, problems, and a boolean indicating whether or not
+// the provider was missing files.
 func Transition(
 	root string,
 	transitions []*Change,
@@ -842,7 +854,7 @@ func Transition(
 	defaultOwnership *filesystem.OwnershipSpecification,
 	recomposeUnicode bool,
 	provider Provider,
-) ([]*Entry, []*Problem) {
+) ([]*Entry, []*Problem, bool) {
 	// Create the transitioner.
 	transitioner := &transitioner{
 		root:                           root,
@@ -892,5 +904,5 @@ func Transition(
 	}
 
 	// Done.
-	return results, transitioner.problems
+	return results, transitioner.problems, transitioner.providerMissingFiles
 }

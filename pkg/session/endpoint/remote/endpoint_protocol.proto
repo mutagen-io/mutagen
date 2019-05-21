@@ -114,6 +114,9 @@ message TransitionResponse {
     repeated sync.Archive results = 1;
     // Problems are any problems encountered during the transition operation.
     repeated sync.Problem problems = 2;
+    // StagerMissingFiles indicates whether or not the endpoint's stager
+    // indicated missing files during transitioning.
+    bool stagerMissingFiles = 3;
     // Error is the error message (if any) resulting from the remote transition
     // method. This will always be an empty string since transition doesn't
     // return errors from local endpoints, but to match the endpoint interface
@@ -121,7 +124,7 @@ message TransitionResponse {
     // endpoints), we include this field.
     // TODO: Should we just remove this field? Doing so would rely on knowledge
     // of localEndpoint's transition behavior.
-    string error = 3;
+    string error = 4;
 }
 
 // EndpointRequest is a sum type that can transmit any type of endpoint request.

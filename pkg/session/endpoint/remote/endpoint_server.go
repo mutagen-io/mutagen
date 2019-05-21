@@ -403,7 +403,7 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	}
 
 	// Perform the transition.
-	results, problems, err := s.endpoint.Transition(request.Transitions)
+	results, problems, stagerMissingFiles, err := s.endpoint.Transition(request.Transitions)
 	if err != nil {
 		s.encoder.Encode(&TransitionResponse{Error: err.Error()})
 		return errors.Wrap(err, "unable to perform transition")
@@ -417,7 +417,11 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	}
 
 	// Send the response.
-	response := &TransitionResponse{Results: wrappedResults, Problems: problems}
+	response := &TransitionResponse{
+		Results:            wrappedResults,
+		Problems:           problems,
+		StagerMissingFiles: stagerMissingFiles,
+	}
 	if err = s.encoder.Encode(response); err != nil {
 		return errors.Wrap(err, "unable to send transition response")
 	}
