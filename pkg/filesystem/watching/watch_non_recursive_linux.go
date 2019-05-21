@@ -2,6 +2,7 @@ package watching
 
 import (
 	"context"
+	"os"
 
 	"github.com/pkg/errors"
 
@@ -140,10 +141,12 @@ func (w *NonRecursiveMRUWatcher) Watch(path string) {
 		w.evictor.Remove(path)
 	}
 
-	// Start the watch. If it fails, report the error via the errors channel,
-	// otherwise record the watch in the cache. We could return the error
-	// directly, but for consistency with the rest of the code (and to make
-	// error monitoring easier), we report it via the errors channel.
+	// Start the watch. If it fails due to a non-existence error, then we can
+	// just avoid adding it. If it fails for any other reason, report the error
+	// via the errors channel, otherwise record the watch in the cache. We could
+	// return the error directly, but for consistency with the rest of the code
+	// (and to make error monitoring easier), we report it via the errors
+	// channel.
 	err := w.watcher.Watch(
 		path,
 		notify.InModify|notify.InAttrib|
@@ -153,9 +156,11 @@ func (w *NonRecursiveMRUWatcher) Watch(path string) {
 			notify.InDeleteSelf|notify.InMoveSelf,
 	)
 	if err != nil {
-		select {
-		case w.Errors <- err:
-		default:
+		if !os.IsNotExist(err) {
+			select {
+			case w.Errors <- err:
+			default:
+			}
 		}
 	} else {
 		w.evictor.Add(path, 0)
