@@ -3,10 +3,10 @@ package session
 import (
 	"crypto/sha1"
 	"hash"
+	"math"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/numeric"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
@@ -46,7 +46,7 @@ func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
 func (v Version) DefaultMaximumEntryCount() uint64 {
 	switch v {
 	case Version_Version1:
-		return numeric.MaxUint64
+		return math.MaxUint64
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -57,7 +57,7 @@ func (v Version) DefaultMaximumEntryCount() uint64 {
 func (v Version) DefaultMaximumStagingFileSize() uint64 {
 	switch v {
 	case Version_Version1:
-		return numeric.MaxUint64
+		return math.MaxUint64
 	default:
 		panic("unknown or unsupported session version")
 	}

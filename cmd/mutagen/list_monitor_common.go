@@ -2,12 +2,18 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/havoc-io/mutagen/pkg/numeric"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+)
+
+const (
+	// maxUint64Description is a human-friendly mathematic description of
+	// math.MaxUint64.
+	maxUint64Description = "2⁶⁴−1"
 )
 
 func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Configuration, version sessionpkg.Version) {
@@ -113,8 +119,8 @@ func printSession(state *sessionpkg.State, long bool) {
 		// Compute and print maximum entry count.
 		var maximumEntryCountDescription string
 		if configuration.MaximumEntryCount == 0 {
-			if m := state.Session.Version.DefaultMaximumEntryCount(); m == numeric.MaxUint64 {
-				maximumEntryCountDescription = fmt.Sprintf("Default (%s)", numeric.MaxUint64Description)
+			if m := state.Session.Version.DefaultMaximumEntryCount(); m == math.MaxUint64 {
+				maximumEntryCountDescription = fmt.Sprintf("Default (%s)", maxUint64Description)
 			} else {
 				maximumEntryCountDescription = fmt.Sprintf("Default (%d)", m)
 			}
