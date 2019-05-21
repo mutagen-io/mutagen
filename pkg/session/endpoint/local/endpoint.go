@@ -574,7 +574,9 @@ WatchEstablishment:
 				// snapshot being returned in this window (and driving a
 				// feedback loop) because Transition operations always disable
 				// scan acceleration (see the comment in Transition). Worst case
-				// scenario we'd have returned a slightly stale scan.
+				// scenario we'd have returned a slightly stale scan. Even if
+				// the endpoint doesn't allow acceleration, the failure of the
+				// watch is still worth reporting.
 				e.strobePollEvents()
 
 				// Reset the watch recreation timer (which won't be running).
