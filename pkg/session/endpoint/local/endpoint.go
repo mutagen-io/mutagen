@@ -498,6 +498,19 @@ WatchEstablishment:
 		case <-events:
 		}
 
+		// Now that the watch has been successfully established, strobe the poll
+		// events channel. The reason for this is that, for recursive watching,
+		// successful establishment of the watch serves as a signal that the
+		// synchronization root exists and is accessible, which may not have
+		// been the case previously. For example, if the root or a parent didn't
+		// exist, we would have looped while trying to establish a watch,
+		// strobing the poll events channel on each failure. If we suddenly
+		// succeed, we need to notify the controller, otherwise it won't see any
+		// events until we receive events from within the root. Essentially,
+		// successful establishment of the watch is an event, of sorts, that
+		// we're only in a position to report here.
+		e.strobePollEvents()
+
 		// Reset the scan timer (which won't be running) to fire immediately in
 		// our watch loop.
 		scanTimer.Reset(0)
