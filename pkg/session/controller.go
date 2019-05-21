@@ -709,15 +709,16 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 	αDisablePolling := (αWatchMode == WatchMode_WatchModeNoWatch)
 	βDisablePolling := (βWatchMode == WatchMode_WatchModeNoWatch)
 
-	// Track whether or not we should skip over polling (and go straight to a
-	// synchronization cycle). This variable is normally used to continue a
-	// synchronization cycle after a scan failure without having to wait for
-	// polling, but we also use it when first starting a synchronization loop to
-	// force a check for changes that may have occurred while the
+	// Create a switch that will allow us to skip polling and force a
+	// synchronization cycle. On startup, we enable this switch and skip polling
+	// to immediately force a check for changes that may have occurred while the
 	// synchronization loop wasn't running. The only time we don't force this
 	// check on startup is when both endpoints have polling disabled, which is
 	// an indication that the session should operate in a fully manual mode.
 	skipPolling := (!αDisablePolling || !βDisablePolling)
+
+	// Create variables to track our reasons for skipping polling.
+	var skippingPollingDueToScanError, skippingPollingDueToMissingFiles bool
 
 	// Loop until there is a synchronization error.
 	for {
@@ -847,26 +848,39 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			}
 		}
 
-		// Watch for retry requests.
+		// Watch for retry recommendations from scan operations. These occur
+		// when a scan fails and concurrent modifications are suspected as the
+		// culprit. In these cases, we force another synchronization cycle. Note
+		// that, because we skip polling, our flush request, if any, will still
+		// be valid, and we'll be able to respond to it once a successful
+		// synchronization cycle completes.
+		//
 		// TODO: Should we eventually abort synchronization after a certain
 		// number of consecutive scan retries?
 		if αTryAgain || βTryAgain {
-			// Update status to waiting for rescan.
-			c.stateLock.Lock()
-			c.state.Status = Status_WaitingForRescan
-			c.stateLock.Unlock()
+			// If we're already in a synchronization cycle that was forced due
+			// to a previous scan error, and we've now received another retry
+			// recommendation, then wait before attempting a rescan.
+			if skippingPollingDueToScanError {
+				// Update status to waiting for rescan.
+				c.stateLock.Lock()
+				c.state.Status = Status_WaitingForRescan
+				c.stateLock.Unlock()
 
-			// Wait before trying to rescan, but watch for cancellation.
-			select {
-			case <-time.After(rescanWaitDuration):
-			case <-context.Done():
-				return errors.New("cancelled during rescan wait")
+				// Wait before trying to rescan, but watch for cancellation.
+				select {
+				case <-time.After(rescanWaitDuration):
+				case <-context.Done():
+					return errors.New("cancelled during rescan wait")
+				}
 			}
 
 			// Retry.
 			skipPolling = true
+			skippingPollingDueToScanError = true
 			continue
 		}
+		skippingPollingDueToScanError = false
 
 		// Clear the last error (if any) after a successful scan. Since scan
 		// errors are the only non-terminal errors, and since we know that we've
@@ -1117,10 +1131,15 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// If there were files missing from either endpoint's stager during the
 		// transition operations, then there were likely concurrent
-		// modifications during staging. Attempt to run another synchronization
-		// cycle immediately.
-		if αMissingFiles || βMissingFiles {
+		// modifications during staging. If we see this, then skip polling and
+		// attempt to run another synchronization cycle immediately, but only if
+		// we're not already in a synchronization cycle that was forced due to
+		// previously missing files.
+		if (αMissingFiles || βMissingFiles) && !skippingPollingDueToMissingFiles {
 			skipPolling = true
+			skippingPollingDueToMissingFiles = true
+		} else {
+			skippingPollingDueToMissingFiles = false
 		}
 
 		// Increment the synchronization cycle count.
