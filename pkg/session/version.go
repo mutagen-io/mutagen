@@ -9,6 +9,14 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
 
+const (
+	// maxUint64 is the maximum value that can be stored in a 64-bit unsigned
+	// integer. We define it here to avoid a dependency on the (rather large)
+	// math package, but we test to ensure it's equivalent to that package's
+	// definition.
+	maxUint64 = 1<<64 - 1
+)
+
 // Version indicates whether or not the session version is supported.
 func (v Version) Supported() bool {
 	switch v {
@@ -35,6 +43,28 @@ func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
 	switch v {
 	case Version_Version1:
 		return sync.SynchronizationMode_SynchronizationModeTwoWaySafe
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+// DefaultMaximumEntryCount returns the default maximum entry count for the
+// session version.
+func (v Version) DefaultMaximumEntryCount() uint64 {
+	switch v {
+	case Version_Version1:
+		return maxUint64
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+// DefaultMaximumStagingFileSize returns the default maximum staging file size
+// for the session version.
+func (v Version) DefaultMaximumStagingFileSize() uint64 {
+	switch v {
+	case Version_Version1:
+		return maxUint64
 	default:
 		panic("unknown or unsupported session version")
 	}

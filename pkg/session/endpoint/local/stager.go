@@ -29,7 +29,7 @@ type stagingSink struct {
 	// digester is the hash of the data already written.
 	digester hash.Hash
 	// maximumSize is the maximum number of bytes allowed to be written to the
-	// file. A zero value means that the size is unlimited.
+	// file.
 	maximumSize uint64
 	// currentSize is the number of bytes that have been written to the file.
 	currentSize uint64
@@ -38,7 +38,7 @@ type stagingSink struct {
 // Write writes data to the sink.
 func (s *stagingSink) Write(data []byte) (int, error) {
 	// Watch for size violations.
-	if s.maximumSize != 0 && (s.maximumSize-s.currentSize) < uint64(len(data)) {
+	if (s.maximumSize - s.currentSize) < uint64(len(data)) {
 		return 0, errors.New("maximum file size reached")
 	}
 
@@ -50,9 +50,8 @@ func (s *stagingSink) Write(data []byte) (int, error) {
 	s.digester.Write(data[:n])
 
 	// Update the current size. We needn't worry about this overflowing, because
-	// if maximumSize is 0, then this isn't even used, and if maximumSize is
-	// non-zero, then the check above is sufficient to know that this amount of
-	// data won't overflow the maximum uint64 value.
+	// the check above is sufficient to ensure that this amount of data won't
+	// overflow the maximum uint64 value.
 	s.currentSize += uint64(n)
 
 	// Done.
@@ -105,8 +104,7 @@ type stager struct {
 	hideRoot bool
 	// digester is the hash function to use when processing files.
 	digester hash.Hash
-	// maximumFileSize is the maximum allowed size for a single staged file. A
-	// zero value means that the size is unlimited.
+	// maximumFileSize is the maximum allowed size for a single staged file.
 	maximumFileSize uint64
 	// rootCreated indicates whether or not the staging root has been created
 	// by us since the last wipe.
@@ -119,8 +117,7 @@ type stager struct {
 
 // newStager creates a new stager. Parent should be a common directory in which
 // staging roots are created, and rootName should be the endpoint-unique name of
-// the staging root to create/delete within the parent. If maximumFileSize is 0,
-// then no size limit is imposed on files.
+// the staging root to create/delete within the parent.
 func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *stager {
 	return &stager{
 		root:            root,

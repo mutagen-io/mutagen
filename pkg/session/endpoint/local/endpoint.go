@@ -58,9 +58,8 @@ type endpoint struct {
 	// reads.
 	readOnly bool
 	// maximumEntryCount is the maximum number of entries within the
-	// synchronization root that this endpoint will support synchronizing. A
-	// zero value means that the size is unlimited. This field is static and
-	// thus safe for concurrent reads.
+	// synchronization root that this endpoint will support synchronizing. This
+	// field is static and thus safe for concurrent reads.
 	maximumEntryCount uint64
 	// probeMode is the probe mode for the session. This field is static and
 	// thus safe for concurrent reads.
@@ -189,6 +188,18 @@ func NewEndpoint(
 	unidirectional := synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWaySafe ||
 		synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWayReplica
 	readOnly := alpha && unidirectional
+
+	// Determine the maximum entry count.
+	maximumEntryCount := configuration.MaximumEntryCount
+	if maximumEntryCount == 0 {
+		maximumEntryCount = version.DefaultMaximumEntryCount()
+	}
+
+	// Determine the maximum staging file size.
+	maximumStagingFileSize := configuration.MaximumStagingFileSize
+	if maximumStagingFileSize == 0 {
+		maximumStagingFileSize = version.DefaultMaximumStagingFileSize()
+	}
 
 	// Compute the effective probe mode.
 	probeMode := configuration.ProbeMode
@@ -320,7 +331,7 @@ func NewEndpoint(
 	endpoint := &endpoint{
 		root:                               root,
 		readOnly:                           readOnly,
-		maximumEntryCount:                  configuration.MaximumEntryCount,
+		maximumEntryCount:                  maximumEntryCount,
 		probeMode:                          probeMode,
 		accelerationAllowed:                accelerationAllowed,
 		symlinkMode:                        symlinkMode,
@@ -339,7 +350,7 @@ func NewEndpoint(
 			stagingRoot,
 			hideStagingRoot,
 			version.Hasher(),
-			configuration.MaximumStagingFileSize,
+			maximumStagingFileSize,
 		),
 	}
 
@@ -890,7 +901,7 @@ func (e *endpoint) Scan(_ *sync.Entry, full bool) (*sync.Entry, bool, error, boo
 	}
 
 	// Verify that we haven't exceeded the maximum entry count.
-	if e.maximumEntryCount != 0 && e.lastScanEntryCount > e.maximumEntryCount {
+	if e.lastScanEntryCount > e.maximumEntryCount {
 		return nil, false, errors.New("exceeded allowed entry count"), true
 	}
 

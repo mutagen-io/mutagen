@@ -1,10 +1,19 @@
 package session
 
 import (
+	"math"
 	"testing"
 
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
+
+// TestMaxUint64Equivalence checks that our maxUint64 constant is equal to the
+// MaxUint64 constant defined in the math package.
+func TestMaxUint64Equivalence(t *testing.T) {
+	if maxUint64 != math.MaxUint64 {
+		t.Error("constants not equal")
+	}
+}
 
 // supportedSessionVersions defines the supported session versions that should
 // be used in testing. It should be updated as new versions are added.

@@ -110,22 +110,32 @@ func printSession(state *sessionpkg.State, long bool) {
 		fmt.Println("\tSynchronization mode:", synchronizationMode)
 
 		// Compute and print maximum entry count.
+		var maximumEntryCountDescription string
 		if configuration.MaximumEntryCount == 0 {
-			fmt.Println("\tMaximum entry count: Unlimited")
+			maximumEntryCountDescription = fmt.Sprintf(
+				"Default (%d)",
+				state.Session.Version.DefaultMaximumEntryCount(),
+			)
 		} else {
-			fmt.Println("\tMaximum entry count:", configuration.MaximumEntryCount)
+			maximumEntryCountDescription = fmt.Sprintf("%d", configuration.MaximumEntryCount)
 		}
+		fmt.Println("\tMaximum allowed entry count:", maximumEntryCountDescription)
 
 		// Compute and print maximum staging file size.
+		var maximumStagingFileSizeDescription string
 		if configuration.MaximumStagingFileSize == 0 {
-			fmt.Println("\tMaximum staging file size: Unlimited")
+			maximumStagingFileSizeDescription = fmt.Sprintf(
+				"Default (%s)",
+				humanize.Bytes(state.Session.Version.DefaultMaximumStagingFileSize()),
+			)
 		} else {
-			fmt.Printf(
-				"\tMaximum staging file size: %d (%s)\n",
+			maximumStagingFileSizeDescription = fmt.Sprintf(
+				"%d (%s)",
 				configuration.MaximumStagingFileSize,
 				humanize.Bytes(configuration.MaximumStagingFileSize),
 			)
 		}
+		fmt.Println("\tMaximum staging file size:", maximumStagingFileSizeDescription)
 
 		// Compute and print symlink mode.
 		symlinkModeDescription := configuration.SymlinkMode.Description()
