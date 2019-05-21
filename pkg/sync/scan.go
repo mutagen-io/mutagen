@@ -317,15 +317,14 @@ func (s *scanner) directory(
 			}
 		}
 
-		// Check if the content path is marked as dirty.
-		_, contentDirty := s.dirtyPaths[contentPath]
-
 		// If we have a baseline entry for the content and the content path
 		// isn't marked as dirty, then we can just re-use that baseline entry
 		// directly.
-		if contentBaseline != nil && !contentDirty {
-			contents[name] = contentBaseline
-			continue
+		if contentBaseline != nil {
+			if _, contentDirty := s.dirtyPaths[contentPath]; !contentDirty {
+				contents[name] = contentBaseline
+				continue
+			}
 		}
 
 		// Handle based on kind.
