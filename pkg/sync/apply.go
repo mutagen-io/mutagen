@@ -21,8 +21,7 @@ func Apply(base *Entry, changes []*Change) (*Entry, error) {
 			continue
 		}
 
-		// Crawl down the tree until there is only one component remaining - the
-		// parent of the target location.
+		// Crawl down the tree until we reach the parent of the target location.
 		parent := result
 		components := strings.Split(c.Path, "/")
 		for len(components) > 1 {
