@@ -5,6 +5,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
+	"github.com/havoc-io/mutagen/pkg/numeric"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
@@ -112,10 +113,11 @@ func printSession(state *sessionpkg.State, long bool) {
 		// Compute and print maximum entry count.
 		var maximumEntryCountDescription string
 		if configuration.MaximumEntryCount == 0 {
-			maximumEntryCountDescription = fmt.Sprintf(
-				"Default (%d)",
-				state.Session.Version.DefaultMaximumEntryCount(),
-			)
+			if m := state.Session.Version.DefaultMaximumEntryCount(); m == numeric.MaxUint64 {
+				maximumEntryCountDescription = fmt.Sprintf("Default (%s)", numeric.MaxUint64Description)
+			} else {
+				maximumEntryCountDescription = fmt.Sprintf("Default (%d)", m)
+			}
 		} else {
 			maximumEntryCountDescription = fmt.Sprintf("%d", configuration.MaximumEntryCount)
 		}
