@@ -1170,15 +1170,15 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 	// in recursive watching if the Transition errors-out the watch (causing
 	// events to be lost and a (partially or completely) pre-Transition
 	// baseline-based scan to be generated in the small window before the watch
-	// error is detected). Both of these things "failure" modes can happen in
-	// normal operation (with externally generated events), but it is
-	// problematic in the case of Transition because returning a pre-Transition
-	// snapshot can lead to a feedback loop between endpoints (depending on the
-	// phase and mode of their watching) where they essentially swap returned
+	// error is detected). Both of these "failure" modes can happen in normal
+	// operation (with externally generated events), but it is problematic in
+	// the case of Transition because returning a pre-Transition snapshot can
+	// lead to a feedback loop between endpoints (depending on the phase and
+	// mode of their watching Goroutines) where they essentially swap returned
 	// snapshots each time (one pre-Transition and one post-Transition) and
 	// changes are continually inverted and bounced back and forth between the
 	// endpoints. This isn't just hypothetical - it's quite easy to reproduce
-	// with poll-based watching and a large(ish) polling interval (a few
+	// with poll-based watching and a large(ish) polling interval (e.g. a few
 	// seconds). The reason we don't need to worry about scans being stale in
 	// normal operation is that there isn't a corresponding actor on the other
 	// endpoint that's returning snapshots with constantly inverted changes
