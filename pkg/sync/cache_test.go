@@ -48,3 +48,6 @@ func TestCacheValid(t *testing.T) {
 		t.Error("valid cache failed validation:", err)
 	}
 }
+
+// TODO: Add tests for Cache.Equal, even though this is an internal testing
+// method.

@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"bytes"
+
 	"github.com/pkg/errors"
 )
 
@@ -27,6 +29,57 @@ func (c *Cache) EnsureValid() error {
 
 	// Success.
 	return nil
+}
+
+// Equal determines whether or not another cache is equal to this one. It is
+// designed specifically for tests, though it is exported so that it can be used
+// by scan_bench.
+func (c *Cache) Equal(other *Cache) bool {
+	// Verify non-nilness. We don't consider nil caches valid, so we don't
+	// consider them equal.
+	if c == nil || other == nil {
+		return false
+	}
+
+	// Handle equivalence fast paths.
+	if c == other {
+		return true
+	}
+
+	// Check lengths.
+	if len(c.Entries) != len(other.Entries) {
+		return false
+	}
+
+	// Check contents.
+	for path, entry := range c.Entries {
+		// Extract corresponding content.
+		otherEntry, ok := other.Entries[path]
+		if !ok {
+			return false
+		}
+
+		// Watch for nil values as a sanity check.
+		if entry == nil || otherEntry == nil {
+			panic("cache has nil entry")
+		} else if entry.ModificationTime == nil || otherEntry.ModificationTime == nil {
+			panic("nil modification time in cache")
+		}
+
+		// Verify equivalence
+		equivalent := otherEntry.Mode == entry.Mode &&
+			otherEntry.ModificationTime.Seconds == entry.ModificationTime.Seconds &&
+			otherEntry.ModificationTime.Nanos == entry.ModificationTime.Nanos &&
+			otherEntry.Size == entry.Size &&
+			otherEntry.FileID == entry.FileID &&
+			bytes.Equal(otherEntry.Digest, entry.Digest)
+		if !equivalent {
+			return false
+		}
+	}
+
+	// Success.
+	return true
 }
 
 // ReverseLookupMap provides facilities for doing reverse lookups to avoid

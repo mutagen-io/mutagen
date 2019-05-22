@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
@@ -28,53 +27,10 @@ const (
 var usage = `scan_bench [-h|--help] [-p|--profile] [-i|--ignore=<pattern>] <path>
 `
 
-// cachesEqual checks that two scan caches have equivalent contents.
-func cachesEqual(first, second *sync.Cache) bool {
-	// Handle fast paths and verify non-nilness.
-	if first == second {
-		return true
-	} else if first == nil || second == nil {
-		return false
-	}
-
-	// Check lengths.
-	if len(first.Entries) != len(second.Entries) {
-		return false
-	}
-
-	// Check contents.
-	for path, firstEntry := range first.Entries {
-		// Extract corresponding content.
-		secondEntry, ok := second.Entries[path]
-		if !ok {
-			return false
-		}
-
-		// Watch for nil values as a sanity check.
-		if firstEntry == nil || secondEntry == nil {
-			panic("cache has nil entries")
-		} else if firstEntry.ModificationTime == nil || secondEntry.ModificationTime == nil {
-			panic("nil modification time")
-		}
-
-		// Verify equivalence
-		equivalent := secondEntry.Mode == firstEntry.Mode &&
-			secondEntry.ModificationTime.Seconds == firstEntry.ModificationTime.Seconds &&
-			secondEntry.ModificationTime.Nanos == firstEntry.ModificationTime.Nanos &&
-			secondEntry.Size == firstEntry.Size &&
-			secondEntry.FileID == firstEntry.FileID &&
-			bytes.Equal(secondEntry.Digest, firstEntry.Digest)
-		if !equivalent {
-			return false
-		}
-	}
-
-	// Success.
-	return true
-}
-
 // ignoreCachesIntersectionEqual compares two ignore caches, ensuring that keys
-// which are present in both caches have the same value.
+// which are present in both caches have the same value. It's the closest we can
+// get to the sync package's testAcceleratedCacheIsSubset without having access
+// to the members of IgnoreCacheKey.
 func ignoreCachesIntersectionEqual(first, second sync.IgnoreCache) bool {
 	// Check matches from first in second.
 	for key, firstValue := range first {
@@ -204,7 +160,7 @@ func main() {
 			newDecomposesUnicode,
 			decomposesUnicode,
 		))
-	} else if !cachesEqual(newCache, cache) {
+	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if len(newIgnoreCache) != len(ignoreCache) {
 		cmd.Fatal(errors.New("ignore cache length mismatch"))
@@ -260,7 +216,7 @@ func main() {
 			newDecomposesUnicode,
 			decomposesUnicode,
 		))
-	} else if !cachesEqual(newCache, cache) {
+	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if !ignoreCachesIntersectionEqual(newIgnoreCache, ignoreCache) {
 		cmd.Fatal(errors.New("ignore cache mismatch"))
@@ -314,7 +270,7 @@ func main() {
 			newDecomposesUnicode,
 			decomposesUnicode,
 		))
-	} else if !cachesEqual(newCache, cache) {
+	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if !ignoreCachesIntersectionEqual(newIgnoreCache, ignoreCache) {
 		cmd.Fatal(errors.New("ignore cache mismatch"))

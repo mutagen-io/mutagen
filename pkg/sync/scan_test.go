@@ -15,6 +15,22 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 )
 
+// testAcceleratedCacheIsSubset verifies that accelerated is a subset of
+// original, excluding the presence of a root path key in accelerated.
+func testAcceleratedCacheIsSubset(accelerated, original IgnoreCache) bool {
+	// Check values.
+	for key, value := range accelerated {
+		if key.path == "" {
+			continue
+		} else if other, ok := original[key]; !ok || other != value {
+			return false
+		}
+	}
+
+	// Success.
+	return true
+}
+
 func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, ignores []string, symlinkMode SymlinkMode, expectEqual bool) error {
 	// Create test content on disk and defer its removal.
 	root, parent, err := testTransitionCreate(temporaryDirectory, entry, contentMap, false)
@@ -27,14 +43,11 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	hasher := newTestHasher()
 
 	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, _, err := Scan(
+	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := Scan(
 		root,
-		nil,
-		nil,
-		hasher,
-		nil,
-		ignores,
-		nil,
+		nil, nil,
+		hasher, nil,
+		ignores, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		symlinkMode,
 	)
@@ -48,6 +61,80 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	} else if expectEqual && !snapshot.Equal(entry) {
 		return errors.New("snapshot not equal to expected")
 	} else if !expectEqual && snapshot.Equal(entry) {
+		return errors.New("snapshot should not have equaled original")
+	}
+
+	// Perform an accelerated scan (with a re-check path) using the snapshot as
+	// a baseline.
+	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := Scan(
+		root,
+		snapshot, map[string]bool{"fake path": true},
+		hasher, cache,
+		ignores, ignoreCache,
+		behavior.ProbeMode_ProbeModeProbe,
+		symlinkMode,
+	)
+	if !newPreservesExecutability {
+		newSnapshot = PropagateExecutability(nil, entry, newSnapshot)
+	}
+	if err != nil {
+		return errors.Wrap(err, "unable to perform accelerated scan (with re-check path)")
+	} else if !newSnapshot.Equal(snapshot) {
+		return errors.New("accelerated snapshot (with re-check paths) not equal to baseline")
+	} else if newPreservesExecutability != preservesExecutability {
+		return errors.New(
+			"accelerated snapshot (with re-check paths) differed in executability preservation behavior",
+		)
+	} else if newDecomposesUnicode != decomposesUnicode {
+		return errors.New(
+			"accelerated snapshot (with re-check paths) differed in Unicode decomposition behavior",
+		)
+	} else if newCache == nil {
+		return errors.New("nil cache returned")
+	} else if !newCache.Equal(cache) {
+		return errors.New("accelerated cache does not match baseline cache")
+	} else if !testAcceleratedCacheIsSubset(newIgnoreCache, ignoreCache) {
+		return errors.New("accelerated ignore cache does not match baseline")
+	} else if expectEqual && !newSnapshot.Equal(entry) {
+		return errors.New("snapshot not equal to expected")
+	} else if !expectEqual && newSnapshot.Equal(entry) {
+		return errors.New("snapshot should not have equaled original")
+	}
+
+	// Perform an accelerated scan (without any re-check paths) using the
+	// snapshot as a baseline.
+	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = Scan(
+		root,
+		snapshot, nil,
+		hasher, cache,
+		ignores, ignoreCache,
+		behavior.ProbeMode_ProbeModeProbe,
+		symlinkMode,
+	)
+	if !newPreservesExecutability {
+		newSnapshot = PropagateExecutability(nil, entry, newSnapshot)
+	}
+	if err != nil {
+		return errors.Wrap(err, "unable to perform accelerated scan (with re-check path)")
+	} else if !newSnapshot.Equal(snapshot) {
+		return errors.New("accelerated snapshot (with re-check paths) not equal to baseline")
+	} else if newPreservesExecutability != preservesExecutability {
+		return errors.New(
+			"accelerated snapshot (with re-check paths) differed in executability preservation behavior",
+		)
+	} else if newDecomposesUnicode != decomposesUnicode {
+		return errors.New(
+			"accelerated snapshot (with re-check paths) differed in Unicode decomposition behavior",
+		)
+	} else if newCache == nil {
+		return errors.New("nil cache returned")
+	} else if !newCache.Equal(cache) {
+		return errors.New("accelerated cache does not match baseline cache")
+	} else if !testAcceleratedCacheIsSubset(newIgnoreCache, ignoreCache) {
+		return errors.New("accelerated ignore cache does not match baseline")
+	} else if expectEqual && !newSnapshot.Equal(entry) {
+		return errors.New("snapshot not equal to expected")
+	} else if !expectEqual && newSnapshot.Equal(entry) {
 		return errors.New("snapshot should not have equaled original")
 	}
 
