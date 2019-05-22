@@ -1183,7 +1183,7 @@ func (e *endpoint) Shutdown() error {
 	// their termination since it will be almost instant and there's not any
 	// important reason to synchronize their shutdown. The worst case scenario
 	// resulting from their continued execution after a return from this
-	// function would be one cache write occuring after the creation of a new
+	// function would be one cache write occurring after the creation of a new
 	// endpoint using the same cache path, but this is extremely unlikely and
 	// not problematic if it does occur.
 	e.workerCancel()

@@ -84,7 +84,7 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	// target.
 	watchRoot := filepath.Dir(target)
 
-	// Compute the prefix that we'll use to (a) filter events to those occuring
+	// Compute the prefix that we'll use to (a) filter events to those occurring
 	// at or under the target and (b) trim off to make paths target-relative
 	// (assuming they aren't the target itself). Note that filepath.EvalSymlinks
 	// calls filepath.Clean, so target will be without a trailing slash (unless
