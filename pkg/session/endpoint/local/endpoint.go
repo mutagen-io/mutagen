@@ -100,14 +100,22 @@ type endpoint struct {
 	// then filesystem modifications are already indicated. This field is static
 	// and never closed, and is thus safe for concurrent send operations.
 	pollEvents chan struct{}
+	// recursiveWatchRetryEstablish is a channel used by Transition to signal to
+	// the recursive watching Goroutine (if any) that it should try to
+	// re-establish watching. It is a non-buffered channel, with reads only
+	// occurring when the recursive watching Goroutine is waiting to retry watch
+	// establishment and writes only occurring in a non-blocking fashion.
+	recursiveWatchRetryEstablish chan struct{}
 	// recursiveWatchReenableAcceleration is a channel used to signal the
 	// recursive watching Goroutine (if any) that acceleration has been disabled
 	// (e.g. in Transition) and that it needs to perform a re-scan before
 	// re-enabling acceleration. It is a buffered channel with a capacity of
-	// one. Senders should always perform a non-blocking send to the channel,
-	// because if it is already populated, then the need to re-enable
-	// acceleration is already indicated. This field is static and never closed,
-	// and is thus safe for concurrent send operations.
+	// one so that notifications can be registered even if the watching
+	// Goroutine is handling other events. Senders should always perform a
+	// non-blocking send to the channel, because if it is already populated,
+	// then the need to re-enable acceleration is already indicated. This field
+	// is static and never closed, and is thus safe for concurrent send
+	// operations.
 	recursiveWatchReenableAcceleration chan struct{}
 	// scanLock locks the endpoint's scan-related fields, specifically
 	// accelerateScan, snapshot, recheckPaths, hasher, cache, ignoreCache,
@@ -342,6 +350,7 @@ func NewEndpoint(
 		watchIsRecursive:                   watchIsRecursive,
 		workerCancel:                       workerCancel,
 		pollEvents:                         make(chan struct{}, 1),
+		recursiveWatchRetryEstablish:       make(chan struct{}),
 		recursiveWatchReenableAcceleration: make(chan struct{}, 1),
 		recheckPaths:                       make(map[string]bool, recheckPathsMaximumCapacity),
 		hasher:                             version.Hasher(),
@@ -488,11 +497,18 @@ WatchEstablishment:
 			// Reset the watch recreation timer (which won't be running).
 			watchRecreationTimer.Reset(pollingDuration)
 
-			// Wait for cancellation or watch recreation.
+			// Wait for cancellation or our next watch creation attempt. We also
+			// watch for notifications from Transition, telling us that it might
+			// be worth trying to re-establish the watch, because the primary
+			// reason for watch errors here is non-existence of the
+			// synchronization root.
 			select {
 			case <-context.Done():
 				return
 			case <-watchRecreationTimer.C:
+				continue
+			case <-e.recursiveWatchRetryEstablish:
+				stopAndDrainTimer(watchRecreationTimer)
 				continue
 			}
 		case <-events:
@@ -595,7 +611,11 @@ WatchEstablishment:
 				// Reset the watch recreation timer (which won't be running).
 				watchRecreationTimer.Reset(pollingDuration)
 
-				// Wait for cancellation or watch recreation.
+				// Wait for cancellation or watch recreation. Note that, unlike
+				// above, we don't watch for notifications from Transition here
+				// because watch errors here are likely due to event overflow
+				// and we're better off giving the filesystem some time to
+				// settle.
 				select {
 				case <-context.Done():
 					return
@@ -1130,6 +1150,19 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		e.decomposesUnicode,
 		e.stager,
 	)
+
+	// In case there's a recursive watching Goroutine that doesn't currently
+	// have a watch established (due to non-existence of the synchronization
+	// root), send a signal that watch establishment should be retried
+	// immediately, because Transition likely created the synchronization root
+	// in that case. If the Goroutine already has a watch established, then this
+	// is a no-op.
+	if e.watchIsRecursive {
+		select {
+		case e.recursiveWatchRetryEstablish <- struct{}{}:
+		default:
+		}
+	}
 
 	// Disable scan acceleration. It's critical to do this after a Transition
 	// operation to avoid Scan returning a pre-Transition snapshot. This can
