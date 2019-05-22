@@ -52,6 +52,30 @@ func TestEntryDirectoryEmptyContentNameInvalid(t *testing.T) {
 	}
 }
 
+func TestEntryDirectoryContentNameWithDotInvalid(t *testing.T) {
+	directory := &Entry{
+		Kind: EntryKind_Directory,
+		Contents: map[string]*Entry{
+			".": testFile1Entry,
+		},
+	}
+	if directory.EnsureValid() == nil {
+		t.Fatal("directory with empty content name considered valid")
+	}
+}
+
+func TestEntryDirectoryContentNameWithDotDotInvalid(t *testing.T) {
+	directory := &Entry{
+		Kind: EntryKind_Directory,
+		Contents: map[string]*Entry{
+			"..": testFile1Entry,
+		},
+	}
+	if directory.EnsureValid() == nil {
+		t.Fatal("directory with empty content name considered valid")
+	}
+}
+
 func TestEntryDirectoryContentNameWithPathSeparatorInvalid(t *testing.T) {
 	directory := &Entry{
 		Kind: EntryKind_Directory,

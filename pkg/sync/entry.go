@@ -30,6 +30,8 @@ func (e *Entry) EnsureValid() error {
 		for name, entry := range e.Contents {
 			if name == "" {
 				return errors.New("empty content name detected")
+			} else if name == "." || name == ".." {
+				return errors.New("dot name detected")
 			} else if strings.IndexByte(name, '/') != -1 {
 				return errors.New("content name contains path separator")
 			} else if entry == nil {
