@@ -320,6 +320,26 @@ func main() {
 		cmd.Fatal(errors.New("ignore cache mismatch"))
 	}
 
+	// Validate the snapshot.
+	start = time.Now()
+	if err := snapshot.EnsureValid(); err != nil {
+		cmd.Fatal(errors.Wrap(err, "snapshot invalid"))
+	}
+	stop = time.Now()
+	fmt.Println("Snapshot validation took", stop.Sub(start))
+
+	// Count entries.
+	start = time.Now()
+	snapshot.Count()
+	stop = time.Now()
+	fmt.Println("Snapshot entry counting took", stop.Sub(start))
+
+	// Perform a deep copy of the snapshot.
+	start = time.Now()
+	snapshot.Copy()
+	stop = time.Now()
+	fmt.Println("Snapshot copying took", stop.Sub(start))
+
 	// Serialize it.
 	if enableProfile {
 		if profiler, err = profile.New("serialize_snapshot"); err != nil {
@@ -409,18 +429,6 @@ func main() {
 	sha1.Sum(serializedSnapshot)
 	stop = time.Now()
 	fmt.Println("SHA-1 snapshot digest took", stop.Sub(start))
-
-	// Count entries.
-	start = time.Now()
-	snapshot.Count()
-	stop = time.Now()
-	fmt.Println("Snapshot entry counting took", stop.Sub(start))
-
-	// Perform a deep copy of the snapshot.
-	start = time.Now()
-	snapshot.Copy()
-	stop = time.Now()
-	fmt.Println("Snapshot copying took", stop.Sub(start))
 
 	// Serialize the cache.
 	if enableProfile {
