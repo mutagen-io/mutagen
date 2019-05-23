@@ -513,7 +513,10 @@ WatchEstablishment:
 				stopAndDrainTimer(watchRecreationTimer)
 				continue
 			}
-		case <-events:
+		case path := <-events:
+			if path != "" {
+				panic("watch initialization path non-empty")
+			}
 		}
 
 		// Now that the watch has been successfully established, strobe the poll
