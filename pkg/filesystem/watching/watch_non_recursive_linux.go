@@ -116,7 +116,7 @@ func NewNonRecursiveMRUWatcher(events chan string, maximumWatches int) (*NonRecu
 		} else {
 			if err := watcher.Unwatch(path); err != nil {
 				select {
-				case watchErrors <- err:
+				case watchErrors <- errors.Wrap(err, "unwatch error"):
 				default:
 				}
 			}
