@@ -24,8 +24,8 @@ type Server struct {
 	// just bounce off once the channel is populated. We do this, instead of
 	// closing the channel, because we can't close the channel multiple times.
 	Termination chan struct{}
-	// context is the context regulating the server's internal operations.
-	context context.Context
+	// workerContext is the context regulating the server's internal operations.
+	workerContext context.Context
 	// shutdown is the context cancellation function for the server's internal
 	// operation context.
 	shutdown context.CancelFunc
@@ -34,13 +34,13 @@ type Server struct {
 // NewServer creates an instance of the daemon server.
 func NewServer() *Server {
 	// Create a cancellable context for daemon background operations.
-	context, shutdown := context.WithCancel(context.Background())
+	workerContext, shutdown := context.WithCancel(context.Background())
 
 	// Create the server.
 	server := &Server{
-		Termination: make(chan struct{}, 1),
-		context:     context,
-		shutdown:    shutdown,
+		Termination:   make(chan struct{}, 1),
+		workerContext: workerContext,
+		shutdown:      shutdown,
 	}
 
 	// Start the housekeeping Goroutine.
@@ -63,7 +63,7 @@ func (s *Server) housekeep() {
 	// Loop and wait for the ticker or cancellation.
 	for {
 		select {
-		case <-s.context.Done():
+		case <-s.workerContext.Done():
 			return
 		case <-ticker.C:
 			housekeeping.Housekeep()
