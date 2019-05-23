@@ -104,7 +104,9 @@ type endpoint struct {
 	// the recursive watching Goroutine (if any) that it should try to
 	// re-establish watching. It is a non-buffered channel, with reads only
 	// occurring when the recursive watching Goroutine is waiting to retry watch
-	// establishment and writes only occurring in a non-blocking fashion.
+	// establishment and writes only occurring in a non-blocking fashion. This
+	// field is static and never closed, and is thus safe for concurrent send
+	// operations.
 	recursiveWatchRetryEstablish chan struct{}
 	// recursiveWatchReenableAcceleration is a channel used to signal the
 	// recursive watching Goroutine (if any) that acceleration has been disabled
