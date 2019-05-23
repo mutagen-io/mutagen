@@ -692,7 +692,6 @@ func (e *endpoint) watchPoll(
 	// watching infrastructure.
 	var nonRecursiveWatchEvents chan string
 	var nonRecursiveWatcher *watching.NonRecursiveMRUWatcher
-	var err error
 	var nonRecursiveWatcherErrors chan error
 	var coalescingTimer *time.Timer
 	var coalescingTimerEvents <-chan time.Time
@@ -702,6 +701,7 @@ func (e *endpoint) watchPoll(
 
 		// Attempt to create the watcher. If this fails, we simply avoid using
 		// native watching.
+		var err error
 		nonRecursiveWatcher, err = watching.NewNonRecursiveMRUWatcher(nonRecursiveWatchEvents, 0)
 		if err == nil {
 			// Extract the watcher's errors channel.
