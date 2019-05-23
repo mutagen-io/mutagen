@@ -136,7 +136,8 @@ func NewNonRecursiveMRUWatcher(events chan string, maximumWatches int) (*NonRecu
 // through the errors channel.
 func (w *NonRecursiveMRUWatcher) Watch(path string) {
 	// If this path is already watched, then evict it first so that we can
-	// establish a clean watch.
+	// establish a clean watch and so that the new watch becomes the
+	// most-recently-added record in the evictor.
 	if _, ok := w.evictor.Get(path); ok {
 		w.evictor.Remove(path)
 	}
