@@ -769,6 +769,7 @@ func (e *endpoint) watchPoll(
 				nonRecursiveWatcher.Stop()
 				nonRecursiveWatcher = nil
 				nonRecursiveWatcherErrors = nil
+				continue
 			case <-nonRecursiveWatchEvents:
 				// Reset the coalescing timer (which may or may not be running)
 				// and continue. Once it fires, we'll perform a rescan.
