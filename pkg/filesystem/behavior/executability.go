@@ -31,7 +31,8 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 	// enforce that the fast path was used. There is some code below, namely the
 	// use of os.File's Chmod method (and possibly the os.File's Stat method,
 	// which may be racey on Windows), that won't work on Windows (though it
-	// could possibly be adapted in case we add a force-probe probe mode).
+	// could possibly be adapted in case we add a force-probe probe mode), which
+	// is why we require that the fast path succeeds on Windows.
 	if result, ok := probeExecutabilityPreservationFastByPath(path); ok {
 		return result, nil
 	} else if runtime.GOOS == "windows" {
@@ -84,7 +85,8 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// enforce that the fast path was used. There is some code below, namely the
 	// use of os.File's Chmod method (and possibly the os.File's Stat method,
 	// which may be racey on Windows), that won't work on Windows (though it
-	// could possibly be adapted in case we add a force-probe probe mode).
+	// could possibly be adapted in case we add a force-probe probe mode), which
+	// is why we require that the fast path succeeds on Windows.
 	if result, ok := probeExecutabilityPreservationFast(directory); ok {
 		return result, nil
 	} else if runtime.GOOS == "windows" {
