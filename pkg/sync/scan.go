@@ -478,7 +478,7 @@ func Scan(
 	// that we add any re-check path as well as any parent component of any
 	// re-check path.
 	var dirtyPaths map[string]bool
-	if len(recheckPaths) > 0 {
+	if baseline != nil && len(recheckPaths) > 0 {
 		dirtyPaths = make(map[string]bool)
 		for path := range recheckPaths {
 			for {
