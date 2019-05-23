@@ -265,20 +265,20 @@ func (s *scanner) directory(
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, contentMetadata := range directoryContents {
 		// Extract the content name.
-		name := contentMetadata.Name
+		contentName := contentMetadata.Name
 
 		// If this is an intermediate temporary file, then ignore it.
-		if filesystem.IsTemporaryFileName(name) {
+		if filesystem.IsTemporaryFileName(contentName) {
 			continue
 		}
 
 		// Recompose Unicode in the content name if necessary.
 		if s.recomposeUnicode {
-			name = norm.NFC.String(name)
+			contentName = norm.NFC.String(contentName)
 		}
 
 		// Compute the content path.
-		contentPath := pathJoin(path, name)
+		contentPath := pathJoin(path, contentName)
 
 		// Compute the kind for this content, skipping if unsupported.
 		var contentKind EntryKind
@@ -311,7 +311,7 @@ func (s *scanner) directory(
 		// that as a baseline for the content.
 		var contentBaseline *Entry
 		if baseline != nil {
-			contentBaseline = baseline.Contents[name]
+			contentBaseline = baseline.Contents[contentName]
 			if contentBaseline != nil && contentBaseline.Kind != contentKind {
 				contentBaseline = nil
 			}
@@ -322,7 +322,7 @@ func (s *scanner) directory(
 		// directly.
 		if contentBaseline != nil {
 			if _, contentDirty := s.dirtyPaths[contentPath]; !contentDirty {
-				contents[name] = contentBaseline
+				contents[contentName] = contentBaseline
 				continue
 			}
 		}
@@ -334,11 +334,11 @@ func (s *scanner) directory(
 			entry, err = s.file(contentPath, directory, contentMetadata, nil)
 		} else if contentKind == EntryKind_Symlink {
 			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
-				entry, err = s.symbolicLink(contentPath, directory, name, true)
+				entry, err = s.symbolicLink(contentPath, directory, contentName, true)
 			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
 				continue
 			} else if s.symlinkMode == SymlinkMode_SymlinkModePOSIXRaw {
-				entry, err = s.symbolicLink(contentPath, directory, name, false)
+				entry, err = s.symbolicLink(contentPath, directory, contentName, false)
 			} else {
 				panic("unsupported symlink mode")
 			}
@@ -354,7 +354,7 @@ func (s *scanner) directory(
 		}
 
 		// Add the content.
-		contents[name] = entry
+		contents[contentName] = entry
 	}
 
 	// Success.
