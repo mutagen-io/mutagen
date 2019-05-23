@@ -76,6 +76,8 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	volumeName := filepath.VolumeName(target)
 	if volumeName == "" {
 		return errors.New("resolved target missing volume name")
+	} else if len(target) <= len(volumeName) {
+		return errors.New("target shorter than or composed only of volume name")
 	} else if target[len(volumeName)] != '\\' {
 		return errors.New("resolved target has invalid format")
 	}
