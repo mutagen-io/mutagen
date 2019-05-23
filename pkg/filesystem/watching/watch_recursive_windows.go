@@ -173,21 +173,16 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 			// Extract the path.
 			path := event.Name
 
-			// If the path isn't the target or a child of the target, then
-			// ignore it.
-			if path != target && !strings.HasPrefix(path, eventPathTrimPrefix) {
-				continue
-			}
-
 			// Convert the event path to be target-relative and replace
-			// backslashes with forward slashes.
+			// backslashes with forward slashes. If the path isn't the target or
+			// a child of the target, then we ignore it.
 			if path == target {
 				path = ""
 			} else if strings.HasPrefix(path, eventPathTrimPrefix) {
 				path = path[len(eventPathTrimPrefix):]
 				path = strings.ReplaceAll(path, "\\", "/")
 			} else {
-				return errors.New("event path is not watch target and does not have expected prefix")
+				continue
 			}
 
 			// Forward the path.
