@@ -14,6 +14,11 @@ const (
 	// maxUint64Description is a human-friendly mathematic description of
 	// math.MaxUint64.
 	maxUint64Description = "2⁶⁴−1"
+
+	// emptyLabelValueDescription is a human-friendly description representing
+	// an empty label value. It contains characters which are invalid for use in
+	// label values, so it won't be confused for one.
+	emptyLabelValueDescription = "<empty>"
 )
 
 func printEndpoint(name string, url *urlpkg.URL, configuration *sessionpkg.Configuration, version sessionpkg.Version) {
@@ -199,7 +204,11 @@ func printSession(state *sessionpkg.State, long bool) {
 			fmt.Println("\tLabels:")
 			keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
 			for _, key := range keys {
-				fmt.Printf("\t\t%s: %s\n", key, state.Session.Labels[key])
+				value := state.Session.Labels[key]
+				if value == "" {
+					value = emptyLabelValueDescription
+				}
+				fmt.Printf("\t\t%s: %s\n", key, value)
 			}
 		} else {
 			fmt.Println("\tLabels: None")
