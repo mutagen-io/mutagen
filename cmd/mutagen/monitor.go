@@ -110,13 +110,6 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			return errors.Wrap(err, "invalid list response received")
 		}
 
-		// Validate the list response contents.
-		for _, s := range response.SessionStates {
-			if err = s.EnsureValid(); err != nil {
-				return errors.Wrap(err, "invalid session state detected in response")
-			}
-		}
-
 		// Validate the response and extract the relevant session state. If no
 		// session has been specified and it's our first time through the loop,
 		// identify the most recently created session.

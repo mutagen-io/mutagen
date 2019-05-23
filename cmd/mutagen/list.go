@@ -150,13 +150,6 @@ func listMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "invalid list response received")
 	}
 
-	// Validate the list response contents.
-	for _, s := range response.SessionStates {
-		if err = s.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid session state detected in response")
-		}
-	}
-
 	// Loop through and print sessions.
 	for _, state := range response.SessionStates {
 		fmt.Println(delimiterLine)
