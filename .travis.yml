@@ -7,10 +7,12 @@ matrix:
     - os: osx
       osx_image: xcode9.4
       env:
+        - GO111MODULE=on
         - MUTAGEN_TEST_END_TO_END=full
         - MUTAGEN_TEST_SSH=true
     - os: linux
       env:
+        - GO111MODULE=on
         - MUTAGEN_TEST_END_TO_END=full
         - MUTAGEN_TEST_SSH=true
         - MUTAGEN_TEST_DOCKER=true
