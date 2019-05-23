@@ -268,7 +268,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Validate default file owner owner specifications.
 	if createConfiguration.defaultOwner != "" {
-		if kind, _ := filesystem.ParseOwnershipIdentifier(createConfiguration.defaultOwner); kind == filesystem.OwnershipIdentifierKindInvalid {
+		if kind, _ := filesystem.ParseOwnershipIdentifier(
+			createConfiguration.defaultOwner,
+		); kind == filesystem.OwnershipIdentifierKindInvalid {
 			return errors.New("invalid ownership specification")
 		}
 	}
