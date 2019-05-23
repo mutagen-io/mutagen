@@ -508,10 +508,10 @@ WatchEstablishment:
 			case <-context.Done():
 				return
 			case <-watchRecreationTimer.C:
-				continue
+				continue WatchEstablishment
 			case <-e.recursiveWatchRetryEstablish:
 				stopAndDrainTimer(watchRecreationTimer)
-				continue
+				continue WatchEstablishment
 			}
 		case path := <-events:
 			if path != "" {
@@ -537,6 +537,7 @@ WatchEstablishment:
 		scanTimer.Reset(0)
 
 		// Loop and process events.
+	EventProcessing:
 		for {
 			select {
 			case <-context.Done():
@@ -546,7 +547,7 @@ WatchEstablishment:
 				// need to perform a baseline scan, so we can just continue
 				// watching.
 				if !e.accelerationAllowed {
-					continue
+					continue EventProcessing
 				}
 
 				// Attempt to perform a full (warm) baseline scan. If this
@@ -566,7 +567,7 @@ WatchEstablishment:
 				// If acceleration isn't allowed on the endpoint, then we don't
 				// need to re-enable it, so we can just continue watching.
 				if !e.accelerationAllowed {
-					continue
+					continue EventProcessing
 				}
 
 				// It's possible that the scan timer is running (e.g. if we
@@ -633,7 +634,7 @@ WatchEstablishment:
 				// recursive watchers generate synchronization-root-relative
 				// paths.
 				if filesystem.IsTemporaryFileName(sync.PathBase(path)) {
-					continue
+					continue EventProcessing
 				}
 
 				// If acceleration is allowed on the endpoint, then register the
