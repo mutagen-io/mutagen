@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"os"
 	"github.com/havoc-io/mutagen/pkg/process"
 )
 
@@ -9,8 +10,9 @@ import (
 var commandSearchPaths = []string{
 	// TODO: Add the PowerShell OpenSSH paths at the top of this list once
 	// there's a usable release.
-	`C:\Program Files\Git\usr\bin`,
-	`C:\Program Files (x86)\Git\usr\bin`,
+	os.ExpandEnv(`${SystemRoot}\system32\OpenSSH`),
+	os.ExpandEnv(`${ProgramFiles}\Git\usr\bin`),
+	os.ExpandEnv(`${ProgramFiles(x86)}\Git\usr\bin`),
 	`C:\msys32\usr\bin`,
 	`C:\msys64\usr\bin`,
 	`C:\cygwin\bin`,
