@@ -201,17 +201,17 @@ func printSession(state *sessionpkg.State, long bool) {
 
 		// Print labels.
 		if len(state.Session.Labels) > 0 {
-			fmt.Println("\tLabels:")
+			fmt.Println("Labels:")
 			keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
 			for _, key := range keys {
 				value := state.Session.Labels[key]
 				if value == "" {
 					value = emptyLabelValueDescription
 				}
-				fmt.Printf("\t\t%s: %s\n", key, value)
+				fmt.Printf("\t%s: %s\n", key, value)
 			}
 		} else {
-			fmt.Println("\tLabels: None")
+			fmt.Println("Labels: None")
 		}
 	}
 }
