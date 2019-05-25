@@ -105,6 +105,21 @@ func printSession(state *sessionpkg.State, long bool) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
 
+	// Print labels.
+	if len(state.Session.Labels) > 0 {
+		fmt.Println("Labels:")
+		keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
+		for _, key := range keys {
+			value := state.Session.Labels[key]
+			if value == "" {
+				value = emptyLabelValueDescription
+			}
+			fmt.Printf("\t%s: %s\n", key, value)
+		}
+	} else {
+		fmt.Println("Labels: None")
+	}
+
 	// Print extended information, if desired.
 	if long {
 		// Print the configuration header.
@@ -198,20 +213,5 @@ func printSession(state *sessionpkg.State, long bool) {
 			state.Session.ConfigurationBeta,
 		)
 		printEndpoint("Beta", state.Session.Beta, betaConfigurationMerged, state.Session.Version)
-
-		// Print labels.
-		if len(state.Session.Labels) > 0 {
-			fmt.Println("Labels:")
-			keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
-			for _, key := range keys {
-				value := state.Session.Labels[key]
-				if value == "" {
-					value = emptyLabelValueDescription
-				}
-				fmt.Printf("\t%s: %s\n", key, value)
-			}
-		} else {
-			fmt.Println("Labels: None")
-		}
 	}
 }
