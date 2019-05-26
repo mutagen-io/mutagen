@@ -8,14 +8,12 @@ import (
 	"github.com/havoc-io/gopass"
 )
 
-// PromptCommandLine performs prompting on the command line.
-func PromptCommandLine(prompt string) (string, error) {
-	// Classify the prompt.
-	class := Classify(prompt)
-
+// PromptCommandLineWithMode performs command line prompting using the specified
+// response mode.
+func PromptCommandLineWithResponseMode(prompt string, mode ResponseMode) (string, error) {
 	// Figure out which getter to use.
 	var getter func() ([]byte, error)
-	if class == PromptKindEcho || class == PromptKindBinary {
+	if mode == ResponseModeEcho || mode == ResponseModeBinary {
 		getter = gopass.GetPasswdEchoed
 	} else {
 		getter = gopass.GetPasswd
@@ -32,4 +30,10 @@ func PromptCommandLine(prompt string) (string, error) {
 
 	// Success.
 	return string(result), nil
+}
+
+// PromptCommandLine performs command line prompting using an automatically
+// determined response mode.
+func PromptCommandLine(prompt string) (string, error) {
+	return PromptCommandLineWithResponseMode(prompt, determineResponseMode(prompt))
 }
