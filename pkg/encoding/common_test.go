@@ -31,15 +31,15 @@ const (
 // TestLoadAndUnmarshalNonExistentPath tests that loading fails from a
 // non-existent path.
 func TestLoadAndUnmarshalNonExistentPath(t *testing.T) {
-	if !os.IsNotExist(loadAndUnmarshal("/this/does/not/exist", nil)) {
-		t.Error("expected loadAndUnmarshal to pass through non-existence errors")
+	if !os.IsNotExist(LoadAndUnmarshal("/this/does/not/exist", nil)) {
+		t.Error("expected LoadAndUnmarshal to pass through non-existence errors")
 	}
 }
 
 // TestLoadAndUnmarshalDirectory tests that loading fails from a directory.
 func TestLoadAndUnmarshalDirectory(t *testing.T) {
-	if loadAndUnmarshal(filesystem.HomeDirectory, nil) == nil {
-		t.Error("expected loadAndUnmarshal error when loading directory")
+	if LoadAndUnmarshal(filesystem.HomeDirectory, nil) == nil {
+		t.Error("expected LoadAndUnmarshal error when loading directory")
 	}
 }
 
@@ -61,8 +61,8 @@ func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
 	}
 
 	// Attempt to load and unmarshal using a broken unmarshaling function.
-	if loadAndUnmarshal(file.Name(), unmarshal) == nil {
-		t.Error("expected loadAndUnmarshal to return an error")
+	if LoadAndUnmarshal(file.Name(), unmarshal) == nil {
+		t.Error("expected LoadAndUnmarshal to return an error")
 	}
 }
 
@@ -86,8 +86,8 @@ func TestLoadAndUnmarshal(t *testing.T) {
 	}
 
 	// Attempt to load and unmarshal.
-	if err := loadAndUnmarshal(file.Name(), unmarshal); err != nil {
-		t.Fatal("loadAndUnmarshal failed:", err)
+	if err := LoadAndUnmarshal(file.Name(), unmarshal); err != nil {
+		t.Fatal("LoadAndUnmarshal failed:", err)
 	}
 
 	// Verify test value names.
@@ -117,8 +117,8 @@ func TestMarshalAndSaveMarshalFail(t *testing.T) {
 	}
 
 	// Attempt to marshal and save using a broken unmarshaling function.
-	if marshalAndSave(file.Name(), marshal) == nil {
-		t.Error("expected marshalAndSave to return an error")
+	if MarshalAndSave(file.Name(), marshal) == nil {
+		t.Error("expected MarshalAndSave to return an error")
 	}
 }
 
@@ -137,8 +137,8 @@ func TestMarshalAndSaveInvalidPath(t *testing.T) {
 	}
 
 	// Attempt to marshal and save using an invalid path.
-	if marshalAndSave(directory, marshal) == nil {
-		t.Error("expected marshalAndSave to return an error")
+	if MarshalAndSave(directory, marshal) == nil {
+		t.Error("expected MarshalAndSave to return an error")
 	}
 }
 
@@ -160,8 +160,8 @@ func TestMarshalAndSave(t *testing.T) {
 	}
 
 	// Attempt to marshal and save.
-	if err := marshalAndSave(file.Name(), marshal); err != nil {
-		t.Fatal("marshalAndSave failed:", err)
+	if err := MarshalAndSave(file.Name(), marshal); err != nil {
+		t.Fatal("MarshalAndSave failed:", err)
 	}
 
 	// Read the contents of the file and ensure they match what's expected.
