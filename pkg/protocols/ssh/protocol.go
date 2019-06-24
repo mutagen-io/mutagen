@@ -26,7 +26,10 @@ func (h *protocolHandler) Dial(
 	}
 
 	// Create a transport for the agent to use.
-	transport := &transport{url, prompter}
+	transport := &transport{
+		remote:   url,
+		prompter: prompter,
+	}
 
 	// Dial using the agent package with an SSH transport.
 	return agent.Dial(transport, prompter, url.Path, session, version, configuration, alpha)

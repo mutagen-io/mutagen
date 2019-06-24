@@ -17,14 +17,14 @@ var commandSearchPaths = []string{
 	`C:\cygwin64\bin`,
 }
 
-// sshCommandForPlatform will search for a suitable ssh command implementation
+// sshCommandNameOrPathForPlatform will search for a suitable ssh command implementation
 // on Windows.
-func sshCommandForPlatform() (string, error) {
+func sshCommandNameOrPathForPlatform() (string, error) {
 	return process.FindCommand("ssh", commandSearchPaths)
 }
 
-// scpCommandForPlatform will search for a suitable scp command implementation
+// scpCommandNameOrPathForPlatform will search for a suitable scp command implementation
 // on Windows.
-func scpCommandForPlatform() (string, error) {
+func scpCommandNameOrPathForPlatform() (string, error) {
 	return process.FindCommand("scp", commandSearchPaths)
 }

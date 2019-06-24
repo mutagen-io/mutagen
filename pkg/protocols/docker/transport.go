@@ -11,6 +11,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/tools/docker"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -25,8 +26,6 @@ Would you like to continue? (yes/no)? `
 
 // transport implements the agent.Transport interface using Docker.
 type transport struct {
-	// dockerExecutable is the name of or path to the docker executable.
-	dockerExecutable string
 	// remote is the endpoint URL.
 	remote *url.URL
 	// prompter is the prompter identifier to use for prompting.
@@ -55,27 +54,11 @@ type transport struct {
 	containerProbeError error
 }
 
-// newTransport creates a new Docker transport.
-func newTransport(remote *url.URL, prompter string) (*transport, error) {
-	// Identify the name of or path to the Docker executable.
-	dockerExecutable, err := dockerCommand()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to locate docker executable")
-	}
-
-	// Success.
-	return &transport{
-		dockerExecutable: dockerExecutable,
-		remote:           remote,
-		prompter:         prompter,
-	}, nil
-}
-
 // command is an underlying command generation function that allows
 // specification of the working directory inside the container, as well as an
 // override of the executing user. An empty user specification means to use the
 // username specified in the remote URL, if any.
-func (t *transport) command(command, workingDirectory, user string) *exec.Cmd {
+func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, error) {
 	// Tell Docker that we want to execute a command in an interactive (i.e.
 	// with standard input attached) fashion.
 	dockerArguments := []string{"exec", "--interactive"}
@@ -105,7 +88,10 @@ func (t *transport) command(command, workingDirectory, user string) *exec.Cmd {
 	dockerArguments = append(dockerArguments, strings.Split(command, " ")...)
 
 	// Create the command.
-	dockerCommand := exec.Command(t.dockerExecutable, dockerArguments...)
+	dockerCommand, err := docker.Command(nil, dockerArguments...)
+	if err != nil {
+		return nil, err
+	}
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -120,7 +106,7 @@ func (t *transport) command(command, workingDirectory, user string) *exec.Cmd {
 	dockerCommand.Env = environment
 
 	// Done.
-	return dockerCommand
+	return dockerCommand, nil
 }
 
 // probeContainer ensures that the containerIsWindows and containerHomeDirectory
@@ -148,7 +134,9 @@ func (t *transport) probeContainer() error {
 	// POSIX systems and identify the HOME environment variable value. If we
 	// detect a non-UTF-8 output or detect an empty home directory, we treat
 	// that as an error.
-	if envBytes, err := t.command("env", "", "").Output(); err == nil {
+	if command, err := t.command("env", "", ""); err != nil {
+		return errors.Wrap(err, "unable to set up Docker invocation")
+	} else if envBytes, err := command.Output(); err == nil {
 		if !utf8.Valid(envBytes) {
 			t.containerProbeError = errors.New("non-UTF-8 POSIX environment")
 			return t.containerProbeError
@@ -166,7 +154,9 @@ func (t *transport) probeContainer() error {
 	// If we didn't find a POSIX home directory, attempt to a similar procedure
 	// on Windows to identify the USERPROFILE environment variable.
 	if home == "" {
-		if envBytes, err := t.command("cmd /c set", "", "").Output(); err == nil {
+		if command, err := t.command("cmd /c set", "", ""); err != nil {
+			return errors.Wrap(err, "unable to set up Docker invocation")
+		} else if envBytes, err := command.Output(); err == nil {
 			if !utf8.Valid(envBytes) {
 				t.containerProbeError = errors.New("non-UTF-8 Windows environment")
 				return t.containerProbeError
@@ -208,7 +198,9 @@ func (t *transport) probeContainer() error {
 	var username, group string
 	if !windows {
 		// Query username.
-		if usernameBytes, err := t.command("id -un", "", "").Output(); err != nil {
+		if command, err := t.command("id -un", "", ""); err != nil {
+			return errors.Wrap(err, "unable to set up Docker invocation")
+		} else if usernameBytes, err := command.Output(); err != nil {
 			t.containerProbeError = errors.New("unable to probe POSIX username")
 			return t.containerProbeError
 		} else if !utf8.Valid(usernameBytes) {
@@ -225,7 +217,9 @@ func (t *transport) probeContainer() error {
 		}
 
 		// Query default group name.
-		if groupBytes, err := t.command("id -gn", "", "").Output(); err != nil {
+		if command, err := t.command("id -gn", "", ""); err != nil {
+			return errors.Wrap(err, "unable to set up Docker invocation")
+		} else if groupBytes, err := command.Output(); err != nil {
 			t.containerProbeError = errors.New("unable to probe POSIX group name")
 			return t.containerProbeError
 		} else if !utf8.Valid(groupBytes) {
@@ -259,7 +253,10 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	}
 
 	// Create the command.
-	dockerCommand := exec.Command(t.dockerExecutable, operation, t.remote.Hostname)
+	dockerCommand, err := docker.Command(nil, operation, t.remote.Hostname)
+	if err != nil {
+		return errors.Wrap(err, "unable to set up Docker invocation")
+	}
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -327,7 +324,10 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	}
 
 	// Create the command.
-	dockerCommand := exec.Command(t.dockerExecutable, "cp", localPath, containerPath)
+	dockerCommand, err := docker.Command(nil, "cp", localPath, containerPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to set up Docker invocation")
+	}
 
 	// Force it to run detached.
 	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
@@ -375,7 +375,9 @@ func (t *transport) Copy(localPath, remoteName string) error {
 			t.containerUserGroup,
 			remoteName,
 		)
-		if err := t.command(chownCommand, t.containerHomeDirectory, "root").Run(); err != nil {
+		if command, err := t.command(chownCommand, t.containerHomeDirectory, "root"); err != nil {
+			return errors.Wrap(err, "unable to set up Docker invocation")
+		} else if err := command.Run(); err != nil {
 			return errors.Wrap(err, "unable to set ownership of copied file")
 		}
 	}
@@ -400,7 +402,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	}
 
 	// Generate the command.
-	return t.command(command, t.containerHomeDirectory, ""), nil
+	return t.command(command, t.containerHomeDirectory, "")
 }
 
 // ClassifyError implements the ClassifyError method of agent.Transport.

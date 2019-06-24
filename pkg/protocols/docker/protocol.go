@@ -1,8 +1,6 @@
 package docker
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/session"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
@@ -28,9 +26,9 @@ func (h *protocolHandler) Dial(
 	}
 
 	// Create a transport for the agent to use.
-	transport, err := newTransport(url, prompter)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create Docker transport")
+	transport := &transport{
+		remote:   url,
+		prompter: prompter,
 	}
 
 	// Dial using the agent package with a Docker transport.

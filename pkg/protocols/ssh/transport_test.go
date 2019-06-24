@@ -14,22 +14,6 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
-func TestSCPCommand(t *testing.T) {
-	if commandName, err := scpCommand(); err != nil {
-		t.Fatal("unable to locate SCP command:", err)
-	} else if commandName == "" {
-		t.Error("SCP command name is empty")
-	}
-}
-
-func TestSSHCommand(t *testing.T) {
-	if commandName, err := sshCommand(); err != nil {
-		t.Fatal("unable to locate SSH command:", err)
-	} else if commandName == "" {
-		t.Error("SSH command name is empty")
-	}
-}
-
 func TestCopy(t *testing.T) {
 	// If localhost SSH support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_SSH") != "true" {

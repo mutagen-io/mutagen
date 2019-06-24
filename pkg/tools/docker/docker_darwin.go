@@ -12,9 +12,9 @@ var commandSearchPaths = []string{
 	"/usr/local/bin",
 }
 
-// dockerCommandForPlatform will search for a suitable docker command
+// commandNameOrPathForPlatform will search for a suitable docker command
 // implementation on macOS.
-func dockerCommandForPlatform() (string, error) {
+func commandNameOrPathForPlatform() (string, error) {
 	// First, attempt to find the docker executable using the PATH environment
 	// variable. If that works, use that result.
 	if path, err := exec.LookPath("docker"); err == nil {
