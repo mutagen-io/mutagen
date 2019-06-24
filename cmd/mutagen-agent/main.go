@@ -19,7 +19,7 @@ func rootMain(command *cobra.Command, arguments []string) error {
 
 var rootCommand = &cobra.Command{
 	Use:          "mutagen-agent",
-	Short:        "The Mutagen agent should not be invoked by human beings.",
+	Short:        "The Mutagen agent should not be invoked by human beings",
 	RunE:         rootMain,
 	SilenceUsage: true,
 }

@@ -29,7 +29,7 @@ func rootMain(command *cobra.Command, arguments []string) error {
 
 var rootCommand = &cobra.Command{
 	Use:          "mutagen",
-	Short:        "Mutagen provides simple, continuous, bi-directional file synchronization.",
+	Short:        "Mutagen is a remote development tool built on high-performance synchronization",
 	RunE:         rootMain,
 	SilenceUsage: true,
 }
