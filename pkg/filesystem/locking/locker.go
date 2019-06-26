@@ -22,3 +22,10 @@ func NewLocker(path string, permissions os.FileMode) (*Locker, error) {
 		return &Locker{file: file}, nil
 	}
 }
+
+// Close closes the file underlying the locker. This will release any lock held
+// on the file and disable future locking. On POSIX platforms, this also
+// releases other locks held on the same file.
+func (l *Locker) Close() error {
+	return l.file.Close()
+}

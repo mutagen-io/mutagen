@@ -40,11 +40,11 @@ func testMainInternal(m *testing.M) (int, error) {
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
 	// Acquire the daemon lock and defer its release.
-	lock, err := daemon.AcquireLock()
+	locker, err := daemon.AcquireLock()
 	if err != nil {
 		return -1, errors.Wrap(err, "unable to acquire daemon lock")
 	}
-	defer lock.Unlock()
+	defer locker.Close()
 
 	// Create a session manager and defer its shutdown. Note that we assign to
 	// the global instance here.

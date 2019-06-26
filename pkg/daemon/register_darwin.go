@@ -76,11 +76,11 @@ func Register() error {
 	// and stop mechanism depending on whether or not we're registered, so we
 	// need to make sure we don't try to stop a daemon started using a different
 	// mechanism.
-	lock, err := AcquireLock()
+	locker, err := AcquireLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer lock.Unlock()
+	defer locker.Close()
 
 	// Ensure the user's Library directory exists.
 	targetPath := filepath.Join(filesystem.HomeDirectory, libraryDirectoryName)
@@ -126,11 +126,11 @@ func Unregister() error {
 	// and stop mechanism depending on whether or not we're registered, so we
 	// need to make sure we don't try to stop a daemon started using a different
 	// mechanism.
-	lock, err := AcquireLock()
+	locker, err := AcquireLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer lock.Unlock()
+	defer locker.Close()
 
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(

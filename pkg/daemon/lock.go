@@ -12,17 +12,9 @@ const (
 	lockName = "daemon.lock"
 )
 
-// Lock represents a daemon lock instance.
-type Lock struct {
-	// locker is the daemon file lock, uniquely held by a single daemon
-	// instance. Because the locking semantics vary by platform, hosting
-	// processes should only attempt to create a single daemon lock at a time.
-	locker *locking.Locker
-}
-
-// AcquireLock attempts to acquire the daemon lock. It is the only way to
-// acquire a Lock instance.
-func AcquireLock() (*Lock, error) {
+// AcquireLock is a convenience function which attempts to acquire the daemon
+// lock and returns a locked file locker.
+func AcquireLock() (*locking.Locker, error) {
 	// Compute the lock path.
 	lockPath, err := subpath(lockName)
 	if err != nil {
@@ -34,16 +26,10 @@ func AcquireLock() (*Lock, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create daemon locker")
 	} else if err = locker.Lock(false); err != nil {
+		locker.Close()
 		return nil, err
 	}
 
-	// Create the lock.
-	return &Lock{
-		locker: locker,
-	}, nil
-}
-
-// Unlock releases the daemon lock.
-func (l *Lock) Unlock() error {
-	return l.locker.Unlock()
+	// Success.
+	return locker, nil
 }

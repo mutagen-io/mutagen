@@ -33,11 +33,12 @@ func TestLockerCycle(t *testing.T) {
 	// TODO: Add a test for cases where the file doesn't already exist. Need to
 	// make sure this doesn't conflict with test files created in parallel.
 
-	// Create a locker.
+	// Create a locker and defer its closure.
 	locker, err := NewLocker(lockfile.Name(), 0600)
 	if err != nil {
 		t.Fatal("unable to create locker:", err)
 	}
+	defer locker.Close()
 
 	// Attempt to acquire the lock.
 	if err := locker.Lock(true); err != nil {

@@ -29,11 +29,11 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 	// crash, the lock will be released by the OS automatically, but on Windows
 	// this may only happen after some unspecified period of time (though it
 	// does seem to be basically instant).
-	lock, err := daemon.AcquireLock()
+	locker, err := daemon.AcquireLock()
 	if err != nil {
 		return errors.Wrap(err, "unable to acquire daemon lock")
 	}
-	defer lock.Unlock()
+	defer locker.Close()
 
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate

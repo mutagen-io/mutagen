@@ -24,13 +24,13 @@ const (
 // TestLockCycle tests an acquisition/release cycle of the daemon lock.
 func TestLockCycle(t *testing.T) {
 	// Attempt to acquire the daemon lock.
-	lock, err := AcquireLock()
+	locker, err := AcquireLock()
 	if err != nil {
 		t.Fatal("unable to acquire lock:", err)
 	}
 
 	// Release the lock.
-	if err := lock.Unlock(); err != nil {
+	if err := locker.Close(); err != nil {
 		t.Fatal("unable to release lock:", err)
 	}
 }
@@ -45,11 +45,11 @@ func TestLockDuplicateFail(t *testing.T) {
 	}
 
 	// Acquire the daemon lock and defer its release.
-	lock, err := AcquireLock()
+	locker, err := AcquireLock()
 	if err != nil {
 		t.Fatal("unable to acquire lock:", err)
 	}
-	defer lock.Unlock()
+	defer locker.Close()
 
 	// Attempt to run the test executable and ensure that it fails with the
 	// proper error code (indicating failed lock acquisition).
