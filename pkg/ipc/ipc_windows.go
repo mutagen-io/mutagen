@@ -1,4 +1,4 @@
-package daemon
+package ipc
 
 import (
 	"fmt"
@@ -17,24 +17,11 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
-const (
-	// pipeNameRecordName is the name of the file in which the named pipe name
-	// is stored. It resides within the daemon subdirectory of the Mutagen
-	// directory.
-	pipeNameRecordName = "daemon.pipe"
-)
-
-// DialTimeout attempts to establish a daemon IPC connection, timing out after
-// the specified duration.
-func DialTimeout(timeout time.Duration) (net.Conn, error) {
-	// Compute the path to the pipe name record.
-	pipeNameRecordPath, err := subpath(pipeNameRecordName)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute pipe name record path")
-	}
-
+// DialTimeout attempts to establish an IPC connection, timing out after the
+// specified duration.
+func DialTimeout(path string, timeout time.Duration) (net.Conn, error) {
 	// Read the pipe name.
-	pipeNameBytes, err := ioutil.ReadFile(pipeNameRecordPath)
+	pipeNameBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read pipe name")
 	}
@@ -53,42 +40,37 @@ func DialTimeout(timeout time.Duration) (net.Conn, error) {
 	return winio.DialPipe(pipeName, timeoutPointer)
 }
 
-// daemonListener implements net.Listener but provides additional cleanup
-// facilities on top of those provided by the underlying named pipe listener.
-type daemonListener struct {
+// listener implements net.Listener but provides additional cleanup facilities
+// on top of those provided by the underlying named pipe listener.
+type listener struct {
 	// Listener is the underlying named pipe listener.
 	net.Listener
-	// pipeNameRecordPath is the path to the file where the named pipe name is
-	// stored.
-	pipeNameRecordPath string
+	// path is the path to the file where the named pipe name is stored.
+	path string
 }
 
-func (l *daemonListener) Close() error {
-	// Remove the pipe name record, if any. We watch for an empty string because
-	// we partially initialize the daemon listener at first (to make use of its
-	// safe closure functionality in case of errors).
-	if l.pipeNameRecordPath != "" {
-		os.Remove(l.pipeNameRecordPath)
+// Close closes the listener and removes the pipe name record.
+func (l *listener) Close() error {
+	// Remove the pipe name record.
+	if err := os.Remove(l.path); err != nil {
+		l.Listener.Close()
+		return errors.Wrap(err, "unable to remove pipe name record")
 	}
 
 	// Close the underlying listener.
 	return l.Listener.Close()
 }
 
-// NewListener creates a new daemon IPC listener.
-func NewListener() (net.Listener, error) {
+// NewListener creates a new IPC listener. It will overwrite any existing pipe
+// name record, so an external mechanism should be used to coordinate the
+// establishment of listeners.
+func NewListener(path string) (net.Listener, error) {
 	// Create a unique pipe name.
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to generate UUID for named pipe")
 	}
-	pipeName := fmt.Sprintf(`\\.\pipe\mutagen-%s`, randomUUID.String())
-
-	// Compute the path to the pipe name record.
-	pipeNameRecordPath, err := subpath(pipeNameRecordName)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute pipe name record path")
-	}
+	pipeName := fmt.Sprintf(`\\.\pipe\mutagen-ipc-%s`, randomUUID.String())
 
 	// Compute the SID of the user.
 	user, err := user.Current()
@@ -114,23 +96,18 @@ func NewListener() (net.Listener, error) {
 		SecurityDescriptor: securityDescriptor,
 	}
 
-	// Create the listener and wrap it up.
+	// Create the named pipe listener.
 	rawListener, err := winio.ListenPipe(pipeName, configuration)
 	if err != nil {
 		return nil, err
 	}
-	listener := &daemonListener{rawListener, ""}
 
-	// Write the pipe name record. This is safe since the caller should own the
-	// daemon lock. In general, the pipe name record will be cleaned up when the
-	// listener is closed, but if there's a crash and a stale record exists, it
-	// will be replaced here.
-	if err = filesystem.WriteFileAtomic(pipeNameRecordPath, []byte(pipeName), 0600); err != nil {
-		listener.Close()
+	// Write the pipe name record.
+	if err = filesystem.WriteFileAtomic(path, []byte(pipeName), 0600); err != nil {
+		rawListener.Close()
 		return nil, errors.Wrap(err, "unable to record pipe name")
 	}
-	listener.pipeNameRecordPath = pipeNameRecordPath
 
 	// Success.
-	return listener, nil
+	return &listener{rawListener, path}, nil
 }

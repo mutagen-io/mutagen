@@ -1,18 +1,35 @@
-package daemon
+package ipc
 
 import (
 	"encoding/gob"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
-// TestDialTimeoutNoListener tests that DialTimeout fails if there is no active
-// listener.
-func TestDialTimeoutNoListener(t *testing.T) {
-	if c, err := DialTimeout(RecommendedDialTimeout); err == nil {
+// TestDialTimeoutNoEndpoint tests that DialTimeout fails if there is no
+// endpoint at the specified path.
+func TestDialTimeoutNoEndpoint(t *testing.T) {
+	// Create a temporary directory and defer its removal.
+	temporaryDirectory, err := ioutil.TempDir("", "mutagen_ipc_test")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(temporaryDirectory)
+
+	// Compute the IPC endpoint path.
+	endpoint := filepath.Join(temporaryDirectory, "test.sock")
+
+	// Attempt to dial the listener and ensure that a timeout occurs.
+	if c, err := DialTimeout(endpoint, RecommendedDialTimeout); err == nil {
 		c.Close()
 		t.Error("IPC connection succeeded unexpectedly")
 	}
 }
+
+// TODO: Add TestDialTimeoutNoListener to test cases where a stale socket has
+// been left on disk, ensuring that DialTimeout fails to connect.
 
 // testIPCMessage is a structure used to test IPC messaging.
 type testIPCMessage struct {
@@ -28,8 +45,18 @@ func TestIPC(t *testing.T) {
 	// Create a test message.
 	expected := testIPCMessage{"George", 67}
 
+	// Create a temporary directory and defer its removal.
+	temporaryDirectory, err := ioutil.TempDir("", "mutagen_ipc_test")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(temporaryDirectory)
+
+	// Compute the IPC endpoint path.
+	endpoint := filepath.Join(temporaryDirectory, "test.sock")
+
 	// Create a listener and defer its closure.
-	listener, err := NewListener()
+	listener, err := NewListener(endpoint)
 	if err != nil {
 		t.Fatal("unable to create listener:", err)
 	}
@@ -38,7 +65,7 @@ func TestIPC(t *testing.T) {
 	// Perform dialing and message sending in a separate Goroutine.
 	go func() {
 		// Dial and defer connection closure.
-		connection, err := DialTimeout(RecommendedDialTimeout)
+		connection, err := DialTimeout(endpoint, RecommendedDialTimeout)
 		if err != nil {
 			return
 		}

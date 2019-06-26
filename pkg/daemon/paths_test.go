@@ -21,3 +21,12 @@ func TestSubpath(t *testing.T) {
 		t.Error("daemon subdirectory is not a directory")
 	}
 }
+
+// TestIPCEndpointPath tests that IPCEndpointPath succeeds.
+func TestIPCEndpointPath(t *testing.T) {
+	if endpoint, err := IPCEndpointPath(); err != nil {
+		t.Fatal("unable to compute IPC endpoint path:", err)
+	} else if endpoint == "" {
+		t.Error("empty IPC endpoint path returned")
+	}
+}
