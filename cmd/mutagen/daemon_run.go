@@ -12,6 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
@@ -25,11 +26,11 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 		return errors.New("unexpected arguments provided")
 	}
 
-	// Attempt to acquire the daemon lock and defer its release. If there is a
+	// Attempt to acquire the Mutagen lock and defer its release. If there is a
 	// crash, the lock will be released by the OS automatically, but on Windows
 	// this may only happen after some unspecified period of time (though it
 	// does seem to be basically instant).
-	locker, err := daemon.AcquireLock()
+	locker, err := filesystem.AcquireMutagenLock()
 	if err != nil {
 		return errors.Wrap(err, "unable to acquire daemon lock")
 	}

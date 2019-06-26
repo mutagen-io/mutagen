@@ -5,16 +5,21 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/filesystem/locking"
 )
 
 const (
-	// mutagenConfigurationName is the name of the Mutagen configuration file
-	// inside the user's home directory.
-	mutagenConfigurationName = ".mutagen.toml"
+	// MutagenLockFileName is the name of the lock file coordinating access to
+	// the Mutagen data directory.
+	MutagenLockFileName = ".mutagen.lock"
 
-	// MutagenDataDirectoryName is the name of the Mutagen data directory inside
-	// the user's home directory.
+	// MutagenDataDirectoryName is the name of the Mutagen data directory.
 	MutagenDataDirectoryName = ".mutagen"
+
+	// mutagenConfigurationName is the name of the global Mutagen configuration
+	// file inside the user's home directory.
+	mutagenConfigurationName = ".mutagen.toml"
 
 	// MutagenDaemonDirectoryName is the name of the daemon subdirectory within
 	// the Mutagen data directory.
@@ -44,6 +49,11 @@ const (
 // HomeDirectory is the cached path to the current user's home directory.
 var HomeDirectory string
 
+// MutagenLockFilePath is the path to the lock file coordinating access to the
+// Mutagen data directory. It can be overridden by init functions, but should
+// not be changed afterward.
+var MutagenLockFilePath string
+
 // MutagenDataDirectoryPath is the path to the Mutagen data directory. It can be
 // overridden by init functions, but should not be changed afterward. It is used
 // as the base path for Mutagen data storage.
@@ -64,11 +74,30 @@ func init() {
 		HomeDirectory = h
 	}
 
+	// Compute the path to the Mutagen lock file.
+	MutagenLockFilePath = filepath.Join(HomeDirectory, MutagenLockFileName)
+
 	// Compute the path to the Mutagen data directory.
 	MutagenDataDirectoryPath = filepath.Join(HomeDirectory, MutagenDataDirectoryName)
 
 	// Compute the path to the configuration file.
 	MutagenConfigurationPath = filepath.Join(HomeDirectory, mutagenConfigurationName)
+}
+
+// AcquireMutagenLock is a convenience function which attempts to acquire the
+// Mutagen data directory lock and returns a locked file locker.
+func AcquireMutagenLock() (*locking.Locker, error) {
+	// Create the locker and attempt to acquire the lock.
+	locker, err := locking.NewLocker(MutagenLockFilePath, 0600)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create file locker")
+	} else if err = locker.Lock(false); err != nil {
+		locker.Close()
+		return nil, err
+	}
+
+	// Success.
+	return locker, nil
 }
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen

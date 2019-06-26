@@ -10,6 +10,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
@@ -39,10 +40,10 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Override the expected agent bundle location.
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
-	// Acquire the daemon lock and defer its release.
-	locker, err := daemon.AcquireLock()
+	// Acquire the Mutagen lock and defer its release.
+	locker, err := filesystem.AcquireMutagenLock()
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to acquire daemon lock")
+		return -1, errors.Wrap(err, "unable to acquire Mutagen lock")
 	}
 	defer locker.Close()
 

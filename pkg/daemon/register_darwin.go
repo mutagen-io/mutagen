@@ -72,11 +72,11 @@ func Register() error {
 		return nil
 	}
 
-	// Acquire the lock to ensure the daemon isn't running. We switch the start
-	// and stop mechanism depending on whether or not we're registered, so we
-	// need to make sure we don't try to stop a daemon started using a different
-	// mechanism.
-	locker, err := AcquireLock()
+	// Acquire the Mutagen lock to ensure the daemon isn't running. We switch
+	// the start and stop mechanism depending on whether or not we're
+	// registered, so we need to make sure we don't try to stop a daemon started
+	// using a different mechanism.
+	locker, err := filesystem.AcquireMutagenLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
@@ -122,11 +122,11 @@ func Unregister() error {
 		return nil
 	}
 
-	// Acquire the lock to ensure the daemon isn't running. We switch the start
-	// and stop mechanism depending on whether or not we're registered, so we
-	// need to make sure we don't try to stop a daemon started using a different
-	// mechanism.
-	locker, err := AcquireLock()
+	// Acquire the Mutagen lock to ensure the daemon isn't running. We switch
+	// the start and stop mechanism depending on whether or not we're
+	// registered, so we need to make sure we don't try to stop a daemon started
+	// using a different mechanism.
+	locker, err := filesystem.AcquireMutagenLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
