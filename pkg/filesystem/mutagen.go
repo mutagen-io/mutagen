@@ -50,13 +50,13 @@ const (
 var HomeDirectory string
 
 // MutagenLockFilePath is the path to the lock file coordinating access to the
-// Mutagen data directory. It can be overridden by init functions, but should
-// not be changed afterward.
+// Mutagen data directory. It can be overridden in init functions or entry
+// points, but this should be done before any calls to AcquireMutagenLock.
 var MutagenLockFilePath string
 
 // MutagenDataDirectoryPath is the path to the Mutagen data directory. It can be
-// overridden by init functions, but should not be changed afterward. It is used
-// as the base path for Mutagen data storage.
+// overridden in init functions or entry points, but this should be done before
+// any calls to Mutagen.
 var MutagenDataDirectoryPath string
 
 // MutagenConfigurationPath is the path to the global Mutagen configuration
