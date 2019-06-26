@@ -56,7 +56,7 @@ func connect(
 		pathSeparator = "\\"
 	}
 	agentInvocationPath := strings.Join([]string{
-		filesystem.MutagenDirectoryName,
+		filesystem.MutagenDataDirectoryName,
 		filesystem.MutagenAgentsDirectoryName,
 		mutagen.Version,
 		BaseName,
