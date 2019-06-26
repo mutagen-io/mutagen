@@ -9,14 +9,18 @@ import (
 // testMessageTOML is a test structure to use for encoding tests using TOML.
 type testMessageTOML struct {
 	Section struct {
-		Name string
-		Age  uint
-	}
+		Name string `toml:"name"`
+		Age  uint   `toml:"age"`
+	} `toml:"section"`
 }
 
 const (
 	// testMessageTOMLString is the TOML-encoded form of the TOML test data.
-	testMessageTOMLString = "[section]\nname=\"Abraham\"\nage=56\n"
+	testMessageTOMLString = `
+[section]
+name= "Abraham"
+age=56
+`
 	// testMessageTOMLName is the TOML test name.
 	testMessageTOMLName = "Abraham"
 	// testMessageTOMLAge is the TOML test age.

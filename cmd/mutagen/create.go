@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -12,7 +13,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/havoc-io/mutagen/cmd"
-	configurationpkg "github.com/havoc-io/mutagen/pkg/configuration"
+	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
@@ -22,6 +23,30 @@ import (
 	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
+
+// loadAndValidateTOMLConfiguration loads a TOML-based session configuration,
+// converts it to a Protocol Buffers session configuration, and validates it.
+func loadAndValidateTOMLConfiguration(path string) (*sessionpkg.Configuration, error) {
+	// Load the human-readable configuration. If the path doesn't exist, then we
+	// can just return a default configuration.
+	humanReadableConfiguration := &sessionpkg.HumanReadableConfiguration{}
+	if err := encoding.LoadAndUnmarshalTOML(path, humanReadableConfiguration); err != nil {
+		if os.IsNotExist(err) {
+			return &sessionpkg.Configuration{}, nil
+		}
+		return nil, errors.Wrap(err, "unable to load TOML file")
+	}
+
+	// Convert the configuration to a Protocol Buffers representation and
+	// validate it (as a non-endpoint-specific configuration).
+	configuration := humanReadableConfiguration.Configuration()
+	if err := configuration.EnsureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid configuration")
+	}
+
+	// Success.
+	return configuration, nil
+}
 
 func createMain(command *cobra.Command, arguments []string) error {
 	// Validate, extract, and parse URLs.
@@ -80,7 +105,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		if c, err := configurationpkg.LoadSessionConfiguration(filesystem.MutagenConfigurationPath); err != nil {
+		if c, err := loadAndValidateTOMLConfiguration(filesystem.MutagenConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)
@@ -90,7 +115,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// If a configuration file has been specified, then load it and merge it
 	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
-		if c, err := configurationpkg.LoadSessionConfiguration(createConfiguration.configurationFile); err != nil {
+		if c, err := loadAndValidateTOMLConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)

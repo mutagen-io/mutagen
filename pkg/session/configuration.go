@@ -3,9 +3,127 @@ package session
 import (
 	"github.com/pkg/errors"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/sync"
 )
+
+// ByteSize is a uint64 value that supports unmarshalling from both
+// human-friendly string representations and numeric representations. It can be
+// cast to a uint64 value, where it represents a byte count.
+type ByteSize uint64
+
+// UnmarshalText implements the text unmarshalling interface used when loading
+// from TOML files.
+func (s *ByteSize) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Parse and store the value.
+	value, err := humanize.ParseBytes(text)
+	if err != nil {
+		return err
+	}
+	*s = ByteSize(value)
+
+	// Success.
+	return nil
+}
+
+// HumanReadableConfiguration represents a human-readable Mutagen session
+// configuration, loadable from either TOML or YAML.
+type HumanReadableConfiguration struct {
+	// Synchronization contains parameters related to synchronization behavior.
+	Synchronization struct {
+		// Mode specifies the default synchronization mode.
+		Mode sync.SynchronizationMode `toml:"mode" yaml:"mode"`
+		// MaximumEntryCount specifies the maximum number of filesystem entries
+		// that endpoints will tolerate managing.
+		MaximumEntryCount uint64 `toml:"maxEntryCount" yaml:"maxEntryCount"`
+		// MaximumStagingFileSize is the maximum (individual) file size that
+		// endpoints will stage. It can be specified in human-friendly units.
+		MaximumStagingFileSize ByteSize `toml:"maxStagingFileSize" yaml:"maxStagingFileSize"`
+		// ProbeMode specifies the filesystem probing mode.
+		ProbeMode behavior.ProbeMode `toml:"probeMode" yaml:"probeMode"`
+		// ScanMode specifies the filesystem scanning mode.
+		ScanMode ScanMode `toml:"scanMode" yaml:"scanMode"`
+		// StageMode specifies the filesystem staging mode.
+		StageMode StageMode `toml:"stageMode" yaml:"stageMode"`
+	} `toml:"sync" yaml:"sync"`
+
+	// Ignore contains parameters related to synchronization ignore
+	// specifications.
+	Ignore struct {
+		// Default specifies the default list of ignore specifications.
+		Default []string `toml:"default" yaml:"default"`
+
+		// VCS specifies the VCS ignore mode.
+		VCS sync.IgnoreVCSMode `toml:"vcs" yaml:"vcs"`
+	} `toml:"ignore" yaml:"ignore"`
+
+	// Symlink contains parameters related to symlink handling.
+	Symlink struct {
+		// Mode specifies the symlink mode.
+		Mode sync.SymlinkMode `toml:"mode" yaml:"mode"`
+	} `toml:"symlink" yaml:"symlink"`
+
+	// Watch contains parameters related to filesystem monitoring.
+	Watch struct {
+		// Mode specifies the file watching mode.
+		Mode WatchMode `toml:"mode" yaml:"mode"`
+
+		// PollingInterval specifies the interval (in seconds) for poll-based
+		// file monitoring. A value of 0 specifies that Mutagen's internal
+		// default interval should be used.
+		PollingInterval uint32 `toml:"pollingInterval" yaml:"pollingInterval"`
+	} `toml:"watch" yaml:"watch"`
+
+	// Permissions contains parameters related to permission handling.
+	Permissions struct {
+		// DefaultFileMode specifies the default permission mode to use for new
+		// files in "portable" permission propagation mode.
+		DefaultFileMode filesystem.Mode `toml:"defaultFileMode" yaml:"defaultFileMode"`
+
+		// DefaultDirectoryMode specifies the default permission mode to use for
+		// new files in "portable" permission propagation mode.
+		DefaultDirectoryMode filesystem.Mode `toml:"defaultDirectoryMode" yaml:"defaultDirectoryMode"`
+
+		// DefaultOwner specifies the default owner identifier to use when
+		// setting ownership of new files and directories in "portable"
+		// permission propagation mode.
+		DefaultOwner string `toml:"defaultOwner" yaml:"defaultOwner"`
+
+		// DefaultGroup specifies the default group identifier to use when
+		// setting ownership of new files and directories in "portable"
+		// permission propagation mode.
+		DefaultGroup string `toml:"defaultGroup" yaml:"defaultGroup"`
+	} `toml:"permissions" yaml:"permissions"`
+}
+
+// Configuration converts a human-readable session configuration to a Protocol
+// Buffers session configuration. It does not validate the resulting
+// configuration.
+func (c *HumanReadableConfiguration) Configuration() *Configuration {
+	return &Configuration{
+		SynchronizationMode:    c.Synchronization.Mode,
+		MaximumEntryCount:      c.Synchronization.MaximumEntryCount,
+		MaximumStagingFileSize: uint64(c.Synchronization.MaximumStagingFileSize),
+		ProbeMode:              c.Synchronization.ProbeMode,
+		ScanMode:               c.Synchronization.ScanMode,
+		StageMode:              c.Synchronization.StageMode,
+		SymlinkMode:            c.Symlink.Mode,
+		WatchMode:              c.Watch.Mode,
+		WatchPollingInterval:   c.Watch.PollingInterval,
+		Ignores:                c.Ignore.Default,
+		IgnoreVCSMode:          c.Ignore.VCS,
+		DefaultFileMode:        uint32(c.Permissions.DefaultFileMode),
+		DefaultDirectoryMode:   uint32(c.Permissions.DefaultDirectoryMode),
+		DefaultOwner:           c.Permissions.DefaultOwner,
+		DefaultGroup:           c.Permissions.DefaultGroup,
+	}
+}
 
 // EnsureValid ensures that Configuration's invariants are respected. The
 // validation of the configuration depends on whether or not it is
