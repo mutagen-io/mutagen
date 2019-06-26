@@ -10,8 +10,8 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
