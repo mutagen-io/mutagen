@@ -10,6 +10,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
@@ -72,8 +73,14 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Create and register the session service.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
+	// Compute the path to the daemon IPC endpoint.
+	ipcEndpointPath, err := daemon.IPCEndpointPath()
+	if err != nil {
+		return -1, errors.Wrap(err, "unable to compute IPC endpoint path")
+	}
+
 	// Create the daemon listener and defer its closure.
-	listener, err := daemon.NewListener()
+	listener, err := ipc.NewListener(ipcEndpointPath)
 	if err != nil {
 		return -1, errors.Wrap(err, "unable to create daemon listener")
 	}
