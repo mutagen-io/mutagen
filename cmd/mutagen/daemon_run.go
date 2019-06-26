@@ -87,8 +87,8 @@ func daemonRunMain(command *cobra.Command, arguments []string) error {
 		serverErrors <- server.Serve(listener)
 	}()
 
-	// Wait for termination from a signal, the server, or the daemon server. We
-	// treat daemon termination as a non-error.
+	// Wait for termination from a signal, the daemon service, or the gRPC
+	// server. We treat termination via the daemon service as a non-error.
 	select {
 	case sig := <-signalTermination:
 		return errors.Errorf("terminated by signal: %s", sig)
