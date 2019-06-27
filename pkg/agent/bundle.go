@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/process"
 )
 
 const (
@@ -42,13 +41,13 @@ const (
 // package.
 var ExpectedBundleLocation BundleLocation
 
-// executableForPlatform attempts to locate the agent bundle and extract an
-// agent executable for the specified target platform. The extracted file will
-// be in a temporary location accessible to only the user, and will have the
-// executability bit set if it makes sense. The path to the extracted file will
-// be returned, and the caller is responsible for cleaning up the file if this
-// function returns a nil error.
-func executableForPlatform(goos, goarch string) (string, error) {
+// ExecutableForPlatform attempts to locate the agent bundle and extract an
+// agent executable for the specified target platform. If no output path is
+// specified, then the extracted file will be in a temporary location accessible
+// to only the user, and will have the executability bit set if it makes sense.
+// The path to the extracted file will be returned, and the caller is
+// responsible for cleaning up the file if this function returns a nil error.
+func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	// Compute the path to the location in which we expect to find the agent
 	// bundle.
 	var bundleLocationPath string
@@ -107,13 +106,16 @@ func executableForPlatform(goos, goarch string) (string, error) {
 		return "", errors.New("unsupported platform")
 	}
 
-	// Compute the base name for the output file.
-	targetBaseName := process.ExecutableName(BaseName, goos)
-
-	// Create a temporary file in which to receive the agent on disk.
-	file, err := ioutil.TempFile("", targetBaseName)
+	// If an output path has been specified, then open the path for writing,
+	// otherwise create a temporary file.
+	var file *os.File
+	if outputPath != "" {
+		file, err = os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	} else {
+		file, err = ioutil.TempFile("", BaseName)
+	}
 	if err != nil {
-		return "", errors.Wrap(err, "unable to create temporary file")
+		return "", errors.Wrap(err, "unable to create output file")
 	}
 
 	// Copy data into the file.

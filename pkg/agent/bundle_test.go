@@ -1,41 +1,73 @@
 package agent
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 )
 
-// TestExecutableForInvalidOS tests that executableForPlatform fails for an
+// TestExecutableForInvalidOS tests that ExecutableForPlatform fails for an
 // invalid OS specification.
 func TestExecutableForInvalidOS(t *testing.T) {
-	if _, err := executableForPlatform("fakeos", runtime.GOARCH); err == nil {
+	if _, err := ExecutableForPlatform("fakeos", runtime.GOARCH, ""); err == nil {
 		t.Fatal("extracting agent executable succeeded for invalid OS")
 	}
 }
 
-// TestExecutableForInvalidArchitecture tests that executableForPlatform fails
+// TestExecutableForInvalidArchitecture tests that ExecutableForPlatform fails
 // for an invalid architecture specification.
 func TestExecutableForInvalidArchitecture(t *testing.T) {
-	if _, err := executableForPlatform(runtime.GOOS, "fakearch"); err == nil {
+	if _, err := ExecutableForPlatform(runtime.GOOS, "fakearch", ""); err == nil {
 		t.Fatal("extracting agent executable succeeded for invalid architecture")
 	}
 }
 
-// TestExecutableForInvalidPair tests that executableForPlatform fails for an
+// TestExecutableForInvalidPair tests that ExecutableForPlatform fails for an
 // invalid OS/architecture specification.
 func TestExecutableForInvalidPair(t *testing.T) {
-	if _, err := executableForPlatform("fakeos", "fakearch"); err == nil {
+	if _, err := ExecutableForPlatform("fakeos", "fakearch", ""); err == nil {
 		t.Fatal("extracting agent executable succeeded for invalid architecture")
 	}
 }
 
-// TestExecutableForPlatform tests that executableForPlatform succeeds for the
+// TestExecutableForPlatform tests that ExecutableForPlatform succeeds for the
 // current OS/architecture.
 func TestExecutableForPlatform(t *testing.T) {
-	if executable, err := executableForPlatform(runtime.GOOS, runtime.GOARCH); err != nil {
+	if executable, err := ExecutableForPlatform(runtime.GOOS, runtime.GOARCH, ""); err != nil {
 		t.Fatal("unable to extract agent bundle for current platform:", err)
 	} else if err = os.Remove(executable); err != nil {
+		t.Error("unable to remove agent executable:", err)
+	}
+}
+
+// TestExecutableForPlatformWithOutputPath tests that ExecutableForPlatform
+// functions correctly when an output path is specified.
+func TestExecutableForPlatformWithOutputPath(t *testing.T) {
+	// Create a temporary directory and defer its removal.
+	temporaryDirectory, err := ioutil.TempDir("", "mutagen_bundle_test")
+	if err != nil {
+		t.Fatal("unable to create temporary directory")
+	}
+	defer os.RemoveAll(temporaryDirectory)
+
+	// Compute the output path.
+	outputPath := filepath.Join(temporaryDirectory, "agent_output")
+
+	// Perform executable extraction.
+	executable, err := ExecutableForPlatform(runtime.GOOS, runtime.GOARCH, outputPath)
+	if err != nil {
+		t.Fatal("unable to extract agent bundle for current platform:", err)
+	}
+
+	// Verify the output path.
+	if executable != outputPath {
+		t.Error("executable output path does not match expected:", executable, "!=", outputPath)
+	}
+
+	// Remove the file.
+	if err = os.Remove(executable); err != nil {
 		t.Error("unable to remove agent executable:", err)
 	}
 }

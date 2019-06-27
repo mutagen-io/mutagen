@@ -50,7 +50,7 @@ func install(transport Transport, prompter string) error {
 	if err := prompt.Message(prompter, "Extracting agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
-	agentExecutable, err := executableForPlatform(goos, goarch)
+	agentExecutable, err := ExecutableForPlatform(goos, goarch, "")
 	if err != nil {
 		return errors.Wrap(err, "unable to get agent for platform")
 	}
