@@ -61,13 +61,16 @@ func init() {
 	cobra.MousetrapHelpText = ""
 
 	// Register commands.
-	rootCommand.AddCommand(
+	// HACK: Add the legacy sync commands for temporary backward compatibility.
+	commands := []*cobra.Command{
 		sync.RootCommand,
 		daemon.RootCommand,
 		versionCommand,
 		legalCommand,
 		generateCommand,
-	)
+	}
+	commands = append(commands, sync.LegacyCommands...)
+	rootCommand.AddCommand(commands...)
 }
 
 func main() {
@@ -85,6 +88,17 @@ func main() {
 	// Handle terminal compatibility issues. If this call returns, it means that
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
+
+	// HACK: Modify the root command's help function to hide legacy commands.
+	defaultHelpFunction := rootCommand.HelpFunc()
+	rootCommand.SetHelpFunc(func(command *cobra.Command, arguments []string) {
+		if command == rootCommand {
+			for _, command := range sync.LegacyCommands {
+				command.Hidden = true
+			}
+		}
+		defaultHelpFunction(command, arguments)
+	})
 
 	// Execute the root command.
 	if err := rootCommand.Execute(); err != nil {
