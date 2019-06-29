@@ -3,17 +3,22 @@
 package ipc
 
 import (
+	"context"
 	"net"
 	"os"
-	"time"
 
 	"github.com/pkg/errors"
 )
 
-// DialTimeout attempts to establish an IPC connection, timing out after the
-// specified duration.
-func DialTimeout(path string, timeout time.Duration) (net.Conn, error) {
-	return net.DialTimeout("unix", path, timeout)
+// DialContext attempts to establish an IPC connection, timing out if the
+// provided context expires.
+func DialContext(context context.Context, path string) (net.Conn, error) {
+	// Create a zero-valued dialer, which will have the same dialing behavior as
+	// the raw dialing functions.
+	dialer := &net.Dialer{}
+
+	// Perform dialing.
+	return dialer.DialContext(context, "unix", path)
 }
 
 // NewListener creates a new IPC listener.

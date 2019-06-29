@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"net"
 	"time"
 
 	"github.com/pkg/errors"
@@ -10,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
@@ -20,25 +20,24 @@ const (
 	dialTimeout = 1 * time.Second
 )
 
-// daemonDialer is an adapter around daemon IPC dialing that fits gRPC's dialing
-// interface. It ignores the provided address since the daemon package already
-// knows the correct endpoint.
-func daemonDialer(_ string, timeout time.Duration) (net.Conn, error) {
-	return daemon.DialTimeout(timeout)
-}
-
 // CreateClientConnection creates a new daemon client connection and optionally
 // verifies that the daemon version matches the current process' version.
 func CreateClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
+	// Compute the path to the daemon IPC endpoint.
+	endpoint, err := daemon.EndpointPath()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to compute endpoint path")
+	}
+
 	// Create a context to timeout the dial.
 	dialContext, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
 
 	// Perform dialing.
 	connection, err := grpc.DialContext(
-		dialContext, "",
+		dialContext, endpoint,
 		grpc.WithInsecure(),
-		grpc.WithDialer(daemonDialer),
+		grpc.WithContextDialer(ipc.DialContext),
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(daemon.MaximumIPCMessageSize)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(daemon.MaximumIPCMessageSize)),

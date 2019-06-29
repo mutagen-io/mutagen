@@ -12,6 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
@@ -66,8 +67,20 @@ func runMain(command *cobra.Command, arguments []string) error {
 	// Create and register the session service.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
-	// Create the daemon listener and defer its closure.
-	listener, err := daemon.NewListener()
+	// Compute the path to the daemon IPC endpoint.
+	endpoint, err := daemon.EndpointPath()
+	if err != nil {
+		return errors.Wrap(err, "unable to compute endpoint path")
+	}
+
+	// Create the daemon listener and defer its closure. If creation of the
+	// listener fails due to the endpoint already existing, then attempt to
+	// remove the endpoint since we hold the daemon lock and thus the endpoint
+	// is (or should be) stale.
+	listener, err := ipc.NewListener(endpoint)
+	if err != nil && os.IsExist(err) && os.Remove(endpoint) == nil {
+		listener, err = ipc.NewListener(endpoint)
+	}
 	if err != nil {
 		return errors.Wrap(err, "unable to create daemon listener")
 	}

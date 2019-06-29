@@ -1,16 +1,15 @@
 package ipc
 
 import (
+	"context"
 	"encoding/gob"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"time"
 )
 
-// TestDialTimeoutNoEndpoint tests that DialTimeout fails if there is no
+// TestDialContextNoEndpoint tests that DialContext fails if there is no
 // endpoint at the specified path.
 func TestDialTimeoutNoEndpoint(t *testing.T) {
 	// Create a temporary directory and defer its removal.
@@ -23,15 +22,15 @@ func TestDialTimeoutNoEndpoint(t *testing.T) {
 	// Compute the IPC endpoint path.
 	endpoint := filepath.Join(temporaryDirectory, "test.sock")
 
-	// Attempt to dial the listener and ensure that a timeout occurs.
-	if c, err := DialTimeout(endpoint, 1*time.Second); err == nil {
+	// Attempt to dial the listener and ensure that doing so fails.
+	if c, err := DialContext(context.Background(), endpoint); err == nil {
 		c.Close()
 		t.Error("IPC connection succeeded unexpectedly")
 	}
 }
 
-// TODO: Add TestDialTimeoutNoListener to test cases where a stale socket has
-// been left on disk, ensuring that DialTimeout fails to connect.
+// TODO: Add TestDialContextNoListener to test cases where a stale socket has
+// been left on disk, ensuring that DialContext fails to connect.
 
 // testIPCMessage is a structure used to test IPC messaging.
 type testIPCMessage struct {
@@ -67,7 +66,7 @@ func TestIPC(t *testing.T) {
 	// Perform dialing and message sending in a separate Goroutine.
 	go func() {
 		// Dial and defer connection closure.
-		connection, err := DialTimeout(endpoint, 1*time.Second)
+		connection, err := DialContext(context.Background(), endpoint)
 		if err != nil {
 			return
 		}

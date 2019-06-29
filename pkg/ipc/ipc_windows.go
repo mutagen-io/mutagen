@@ -1,12 +1,12 @@
 package ipc
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -15,9 +15,9 @@ import (
 	"github.com/Microsoft/go-winio"
 )
 
-// DialTimeout attempts to establish an IPC connection, timing out after the
-// specified duration.
-func DialTimeout(path string, timeout time.Duration) (net.Conn, error) {
+// DialContext attempts to establish an IPC connection, timing out if the
+// provided context expires.
+func DialContext(context context.Context, path string) (net.Conn, error) {
 	// Read the pipe name.
 	pipeNameBytes, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -25,17 +25,8 @@ func DialTimeout(path string, timeout time.Duration) (net.Conn, error) {
 	}
 	pipeName := string(pipeNameBytes)
 
-	// Convert the timeout duration to a pointer. The go-winio library uses a
-	// pointer-based duration to indicate the absence of a timeout. This sort of
-	// flies in the face of convention (in the net package, a zero-value
-	// duration indicates no timeout), but we can adapt.
-	var timeoutPointer *time.Duration
-	if timeout != 0 {
-		timeoutPointer = &timeout
-	}
-
 	// Attempt to connect.
-	return winio.DialPipe(pipeName, timeoutPointer)
+	return winio.DialPipeContext(context, pipeName)
 }
 
 // listener implements net.Listener but provides additional cleanup facilities

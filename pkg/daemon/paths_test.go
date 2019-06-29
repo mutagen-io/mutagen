@@ -31,9 +31,9 @@ func TestLockPath(t *testing.T) {
 	}
 }
 
-// TestIPCEndpointPath tests that ipcEndpointPath succeeds.
-func TestIPCEndpointPath(t *testing.T) {
-	if path, err := ipcEndpointPath(); err != nil {
+// TestEndpointPath tests that EndpointPath succeeds.
+func TestEndpointPath(t *testing.T) {
+	if path, err := EndpointPath(); err != nil {
 		t.Fatal("unable to compute IPC endpoint path:", err)
 	} else if path == "" {
 		t.Error("empty IPC endpoint path returned")
