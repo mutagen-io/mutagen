@@ -25,7 +25,7 @@ func unregisterMain(command *cobra.Command, arguments []string) error {
 
 var unregisterCommand = &cobra.Command{
 	Use:          "unregister",
-	Short:        "Unregisters automatic Mutagen daemon start-up",
+	Short:        "Unregister automatic Mutagen daemon start-up",
 	RunE:         unregisterMain,
 	SilenceUsage: true,
 }

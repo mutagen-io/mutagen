@@ -47,7 +47,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 var startCommand = &cobra.Command{
 	Use:          "start",
-	Short:        "Starts the Mutagen daemon if it's not already running",
+	Short:        "Start the Mutagen daemon if it's not already running",
 	RunE:         startMain,
 	SilenceUsage: true,
 }

@@ -104,7 +104,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 
 var runCommand = &cobra.Command{
 	Use:          "run",
-	Short:        "Runs the Mutagen daemon",
+	Short:        "Run the Mutagen daemon",
 	Hidden:       true,
 	RunE:         runMain,
 	SilenceUsage: true,

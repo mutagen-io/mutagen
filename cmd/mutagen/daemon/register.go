@@ -25,7 +25,7 @@ func registerMain(command *cobra.Command, arguments []string) error {
 
 var registerCommand = &cobra.Command{
 	Use:          "register",
-	Short:        "Registers the Mutagen daemon to start automatically on login",
+	Short:        "Register the Mutagen daemon to start automatically on login",
 	RunE:         registerMain,
 	SilenceUsage: true,
 }

@@ -48,7 +48,7 @@ func stopMain(command *cobra.Command, arguments []string) error {
 
 var stopCommand = &cobra.Command{
 	Use:          "stop",
-	Short:        "Stops the Mutagen daemon if it's running",
+	Short:        "Stop the Mutagen daemon if it's running",
 	RunE:         stopMain,
 	SilenceUsage: true,
 }
