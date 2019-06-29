@@ -6,16 +6,14 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/locking"
 )
 
-// Lock represents a daemon lock instance.
+// Lock represents the global daemon lock. It is held by a single daemon
+// instance at a time.
 type Lock struct {
-	// locker is the daemon file lock, uniquely held by a single daemon
-	// instance. Because the locking semantics vary by platform, hosting
-	// processes should only attempt to create a single daemon lock at a time.
+	// locker is the underlying file locker.
 	locker *locking.Locker
 }
 
-// AcquireLock attempts to acquire the daemon lock. It is the only way to
-// acquire a daemon Lock instance.
+// AcquireLock attempts to acquire the global daemon lock.
 func AcquireLock() (*Lock, error) {
 	// Compute the lock path.
 	lockPath, err := subpath(lockName)
@@ -26,7 +24,7 @@ func AcquireLock() (*Lock, error) {
 	// Create the daemon locker and attempt to acquire the lock.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create daemon locker")
+		return nil, errors.Wrap(err, "unable to create daemon file locker")
 	} else if err = locker.Lock(false); err != nil {
 		locker.Close()
 		return nil, err
