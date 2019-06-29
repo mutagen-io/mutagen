@@ -16,17 +16,20 @@ func DialTimeout(path string, timeout time.Duration) (net.Conn, error) {
 	return net.DialTimeout("unix", path, timeout)
 }
 
-// NewListener creates a new IPC listener. It will remove any existing endpoint,
-// so an external mechanism should be used to coordinate the establishment of
-// listeners.
+// NewListener creates a new IPC listener.
 func NewListener(path string) (net.Listener, error) {
-	// Remove the socket path if it exists. In general, the socket path will be
-	// cleaned up when a listener is closed, but if there's a crash, we need to
-	// wipe it.
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return nil, errors.Wrap(err, "unable to remove stale socket")
+	// Create the listener.
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Explicitly set socket permissions.
+	if err := os.Chmod(path, 0600); err != nil {
+		listener.Close()
+		return nil, errors.Wrap(err, "unable to set socket permissions")
 	}
 
 	// Create the listener.
-	return net.Listen("unix", path)
+	return listener, nil
 }
