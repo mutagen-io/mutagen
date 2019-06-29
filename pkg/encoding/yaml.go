@@ -8,6 +8,6 @@ import (
 // the specified structure.
 func LoadAndUnmarshalYAML(path string, value interface{}) error {
 	return LoadAndUnmarshal(path, func(data []byte) error {
-		return yaml.Unmarshal(data, value)
+		return yaml.UnmarshalStrict(data, value)
 	})
 }
