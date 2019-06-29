@@ -21,7 +21,7 @@ func AcquireLock() (*Lock, error) {
 		return nil, errors.Wrap(err, "unable to compute daemon lock path")
 	}
 
-	// Create the daemon locker and attempt to acquire the lock.
+	// Create the locker and attempt to acquire the lock.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create daemon file locker")

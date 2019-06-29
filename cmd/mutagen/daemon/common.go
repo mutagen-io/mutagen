@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
@@ -39,8 +40,8 @@ func CreateClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) 
 		grpc.WithInsecure(),
 		grpc.WithContextDialer(ipc.DialContext),
 		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(daemon.MaximumIPCMessageSize)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(daemon.MaximumIPCMessageSize)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(grpcutil.MaximumMessageSize)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(grpcutil.MaximumMessageSize)),
 	)
 	if err != nil {
 		if err == context.DeadlineExceeded {

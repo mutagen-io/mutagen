@@ -11,7 +11,7 @@ import (
 // Server provides an implementation of the Prompting service.
 type Server struct{}
 
-// NewServer creates an instance of the prompting server.
+// NewServer creates a new prompt server.
 func NewServer() *Server {
 	return &Server{}
 }

@@ -31,7 +31,7 @@ type Server struct {
 	shutdown context.CancelFunc
 }
 
-// NewServer creates an instance of the daemon server.
+// NewServer creates a new daemon server.
 func NewServer() *Server {
 	// Create a cancellable context for daemon background operations.
 	workerContext, shutdown := context.WithCancel(context.Background())
@@ -79,7 +79,6 @@ func (s *Server) Shutdown() {
 
 // Version provides version information.
 func (s *Server) Version(_ context.Context, _ *VersionRequest) (*VersionResponse, error) {
-	// Send the version response.
 	return &VersionResponse{
 		Major: mutagen.VersionMajor,
 		Minor: mutagen.VersionMinor,

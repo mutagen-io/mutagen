@@ -15,7 +15,7 @@ type Server struct {
 	manager *session.Manager
 }
 
-// NewServer creates an instances of the sessions server.
+// NewServer creates a new session server.
 func NewServer(manager *session.Manager) *Server {
 	return &Server{
 		manager: manager,

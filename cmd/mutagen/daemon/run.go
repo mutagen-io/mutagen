@@ -12,6 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
@@ -25,10 +26,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 		return errors.New("unexpected arguments provided")
 	}
 
-	// Attempt to acquire the daemon lock and defer its release. If there is a
-	// crash, the lock will be released by the OS automatically, but on Windows
-	// this may only happen after some unspecified period of time (though it
-	// does seem to be basically instant).
+	// Attempt to acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
 	if err != nil {
 		return errors.Wrap(err, "unable to acquire daemon lock")
@@ -51,20 +49,20 @@ func runMain(command *cobra.Command, arguments []string) error {
 	// Create the gRPC server and defer its stoppage. We use a hard stop rather
 	// than a graceful stop so that it doesn't hang on open requests.
 	server := grpc.NewServer(
-		grpc.MaxSendMsgSize(daemon.MaximumIPCMessageSize),
-		grpc.MaxRecvMsgSize(daemon.MaximumIPCMessageSize),
+		grpc.MaxSendMsgSize(grpcutil.MaximumMessageSize),
+		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
 	)
 	defer server.Stop()
 
-	// Create and register the daemon service and defer its shutdown.
+	// Create the daemon server, defer its shutdown, and register it.
 	daemonServer := daemonsvc.NewServer()
-	daemonsvc.RegisterDaemonServer(server, daemonServer)
 	defer daemonServer.Shutdown()
+	daemonsvc.RegisterDaemonServer(server, daemonServer)
 
-	// Create and register the prompt service.
+	// Create and register the prompt server.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
 
-	// Create and register the session service.
+	// Create and register the session server.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
 	// Compute the path to the daemon IPC endpoint.
@@ -98,7 +96,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 	case <-daemonServer.Termination:
 		return nil
 	case err = <-serverErrors:
-		return errors.Wrap(err, "premature server termination")
+		return errors.Wrap(err, "daemon server termination")
 	}
 }
 
