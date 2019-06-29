@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
@@ -25,9 +24,10 @@ func registerMain(command *cobra.Command, arguments []string) error {
 }
 
 var registerCommand = &cobra.Command{
-	Use:   "register",
-	Short: "Registers the Mutagen daemon to start automatically on login",
-	Run:   cmd.Mainify(registerMain),
+	Use:          "register",
+	Short:        "Registers the Mutagen daemon to start automatically on login",
+	RunE:         registerMain,
+	SilenceUsage: true,
 }
 
 var registerConfiguration struct {

@@ -76,9 +76,10 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 }
 
 var terminateCommand = &cobra.Command{
-	Use:   "terminate [<session>...]",
-	Short: "Permanently terminate a synchronization session",
-	Run:   cmd.Mainify(terminateMain),
+	Use:          "terminate [<session>...]",
+	Short:        "Permanently terminate a synchronization session",
+	RunE:         terminateMain,
+	SilenceUsage: true,
 }
 
 var terminateConfiguration struct {

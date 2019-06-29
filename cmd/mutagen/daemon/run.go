@@ -103,10 +103,11 @@ func runMain(command *cobra.Command, arguments []string) error {
 }
 
 var runCommand = &cobra.Command{
-	Use:    "run",
-	Short:  "Runs the Mutagen daemon",
-	Run:    cmd.Mainify(runMain),
-	Hidden: true,
+	Use:          "run",
+	Short:        "Runs the Mutagen daemon",
+	Hidden:       true,
+	RunE:         runMain,
+	SilenceUsage: true,
 }
 
 var runConfiguration struct {

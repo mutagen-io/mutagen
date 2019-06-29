@@ -28,9 +28,10 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var rootCommand = &cobra.Command{
-	Use:   "mutagen",
-	Short: "Mutagen provides simple, continuous, bi-directional file synchronization.",
-	Run:   cmd.Mainify(rootMain),
+	Use:          "mutagen",
+	Short:        "Mutagen provides simple, continuous, bi-directional file synchronization.",
+	RunE:         rootMain,
+	SilenceUsage: true,
 }
 
 var rootConfiguration struct {

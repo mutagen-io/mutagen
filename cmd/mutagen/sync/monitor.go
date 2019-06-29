@@ -168,9 +168,10 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 }
 
 var monitorCommand = &cobra.Command{
-	Use:   "monitor [<session>]",
-	Short: "Show a dynamic status display for a single session",
-	Run:   cmd.Mainify(monitorMain),
+	Use:          "monitor [<session>]",
+	Short:        "Show a dynamic status display for a single session",
+	RunE:         monitorMain,
+	SilenceUsage: true,
 }
 
 var monitorConfiguration struct {

@@ -2,8 +2,6 @@ package sync
 
 import (
 	"github.com/spf13/cobra"
-
-	"github.com/havoc-io/mutagen/cmd"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -18,9 +16,10 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var RootCommand = &cobra.Command{
-	Use:   "sync",
-	Short: "Create and manage synchronization sessions",
-	Run:   cmd.Mainify(rootMain),
+	Use:          "sync",
+	Short:        "Create and manage synchronization sessions",
+	RunE:         rootMain,
+	SilenceUsage: true,
 }
 
 var rootConfiguration struct {

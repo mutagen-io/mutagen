@@ -4,8 +4,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/havoc-io/mutagen/cmd"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -20,9 +18,10 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var rootCommand = &cobra.Command{
-	Use:   "mutagen-agent",
-	Short: "The Mutagen agent should not be invoked by human beings.",
-	Run:   cmd.Mainify(rootMain),
+	Use:          "mutagen-agent",
+	Short:        "The Mutagen agent should not be invoked by human beings.",
+	RunE:         rootMain,
+	SilenceUsage: true,
 }
 
 var rootConfiguration struct {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
@@ -48,9 +47,10 @@ func stopMain(command *cobra.Command, arguments []string) error {
 }
 
 var stopCommand = &cobra.Command{
-	Use:   "stop",
-	Short: "Stops the Mutagen daemon if it's running",
-	Run:   cmd.Mainify(stopMain),
+	Use:          "stop",
+	Short:        "Stops the Mutagen daemon if it's running",
+	RunE:         stopMain,
+	SilenceUsage: true,
 }
 
 var stopConfiguration struct {

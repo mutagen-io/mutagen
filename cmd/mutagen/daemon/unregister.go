@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
@@ -25,9 +24,10 @@ func unregisterMain(command *cobra.Command, arguments []string) error {
 }
 
 var unregisterCommand = &cobra.Command{
-	Use:   "unregister",
-	Short: "Unregisters automatic Mutagen daemon start-up",
-	Run:   cmd.Mainify(unregisterMain),
+	Use:          "unregister",
+	Short:        "Unregisters automatic Mutagen daemon start-up",
+	RunE:         unregisterMain,
+	SilenceUsage: true,
 }
 
 var unregisterConfiguration struct {

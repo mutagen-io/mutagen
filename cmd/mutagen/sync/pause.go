@@ -76,9 +76,10 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 }
 
 var pauseCommand = &cobra.Command{
-	Use:   "pause [<session>...]",
-	Short: "Pause a synchronization session",
-	Run:   cmd.Mainify(pauseMain),
+	Use:          "pause [<session>...]",
+	Short:        "Pause a synchronization session",
+	RunE:         pauseMain,
+	SilenceUsage: true,
 }
 
 var pauseConfiguration struct {

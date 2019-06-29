@@ -85,9 +85,10 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 }
 
 var resumeCommand = &cobra.Command{
-	Use:   "resume [<session>...]",
-	Short: "Resume a paused or disconnected synchronization session",
-	Run:   cmd.Mainify(resumeMain),
+	Use:          "resume [<session>...]",
+	Short:        "Resume a paused or disconnected synchronization session",
+	RunE:         resumeMain,
+	SilenceUsage: true,
 }
 
 var resumeConfiguration struct {

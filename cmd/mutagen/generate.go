@@ -4,8 +4,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
-
-	"github.com/havoc-io/mutagen/cmd"
 )
 
 func generateMain(command *cobra.Command, arguments []string) error {
@@ -32,10 +30,11 @@ func generateMain(command *cobra.Command, arguments []string) error {
 }
 
 var generateCommand = &cobra.Command{
-	Use:    "generate",
-	Short:  "Generate various files",
-	Run:    cmd.Mainify(generateMain),
-	Hidden: true,
+	Use:          "generate",
+	Short:        "Generate various files",
+	Hidden:       true,
+	RunE:         generateMain,
+	SilenceUsage: true,
 }
 
 var generateConfiguration struct {

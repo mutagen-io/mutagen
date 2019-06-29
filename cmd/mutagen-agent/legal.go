@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
@@ -19,9 +18,10 @@ func legalMain(command *cobra.Command, arguments []string) error {
 }
 
 var legalCommand = &cobra.Command{
-	Use:   agent.ModeLegal,
-	Short: "Show legal information",
-	Run:   cmd.Mainify(legalMain),
+	Use:          agent.ModeLegal,
+	Short:        "Show legal information",
+	RunE:         legalMain,
+	SilenceUsage: true,
 }
 
 var legalConfiguration struct {

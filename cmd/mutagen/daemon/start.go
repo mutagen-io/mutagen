@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
@@ -47,9 +46,10 @@ func startMain(command *cobra.Command, arguments []string) error {
 }
 
 var startCommand = &cobra.Command{
-	Use:   "start",
-	Short: "Starts the Mutagen daemon if it's not already running",
-	Run:   cmd.Mainify(startMain),
+	Use:          "start",
+	Short:        "Starts the Mutagen daemon if it's not already running",
+	RunE:         startMain,
+	SilenceUsage: true,
 }
 
 var startConfiguration struct {

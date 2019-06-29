@@ -453,9 +453,10 @@ func createMain(command *cobra.Command, arguments []string) error {
 }
 
 var createCommand = &cobra.Command{
-	Use:   "create <alpha> <beta>",
-	Short: "Create and start a new synchronization session",
-	Run:   cmd.Mainify(createMain),
+	Use:          "create <alpha> <beta>",
+	Short:        "Create and start a new synchronization session",
+	RunE:         createMain,
+	SilenceUsage: true,
 }
 
 var createConfiguration struct {

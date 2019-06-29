@@ -10,7 +10,6 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
@@ -173,9 +172,10 @@ func listMain(command *cobra.Command, arguments []string) error {
 }
 
 var listCommand = &cobra.Command{
-	Use:   "list [<session>...]",
-	Short: "List existing synchronization sessions and their statuses",
-	Run:   cmd.Mainify(listMain),
+	Use:          "list [<session>...]",
+	Short:        "List existing synchronization sessions and their statuses",
+	RunE:         listMain,
+	SilenceUsage: true,
 }
 
 var listConfiguration struct {

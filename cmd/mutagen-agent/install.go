@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 )
 
@@ -14,9 +13,10 @@ func installMain(command *cobra.Command, arguments []string) error {
 }
 
 var installCommand = &cobra.Command{
-	Use:   agent.ModeInstall,
-	Short: "Perform agent installation",
-	Run:   cmd.Mainify(installMain),
+	Use:          agent.ModeInstall,
+	Short:        "Perform agent installation",
+	RunE:         installMain,
+	SilenceUsage: true,
 }
 
 var installConfiguration struct {

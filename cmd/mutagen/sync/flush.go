@@ -77,9 +77,10 @@ func flushMain(command *cobra.Command, arguments []string) error {
 }
 
 var flushCommand = &cobra.Command{
-	Use:   "flush [<session>...]",
-	Short: "Force a synchronization cycle",
-	Run:   cmd.Mainify(flushMain),
+	Use:          "flush [<session>...]",
+	Short:        "Force a synchronization cycle",
+	RunE:         flushMain,
+	SilenceUsage: true,
 }
 
 var flushConfiguration struct {

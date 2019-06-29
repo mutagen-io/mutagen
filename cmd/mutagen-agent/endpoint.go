@@ -74,9 +74,10 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 }
 
 var endpointCommand = &cobra.Command{
-	Use:   agent.ModeEndpoint,
-	Short: "Run the agent in endpoint mode",
-	Run:   cmd.Mainify(endpointMain),
+	Use:          agent.ModeEndpoint,
+	Short:        "Run the agent in endpoint mode",
+	RunE:         endpointMain,
+	SilenceUsage: true,
 }
 
 var endpointConfiguration struct {
