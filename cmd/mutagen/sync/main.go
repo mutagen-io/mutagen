@@ -1,10 +1,9 @@
-package daemon
+package sync
 
 import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -19,8 +18,8 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var RootCommand = &cobra.Command{
-	Use:   "daemon",
-	Short: "Control the lifecycle of the Mutagen daemon",
+	Use:   "sync",
+	Short: "Create and manage synchronization sessions",
 	Run:   cmd.Mainify(rootMain),
 }
 
@@ -41,20 +40,14 @@ func init() {
 	// still implement its logic automatically.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
 
-	// Compute supported commands. We have to do this in advance since
-	// AddCommand can't be invoked twice.
-	supportedCommands := []*cobra.Command{
-		runCommand,
-		startCommand,
-		stopCommand,
-	}
-	if daemon.RegistrationSupported {
-		supportedCommands = append(supportedCommands,
-			registerCommand,
-			unregisterCommand,
-		)
-	}
-
 	// Register commands.
-	RootCommand.AddCommand(supportedCommands...)
+	RootCommand.AddCommand(
+		createCommand,
+		listCommand,
+		monitorCommand,
+		flushCommand,
+		pauseCommand,
+		resumeCommand,
+		terminateCommand,
+	)
 }

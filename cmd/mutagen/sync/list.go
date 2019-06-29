@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -174,7 +174,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 var listCommand = &cobra.Command{
 	Use:   "list [<session>...]",
-	Short: "Lists existing synchronization sessions and their statuses",
+	Short: "List existing synchronization sessions and their statuses",
 	Run:   cmd.Mainify(listMain),
 }
 

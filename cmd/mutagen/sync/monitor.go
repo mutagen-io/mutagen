@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -169,7 +169,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 
 var monitorCommand = &cobra.Command{
 	Use:   "monitor [<session>]",
-	Short: "Shows a dynamic status display for a single session",
+	Short: "Show a dynamic status display for a single session",
 	Run:   cmd.Mainify(monitorMain),
 }
 

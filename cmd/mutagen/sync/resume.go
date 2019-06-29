@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -10,16 +10,17 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
+	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
-func flushMain(command *cobra.Command, arguments []string) error {
+func resumeMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &session.Selection{
-		All:            flushConfiguration.all,
+		All:            resumeConfiguration.all,
 		Specifications: arguments,
-		LabelSelector:  flushConfiguration.labelSelector,
+		LabelSelector:  resumeConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid session selection specification")
@@ -35,22 +36,21 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
-	// Invoke the session flush method. The stream will close when the
+	// Invoke the session resume method. The stream will close when the
 	// associated context is cancelled.
-	flushContext, cancel := context.WithCancel(context.Background())
+	resumeContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Flush(flushContext)
+	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.FlushRequest{
+	request := &sessionsvcpkg.ResumeRequest{
 		Selection: selection,
-		SkipWait:  flushConfiguration.skipWait,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send flush request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
 	// Create a status line printer.
@@ -60,55 +60,59 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "flush failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "resume failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid flush response received")
-		} else if response.Message == "" {
+			statusLinePrinter.BreakIfNonEmpty()
+			return errors.Wrap(err, "invalid resume response received")
+		} else if response.Message == "" && response.Prompt == "" {
 			statusLinePrinter.Clear()
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.FlushRequest{}); err != nil {
+			if err := stream.Send(&sessionsvcpkg.ResumeRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		} else if response.Prompt != "" {
+			statusLinePrinter.BreakIfNonEmpty()
+			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+				return errors.Wrap(err, "unable to perform prompting")
+			} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
 	}
 }
 
-var flushCommand = &cobra.Command{
-	Use:   "flush [<session>...]",
-	Short: "Flushes a synchronization session",
-	Run:   cmd.Mainify(flushMain),
+var resumeCommand = &cobra.Command{
+	Use:   "resume [<session>...]",
+	Short: "Resume a paused or disconnected synchronization session",
+	Run:   cmd.Mainify(resumeMain),
 }
 
-var flushConfiguration struct {
+var resumeConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
-	// all indicates whether or not all sessions should be flushed.
+	// all indicates whether or not all sessions should be resumed.
 	all bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
-	// skipWait indicates whether or not the flush operation should block until
-	// a synchronization cycle completes for each sesion requested.
-	skipWait bool
 }
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := flushCommand.Flags()
+	flags := resumeCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&flushConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&resumeConfiguration.help, "help", "h", false, "Show help information")
 
-	// Wire up flush flags.
-	flags.BoolVarP(&flushConfiguration.all, "all", "a", false, "Flush all sessions")
-	flags.StringVar(&flushConfiguration.labelSelector, "label-selector", "", "Flush sessions matching the specified label selector")
-	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle to complete")
+	// Wire up resume flags.
+	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
+	flags.StringVar(&resumeConfiguration.labelSelector, "label-selector", "", "Resume sessions matching the specified label selector")
 }

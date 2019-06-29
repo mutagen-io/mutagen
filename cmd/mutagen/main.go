@@ -7,6 +7,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
+	"github.com/havoc-io/mutagen/cmd/mutagen/sync"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 
 	// Explicitly import packages that need to register protocol handlers.
@@ -58,16 +59,9 @@ func init() {
 	// a console, which it's not when running automatically.
 	cobra.MousetrapHelpText = ""
 
-	// Register commands. We do this here (rather than in individual init
-	// functions) so that we can control the order.
+	// Register commands.
 	rootCommand.AddCommand(
-		createCommand,
-		listCommand,
-		monitorCommand,
-		flushCommand,
-		pauseCommand,
-		resumeCommand,
-		terminateCommand,
+		sync.RootCommand,
 		daemon.RootCommand,
 		versionCommand,
 		legalCommand,

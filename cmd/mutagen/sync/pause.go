@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
-func terminateMain(command *cobra.Command, arguments []string) error {
+func pauseMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &session.Selection{
-		All:            terminateConfiguration.all,
+		All:            pauseConfiguration.all,
 		Specifications: arguments,
-		LabelSelector:  terminateConfiguration.labelSelector,
+		LabelSelector:  pauseConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid session selection specification")
@@ -35,21 +35,21 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
-	// Invoke the session terminate method. The stream will close when the
+	// Invoke the session pause method. The stream will close when the
 	// associated context is cancelled.
-	terminateContext, cancel := context.WithCancel(context.Background())
+	pauseContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Terminate(terminateContext)
+	stream, err := sessionService.Pause(pauseContext)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke terminate")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.TerminateRequest{
+	request := &sessionsvcpkg.PauseRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send terminate request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
 	}
 
 	// Create a status line printer.
@@ -59,15 +59,15 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "terminate failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid terminate response received")
+			return errors.Wrap(err, "invalid pause response received")
 		} else if response.Message == "" {
 			statusLinePrinter.Clear()
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.TerminateRequest{}); err != nil {
+			if err := stream.Send(&sessionsvcpkg.PauseRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
@@ -75,17 +75,17 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	}
 }
 
-var terminateCommand = &cobra.Command{
-	Use:   "terminate [<session>...]",
-	Short: "Permanently terminates a synchronization session",
-	Run:   cmd.Mainify(terminateMain),
+var pauseCommand = &cobra.Command{
+	Use:   "pause [<session>...]",
+	Short: "Pause a synchronization session",
+	Run:   cmd.Mainify(pauseMain),
 }
 
-var terminateConfiguration struct {
+var pauseConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
-	// all indicates whether or not all sessions should be terminated.
+	// all indicates whether or not all sessions should be paused.
 	all bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
@@ -94,16 +94,16 @@ var terminateConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := terminateCommand.Flags()
+	flags := pauseCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&terminateConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&pauseConfiguration.help, "help", "h", false, "Show help information")
 
-	// Wire up terminate flags.
-	flags.BoolVarP(&terminateConfiguration.all, "all", "a", false, "Terminate all sessions")
-	flags.StringVar(&terminateConfiguration.labelSelector, "label-selector", "", "Terminate sessions matching the specified label selector")
+	// Wire up pause flags.
+	flags.BoolVarP(&pauseConfiguration.all, "all", "a", false, "Pause all sessions")
+	flags.StringVar(&pauseConfiguration.labelSelector, "label-selector", "", "Pause sessions matching the specified label selector")
 }

@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -454,7 +454,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 var createCommand = &cobra.Command{
 	Use:   "create <alpha> <beta>",
-	Short: "Creates and starts a new synchronization session",
+	Short: "Create and start a new synchronization session",
 	Run:   cmd.Mainify(createMain),
 }
 

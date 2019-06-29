@@ -1,4 +1,4 @@
-package main
+package sync
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 	"github.com/havoc-io/mutagen/pkg/session"
 )
 
-func pauseMain(command *cobra.Command, arguments []string) error {
+func flushMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &session.Selection{
-		All:            pauseConfiguration.all,
+		All:            flushConfiguration.all,
 		Specifications: arguments,
-		LabelSelector:  pauseConfiguration.labelSelector,
+		LabelSelector:  flushConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid session selection specification")
@@ -35,21 +35,22 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
 
-	// Invoke the session pause method. The stream will close when the
+	// Invoke the session flush method. The stream will close when the
 	// associated context is cancelled.
-	pauseContext, cancel := context.WithCancel(context.Background())
+	flushContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Pause(pauseContext)
+	stream, err := sessionService.Flush(flushContext)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.PauseRequest{
+	request := &sessionsvcpkg.FlushRequest{
 		Selection: selection,
+		SkipWait:  flushConfiguration.skipWait,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send flush request")
 	}
 
 	// Create a status line printer.
@@ -59,15 +60,15 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "flush failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid pause response received")
+			return errors.Wrap(err, "invalid flush response received")
 		} else if response.Message == "" {
 			statusLinePrinter.Clear()
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.PauseRequest{}); err != nil {
+			if err := stream.Send(&sessionsvcpkg.FlushRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
@@ -75,35 +76,39 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	}
 }
 
-var pauseCommand = &cobra.Command{
-	Use:   "pause [<session>...]",
-	Short: "Pauses a synchronization session",
-	Run:   cmd.Mainify(pauseMain),
+var flushCommand = &cobra.Command{
+	Use:   "flush [<session>...]",
+	Short: "Force a synchronization cycle",
+	Run:   cmd.Mainify(flushMain),
 }
 
-var pauseConfiguration struct {
+var flushConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
-	// all indicates whether or not all sessions should be paused.
+	// all indicates whether or not all sessions should be flushed.
 	all bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
+	// skipWait indicates whether or not the flush operation should block until
+	// a synchronization cycle completes for each sesion requested.
+	skipWait bool
 }
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := pauseCommand.Flags()
+	flags := flushCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&pauseConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&flushConfiguration.help, "help", "h", false, "Show help information")
 
-	// Wire up pause flags.
-	flags.BoolVarP(&pauseConfiguration.all, "all", "a", false, "Pause all sessions")
-	flags.StringVar(&pauseConfiguration.labelSelector, "label-selector", "", "Pause sessions matching the specified label selector")
+	// Wire up flush flags.
+	flags.BoolVarP(&flushConfiguration.all, "all", "a", false, "Flush all sessions")
+	flags.StringVar(&flushConfiguration.labelSelector, "label-selector", "", "Flush sessions matching the specified label selector")
+	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle to complete")
 }
