@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
 
-func daemonStopMain(command *cobra.Command, arguments []string) error {
+func stopMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
 		return errors.New("unexpected arguments provided")
@@ -30,7 +30,7 @@ func daemonStopMain(command *cobra.Command, arguments []string) error {
 	// version compatibility checks since they would remove the ability to
 	// terminate an incompatible daemon. This is fine since the daemon service
 	// portion of the daemon API is stable.
-	daemonConnection, err := createDaemonClientConnection(false)
+	daemonConnection, err := CreateDaemonClientConnection(false)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}
@@ -47,13 +47,13 @@ func daemonStopMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
-var daemonStopCommand = &cobra.Command{
+var stopCommand = &cobra.Command{
 	Use:   "stop",
 	Short: "Stops the Mutagen daemon if it's running",
-	Run:   cmd.Mainify(daemonStopMain),
+	Run:   cmd.Mainify(stopMain),
 }
 
-var daemonStopConfiguration struct {
+var stopConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
@@ -61,12 +61,12 @@ var daemonStopConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := daemonStopCommand.Flags()
+	flags := stopCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&daemonStopConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&stopConfiguration.help, "help", "h", false, "Show help information")
 }

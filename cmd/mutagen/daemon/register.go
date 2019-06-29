@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"github.com/pkg/errors"
@@ -9,14 +9,14 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
-func daemonUnregisterMain(command *cobra.Command, arguments []string) error {
+func registerMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
 		return errors.New("unexpected arguments provided")
 	}
 
-	// Attempt deregistration.
-	if err := daemon.Unregister(); err != nil {
+	// Attempt registration.
+	if err := daemon.Register(); err != nil {
 		return err
 	}
 
@@ -24,13 +24,13 @@ func daemonUnregisterMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
-var daemonUnregisterCommand = &cobra.Command{
-	Use:   "unregister",
-	Short: "Unregisters Mutagen as a per-user daemon",
-	Run:   cmd.Mainify(daemonUnregisterMain),
+var registerCommand = &cobra.Command{
+	Use:   "register",
+	Short: "Registers the Mutagen daemon to start automatically on login",
+	Run:   cmd.Mainify(registerMain),
 }
 
-var daemonUnregisterConfiguration struct {
+var registerConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
@@ -38,12 +38,12 @@ var daemonUnregisterConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := daemonUnregisterCommand.Flags()
+	flags := registerCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&daemonUnregisterConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&registerConfiguration.help, "help", "h", false, "Show help information")
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
@@ -358,7 +359,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	})
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := createDaemonClientConnection(true)
+	daemonConnection, err := daemon.CreateDaemonClientConnection(true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

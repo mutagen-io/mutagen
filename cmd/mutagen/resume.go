@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
@@ -26,7 +27,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := createDaemonClientConnection(true)
+	daemonConnection, err := daemon.CreateDaemonClientConnection(true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

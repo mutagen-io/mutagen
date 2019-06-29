@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	promptsvcpkg "github.com/havoc-io/mutagen/pkg/service/prompt"
 )
@@ -25,7 +26,7 @@ func promptMain(arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := createDaemonClientConnection(true)
+	daemonConnection, err := daemon.CreateDaemonClientConnection(true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

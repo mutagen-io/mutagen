@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
@@ -130,7 +131,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := createDaemonClientConnection(true)
+	daemonConnection, err := daemon.CreateDaemonClientConnection(true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

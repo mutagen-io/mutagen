@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"context"
@@ -21,10 +21,10 @@ func daemonDialer(path string, timeout time.Duration) (net.Conn, error) {
 	return ipc.DialTimeout(path, timeout)
 }
 
-// createDaemonClientConnection creates a new daemon client connection and
+// CreateDaemonClientConnection creates a new daemon client connection and
 // optionally verifies that the daemon version matches the current process'
 // version.
-func createDaemonClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
+func CreateDaemonClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Create a context to timeout the dial.
 	dialContext, cancel := context.WithTimeout(context.Background(), ipc.RecommendedDialTimeout)
 	defer cancel()

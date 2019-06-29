@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/cmd"
+	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 
 	// Explicitly import packages that need to register protocol handlers.
@@ -67,7 +68,7 @@ func init() {
 		pauseCommand,
 		resumeCommand,
 		terminateCommand,
-		daemonCommand,
+		daemon.RootCommand,
 		versionCommand,
 		legalCommand,
 		generateCommand,

@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"os"
@@ -12,7 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 )
 
-func daemonStartMain(command *cobra.Command, arguments []string) error {
+func startMain(command *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	if len(arguments) != 0 {
 		return errors.New("unexpected arguments provided")
@@ -46,13 +46,13 @@ func daemonStartMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
-var daemonStartCommand = &cobra.Command{
+var startCommand = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the Mutagen daemon if it's not already running",
-	Run:   cmd.Mainify(daemonStartMain),
+	Run:   cmd.Mainify(startMain),
 }
 
-var daemonStartConfiguration struct {
+var startConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
@@ -60,12 +60,12 @@ var daemonStartConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := daemonStartCommand.Flags()
+	flags := startCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&daemonStartConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&startConfiguration.help, "help", "h", false, "Show help information")
 }

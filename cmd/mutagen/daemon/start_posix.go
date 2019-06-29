@@ -2,7 +2,7 @@
 
 // TODO: Figure out what to do for Plan 9. It doesn't support Setsid.
 
-package main
+package daemon
 
 import (
 	"syscall"
