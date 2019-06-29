@@ -72,18 +72,24 @@ func Register() error {
 		return nil
 	}
 
-	// Acquire the Mutagen lock to ensure the daemon isn't running. We switch
-	// the start and stop mechanism depending on whether or not we're
-	// registered, so we need to make sure we don't try to stop a daemon started
-	// using a different mechanism.
-	locker, err := filesystem.AcquireMutagenLock()
+	// Acquire the daemon lock to ensure the daemon isn't running. We switch the
+	// start and stop mechanism depending on whether or not we're registered, so
+	// we need to make sure we don't try to stop a daemon started using a
+	// different mechanism.
+	lock, err := AcquireLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer locker.Close()
+	defer lock.Release()
+
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return errors.Wrap(err, "unable to compute path to home directory")
+	}
 
 	// Ensure the user's Library directory exists.
-	targetPath := filepath.Join(filesystem.HomeDirectory, libraryDirectoryName)
+	targetPath := filepath.Join(homeDirectory, libraryDirectoryName)
 	if err := os.MkdirAll(targetPath, libraryDirectoryPermissions); err != nil {
 		return errors.Wrap(err, "unable to create Library directory")
 	}
@@ -122,19 +128,25 @@ func Unregister() error {
 		return nil
 	}
 
-	// Acquire the Mutagen lock to ensure the daemon isn't running. We switch
-	// the start and stop mechanism depending on whether or not we're
-	// registered, so we need to make sure we don't try to stop a daemon started
-	// using a different mechanism.
-	locker, err := filesystem.AcquireMutagenLock()
+	// Acquire the daemon lock to ensure the daemon isn't running. We switch the
+	// start and stop mechanism depending on whether or not we're registered, so
+	// we need to make sure we don't try to stop a daemon started using a
+	// different mechanism.
+	lock, err := AcquireLock()
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer locker.Close()
+	defer lock.Release()
+
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return errors.Wrap(err, "unable to compute path to home directory")
+	}
 
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
-		filesystem.HomeDirectory,
+		homeDirectory,
 		libraryDirectoryName,
 		launchAgentsDirectoryName,
 		launchdPlistName,
@@ -154,9 +166,15 @@ func Unregister() error {
 // registered determines whether or not automatic daemon startup is currently
 // registered.
 func registered() (bool, error) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return false, errors.Wrap(err, "unable to compute path to home directory")
+	}
+
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
-		filesystem.HomeDirectory,
+		homeDirectory,
 		libraryDirectoryName,
 		launchAgentsDirectoryName,
 		launchdPlistName,
@@ -187,9 +205,15 @@ func RegisteredStart() (bool, error) {
 		return false, nil
 	}
 
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return false, errors.Wrap(err, "unable to compute path to home directory")
+	}
+
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
-		filesystem.HomeDirectory,
+		homeDirectory,
 		libraryDirectoryName,
 		launchAgentsDirectoryName,
 		launchdPlistName,
@@ -218,9 +242,15 @@ func RegisteredStop() (bool, error) {
 		return false, nil
 	}
 
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return false, errors.Wrap(err, "unable to compute path to home directory")
+	}
+
 	// Compute the launchd plist path.
 	targetPath := filepath.Join(
-		filesystem.HomeDirectory,
+		homeDirectory,
 		libraryDirectoryName,
 		launchAgentsDirectoryName,
 		launchdPlistName,

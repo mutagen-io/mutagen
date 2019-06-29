@@ -10,35 +10,33 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
 
+const (
+	// dialTimeout is the timeout to use when attempting to connect to the
+	// daemon IPC endpoint.
+	dialTimeout = 1 * time.Second
+)
+
 // daemonDialer is an adapter around daemon IPC dialing that fits gRPC's dialing
-// interface.
-func daemonDialer(path string, timeout time.Duration) (net.Conn, error) {
-	return ipc.DialTimeout(path, timeout)
+// interface. It ignores the provided address since the daemon package already
+// knows the correct endpoint.
+func daemonDialer(_ string, timeout time.Duration) (net.Conn, error) {
+	return daemon.DialTimeout(timeout)
 }
 
-// CreateDaemonClientConnection creates a new daemon client connection and
-// optionally verifies that the daemon version matches the current process'
-// version.
-func CreateDaemonClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
+// CreateClientConnection creates a new daemon client connection and optionally
+// verifies that the daemon version matches the current process' version.
+func CreateClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Create a context to timeout the dial.
-	dialContext, cancel := context.WithTimeout(context.Background(), ipc.RecommendedDialTimeout)
+	dialContext, cancel := context.WithTimeout(context.Background(), dialTimeout)
 	defer cancel()
-
-	// Compute the path to the daemon IPC endpoint.
-	ipcEndpointPath, err := daemon.IPCEndpointPath()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute IPC endpoint path")
-	}
 
 	// Perform dialing.
 	connection, err := grpc.DialContext(
-		dialContext,
-		ipcEndpointPath,
+		dialContext, "",
 		grpc.WithInsecure(),
 		grpc.WithDialer(daemonDialer),
 		grpc.WithBlock(),

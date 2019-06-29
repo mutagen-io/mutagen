@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -106,7 +107,17 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		if c, err := loadAndValidateTOMLConfiguration(filesystem.MutagenConfigurationPath); err != nil {
+		// Compute the path to the user's home directory.
+		homeDirectory, err := os.UserHomeDir()
+		if err != nil {
+			return errors.Wrap(err, "unable to compute path to home directory")
+		}
+
+		// Compute the path to the global configuration.
+		globalConfigurationPath := filepath.Join(homeDirectory, filesystem.MutagenConfigurationName)
+
+		// Load the configuration.
+		if c, err := loadAndValidateTOMLConfiguration(globalConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
 			configuration = sessionpkg.MergeConfigurations(configuration, c)
@@ -359,7 +370,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	})
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateDaemonClientConnection(true)
+	daemonConnection, err := daemon.CreateClientConnection(true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

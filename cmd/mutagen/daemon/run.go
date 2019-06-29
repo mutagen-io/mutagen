@@ -12,8 +12,6 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
@@ -26,15 +24,15 @@ func runMain(command *cobra.Command, arguments []string) error {
 		return errors.New("unexpected arguments provided")
 	}
 
-	// Attempt to acquire the Mutagen lock and defer its release. If there is a
+	// Attempt to acquire the daemon lock and defer its release. If there is a
 	// crash, the lock will be released by the OS automatically, but on Windows
 	// this may only happen after some unspecified period of time (though it
 	// does seem to be basically instant).
-	locker, err := filesystem.AcquireMutagenLock()
+	lock, err := daemon.AcquireLock()
 	if err != nil {
 		return errors.Wrap(err, "unable to acquire daemon lock")
 	}
-	defer locker.Close()
+	defer lock.Release()
 
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
@@ -68,14 +66,8 @@ func runMain(command *cobra.Command, arguments []string) error {
 	// Create and register the session service.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
-	// Compute the path to the daemon IPC endpoint.
-	ipcEndpointPath, err := daemon.IPCEndpointPath()
-	if err != nil {
-		return errors.Wrap(err, "unable to compute IPC endpoint path")
-	}
-
 	// Create the daemon listener and defer its closure.
-	listener, err := ipc.NewListener(ipcEndpointPath)
+	listener, err := daemon.NewListener()
 	if err != nil {
 		return errors.Wrap(err, "unable to create daemon listener")
 	}

@@ -99,7 +99,7 @@ func NewListener(path string) (net.Listener, error) {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		if os.IsExist(err) {
-			return nil, errors.New("listener endpoint already exists")
+			return nil, err
 		}
 		return nil, errors.Wrap(err, "unable to open endpoint")
 	}

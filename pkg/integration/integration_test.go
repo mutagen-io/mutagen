@@ -10,9 +10,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
@@ -40,12 +38,12 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Override the expected agent bundle location.
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
-	// Acquire the Mutagen lock and defer its release.
-	locker, err := filesystem.AcquireMutagenLock()
+	// Acquire the daemon lock and defer its release.
+	lock, err := daemon.AcquireLock()
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to acquire Mutagen lock")
+		return -1, errors.Wrap(err, "unable to acquire daemon lock")
 	}
-	defer locker.Close()
+	defer lock.Release()
 
 	// Create a session manager and defer its shutdown. Note that we assign to
 	// the global instance here.
@@ -74,14 +72,8 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Create and register the session service.
 	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
 
-	// Compute the path to the daemon IPC endpoint.
-	ipcEndpointPath, err := daemon.IPCEndpointPath()
-	if err != nil {
-		return -1, errors.Wrap(err, "unable to compute IPC endpoint path")
-	}
-
 	// Create the daemon listener and defer its closure.
-	listener, err := ipc.NewListener(ipcEndpointPath)
+	listener, err := daemon.NewListener()
 	if err != nil {
 		return -1, errors.Wrap(err, "unable to create daemon listener")
 	}

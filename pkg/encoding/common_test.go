@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-
-	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
 // testMessageJSON is a test structure to use for encoding tests using JSON.
@@ -38,7 +36,14 @@ func TestLoadAndUnmarshalNonExistentPath(t *testing.T) {
 
 // TestLoadAndUnmarshalDirectory tests that loading fails from a directory.
 func TestLoadAndUnmarshalDirectory(t *testing.T) {
-	if LoadAndUnmarshal(filesystem.HomeDirectory, nil) == nil {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
+	// Perform the test.
+	if LoadAndUnmarshal(homeDirectory, nil) == nil {
 		t.Error("expected LoadAndUnmarshal error when loading directory")
 	}
 }

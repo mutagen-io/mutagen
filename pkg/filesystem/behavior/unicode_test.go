@@ -9,12 +9,15 @@ import (
 )
 
 func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Query the assumed behavior of the home directory and ensure it matches
 	// what's expected.
-	if decomposes, err := DecomposesUnicodeByPath(
-		filesystem.HomeDirectory,
-		ProbeMode_ProbeModeAssume,
-	); err != nil {
+	if decomposes, err := DecomposesUnicodeByPath(homeDirectory, ProbeMode_ProbeModeAssume); err != nil {
 		t.Fatal("unable to query Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -116,9 +119,15 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 // TestDecomposesUnicodeAssumedHomeDirectory tests assumed Unicode decomposition
 // behavior on the home directory.
 func TestDecomposesUnicodeAssumedHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &decomposesUnicodeTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		assume:   true,
 		expected: false,
 	}
@@ -182,9 +191,15 @@ func TestDecomposesUnicodeHomeDirectory(t *testing.T) {
 		t.Skip()
 	}
 
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &decomposesUnicodeTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		expected: false,
 	}
 

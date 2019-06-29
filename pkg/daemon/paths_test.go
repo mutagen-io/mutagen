@@ -22,11 +22,20 @@ func TestSubpath(t *testing.T) {
 	}
 }
 
-// TestIPCEndpointPath tests that IPCEndpointPath succeeds.
+// TestLockPath tests that lockPath succeeds.
+func TestLockPath(t *testing.T) {
+	if path, err := lockPath(); err != nil {
+		t.Fatal("unable to compute lock path:", err)
+	} else if path == "" {
+		t.Error("empty lock path returned")
+	}
+}
+
+// TestIPCEndpointPath tests that ipcEndpointPath succeeds.
 func TestIPCEndpointPath(t *testing.T) {
-	if endpoint, err := IPCEndpointPath(); err != nil {
+	if path, err := ipcEndpointPath(); err != nil {
 		t.Fatal("unable to compute IPC endpoint path:", err)
-	} else if endpoint == "" {
+	} else if path == "" {
 		t.Error("empty IPC endpoint path returned")
 	}
 }

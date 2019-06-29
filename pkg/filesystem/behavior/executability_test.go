@@ -42,9 +42,15 @@ func (c *preservesExecutabilityByPathTestCase) run(t *testing.T) {
 // TestPreservesExecutabilityByPathAssumedHomeDirectory tests assumed
 // executability preservation behavior by path on the current directory.
 func TestPreservesExecutabilityByPathAssumedHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &preservesExecutabilityByPathTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
 	}
@@ -56,9 +62,15 @@ func TestPreservesExecutabilityByPathAssumedHomeDirectory(t *testing.T) {
 // TestPreservesExecutabilityByPathHomeDirectory tests executability
 // preservation behavior by path on the home directory.
 func TestPreservesExecutabilityByPathHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &preservesExecutabilityByPathTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		expected: runtime.GOOS != "windows",
 	}
 
@@ -126,9 +138,15 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 // TestPreservesExecutabilityAssumedHomeDirectory tests assumed executability
 // preservation behavior on the home directory.
 func TestPreservesExecutabilityAssumedHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &preservesExecutabilityTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
 	}
@@ -140,9 +158,15 @@ func TestPreservesExecutabilityAssumedHomeDirectory(t *testing.T) {
 // TestPreservesExecutabilityHomeDirectory tests executability preservation
 // behavior on the home directory.
 func TestPreservesExecutabilityHomeDirectory(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Create the test case.
 	testCase := &preservesExecutabilityTestCase{
-		path:     filesystem.HomeDirectory,
+		path:     homeDirectory,
 		expected: runtime.GOOS != "windows",
 	}
 

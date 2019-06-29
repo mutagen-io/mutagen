@@ -30,7 +30,7 @@ func stopMain(command *cobra.Command, arguments []string) error {
 	// version compatibility checks since they would remove the ability to
 	// terminate an incompatible daemon. This is fine since the daemon service
 	// portion of the daemon API is stable.
-	daemonConnection, err := CreateDaemonClientConnection(false)
+	daemonConnection, err := CreateClientConnection(false)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

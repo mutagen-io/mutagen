@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"time"
 )
 
 // TestDialTimeoutNoEndpoint tests that DialTimeout fails if there is no
@@ -22,7 +24,7 @@ func TestDialTimeoutNoEndpoint(t *testing.T) {
 	endpoint := filepath.Join(temporaryDirectory, "test.sock")
 
 	// Attempt to dial the listener and ensure that a timeout occurs.
-	if c, err := DialTimeout(endpoint, RecommendedDialTimeout); err == nil {
+	if c, err := DialTimeout(endpoint, 1*time.Second); err == nil {
 		c.Close()
 		t.Error("IPC connection succeeded unexpectedly")
 	}
@@ -65,7 +67,7 @@ func TestIPC(t *testing.T) {
 	// Perform dialing and message sending in a separate Goroutine.
 	go func() {
 		// Dial and defer connection closure.
-		connection, err := DialTimeout(endpoint, RecommendedDialTimeout)
+		connection, err := DialTimeout(endpoint, 1*time.Second)
 		if err != nil {
 			return
 		}

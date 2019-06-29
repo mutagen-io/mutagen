@@ -22,6 +22,12 @@ func TestTildeNotPathSeparator(t *testing.T) {
 }
 
 func TestTildeExpandHome(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Perform expansion.
 	expanded, err := tildeExpand("~")
 	if err != nil {
@@ -29,12 +35,18 @@ func TestTildeExpandHome(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
 
 func TestTildeExpandHomeSlash(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Perform expansion.
 	expanded, err := tildeExpand("~/")
 	if err != nil {
@@ -42,7 +54,7 @@ func TestTildeExpandHomeSlash(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
@@ -50,6 +62,12 @@ func TestTildeExpandHomeSlash(t *testing.T) {
 func TestTildeExpandHomeBackslash(t *testing.T) {
 	// Set expectations.
 	expectFailure := runtime.GOOS != "windows"
+
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
 
 	// Perform expansion.
 	expanded, err := tildeExpand("~\\")
@@ -65,7 +83,7 @@ func TestTildeExpandHomeBackslash(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
@@ -95,6 +113,12 @@ func currentUsername() (string, error) {
 }
 
 func TestTildeExpandLookup(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Grab the current username.
 	username, err := currentUsername()
 	if err != nil {
@@ -108,12 +132,18 @@ func TestTildeExpandLookup(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
 
 func TestTildeExpandLookupSlash(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Grab the current username.
 	username, err := currentUsername()
 	if err != nil {
@@ -127,7 +157,7 @@ func TestTildeExpandLookupSlash(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
@@ -135,6 +165,12 @@ func TestTildeExpandLookupSlash(t *testing.T) {
 func TestTildeExpandLookupBackslash(t *testing.T) {
 	// Set expectations.
 	expectFailure := runtime.GOOS != "windows"
+
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
 
 	// Grab the current username.
 	username, err := currentUsername()
@@ -156,12 +192,18 @@ func TestTildeExpandLookupBackslash(t *testing.T) {
 	}
 
 	// Ensure that the result matches the expected values.
-	if expanded != HomeDirectory {
+	if expanded != homeDirectory {
 		t.Error("tilde-expanded path does not match expected")
 	}
 }
 
 func TestNormalizeHome(t *testing.T) {
+	// Compute the path to the user's home directory.
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal("unable to compute home directory:", err)
+	}
+
 	// Compute a path relative to the home directory.
 	normalized, err := Normalize("~/somepath")
 	if err != nil {
@@ -169,7 +211,7 @@ func TestNormalizeHome(t *testing.T) {
 	}
 
 	// Ensure that it's what we expect.
-	if normalized != filepath.Join(HomeDirectory, "somepath") {
+	if normalized != filepath.Join(homeDirectory, "somepath") {
 		t.Error("normalized path does not match expected")
 	}
 }

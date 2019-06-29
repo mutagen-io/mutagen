@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// lockName is the name of the daemon lock. It resides within the daemon
+	// subdirectory of the Mutagen directory.
+	lockName = "daemon.lock"
 	// ipcEndpointName is the name of the daemon IPC endpoint. It resides within
 	// the daemon subdirectory of the Mutagen directory.
 	ipcEndpointName = "daemon.sock"
@@ -27,8 +30,14 @@ func subpath(name string) (string, error) {
 	return filepath.Join(daemonRoot, name), nil
 }
 
-// IPCEndpointPath computes the path to the daemon IPC endpoint, creating any
+// lockPath computes the path to the daemon lock, creating any intermediate
+// directories as necessary.
+func lockPath() (string, error) {
+	return subpath(lockName)
+}
+
+// ipcEndpointPath computes the path to the daemon IPC endpoint, creating any
 // intermediate directories as necessary.
-func IPCEndpointPath() (string, error) {
+func ipcEndpointPath() (string, error) {
 	return subpath(ipcEndpointName)
 }

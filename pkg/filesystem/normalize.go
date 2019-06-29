@@ -42,7 +42,11 @@ func tildeExpand(path string) (string, error) {
 	// use the current user's home directory, otherwise we need to do a lookup.
 	var homeDirectory string
 	if username == "" {
-		homeDirectory = HomeDirectory
+		if h, err := os.UserHomeDir(); err != nil {
+			return "", errors.Wrap(err, "unable to compute path to home directory")
+		} else {
+			homeDirectory = h
+		}
 	} else {
 		if u, err := user.Lookup(username); err != nil {
 			return "", errors.Wrap(err, "unable to lookup user")
