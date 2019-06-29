@@ -11,6 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
@@ -57,8 +58,8 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Create the gRPC server and defer its stoppage. We use a hard stop rather
 	// than a graceful stop so that it doesn't hang on open requests.
 	server := grpc.NewServer(
-		grpc.MaxSendMsgSize(daemon.MaximumIPCMessageSize),
-		grpc.MaxRecvMsgSize(daemon.MaximumIPCMessageSize),
+		grpc.MaxSendMsgSize(grpcutil.MaximumMessageSize),
+		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
 	)
 	defer server.Stop()
 
