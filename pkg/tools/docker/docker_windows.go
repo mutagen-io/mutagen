@@ -1,8 +1,10 @@
 package docker
 
-// commandNameOrPathForPlatform returns the name of the docker command on
-// Windows platforms, which will force resolution via the PATH environment
-// variable.
-func commandNameOrPathForPlatform() (string, error) {
-	return "docker", nil
+import (
+	"os/exec"
+)
+
+// commandPathForPlatform searches for the docker command in the user's path.
+func commandPathForPlatform() (string, error) {
+	return exec.LookPath("docker")
 }
