@@ -448,13 +448,13 @@ func (c *Controller) Resume(prompter string) error {
 type ControllerHaltMode uint8
 
 const (
-	// ControllerHaltModePause indicates that a session should be halted and marked as
-	// paused.
+	// ControllerHaltModePause indicates that a session should be halted and
+	// marked as paused.
 	ControllerHaltModePause ControllerHaltMode = iota
 	// ControllerHaltModeShutdown indicates that a session should be halted.
 	ControllerHaltModeShutdown
-	// ControllerHaltModeShutdown indicates that a session should be halted and then
-	// deleted.
+	// ControllerHaltModeShutdown indicates that a session should be halted and
+	// then deleted.
 	ControllerHaltModeTerminate
 )
 
