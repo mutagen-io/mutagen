@@ -105,10 +105,12 @@ func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn,
 	// Mutagen agent.
 	if err := clientHandshake(connection); err != nil {
 		// Close the connection to ensure that the underlying process and its
-		// I/O-forwarding Goroutines have terminated.
-		if err := connection.Close(); err != nil {
-			return nil, false, false, errors.Wrap(err, "unable to terminate process after failed handshake")
-		}
+		// I/O-forwarding Goroutines have terminated. The error returned from
+		// Close will be non-nil if the process exits with a non-0 exit code, so
+		// we don't want to check it, but process.Connection guarantees that if
+		// Close returns, the underlying process has fully terminated, which is
+		// all we care about.
+		connection.Close()
 
 		// Extract error output and ensure it's UTF-8.
 		errorOutput := errorBuffer.String()
