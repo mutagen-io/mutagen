@@ -77,6 +77,18 @@ func TestURLEnsureValidSSHEmptyHostnameInvalid(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidSSHLargePortInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_SSH,
+		Hostname: "washington",
+		Port:     65536,
+		Path:     "some/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
 func TestURLEnsureValidSSHEmptyPathInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_SSH,

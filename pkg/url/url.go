@@ -1,6 +1,8 @@
 package url
 
 import (
+	"math"
+
 	"github.com/pkg/errors"
 )
 
@@ -27,6 +29,8 @@ func (u *URL) EnsureValid() error {
 	} else if u.Protocol == Protocol_SSH {
 		if u.Hostname == "" {
 			return errors.New("SSH URL with empty hostname")
+		} else if u.Port > math.MaxUint16 {
+			return errors.New("SSH URL with invalid port")
 		} else if u.Path == "" {
 			return errors.New("SSH URL with empty path")
 		} else if len(u.Environment) != 0 {
