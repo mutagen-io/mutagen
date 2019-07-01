@@ -11,7 +11,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 func TestCopy(t *testing.T) {
@@ -44,17 +43,12 @@ func TestCopy(t *testing.T) {
 		t.Fatal("unable to query user data:", err)
 	}
 
-	// Compute the remote URL.
-	remote := &url.URL{
-		Protocol: url.Protocol_SSH,
-		Username: user.Username,
-		Hostname: "localhost",
-		Port:     22,
-		Path:     "~/synchronization/path",
-	}
-
 	// Create a transport.
-	transport := &transport{remote: remote}
+	transport := &transport{
+		user:     user.Username,
+		hostname: "localhost",
+		port:     22,
+	}
 
 	// Compute the destination path.
 	// HACK: Technically agent.Transport implementations only need to support
@@ -99,17 +93,12 @@ func TestCommandOutput(t *testing.T) {
 		t.Fatal("unable to query user data:", err)
 	}
 
-	// Compute remote URL.
-	remote := &url.URL{
-		Protocol: url.Protocol_SSH,
-		Username: user.Username,
-		Hostname: "localhost",
-		Port:     22,
-		Path:     "~/synchronization/path",
-	}
-
 	// Create a transport.
-	transport := &transport{remote: remote}
+	transport := &transport{
+		user:     user.Username,
+		hostname: "localhost",
+		port:     22,
+	}
 
 	// Attempt to execute the command.
 	// TODO: Should we also verify that an extracted HOME/USERPROFILE value

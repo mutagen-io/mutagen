@@ -9,12 +9,12 @@ import (
 
 // setDockerVariables sets all Docker environment variables to their values
 // frozen into the URL.
-func setDockerVariables(environment []string, remote *url.URL) []string {
+func setDockerVariables(environment []string, variables map[string]string) []string {
 	// Populate all Docker environment variables, overriding any set in the base
 	// environment.
 	for _, variable := range url.DockerEnvironmentVariables {
 		environment = append(environment,
-			fmt.Sprintf("%s=%s", variable, remote.Environment[variable]),
+			fmt.Sprintf("%s=%s", variable, variables[variable]),
 		)
 	}
 

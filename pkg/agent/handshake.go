@@ -1,8 +1,10 @@
-package remote
+package agent
 
 import (
-	"fmt"
 	"io"
+	"net"
+
+	"github.com/pkg/errors"
 )
 
 // magicNumberBytes is a type capable of holding a Mutagen magic byte sequence.
@@ -45,22 +47,40 @@ func receiveAndCompareMagicNumber(reader io.Reader, expected magicNumberBytes) (
 	return received == expected, nil
 }
 
-// handshakeTransportError indicates a handshake error due to a transport
-// failure.
-type handshakeTransportError struct {
-	// underlying is the underlying error that we know is due to a transport
-	// failure during the handshake process.
-	underlying error
+// clientHandshake performs a client-side handshake on the connection.
+func clientHandshake(connection net.Conn) error {
+	// Receive the server's magic number.
+	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
+		return errors.Wrap(err, "unable to receive server magic number")
+	} else if !magicOk {
+		return errors.New("server magic number incorrect")
+	}
+
+	// Send our magic number to the server.
+	if err := sendMagicNumber(connection, clientMagicNumber); err != nil {
+		return errors.Wrap(err, "unable to send client magic number")
+	}
+
+	// Success.
+	return nil
 }
 
-// Error returns a formatted version of the transport error.
-func (e *handshakeTransportError) Error() string {
-	return fmt.Sprintf("handshake transport error: %v", e.underlying)
-}
+// ServerHandshake performs a server-side handshake on the connection.
+func ServerHandshake(connection net.Conn) error {
+	// Send our magic number to the client.
+	if err := sendMagicNumber(connection, serverMagicNumber); err != nil {
+		return errors.Wrap(err, "unable to send server magic number")
+	}
 
-// IsHandshakeTransportError indicates whether or not an error value is a
-// handshake transport error.
-func IsHandshakeTransportError(err error) bool {
-	_, ok := err.(*handshakeTransportError)
-	return ok
+	// Receive the client's magic number. We treat a mismatch of the magic
+	// number as a transport error as well, because it indicates that we're not
+	// actually talking to a Mutagen client.
+	if magicOk, err := receiveAndCompareMagicNumber(connection, clientMagicNumber); err != nil {
+		return errors.Wrap(err, "unable to receive client magic number")
+	} else if !magicOk {
+		return errors.New("client magic number incorrect")
+	}
+
+	// Success.
+	return nil
 }

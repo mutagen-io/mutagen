@@ -8,9 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/tools/ssh"
-	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 const (
@@ -22,10 +22,24 @@ const (
 
 // transport implements the agent.Transport interface using SSH.
 type transport struct {
-	// remote is the endpoint URL.
-	remote *url.URL
+	// user is the SSH user under which agents should be invoked.
+	user string
+	// hostname is the target hostname.
+	hostname string
+	// port is the target port.
+	port uint16
 	// prompter is the prompter identifier to use for prompting.
 	prompter string
+}
+
+// NewTransport creates a new SSH transport using the specified parameters.
+func NewTransport(user, hostname string, port uint16, prompter string) (agent.Transport, error) {
+	return &transport{
+		user:     user,
+		hostname: hostname,
+		port:     port,
+		prompter: prompter,
+	}, nil
 }
 
 // Copy implements the Copy method of agent.Transport.
@@ -55,17 +69,17 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	// home directory. Since we already make the assumption that the home
 	// directory is the default working directory for SSH commands, this is a
 	// reasonable additional assumption.
-	destinationURL := fmt.Sprintf("%s:%s", t.remote.Hostname, remoteName)
-	if t.remote.Username != "" {
-		destinationURL = fmt.Sprintf("%s@%s", t.remote.Username, destinationURL)
+	destinationURL := fmt.Sprintf("%s:%s", t.hostname, remoteName)
+	if t.user != "" {
+		destinationURL = fmt.Sprintf("%s@%s", t.user, destinationURL)
 	}
 
 	// Set up arguments.
 	var scpArguments []string
 	scpArguments = append(scpArguments, ssh.CompressionArgument())
 	scpArguments = append(scpArguments, ssh.TimeoutArgument(connectTimeoutSeconds))
-	if t.remote.Port != 0 {
-		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", t.remote.Port))
+	if t.port != 0 {
+		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", t.port))
 	}
 	scpArguments = append(scpArguments, sourceBase, destinationURL)
 
@@ -108,9 +122,9 @@ func (t *transport) Copy(localPath, remoteName string) error {
 // Command implements the Command method of agent.Transport.
 func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// Compute the target.
-	target := t.remote.Hostname
-	if t.remote.Username != "" {
-		target = fmt.Sprintf("%s@%s", t.remote.Username, t.remote.Hostname)
+	target := t.hostname
+	if t.user != "" {
+		target = fmt.Sprintf("%s@%s", t.user, t.hostname)
 	}
 
 	// Set up arguments. We intentionally don't use compression on SSH commands
@@ -119,8 +133,8 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// implementation.
 	var sshArguments []string
 	sshArguments = append(sshArguments, ssh.TimeoutArgument(connectTimeoutSeconds))
-	if t.remote.Port != 0 {
-		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", t.remote.Port))
+	if t.port != 0 {
+		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", t.port))
 	}
 	sshArguments = append(sshArguments, target, command)
 

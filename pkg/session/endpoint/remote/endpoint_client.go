@@ -40,52 +40,16 @@ func NewEndpointClient(
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {
-	// Receive the server's magic number. We treat a mismatch of the magic
-	// number as a transport error as well, because it indicates that we're not
-	// actually talking to a Mutagen server.
-	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
-		connection.Close()
-		return nil, &handshakeTransportError{errors.Wrap(err, "unable to receive server magic number")}
-	} else if !magicOk {
-		connection.Close()
-		return nil, &handshakeTransportError{errors.New("server magic number incorrect")}
+	// Perform a version handshake to ensure that we're talking with a
+	// compatible version of Mutagen.
+	//
+	// TODO: For now, this handshake requires an exact version match, but as we
+	// stabilize the remote endpoint protocol, we may want to allow some version
+	// skew. We'll probably want some sort of facility to blacklist known-bad
+	// versions.
+	if err := mutagen.ClientVersionHandshake(connection); err != nil {
+		return nil, errors.Wrap(err, "version handshake error")
 	}
-
-	// Send our magic number to the server.
-	if err := sendMagicNumber(connection, clientMagicNumber); err != nil {
-		connection.Close()
-		return nil, &handshakeTransportError{errors.Wrap(err, "unable to send client magic number")}
-	}
-
-	// Receive the server's version.
-	serverMajor, serverMinor, serverPatch, err := mutagen.ReceiveVersion(connection)
-	if err != nil {
-		connection.Close()
-		return nil, &handshakeTransportError{errors.Wrap(err, "unable to receive server version")}
-	}
-
-	// Send our version to the server.
-	if err := mutagen.SendVersion(connection); err != nil {
-		connection.Close()
-		return nil, &handshakeTransportError{errors.Wrap(err, "unable to send client version")}
-	}
-
-	// Ensure that our Mutagen versions are compatible. For now, we enforce that
-	// they're equal.
-	// TODO: Once we lock-in an internal protocol that we're going to support
-	// for some time, we can allow some version skew. On the client side in
-	// particular, we'll probably want to look out for the specific "locked-in"
-	// server protocol that we support and instantiate some frozen client
-	// implementation from that version.
-	versionMatch := serverMajor == mutagen.VersionMajor &&
-		serverMinor == mutagen.VersionMinor &&
-		serverPatch == mutagen.VersionPatch
-	if !versionMatch {
-		connection.Close()
-		return nil, errors.New("version mismatch")
-	}
-
-	// TODO: Finish version negotiation.
 
 	// Enable read/write compression on the connection.
 	reader := compression.NewDecompressingReader(connection)

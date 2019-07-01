@@ -20,9 +20,9 @@ import (
 
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
-	_ "github.com/havoc-io/mutagen/pkg/protocols/docker"
-	_ "github.com/havoc-io/mutagen/pkg/protocols/local"
-	_ "github.com/havoc-io/mutagen/pkg/protocols/ssh"
+	_ "github.com/havoc-io/mutagen/pkg/session/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/session/protocols/local"
+	_ "github.com/havoc-io/mutagen/pkg/session/protocols/ssh"
 )
 
 // sessionManager is the session manager for the integration testing daemon. It

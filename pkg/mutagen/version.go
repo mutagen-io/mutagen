@@ -6,6 +6,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -38,9 +41,9 @@ func init() {
 // information over the wire.
 type versionBytes [12]byte
 
-// SendVersion writes the current Mutagen version to the specified writer.
-// Version tag components are neither transmitted nor received.
-func SendVersion(writer io.Writer) error {
+// sendVersion writes the current version to the specified writer. Version tag
+// components are neither transmitted nor received.
+func sendVersion(writer io.Writer) error {
 	// Compute the version bytes.
 	var data versionBytes
 	binary.BigEndian.PutUint32(data[:4], VersionMajor)
@@ -52,9 +55,9 @@ func SendVersion(writer io.Writer) error {
 	return err
 }
 
-// ReceiveVersion reads version information from the specified reader. Version
+// receiveVersion reads version information from the specified reader. Version
 // tag components are neither transmitted nor received.
-func ReceiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
+func receiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 	// Read the bytes.
 	var data versionBytes
 	if _, err := io.ReadFull(reader, data[:]); err != nil {
@@ -70,19 +73,67 @@ func ReceiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 	return major, minor, patch, nil
 }
 
-// ReceiveAndCompareVersion reads version information from the specified reader
-// and ensures that it matches the current Mutagen version. Version tag
-// components are neither transmitted nor received, so they do not enter into
-// this comparison.
-func ReceiveAndCompareVersion(reader io.Reader) (bool, error) {
-	// Receive the version.
-	major, minor, patch, err := ReceiveVersion(reader)
+// ClientVersionHandshake performs the client side of a version handshake,
+// returning an error if the received server version is not compatible with the
+// client version.
+//
+// TODO: Add some ability to support version skew in this function.
+func ClientVersionHandshake(connection net.Conn) error {
+	// Receive the server's version.
+	serverMajor, serverMinor, serverPatch, err := receiveVersion(connection)
 	if err != nil {
-		return false, err
+		return errors.Wrap(err, "unable to receive server version")
 	}
 
-	// Compare the version.
-	return major == VersionMajor &&
-		minor == VersionMinor &&
-		patch == VersionPatch, nil
+	// Send our version to the server.
+	if err := sendVersion(connection); err != nil {
+		return errors.Wrap(err, "unable to send client version")
+	}
+
+	// Ensure that our Mutagen versions are compatible. For now, we enforce that
+	// they're equal.
+	// TODO: Once we lock-in an internal protocol that we're going to support
+	// for some time, we can allow some version skew. On the client side in
+	// particular, we'll probably want to look out for the specific "locked-in"
+	// server protocol that we support and instantiate some frozen client
+	// implementation from that version.
+	versionMatch := serverMajor == VersionMajor &&
+		serverMinor == VersionMinor &&
+		serverPatch == VersionPatch
+	if !versionMatch {
+		return errors.New("version mismatch")
+	}
+
+	// Success.
+	return nil
+}
+
+// ServerVersionHandshake performs the server side of a version handshake,
+// returning an error if the received client version is not compatible with the
+// server version.
+//
+// TODO: Add some ability to support version skew in this function.
+func ServerVersionHandshake(connection net.Conn) error {
+	// Send our version to the client.
+	if err := sendVersion(connection); err != nil {
+		return errors.Wrap(err, "unable to send server version")
+	}
+
+	// Receive the client's version.
+	clientMajor, clientMinor, clientPatch, err := receiveVersion(connection)
+	if err != nil {
+		return errors.Wrap(err, "unable to receive client version")
+	}
+
+	// Ensure that our versions are compatible. For now, we enforce that they're
+	// equal.
+	versionMatch := clientMajor == VersionMajor &&
+		clientMinor == VersionMinor &&
+		clientPatch == VersionPatch
+	if !versionMatch {
+		return errors.New("version mismatch")
+	}
+
+	// Success.
+	return nil
 }

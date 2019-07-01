@@ -9,10 +9,10 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/tools/docker"
-	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 // windowsContainerNotification is a prompt about copying files into Windows
@@ -26,8 +26,13 @@ Would you like to continue? (yes/no)? `
 
 // transport implements the agent.Transport interface using Docker.
 type transport struct {
-	// remote is the endpoint URL.
-	remote *url.URL
+	// container is the target container name.
+	container string
+	// user is the container user under which agents should be invoked.
+	user string
+	// environment is the collection of environment variables that need to be
+	// set for the Docker executable.
+	environment map[string]string
 	// prompter is the prompter identifier to use for prompting.
 	prompter string
 	// containerProbed indicates whether or not container probing has occurred.
@@ -41,17 +46,27 @@ type transport struct {
 	// containerHomeDirectory is the path to the specified user's home directory
 	// within the container.
 	containerHomeDirectory string
-	// containerUsername is the name of the user inside the container. This will
-	// be the same as the username in the remote URL, if any, but since the URL
-	// allows empty usernames (indicating a default user), we have to probe this
+	// containerUser is the name of the user inside the container. This will be
+	// the same as the provided user, if any, but since that specification is
+	// allowed to be empty (indicating a default user), we have to probe this
 	// separately. It only applies if containerIsWindows is false.
-	containerUsername string
+	containerUser string
 	// containerUserGroup is the name of the default group for the user inside
 	// the container. It only applies if containerIsWindows is false.
 	containerUserGroup string
 	// containerProbeError tracks any error that arose when probing the
 	// container.
 	containerProbeError error
+}
+
+// NewTransport creates a new Docker transport using the specified parameters.
+func NewTransport(container, user string, environment map[string]string, prompter string) (agent.Transport, error) {
+	return &transport{
+		container:   container,
+		user:        user,
+		environment: environment,
+		prompter:    prompter,
+	}, nil
 }
 
 // command is an underlying command generation function that allows
@@ -67,8 +82,8 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 	// inside the container.
 	if user != "" {
 		dockerArguments = append(dockerArguments, "--user", user)
-	} else if t.remote.Username != "" {
-		dockerArguments = append(dockerArguments, "--user", t.remote.Username)
+	} else if t.user != "" {
+		dockerArguments = append(dockerArguments, "--user", t.user)
 	}
 
 	// If specified, tell Docker which directory should be used as the working
@@ -78,7 +93,7 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 	}
 
 	// Set the container name (this is stored as the Hostname field in the URL).
-	dockerArguments = append(dockerArguments, t.remote.Hostname)
+	dockerArguments = append(dockerArguments, t.container)
 
 	// Lex the command that we want to run since Docker, unlike SSH, wants the
 	// commands and arguments separately instead of as a single argument. All
@@ -100,7 +115,7 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 	environment := os.Environ()
 
 	// Set Docker environment variables.
-	environment = setDockerVariables(environment, t.remote)
+	environment = setDockerVariables(environment, t.environment)
 
 	// Set the environment for the command.
 	dockerCommand.Env = environment
@@ -209,7 +224,7 @@ func (t *transport) probeContainer() error {
 		} else if u := strings.TrimSpace(string(usernameBytes)); u == "" {
 			t.containerProbeError = errors.New("empty POSIX username")
 			return t.containerProbeError
-		} else if t.remote.Username != "" && u != t.remote.Username {
+		} else if t.user != "" && u != t.user {
 			t.containerProbeError = errors.New("probed POSIX username does not match specified")
 			return t.containerProbeError
 		} else {
@@ -236,7 +251,7 @@ func (t *transport) probeContainer() error {
 	// Store values.
 	t.containerIsWindows = windows
 	t.containerHomeDirectory = home
-	t.containerUsername = username
+	t.containerUser = username
 	t.containerUserGroup = group
 
 	// Success.
@@ -253,7 +268,7 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	}
 
 	// Create the command.
-	dockerCommand, err := docker.Command(nil, operation, t.remote.Hostname)
+	dockerCommand, err := docker.Command(nil, operation, t.container)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}
@@ -265,7 +280,7 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	environment := os.Environ()
 
 	// Set Docker environment variables.
-	environment = setDockerVariables(environment, t.remote)
+	environment = setDockerVariables(environment, t.environment)
 
 	// Set the environment for the command.
 	dockerCommand.Env = environment
@@ -311,13 +326,13 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	var containerPath string
 	if t.containerIsWindows {
 		containerPath = fmt.Sprintf("%s:%s\\%s",
-			t.remote.Hostname,
+			t.container,
 			t.containerHomeDirectory,
 			remoteName,
 		)
 	} else {
 		containerPath = fmt.Sprintf("%s:%s/%s",
-			t.remote.Hostname,
+			t.container,
 			t.containerHomeDirectory,
 			remoteName,
 		)
@@ -336,7 +351,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	environment := os.Environ()
 
 	// Set Docker environment variables.
-	environment = setDockerVariables(environment, t.remote)
+	environment = setDockerVariables(environment, t.environment)
 
 	// Set the environment for the command.
 	dockerCommand.Env = environment
@@ -371,7 +386,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	if !t.containerIsWindows {
 		chownCommand := fmt.Sprintf(
 			"chown %s:%s %s",
-			t.containerUsername,
+			t.containerUser,
 			t.containerUserGroup,
 			remoteName,
 		)

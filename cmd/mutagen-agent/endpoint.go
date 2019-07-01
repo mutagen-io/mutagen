@@ -57,6 +57,11 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
 
+	// Perform an agent handshake.
+	if err := agent.ServerHandshake(connection); err != nil {
+		return errors.Wrap(err, "server handshake failed")
+	}
+
 	// Serve an endpoint on standard input/output and monitor for its
 	// termination.
 	endpointTermination := make(chan error, 1)
