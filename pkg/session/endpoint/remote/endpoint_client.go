@@ -43,6 +43,14 @@ func NewEndpointClient(
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {
+	// Set up deferred closure of the connection if initialization fails.
+	var successful bool
+	defer func() {
+		if !successful {
+			connection.Close()
+		}
+	}()
+
 	// Perform a version handshake to ensure that we're talking with a
 	// compatible version of Mutagen.
 	//
@@ -71,24 +79,21 @@ func NewEndpointClient(
 		Alpha:         alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
-		connection.Close()
 		return nil, errors.Wrap(err, "unable to send initialize request")
 	}
 
 	// Receive the response and check for remote errors.
 	response := &InitializeResponse{}
 	if err := decoder.Decode(response); err != nil {
-		connection.Close()
 		return nil, errors.Wrap(err, "unable to receive transition response")
 	} else if err = response.ensureValid(); err != nil {
-		connection.Close()
 		return nil, errors.Wrap(err, "invalid initialize response")
 	} else if response.Error != "" {
-		connection.Close()
 		return nil, errors.Errorf("remote error: %s", response.Error)
 	}
 
 	// Success.
+	successful = true
 	return &endpointClient{
 		connection: connection,
 		encoder:    encoder,
