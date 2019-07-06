@@ -124,7 +124,11 @@ func (e *ProtobufEncoder) Encode(message proto.Message) error {
 	return e.Flush()
 }
 
-// ProtobufEncoder is a stream decoder for Protocol Buffers messages.
+// ProtobufDecoder is a stream decoder for Protocol Buffers messages. For
+// performance reasons, this type wraps the underlying stream in a buffering
+// reader, which means that the decoder should persist for the lifetime of the
+// stream (since there's no way to know how much data has been read from the
+// stream).
 type ProtobufDecoder struct {
 	// reader is a buffered reader wrapping the underlying reader.
 	reader *bufio.Reader
