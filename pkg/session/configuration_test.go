@@ -37,13 +37,12 @@ defaultOwner = "george"
 defaultGroup = "presidents"
 `
 	testYAMLConfiguration = `
-sync:
-  mode: "two-way-resolved"
-  maxEntryCount: 500
-  maxStagingFileSize: "1000 GB"
-  probeMode: "assume"
-  scanMode: "accelerated"
-  stageMode: "neighboring"
+mode: "two-way-resolved"
+maxEntryCount: 500
+maxStagingFileSize: "1000 GB"
+probeMode: "assume"
+scanMode: "accelerated"
+stageMode: "neighboring"
 
 symlink:
   mode: "portable"
@@ -53,7 +52,7 @@ watch:
   pollingInterval: 5
 
 ignore:
-  default:
+  paths:
     - "ignore/this/**"
     - "!ignore/this/that"
   vcs: true

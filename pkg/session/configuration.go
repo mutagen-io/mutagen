@@ -51,13 +51,13 @@ type HumanReadableConfiguration struct {
 		ScanMode ScanMode `toml:"scanMode" yaml:"scanMode"`
 		// StageMode specifies the filesystem staging mode.
 		StageMode StageMode `toml:"stageMode" yaml:"stageMode"`
-	} `toml:"sync" yaml:"sync"`
+	} `toml:"sync" yaml:",inline"`
 
 	// Ignore contains parameters related to synchronization ignore
 	// specifications.
 	Ignore struct {
 		// Default specifies the default list of ignore specifications.
-		Default []string `toml:"default" yaml:"default"`
+		Default []string `toml:"default" yaml:"paths"`
 
 		// VCS specifies the VCS ignore mode.
 		VCS sync.IgnoreVCSMode `toml:"vcs" yaml:"vcs"`
