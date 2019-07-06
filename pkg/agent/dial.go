@@ -26,6 +26,11 @@ const (
 	agentKillDelay = 5 * time.Second
 )
 
+// connect connects to an agent-based endpoint using the specified transport,
+// connection mode, and prompter. It accepts a hint as to whether or not the
+// remote environment is cmd.exe-based and returns hints as to whether or not
+// installation should be attempted and whether or not the remote environment is
+// cmd.exe-based.
 func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn, bool, bool, error) {
 	// Compute the agent invocation command, relative to the user's home
 	// directory on the remote. Unless we have reason to assume that this is a
@@ -35,8 +40,10 @@ func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn,
 	// otherwise the invocation won't work. Watching for cmd.exe to fail on
 	// commands with forward slashes is actually the way that we detect cmd.exe
 	// environments.
+	//
 	// HACK: We're assuming that none of these path components have spaces in
 	// them, but since we control all of them, this is probably okay.
+	//
 	// HACK: When invoking on Windows systems (whether inside a POSIX
 	// environment or cmd.exe), we can leave the "exe" suffix off the target
 	// name. Fortunately this allows us to also avoid having to try the

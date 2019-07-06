@@ -7,11 +7,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Transport is the interface that protocols wishing to use the agent
-// infrastructure must implement. It should be natural for "SSH"-like protocols,
-// i.e. those where SCP-like and SSH-like operations can be performed. Transport
-// instances do not need to be safe for concurrent invocation unless being used
-// for concurrent Dial operations.
+// Transport is the standard agent transport interface, allowing the agent
+// dialing structure to invoke commands on the remote, copy files to the remote,
+// and classify errors from the remote. Transport interfaces do not need to be
+// safe for concurrent invocation unless being used for concurrent Dial
+// operations.
 type Transport interface {
 	// Copy copies the specified local file (which is guaranteed to exist and be
 	// a file) to the remote. The provided local path will be absolute. The
@@ -41,7 +41,7 @@ type Transport interface {
 	ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error)
 }
 
-// run is a utility method that invoke's a command via a transport, waits for it
+// run is a utility method that invokes a command via a transport, waits for it
 // to complete, and returns its exit error. If there is an error creating the
 // command, it will be returned wrapped, but otherwise the result of the run
 // method will be returned un-wrapped, so it can be treated as an
@@ -57,7 +57,7 @@ func run(transport Transport, command string) error {
 	return process.Run()
 }
 
-// output is a utility method that invoke's a command via a transport, waits for
+// output is a utility method that invokes a command via a transport, waits for
 // it to complete, and returns its standard output and exit error. If there is
 // an error creating the command, it will be returned wrapped, but otherwise the
 // result of the run method will be returned un-wrapped, so it can be treated as
