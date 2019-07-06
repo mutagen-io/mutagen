@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -84,7 +85,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	scpArguments = append(scpArguments, sourceBase, destinationURL)
 
 	// Create the process.
-	scpCommand, err := ssh.SCPCommand(nil, scpArguments...)
+	scpCommand, err := ssh.SCPCommand(context.Background(), scpArguments...)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up SCP invocation")
 	}
@@ -139,7 +140,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	sshArguments = append(sshArguments, target, command)
 
 	// Create the process.
-	sshCommand, err := ssh.SSHCommand(nil, sshArguments...)
+	sshCommand, err := ssh.SSHCommand(context.Background(), sshArguments...)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to set up SSH invocation")
 	}

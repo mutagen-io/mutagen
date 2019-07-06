@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -103,7 +104,7 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 	dockerArguments = append(dockerArguments, strings.Split(command, " ")...)
 
 	// Create the command.
-	dockerCommand, err := docker.Command(nil, dockerArguments...)
+	dockerCommand, err := docker.Command(context.Background(), dockerArguments...)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +269,7 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	}
 
 	// Create the command.
-	dockerCommand, err := docker.Command(nil, operation, t.container)
+	dockerCommand, err := docker.Command(context.Background(), operation, t.container)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}
@@ -339,7 +340,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	}
 
 	// Create the command.
-	dockerCommand, err := docker.Command(nil, "cp", localPath, containerPath)
+	dockerCommand, err := docker.Command(context.Background(), "cp", localPath, containerPath)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}

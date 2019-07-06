@@ -47,9 +47,8 @@ func sshCommandNameOrPath() (string, error) {
 }
 
 // SSHCommand prepares (but does not start) an SSH command with the specified
-// arguments. If the provided context is non-nil, the command will be
-// constructed using os/exec.CommandContext, allowing for command cancelability.
-func SSHCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
+// arguments and scoped to lifetime of the provided context.
+func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := sshCommandNameOrPath()
 	if err != nil {
@@ -57,11 +56,7 @@ func SSHCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	}
 
 	// Create the command.
-	if ctx != nil {
-		return exec.CommandContext(ctx, nameOrPath, args...), nil
-	} else {
-		return exec.Command(nameOrPath, args...), nil
-	}
+	return exec.CommandContext(context, nameOrPath, args...), nil
 }
 
 // scpCommandNameOrPath returns the name or path specification to use for
@@ -78,9 +73,8 @@ func scpCommandNameOrPath() (string, error) {
 }
 
 // SCPCommand prepares (but does not start) an SCP command with the specified
-// arguments. If the provided context is non-nil, the command will be
-// constructed using os/exec.CommandContext, allowing for command cancelability.
-func SCPCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
+// arguments and scoped to lifetime of the provided context.
+func SCPCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := scpCommandNameOrPath()
 	if err != nil {
@@ -88,9 +82,5 @@ func SCPCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	}
 
 	// Create the command.
-	if ctx != nil {
-		return exec.CommandContext(ctx, nameOrPath, args...), nil
-	} else {
-		return exec.Command(nameOrPath, args...), nil
-	}
+	return exec.CommandContext(context, nameOrPath, args...), nil
 }
