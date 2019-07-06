@@ -11,13 +11,12 @@ import (
 // ProtocolHandler defines the interface that protocol handlers must support in
 // order to connect to endpoints.
 type ProtocolHandler interface {
-	// Dial connects to the endpoint at the specified URL with the specified
-	// endpoint metadata.
-	Dial(
-		url *urlpkg.URL,
-		prompter,
-		session string,
-		version Version,
+	// Connect connects to an endpoint using the connection parameters in the
+	// provided URL and the specified prompter (if any). It then initializes the
+	// endpoint using the specified parameters.
+	Connect(
+		url *urlpkg.URL, prompter string,
+		session string, version Version,
 		configuration *Configuration,
 		alpha bool,
 	) (Endpoint, error)
@@ -29,10 +28,8 @@ var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 
 // connect attempts to establish a connection to an endpoint.
 func connect(
-	url *urlpkg.URL,
-	prompter,
-	session string,
-	version Version,
+	url *urlpkg.URL, prompter string,
+	session string, version Version,
 	configuration *Configuration,
 	alpha bool,
 ) (Endpoint, error) {
@@ -45,7 +42,7 @@ func connect(
 	}
 
 	// Dispatch the dialing.
-	endpoint, err := handler.Dial(url, prompter, session, version, configuration, alpha)
+	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to endpoint")
 	}
@@ -68,8 +65,7 @@ type asyncConnectResult struct {
 func reconnect(
 	ctx context.Context,
 	url *urlpkg.URL,
-	session string,
-	version Version,
+	session string, version Version,
 	configuration *Configuration,
 	alpha bool,
 ) (Endpoint, error) {

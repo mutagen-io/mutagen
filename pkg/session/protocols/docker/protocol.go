@@ -15,12 +15,10 @@ import (
 // infrastructure over a Docker transport.
 type protocolHandler struct{}
 
-// Dial connects to a Docker endpoint.
-func (h *protocolHandler) Dial(
-	url *urlpkg.URL,
-	prompter,
-	session string,
-	version session.Version,
+// Connect connects to a Docker endpoint.
+func (h *protocolHandler) Connect(
+	url *urlpkg.URL, prompter string,
+	session string, version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {

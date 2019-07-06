@@ -23,11 +23,9 @@ type protocolHandler struct{}
 
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
-func (h *protocolHandler) Dial(
-	url *urlpkg.URL,
-	prompter,
-	session string,
-	version session.Version,
+func (h *protocolHandler) Connect(
+	url *urlpkg.URL, prompter string,
+	session string, version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {

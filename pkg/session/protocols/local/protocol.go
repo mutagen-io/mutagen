@@ -13,11 +13,9 @@ import (
 type protocolHandler struct{}
 
 // Dial connects to a local endpoint.
-func (h *protocolHandler) Dial(
-	url *urlpkg.URL,
-	prompter,
-	session string,
-	version session.Version,
+func (h *protocolHandler) Connect(
+	url *urlpkg.URL, prompter string,
+	session string, version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
 ) (session.Endpoint, error) {
