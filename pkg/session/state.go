@@ -48,7 +48,7 @@ func (s *State) EnsureValid() error {
 	// We intentionally don't validate the status because we'd have to maintain
 	// a pretty large conditional or data structure and we only use it for
 	// display anyway, where it'll just render as "Unknown" or similar if it's
-	// no valid.
+	// not valid.
 
 	// Ensure the session is valid.
 	if err := s.Session.EnsureValid(); err != nil {

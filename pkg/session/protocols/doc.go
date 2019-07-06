@@ -1,2 +1,3 @@
-// Package protocols provides synchronization session protocol implementations.
+// Package protocols provides synchronization session protocol handler
+// implementations.
 package protocols

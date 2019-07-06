@@ -1,2 +1,2 @@
-// Package ssh provides the SSH protocol implementation.
+// Package ssh provides the SSH synchronization session protocol implementation.
 package ssh

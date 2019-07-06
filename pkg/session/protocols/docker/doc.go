@@ -1,2 +1,3 @@
-// Package docker provides the Docker protocol implementation.
+// Package docker provides the Docker synchronization session protocol
+// implementation.
 package docker

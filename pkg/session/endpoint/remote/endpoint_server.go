@@ -29,7 +29,8 @@ type endpointServer struct {
 }
 
 // ServeEndpoint creates and serves a remote endpoint server on the specified
-// connection.
+// connection. It enforces that the provided connection is closed by the time
+// this function returns, regardless of failure.
 func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	// Defer closure of the connection.
 	defer connection.Close()

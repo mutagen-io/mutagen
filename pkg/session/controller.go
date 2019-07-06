@@ -40,10 +40,10 @@ type Controller struct {
 	// stateLock guards and tracks changes to the session member's Paused field
 	// and the state member.
 	stateLock *state.TrackingLock
-	// session records the associated session metadata and configuration. It is
-	// considered static and safe for concurrent access except for its Paused
-	// field, for which the stateLock member should be held. It should be saved
-	// to disk any time it is modified.
+	// session encodes the associated session metadata. It is considered static
+	// and safe for concurrent access except for its Paused field, for which the
+	// stateLock member should be held. It should be saved to disk any time it
+	// is modified.
 	session *Session
 	// mergedAlphaConfiguration is the alpha-specific configuration object
 	// (computed from the core configuration and alpha-specific overrides). It
@@ -356,7 +356,7 @@ func (c *Controller) Resume(prompter string) error {
 		connected := c.state.Status >= Status_Watching
 		c.stateLock.UnlockWithoutNotify()
 
-		// If we're already connect, then there's nothing we need to do. We
+		// If we're already connected, then there's nothing we need to do. We
 		// don't even need to mark the session as unpaused because it can't be
 		// marked as paused if an existing synchronization loop is running (we
 		// enforce this invariant as part of the controller's logic).

@@ -12,7 +12,7 @@ import (
 
 // protocolHandler implements the session.ProtocolHandler interface for
 // connecting to remote endpoints inside Docker containers. It uses the agent
-// infrastructure over a docker copy/exec transport.
+// infrastructure over a Docker transport.
 type protocolHandler struct{}
 
 // Dial connects to a Docker endpoint.

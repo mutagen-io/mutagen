@@ -31,7 +31,10 @@ type endpointClient struct {
 }
 
 // NewEndpointClient constructs a new endpoint client instance using the
-// specified connection and metadata.
+// specified connection and metadata. If this function fails, then the provided
+// connection will be closed. Once the endpoint has been established, the
+// underlying connection is owned by that endpoint and will be closed when the
+// endpoint is shut down.
 func NewEndpointClient(
 	connection net.Conn,
 	root,

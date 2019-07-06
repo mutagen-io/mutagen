@@ -1,3 +1,3 @@
-// Package remote provides a client/server architecture for hosting and
-// connecting to a remote endpoint instance.
+// Package remote provides a client/server architecture for connecting to and
+// hosting a remote synchronization endpoint.
 package remote

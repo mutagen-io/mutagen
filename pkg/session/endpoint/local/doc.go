@@ -1,2 +1,2 @@
-// Package local provides the local endpoint implementation.
+// Package local provides a local synchronization endpoint implementation.
 package local
