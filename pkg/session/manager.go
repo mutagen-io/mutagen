@@ -47,7 +47,7 @@ func NewManager() (*Manager, error) {
 	for _, c := range sessionsDirectoryContents {
 		// TODO: Ensure that the name matches the expected format.
 		identifier := c.Name()
-		if controller, err := loadSession(tracker, identifier); err != nil {
+		if controller, err := loadSession(nil, tracker, identifier); err != nil {
 			continue
 		} else {
 			sessions[identifier] = controller
@@ -203,8 +203,10 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Attempt to create a session.
-	controller, err := newSession(
+	controller, err := NewSession(
+		nil,
 		m.tracker,
+		false,
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
 		labels,

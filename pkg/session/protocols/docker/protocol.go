@@ -17,10 +17,13 @@ type protocolHandler struct{}
 
 // Connect connects to a Docker endpoint.
 func (h *protocolHandler) Connect(
-	url *urlpkg.URL, prompter string,
-	session string, version session.Version,
+	url *urlpkg.URL,
+	prompter string,
+	session string,
+	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != urlpkg.Protocol_Docker {
@@ -40,7 +43,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create the endpoint client.
-	return remote.NewEndpointClient(connection, url.Path, session, version, configuration, alpha)
+	return remote.NewEndpointClient(connection, url.Path, session, version, configuration, alpha, ephemeral)
 }
 
 func init() {

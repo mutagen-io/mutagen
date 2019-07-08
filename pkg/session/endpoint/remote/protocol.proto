@@ -24,6 +24,8 @@ message InitializeRequest {
     // Alpha indicates whether or not the endpoint should behave as alpha (as
     // opposed to beta).
     bool alpha = 5;
+    // Ephemeral indicates whether or not the endpoint is ephemeral.
+    bool ephemeral = 6;
 }
 
 // InitializeResponse encodes initialization results.

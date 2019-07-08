@@ -11,6 +11,11 @@ func (r *InitializeRequest) ensureValid() error {
 		return errors.New("nil initialize request")
 	}
 
+	// Ensure that the root path is non-empty.
+	if r.Root == "" {
+		return errors.New("empty root path")
+	}
+
 	// Ensure that the session identifier is non-empty.
 	if r.Session == "" {
 		return errors.New("empty session identifier")
@@ -21,15 +26,14 @@ func (r *InitializeRequest) ensureValid() error {
 		return errors.New("unsupported session version")
 	}
 
-	// Ensure that the root path is non-empty.
-	if r.Root == "" {
-		return errors.New("empty root path")
-	}
-
 	// Ensure that the configuration is valid.
 	if err := r.Configuration.EnsureValid(false); err != nil {
 		return errors.Wrap(err, "invalid configuration")
 	}
+
+	// There's no need to validate Alpha - either value is correct.
+
+	// There's no need to validate Ephemeral - either value is correct.
 
 	// Success.
 	return nil

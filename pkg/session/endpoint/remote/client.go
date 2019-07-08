@@ -37,11 +37,12 @@ type endpointClient struct {
 // endpoint is shut down.
 func NewEndpointClient(
 	connection net.Conn,
-	root,
+	root string,
 	session string,
 	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (session.Endpoint, error) {
 	// Set up deferred closure of the connection if initialization fails.
 	var successful bool
@@ -77,6 +78,7 @@ func NewEndpointClient(
 		Version:       version,
 		Configuration: configuration,
 		Alpha:         alpha,
+		Ephemeral:     ephemeral,
 	}
 	if err := encoder.Encode(request); err != nil {
 		return nil, errors.Wrap(err, "unable to send initialize request")

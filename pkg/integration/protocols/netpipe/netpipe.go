@@ -24,10 +24,13 @@ type protocolHandler struct{}
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
 func (h *protocolHandler) Connect(
-	url *urlpkg.URL, prompter string,
-	session string, version session.Version,
+	url *urlpkg.URL,
+	prompter string,
+	session string,
+	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != Protocol_Netpipe {
@@ -49,6 +52,7 @@ func (h *protocolHandler) Connect(
 		version,
 		configuration,
 		alpha,
+		ephemeral,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create in-memory endpoint client")

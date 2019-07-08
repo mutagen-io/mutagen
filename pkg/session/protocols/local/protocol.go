@@ -14,10 +14,13 @@ type protocolHandler struct{}
 
 // Dial connects to a local endpoint.
 func (h *protocolHandler) Connect(
-	url *urlpkg.URL, prompter string,
-	session string, version session.Version,
+	url *urlpkg.URL,
+	prompter string,
+	session string,
+	version session.Version,
 	configuration *session.Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (session.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != urlpkg.Protocol_Local {
@@ -25,7 +28,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create a local endpoint.
-	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha)
+	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha, ephemeral)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create local endpoint")
 	}

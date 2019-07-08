@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/rsync"
@@ -33,9 +34,16 @@ const (
 
 // Controller manages and executes a single session.
 type Controller struct {
-	// sessionPath is the path to the serialized session.
+	// logger is the controller logger.
+	logger *logging.Logger
+	// ephemeral indicates whether or not the session is ephemeral (i.e. not
+	// written to disk). This field is static.
+	ephemeral bool
+	// sessionPath is the path to the serialized session. It will be empty for
+	// ephemeral sessions.
 	sessionPath string
-	// archivePath is the path to the serialized archive.
+	// archivePath is the path to the serialized archive. It will be empty for
+	// ephemeral sessions.
 	archivePath string
 	// stateLock guards and tracks changes to the session member's Paused field
 	// and the state member.
@@ -43,8 +51,12 @@ type Controller struct {
 	// session encodes the associated session metadata. It is considered static
 	// and safe for concurrent access except for its Paused field, for which the
 	// stateLock member should be held. It should be saved to disk any time it
-	// is modified.
+	// is modified, unless the session is ephemeral.
 	session *Session
+	// inMemoryArchive is the in-memory store for archives. It is only used for
+	// non-ephemeral sessions and should only be accessed by the synchronize
+	// method to store archives across run loops.
+	inMemoryArchive *sync.Archive
 	// mergedAlphaConfiguration is the alpha-specific configuration object
 	// (computed from the core configuration and alpha-specific overrides). It
 	// is considered static and safe for concurrent access. It is a derived
@@ -80,9 +92,11 @@ type Controller struct {
 	done chan struct{}
 }
 
-// newSession creates a new session and corresponding controller.
-func newSession(
+// NewSession creates a new session and corresponding controller.
+func NewSession(
+	logger *logging.Logger,
 	tracker *state.Tracker,
+	ephemeral bool,
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	labels map[string]string,
@@ -113,17 +127,17 @@ func newSession(
 	mergedBetaConfiguration := MergeConfigurations(configuration, configurationBeta)
 
 	// Attempt to connect. Session creation is only allowed after if successful.
-	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true)
+	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true, ephemeral)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
-	betaEndpoint, err := connect(beta, prompter, identifier, version, mergedBetaConfiguration, false)
+	betaEndpoint, err := connect(beta, prompter, identifier, version, mergedBetaConfiguration, false, ephemeral)
 	if err != nil {
 		alphaEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to connect to beta")
 	}
 
-	// Create the session and archive.
+	// Create the session and initial archive.
 	session := &Session{
 		Identifier:           identifier,
 		Version:              version,
@@ -140,39 +154,47 @@ func newSession(
 	}
 	archive := &sync.Archive{}
 
-	// Compute session and archive paths.
-	sessionPath, err := pathForSession(session.Identifier)
-	if err != nil {
-		alphaEndpoint.Shutdown()
-		betaEndpoint.Shutdown()
-		return nil, errors.Wrap(err, "unable to compute session path")
-	}
-	archivePath, err := pathForArchive(session.Identifier)
-	if err != nil {
-		alphaEndpoint.Shutdown()
-		betaEndpoint.Shutdown()
-		return nil, errors.Wrap(err, "unable to compute archive path")
-	}
+	// Compute the session and archive paths and write the corresponding objects
+	// to disk if this is a non-ephemeral session.
+	var sessionPath, archivePath string
+	if !ephemeral {
+		// Compute paths.
+		sessionPath, err = pathForSession(session.Identifier)
+		if err != nil {
+			alphaEndpoint.Shutdown()
+			betaEndpoint.Shutdown()
+			return nil, errors.Wrap(err, "unable to compute session path")
+		}
+		archivePath, err = pathForArchive(session.Identifier)
+		if err != nil {
+			alphaEndpoint.Shutdown()
+			betaEndpoint.Shutdown()
+			return nil, errors.Wrap(err, "unable to compute archive path")
+		}
 
-	// Save components to disk.
-	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		alphaEndpoint.Shutdown()
-		betaEndpoint.Shutdown()
-		return nil, errors.Wrap(err, "unable to save session")
-	}
-	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
-		os.Remove(sessionPath)
-		alphaEndpoint.Shutdown()
-		betaEndpoint.Shutdown()
-		return nil, errors.Wrap(err, "unable to save archive")
+		// Save components to disk.
+		if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
+			alphaEndpoint.Shutdown()
+			betaEndpoint.Shutdown()
+			return nil, errors.Wrap(err, "unable to save session")
+		}
+		if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
+			os.Remove(sessionPath)
+			alphaEndpoint.Shutdown()
+			betaEndpoint.Shutdown()
+			return nil, errors.Wrap(err, "unable to save archive")
+		}
 	}
 
 	// Create the controller.
 	controller := &Controller{
+		logger:                   logger,
+		ephemeral:                ephemeral,
 		sessionPath:              sessionPath,
 		archivePath:              archivePath,
 		stateLock:                state.NewTrackingLock(tracker),
 		session:                  session,
+		inMemoryArchive:          archive,
 		mergedAlphaConfiguration: mergedAlphaConfiguration,
 		mergedBetaConfiguration:  mergedBetaConfiguration,
 		state: &State{
@@ -192,7 +214,7 @@ func newSession(
 }
 
 // loadSession loads an existing session and creates a corresponding controller.
-func loadSession(tracker *state.Tracker, identifier string) (*Controller, error) {
+func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier string) (*Controller, error) {
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(identifier)
 	if err != nil {
@@ -223,6 +245,7 @@ func loadSession(tracker *state.Tracker, identifier string) (*Controller, error)
 
 	// Create the controller.
 	controller := &Controller{
+		logger:      logger,
 		sessionPath: sessionPath,
 		archivePath: archivePath,
 		stateLock:   state.NewTrackingLock(tracker),
@@ -382,10 +405,14 @@ func (c *Controller) Resume(prompter string) error {
 		c.done = nil
 	}
 
-	// Mark the session as unpaused and save it to disk.
+	// Mark the session as unpaused and, if this is a non-ephemeral session,
+	// save it to disk.
 	c.stateLock.Lock()
 	c.session.Paused = false
-	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+	var saveErr error
+	if !c.ephemeral {
+		saveErr = encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+	}
 	c.stateLock.Unlock()
 
 	// Attempt to connect to alpha.
@@ -399,6 +426,7 @@ func (c *Controller) Resume(prompter string) error {
 		c.session.Version,
 		c.mergedAlphaConfiguration,
 		true,
+		c.ephemeral,
 	)
 	c.stateLock.Lock()
 	c.state.AlphaConnected = (alpha != nil)
@@ -415,6 +443,7 @@ func (c *Controller) Resume(prompter string) error {
 		c.session.Version,
 		c.mergedBetaConfiguration,
 		false,
+		c.ephemeral,
 	)
 	c.stateLock.Lock()
 	c.state.BetaConnected = (beta != nil)
@@ -502,18 +531,27 @@ func (c *Controller) Halt(mode ControllerHaltMode, prompter string) error {
 
 	// Handle based on the halt mode.
 	if mode == ControllerHaltModePause {
-		// Mark the session as paused and save it.
+		// Mark the session as paused and, if this is a non-ephemeral session,
+		// save it to disk.
 		c.stateLock.Lock()
 		c.session.Paused = true
-		err := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+		var saveErr error
+		if !c.ephemeral {
+			saveErr = encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+		}
 		c.stateLock.Unlock()
-		if err != nil {
-			return errors.Wrap(err, "unable to save session state")
+		if saveErr != nil {
+			return errors.Wrap(saveErr, "unable to save session state")
 		}
 	} else if mode == ControllerHaltModeShutdown {
 		// Disable the controller.
 		c.disabled = true
 	} else if mode == ControllerHaltModeTerminate {
+		// Disallow use of ControllerHaltModeTerminate for ephemeral sessions.
+		if c.ephemeral {
+			panic("termination requested for ephemeral session")
+		}
+
 		// Disable the controller.
 		c.disabled = true
 
@@ -577,6 +615,7 @@ func (c *Controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 					c.session.Version,
 					c.mergedAlphaConfiguration,
 					true,
+					c.ephemeral,
 				)
 			}
 			c.stateLock.Lock()
@@ -604,6 +643,7 @@ func (c *Controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 					c.session.Version,
 					c.mergedBetaConfiguration,
 					false,
+					c.ephemeral,
 				)
 			}
 			c.stateLock.Lock()
@@ -681,12 +721,18 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		}
 	}()
 
-	// Load the archive and extract the ancestor.
-	archive := &sync.Archive{}
-	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
-		return errors.Wrap(err, "unable to load archive")
-	} else if err = archive.Root.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid archive found on disk")
+	// Load the archive and extract the ancestor. For ephemeral sessions, we use
+	// in-memory archive storage.
+	var archive *sync.Archive
+	if c.ephemeral {
+		archive = c.inMemoryArchive
+	} else {
+		archive = &sync.Archive{}
+		if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
+			return errors.Wrap(err, "unable to load archive")
+		} else if err = archive.Root.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid archive found on disk")
+		}
 	}
 	ancestor := archive.Root
 
@@ -1116,10 +1162,13 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			return errors.Wrap(err, "new ancestor is invalid")
 		}
 
-		// Save the ancestor.
+		// Save the ancestor. For ephemeral sessions, archive is already the
+		// in-memory archive storage, so we don't need to set it.
 		archive.Root = ancestor
-		if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
-			return errors.Wrap(err, "unable to save ancestor")
+		if !c.ephemeral {
+			if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
+				return errors.Wrap(err, "unable to save ancestor")
+			}
 		}
 
 		// Now check for transition errors.

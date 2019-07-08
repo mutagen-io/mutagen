@@ -16,9 +16,11 @@ type ProtocolHandler interface {
 	// endpoint using the specified parameters.
 	Connect(
 		url *urlpkg.URL, prompter string,
-		session string, version Version,
+		session string,
+		version Version,
 		configuration *Configuration,
 		alpha bool,
+		ephemeral bool,
 	) (Endpoint, error)
 }
 
@@ -28,10 +30,13 @@ var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 
 // connect attempts to establish a connection to an endpoint.
 func connect(
-	url *urlpkg.URL, prompter string,
-	session string, version Version,
+	url *urlpkg.URL,
+	prompter string,
+	session string,
+	version Version,
 	configuration *Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (Endpoint, error) {
 	// Local the appropriate protocol handler.
 	handler, ok := ProtocolHandlers[url.Protocol]
@@ -42,7 +47,7 @@ func connect(
 	}
 
 	// Dispatch the dialing.
-	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha)
+	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha, ephemeral)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to endpoint")
 	}
@@ -65,9 +70,11 @@ type asyncConnectResult struct {
 func reconnect(
 	ctx context.Context,
 	url *urlpkg.URL,
-	session string, version Version,
+	session string,
+	version Version,
 	configuration *Configuration,
 	alpha bool,
+	ephemeral bool,
 ) (Endpoint, error) {
 	// Create a channel to deliver the connection result.
 	results := make(chan asyncConnectResult)
@@ -75,7 +82,7 @@ func reconnect(
 	// Start a connection operation in the background.
 	go func() {
 		// Perform the connection.
-		endpoint, err := connect(url, "", session, version, configuration, alpha)
+		endpoint, err := connect(url, "", session, version, configuration, alpha, ephemeral)
 
 		// If we can't transmit the resulting endpoint, shut it down.
 		select {
