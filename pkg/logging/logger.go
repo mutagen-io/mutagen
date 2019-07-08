@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/fatih/color"
+
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
@@ -192,5 +194,19 @@ func (l *Logger) DebugWriter() io.Writer {
 		callback: func(s string) {
 			l.Debugln(s)
 		},
+	}
+}
+
+// Warn logs error information with a warning prefix and yellow color.
+func (l *Logger) Warn(err error) {
+	if l != nil {
+		l.output(3, color.YellowString("Warning: %v", err))
+	}
+}
+
+// Error logs error information with an error prefix and red color.
+func (l *Logger) Error(err error) {
+	if l != nil {
+		l.output(3, color.RedString("Error: %v", err))
 	}
 }
