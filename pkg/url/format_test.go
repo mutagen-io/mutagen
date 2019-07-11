@@ -38,6 +38,18 @@ func TestFormatLocal(t *testing.T) {
 	test.run(t)
 }
 
+func TestFormatForwardingLocal(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Local,
+			Path:     "/test/path",
+		},
+		expected: "/test/path",
+	}
+	test.run(t)
+}
+
 func TestFormatSSHHostnamePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
@@ -48,6 +60,20 @@ func TestFormatSSHHostnamePath(t *testing.T) {
 			Path:     "/test/path",
 		},
 		expected: "host:/test/path",
+	}
+	test.run(t)
+}
+
+func TestFormatForwardingSSHHostnamePath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_SSH,
+			User:     "",
+			Host:     "host",
+			Port:     0,
+			Path:     "tcp:localhost:6060",
+		},
+		expected: "host:tcp:localhost:6060",
 	}
 	test.run(t)
 }
@@ -130,6 +156,23 @@ func TestFormatDocker(t *testing.T) {
 		},
 		environmentPrefix: "|",
 		expected:          "docker://container/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+	}
+	test.run(t)
+}
+
+func TestFormatForwardingDocker(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Docker,
+			Host:     "container",
+			Path:     "tcp4:localhost:8080",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable: "unix:///path/to/docker.sock",
+			},
+		},
+		environmentPrefix: "|",
+		expected:          "docker://container:tcp4:localhost:8080|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
 	}
 	test.run(t)
 }

@@ -52,16 +52,23 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 	// Start with the container name.
 	result := u.Host
 
-	// Append the path. If this is a home-directory-relative path or a Windows
-	// path, then we need to prepend a slash.
-	if u.Path == "" {
-		return invalidDockerURLFormat
-	} else if u.Path[0] == '/' {
-		result += u.Path
-	} else if u.Path[0] == '~' || isWindowsPath(u.Path) {
-		result += fmt.Sprintf("/%s", u.Path)
+	// Append the path in a manner that depends on the URL kind.
+	if u.Kind == Kind_Synchronization {
+		// If this is a home-directory-relative path or a Windows path, then we
+		// need to prepend a slash.
+		if u.Path == "" {
+			return invalidDockerURLFormat
+		} else if u.Path[0] == '/' {
+			result += u.Path
+		} else if u.Path[0] == '~' || isWindowsPath(u.Path) {
+			result += fmt.Sprintf("/%s", u.Path)
+		} else {
+			return invalidDockerURLFormat
+		}
+	} else if u.Kind == Kind_Forwarding {
+		result += fmt.Sprintf(":%s", u.Path)
 	} else {
-		return invalidDockerURLFormat
+		panic("unhandled URL kind")
 	}
 
 	// Add username if present.

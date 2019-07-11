@@ -25,8 +25,10 @@ func (h *protocolHandler) Connect(
 	alpha bool,
 	ephemeral bool,
 ) (session.Endpoint, error) {
-	// Verify that the URL is of the correct protocol.
-	if url.Protocol != urlpkg.Protocol_Docker {
+	// Verify that the URL is of the correct kind and protocol.
+	if url.Kind != urlpkg.Kind_Synchronization {
+		panic("non-synchronization URL dispatched to synchronization protocol handler")
+	} else if url.Protocol != urlpkg.Protocol_Docker {
 		panic("non-Docker URL dispatched to Docker protocol handler")
 	}
 

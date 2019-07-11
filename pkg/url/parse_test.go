@@ -7,14 +7,18 @@ import (
 
 type parseTestCase struct {
 	raw      string
-	alpha    bool
+	kind     Kind
+	first    bool
 	fail     bool
 	expected *URL
 }
 
 func (c *parseTestCase) run(t *testing.T) {
+	// Mark this as a helper function to remove it from error traces.
+	t.Helper()
+
 	// Attempt to parse.
-	url, err := Parse(c.raw, c.alpha)
+	url, err := Parse(c.raw, c.kind, c.first)
 	if err != nil {
 		if !c.fail {
 			t.Fatal("parsing failed when it should have succeeded:", err)
@@ -22,6 +26,11 @@ func (c *parseTestCase) run(t *testing.T) {
 		return
 	} else if c.fail {
 		t.Fatal("parsing should have failed but did not")
+	}
+
+	// Verify kind.
+	if url.Kind != c.expected.Kind {
+		t.Error("kind mismatch:", url.Kind, "!=", c.expected.Kind)
 	}
 
 	// Verify protocol.
@@ -80,6 +89,22 @@ func TestParseLocalPath(t *testing.T) {
 			Host:     "",
 			Port:     0,
 			Path:     "/this/is/a:path",
+		},
+	}
+	test.run(t)
+}
+
+func TestParseForwardingLocal(t *testing.T) {
+	test := parseTestCase{
+		raw:  "tcp:localhost:5050",
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Local,
+			User:     "",
+			Host:     "",
+			Port:     0,
+			Path:     "tcp:localhost:5050",
 		},
 	}
 	test.run(t)
@@ -190,6 +215,22 @@ func TestParseSCPSSHHostnamePath(t *testing.T) {
 			Host:     "host",
 			Port:     0,
 			Path:     "path",
+		},
+	}
+	test.run(t)
+}
+
+func TestParseForwardingSCPSSHHostnameEndpoint(t *testing.T) {
+	test := parseTestCase{
+		raw:  "host:tcp4:localhost:5050",
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_SSH,
+			User:     "",
+			Host:     "host",
+			Port:     0,
+			Path:     "tcp4:localhost:5050",
 		},
 	}
 	test.run(t)
@@ -357,6 +398,45 @@ func TestParseSCPSSHUnicodeUsernameHostnamePortPath(t *testing.T) {
 	test.run(t)
 }
 
+func TestParseForwardingDockerWithSourceSpecificVariables(t *testing.T) {
+	test := parseTestCase{
+		raw:   "docker://cøntainer:unix:/some/socket.sock",
+		kind:  Kind_Forwarding,
+		first: true,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Docker,
+			Host:     "cøntainer",
+			Path:     "unix:/some/socket.sock",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      sourceSpecificDockerHost,
+				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
+				DockerCertPathEnvironmentVariable:  "",
+			},
+		},
+	}
+	test.run(t)
+}
+
+func TestParseForwardingDockerWithDestinationSpecificVariables(t *testing.T) {
+	test := parseTestCase{
+		raw:  "docker://cøntainer:tcp6:[::1]:5543",
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Docker,
+			Host:     "cøntainer",
+			Path:     "tcp6:[::1]:5543",
+			Environment: map[string]string{
+				DockerHostEnvironmentVariable:      defaultDockerHost,
+				DockerTLSVerifyEnvironmentVariable: destinationSpecificDockerTLSVerify,
+				DockerCertPathEnvironmentVariable:  "",
+			},
+		},
+	}
+	test.run(t)
+}
+
 func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 	test := parseTestCase{
 		raw:  "docker://cøntainer/пат/to/the file",
@@ -378,7 +458,7 @@ func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 func TestParseDockerWithWindowsPathAndAlphaSpecificVariables(t *testing.T) {
 	test := parseTestCase{
 		raw:   `docker://cøntainer/C:\пат/to\the file`,
-		alpha: true,
+		first: true,
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
@@ -397,7 +477,7 @@ func TestParseDockerWithWindowsPathAndAlphaSpecificVariables(t *testing.T) {
 func TestParseDockerWithUsernameHomeRelativePathAndAlphaSpecificVariables(t *testing.T) {
 	test := parseTestCase{
 		raw:   "docker://üsér@cøntainer/~/пат/to/the file",
-		alpha: true,
+		first: true,
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
@@ -417,7 +497,7 @@ func TestParseDockerWithUsernameHomeRelativePathAndAlphaSpecificVariables(t *tes
 func TestParseDockerWithUsernameUserRelativePathAndAlphaSpecificVariables(t *testing.T) {
 	test := parseTestCase{
 		raw:   "docker://üsér@cøntainer/~otheruser/пат/to/the file",
-		alpha: true,
+		first: true,
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,

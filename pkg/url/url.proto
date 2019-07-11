@@ -4,6 +4,14 @@ package url;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/url";
 
+// Kind indicates the kind of a URL.
+enum Kind {
+    // Synchronization indicates a synchronization URL.
+    Synchronization = 0;
+    // Forwarding indicates a forwarding URL.
+    Forwarding = 1;
+}
+
 // Protocol indicates a location type.
 enum Protocol {
     // Local indicates that the resource is on the local system.
@@ -21,6 +29,9 @@ enum Protocol {
 
 // URL represents a pointer to a resource.
 message URL {
+    // Kind indicates the URL kind.
+    // NOTE: This field number is out of order for historical reasons.
+    Kind kind = 7;
     // Protocol indicates a location type.
     Protocol protocol = 1;
     // User is the user under which a resource should be accessed.
@@ -36,4 +47,6 @@ message URL {
     // Environment is used to capture environment variable information (if
     // necessary) for transports which operate by executing a command.
     map<string, string> environment = 6;
+    // Field 7 is already used above for the kind field. It is out of order for
+    // historical reasons.
 }

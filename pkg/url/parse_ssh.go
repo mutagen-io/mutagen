@@ -3,43 +3,79 @@ package url
 import (
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
 
-// isSCPSSHURL determines whether or not a raw URL is an SCP-style SSH URL. A
-// URL is classified as such if it contains a colon with no forward slashes
-// before it. On Windows, paths beginning with x:\ or x:/ (where x is a-z or
-// A-Z) are almost certainly referring to local paths, but will trigger the SCP
-// URL detection, so we have to check those first. This is, of course, something
-// of a heuristic, but we're unlikely to encounter 1-character hostnames and
-// very likely to encounter Windows paths (except on POSIX, where this check
-// always returns false). If Windows users do have a 1-character hostname, they
-// should just use some other addressing scheme for it (e.g. an IP address or
-// alternate hostname).
-func isSCPSSHURL(raw string) bool {
-	// If this is a Windows path on a Windows system, then reject it because it
-	// should be treated as a local URL.
-	if runtime.GOOS == "windows" && isWindowsPath(raw) {
-		return false
-	}
-
-	// Otherwise check if there's a colon that comes before all forward slashes.
-	for _, c := range raw {
-		if c == ':' {
-			return true
-		} else if c == '/' {
-			break
+// isSCPSSHURL determines whether or not a raw URL is an SCP-style SSH URL.
+//
+// For synchronization URLs, a URL is classified as such if it contains a colon
+// with no forward slashes before it. On Windows, paths beginning with x:\ or
+// x:/ (where x is a-z or A-Z) are almost certainly referring to local paths,
+// but will trigger the SCP URL detection, so we check for and exclude these
+// candidates on Windows. This is, of course, something of a heuristic, but
+// we're unlikely to encounter 1-character hostnames and very likely to
+// encounter Windows paths, except on POSIX systems (where we don't perform this
+// check). If Windows users do have a 1-character hostname, they should just use
+// some other addressing scheme for it (e.g. an IP address or alternate
+// hostname).
+//
+// For forwarding URLs, the classification requires the presence of at least two
+// colons and exclude candidates which parse directly as forwarding endpoint
+// URLs, since those URLs are almost certainly local URLs. This excludes
+// hostnames that also happen to be protocol names, but these are also unlikely
+// to occur in practice and the same workarounds are available as for the
+// one-character hostname case mentioned above.
+func isSCPSSHURL(raw string, kind Kind) bool {
+	// Handle classification based on URL kind.
+	if kind == Kind_Synchronization {
+		// If we're on a Windows system and this is a Windows path, then reject
+		// it, because it should be treated as a local URL.
+		if runtime.GOOS == "windows" && isWindowsPath(raw) {
+			return false
 		}
-	}
 
-	// If there wasn't a colon or a slash came first, then this is not an
-	// SCP-style SSH URL.
-	return false
+		// Otherwise check if there's a colon that comes before all forward
+		// slashes. If so, we treat this as an SCP-style SSH URL.
+		for _, c := range raw {
+			if c == ':' {
+				return true
+			} else if c == '/' {
+				break
+			}
+		}
+
+		// Either there wasn't a colon or a forward slash came first. In any
+		// case, this is not an SCP-style SSH URL.
+		return false
+	} else if kind == Kind_Forwarding {
+		// Reject any URL that parses directly as an endpoint URL, since this is
+		// almost certainly intended as a local forwarding endpoint URL.
+		if _, _, err := forwarding.Parse(raw); err == nil {
+			return false
+		}
+
+		// Ensure that there are at least two colons in the URL. This is about
+		// the only heuristic we have for invalidating candidate URLs.
+		if strings.Count(raw, ":") < 2 {
+			return false
+		}
+
+		// In the case of a forwarding URL, there's not really any useful
+		// additional classification test that we can perform without fully
+		// parsing the URL. We've at least ensured the presence of a colon, so
+		// parsing can be attempted.
+		return true
+	} else {
+		panic("unhandled URL kind")
+	}
 }
 
 // parseSCPSSH parses an SCP-style SSH URL.
-func parseSCPSSH(raw string) (*URL, error) {
+func parseSCPSSH(raw string, kind Kind) (*URL, error) {
 	// Parse off the username. If we hit a ':', then we've reached the end of
 	// the hostname specification and there was no username. Similarly, if we
 	// hit the end of the string without seeing an '@', then there's also no
@@ -118,14 +154,27 @@ func parseSCPSSH(raw string) (*URL, error) {
 		break
 	}
 
-	// Treat what remains as the path. Ensure that it's non-empty.
+	// Treat what remains as the path.
 	path := raw
-	if path == "" {
-		return nil, errors.New("empty path")
+
+	// Perform path processing based on URL kind.
+	if kind == Kind_Synchronization {
+		// Ensure that the path is non-empty.
+		if path == "" {
+			return nil, errors.New("empty path")
+		}
+	} else if kind == Kind_Forwarding {
+		// Parse the forwarding endpoint URL to ensure that it's valid.
+		if _, _, err := forwarding.Parse(path); err != nil {
+			return nil, errors.Wrap(err, "invalid forwarding endpoint URL")
+		}
+	} else {
+		panic("unhandled URL kind")
 	}
 
 	// Create the URL, using what remains as the path.
 	return &URL{
+		Kind:     kind,
 		Protocol: Protocol_SSH,
 		User:     username,
 		Host:     hostname,

@@ -4,7 +4,21 @@ import (
 	"math"
 
 	"github.com/pkg/errors"
+
+	"github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
+
+// Supported returns whether or not a URL kind is supported.
+func (k Kind) Supported() bool {
+	switch k {
+	case Kind_Synchronization:
+		return true
+	case Kind_Forwarding:
+		return true
+	default:
+		return false
+	}
+}
 
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
@@ -13,7 +27,13 @@ func (u *URL) EnsureValid() error {
 		return errors.New("nil URL")
 	}
 
-	// Handle validation based on protocol.
+	// Ensure that the kind is supported.
+	if !u.Kind.Supported() {
+		return errors.New("unsupported URL kind")
+	}
+
+	// Validate the User, Host, Port, and Environment components based on
+	// protocol.
 	if u.Protocol == Protocol_Local {
 		if u.User != "" {
 			return errors.New("local URL with non-empty username")
@@ -21,8 +41,6 @@ func (u *URL) EnsureValid() error {
 			return errors.New("local URL with non-empty hostname")
 		} else if u.Port != 0 {
 			return errors.New("local URL with non-zero port")
-		} else if u.Path == "" {
-			return errors.New("local URL with empty path")
 		} else if len(u.Environment) != 0 {
 			return errors.New("local URL with environment variables")
 		}
@@ -31,8 +49,6 @@ func (u *URL) EnsureValid() error {
 			return errors.New("SSH URL with empty hostname")
 		} else if u.Port > math.MaxUint16 {
 			return errors.New("SSH URL with invalid port")
-		} else if u.Path == "" {
-			return errors.New("SSH URL with empty path")
 		} else if len(u.Environment) != 0 {
 			return errors.New("SSH URL with environment variables")
 		}
@@ -46,13 +62,30 @@ func (u *URL) EnsureValid() error {
 			return errors.New("Docker URL with empty container identifier")
 		} else if u.Port != 0 {
 			return errors.New("Docker URL with non-zero port")
-		} else if u.Path == "" {
-			return errors.New("Docker URL with empty path")
-		} else if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
-			return errors.New("Docker URL with incorrect first path character")
 		}
 	} else {
 		return errors.New("unknown or unsupported protocol")
+	}
+
+	// Validate the path component depending on the URL kind.
+	if u.Kind == Kind_Synchronization {
+		// Ensure the path is non-empty.
+		if u.Path == "" {
+			return errors.New("empty path")
+		}
+
+		// If this is a Docker URL, we can actually do a bit of additional
+		// validation.
+		if u.Protocol == Protocol_Docker {
+			if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
+				return errors.New("Docker URL with incorrect first path character")
+			}
+		}
+	} else if u.Kind == Kind_Forwarding {
+		// Parse the forwarding endpoint URL to ensure that it's valid.
+		if _, _, err := forwarding.Parse(u.Path); err != nil {
+			return errors.Wrap(err, "invalid forwarding endpoint URL")
+		}
 	}
 
 	// Success.

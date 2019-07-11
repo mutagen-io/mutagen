@@ -21,6 +21,16 @@ func TestURLEnsureValidLocalUsernameInvalid(t *testing.T) {
 	}
 }
 
+func TestURLForwardingEnsureValidForwardingEndpointInvalid(t *testing.T) {
+	invalid := &URL{
+		Kind: Kind_Forwarding,
+		Path: "tcp5:localhost:4420",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
 func TestURLEnsureValidLocalHostnameInvalid(t *testing.T) {
 	invalid := &URL{
 		Host: "somehost",
@@ -62,6 +72,16 @@ func TestURLEnsureValidLocalEnvironmentVariablesInvalid(t *testing.T) {
 
 func TestURLEnsureValidLocal(t *testing.T) {
 	valid := &URL{Path: "some/path"}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidForwardingLocal(t *testing.T) {
+	valid := &URL{
+		Kind: Kind_Forwarding,
+		Path: "tcp:localhost:50505",
+	}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL classified as invalid")
 	}

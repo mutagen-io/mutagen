@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 // ensureValid verifies that a CreationSpecification is valid.
@@ -13,14 +14,18 @@ func (s *CreationSpecification) ensureValid() error {
 		return errors.New("nil creation specification")
 	}
 
-	// Verify that the alpha URL is valid.
+	// Verify that the alpha URL is valid and is a synchronization URL.
 	if err := s.Alpha.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid alpha URL")
+	} else if s.Alpha.Kind != url.Kind_Synchronization {
+		return errors.New("alpha URL is not a synchronization URL")
 	}
 
-	// Verify that the beta URL is valid.
+	// Verify that the beta URL is valid and is a synchronization URL.
 	if err := s.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid beta URL")
+	} else if s.Beta.Kind != url.Kind_Synchronization {
+		return errors.New("beta URL is not a synchronization URL")
 	}
 
 	// Verify that the configuration is valid.
