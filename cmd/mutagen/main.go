@@ -61,7 +61,8 @@ func init() {
 	cobra.MousetrapHelpText = ""
 
 	// Register commands.
-	// HACK: Add the legacy sync commands for temporary backward compatibility.
+	// HACK: Add the sync commands as direct subcommands of the root command for
+	// temporary backward compatibility.
 	commands := []*cobra.Command{
 		sync.RootCommand,
 		daemon.RootCommand,
@@ -69,8 +70,13 @@ func init() {
 		legalCommand,
 		generateCommand,
 	}
-	commands = append(commands, sync.LegacyCommands...)
+	commands = append(commands, sync.Commands...)
 	rootCommand.AddCommand(commands...)
+
+	// HACK: Register the sync subcommands with the sync command after
+	// registering them with the root command so that they have the correct
+	// parent command and thus the correct help output.
+	sync.RootCommand.AddCommand(sync.Commands...)
 }
 
 func main() {
@@ -89,11 +95,11 @@ func main() {
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
 
-	// HACK: Modify the root command's help function to hide legacy commands.
+	// HACK: Modify the root command's help function to hide sync commands.
 	defaultHelpFunction := rootCommand.HelpFunc()
 	rootCommand.SetHelpFunc(func(command *cobra.Command, arguments []string) {
 		if command == rootCommand {
-			for _, command := range sync.LegacyCommands {
+			for _, command := range sync.Commands {
 				command.Hidden = true
 			}
 		}
