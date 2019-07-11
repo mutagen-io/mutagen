@@ -13,6 +13,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
+	selectionpkg "github.com/havoc-io/mutagen/pkg/selection"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 )
@@ -68,7 +69,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	} else if len(arguments) > 1 {
 		return errors.New("multiple session specification not allowed")
 	}
-	selection := &sessionpkg.Selection{
+	selection := &selectionpkg.Selection{
 		All:            len(arguments) == 0 && monitorConfiguration.labelSelector == "",
 		Specifications: arguments,
 		LabelSelector:  monitorConfiguration.labelSelector,
@@ -130,7 +131,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			} else {
 				state = response.SessionStates[len(response.SessionStates)-1]
 				session = state.Session.Identifier
-				selection = &sessionpkg.Selection{
+				selection = &selectionpkg.Selection{
 					Specifications: []string{session},
 				}
 			}

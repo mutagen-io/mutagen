@@ -7,9 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	"github.com/havoc-io/mutagen/pkg/state"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
@@ -138,9 +137,9 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*Co
 
 // findControllersByLabelSelector generates a list of controllers using the
 // specified label selector.
-func (m *Manager) findControllersByLabelSelector(rawSelector string) ([]*Controller, error) {
+func (m *Manager) findControllersByLabelSelector(LabelSelector string) ([]*Controller, error) {
 	// Parse the label selector.
-	selector, err := labels.Parse(rawSelector)
+	selector, err := selection.ParseLabelSelector(LabelSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse label selector")
 	}
@@ -152,7 +151,7 @@ func (m *Manager) findControllersByLabelSelector(rawSelector string) ([]*Control
 	// Loop over controllers and look for matches.
 	var controllers []*Controller
 	for _, controller := range m.sessions {
-		if selector.Matches(labels.Set(controller.session.Labels)) {
+		if selector.Matches(controller.session.Labels) {
 			controllers = append(controllers, controller)
 		}
 	}
@@ -163,7 +162,7 @@ func (m *Manager) findControllersByLabelSelector(rawSelector string) ([]*Control
 
 // selectControllers generates a list of controllers using the mechanism
 // specified by the provided selection.
-func (m *Manager) selectControllers(selection *Selection) ([]*Controller, error) {
+func (m *Manager) selectControllers(selection *selection.Selection) ([]*Controller, error) {
 	// Dispatch selection based on the requested mechanism.
 	if selection.All {
 		return m.allControllers(), nil
@@ -226,7 +225,7 @@ func (m *Manager) Create(
 }
 
 // List requests a state snapshot for the specified sessions.
-func (m *Manager) List(selection *Selection, previousStateIndex uint64) (uint64, []*State, error) {
+func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
 	if poisoned {
@@ -258,7 +257,7 @@ func (m *Manager) List(selection *Selection, previousStateIndex uint64) (uint64,
 }
 
 // Flush tells the manager to flush sessions matching the given specifications.
-func (m *Manager) Flush(selection *Selection, prompter string, skipWait bool, context contextpkg.Context) error {
+func (m *Manager) Flush(selection *selection.Selection, prompter string, skipWait bool, context contextpkg.Context) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -277,7 +276,7 @@ func (m *Manager) Flush(selection *Selection, prompter string, skipWait bool, co
 }
 
 // Pause tells the manager to pause sessions matching the given specifications.
-func (m *Manager) Pause(selection *Selection, prompter string) error {
+func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -297,7 +296,7 @@ func (m *Manager) Pause(selection *Selection, prompter string) error {
 
 // Resume tells the manager to resume sessions matching the given
 // specifications.
-func (m *Manager) Resume(selection *Selection, prompter string) error {
+func (m *Manager) Resume(selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -317,7 +316,7 @@ func (m *Manager) Resume(selection *Selection, prompter string) error {
 
 // Terminate tells the manager to terminate sessions matching the given
 // specifications.
-func (m *Manager) Terminate(selection *Selection, prompter string) error {
+func (m *Manager) Terminate(selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {

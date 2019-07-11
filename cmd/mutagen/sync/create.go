@@ -20,6 +20,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -92,9 +93,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if len(components) == 2 {
 			value = components[1]
 		}
-		if err := sessionpkg.EnsureLabelKeyValid(key); err != nil {
+		if err := selection.EnsureLabelKeyValid(key); err != nil {
 			return errors.Wrap(err, "invalid label key")
-		} else if err := sessionpkg.EnsureLabelValueValid(value); err != nil {
+		} else if err := selection.EnsureLabelValueValid(value); err != nil {
 			return errors.Wrap(err, "invalid label value")
 		}
 		labels[key] = value

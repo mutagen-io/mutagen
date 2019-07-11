@@ -10,13 +10,13 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
-	"github.com/havoc-io/mutagen/pkg/session"
 )
 
 func terminateMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
-	selection := &session.Selection{
+	selection := &selection.Selection{
 		All:            terminateConfiguration.all,
 		Specifications: arguments,
 		LabelSelector:  terminateConfiguration.labelSelector,

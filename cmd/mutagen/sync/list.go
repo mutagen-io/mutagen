@@ -12,6 +12,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/sync"
@@ -120,7 +121,7 @@ func printConflicts(conflicts []*sync.Conflict) {
 
 func listMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
-	selection := &sessionpkg.Selection{
+	selection := &selection.Selection{
 		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
 		Specifications: arguments,
 		LabelSelector:  listConfiguration.labelSelector,

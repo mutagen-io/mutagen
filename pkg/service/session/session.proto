@@ -4,8 +4,8 @@ package session;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/service/session";
 
+import "selection/selection.proto";
 import "session/configuration.proto";
-import "session/selection.proto";
 import "session/state.proto";
 import "url/url.proto";
 
@@ -38,7 +38,7 @@ message CreateResponse {
 }
 
 message ListRequest {
-    session.Selection selection = 1;
+    selection.Selection selection = 1;
     uint64 previousStateIndex = 2;
 }
 
@@ -48,7 +48,7 @@ message ListResponse {
 }
 
 message FlushRequest {
-    session.Selection selection = 1;
+    selection.Selection selection = 1;
     bool skipWait = 2;
 }
 
@@ -57,7 +57,7 @@ message FlushResponse{
 }
 
 message PauseRequest {
-    session.Selection selection = 1;
+    selection.Selection selection = 1;
 }
 
 message PauseResponse{
@@ -65,7 +65,7 @@ message PauseResponse{
 }
 
 message ResumeRequest {
-    session.Selection selection = 1;
+    selection.Selection selection = 1;
     string response = 2;
 }
 
@@ -75,7 +75,7 @@ message ResumeResponse {
 }
 
 message TerminateRequest {
-    session.Selection selection = 1;
+    selection.Selection selection = 1;
 }
 
 message TerminateResponse{

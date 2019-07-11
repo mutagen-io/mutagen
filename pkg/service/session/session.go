@@ -3,7 +3,7 @@ package session
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -45,9 +45,9 @@ func (s *CreationSpecification) ensureValid() error {
 
 	// Verify that labels are valid.
 	for k, v := range s.Labels {
-		if err := session.EnsureLabelKeyValid(k); err != nil {
+		if err := selection.EnsureLabelKeyValid(k); err != nil {
 			return errors.Wrap(err, "invalid label key")
-		} else if err = session.EnsureLabelValueValid(v); err != nil {
+		} else if err = selection.EnsureLabelValueValid(v); err != nil {
 			return errors.Wrap(err, "invalid label value")
 		}
 	}

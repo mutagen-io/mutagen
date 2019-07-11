@@ -13,13 +13,14 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
 	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/selection"
 	"github.com/havoc-io/mutagen/pkg/session"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
 	// Create a session selection specification.
-	selection := &session.Selection{
+	selection := &selection.Selection{
 		Specifications: []string{sessionId},
 	}
 
@@ -71,7 +72,7 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	// relevant state).
 
 	// Create a session selection specification.
-	selection := &session.Selection{
+	selection := &selection.Selection{
 		Specifications: []string{sessionId},
 	}
 

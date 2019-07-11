@@ -1,4 +1,4 @@
-package session
+package selection
 
 import (
 	"github.com/pkg/errors"
@@ -11,7 +11,7 @@ func (s *Selection) EnsureValid() error {
 		return errors.New("nil selection")
 	}
 
-	// Count the number of session selection mechanisms present.
+	// Count the number of selection mechanisms present.
 	var mechanismsPresent uint
 	if s.All {
 		mechanismsPresent++
@@ -23,7 +23,7 @@ func (s *Selection) EnsureValid() error {
 		mechanismsPresent++
 	}
 
-	// Enforce that exactly one session selection mechanism is present.
+	// Enforce that exactly one selection mechanism is present.
 	if mechanismsPresent > 1 {
 		return errors.New("multiple selection mechanisms present")
 	} else if mechanismsPresent < 1 {

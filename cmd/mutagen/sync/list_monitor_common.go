@@ -6,6 +6,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
+	"github.com/havoc-io/mutagen/pkg/selection"
 	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
@@ -108,7 +109,7 @@ func printSession(state *sessionpkg.State, long bool) {
 	// Print labels.
 	if len(state.Session.Labels) > 0 {
 		fmt.Println("Labels:")
-		keys := sessionpkg.ExtractAndSortLabelKeys(state.Session.Labels)
+		keys := selection.ExtractAndSortLabelKeys(state.Session.Labels)
 		for _, key := range keys {
 			value := state.Session.Labels[key]
 			if value == "" {
