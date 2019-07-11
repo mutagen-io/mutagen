@@ -9,11 +9,6 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/cmd/mutagen/sync"
 	"github.com/havoc-io/mutagen/pkg/prompt"
-
-	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/docker"
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/local"
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/ssh"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
