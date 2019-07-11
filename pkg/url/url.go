@@ -15,9 +15,9 @@ func (u *URL) EnsureValid() error {
 
 	// Handle validation based on protocol.
 	if u.Protocol == Protocol_Local {
-		if u.Username != "" {
+		if u.User != "" {
 			return errors.New("local URL with non-empty username")
-		} else if u.Hostname != "" {
+		} else if u.Host != "" {
 			return errors.New("local URL with non-empty hostname")
 		} else if u.Port != 0 {
 			return errors.New("local URL with non-zero port")
@@ -27,7 +27,7 @@ func (u *URL) EnsureValid() error {
 			return errors.New("local URL with environment variables")
 		}
 	} else if u.Protocol == Protocol_SSH {
-		if u.Hostname == "" {
+		if u.Host == "" {
 			return errors.New("SSH URL with empty hostname")
 		} else if u.Port > math.MaxUint16 {
 			return errors.New("SSH URL with invalid port")
@@ -42,7 +42,7 @@ func (u *URL) EnsureValid() error {
 		// default to empty values for unspecified environment variables, this
 		// works out fine, at least so long as Docker continues to treat empty
 		// environment variables the same as unspecified ones.
-		if u.Hostname == "" {
+		if u.Host == "" {
 			return errors.New("Docker URL with empty container identifier")
 		} else if u.Port != 0 {
 			return errors.New("Docker URL with non-zero port")

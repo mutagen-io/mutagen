@@ -4,19 +4,36 @@ package url;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/url";
 
+// Protocol indicates a location type.
 enum Protocol {
+    // Local indicates that the resource is on the local system.
     Local = 0;
+    // SSH indicates that the resource is accessible via SSH.
     SSH = 1;
+
     // Enumeration value 2 is reserved for custom protocols.
+
     // Enumeration values 3-10 are reserved for core protocols.
+
+    // Docker indicates that the resource is inside a Docker container.
     Docker = 11;
 }
 
+// URL represents a pointer to a resource.
 message URL {
+    // Protocol indicates a location type.
     Protocol protocol = 1;
-    string username = 2;
-    string hostname = 3;
+    // User is the user under which a resource should be accessed.
+    string user = 2;
+    // Host is protocol-specific, but generally indicates the location of the
+    // remote.
+    string host = 3;
+    // Port indicates a TCP port via which to access the remote location, if
+    // applicable.
     uint32 port = 4;
+    // Path indicates the path of a resource.
     string path = 5;
+    // Environment is used to capture environment variable information (if
+    // necessary) for transports which operate by executing a command.
     map<string, string> environment = 6;
 }

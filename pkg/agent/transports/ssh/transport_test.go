@@ -45,9 +45,9 @@ func TestCopy(t *testing.T) {
 
 	// Create a transport.
 	transport := &transport{
-		user:     user.Username,
-		hostname: "localhost",
-		port:     22,
+		user: user.Username,
+		host: "localhost",
+		port: 22,
 	}
 
 	// Compute the destination path.
@@ -95,9 +95,9 @@ func TestCommandOutput(t *testing.T) {
 
 	// Create a transport.
 	transport := &transport{
-		user:     user.Username,
-		hostname: "localhost",
-		port:     22,
+		user: user.Username,
+		host: "localhost",
+		port: 22,
 	}
 
 	// Attempt to execute the command.

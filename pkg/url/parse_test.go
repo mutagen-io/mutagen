@@ -30,13 +30,13 @@ func (c *parseTestCase) run(t *testing.T) {
 	}
 
 	// Verify username.
-	if url.Username != c.expected.Username {
-		t.Error("username mismatch:", url.Username, "!=", c.expected.Username)
+	if url.User != c.expected.User {
+		t.Error("username mismatch:", url.User, "!=", c.expected.User)
 	}
 
 	// Verify hostname.
-	if url.Hostname != c.expected.Hostname {
-		t.Error("hostname mismatch:", url.Hostname, "!=", c.expected.Hostname)
+	if url.Host != c.expected.Host {
+		t.Error("hostname mismatch:", url.Host, "!=", c.expected.Host)
 	}
 
 	// Verify port.
@@ -76,8 +76,8 @@ func TestParseLocalPath(t *testing.T) {
 		raw: "/this/is/a:path",
 		expected: &URL{
 			Protocol: Protocol_Local,
-			Username: "",
-			Hostname: "",
+			User:     "",
+			Host:     "",
 			Port:     0,
 			Path:     "/this/is/a:path",
 		},
@@ -90,8 +90,8 @@ func TestParseLocalPathWithAtSymbol(t *testing.T) {
 		raw: "some@path",
 		expected: &URL{
 			Protocol: Protocol_Local,
-			Username: "",
-			Hostname: "",
+			User:     "",
+			Host:     "",
 			Port:     0,
 			Path:     "some@path",
 		},
@@ -102,7 +102,7 @@ func TestParseLocalPathWithAtSymbol(t *testing.T) {
 func TestParsePOSIXSCPSSHWindowsLocal(t *testing.T) {
 	expected := &URL{
 		Protocol: Protocol_SSH,
-		Hostname: "C",
+		Host:     "C",
 		Path:     "/local/path",
 	}
 	if runtime.GOOS == "windows" {
@@ -186,8 +186,8 @@ func TestParseSCPSSHHostnamePath(t *testing.T) {
 		raw: "host:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "",
-			Hostname: "host",
+			User:     "",
+			Host:     "host",
 			Port:     0,
 			Path:     "path",
 		},
@@ -200,8 +200,8 @@ func TestParseSCPSSHUsernameHostnamePath(t *testing.T) {
 		raw: "user@host:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "path",
 		},
@@ -214,8 +214,8 @@ func TestParseSCPSSHUsernameHostnamePathWithColonInMiddle(t *testing.T) {
 		raw: "user@host:pa:th",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "pa:th",
 		},
@@ -228,8 +228,8 @@ func TestParseSCPSSHUsernameHostnamePathWithColonAtEnd(t *testing.T) {
 		raw: "user@host:path:",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "path:",
 		},
@@ -242,8 +242,8 @@ func TestParseSCPSSHUsernameHostnameWithAtPath(t *testing.T) {
 		raw: "user@ho@st:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "ho@st",
+			User:     "user",
+			Host:     "ho@st",
 			Port:     0,
 			Path:     "path",
 		},
@@ -256,8 +256,8 @@ func TestParseSCPSSHUsernameHostnamePathWithAt(t *testing.T) {
 		raw: "user@host:pa@th",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "pa@th",
 		},
@@ -270,8 +270,8 @@ func TestParseSCPSSHUsernameHostnamePortPath(t *testing.T) {
 		raw: "user@host:65535:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     65535,
 			Path:     "path",
 		},
@@ -284,8 +284,8 @@ func TestParseSCPSSHUsernameHostnameZeroPortPath(t *testing.T) {
 		raw: "user@host:0:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "path",
 		},
@@ -298,8 +298,8 @@ func TestParseSCPSSHUsernameHostnameDoubleZeroPortPath(t *testing.T) {
 		raw: "user@host:00:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "path",
 		},
@@ -320,8 +320,8 @@ func TestParseSCPSSHUsernameHostnameHexNumericPath(t *testing.T) {
 		raw: "user@host:aaa:path",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "aaa:path",
 		},
@@ -334,8 +334,8 @@ func TestParseSCPSSHUnicodeUsernameHostnamePath(t *testing.T) {
 		raw: "üsér@høst:пат",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "üsér",
-			Hostname: "høst",
+			User:     "üsér",
+			Host:     "høst",
 			Port:     0,
 			Path:     "пат",
 		},
@@ -348,8 +348,8 @@ func TestParseSCPSSHUnicodeUsernameHostnamePortPath(t *testing.T) {
 		raw: "üsér@høst:23:пат",
 		expected: &URL{
 			Protocol: Protocol_SSH,
-			Username: "üsér",
-			Hostname: "høst",
+			User:     "üsér",
+			Host:     "høst",
 			Port:     23,
 			Path:     "пат",
 		},
@@ -363,7 +363,7 @@ func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 		fail: false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "cøntainer",
+			Host:     "cøntainer",
 			Path:     "/пат/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      defaultDockerHost,
@@ -382,7 +382,7 @@ func TestParseDockerWithWindowsPathAndAlphaSpecificVariables(t *testing.T) {
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "cøntainer",
+			Host:     "cøntainer",
 			Path:     `C:\пат/to\the file`,
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
@@ -401,8 +401,8 @@ func TestParseDockerWithUsernameHomeRelativePathAndAlphaSpecificVariables(t *tes
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
-			Username: "üsér",
-			Hostname: "cøntainer",
+			User:     "üsér",
+			Host:     "cøntainer",
 			Path:     "~/пат/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
@@ -421,8 +421,8 @@ func TestParseDockerWithUsernameUserRelativePathAndAlphaSpecificVariables(t *tes
 		fail:  false,
 		expected: &URL{
 			Protocol: Protocol_Docker,
-			Username: "üsér",
-			Hostname: "cøntainer",
+			User:     "üsér",
+			Host:     "cøntainer",
 			Path:     "~otheruser/пат/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,

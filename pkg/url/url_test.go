@@ -13,8 +13,8 @@ func TestURLEnsureValidNilInvalid(t *testing.T) {
 
 func TestURLEnsureValidLocalUsernameInvalid(t *testing.T) {
 	invalid := &URL{
-		Username: "george",
-		Path:     "some/path",
+		User: "george",
+		Path: "some/path",
 	}
 	if invalid.EnsureValid() == nil {
 		t.Error("invalid URL classified as valid")
@@ -23,8 +23,8 @@ func TestURLEnsureValidLocalUsernameInvalid(t *testing.T) {
 
 func TestURLEnsureValidLocalHostnameInvalid(t *testing.T) {
 	invalid := &URL{
-		Hostname: "somehost",
-		Path:     "some/path",
+		Host: "somehost",
+		Path: "some/path",
 	}
 	if invalid.EnsureValid() == nil {
 		t.Error("invalid URL classified as valid")
@@ -80,7 +80,7 @@ func TestURLEnsureValidSSHEmptyHostnameInvalid(t *testing.T) {
 func TestURLEnsureValidSSHLargePortInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_SSH,
-		Hostname: "washington",
+		Host:     "washington",
 		Port:     65536,
 		Path:     "some/path",
 	}
@@ -101,8 +101,8 @@ func TestURLEnsureValidSSHEmptyPathInvalid(t *testing.T) {
 func TestURLEnsureValidSSHEnvironmentVariablesInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_SSH,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Port:     22,
 		Path:     "~/path",
 		Environment: map[string]string{
@@ -117,8 +117,8 @@ func TestURLEnsureValidSSHEnvironmentVariablesInvalid(t *testing.T) {
 func TestURLEnsureValidSSH(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_SSH,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Port:     22,
 		Path:     "~/path",
 	}
@@ -130,8 +130,8 @@ func TestURLEnsureValidSSH(t *testing.T) {
 func TestURLEnsureValidDockerPortInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Port:     50,
 		Path:     "~/path",
 	}
@@ -143,8 +143,8 @@ func TestURLEnsureValidDockerPortInvalid(t *testing.T) {
 func TestURLEnsureValidDockerEmptyPathInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     "",
 	}
 	if invalid.EnsureValid() == nil {
@@ -155,8 +155,8 @@ func TestURLEnsureValidDockerEmptyPathInvalid(t *testing.T) {
 func TestURLEnsureValidDockerBadPathInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     "$path",
 	}
 	if invalid.EnsureValid() == nil {
@@ -167,8 +167,8 @@ func TestURLEnsureValidDockerBadPathInvalid(t *testing.T) {
 func TestURLEnsureValidDockerHomeRelativePath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     "~/path",
 	}
 	if err := valid.EnsureValid(); err != nil {
@@ -179,8 +179,8 @@ func TestURLEnsureValidDockerHomeRelativePath(t *testing.T) {
 func TestURLEnsureValidDockerUserRelativePath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     "~otheruser/path",
 	}
 	if err := valid.EnsureValid(); err != nil {
@@ -191,8 +191,8 @@ func TestURLEnsureValidDockerUserRelativePath(t *testing.T) {
 func TestURLEnsureValidDockerWindowsPath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     `C:\path`,
 	}
 	if err := valid.EnsureValid(); err != nil {
@@ -203,8 +203,8 @@ func TestURLEnsureValidDockerWindowsPath(t *testing.T) {
 func TestURLEnsureValidDocker(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Docker,
-		Username: "george",
-		Hostname: "washington",
+		User:     "george",
+		Host:     "washington",
 		Path:     "/path",
 	}
 	if err := valid.EnsureValid(); err != nil {

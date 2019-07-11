@@ -117,8 +117,8 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*Co
 			fuzzy := strings.HasPrefix(controller.session.Identifier, specification) ||
 				strings.Contains(controller.session.Alpha.Path, specification) ||
 				strings.Contains(controller.session.Beta.Path, specification) ||
-				strings.Contains(controller.session.Alpha.Hostname, specification) ||
-				strings.Contains(controller.session.Beta.Hostname, specification)
+				strings.Contains(controller.session.Alpha.Host, specification) ||
+				strings.Contains(controller.session.Beta.Host, specification)
 			if fuzzy {
 				if match != nil {
 					return nil, errors.Errorf("specification \"%s\" matches multiple sessions", specification)

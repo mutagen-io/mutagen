@@ -25,8 +25,8 @@ const (
 type transport struct {
 	// user is the SSH user under which agents should be invoked.
 	user string
-	// hostname is the target hostname.
-	hostname string
+	// host is the target host.
+	host string
 	// port is the target port.
 	port uint16
 	// prompter is the prompter identifier to use for prompting.
@@ -34,10 +34,10 @@ type transport struct {
 }
 
 // NewTransport creates a new SSH transport using the specified parameters.
-func NewTransport(user, hostname string, port uint16, prompter string) (agent.Transport, error) {
+func NewTransport(user, host string, port uint16, prompter string) (agent.Transport, error) {
 	return &transport{
 		user:     user,
-		hostname: hostname,
+		host:     host,
 		port:     port,
 		prompter: prompter,
 	}, nil
@@ -70,7 +70,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	// home directory. Since we already make the assumption that the home
 	// directory is the default working directory for SSH commands, this is a
 	// reasonable additional assumption.
-	destinationURL := fmt.Sprintf("%s:%s", t.hostname, remoteName)
+	destinationURL := fmt.Sprintf("%s:%s", t.host, remoteName)
 	if t.user != "" {
 		destinationURL = fmt.Sprintf("%s@%s", t.user, destinationURL)
 	}
@@ -123,9 +123,9 @@ func (t *transport) Copy(localPath, remoteName string) error {
 // Command implements the Command method of agent.Transport.
 func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// Compute the target.
-	target := t.hostname
+	target := t.host
 	if t.user != "" {
-		target = fmt.Sprintf("%s@%s", t.user, t.hostname)
+		target = fmt.Sprintf("%s@%s", t.user, t.host)
 	}
 
 	// Set up arguments. We intentionally don't use compression on SSH commands

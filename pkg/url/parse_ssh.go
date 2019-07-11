@@ -127,8 +127,8 @@ func parseSCPSSH(raw string) (*URL, error) {
 	// Create the URL, using what remains as the path.
 	return &URL{
 		Protocol: Protocol_SSH,
-		Username: username,
-		Hostname: hostname,
+		User:     username,
+		Host:     hostname,
 		Port:     port,
 		Path:     path,
 	}, nil

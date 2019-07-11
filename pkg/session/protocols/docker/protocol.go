@@ -31,7 +31,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create a Docker agent transport.
-	transport, err := docker.NewTransport(url.Hostname, url.Username, url.Environment, prompter)
+	transport, err := docker.NewTransport(url.Host, url.User, url.Environment, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create Docker transport")
 	}

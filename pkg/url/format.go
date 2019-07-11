@@ -24,11 +24,11 @@ func (u *URL) formatLocal() string {
 // formatSSH formats an SSH URL into an SCP-style URL.
 func (u *URL) formatSSH() string {
 	// Create the base result.
-	result := u.Hostname
+	result := u.Host
 
 	// Add username if present.
-	if u.Username != "" {
-		result = fmt.Sprintf("%s@%s", u.Username, result)
+	if u.User != "" {
+		result = fmt.Sprintf("%s@%s", u.User, result)
 	}
 
 	// Add port if present.
@@ -50,7 +50,7 @@ const invalidDockerURLFormat = "<invalid-docker-url>"
 // formatDocker formats a Docker URL.
 func (u *URL) formatDocker(environmentPrefix string) string {
 	// Start with the container name.
-	result := u.Hostname
+	result := u.Host
 
 	// Append the path. If this is a home-directory-relative path or a Windows
 	// path, then we need to prepend a slash.
@@ -65,8 +65,8 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 	}
 
 	// Add username if present.
-	if u.Username != "" {
-		result = fmt.Sprintf("%s@%s", u.Username, result)
+	if u.User != "" {
+		result = fmt.Sprintf("%s@%s", u.User, result)
 	}
 
 	// Add the scheme.

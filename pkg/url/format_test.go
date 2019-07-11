@@ -42,8 +42,8 @@ func TestFormatSSHHostnamePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_SSH,
-			Username: "",
-			Hostname: "host",
+			User:     "",
+			Host:     "host",
 			Port:     0,
 			Path:     "/test/path",
 		},
@@ -56,8 +56,8 @@ func TestFormatSSHUsernameHostnamePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     0,
 			Path:     "/test/path",
 		},
@@ -70,8 +70,8 @@ func TestFormatSSHHostnamePortPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_SSH,
-			Username: "",
-			Hostname: "host",
+			User:     "",
+			Host:     "host",
 			Port:     23,
 			Path:     "/test/path",
 		},
@@ -84,8 +84,8 @@ func TestFormatSSHUsernameHostnamePortPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_SSH,
-			Username: "user",
-			Hostname: "host",
+			User:     "user",
+			Host:     "host",
 			Port:     23,
 			Path:     "/test/path",
 		},
@@ -98,7 +98,7 @@ func TestFormatDockerInvalidEmptyPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "container",
+			Host:     "container",
 			Path:     "",
 		},
 		expected: invalidDockerURLFormat,
@@ -110,7 +110,7 @@ func TestFormatDockerInvalidBadFirstPathCharacter(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "container",
+			Host:     "container",
 			Path:     "$5",
 		},
 		expected: invalidDockerURLFormat,
@@ -122,7 +122,7 @@ func TestFormatDocker(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "container",
+			Host:     "container",
 			Path:     "/test/path/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable: "unix:///path/to/docker.sock",
@@ -138,8 +138,8 @@ func TestFormatDockerWithUsernameAndHomeRelativePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Username: "user",
-			Hostname: "container",
+			User:     "user",
+			Host:     "container",
 			Path:     "~/test/path/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
@@ -156,8 +156,8 @@ func TestFormatDockerWithUsernameAndUserRelativePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Username: "user",
-			Hostname: "container",
+			User:     "user",
+			Host:     "container",
 			Path:     "~otheruser/test/path/to/the file",
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",
@@ -174,7 +174,7 @@ func TestFormatDockerWithWindowsPathPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Docker,
-			Hostname: "container",
+			Host:     "container",
 			Path:     `C:\A\Windows\File Path `,
 			Environment: map[string]string{
 				DockerHostEnvironmentVariable:      "unix:///path/to/docker.sock",

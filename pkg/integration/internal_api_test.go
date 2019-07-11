@@ -304,7 +304,7 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{
 		Protocol: url.Protocol_SSH,
-		Hostname: "localhost",
+		Host:     "localhost",
 		Path:     betaRoot,
 	}
 
@@ -387,8 +387,8 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 	alphaURL := &url.URL{Path: alphaRoot}
 	betaURL := &url.URL{
 		Protocol:    url.Protocol_Docker,
-		Username:    os.Getenv("MUTAGEN_TEST_DOCKER_USERNAME"),
-		Hostname:    os.Getenv("MUTAGEN_TEST_DOCKER_CONTAINER_NAME"),
+		User:        os.Getenv("MUTAGEN_TEST_DOCKER_USERNAME"),
+		Host:        os.Getenv("MUTAGEN_TEST_DOCKER_CONTAINER_NAME"),
 		Path:        betaRoot,
 		Environment: environment,
 	}

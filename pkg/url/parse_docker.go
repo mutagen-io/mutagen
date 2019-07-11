@@ -111,8 +111,8 @@ func parseDocker(raw string, alpha bool) (*URL, error) {
 	// Success.
 	return &URL{
 		Protocol:    Protocol_Docker,
-		Username:    username,
-		Hostname:    container,
+		User:        username,
+		Host:        container,
 		Path:        path,
 		Environment: environment,
 	}, nil

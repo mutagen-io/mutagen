@@ -31,9 +31,9 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create an SSH agent transport.
-	transport, err := ssh.NewTransport(url.Username, url.Hostname, uint16(url.Port), prompter)
+	transport, err := ssh.NewTransport(url.User, url.Host, uint16(url.Port), prompter)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create Docker transport")
+		return nil, errors.Wrap(err, "unable to create SSH transport")
 	}
 
 	// Dial an agent in endpoint mode.

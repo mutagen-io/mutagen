@@ -24,8 +24,8 @@ func TestProtocolBuffersCycle(t *testing.T) {
 	// Create a Protocol Buffers message that we can test with.
 	message := &url.URL{
 		Protocol: url.Protocol_SSH,
-		Username: "George",
-		Hostname: "washington",
+		User:     "George",
+		Host:     "washington",
 		Port:     1776,
 		Path:     "/by/land/or/by/sea",
 	}
@@ -43,8 +43,8 @@ func TestProtocolBuffersCycle(t *testing.T) {
 	// members because the Protocol Buffers generated struct contains fields
 	// that can't be compared by value.
 	match := decoded.Protocol == message.Protocol &&
-		decoded.Username == message.Username &&
-		decoded.Hostname == message.Hostname &&
+		decoded.User == message.User &&
+		decoded.Host == message.Host &&
 		decoded.Port == message.Port &&
 		decoded.Path == message.Path
 	if !match {
@@ -75,8 +75,8 @@ func TestProtobufEncoding(t *testing.T) {
 	// Write a sequence of SSH URL messages with increasing port values.
 	message := &url.URL{
 		Protocol: protocol,
-		Username: username,
-		Hostname: hostname,
+		User:     username,
+		Host:     hostname,
 		Path:     path,
 	}
 	for i := 0; i < testProtobufEncodingNMessages; i++ {
@@ -93,9 +93,9 @@ func TestProtobufEncoding(t *testing.T) {
 			t.Fatal("unable to decode message:", err)
 		} else if message.Protocol != protocol {
 			t.Error("protocol mismatch in received message")
-		} else if message.Username != username {
+		} else if message.User != username {
 			t.Error("username mismatch in received message")
-		} else if message.Hostname != hostname {
+		} else if message.Host != hostname {
 			t.Error("hostname mismatch in received message")
 		} else if message.Port != uint32(i) {
 			t.Error("hostname mismatch in received message")
