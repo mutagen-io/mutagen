@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package synchronization;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization";
+
+import "filesystem/behavior/probe_mode.proto";
+import "synchronization/scan_mode.proto";
+import "synchronization/stage_mode.proto";
+import "synchronization/watch_mode.proto";
+import "sync/ignore_vcs_mode.proto";
+import "sync/mode.proto";
+import "sync/symlink_mode.proto";
+
+// Configuration encodes session configuration parameters. It is used for create
+// commands to specify configuration options, for loading global configuration
+// options, and for storing a merged configuration inside sessions.
+message Configuration {
+    // Synchronization parameters (fields 11-20).
+    // NOTE: These run from field indices 11-20 (rather than 1-10, which are
+    // reserved for symlink configuration parameters) due to the historical
+    // order in which these fields were added.
+
+    // SynchronizationMode specifies the synchronization mode that should be
+    // used in synchronization.
+    sync.SynchronizationMode synchronizationMode = 11;
+
+    // MaximumEntryCount specifies the maximum number of filesystem entries that
+    // endpoints will tolerate managing. A zero value indicates no limit.
+    uint64 maximumEntryCount = 12;
+
+    // MaximumStagingFileSize is the maximum (individual) file size that
+    // endpoints will stage. A zero value indicates no limit.
+    uint64 maximumStagingFileSize = 13;
+
+    // ProbeMode specifies the filesystem probing mode.
+    behavior.ProbeMode probeMode = 14;
+
+    // ScanMode specifies the synchronization root scanning mode.
+    ScanMode scanMode = 15;
+
+    // StageMode specifies the file staging mode.
+    StageMode stageMode = 16;
+
+    // Fields 17-20 are reserved for future synchronization configuration
+    // parameters.
+
+
+    // Symlink configuration parameters (fields 1-10).
+    // NOTE: These run from field indices 1-10. The reason for this is that
+    // symlink configuration parameters is due to the historical order in which
+    // configuration fields were added.
+
+    // SymlinkMode specifies the symlink mode that should be used in
+    // synchronization.
+    sync.SymlinkMode symlinkMode = 1;
+
+    // Fields 2-10 are reserved for future symlink configuration parameters.
+
+
+    // Watch configuration parameters (fields 21-30).
+
+    // WatchMode specifies the filesystem watching mode.
+    WatchMode watchMode = 21;
+
+    // WatchPollingInterval specifies the interval (in seconds) for poll-based
+    // file monitoring. A value of 0 specifies that the default interval should
+    // be used.
+    uint32 watchPollingInterval = 22;
+
+    // Fields 23-30 are reserved for future watch configuration parameters.
+
+
+    // Ignore configuration parameters (fields 31-60).
+
+    // DefaultIgnores specifies the ignore patterns brought in from the global
+    // configuration.
+    // DEPRECATED: This field is no longer used when loading from global
+    // configuration. Instead, ignores provided by global configuration are
+    // simply merged into the ignore list of the main configuration. However,
+    // older sessions still use this field.
+    repeated string defaultIgnores = 31;
+
+    // Ignores specifies the ignore patterns brought in from the create request.
+    repeated string ignores = 32;
+
+    // IgnoreVCSMode specifies the VCS ignore mode that should be used in
+    // synchronization.
+    sync.IgnoreVCSMode ignoreVCSMode = 33;
+
+    // Fields 34-60 are reserved for future ignore configuration parameters.
+
+
+    // Permission configuration parameters (fields 61-80).
+
+    // Field 61 is reserved for PermissionMode.
+
+    // Field 62 is reserved for PermissionPreservationMode.
+
+    // DefaultFileMode specifies the default permission mode to use for new
+    // files in "portable" permission propagation mode.
+    uint32 defaultFileMode = 63;
+
+    // DefaultDirectoryMode specifies the default permission mode to use for new
+    // files in "portable" permission propagation mode.
+    uint32 defaultDirectoryMode = 64;
+
+    // DefaultOwner specifies the default owner identifier to use when setting
+    // ownership of new files and directories in "portable" permission
+    // propagation mode.
+    string defaultOwner = 65;
+
+    // DefaultGroup specifies the default group identifier to use when setting
+    // ownership of new files and directories in "portable" permission
+    // propagation mode.
+    string defaultGroup = 66;
+
+    // Fields 67-80 are reserved for future permission configuration parameters.
+}

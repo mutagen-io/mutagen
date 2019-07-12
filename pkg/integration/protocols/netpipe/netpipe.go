@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/session"
-	"github.com/havoc-io/mutagen/pkg/session/endpoint/remote"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -27,11 +27,11 @@ func (h *protocolHandler) Connect(
 	url *urlpkg.URL,
 	prompter string,
 	session string,
-	version session.Version,
-	configuration *session.Configuration,
+	version synchronization.Version,
+	configuration *synchronization.Configuration,
 	alpha bool,
 	ephemeral bool,
-) (session.Endpoint, error) {
+) (synchronization.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != Protocol_Netpipe {
 		panic("non-netpipe URL dispatched to netpipe protocol handler")
@@ -63,6 +63,6 @@ func (h *protocolHandler) Connect(
 }
 
 func init() {
-	// Register the netpipe protocol handler with the session package.
-	session.ProtocolHandlers[Protocol_Netpipe] = &protocolHandler{}
+	// Register the netpipe protocol handler with the synchronization package.
+	synchronization.ProtocolHandlers[Protocol_Netpipe] = &protocolHandler{}
 }

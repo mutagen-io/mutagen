@@ -15,20 +15,20 @@ import (
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
-	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
-	"github.com/havoc-io/mutagen/pkg/session"
+	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
 
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/docker"
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/local"
-	_ "github.com/havoc-io/mutagen/pkg/session/protocols/ssh"
+	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/local"
+	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/ssh"
 )
 
-// sessionManager is the session manager for the integration testing daemon. It
-// is exposed for integration tests that operate at the API level (as opposed to
-// the gRPC or command line level).
-var sessionManager *session.Manager
+// synchronizationManager is the session manager for the integration testing
+// daemon. It is exposed for integration tests that operate at the API level (as
+// opposed to the gRPC or command line level).
+var synchronizationManager *synchronization.Manager
 
 // testMainInternal is the internal testing entry point, needed so that shutdown
 // operations can be deferred (since TestMain will invoke os.Exit). It copies
@@ -49,11 +49,11 @@ func testMainInternal(m *testing.M) (int, error) {
 
 	// Create a session manager and defer its shutdown. Note that we assign to
 	// the global instance here.
-	sessionManager, err = session.NewManager()
+	synchronizationManager, err = synchronization.NewManager()
 	if err != nil {
 		return -1, errors.Wrap(err, "unable to create session manager")
 	}
-	defer sessionManager.Shutdown()
+	defer synchronizationManager.Shutdown()
 
 	// Create the gRPC server and defer its stoppage. We use a hard stop rather
 	// than a graceful stop so that it doesn't hang on open requests.
@@ -72,7 +72,8 @@ func testMainInternal(m *testing.M) (int, error) {
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
 
 	// Create and register the session service.
-	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
+	synchronizationServer := synchronizationsvc.NewServer(synchronizationManager)
+	synchronizationsvc.RegisterSynchronizationServer(server, synchronizationServer)
 
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()

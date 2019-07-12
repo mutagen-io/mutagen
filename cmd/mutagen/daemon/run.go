@@ -16,8 +16,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
-	sessionsvc "github.com/havoc-io/mutagen/pkg/service/session"
-	"github.com/havoc-io/mutagen/pkg/session"
+	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
 )
 
 func runMain(command *cobra.Command, arguments []string) error {
@@ -39,12 +39,12 @@ func runMain(command *cobra.Command, arguments []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
-	// Create a session manager and defer its shutdown.
-	sessionManager, err := session.NewManager()
+	// Create a synchronization session manager and defer its shutdown.
+	synchronizationManager, err := synchronization.NewManager()
 	if err != nil {
-		return errors.Wrap(err, "unable to create session manager")
+		return errors.Wrap(err, "unable to create synchronization session manager")
 	}
-	defer sessionManager.Shutdown()
+	defer synchronizationManager.Shutdown()
 
 	// Create the gRPC server and defer its stoppage. We use a hard stop rather
 	// than a graceful stop so that it doesn't hang on open requests.
@@ -62,8 +62,9 @@ func runMain(command *cobra.Command, arguments []string) error {
 	// Create and register the prompt server.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
 
-	// Create and register the session server.
-	sessionsvc.RegisterSessionsServer(server, sessionsvc.NewServer(sessionManager))
+	// Create and register the synchronization server.
+	synchronizationServer := synchronizationsvc.NewServer(synchronizationManager)
+	synchronizationsvc.RegisterSynchronizationServer(server, synchronizationServer)
 
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()

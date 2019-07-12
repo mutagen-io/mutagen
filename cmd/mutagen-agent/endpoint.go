@@ -13,7 +13,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/housekeeping"
-	"github.com/havoc-io/mutagen/pkg/session/endpoint/remote"
+	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 )
 
 const (

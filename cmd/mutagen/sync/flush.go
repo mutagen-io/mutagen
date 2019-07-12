@@ -11,7 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
 )
 
 func flushMain(command *cobra.Command, arguments []string) error {
@@ -33,7 +33,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
+	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
 
 	// Invoke the session flush method. The stream will close when the
 	// associated context is cancelled.
@@ -45,7 +45,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.FlushRequest{
+	request := &synchronizationsvcpkg.FlushRequest{
 		Selection: selection,
 		SkipWait:  flushConfiguration.skipWait,
 	}
@@ -68,7 +68,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.FlushRequest{}); err != nil {
+			if err := stream.Send(&synchronizationsvcpkg.FlushRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}

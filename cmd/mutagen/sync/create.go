@@ -21,21 +21,21 @@ import (
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
 	"github.com/havoc-io/mutagen/pkg/sync"
+	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 // loadAndValidateTOMLConfiguration loads a TOML-based session configuration,
 // converts it to a Protocol Buffers session configuration, and validates it.
-func loadAndValidateTOMLConfiguration(path string) (*sessionpkg.Configuration, error) {
+func loadAndValidateTOMLConfiguration(path string) (*synchronizationpkg.Configuration, error) {
 	// Load the human-readable configuration. If the path doesn't exist, then we
 	// can just return a default configuration.
-	humanReadableConfiguration := &sessionpkg.HumanReadableConfiguration{}
+	humanReadableConfiguration := &synchronizationpkg.HumanReadableConfiguration{}
 	if err := encoding.LoadAndUnmarshalTOML(path, humanReadableConfiguration); err != nil {
 		if os.IsNotExist(err) {
-			return &sessionpkg.Configuration{}, nil
+			return &synchronizationpkg.Configuration{}, nil
 		}
 		return nil, errors.Wrap(err, "unable to load TOML file")
 	}
@@ -103,7 +103,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create a default session configuration which will form the basis of our
 	// cumulative configuration.
-	configuration := &sessionpkg.Configuration{}
+	configuration := &synchronizationpkg.Configuration{}
 
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
@@ -121,7 +121,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateTOMLConfiguration(globalConfigurationPath); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
-			configuration = sessionpkg.MergeConfigurations(configuration, c)
+			configuration = synchronizationpkg.MergeConfigurations(configuration, c)
 		}
 	}
 
@@ -131,7 +131,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateTOMLConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
-			configuration = sessionpkg.MergeConfigurations(configuration, c)
+			configuration = synchronizationpkg.MergeConfigurations(configuration, c)
 		}
 	}
 
@@ -175,7 +175,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert scan mode specifications.
-	var scanMode, scanModeAlpha, scanModeBeta sessionpkg.ScanMode
+	var scanMode, scanModeAlpha, scanModeBeta synchronizationpkg.ScanMode
 	if createConfiguration.scanMode != "" {
 		if err := scanMode.UnmarshalText([]byte(createConfiguration.scanMode)); err != nil {
 			return errors.Wrap(err, "unable to parse scan mode")
@@ -193,7 +193,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert staging mode specifications.
-	var stageMode, stageModeAlpha, stageModeBeta sessionpkg.StageMode
+	var stageMode, stageModeAlpha, stageModeBeta synchronizationpkg.StageMode
 	if createConfiguration.stageMode != "" {
 		if err := stageMode.UnmarshalText([]byte(createConfiguration.stageMode)); err != nil {
 			return errors.Wrap(err, "unable to parse staging mode")
@@ -219,7 +219,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert watch mode specifications.
-	var watchMode, watchModeAlpha, watchModeBeta sessionpkg.WatchMode
+	var watchMode, watchModeAlpha, watchModeBeta synchronizationpkg.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")
@@ -352,7 +352,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create the command line configuration and merge it into our cumulative
 	// configuration.
-	configuration = sessionpkg.MergeConfigurations(configuration, &sessionpkg.Configuration{
+	configuration = synchronizationpkg.MergeConfigurations(configuration, &synchronizationpkg.Configuration{
 		SynchronizationMode:    synchronizationMode,
 		MaximumEntryCount:      createConfiguration.maximumEntryCount,
 		MaximumStagingFileSize: maximumStagingFileSize,
@@ -378,7 +378,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
+	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
 
 	// Invoke the session create method. The stream will close when the
 	// associated context is cancelled.
@@ -390,12 +390,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.CreateRequest{
-		Specification: &sessionsvcpkg.CreationSpecification{
+	request := &synchronizationsvcpkg.CreateRequest{
+		Specification: &synchronizationsvcpkg.CreationSpecification{
 			Alpha:         alpha,
 			Beta:          beta,
 			Configuration: configuration,
-			ConfigurationAlpha: &sessionpkg.Configuration{
+			ConfigurationAlpha: &synchronizationpkg.Configuration{
 				ProbeMode:            probeModeAlpha,
 				ScanMode:             scanModeAlpha,
 				StageMode:            stageModeAlpha,
@@ -406,7 +406,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 				DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 				DefaultGroup:         createConfiguration.defaultGroupAlpha,
 			},
-			ConfigurationBeta: &sessionpkg.Configuration{
+			ConfigurationBeta: &synchronizationpkg.Configuration{
 				ProbeMode:            probeModeBeta,
 				ScanMode:             scanModeBeta,
 				StageMode:            stageModeBeta,
@@ -439,14 +439,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.CreateRequest{}); err != nil {
+			if err := stream.Send(&synchronizationsvcpkg.CreateRequest{}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&sessionsvcpkg.CreateRequest{Response: response}); err != nil {
+			} else if err = stream.Send(&synchronizationsvcpkg.CreateRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}

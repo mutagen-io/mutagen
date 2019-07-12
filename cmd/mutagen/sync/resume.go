@@ -12,7 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
+	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {
@@ -34,7 +34,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
+	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
 
 	// Invoke the session resume method. The stream will close when the
 	// associated context is cancelled.
@@ -46,7 +46,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &sessionsvcpkg.ResumeRequest{
+	request := &synchronizationsvcpkg.ResumeRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
@@ -69,7 +69,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&sessionsvcpkg.ResumeRequest{}); err != nil {
+			if err := stream.Send(&synchronizationsvcpkg.ResumeRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
@@ -77,7 +77,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&sessionsvcpkg.ResumeRequest{Response: response}); err != nil {
+			} else if err = stream.Send(&synchronizationsvcpkg.ResumeRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}

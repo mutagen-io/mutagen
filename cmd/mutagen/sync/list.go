@@ -13,9 +13,9 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
 	"github.com/havoc-io/mutagen/pkg/sync"
+	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -55,7 +55,7 @@ func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems 
 	}
 }
 
-func printSessionStatus(state *sessionpkg.State) {
+func printSessionStatus(state *synchronizationpkg.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
@@ -138,10 +138,10 @@ func listMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
+	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
 
 	// Invoke list.
-	request := &sessionsvcpkg.ListRequest{
+	request := &synchronizationsvcpkg.ListRequest{
 		Selection: selection,
 	}
 	response, err := sessionService.List(context.Background(), request)

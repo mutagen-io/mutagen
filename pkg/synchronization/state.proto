@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package synchronization;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization";
+
+import "rsync/receive.proto";
+import "synchronization/session.proto";
+import "sync/conflict.proto";
+import "sync/problem.proto";
+
+enum Status {
+    Disconnected = 0;
+    HaltedOnRootDeletion = 1;
+    HaltedOnRootTypeChange = 2;
+    ConnectingAlpha = 3;
+    ConnectingBeta = 4;
+    Watching = 5;
+    Scanning = 6;
+    WaitingForRescan = 7;
+    Reconciling = 8;
+    StagingAlpha = 9;
+    StagingBeta = 10;
+    Transitioning = 11;
+    Saving = 12;
+}
+
+message State {
+    Session session = 1;
+    Status status = 2;
+    bool alphaConnected = 3;
+    bool betaConnected = 4;
+    string lastError = 5;
+    uint64 successfulSynchronizationCycles = 6;
+    rsync.ReceiverStatus stagingStatus = 7;
+    repeated sync.Conflict conflicts = 8;
+    repeated sync.Problem alphaProblems = 9;
+    repeated sync.Problem betaProblems = 10;
+}

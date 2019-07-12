@@ -14,7 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/session"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -26,10 +26,10 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 
 	// Perform waiting.
 	var previousStateIndex uint64
-	var states []*session.State
+	var states []*synchronization.State
 	var err error
 	for {
-		previousStateIndex, states, err = sessionManager.List(selection, previousStateIndex)
+		previousStateIndex, states, err = synchronizationManager.List(selection, previousStateIndex)
 		if err != nil {
 			return errors.Wrap(err, "unable to list session states")
 		} else if len(states) != 1 {
@@ -45,11 +45,11 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 	}
 }
 
-func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *session.Configuration, allowConflicts, allowProblems bool) error {
+func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowConflicts, allowProblems bool) error {
 	// Create a session.
-	sessionId, err := sessionManager.Create(
+	sessionId, err := synchronizationManager.Create(
 		alpha, beta,
-		configuration, &session.Configuration{}, &session.Configuration{},
+		configuration, &synchronization.Configuration{}, &synchronization.Configuration{},
 		nil,
 		prompter,
 	)
@@ -77,12 +77,12 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	}
 
 	// Pause the session.
-	if err := sessionManager.Pause(selection, ""); err != nil {
+	if err := synchronizationManager.Pause(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to pause session")
 	}
 
 	// Resume the session.
-	if err := sessionManager.Resume(selection, ""); err != nil {
+	if err := synchronizationManager.Resume(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to resume session")
 	}
 
@@ -94,12 +94,12 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	}
 
 	// Attempt an additional resume (this should be a no-op).
-	if err := sessionManager.Resume(selection, ""); err != nil {
+	if err := synchronizationManager.Resume(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to perform additional resume")
 	}
 
 	// Terminate the session.
-	if err := sessionManager.Terminate(selection, ""); err != nil {
+	if err := synchronizationManager.Terminate(selection, ""); err != nil {
 		return errors.Wrap(err, "unable to terminate session")
 	}
 
@@ -129,7 +129,7 @@ func TestSessionBothRootsNil(t *testing.T) {
 	betaURL := &url.URL{Path: betaRoot}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -171,7 +171,7 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	betaURL := &url.URL{Path: betaRoot}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -213,7 +213,7 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	betaURL := &url.URL{Path: betaRoot}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -259,7 +259,7 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -310,7 +310,7 @@ func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
 	}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
@@ -401,7 +401,7 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 	}
 
 	// Compute configuration. We use defaults for everything.
-	configuration := &session.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(prompter, alphaURL, betaURL, configuration, false, false); err != nil {

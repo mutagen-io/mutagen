@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package synchronization;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/service/synchronization";
+
+import "selection/selection.proto";
+import "synchronization/configuration.proto";
+import "synchronization/state.proto";
+import "url/url.proto";
+
+message CreationSpecification {
+    // Alpha is the alpha endpoint URL for the session.
+    url.URL alpha = 1;
+    // Beta is the beta endpoint URL for the session.
+    url.URL beta = 2;
+    // Configuration is the base session configuration. It is the result of
+    // merging the global configuration (unless disabled), any manually
+    // specified configuration file, and any command line configuration
+    // parameters.
+    synchronization.Configuration configuration = 3;
+    // ConfigurationAlpha is the alpha-specific session configuration. It is
+    // determined based on command line configuration parameters.
+    synchronization.Configuration configurationAlpha = 4;
+    // ConfigurationBeta is the beta-specific session configuration. It is
+    // determined based on command line configuration parameters.
+    synchronization.Configuration configurationBeta = 5;
+    // Labels are the labels for the session object.
+    map<string, string> labels = 6;
+}
+
+message CreateRequest {
+    CreationSpecification specification = 1;
+    string response = 2;
+}
+
+message CreateResponse {
+    string session = 1;
+    string message = 2;
+    string prompt = 3;
+}
+
+message ListRequest {
+    selection.Selection selection = 1;
+    uint64 previousStateIndex = 2;
+}
+
+message ListResponse {
+    uint64 stateIndex = 1;
+    repeated synchronization.State sessionStates = 2;
+}
+
+message FlushRequest {
+    selection.Selection selection = 1;
+    bool skipWait = 2;
+}
+
+message FlushResponse{
+    string message = 1;
+}
+
+message PauseRequest {
+    selection.Selection selection = 1;
+}
+
+message PauseResponse{
+    string message = 1;
+}
+
+message ResumeRequest {
+    selection.Selection selection = 1;
+    string response = 2;
+}
+
+message ResumeResponse {
+    string message = 1;
+    string prompt = 2;
+}
+
+message TerminateRequest {
+    selection.Selection selection = 1;
+}
+
+message TerminateResponse{
+    string message = 1;
+}
+
+service Synchronization {
+    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Flush(stream FlushRequest) returns (stream FlushResponse) {}
+    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
+    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
+}

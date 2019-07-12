@@ -14,11 +14,11 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	selectionpkg "github.com/havoc-io/mutagen/pkg/selection"
-	sessionsvcpkg "github.com/havoc-io/mutagen/pkg/service/session"
-	sessionpkg "github.com/havoc-io/mutagen/pkg/session"
+	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
 )
 
-func computeMonitorStatusLine(state *sessionpkg.State) string {
+func computeMonitorStatusLine(state *synchronizationpkg.State) string {
 	// Build the status line.
 	status := "Status: "
 	if state.Session.Paused {
@@ -43,8 +43,8 @@ func computeMonitorStatusLine(state *sessionpkg.State) string {
 		status += state.Status.Description()
 
 		// If we're staging and have sane statistics, add them.
-		if (state.Status == sessionpkg.Status_StagingAlpha ||
-			state.Status == sessionpkg.Status_StagingBeta) &&
+		if (state.Status == synchronizationpkg.Status_StagingAlpha ||
+			state.Status == synchronizationpkg.Status_StagingBeta) &&
 			state.StagingStatus != nil {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
@@ -86,7 +86,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := sessionsvcpkg.NewSessionsClient(daemonConnection)
+	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
 
 	// Create a status line printer and defer a break.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
@@ -99,7 +99,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// Create the list request. If there's no session specified, then we
 		// need to grab all sessions and identify the most recently created one
 		// for future queries.
-		request := &sessionsvcpkg.ListRequest{
+		request := &synchronizationsvcpkg.ListRequest{
 			Selection:          selection,
 			PreviousStateIndex: previousStateIndex,
 		}
@@ -117,7 +117,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// the loop, then set up monitoring to use the one session identified by
 		// the label selector or the most recently created session (which will
 		// be the last in the returned results).
-		var state *sessionpkg.State
+		var state *synchronizationpkg.State
 		previousStateIndex = response.StateIndex
 		if session == "" {
 			if len(response.SessionStates) == 0 {

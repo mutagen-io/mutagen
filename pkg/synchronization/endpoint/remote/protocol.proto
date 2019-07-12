@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package remote;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote";
+
+import "rsync/engine.proto";
+import "synchronization/configuration.proto";
+import "synchronization/version.proto";
+import "sync/archive.proto";
+import "sync/change.proto";
+import "sync/problem.proto";
+
+// InitializeRequest encodes a request for endpoint initialization.
+message InitializeRequest {
+    // Root is the synchronization root path.
+    string root = 1;
+    // Session is the session identifier.
+    string session = 2;
+    // Version is the session version.
+    synchronization.Version version = 3;
+    // Configuration is the session configuration.
+    synchronization.Configuration configuration = 4;
+    // Alpha indicates whether or not the endpoint should behave as alpha (as
+    // opposed to beta).
+    bool alpha = 5;
+    // Ephemeral indicates whether or not the endpoint is ephemeral.
+    bool ephemeral = 6;
+}
+
+// InitializeResponse encodes initialization results.
+message InitializeResponse {
+    // Error is the error message (if any) resulting from initialization.
+    string error = 1;
+}
+
+// PollRequest encodes a request for one-shot polling.
+message PollRequest {}
+
+// PollCompletionRequest is paired with pollRequest and indicates a request for
+// early polling completion or an acknowledgement of completion.
+message PollCompletionRequest{}
+
+// PollResponse indicates polling completion.
+message PollResponse{
+    // Error is the error message (if any) resulting from polling.
+    string error = 1;
+}
+
+// ScanRequest encodes a request for a scan.
+message ScanRequest {
+    // BaseSnapshotSignature is the rsync signature to use as the base for
+    // differentially transmitting snapshots.
+    rsync.Signature baseSnapshotSignature = 1;
+    // Full indicates whether or not to force a full (warm) scan, temporarily
+    // avoiding any acceleration that might be available on the endpoint.
+    bool full = 2;
+}
+
+// ScanResponse encodes the results of a scan.
+message ScanResponse {
+    // SnapshotDelta are the operations need to reconstruct the snapshot against
+    // the specified base.
+    repeated rsync.Operation snapshotDelta = 1;
+    // PreservesExecutability indicates whether or not the scan root preserves
+    // POSIX executability bits.
+    bool preservesExecutability = 2;
+    // Error is the error message (if any) resulting from scanning.
+    string error = 3;
+    // TryAgain indicates whether or not the error is ephermeral.
+    bool tryAgain = 4;
+}
+
+// StageRequest encodes a request for staging.
+message StageRequest {
+    // Paths lists the paths that need to be staged.
+    repeated string paths = 1;
+    // Digests lists the digests for the paths that need to be staged. Its
+    // length and contents correspond to that of Paths.
+    repeated bytes digests = 2;
+}
+
+// StageResponse encodes the results of staging initialization.
+message StageResponse {
+    // Paths are the paths that need to be staged (relative to the
+    // synchronization root).
+    repeated string paths = 1;
+    // Signatures are the rsync signatures of the paths needing to be staged.
+    repeated rsync.Signature signatures = 2;
+    // Error is the error message (if any) resulting from staging
+    // initialization.
+    string error = 3;
+}
+
+// SupplyRequest indicates a request for supplying files.
+message SupplyRequest {
+    // Paths are the paths to provide (relative to the synchronization root).
+    repeated string paths = 1;
+    // Signatures are the rsync signatures of the paths needing to be staged.
+    repeated rsync.Signature signatures = 2;
+}
+
+// TransitionRequest encodes a request for transition application.
+message TransitionRequest {
+    // Transitions are the transitions that need to be applied.
+    repeated sync.Change transitions = 1;
+}
+
+// TransitionResponse encodes the results of transitioning.
+message TransitionResponse {
+    // Results are the resulting contents post-transition.
+    // HACK: We have to use Archive to wrap our Entry results here because
+    // Protocol Buffers won't encode a nil pointer in a repeated element in
+    // certain cases, and the results of transitions may very well be nil. gob
+    // also exhibits this problem.
+    repeated sync.Archive results = 1;
+    // Problems are any problems encountered during the transition operation.
+    repeated sync.Problem problems = 2;
+    // StagerMissingFiles indicates whether or not the endpoint's stager
+    // indicated missing files during transitioning.
+    bool stagerMissingFiles = 3;
+    // Error is the error message (if any) resulting from the remote transition
+    // method. This will always be an empty string since transition doesn't
+    // return errors from local endpoints, but to match the endpoint interface
+    // (which allows for transition errors due to network failures with remote
+    // endpoints), we include this field.
+    // TODO: Should we just remove this field? Doing so would rely on knowledge
+    // of localEndpoint's transition behavior.
+    string error = 4;
+}
+
+// EndpointRequest is a sum type that can transmit any type of endpoint request.
+// Only the sent request will be non-nil. We intentionally avoid using Protocol
+// Buffers' oneof feature because it generates really ugly code and an unwieldy
+// API, at least in Go. Manually checking for exclusivity is not difficult.
+message EndpointRequest {
+    // Poll represents a poll request.
+    PollRequest poll = 1;
+    // Scan represents a scan request.
+    ScanRequest scan = 2;
+    // Stage represents a stage request.
+    StageRequest stage = 3;
+    // Supply represents a supply request.
+    SupplyRequest supply = 4;
+    // Transition represents a transition request.
+    TransitionRequest transition = 5;
+}
