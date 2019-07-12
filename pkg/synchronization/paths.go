@@ -13,7 +13,7 @@ import (
 // directory path.
 func pathForSession(sessionIdentifier string) (string, error) {
 	// Compute/create the sessions directory.
-	sessionsDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSessionsDirectoryName)
+	sessionsDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationSessionsDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create sessions directory")
 	}
@@ -26,7 +26,7 @@ func pathForSession(sessionIdentifier string) (string, error) {
 // session identifier.
 func pathForArchive(session string) (string, error) {
 	// Compute/create the archives directory.
-	archivesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenArchivesDirectoryName)
+	archivesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationArchivesDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create archives directory")
 	}

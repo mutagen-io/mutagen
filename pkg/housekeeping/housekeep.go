@@ -81,7 +81,7 @@ func housekeepCaches() {
 	// caches directory contents below.
 	// TODO: Move this logic into paths.go? Need to keep it in sync with
 	// pathForCache.
-	cachesDirectoryPath, err := filesystem.Mutagen(false, filesystem.MutagenCachesDirectoryName)
+	cachesDirectoryPath, err := filesystem.Mutagen(false, filesystem.MutagenSynchronizationCachesDirectoryName)
 	if err != nil {
 		return
 	}
@@ -117,7 +117,7 @@ func housekeepStaging() {
 	// directory contents below.
 	// TODO: Move this logic into paths.go? Need to keep it in sync with
 	// pathForStagingRoot and pathForStaging.
-	stagingDirectoryPath, err := filesystem.Mutagen(false, filesystem.MutagenStagingDirectoryName)
+	stagingDirectoryPath, err := filesystem.Mutagen(false, filesystem.MutagenSynchronizationStagingDirectoryName)
 	if err != nil {
 		return
 	}

@@ -25,7 +25,7 @@ const (
 // identifier and endpoint role.
 func pathForCache(session string, alpha bool) (string, error) {
 	// Compute/create the caches directory.
-	cachesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenCachesDirectoryName)
+	cachesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationCachesDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to compute/create caches directory")
 	}
@@ -50,7 +50,7 @@ func pathForCache(session string, alpha bool) (string, error) {
 func pathForMutagenStagingRoot(session string, alpha bool) (string, error) {
 	// Compute the path to the staging root parent (the global Mutagen data
 	// directory in which staging roots are stored) and ensure that it exists.
-	stagingDataPath, err := filesystem.Mutagen(true, filesystem.MutagenStagingDirectoryName)
+	stagingDataPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationStagingDirectoryName)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to create staging data directory")
 	}

@@ -24,21 +24,25 @@ const (
 	// within the Mutagen data directory.
 	MutagenAgentsDirectoryName = "agents"
 
-	// MutagenSessionsDirectoryName is the name of the session storage directory
-	// within the Mutagen data directory.
-	MutagenSessionsDirectoryName = "sessions"
+	// MutagenSynchronizationSessionsDirectoryName is the name of the
+	// synchronization session storage directory within the Mutagen data
+	// directory.
+	MutagenSynchronizationSessionsDirectoryName = "sessions"
 
-	// MutagenCachesDirectoryName is the name of the cache storage directory
-	// within the Mutagen data directory.
-	MutagenCachesDirectoryName = "caches"
+	// MutagenSynchronizationCachesDirectoryName is the name of the
+	// synchronization cache storage directory within the Mutagen data
+	// directory.
+	MutagenSynchronizationCachesDirectoryName = "caches"
 
-	// MutagenArchivesDirectoryName is the name of the archive storage directory
-	// within the Mutagen data directory.
-	MutagenArchivesDirectoryName = "archives"
+	// MutagenSynchronizationArchivesDirectoryName is the name of the
+	// synchronization archive storage directory within the Mutagen data
+	// directory.
+	MutagenSynchronizationArchivesDirectoryName = "archives"
 
-	// MutagenStagingDirectoryName is the name of the staging storage directory
-	// within the Mutagen data directory.
-	MutagenStagingDirectoryName = "staging"
+	// MutagenSynchronizationStagingDirectoryName is the name of the
+	// synchronization staging storage directory within the Mutagen data
+	// directory.
+	MutagenSynchronizationStagingDirectoryName = "staging"
 )
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen
