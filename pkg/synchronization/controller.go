@@ -32,8 +32,8 @@ const (
 	rescanWaitDuration = 5 * time.Second
 )
 
-// Controller manages and executes a single session.
-type Controller struct {
+// controller manages and executes a single session.
+type controller struct {
 	// logger is the controller logger.
 	logger *logging.Logger
 	// sessionPath is the path to the serialized session.
@@ -91,7 +91,7 @@ func newSession(
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	labels map[string]string,
 	prompter string,
-) (*Controller, error) {
+) (*controller, error) {
 	// Update status.
 	prompt.Message(prompter, "Creating session...")
 
@@ -172,7 +172,7 @@ func newSession(
 	}
 
 	// Create the controller.
-	controller := &Controller{
+	controller := &controller{
 		logger:                   logger,
 		sessionPath:              sessionPath,
 		archivePath:              archivePath,
@@ -197,7 +197,7 @@ func newSession(
 }
 
 // loadSession loads an existing session and creates a corresponding controller.
-func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier string) (*Controller, error) {
+func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier string) (*controller, error) {
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(identifier)
 	if err != nil {
@@ -227,7 +227,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	}
 
 	// Create the controller.
-	controller := &Controller{
+	controller := &controller{
 		logger:      logger,
 		sessionPath: sessionPath,
 		archivePath: archivePath,
@@ -259,8 +259,8 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	return controller, nil
 }
 
-// State creates a snapshot of the current session state.
-func (c *Controller) State() *State {
+// currentState creates a snapshot of the current session state.
+func (c *controller) currentState() *State {
 	// Lock the session state and defer its release. It's very important that we
 	// unlock without a notification here, otherwise we'd trigger an infinite
 	// cycle of list/notify.
@@ -271,11 +271,11 @@ func (c *Controller) State() *State {
 	return c.state.Copy()
 }
 
-// Flush attempts to force a synchronization cycle for the session. If wait is
+// flush attempts to force a synchronization cycle for the session. If wait is
 // specified, then the method will wait until a post-flush synchronization cycle
 // has completed. The provided context (which must be non-nil) can terminate
 // this wait early.
-func (c *Controller) Flush(prompter string, skipWait bool, context contextpkg.Context) error {
+func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Context) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
@@ -338,9 +338,9 @@ func (c *Controller) Flush(prompter string, skipWait bool, context contextpkg.Co
 	return nil
 }
 
-// Resume attempts to reconnect and resume the session if it isn't currently
+// resume attempts to reconnect and resume the session if it isn't currently
 // connected and synchronizing.
-func (c *Controller) Resume(prompter string) error {
+func (c *controller) resume(prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
@@ -450,36 +450,36 @@ func (c *Controller) Resume(prompter string) error {
 	return nil
 }
 
-// ControllerHaltMode represents the behavior to use when halting a session.
-type ControllerHaltMode uint8
+// controllerHaltMode represents the behavior to use when halting a session.
+type controllerHaltMode uint8
 
 const (
-	// ControllerHaltModePause indicates that a session should be halted and
+	// controllerHaltModePause indicates that a session should be halted and
 	// marked as paused.
-	ControllerHaltModePause ControllerHaltMode = iota
-	// ControllerHaltModeShutdown indicates that a session should be halted.
-	ControllerHaltModeShutdown
-	// ControllerHaltModeShutdown indicates that a session should be halted and
+	controllerHaltModePause controllerHaltMode = iota
+	// controllerHaltModeShutdown indicates that a session should be halted.
+	controllerHaltModeShutdown
+	// controllerHaltModeShutdown indicates that a session should be halted and
 	// then deleted.
-	ControllerHaltModeTerminate
+	controllerHaltModeTerminate
 )
 
 // description returns a human-readable description of a halt mode.
-func (m ControllerHaltMode) description() string {
+func (m controllerHaltMode) description() string {
 	switch m {
-	case ControllerHaltModePause:
+	case controllerHaltModePause:
 		return "Pausing"
-	case ControllerHaltModeShutdown:
+	case controllerHaltModeShutdown:
 		return "Shutting down"
-	case ControllerHaltModeTerminate:
+	case controllerHaltModeTerminate:
 		return "Terminating"
 	default:
 		panic("unhandled halt mode")
 	}
 }
 
-// Halt halts the session with the specified behavior.
-func (c *Controller) Halt(mode ControllerHaltMode, prompter string) error {
+// halt halts the session with the specified behavior.
+func (c *controller) halt(mode controllerHaltMode, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 
@@ -507,7 +507,7 @@ func (c *Controller) Halt(mode ControllerHaltMode, prompter string) error {
 	}
 
 	// Handle based on the halt mode.
-	if mode == ControllerHaltModePause {
+	if mode == controllerHaltModePause {
 		// Mark the session as paused and save it.
 		c.stateLock.Lock()
 		c.session.Paused = true
@@ -516,10 +516,10 @@ func (c *Controller) Halt(mode ControllerHaltMode, prompter string) error {
 		if saveErr != nil {
 			return errors.Wrap(saveErr, "unable to save session state")
 		}
-	} else if mode == ControllerHaltModeShutdown {
+	} else if mode == controllerHaltModeShutdown {
 		// Disable the controller.
 		c.disabled = true
-	} else if mode == ControllerHaltModeTerminate {
+	} else if mode == controllerHaltModeTerminate {
 		// Disable the controller.
 		c.disabled = true
 
@@ -541,7 +541,7 @@ func (c *Controller) Halt(mode ControllerHaltMode, prompter string) error {
 
 // run is the main runloop for the controller, managing connectivity and
 // synchronization.
-func (c *Controller) run(context contextpkg.Context, alpha, beta Endpoint) {
+func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
 		// Shutdown any endpoints. These might be non-nil if the runloop was
@@ -663,7 +663,7 @@ func (c *Controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 }
 
 // synchronize is the main synchronization loop for the controller.
-func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
+func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
 	// Clear any error state upon restart of this function. If there was a
 	// terminal error previously caused synchronization to fail, then the user
 	// will have had 30 seconds to review it (while the run loop is waiting to

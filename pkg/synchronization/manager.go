@@ -22,7 +22,7 @@ type Manager struct {
 	// sessionLock locks the sessions registry.
 	sessionsLock *state.TrackingLock
 	// sessions maps sessions to their respective controllers.
-	sessions map[string]*Controller
+	sessions map[string]*controller
 }
 
 // NewManager creates a new Manager instance.
@@ -32,7 +32,7 @@ func NewManager() (*Manager, error) {
 	sessionsLock := state.NewTrackingLock(tracker)
 
 	// Create the session registry.
-	sessions := make(map[string]*Controller)
+	sessions := make(map[string]*controller)
 
 	// Load existing sessions.
 	sessionsDirectory, err := pathForSession("")
@@ -62,13 +62,13 @@ func NewManager() (*Manager, error) {
 }
 
 // allControllers creates a list of all controllers managed by the manager.
-func (m *Manager) allControllers() []*Controller {
+func (m *Manager) allControllers() []*controller {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
 	defer m.sessionsLock.UnlockWithoutNotify()
 
 	// Generate a list of all controllers.
-	controllers := make([]*Controller, 0, len(m.sessions))
+	controllers := make([]*controller, 0, len(m.sessions))
 	for _, controller := range m.sessions {
 		controllers = append(controllers, controller)
 	}
@@ -85,13 +85,13 @@ const (
 
 // findControllersBySpecification generates a list of controllers matching the
 // given specifications.
-func (m *Manager) findControllersBySpecification(specifications []string) ([]*Controller, error) {
+func (m *Manager) findControllersBySpecification(specifications []string) ([]*controller, error) {
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
 	defer m.sessionsLock.UnlockWithoutNotify()
 
 	// Generate a list of controllers matching the specified specifications.
-	controllers := make([]*Controller, 0, len(specifications))
+	controllers := make([]*controller, 0, len(specifications))
 	for _, specification := range specifications {
 		// Validate the specification.
 		if specification == "" {
@@ -104,7 +104,7 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*Co
 		}
 
 		// Attempt to find a match.
-		var match *Controller
+		var match *controller
 		for _, controller := range m.sessions {
 			// Check for an exact match.
 			if controller.session.Identifier == specification {
@@ -137,7 +137,7 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*Co
 
 // findControllersByLabelSelector generates a list of controllers using the
 // specified label selector.
-func (m *Manager) findControllersByLabelSelector(labelSelector string) ([]*Controller, error) {
+func (m *Manager) findControllersByLabelSelector(labelSelector string) ([]*controller, error) {
 	// Parse the label selector.
 	selector, err := selection.ParseLabelSelector(labelSelector)
 	if err != nil {
@@ -149,7 +149,7 @@ func (m *Manager) findControllersByLabelSelector(labelSelector string) ([]*Contr
 	defer m.sessionsLock.UnlockWithoutNotify()
 
 	// Loop over controllers and look for matches.
-	var controllers []*Controller
+	var controllers []*controller
 	for _, controller := range m.sessions {
 		if selector.Matches(controller.session.Labels) {
 			controllers = append(controllers, controller)
@@ -162,7 +162,7 @@ func (m *Manager) findControllersByLabelSelector(labelSelector string) ([]*Contr
 
 // selectControllers generates a list of controllers using the mechanism
 // specified by the provided selection.
-func (m *Manager) selectControllers(selection *selection.Selection) ([]*Controller, error) {
+func (m *Manager) selectControllers(selection *selection.Selection) ([]*controller, error) {
 	// Dispatch selection based on the requested mechanism.
 	if selection.All {
 		return m.allControllers(), nil
@@ -188,7 +188,7 @@ func (m *Manager) Shutdown() {
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
-		if err := controller.Halt(ControllerHaltModeShutdown, ""); err != nil {
+		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}
 	}
@@ -240,7 +240,7 @@ func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64
 	// Extract the state from each controller.
 	states := make([]*State, len(controllers))
 	for i, controller := range controllers {
-		states[i] = controller.State()
+		states[i] = controller.currentState()
 	}
 
 	// Sort session states by session creation time.
@@ -265,7 +265,7 @@ func (m *Manager) Flush(selection *selection.Selection, prompter string, skipWai
 
 	// Attempt to flush the sessions.
 	for _, controller := range controllers {
-		if err := controller.Flush(prompter, skipWait, context); err != nil {
+		if err := controller.flush(prompter, skipWait, context); err != nil {
 			return errors.Wrap(err, "unable to flush session")
 		}
 	}
@@ -284,7 +284,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 
 	// Attempt to pause the sessions.
 	for _, controller := range controllers {
-		if err := controller.Halt(ControllerHaltModePause, prompter); err != nil {
+		if err := controller.halt(controllerHaltModePause, prompter); err != nil {
 			return errors.Wrap(err, "unable to pause session")
 		}
 	}
@@ -304,7 +304,7 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 	// Attempt to resume.
 	for _, controller := range controllers {
-		if err := controller.Resume(prompter); err != nil {
+		if err := controller.resume(prompter); err != nil {
 			return errors.Wrap(err, "unable to resume session")
 		}
 	}
@@ -325,7 +325,7 @@ func (m *Manager) Terminate(selection *selection.Selection, prompter string) err
 	// Attempt to terminate the sessions. Since we're terminating them, we're
 	// responsible for removing them from the session map.
 	for _, controller := range controllers {
-		if err := controller.Halt(ControllerHaltModeTerminate, prompter); err != nil {
+		if err := controller.halt(controllerHaltModeTerminate, prompter); err != nil {
 			return errors.Wrap(err, "unable to terminate session")
 		}
 		m.sessionsLock.Lock()
