@@ -23,7 +23,6 @@ func (h *protocolHandler) Connect(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (synchronization.Endpoint, error) {
 	// Verify that the URL is of the correct kind and protocol.
 	if url.Kind != urlpkg.Kind_Synchronization {
@@ -45,7 +44,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create the endpoint client.
-	return remote.NewEndpointClient(connection, url.Path, session, version, configuration, alpha, ephemeral)
+	return remote.NewEndpointClient(connection, url.Path, session, version, configuration, alpha)
 }
 
 func init() {

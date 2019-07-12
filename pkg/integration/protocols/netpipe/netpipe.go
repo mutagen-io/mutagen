@@ -30,7 +30,6 @@ func (h *protocolHandler) Connect(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (synchronization.Endpoint, error) {
 	// Verify that the URL is of the correct protocol.
 	if url.Protocol != Protocol_Netpipe {
@@ -52,7 +51,6 @@ func (h *protocolHandler) Connect(
 		version,
 		configuration,
 		alpha,
-		ephemeral,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create in-memory endpoint client")

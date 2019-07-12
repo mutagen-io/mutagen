@@ -7,13 +7,12 @@ import (
 
 // EndpointConnectionValidator is a validator function type for validating
 // endpoint server connections. It is passed the session root, identifier,
-// version, configuration, role, and ephemerality information provided by the
-// connection. If it returns a non-nil error, the connection will be terminated
-// before serving begins. The validator should not mutate the provided
-// configuration. The provided root and configuration passed to the validation
-// function will take into account any overrides specified by endpoint server
-// options.
-type EndpointConnectionValidator func(string, string, synchronization.Version, *synchronization.Configuration, bool, bool) error
+// version, configuration, and role information provided by the connection. If
+// it returns a non-nil error, the connection will be terminated before serving
+// begins. The validator should not mutate the provided configuration. The
+// provided root and configuration passed to the validation function will take
+// into account any overrides specified by endpoint server options.
+type EndpointConnectionValidator func(string, string, synchronization.Version, *synchronization.Configuration, bool) error
 
 // endpointServerOptions controls the override behavior for an endpoint server.
 type endpointServerOptions struct {

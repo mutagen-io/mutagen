@@ -33,8 +33,6 @@ func (r *InitializeRequest) ensureValid() error {
 
 	// There's no need to validate Alpha - either value is correct.
 
-	// There's no need to validate Ephemeral - either value is correct.
-
 	// Success.
 	return nil
 }

@@ -202,10 +202,9 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Attempt to create a session.
-	controller, err := NewSession(
+	controller, err := newSession(
 		nil,
 		m.tracker,
-		false,
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
 		labels,

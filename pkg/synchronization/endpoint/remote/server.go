@@ -97,7 +97,6 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 			request.Version,
 			request.Configuration,
 			request.Alpha,
-			request.Ephemeral,
 		)
 		if err != nil {
 			err = errors.Wrap(err, "endpoint configuration rejected")
@@ -121,7 +120,6 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 		request.Version,
 		request.Configuration,
 		request.Alpha,
-		request.Ephemeral,
 		endpointServerOptions.endpointOptions...,
 	)
 	if err != nil {

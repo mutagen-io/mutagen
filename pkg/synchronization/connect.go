@@ -20,7 +20,6 @@ type ProtocolHandler interface {
 		version Version,
 		configuration *Configuration,
 		alpha bool,
-		ephemeral bool,
 	) (Endpoint, error)
 }
 
@@ -36,7 +35,6 @@ func connect(
 	version Version,
 	configuration *Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (Endpoint, error) {
 	// Local the appropriate protocol handler.
 	handler, ok := ProtocolHandlers[url.Protocol]
@@ -47,7 +45,7 @@ func connect(
 	}
 
 	// Dispatch the dialing.
-	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha, ephemeral)
+	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to endpoint")
 	}
@@ -74,7 +72,6 @@ func reconnect(
 	version Version,
 	configuration *Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (Endpoint, error) {
 	// Create a channel to deliver the connection result.
 	results := make(chan asyncConnectResult)
@@ -82,7 +79,7 @@ func reconnect(
 	// Start a connection operation in the background.
 	go func() {
 		// Perform the connection.
-		endpoint, err := connect(url, "", session, version, configuration, alpha, ephemeral)
+		endpoint, err := connect(url, "", session, version, configuration, alpha)
 
 		// If we can't transmit the resulting endpoint, shut it down.
 		select {

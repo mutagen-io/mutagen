@@ -42,7 +42,6 @@ func NewEndpointClient(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (synchronization.Endpoint, error) {
 	// Set up deferred closure of the connection if initialization fails.
 	var successful bool
@@ -78,7 +77,6 @@ func NewEndpointClient(
 		Version:       version,
 		Configuration: configuration,
 		Alpha:         alpha,
-		Ephemeral:     ephemeral,
 	}
 	if err := encoder.Encode(request); err != nil {
 		return nil, errors.Wrap(err, "unable to send initialize request")

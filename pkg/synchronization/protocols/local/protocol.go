@@ -20,7 +20,6 @@ func (h *protocolHandler) Connect(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	ephemeral bool,
 ) (synchronization.Endpoint, error) {
 	// Verify that the URL is of the correct kind and protocol.
 	if url.Kind != urlpkg.Kind_Synchronization {
@@ -30,7 +29,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create a local endpoint.
-	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha, ephemeral)
+	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create local endpoint")
 	}

@@ -176,7 +176,6 @@ func NewEndpoint(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	ephemeral bool,
 	options ...EndpointOption,
 ) (synchronization.Endpoint, error) {
 	// Expand and normalize the root path.
@@ -281,29 +280,24 @@ func NewEndpoint(
 
 	// Compute the cache path if this isn't an ephemeral endpoint.
 	var cachePath string
-	if !ephemeral {
-		if endpointOptions.cachePathCallback != nil {
-			cachePath, err = endpointOptions.cachePathCallback(sessionIdentifier, alpha)
-		} else {
-			cachePath, err = pathForCache(sessionIdentifier, alpha)
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to compute/create cache path")
-		}
+	if endpointOptions.cachePathCallback != nil {
+		cachePath, err = endpointOptions.cachePathCallback(sessionIdentifier, alpha)
+	} else {
+		cachePath, err = pathForCache(sessionIdentifier, alpha)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to compute/create cache path")
 	}
 
-	// Load any existing cache if this isn't an ephemeral endpoint. If this is
-	// an ephemeral endpoint or if the cache fails to load or validate, just
-	// use an empty one.
+	// Load any existing cache. If it fails to load or validate, just replace it
+	// with an empty one.
 	// TODO: Should we let validation errors bubble up? They may be indicative
 	// of something bad.
 	cache := &core.Cache{}
-	if !ephemeral {
-		if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
-			cache = &core.Cache{}
-		} else if cache.EnsureValid() != nil {
-			cache = &core.Cache{}
-		}
+	if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
+		cache = &core.Cache{}
+	} else if cache.EnsureValid() != nil {
+		cache = &core.Cache{}
 	}
 
 	// Compute the effective staging mode.
@@ -315,10 +309,7 @@ func NewEndpoint(
 	// Compute the staging root path and whether or not it should be hidden.
 	var stagingRoot string
 	var hideStagingRoot bool
-	if ephemeral {
-		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
-		hideStagingRoot = true
-	} else if endpointOptions.stagingRootCallback != nil {
+	if endpointOptions.stagingRootCallback != nil {
 		stagingRoot, hideStagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
 	} else if stageMode == synchronization.StageMode_StageModeMutagen {
 		stagingRoot, err = pathForMutagenStagingRoot(sessionIdentifier, alpha)
@@ -374,10 +365,8 @@ func NewEndpoint(
 		),
 	}
 
-	// Start the cache saving Goroutine if this isn't an ephemeral endpoint.
-	if !ephemeral {
-		go endpoint.saveCacheRegularly(workerContext, cachePath)
-	}
+	// Start the cache saving Goroutine.
+	go endpoint.saveCacheRegularly(workerContext, cachePath)
 
 	// Compute the effective watch polling interval.
 	watchPollingInterval := configuration.WatchPollingInterval
