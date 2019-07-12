@@ -11,9 +11,9 @@ import (
 	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/rsync"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 )
 
 // endpointClient provides an implementation of synchronization.Endpoint by
@@ -170,7 +170,7 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 }
 
 // Scan implements the Scan method for remote endpoints.
-func (e *endpointClient) Scan(ancestor *sync.Entry, full bool) (*sync.Entry, bool, error, bool) {
+func (e *endpointClient) Scan(ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
@@ -183,7 +183,7 @@ func (e *endpointClient) Scan(ancestor *sync.Entry, full bool) (*sync.Entry, boo
 	} else {
 		buffer := proto.NewBuffer(nil)
 		buffer.SetDeterministic(true)
-		if err := buffer.Marshal(&sync.Archive{Root: ancestor}); err != nil {
+		if err := buffer.Marshal(&core.Archive{Root: ancestor}); err != nil {
 			return nil, false, errors.Wrap(err, "unable to marshal ancestor"), false
 		}
 		baseBytes = buffer.Bytes()
@@ -223,7 +223,7 @@ func (e *endpointClient) Scan(ancestor *sync.Entry, full bool) (*sync.Entry, boo
 	}
 
 	// Unmarshal the snapshot.
-	archive := &sync.Archive{}
+	archive := &core.Archive{}
 	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot"), false
 	}
@@ -323,7 +323,7 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 }
 
 // Transition implements the Transition method for remote endpoints.
-func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error) {
+func (e *endpointClient) Transition(transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
 	// Create and send the transition request.
 	request := &EndpointRequest{
 		Transition: &TransitionRequest{
@@ -345,7 +345,7 @@ func (e *endpointClient) Transition(transitions []*sync.Change) ([]*sync.Entry, 
 	}
 
 	// HACK: Extract the wrapped results.
-	results := make([]*sync.Entry, len(response.Results))
+	results := make([]*core.Entry, len(response.Results))
 	for r, result := range response.Results {
 		results[r] = result.Root
 	}

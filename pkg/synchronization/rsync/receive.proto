@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package rsync;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/rsync";
+
+// ReceivingStatus encodes that status of an rsync receiver.
+message ReceiverStatus {
+    // Path is the path currently being received.
+    string path = 1;
+    // Received is the number of paths that have already been received.
+    uint64 received = 2;
+    // Total is the total number of paths expected.
+    uint64 total = 3;
+    // TODO: Expand this struct with more detailed status information, e.g.
+    // failed requests, bandwidth, internal statistics, speedup factor, etc.
+}

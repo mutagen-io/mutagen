@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/core";
+
+message Problem {
+    string path = 1;
+    string error = 2;
+}

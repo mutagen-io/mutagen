@@ -4,10 +4,10 @@ package synchronization;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/synchronization";
 
-import "rsync/receive.proto";
+import "synchronization/rsync/receive.proto";
 import "synchronization/session.proto";
-import "sync/conflict.proto";
-import "sync/problem.proto";
+import "synchronization/core/conflict.proto";
+import "synchronization/core/problem.proto";
 
 enum Status {
     Disconnected = 0;
@@ -33,7 +33,7 @@ message State {
     string lastError = 5;
     uint64 successfulSynchronizationCycles = 6;
     rsync.ReceiverStatus stagingStatus = 7;
-    repeated sync.Conflict conflicts = 8;
-    repeated sync.Problem alphaProblems = 9;
-    repeated sync.Problem betaProblems = 10;
+    repeated core.Conflict conflicts = 8;
+    repeated core.Problem alphaProblems = 9;
+    repeated core.Problem betaProblems = 10;
 }

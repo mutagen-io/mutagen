@@ -7,7 +7,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 )
 
 // ByteSize is a uint64 value that supports unmarshalling from both
@@ -38,7 +38,7 @@ type HumanReadableConfiguration struct {
 	// Synchronization contains parameters related to synchronization behavior.
 	Synchronization struct {
 		// Mode specifies the default synchronization mode.
-		Mode sync.SynchronizationMode `toml:"mode" yaml:"mode"`
+		Mode core.SynchronizationMode `toml:"mode" yaml:"mode"`
 		// MaximumEntryCount specifies the maximum number of filesystem entries
 		// that endpoints will tolerate managing.
 		MaximumEntryCount uint64 `toml:"maxEntryCount" yaml:"maxEntryCount"`
@@ -60,13 +60,13 @@ type HumanReadableConfiguration struct {
 		Default []string `toml:"default" yaml:"paths"`
 
 		// VCS specifies the VCS ignore mode.
-		VCS sync.IgnoreVCSMode `toml:"vcs" yaml:"vcs"`
+		VCS core.IgnoreVCSMode `toml:"vcs" yaml:"vcs"`
 	} `toml:"ignore" yaml:"ignore"`
 
 	// Symlink contains parameters related to symlink handling.
 	Symlink struct {
 		// Mode specifies the symlink mode.
-		Mode sync.SymlinkMode `toml:"mode" yaml:"mode"`
+		Mode core.SymlinkMode `toml:"mode" yaml:"mode"`
 	} `toml:"symlink" yaml:"symlink"`
 
 	// Watch contains parameters related to filesystem monitoring.
@@ -194,7 +194,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
 	}
 	for _, ignore := range c.DefaultIgnores {
-		if !sync.ValidIgnorePattern(ignore) {
+		if !core.ValidIgnorePattern(ignore) {
 			return errors.Errorf("invalid default ignore pattern: %s", ignore)
 		}
 	}
@@ -205,7 +205,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("ignores cannot be specified on an endpoint-specific basis")
 	}
 	for _, ignore := range c.Ignores {
-		if !sync.ValidIgnorePattern(ignore) {
+		if !core.ValidIgnorePattern(ignore) {
 			return errors.Errorf("invalid ignore pattern: %s", ignore)
 		}
 	}
@@ -223,14 +223,14 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 
 	// Verify the default file mode.
 	if c.DefaultFileMode != 0 {
-		if err := sync.EnsureDefaultFileModeValid(filesystem.Mode(c.DefaultFileMode)); err != nil {
+		if err := core.EnsureDefaultFileModeValid(filesystem.Mode(c.DefaultFileMode)); err != nil {
 			return errors.Wrap(err, "invalid default file permission mode specified")
 		}
 	}
 
 	// Verify the default directory mode.
 	if c.DefaultDirectoryMode != 0 {
-		if err := sync.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.DefaultDirectoryMode)); err != nil {
+		if err := core.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.DefaultDirectoryMode)); err != nil {
 			return errors.Wrap(err, "invalid default directory permission mode specified")
 		}
 	}

@@ -17,9 +17,9 @@ import (
 	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/rsync"
 	"github.com/havoc-io/mutagen/pkg/state"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -56,7 +56,7 @@ type Controller struct {
 	// inMemoryArchive is the in-memory store for archives. It is only used for
 	// non-ephemeral sessions and should only be accessed by the synchronize
 	// method to store archives across run loops.
-	inMemoryArchive *sync.Archive
+	inMemoryArchive *core.Archive
 	// mergedAlphaConfiguration is the alpha-specific configuration object
 	// (computed from the core configuration and alpha-specific overrides). It
 	// is considered static and safe for concurrent access. It is a derived
@@ -152,7 +152,7 @@ func NewSession(
 		ConfigurationBeta:    configurationBeta,
 		Labels:               labels,
 	}
-	archive := &sync.Archive{}
+	archive := &core.Archive{}
 
 	// Compute the session and archive paths and write the corresponding objects
 	// to disk if this is a non-ephemeral session.
@@ -723,11 +723,11 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 	// Load the archive and extract the ancestor. For ephemeral sessions, we use
 	// in-memory archive storage.
-	var archive *sync.Archive
+	var archive *core.Archive
 	if c.ephemeral {
 		archive = c.inMemoryArchive
 	} else {
-		archive = &sync.Archive{}
+		archive = &core.Archive{}
 		if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
 			return errors.Wrap(err, "unable to load archive")
 		} else if err = archive.Root.EnsureValid(); err != nil {
@@ -852,7 +852,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.state.Status = Status_Scanning
 		c.stateLock.Unlock()
 		forceFullScan := flushRequest != nil
-		var αSnapshot, βSnapshot *sync.Entry
+		var αSnapshot, βSnapshot *core.Entry
 		var αPreservesExecutability, βPreservesExecutability bool
 		var αScanErr, βScanErr error
 		var αTryAgain, βTryAgain bool
@@ -944,9 +944,9 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		// propagate executability from the preserving side to the
 		// non-preserving side.
 		if αPreservesExecutability && !βPreservesExecutability {
-			βSnapshot = sync.PropagateExecutability(ancestor, αSnapshot, βSnapshot)
+			βSnapshot = core.PropagateExecutability(ancestor, αSnapshot, βSnapshot)
 		} else if βPreservesExecutability && !αPreservesExecutability {
-			αSnapshot = sync.PropagateExecutability(ancestor, βSnapshot, αSnapshot)
+			αSnapshot = core.PropagateExecutability(ancestor, βSnapshot, αSnapshot)
 		}
 
 		// Update status to reconciling.
@@ -955,7 +955,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Unlock()
 
 		// Perform reconciliation.
-		ancestorChanges, αTransitions, βTransitions, conflicts := sync.Reconcile(
+		ancestorChanges, αTransitions, βTransitions, conflicts := core.Reconcile(
 			ancestor,
 			αSnapshot,
 			βSnapshot,
@@ -964,9 +964,9 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// Create a slim copy of the conflicts so that we don't need to hold
 		// the full-size versions in memory or send them over the wire.
-		var slimConflicts []*sync.Conflict
+		var slimConflicts []*core.Conflict
 		if len(conflicts) > 0 {
-			slimConflicts = make([]*sync.Conflict, len(conflicts))
+			slimConflicts = make([]*core.Conflict, len(conflicts))
 			for c, conflict := range conflicts {
 				slimConflicts[c] = conflict.CopySlim()
 			}
@@ -1048,7 +1048,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
-		if paths, digests, err := sync.TransitionDependencies(αTransitions); err != nil {
+		if paths, digests, err := core.TransitionDependencies(αTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on alpha")
 		} else if len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := alpha.Stage(paths, digests)
@@ -1071,7 +1071,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
-		if paths, digests, err := sync.TransitionDependencies(βTransitions); err != nil {
+		if paths, digests, err := core.TransitionDependencies(βTransitions); err != nil {
 			return errors.Wrap(err, "unable to determine paths for staging on beta")
 		} else if len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := beta.Stage(paths, digests)
@@ -1097,11 +1097,11 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Lock()
 		c.state.Status = Status_Transitioning
 		c.stateLock.Unlock()
-		var αResults, βResults []*sync.Entry
-		var αProblems, βProblems []*sync.Problem
+		var αResults, βResults []*core.Entry
+		var αProblems, βProblems []*core.Problem
 		var αMissingFiles, βMissingFiles bool
 		var αTransitionErr, βTransitionErr error
-		var αChanges, βChanges []*sync.Change
+		var αChanges, βChanges []*core.Change
 		transitionDone := &syncpkg.WaitGroup{}
 		if len(αTransitions) > 0 {
 			transitionDone.Add(1)
@@ -1114,7 +1114,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				αResults, αProblems, αMissingFiles, αTransitionErr = alpha.Transition(αTransitions)
 				if αTransitionErr == nil {
 					for t, transition := range αTransitions {
-						αChanges = append(αChanges, &sync.Change{Path: transition.Path, New: αResults[t]})
+						αChanges = append(αChanges, &core.Change{Path: transition.Path, New: αResults[t]})
 					}
 				}
 				transitionDone.Done()
@@ -1125,7 +1125,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				βResults, βProblems, βMissingFiles, βTransitionErr = beta.Transition(βTransitions)
 				if βTransitionErr == nil {
 					for t, transition := range βTransitions {
-						βChanges = append(βChanges, &sync.Change{Path: transition.Path, New: βResults[t]})
+						βChanges = append(βChanges, &core.Change{Path: transition.Path, New: βResults[t]})
 					}
 				}
 				transitionDone.Done()
@@ -1143,7 +1143,7 @@ func (c *Controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.stateLock.Unlock()
 		ancestorChanges = append(ancestorChanges, αChanges...)
 		ancestorChanges = append(ancestorChanges, βChanges...)
-		if newAncestor, err := sync.Apply(ancestor, ancestorChanges); err != nil {
+		if newAncestor, err := core.Apply(ancestor, ancestorChanges); err != nil {
 			return errors.Wrap(err, "unable to propagate changes to ancestor")
 		} else {
 			ancestor = newAncestor

@@ -3,8 +3,8 @@ package synchronization
 import (
 	"context"
 
-	"github.com/havoc-io/mutagen/pkg/rsync"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 )
 
 // Endpoint defines the interface to which synchronization endpoints must
@@ -30,7 +30,7 @@ type Endpoint interface {
 	// POSIX executability bits, any error that occurred while trying to create
 	// the scan, and a boolean indicating whether or not to re-try the scan (in
 	// the event of an error).
-	Scan(ancestor *sync.Entry, full bool) (*sync.Entry, bool, error, bool)
+	Scan(ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
 
 	// Stage performs staging on the endpoint. It accepts a list of file paths
 	// and a separate list of desired digests corresponding to those paths. For
@@ -63,7 +63,7 @@ type Endpoint interface {
 	// usually the long-blocking transitions are going to be the ones where
 	// we're creating the root with a huge number of files and wouldn't catch
 	// cancellation until they're all done anyway.
-	Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error)
+	Transition(transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error)
 
 	// Shutdown terminates any resources associated with the endpoint. For local
 	// endpoints, Shutdown will not preempt calls, but for remote endpoints it

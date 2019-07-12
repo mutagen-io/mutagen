@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package rsync;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/rsync";
+
+import "synchronization/rsync/engine.proto";
+
+// Transmission represents a single message in a transmission stream. Its
+// internals are public to allow for transmission using a reflection-based
+// encoder (such as gob), but it should otherwise be treated as an opaque type
+// with a private implementation.
+message Transmission {
+    // Done indicates that the operation stream for the current file is
+    // finished. If set, there will be no operation in the response, but there
+    // may be an error.
+    bool done = 1;
+    // Operation is the next operation in the stream for the current file.
+    Operation operation = 2;
+    // Error indicates that a non-terminal error has occurred. It will only be
+    // present if Done is true.
+    string error = 3;
+}

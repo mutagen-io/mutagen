@@ -7,7 +7,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 )
 
 const (
@@ -68,21 +68,21 @@ permissions:
 // expectedConfiguration is the configuration that's expected based on the
 // human-readable configurations given above.
 var expectedConfiguration = &Configuration{
-	SynchronizationMode: sync.SynchronizationMode_SynchronizationModeTwoWayResolved,
+	SynchronizationMode: core.SynchronizationMode_SynchronizationModeTwoWayResolved,
 	MaximumEntryCount:   500,
 	// TODO: This will mis-match.
 	MaximumStagingFileSize: 1000000000000,
 	ProbeMode:              behavior.ProbeMode_ProbeModeAssume,
 	ScanMode:               ScanMode_ScanModeAccelerated,
 	StageMode:              StageMode_StageModeNeighboring,
-	SymlinkMode:            sync.SymlinkMode_SymlinkModePortable,
+	SymlinkMode:            core.SymlinkMode_SymlinkModePortable,
 	WatchMode:              WatchMode_WatchModeForcePoll,
 	WatchPollingInterval:   5,
 	Ignores: []string{
 		"ignore/this/**",
 		"!ignore/this/that",
 	},
-	IgnoreVCSMode:        sync.IgnoreVCSMode_IgnoreVCSModeIgnore,
+	IgnoreVCSMode:        core.IgnoreVCSMode_IgnoreVCSModeIgnore,
 	DefaultFileMode:      0644,
 	DefaultDirectoryMode: 0755,
 	DefaultOwner:         "george",

@@ -3,7 +3,7 @@ package synchronization
 import (
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 )
 
 // supportedSessionVersions defines the supported session versions that should
@@ -37,7 +37,7 @@ func TestDefaultWatchPollingIntervalNonZero(t *testing.T) {
 // use in "portable" permission propagation.
 func TestDefaultFileModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := sync.EnsureDefaultFileModeValid(version.DefaultFileMode()); err != nil {
+		if err := core.EnsureDefaultFileModeValid(version.DefaultFileMode()); err != nil {
 			t.Error("invalid default file mode:", err)
 		}
 	}
@@ -47,7 +47,7 @@ func TestDefaultFileModeValid(t *testing.T) {
 // valid for use in "portable" permission propagation.
 func TestDefaultDirectoryModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := sync.EnsureDefaultDirectoryModeValid(version.DefaultDirectoryMode()); err != nil {
+		if err := core.EnsureDefaultDirectoryModeValid(version.DefaultDirectoryMode()); err != nil {
 			t.Error("invalid default directory mode:", err)
 		}
 	}

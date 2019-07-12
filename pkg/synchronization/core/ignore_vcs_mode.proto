@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/core";
+
+// IgnoreVCSMode specifies the mode for ignoring VCS directories.
+enum IgnoreVCSMode {
+    // IgnoreVCSMode_IgnoreVCSModeDefault represents an unspecified VCS ignore
+    // mode. It is not valid for use with Scan. It should be converted to one of
+    // the following values based on the desired default behavior.
+    IgnoreVCSModeDefault = 0;
+    // IgnoreVCSMode_IgnoreVCSModeIgnore indicates that VCS directories should
+    // be ignored.
+    IgnoreVCSModeIgnore = 1;
+    // IgnoreVCSMode_IgnoreVCSModePropagate indicates that VCS directories
+    // should be propagated.
+    IgnoreVCSModePropagate = 2;
+}

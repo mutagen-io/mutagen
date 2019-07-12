@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package rsync;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/rsync";
+
+// BlockHash represents a pair of weak and strong hash for a base block.
+message BlockHash {
+    // Weak is the weak hash for the block.
+    uint32 weak = 1;
+    // Strong is the strong hash for the block.
+    bytes strong = 2;
+}
+
+// Signature represents an rsync base signature. It encodes the block size used
+// to generate the signature, the size of the last block in the signature (which
+// may be smaller than a full block), and the hashes for the blocks of the file.
+message Signature {
+    // BlockSize is the block size used to compute the signature.
+    uint64 blockSize = 1;
+    // LastBlockSize is the size of the last block in the signature.
+    uint64 lastBlockSize = 2;
+    // Hashes are the hashes of the blocks in the base.
+    repeated BlockHash hashes = 3;
+}
+
+// Operation represents an rsync operation, which can be either a data operation
+// or a block operation.
+message Operation {
+    // Data contains data for data operations. If its length is 0, the operation
+    // is assumed to be a non-data operation. Operation transmitters and
+    // receivers may thus treat a length-0 buffer as semantically equivalent to
+    // a nil buffer and utilize that fact to efficiently re-use buffer capacity,
+    // e.g. by truncating the buffer and doing a gob receive into it.
+    bytes data = 1;
+    // Start is the 0-indexed starting block for block operations.
+    uint64 start = 2;
+    // Count is the number of blocks for block operations.
+    uint64 count = 3;
+}

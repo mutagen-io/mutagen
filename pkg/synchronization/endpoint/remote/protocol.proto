@@ -4,12 +4,12 @@ package remote;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote";
 
-import "rsync/engine.proto";
+import "synchronization/rsync/engine.proto";
 import "synchronization/configuration.proto";
 import "synchronization/version.proto";
-import "sync/archive.proto";
-import "sync/change.proto";
-import "sync/problem.proto";
+import "synchronization/core/archive.proto";
+import "synchronization/core/change.proto";
+import "synchronization/core/problem.proto";
 
 // InitializeRequest encodes a request for endpoint initialization.
 message InitializeRequest {
@@ -103,7 +103,7 @@ message SupplyRequest {
 // TransitionRequest encodes a request for transition application.
 message TransitionRequest {
     // Transitions are the transitions that need to be applied.
-    repeated sync.Change transitions = 1;
+    repeated core.Change transitions = 1;
 }
 
 // TransitionResponse encodes the results of transitioning.
@@ -113,9 +113,9 @@ message TransitionResponse {
     // Protocol Buffers won't encode a nil pointer in a repeated element in
     // certain cases, and the results of transitions may very well be nil. gob
     // also exhibits this problem.
-    repeated sync.Archive results = 1;
+    repeated core.Archive results = 1;
     // Problems are any problems encountered during the transition operation.
-    repeated sync.Problem problems = 2;
+    repeated core.Problem problems = 2;
     // StagerMissingFiles indicates whether or not the endpoint's stager
     // indicated missing files during transitioning.
     bool stagerMissingFiles = 3;

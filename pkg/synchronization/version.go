@@ -7,7 +7,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 )
 
 // Version indicates whether or not the session version is supported.
@@ -32,10 +32,10 @@ func (v Version) Hasher() hash.Hash {
 
 // DefaultSynchronizationMode returns the default synchronization mode for the
 // session version.
-func (v Version) DefaultSynchronizationMode() sync.SynchronizationMode {
+func (v Version) DefaultSynchronizationMode() core.SynchronizationMode {
 	switch v {
 	case Version_Version1:
-		return sync.SynchronizationMode_SynchronizationModeTwoWaySafe
+		return core.SynchronizationMode_SynchronizationModeTwoWaySafe
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -94,10 +94,10 @@ func (v Version) DefaultStageMode() StageMode {
 }
 
 // DefaultSymlinkMode returns the default symlink mode for the session version.
-func (v Version) DefaultSymlinkMode() sync.SymlinkMode {
+func (v Version) DefaultSymlinkMode() core.SymlinkMode {
 	switch v {
 	case Version_Version1:
-		return sync.SymlinkMode_SymlinkModePortable
+		return core.SymlinkMode_SymlinkModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}
@@ -126,10 +126,10 @@ func (v Version) DefaultWatchPollingInterval() uint32 {
 
 // DefaultIgnoreVCSMode returns the default VCS ignore mode for the session
 // version.
-func (v Version) DefaultIgnoreVCSMode() sync.IgnoreVCSMode {
+func (v Version) DefaultIgnoreVCSMode() core.IgnoreVCSMode {
 	switch v {
 	case Version_Version1:
-		return sync.IgnoreVCSMode_IgnoreVCSModePropagate
+		return core.IgnoreVCSMode_IgnoreVCSModePropagate
 	default:
 		panic("unknown or unsupported session version")
 	}

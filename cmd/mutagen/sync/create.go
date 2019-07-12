@@ -22,8 +22,8 @@ import (
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
 	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -136,7 +136,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert the synchronization mode specification.
-	var synchronizationMode sync.SynchronizationMode
+	var synchronizationMode core.SynchronizationMode
 	if createConfiguration.synchronizationMode != "" {
 		if err := synchronizationMode.UnmarshalText([]byte(createConfiguration.synchronizationMode)); err != nil {
 			return errors.Wrap(err, "unable to parse synchronization mode")
@@ -211,7 +211,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert the symbolic link mode specification.
-	var symbolicLinkMode sync.SymlinkMode
+	var symbolicLinkMode core.SymlinkMode
 	if createConfiguration.symbolicLinkMode != "" {
 		if err := symbolicLinkMode.UnmarshalText([]byte(createConfiguration.symbolicLinkMode)); err != nil {
 			return errors.Wrap(err, "unable to parse symbolic link mode")
@@ -241,19 +241,19 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Validate ignore specifications.
 	for _, ignore := range createConfiguration.ignores {
-		if !sync.ValidIgnorePattern(ignore) {
+		if !core.ValidIgnorePattern(ignore) {
 			return errors.Errorf("invalid ignore pattern: %s", ignore)
 		}
 	}
 
 	// Validate and convert the VCS ignore mode specification.
-	var ignoreVCSMode sync.IgnoreVCSMode
+	var ignoreVCSMode core.IgnoreVCSMode
 	if createConfiguration.ignoreVCS && createConfiguration.noIgnoreVCS {
 		return errors.New("conflicting VCS ignore behavior specified")
 	} else if createConfiguration.ignoreVCS {
-		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCSModeIgnore
+		ignoreVCSMode = core.IgnoreVCSMode_IgnoreVCSModeIgnore
 	} else if createConfiguration.noIgnoreVCS {
-		ignoreVCSMode = sync.IgnoreVCSMode_IgnoreVCSModePropagate
+		ignoreVCSMode = core.IgnoreVCSMode_IgnoreVCSModePropagate
 	}
 
 	// Validate and convert default file mode specifications.
@@ -261,21 +261,21 @@ func createMain(command *cobra.Command, arguments []string) error {
 	if createConfiguration.defaultFileMode != "" {
 		if err := defaultFileMode.UnmarshalText([]byte(createConfiguration.defaultFileMode)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode")
-		} else if err = sync.EnsureDefaultFileModeValid(defaultFileMode); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(defaultFileMode); err != nil {
 			return errors.Wrap(err, "invalid default file mode")
 		}
 	}
 	if createConfiguration.defaultFileModeAlpha != "" {
 		if err := defaultFileModeAlpha.UnmarshalText([]byte(createConfiguration.defaultFileModeAlpha)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode for alpha")
-		} else if err = sync.EnsureDefaultFileModeValid(defaultFileModeAlpha); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeAlpha); err != nil {
 			return errors.Wrap(err, "invalid default file mode for alpha")
 		}
 	}
 	if createConfiguration.defaultFileModeBeta != "" {
 		if err := defaultFileModeBeta.UnmarshalText([]byte(createConfiguration.defaultFileModeBeta)); err != nil {
 			return errors.Wrap(err, "unable to parse default file mode for beta")
-		} else if err = sync.EnsureDefaultFileModeValid(defaultFileModeBeta); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeBeta); err != nil {
 			return errors.Wrap(err, "invalid default file mode for beta")
 		}
 	}
@@ -285,21 +285,21 @@ func createMain(command *cobra.Command, arguments []string) error {
 	if createConfiguration.defaultDirectoryMode != "" {
 		if err := defaultDirectoryMode.UnmarshalText([]byte(createConfiguration.defaultDirectoryMode)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryMode); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryMode); err != nil {
 			return errors.Wrap(err, "invalid default directory mode")
 		}
 	}
 	if createConfiguration.defaultDirectoryModeAlpha != "" {
 		if err := defaultDirectoryModeAlpha.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeAlpha)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode for alpha")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryModeAlpha); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeAlpha); err != nil {
 			return errors.Wrap(err, "invalid default directory mode for alpha")
 		}
 	}
 	if createConfiguration.defaultDirectoryModeBeta != "" {
 		if err := defaultDirectoryModeBeta.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeBeta)); err != nil {
 			return errors.Wrap(err, "unable to parse default directory mode for beta")
-		} else if err = sync.EnsureDefaultDirectoryModeValid(defaultDirectoryModeBeta); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeBeta); err != nil {
 			return errors.Wrap(err, "invalid default directory mode for beta")
 		}
 	}

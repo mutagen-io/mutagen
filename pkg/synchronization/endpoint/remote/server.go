@@ -11,10 +11,10 @@ import (
 	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/rsync"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/local"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 )
 
 // endpointServer wraps a local endpoint instances and dispatches requests to
@@ -282,7 +282,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 	// Marshal the snapshot in a deterministic fashion.
 	buffer := proto.NewBuffer(nil)
 	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(&sync.Archive{Root: snapshot}); err != nil {
+	if err := buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
 		return errors.Wrap(err, "unable to marshal snapshot")
 	}
 	snapshotBytes := buffer.Bytes()
@@ -383,9 +383,9 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 
 	// HACK: Wrap the results in Archives since neither Protocol Buffers can't
 	// encode nil pointers in the result array.
-	wrappedResults := make([]*sync.Archive, len(results))
+	wrappedResults := make([]*core.Archive, len(results))
 	for r, result := range results {
-		wrappedResults[r] = &sync.Archive{Root: result}
+		wrappedResults[r] = &core.Archive{Root: result}
 	}
 
 	// Send the response.

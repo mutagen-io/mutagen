@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/rsync"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 )
 
 const (

@@ -14,8 +14,8 @@ import (
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
 	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -33,7 +33,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems []*sync.Problem) {
+func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems []*core.Problem) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -69,24 +69,24 @@ func printSessionStatus(state *synchronizationpkg.State) {
 	}
 }
 
-func formatEntryKind(entry *sync.Entry) string {
+func formatEntryKind(entry *core.Entry) string {
 	if entry == nil {
 		return "<non-existent>"
-	} else if entry.Kind == sync.EntryKind_Directory {
+	} else if entry.Kind == core.EntryKind_Directory {
 		return "Directory"
-	} else if entry.Kind == sync.EntryKind_File {
+	} else if entry.Kind == core.EntryKind_File {
 		if entry.Executable {
 			return fmt.Sprintf("Executable File (%x)", entry.Digest)
 		}
 		return fmt.Sprintf("File (%x)", entry.Digest)
-	} else if entry.Kind == sync.EntryKind_Symlink {
+	} else if entry.Kind == core.EntryKind_Symlink {
 		return fmt.Sprintf("Symbolic Link (%s)", entry.Target)
 	} else {
 		return "<unknown>"
 	}
 }
 
-func printConflicts(conflicts []*sync.Conflict) {
+func printConflicts(conflicts []*core.Conflict) {
 	// Print the header.
 	color.Red("Conflicts:\n")
 

@@ -14,9 +14,9 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
-	"github.com/havoc-io/mutagen/pkg/rsync"
-	"github.com/havoc-io/mutagen/pkg/sync"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
 )
 
 const (
@@ -70,7 +70,7 @@ type endpoint struct {
 	accelerationAllowed bool
 	// symlinkMode is the symlink mode for the session. This field is static and
 	// thus safe for concurrent reads.
-	symlinkMode sync.SymlinkMode
+	symlinkMode core.SymlinkMode
 	// ignores is the list of ignored paths for the session. This field is
 	// static and thus safe for concurrent reads.
 	ignores []string
@@ -132,7 +132,7 @@ type endpoint struct {
 	// accelerate scanning by using data from a background watcher Goroutine.
 	accelerateScan bool
 	// snapshot is the snapshot from the last scan.
-	snapshot *sync.Entry
+	snapshot *core.Entry
 	// recheckPaths is the set of recheck paths to use when accelerating scans
 	// in recursive watching mode. This map will always be initialized (non-nil)
 	// and ready for writes.
@@ -140,10 +140,10 @@ type endpoint struct {
 	// hasher is the hasher used for scans.
 	hasher hash.Hash
 	// cache is the cache from the last successful scan on the endpoint.
-	cache *sync.Cache
+	cache *core.Cache
 	// ignoreCache is the ignore cache from the last successful scan on the
 	// endpoint.
-	ignoreCache sync.IgnoreCache
+	ignoreCache core.IgnoreCache
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
@@ -196,8 +196,8 @@ func NewEndpoint(
 	if synchronizationMode.IsDefault() {
 		synchronizationMode = version.DefaultSynchronizationMode()
 	}
-	unidirectional := synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWaySafe ||
-		synchronizationMode == sync.SynchronizationMode_SynchronizationModeOneWayReplica
+	unidirectional := synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWaySafe ||
+		synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWayReplica
 	readOnly := alpha && unidirectional
 
 	// Determine the maximum entry count.
@@ -240,8 +240,8 @@ func NewEndpoint(
 
 	// Compute a combined ignore list.
 	var ignores []string
-	if ignoreVCSMode == sync.IgnoreVCSMode_IgnoreVCSModeIgnore {
-		ignores = append(ignores, sync.DefaultVCSIgnores...)
+	if ignoreVCSMode == core.IgnoreVCSMode_IgnoreVCSModeIgnore {
+		ignores = append(ignores, core.DefaultVCSIgnores...)
 	}
 	ignores = append(ignores, configuration.DefaultIgnores...)
 	ignores = append(ignores, configuration.Ignores...)
@@ -297,12 +297,12 @@ func NewEndpoint(
 	// use an empty one.
 	// TODO: Should we let validation errors bubble up? They may be indicative
 	// of something bad.
-	cache := &sync.Cache{}
+	cache := &core.Cache{}
 	if !ephemeral {
 		if encoding.LoadAndUnmarshalProtobuf(cachePath, cache) != nil {
-			cache = &sync.Cache{}
+			cache = &core.Cache{}
 		} else if cache.EnsureValid() != nil {
-			cache = &sync.Cache{}
+			cache = &core.Cache{}
 		}
 	}
 
@@ -420,7 +420,7 @@ func (e *endpoint) saveCacheRegularly(context context.Context, cachePath string)
 	// treated as immutable. The only cost is keeping an old cache around until
 	// the next write cycle, but that's a relatively small price to pay to avoid
 	// unnecessary disk writes.
-	var lastSavedCache *sync.Cache
+	var lastSavedCache *core.Cache
 
 	// Loop indefinitely, watching for cancellation and saving the cache to
 	// disk at regular intervals. If we see a cache write failure, we record it,
@@ -644,7 +644,7 @@ WatchEstablishment:
 				// ignore it. We can use our fast-path base computation since
 				// recursive watchers generate synchronization-root-relative
 				// paths.
-				if filesystem.IsTemporaryFileName(sync.PathBase(path)) {
+				if filesystem.IsTemporaryFileName(core.PathBase(path)) {
 					continue EventProcessing
 				}
 
@@ -696,7 +696,7 @@ func (e *endpoint) watchPoll(
 	// Track the previous scan results that we want to compare to watch for
 	// changes. It's safe to keep a reference to the snapshot since entries are
 	// treated as immutable.
-	var previousSnapshot *sync.Entry
+	var previousSnapshot *core.Entry
 	var previousPreservesExecutability, previousDecomposesUnicode bool
 
 	// If non-recursive watching is enabled, attempt to set up the non-recursive
@@ -829,7 +829,7 @@ func (e *endpoint) watchPoll(
 		// to determine new watch paths, and then start the new watches. Any
 		// watch errors will be reported on the watch errors channel.
 		if nonRecursiveWatcher != nil {
-			changes := sync.Diff(previousSnapshot, snapshot)
+			changes := core.Diff(previousSnapshot, snapshot)
 			for _, change := range changes {
 				nonRecursiveWatcher.Watch(filepath.Join(e.root, change.Path))
 			}
@@ -875,9 +875,9 @@ func (e *endpoint) Poll(context context.Context) error {
 // scan is the internal function which performs a scan operation on the root and
 // updates the endpoint scan parameters. The caller must hold the endpoint's
 // scan lock.
-func (e *endpoint) scan(baseline *sync.Entry, recheckPaths map[string]bool) error {
+func (e *endpoint) scan(baseline *core.Entry, recheckPaths map[string]bool) error {
 	// Perform a full (warm) scan, watching for errors.
-	snapshot, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, err := sync.Scan(
+	snapshot, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
 		e.root,
 		baseline, recheckPaths,
 		e.hasher, e.cache,
@@ -912,7 +912,7 @@ func (e *endpoint) scan(baseline *sync.Entry, recheckPaths map[string]bool) erro
 }
 
 // Scan implements the Scan method for local endpoints.
-func (e *endpoint) Scan(_ *sync.Entry, full bool) (*sync.Entry, bool, error, bool) {
+func (e *endpoint) Scan(_ *core.Entry, full bool) (*core.Entry, bool, error, bool) {
 	// Grab the scan lock and defer its release.
 	e.scanLock.Lock()
 	defer e.scanLock.Unlock()
@@ -968,7 +968,7 @@ func (e *endpoint) Scan(_ *sync.Entry, full bool) (*sync.Entry, bool, error, boo
 func (e *endpoint) stageFromRoot(
 	path string,
 	digest []byte,
-	reverseLookupMap *sync.ReverseLookupMap,
+	reverseLookupMap *core.ReverseLookupMap,
 	opener *filesystem.Opener,
 ) bool {
 	// See if we can find a path within the root that has a matching digest.
@@ -1109,7 +1109,7 @@ func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receive
 }
 
 // Transition implements the Transition method for local endpoints.
-func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*sync.Problem, bool, error) {
+func (e *endpoint) Transition(transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
 	// If we're in a read-only mode, we shouldn't be performing transitions.
 	if e.readOnly {
 		return nil, nil, false, errors.New("endpoint is in read-only mode")
@@ -1146,18 +1146,18 @@ func (e *endpoint) Transition(transitions []*sync.Change) ([]*sync.Entry, []*syn
 		// If the resulting entry count would be too high, then abort the
 		// transitioning operation, but return the error as a problem, not an
 		// error, since nobody is malfunctioning here.
-		results := make([]*sync.Entry, len(transitions))
+		results := make([]*core.Entry, len(transitions))
 		for t, transition := range transitions {
 			results[t] = transition.Old
 		}
-		problems := []*sync.Problem{{Error: "transitioning would exceeded allowed entry count"}}
+		problems := []*core.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 		if e.maximumEntryCount < resultingEntryCount {
 			return results, problems, false, nil
 		}
 	}
 
 	// Perform the transition.
-	results, problems, stagerMissingFiles := sync.Transition(
+	results, problems, stagerMissingFiles := core.Transition(
 		e.root,
 		transitions,
 		e.cache,

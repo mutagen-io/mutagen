@@ -8,9 +8,9 @@ import "filesystem/behavior/probe_mode.proto";
 import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
-import "sync/ignore_vcs_mode.proto";
-import "sync/mode.proto";
-import "sync/symlink_mode.proto";
+import "synchronization/core/ignore_vcs_mode.proto";
+import "synchronization/core/mode.proto";
+import "synchronization/core/symlink_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
@@ -23,7 +23,7 @@ message Configuration {
 
     // SynchronizationMode specifies the synchronization mode that should be
     // used in synchronization.
-    sync.SynchronizationMode synchronizationMode = 11;
+    core.SynchronizationMode synchronizationMode = 11;
 
     // MaximumEntryCount specifies the maximum number of filesystem entries that
     // endpoints will tolerate managing. A zero value indicates no limit.
@@ -53,7 +53,7 @@ message Configuration {
 
     // SymlinkMode specifies the symlink mode that should be used in
     // synchronization.
-    sync.SymlinkMode symlinkMode = 1;
+    core.SymlinkMode symlinkMode = 1;
 
     // Fields 2-10 are reserved for future symlink configuration parameters.
 
@@ -86,7 +86,7 @@ message Configuration {
 
     // IgnoreVCSMode specifies the VCS ignore mode that should be used in
     // synchronization.
-    sync.IgnoreVCSMode ignoreVCSMode = 33;
+    core.IgnoreVCSMode ignoreVCSMode = 33;
 
     // Fields 34-60 are reserved for future ignore configuration parameters.
 
