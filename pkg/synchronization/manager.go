@@ -7,7 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/google/uuid"
+
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/selection"
 	"github.com/havoc-io/mutagen/pkg/state"
 	"github.com/havoc-io/mutagen/pkg/url"
@@ -17,6 +20,8 @@ import (
 // are safe for concurrent usage, so it can be easily exported via an RPC
 // interface.
 type Manager struct {
+	// logger is the underlying logger.
+	logger *logging.Logger
 	// tracker tracks changes to session states.
 	tracker *state.Tracker
 	// sessionLock locks the sessions registry.
@@ -26,7 +31,7 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager instance.
-func NewManager() (*Manager, error) {
+func NewManager(logger *logging.Logger) (*Manager, error) {
 	// Create a tracker and corresponding lock to watch for state changes.
 	tracker := state.NewTracker()
 	sessionsLock := state.NewTrackingLock(tracker)
@@ -35,6 +40,7 @@ func NewManager() (*Manager, error) {
 	sessions := make(map[string]*controller)
 
 	// Load existing sessions.
+	logger.Println("Looking for existing sessions")
 	sessionsDirectory, err := pathForSession("")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute sessions directory")
@@ -46,7 +52,8 @@ func NewManager() (*Manager, error) {
 	for _, c := range sessionsDirectoryContents {
 		// TODO: Ensure that the name matches the expected format.
 		identifier := c.Name()
-		if controller, err := loadSession(nil, tracker, identifier); err != nil {
+		logger.Println("Loading session", identifier)
+		if controller, err := loadSession(logger.Sublogger(identifier), tracker, identifier); err != nil {
 			continue
 		} else {
 			sessions[identifier] = controller
@@ -54,7 +61,9 @@ func NewManager() (*Manager, error) {
 	}
 
 	// Success.
+	logger.Println("Session manager initialized")
 	return &Manager{
+		logger:       logger,
 		tracker:      tracker,
 		sessionsLock: sessionsLock,
 		sessions:     sessions,
@@ -178,6 +187,9 @@ func (m *Manager) selectControllers(selection *selection.Selection) ([]*controll
 
 // Shutdown tells the manager to gracefully halt sessions.
 func (m *Manager) Shutdown() {
+	// Log the shutdown.
+	m.logger.Println("Shutting down")
+
 	// Poison state tracking to terminate monitoring.
 	m.tracker.Poison()
 
@@ -188,6 +200,7 @@ func (m *Manager) Shutdown() {
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
+		m.logger.Println("Halting session", controller.session.Identifier)
 		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}
@@ -201,10 +214,18 @@ func (m *Manager) Create(
 	labels map[string]string,
 	prompter string,
 ) (string, error) {
+	// Create a unique session identifier.
+	randomUUID, err := uuid.NewRandom()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to generate UUID for session")
+	}
+	identifier := randomUUID.String()
+
 	// Attempt to create a session.
 	controller, err := newSession(
-		nil,
+		m.logger.Sublogger(identifier),
 		m.tracker,
+		identifier,
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
 		labels,

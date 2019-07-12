@@ -9,8 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
-
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/havoc-io/mutagen/pkg/encoding"
@@ -87,6 +85,7 @@ type controller struct {
 func newSession(
 	logger *logging.Logger,
 	tracker *state.Tracker,
+	identifier string,
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	labels map[string]string,
@@ -94,13 +93,6 @@ func newSession(
 ) (*controller, error) {
 	// Update status.
 	prompt.Message(prompter, "Creating session...")
-
-	// Create a unique session identifier.
-	randomUUID, err := uuid.NewRandom()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate UUID for session")
-	}
-	identifier := randomUUID.String()
 
 	// Set the session version.
 	version := Version_Version1
@@ -117,13 +109,17 @@ func newSession(
 	mergedBetaConfiguration := MergeConfigurations(configuration, configurationBeta)
 
 	// Attempt to connect. Session creation is only allowed after if successful.
+	logger.Println("Connecting to alpha")
 	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true)
 	if err != nil {
+		logger.Println("Alpha connection failure:", err)
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
+	logger.Println("Connecting to beta")
 	betaEndpoint, err := connect(beta, prompter, identifier, version, mergedBetaConfiguration, false)
 	if err != nil {
 		alphaEndpoint.Shutdown()
+		logger.Println("Beta connection failure:", err)
 		return nil, errors.Wrap(err, "unable to connect to beta")
 	}
 
@@ -193,6 +189,7 @@ func newSession(
 	go controller.run(context, alphaEndpoint, betaEndpoint)
 
 	// Success.
+	logger.Println("Session initialized")
 	return controller, nil
 }
 
@@ -256,6 +253,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	}
 
 	// Success.
+	logger.Println("Session loaded")
 	return controller, nil
 }
 

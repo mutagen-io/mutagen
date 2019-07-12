@@ -14,6 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
@@ -39,8 +40,11 @@ func runMain(command *cobra.Command, arguments []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Create the root logger.
+	logger := logging.NewLogger("")
+
 	// Create a synchronization session manager and defer its shutdown.
-	synchronizationManager, err := synchronization.NewManager()
+	synchronizationManager, err := synchronization.NewManager(logger.Sublogger("sync"))
 	if err != nil {
 		return errors.Wrap(err, "unable to create synchronization session manager")
 	}
