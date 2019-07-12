@@ -12,12 +12,27 @@ var supportedSessionVersions = []Version{
 	Version_Version1,
 }
 
-// TestSupportedVersions verifies that all versions that should be supported are
-// reported as supported.
+// TestSupportedVersions verifies that session version support is as expected.
 func TestSupportedVersions(t *testing.T) {
-	for _, version := range supportedSessionVersions {
-		if !version.Supported() {
-			t.Error("session version reported as unsupported:", version)
+	// Set up test cases.
+	testCases := []struct {
+		version  Version
+		expected bool
+	}{
+		{Version_Invalid, false},
+		{Version_Version1, true},
+		{Version_Version1 + 1, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.version.Supported(); supported != testCase.expected {
+			t.Errorf(
+				"session version (%s) support does not match expected: %t != %t",
+				testCase.version,
+				supported,
+				testCase.expected,
+			)
 		}
 	}
 }
