@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package remote;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote";
+
+// InitializeForwardingRequest is the initialization request sent to remote
+// forwarding endpoints.
+message InitializeForwardingRequest {
+    // Listener indicates whether this endpoint should function as a listener or
+    // dialer for the associated address.
+    bool listener = 1;
+    // Protocol is the protocol specification for the listener/dialer.
+    string protocol = 2;
+    // Address it the bind address for a listener or dial address for a dialer.
+    string address = 3;
+}
+
+// InitializeForwardingResponse is the initialization response sent from remote
+// forwarding endpoint.
+message InitializeForwardingResponse {
+    // Error is any error that occurred during initialization.
+    string error = 1;
+}

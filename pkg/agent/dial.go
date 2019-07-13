@@ -164,7 +164,7 @@ func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn,
 // connection mode, and prompter.
 func Dial(transport Transport, mode, prompter string) (net.Conn, error) {
 	// Validate that the mode is sane.
-	if mode != ModeEndpoint {
+	if !(mode == ModeEndpoint || mode == ModeForwarder) {
 		panic("invalid agent dial mode")
 	}
 

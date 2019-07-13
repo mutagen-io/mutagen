@@ -12,10 +12,12 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/logging"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
@@ -43,6 +45,13 @@ func runMain(command *cobra.Command, arguments []string) error {
 	// Create the root logger.
 	logger := logging.NewLogger("")
 
+	// Create a forwarding session manager and defer its shutdown.
+	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forwarding"))
+	if err != nil {
+		return errors.Wrap(err, "unable to create forwarding session manager")
+	}
+	defer forwardingManager.Shutdown()
+
 	// Create a synchronization session manager and defer its shutdown.
 	synchronizationManager, err := synchronization.NewManager(logger.Sublogger("sync"))
 	if err != nil {
@@ -65,6 +74,10 @@ func runMain(command *cobra.Command, arguments []string) error {
 
 	// Create and register the prompt server.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
+
+	// Create and register the forwarding server.
+	forwardingServer := forwardingsvc.NewServer(forwardingManager)
+	forwardingsvc.RegisterForwardingServer(server, forwardingServer)
 
 	// Create and register the synchronization server.
 	synchronizationServer := synchronizationsvc.NewServer(synchronizationManager)

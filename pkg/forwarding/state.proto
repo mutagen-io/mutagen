@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package forwarding;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
+
+import "forwarding/session.proto";
+
+// Status encodes the status of a forwarding session.
+enum Status {
+    // Status_Disconnected indicates that the session is disconnected.
+    Disconnected = 0;
+    // Status_ConnectingSource indicates that the session is in the process of
+    // connecting to the source endpoint.
+    ConnectingSource = 1;
+    // Status_ConnectingDestination indicates that the session is in the process
+    // of connecting to the destination endpoint.
+    ConnectingDestination = 2;
+    // Status_ForwardingConnections indicates that the session is connected and
+    // currently forwarding connections.
+    ForwardingConnections = 3;
+}
+
+// State encodes the state of a forwarding session.
+message State {
+    // Session is the session specification.
+    Session session = 1;
+    // Status is the status of the session.
+    Status status = 2;
+    // SourceConnected indicates whether or not the source endpoint is
+    // connected.
+    bool sourceConnected = 3;
+    // DestinationConnected indicates whether or not the destination endpoint is
+    // connected.
+    bool destinationConnected = 4;
+    // LastError indicates the last error that occurred during forwarding.
+    string lastError = 5;
+    // OpenConnections is the number of connections currently open and being
+    // forwarded.
+    uint64 openConnections = 6;
+    // TotalConnections is the number of total connections that have been opened
+    // and forwarded (including those that are currently open).
+    uint64 totalConnections = 7;
+}

@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package forwarding;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
+
+import "google/protobuf/timestamp.proto";
+
+import "forwarding/configuration.proto";
+import "forwarding/version.proto";
+import "url/url.proto";
+
+message Session {
+    // The identifier, version, creationTime, and creatingVersion* fields are
+    // considered the "header" fields for all session versions. A message
+    // composed purely of these fields is guaranteed to be compatible with all
+    // future session versions. This can be used to dispatch session decoding to
+    // more specific message structures once multiple session version formats
+    // are implemented.
+
+    // Identifier is the (unique) session identifier. It is static. It cannot be
+    // empty.
+    string identifier = 1;
+    // Version is the session version. It is static.
+    Version version = 2;
+    // CreationTime is the creation time of the session. It is static. It cannot
+    // be nil.
+    google.protobuf.Timestamp creationTime = 3;
+    // CreatingVersionMajor is the major version component of the version of
+    // Mutagen which created the session. It is static.
+    uint32 creatingVersionMajor = 4;
+    // CreatingVersionMinor is the minor version component of the version of
+    // Mutagen which created the session. It is static.
+    uint32 creatingVersionMinor = 5;
+    // CreatingVersionPatch is the patch version component of the version of
+    // Mutagen which created the session. It is static.
+    uint32 creatingVersionPatch = 6;
+
+    // The remaining fields are those currently used by session version 1.
+
+    // Source is the source endpoint URL. It is static. It cannot be nil.
+    url.URL source = 7;
+    // Destination is the destination endpoint URL. It is static. It cannot be
+    // nil.
+    url.URL destination = 8;
+    // Configuration is the flattened session configuration. It is static. It
+    // cannot be nil.
+    Configuration configuration = 9;
+    // ConfigurationSource are the source-specific session configuration
+    // overrides. It is static.
+    Configuration configurationSource = 10;
+    // ConfigurationDestination are the destination-specific session
+    // configuration overrides. It is static.
+    Configuration configurationDestination = 11;
+    // Labels are the session labels. They are static.
+    map<string, string> labels = 12;
+    // Paused indicates whether or not the session is marked as paused.
+    bool paused = 13;
+}

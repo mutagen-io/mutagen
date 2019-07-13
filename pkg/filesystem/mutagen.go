@@ -43,6 +43,10 @@ const (
 	// synchronization staging storage directory within the Mutagen data
 	// directory.
 	MutagenSynchronizationStagingDirectoryName = "staging"
+
+	// MutagenForwardingDirectoryName is the name of the forwarding data
+	// directory within the Mutagen data directory.
+	MutagenForwardingDirectoryName = "forwarding"
 )
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen

@@ -20,6 +20,8 @@ github.com/golang/protobuf v1.3.1 h1:YF8+flBXS5eO826T4nzqPrxfhQThhXl0YzfuUPu4SBg
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d h1:kJCB4vdITiW1eC1vq2e6IsrXKrZit1bv/TDYFGMp4BQ=
+github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434 h1:pv+XB7AVlAEl941I5qfuMe9KoqACeH+2AbOMX8PO31k=
 github.com/havoc-io/fsevents v0.0.0-20180903111129-10556809b434/go.mod h1:2Bp/paC6WIT5rEqgNOjUvJcFj/BIuStH8YoMIj8rxSY=
 github.com/havoc-io/gopass v0.0.0-20170602182606-9a121bec1ae7 h1:ugvine+ipOFuvsbQRR8A9JmPHxNnw2Y3N0tZ5fPKLVo=

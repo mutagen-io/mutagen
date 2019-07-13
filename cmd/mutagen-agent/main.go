@@ -52,6 +52,7 @@ func init() {
 	rootCommand.AddCommand(
 		installCommand,
 		endpointCommand,
+		forwarderCommand,
 		versionCommand,
 		legalCommand,
 	)

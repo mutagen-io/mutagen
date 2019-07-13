@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package forwarding;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/service/forwarding";
+
+import "selection/selection.proto";
+import "forwarding/configuration.proto";
+import "forwarding/state.proto";
+import "url/url.proto";
+
+message CreationSpecification {
+    // Source is the source endpoint URL for the session.
+    url.URL source = 1;
+    // Destination is the destination endpoint URL for the session.
+    url.URL destination = 2;
+    // Configuration is the base session configuration. It is the result of
+    // merging the global configuration (unless disabled), any manually
+    // specified configuration file, and any command line configuration
+    // parameters.
+    forwarding.Configuration configuration = 3;
+    // ConfigurationSource is the source-specific session configuration. It is
+    // determined based on command line configuration parameters.
+    forwarding.Configuration configurationSource = 4;
+    // ConfigurationDestination is the destination-specific session
+    // configuration. It is determined based on command line configuration
+    // parameters.
+    forwarding.Configuration configurationDestination = 5;
+    // Labels are the labels for the session object.
+    map<string, string> labels = 6;
+}
+
+message CreateRequest {
+    CreationSpecification specification = 1;
+    string response = 2;
+}
+
+message CreateResponse {
+    string session = 1;
+    string message = 2;
+    string prompt = 3;
+}
+
+message ListRequest {
+    selection.Selection selection = 1;
+    uint64 previousStateIndex = 2;
+}
+
+message ListResponse {
+    uint64 stateIndex = 1;
+    repeated forwarding.State sessionStates = 2;
+}
+
+message PauseRequest {
+    selection.Selection selection = 1;
+}
+
+message PauseResponse{
+    string message = 1;
+}
+
+message ResumeRequest {
+    selection.Selection selection = 1;
+    string response = 2;
+}
+
+message ResumeResponse {
+    string message = 1;
+    string prompt = 2;
+}
+
+message TerminateRequest {
+    selection.Selection selection = 1;
+}
+
+message TerminateResponse{
+    string message = 1;
+}
+
+service Forwarding {
+    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
+    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
+}

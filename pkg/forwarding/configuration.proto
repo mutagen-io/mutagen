@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package forwarding;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
+
+// Configuration encodes session configuration parameters. It is used for create
+// commands to specify configuration options, for loading global configuration
+// options, and for storing a merged configuration inside sessions.
+message Configuration{}

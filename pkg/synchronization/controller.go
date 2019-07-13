@@ -437,7 +437,7 @@ func (c *controller) resume(prompter string) error {
 	// even on partial or complete failure (since it might be able to
 	// auto-reconnect on its own), we wait until the end to report errors.
 	if saveErr != nil {
-		return errors.Wrap(saveErr, "unable to save session configuration")
+		return errors.Wrap(saveErr, "unable to save session")
 	} else if alphaConnectErr != nil {
 		return errors.Wrap(alphaConnectErr, "unable to connect to alpha")
 	} else if betaConnectErr != nil {
@@ -512,7 +512,7 @@ func (c *controller) halt(mode controllerHaltMode, prompter string) error {
 		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
 		c.stateLock.Unlock()
 		if saveErr != nil {
-			return errors.Wrap(saveErr, "unable to save session state")
+			return errors.Wrap(saveErr, "unable to save session")
 		}
 	} else if mode == controllerHaltModeShutdown {
 		// Disable the controller.
