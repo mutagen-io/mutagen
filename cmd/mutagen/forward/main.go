@@ -1,4 +1,4 @@
-package forwarding
+package forward
 
 import (
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var RootCommand = &cobra.Command{
-	Use:          "forwarding",
+	Use:          "forward",
 	Short:        "Create and manage forwarding sessions",
 	RunE:         rootMain,
 	SilenceUsage: true,

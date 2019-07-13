@@ -1,6 +1,6 @@
 // +build !windows
 
-package forwarding
+package forward
 
 const (
 	delimiterLine = "--------------------------------------------------------------------------------"

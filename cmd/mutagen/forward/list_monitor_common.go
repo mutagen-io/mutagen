@@ -1,4 +1,4 @@
-package forwarding
+package forward
 
 import (
 	"fmt"

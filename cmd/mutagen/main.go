@@ -7,7 +7,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/cmd/mutagen/forwarding"
+	"github.com/havoc-io/mutagen/cmd/mutagen/forward"
 	"github.com/havoc-io/mutagen/cmd/mutagen/sync"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 )
@@ -60,7 +60,7 @@ func init() {
 	// HACK: Add the sync commands as direct subcommands of the root command for
 	// temporary backward compatibility.
 	commands := []*cobra.Command{
-		forwarding.RootCommand,
+		forward.RootCommand,
 		sync.RootCommand,
 		daemon.RootCommand,
 		versionCommand,

@@ -1,4 +1,4 @@
-package forwarding
+package forward
 
 import (
 	"context"
@@ -10,16 +10,17 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
+	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
 	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
 )
 
-func pauseMain(command *cobra.Command, arguments []string) error {
+func resumeMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
-		All:            pauseConfiguration.all,
+		All:            resumeConfiguration.all,
 		Specifications: arguments,
-		LabelSelector:  pauseConfiguration.labelSelector,
+		LabelSelector:  resumeConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid session selection specification")
@@ -35,21 +36,21 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
 
-	// Invoke the session pause method. The stream will close when the
+	// Invoke the session resume method. The stream will close when the
 	// associated context is cancelled.
-	pauseContext, cancel := context.WithCancel(context.Background())
+	resumeContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Pause(pauseContext)
+	stream, err := sessionService.Resume(resumeContext)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}
 
 	// Send the initial request.
-	request := &forwardingsvcpkg.PauseRequest{
+	request := &forwardingsvcpkg.ResumeRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send resume request")
 	}
 
 	// Create a status line printer.
@@ -59,34 +60,42 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	for {
 		if response, err := stream.Recv(); err != nil {
 			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "resume failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid pause response received")
-		} else if response.Message == "" {
+			statusLinePrinter.BreakIfNonEmpty()
+			return errors.Wrap(err, "invalid resume response received")
+		} else if response.Message == "" && response.Prompt == "" {
 			statusLinePrinter.Clear()
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvcpkg.PauseRequest{}); err != nil {
+			if err := stream.Send(&forwardingsvcpkg.ResumeRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		} else if response.Prompt != "" {
+			statusLinePrinter.BreakIfNonEmpty()
+			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+				return errors.Wrap(err, "unable to perform prompting")
+			} else if err = stream.Send(&forwardingsvcpkg.ResumeRequest{Response: response}); err != nil {
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
 	}
 }
 
-var pauseCommand = &cobra.Command{
-	Use:          "pause [<session>...]",
-	Short:        "Pause a forwarding session",
-	RunE:         pauseMain,
+var resumeCommand = &cobra.Command{
+	Use:          "resume [<session>...]",
+	Short:        "Resume a paused or disconnected forwarding session",
+	RunE:         resumeMain,
 	SilenceUsage: true,
 }
 
-var pauseConfiguration struct {
+var resumeConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
-	// all indicates whether or not all sessions should be paused.
+	// all indicates whether or not all sessions should be resumed.
 	all bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
@@ -95,16 +104,16 @@ var pauseConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := pauseCommand.Flags()
+	flags := resumeCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&pauseConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&resumeConfiguration.help, "help", "h", false, "Show help information")
 
-	// Wire up pause flags.
-	flags.BoolVarP(&pauseConfiguration.all, "all", "a", false, "Pause all sessions")
-	flags.StringVar(&pauseConfiguration.labelSelector, "label-selector", "", "Pause sessions matching the specified label selector")
+	// Wire up resume flags.
+	flags.BoolVarP(&resumeConfiguration.all, "all", "a", false, "Resume all sessions")
+	flags.StringVar(&resumeConfiguration.labelSelector, "label-selector", "", "Resume sessions matching the specified label selector")
 }
