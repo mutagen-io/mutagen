@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
@@ -35,6 +36,15 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute endpoint path")
 	}
+
+	// Check if autostart has been globally disabled.
+	if daemon.AutostartDisabled {
+		autostart = false
+	}
+
+	// Create a status line printer and defer a clear.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+	defer statusLinePrinter.BreakIfNonEmpty()
 
 	// Perform dialing in a loop until failure or success.
 	remainingPostAutostatAttempts := autostartRetryCount
@@ -67,6 +77,7 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 				// try autostarting, waiting, and retrying.
 				if autostart && remainingPostAutostatAttempts > 0 {
 					if !invokedStart {
+						statusLinePrinter.Print("Attempting to start Mutagen daemon...")
 						startMain(nil, nil)
 						invokedStart = true
 					}
@@ -81,6 +92,12 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 
 			// If we failed for any other reason, then bail.
 			return nil, err
+		}
+
+		// Print a notice if we started the daemon.
+		if invokedStart {
+			statusLinePrinter.Clear()
+			statusLinePrinter.Print("Started Mutagen daemon in background (terminate with \"mutagen daemon stop\")")
 		}
 
 		// We've successfully dialed, so break out of the dialing loop.
