@@ -63,10 +63,10 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
-	request := &InitializeRequest{}
+	request := &InitializeSynchronizationRequest{}
 	if err := decoder.Decode(request); err != nil {
 		err = errors.Wrap(err, "unable to receive initialize request")
-		encoder.Encode(&InitializeResponse{Error: err.Error()})
+		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
 
@@ -80,7 +80,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 	if endpointServerOptions.configuration != nil {
 		if err := endpointServerOptions.configuration.EnsureValid(true); err != nil {
 			err = errors.Wrap(err, "override configuration invalid")
-			encoder.Encode(&InitializeResponse{Error: err.Error()})
+			encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 			return err
 		}
 		request.Configuration = synchronization.MergeConfigurations(
@@ -101,7 +101,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 		)
 		if err != nil {
 			err = errors.Wrap(err, "endpoint configuration rejected")
-			encoder.Encode(&InitializeResponse{Error: err.Error()})
+			encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 			return err
 		}
 	}
@@ -109,7 +109,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 	// Ensure that the initialization request is valid.
 	if err := request.ensureValid(); err != nil {
 		err = errors.Wrap(err, "invalid initialize request")
-		encoder.Encode(&InitializeResponse{Error: err.Error()})
+		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
 
@@ -126,13 +126,13 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
-		encoder.Encode(&InitializeResponse{Error: err.Error()})
+		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
 	defer endpoint.Shutdown()
 
 	// Send a successful initialize response.
-	if err = encoder.Encode(&InitializeResponse{}); err != nil {
+	if err = encoder.Encode(&InitializeSynchronizationResponse{}); err != nil {
 		return errors.Wrap(err, "unable to send initialize response")
 	}
 

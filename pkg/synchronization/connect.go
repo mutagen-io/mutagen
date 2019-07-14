@@ -17,7 +17,8 @@ type ProtocolHandler interface {
 	// endpoint using the specified parameters.
 	Connect(
 		logger *logging.Logger,
-		url *urlpkg.URL, prompter string,
+		url *urlpkg.URL,
+		prompter string,
 		session string,
 		version Version,
 		configuration *Configuration,

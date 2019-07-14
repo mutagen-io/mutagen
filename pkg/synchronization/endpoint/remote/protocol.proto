@@ -11,23 +11,24 @@ import "synchronization/core/archive.proto";
 import "synchronization/core/change.proto";
 import "synchronization/core/problem.proto";
 
-// InitializeRequest encodes a request for endpoint initialization.
-message InitializeRequest {
-    // Root is the synchronization root path.
-    string root = 1;
+// InitializeSynchronizationRequest encodes a request for endpoint
+// initialization.
+message InitializeSynchronizationRequest {
     // Session is the session identifier.
-    string session = 2;
+    string session = 1;
     // Version is the session version.
-    synchronization.Version version = 3;
+    synchronization.Version version = 2;
     // Configuration is the session configuration.
-    synchronization.Configuration configuration = 4;
+    synchronization.Configuration configuration = 3;
+    // Root is the synchronization root path.
+    string root = 4;
     // Alpha indicates whether or not the endpoint should behave as alpha (as
     // opposed to beta).
     bool alpha = 5;
 }
 
-// InitializeResponse encodes initialization results.
-message InitializeResponse {
+// InitializeSynchronizationResponse encodes initialization results.
+message InitializeSynchronizationResponse {
     // Error is the error message (if any) resulting from initialization.
     string error = 1;
 }

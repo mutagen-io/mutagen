@@ -71,7 +71,7 @@ func NewEndpointClient(
 	decoder := encoding.NewProtobufDecoder(reader)
 
 	// Create and send the initialize request.
-	request := &InitializeRequest{
+	request := &InitializeSynchronizationRequest{
 		Root:          root,
 		Session:       session,
 		Version:       version,
@@ -83,7 +83,7 @@ func NewEndpointClient(
 	}
 
 	// Receive the response and check for remote errors.
-	response := &InitializeResponse{}
+	response := &InitializeSynchronizationResponse{}
 	if err := decoder.Decode(response); err != nil {
 		return nil, errors.Wrap(err, "unable to receive transition response")
 	} else if err = response.ensureValid(); err != nil {

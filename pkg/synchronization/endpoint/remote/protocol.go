@@ -4,16 +4,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ensureValid ensures that the InitializeRequest's invariants are respected.
-func (r *InitializeRequest) ensureValid() error {
+// ensureValid ensures that the InitializeSynchronizationRequest's invariants
+// are respected.
+func (r *InitializeSynchronizationRequest) ensureValid() error {
 	// A nil initialize request is not valid.
 	if r == nil {
 		return errors.New("nil initialize request")
-	}
-
-	// Ensure that the root path is non-empty.
-	if r.Root == "" {
-		return errors.New("empty root path")
 	}
 
 	// Ensure that the session identifier is non-empty.
@@ -31,14 +27,20 @@ func (r *InitializeRequest) ensureValid() error {
 		return errors.Wrap(err, "invalid configuration")
 	}
 
+	// Ensure that the root path is non-empty.
+	if r.Root == "" {
+		return errors.New("empty root path")
+	}
+
 	// There's no need to validate Alpha - either value is correct.
 
 	// Success.
 	return nil
 }
 
-// ensureValid ensures that the InitializeResponse's invariants are respected.
-func (r *InitializeResponse) ensureValid() error {
+// ensureValid ensures that the InitializeSynchronizationResponse's invariants
+// are respected.
+func (r *InitializeSynchronizationResponse) ensureValid() error {
 	// A nil initialize response is not valid.
 	if r == nil {
 		return errors.New("nil initialize response")

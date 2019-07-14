@@ -20,7 +20,8 @@ type protocolHandler struct{}
 // Connect connects to a Docker endpoint.
 func (p *protocolHandler) Connect(
 	logger *logging.Logger,
-	url *urlpkg.URL, prompter string,
+	url *urlpkg.URL,
+	prompter string,
 	session string,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,

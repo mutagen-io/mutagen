@@ -17,7 +17,8 @@ type protocolHandler struct{}
 // Connect implements forwarding.ProtocolHandler.Connect.
 func (p *protocolHandler) Connect(
 	logger *logging.Logger,
-	url *urlpkg.URL, prompter string,
+	url *urlpkg.URL,
+	prompter string,
 	session string,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
