@@ -72,6 +72,8 @@ var osEnvToGOOS = map[string]string{
 var processorArchitectureEnvToGOARCH = map[string]string{
 	"x86":   "386",
 	"AMD64": "amd64",
+	"ARM":   "arm",
+	"ARM64": "arm64",
 	// TODO: Add IA64 (that's the key) if Go ever supports Itanium, though
 	// they've pretty much stated that this will never happen:
 	// https://groups.google.com/forum/#!topic/golang-nuts/RgGF1Dudym4
