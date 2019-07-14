@@ -101,13 +101,29 @@ func newSession(
 
 	// Attempt to connect. Session creation is only allowed after if successful.
 	logger.Println("Connecting to source")
-	sourceEndpoint, err := connect(source, prompter, identifier, version, mergedSourceConfiguration, true)
+	sourceEndpoint, err := connect(
+		logger.Sublogger("source"),
+		source,
+		prompter,
+		identifier,
+		version,
+		mergedSourceConfiguration,
+		true,
+	)
 	if err != nil {
 		logger.Println("Source connection failure:", err)
 		return nil, errors.Wrap(err, "unable to connect to source")
 	}
 	logger.Println("Connecting to destination")
-	destinationEndpoint, err := connect(destination, prompter, identifier, version, mergedDestinationConfiguration, false)
+	destinationEndpoint, err := connect(
+		logger.Sublogger("destination"),
+		destination,
+		prompter,
+		identifier,
+		version,
+		mergedDestinationConfiguration,
+		false,
+	)
 	if err != nil {
 		sourceEndpoint.Shutdown()
 		logger.Println("Destination connection failure:", err)
@@ -290,6 +306,7 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingSource
 	c.stateLock.Unlock()
 	source, sourceConnectErr := connect(
+		c.logger.Sublogger("source"),
 		c.session.Source,
 		prompter,
 		c.session.Identifier,
@@ -306,6 +323,7 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingDestination
 	c.stateLock.Unlock()
 	destination, destinationConnectErr := connect(
+		c.logger.Sublogger("destination"),
 		c.session.Destination,
 		prompter,
 		c.session.Identifier,
@@ -466,6 +484,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 				c.stateLock.Unlock()
 				source, sourceConnectErr = reconnect(
 					context,
+					c.logger.Sublogger("source"),
 					c.session.Source,
 					c.session.Identifier,
 					c.session.Version,
@@ -497,6 +516,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 				c.stateLock.Unlock()
 				destination, destinationConnectErr = reconnect(
 					context,
+					c.logger.Sublogger("destination"),
 					c.session.Destination,
 					c.session.Identifier,
 					c.session.Version,

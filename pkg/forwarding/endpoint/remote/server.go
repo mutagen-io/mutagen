@@ -11,12 +11,13 @@ import (
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/havoc-io/mutagen/pkg/logging"
 )
 
 // ServeEndpoint creates and serves a remote endpoint server on the specified
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
-func ServeEndpoint(connection net.Conn) error {
+func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	// Wrap the connection in a multiplexer. This constructor won't close the
 	// underlying connnection on error, so we need to do that manually if an
 	// error occurs.

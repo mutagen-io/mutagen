@@ -7,6 +7,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent/transports/ssh"
 	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 	forwardingurlpkg "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
@@ -18,6 +19,7 @@ type protocolHandler struct{}
 
 // Connect connects to an SSH endpoint.
 func (p *protocolHandler) Connect(
+	logger *logging.Logger,
 	url *urlpkg.URL, prompter string,
 	session string,
 	version forwarding.Version,
@@ -44,7 +46,7 @@ func (p *protocolHandler) Connect(
 	}
 
 	// Dial an agent in forwarding mode.
-	connection, err := agent.Dial(transport, agent.ModeForwarder, prompter)
+	connection, err := agent.Dial(logger, transport, agent.ModeForwarder, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to dial agent endpoint")
 	}

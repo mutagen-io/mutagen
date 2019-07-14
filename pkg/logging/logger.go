@@ -76,19 +76,16 @@ func (w *writer) Write(buffer []byte) (int, error) {
 }
 
 // Logger is the main logger type. It has the novel property that it still
-// functions if nil, but it doesn't log anything.
+// functions if nil, but it doesn't log anything. It is designed to use the
+// standard logger provided by the log package, so it respects any flags set for
+// that logger. It is safe for concurrent usage.
 type Logger struct {
 	// prefix is any prefix specified for the logger.
 	prefix string
 }
 
-// NewLogger creates a new logger with the specified prefix. The prefix may be
-// empty.
-func NewLogger(prefix string) *Logger {
-	return &Logger{
-		prefix: prefix,
-	}
-}
+// RootLogger is the root logger from which all other loggers derive.
+var RootLogger = &Logger{}
 
 // Sublogger creates a new sublogger with the specified name.
 func (l *Logger) Sublogger(name string) *Logger {

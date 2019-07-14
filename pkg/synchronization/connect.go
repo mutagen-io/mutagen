@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/logging"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
@@ -15,6 +16,7 @@ type ProtocolHandler interface {
 	// provided URL and the specified prompter (if any). It then initializes the
 	// endpoint using the specified parameters.
 	Connect(
+		logger *logging.Logger,
 		url *urlpkg.URL, prompter string,
 		session string,
 		version Version,
@@ -29,6 +31,7 @@ var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 
 // connect attempts to establish a connection to an endpoint.
 func connect(
+	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,
@@ -45,7 +48,7 @@ func connect(
 	}
 
 	// Dispatch the dialing.
-	endpoint, err := handler.Connect(url, prompter, session, version, configuration, alpha)
+	endpoint, err := handler.Connect(logger, url, prompter, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to endpoint")
 	}
@@ -67,6 +70,7 @@ type asyncConnectResult struct {
 // prompter.
 func reconnect(
 	ctx context.Context,
+	logger *logging.Logger,
 	url *urlpkg.URL,
 	session string,
 	version Version,
@@ -79,7 +83,7 @@ func reconnect(
 	// Start a connection operation in the background.
 	go func() {
 		// Perform the connection.
-		endpoint, err := connect(url, "", session, version, configuration, alpha)
+		endpoint, err := connect(logger, url, "", session, version, configuration, alpha)
 
 		// If we can't transmit the resulting endpoint, shut it down.
 		select {

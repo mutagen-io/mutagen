@@ -5,6 +5,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/agent/transports/ssh"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
@@ -17,6 +18,7 @@ type protocolHandler struct{}
 
 // Dial connects to an SSH endpoint.
 func (h *protocolHandler) Connect(
+	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,
@@ -38,7 +40,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Dial an agent in endpoint mode.
-	connection, err := agent.Dial(transport, agent.ModeEndpoint, prompter)
+	connection, err := agent.Dial(logger, transport, agent.ModeEndpoint, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to dial agent endpoint")
 	}

@@ -2,9 +2,17 @@ package main
 
 import (
 	"os"
+	"log"
 
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Disable logging flags for the standard logger (used by the logging
+	// infrastructure) so that agent standard error output (which is logged by
+	// the daemon) isn't doubly-prefixed.
+	log.SetFlags(0)
+}
 
 func rootMain(command *cobra.Command, arguments []string) error {
 	// If no commands were given, then print help information and bail. We don't

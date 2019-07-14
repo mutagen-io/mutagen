@@ -42,18 +42,15 @@ func runMain(command *cobra.Command, arguments []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
-	// Create the root logger.
-	logger := logging.NewLogger("")
-
 	// Create a forwarding session manager and defer its shutdown.
-	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forwarding"))
+	forwardingManager, err := forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
 	if err != nil {
 		return errors.Wrap(err, "unable to create forwarding session manager")
 	}
 	defer forwardingManager.Shutdown()
 
 	// Create a synchronization session manager and defer its shutdown.
-	synchronizationManager, err := synchronization.NewManager(logger.Sublogger("sync"))
+	synchronizationManager, err := synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
 	if err != nil {
 		return errors.Wrap(err, "unable to create synchronization session manager")
 	}

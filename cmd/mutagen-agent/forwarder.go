@@ -11,6 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote"
+	"github.com/havoc-io/mutagen/pkg/logging"
 )
 
 func forwarderMain(command *cobra.Command, arguments []string) error {
@@ -32,7 +33,7 @@ func forwarderMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	forwardingTermination := make(chan error, 1)
 	go func() {
-		forwardingTermination <- remote.ServeEndpoint(connection)
+		forwardingTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
 	}()
 
 	// Wait for termination from a signal or the forwarder.

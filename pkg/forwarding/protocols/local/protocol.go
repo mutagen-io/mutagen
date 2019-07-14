@@ -5,6 +5,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 	forwardingurlpkg "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
@@ -15,6 +16,7 @@ type protocolHandler struct{}
 
 // Connect implements forwarding.ProtocolHandler.Connect.
 func (p *protocolHandler) Connect(
+	logger *logging.Logger,
 	url *urlpkg.URL, prompter string,
 	session string,
 	version forwarding.Version,

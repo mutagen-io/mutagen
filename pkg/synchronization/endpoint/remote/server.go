@@ -10,6 +10,7 @@ import (
 
 	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
@@ -31,7 +32,7 @@ type endpointServer struct {
 // ServeEndpoint creates and serves a remote endpoint server on the specified
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
-func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
+func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...EndpointServerOption) error {
 	// Defer closure of the connection.
 	defer connection.Close()
 
@@ -115,6 +116,7 @@ func ServeEndpoint(connection net.Conn, options ...EndpointServerOption) error {
 	// Create the underlying endpoint. If it fails to create, then send a
 	// failure response and abort. If it succeeds, then defer its closure.
 	endpoint, err := local.NewEndpoint(
+		logger,
 		request.Root,
 		request.Session,
 		request.Version,

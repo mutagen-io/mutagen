@@ -13,6 +13,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/housekeeping"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 )
 
@@ -22,9 +23,10 @@ const (
 	housekeepingInterval = 24 * time.Hour
 )
 
-func housekeepRegularly(context context.Context) {
+func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
+	logger.Println("Performing initial housekeeping")
 	housekeeping.Housekeep()
 
 	// Create a ticker to regulate housekeeping and defer its shutdown.
@@ -37,6 +39,7 @@ func housekeepRegularly(context context.Context) {
 		case <-context.Done():
 			return
 		case <-ticker.C:
+			logger.Println("Performing regular housekeeping")
 			housekeeping.Housekeep()
 		}
 	}
@@ -52,7 +55,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// Set up regular housekeeping and defer its shutdown.
 	housekeepingContext, housekeepingCancel := context.WithCancel(context.Background())
 	defer housekeepingCancel()
-	go housekeepRegularly(housekeepingContext)
+	go housekeepRegularly(housekeepingContext, logging.RootLogger.Sublogger("housekeeping"))
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
@@ -66,7 +69,7 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	endpointTermination := make(chan error, 1)
 	go func() {
-		endpointTermination <- remote.ServeEndpoint(connection)
+		endpointTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
 	}()
 
 	// Wait for termination from a signal or the endpoint.

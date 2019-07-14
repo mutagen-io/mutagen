@@ -13,6 +13,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
@@ -49,7 +50,7 @@ func testMainInternal(m *testing.M) (int, error) {
 
 	// Create a session manager and defer its shutdown. Note that we assign to
 	// the global instance here.
-	synchronizationManager, err = synchronization.NewManager()
+	synchronizationManager, err = synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
 	if err != nil {
 		return -1, errors.Wrap(err, "unable to create session manager")
 	}

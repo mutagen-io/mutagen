@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
@@ -24,6 +25,7 @@ type protocolHandler struct{}
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
 func (h *protocolHandler) Connect(
+	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,
@@ -41,7 +43,7 @@ func (h *protocolHandler) Connect(
 
 	// Server the endpoint in a background Goroutine. This will terminate once
 	// the client connection is closed.
-	go remote.ServeEndpoint(serverConnection)
+	go remote.ServeEndpoint(logger.Sublogger("remote"), serverConnection)
 
 	// Create a client for this endpoint.
 	endpoint, err := remote.NewEndpointClient(

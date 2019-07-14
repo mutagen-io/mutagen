@@ -110,13 +110,29 @@ func newSession(
 
 	// Attempt to connect. Session creation is only allowed after if successful.
 	logger.Println("Connecting to alpha")
-	alphaEndpoint, err := connect(alpha, prompter, identifier, version, mergedAlphaConfiguration, true)
+	alphaEndpoint, err := connect(
+		logger.Sublogger("alpha"),
+		alpha,
+		prompter,
+		identifier,
+		version,
+		mergedAlphaConfiguration,
+		true,
+	)
 	if err != nil {
 		logger.Println("Alpha connection failure:", err)
 		return nil, errors.Wrap(err, "unable to connect to alpha")
 	}
 	logger.Println("Connecting to beta")
-	betaEndpoint, err := connect(beta, prompter, identifier, version, mergedBetaConfiguration, false)
+	betaEndpoint, err := connect(
+		logger.Sublogger("beta"),
+		beta,
+		prompter,
+		identifier,
+		version,
+		mergedBetaConfiguration,
+		false,
+	)
 	if err != nil {
 		alphaEndpoint.Shutdown()
 		logger.Println("Beta connection failure:", err)
@@ -397,6 +413,7 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingAlpha
 	c.stateLock.Unlock()
 	alpha, alphaConnectErr := connect(
+		c.logger.Sublogger("alpha"),
 		c.session.Alpha,
 		prompter,
 		c.session.Identifier,
@@ -413,6 +430,7 @@ func (c *controller) resume(prompter string) error {
 	c.state.Status = Status_ConnectingBeta
 	c.stateLock.Unlock()
 	beta, betaConnectErr := connect(
+		c.logger.Sublogger("beta"),
 		c.session.Beta,
 		prompter,
 		c.session.Identifier,
@@ -576,6 +594,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.stateLock.Unlock()
 				alpha, _ = reconnect(
 					context,
+					c.logger.Sublogger("alpha"),
 					c.session.Alpha,
 					c.session.Identifier,
 					c.session.Version,
@@ -603,6 +622,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.stateLock.Unlock()
 				beta, _ = reconnect(
 					context,
+					c.logger.Sublogger("beta"),
 					c.session.Beta,
 					c.session.Identifier,
 					c.session.Version,

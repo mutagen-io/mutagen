@@ -3,6 +3,7 @@ package local
 import (
 	"github.com/pkg/errors"
 
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/local"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
@@ -14,6 +15,7 @@ type protocolHandler struct{}
 
 // Dial connects to a local endpoint.
 func (h *protocolHandler) Connect(
+	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,
@@ -29,7 +31,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create a local endpoint.
-	endpoint, err := local.NewEndpoint(url.Path, session, version, configuration, alpha)
+	endpoint, err := local.NewEndpoint(logger, url.Path, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create local endpoint")
 	}

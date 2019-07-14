@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/prompt"
 )
 
@@ -38,7 +39,7 @@ func Install() error {
 
 // install attempts to probe an endpoint and install the appropriate agent
 // binary over the specified transport.
-func install(transport Transport, prompter string) error {
+func install(logger *logging.Logger, transport Transport, prompter string) error {
 	// Detect the target platform.
 	goos, goarch, posix, err := probe(transport, prompter)
 	if err != nil {

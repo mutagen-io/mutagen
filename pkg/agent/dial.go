@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/process"
 	"github.com/havoc-io/mutagen/pkg/prompt"
@@ -31,7 +33,7 @@ const (
 // remote environment is cmd.exe-based and returns hints as to whether or not
 // installation should be attempted and whether or not the remote environment is
 // cmd.exe-based.
-func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn, bool, bool, error) {
+func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (net.Conn, bool, bool, error) {
 	// Compute the agent invocation command, relative to the user's home
 	// directory on the remote. Unless we have reason to assume that this is a
 	// cmd.exe environment, we construct a path using forward slashes. This will
@@ -85,23 +87,19 @@ func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn,
 		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
 	}
 
-	// Redirect the process' standard error output to a buffer so that we can
-	// give better feedback in errors. This might be a bit dangerous since this
-	// buffer will be attached for the lifetime of the process and we don't know
-	// exactly how much output will be received (and thus we could buffer a
-	// large amount of it in memory), but generally speaking our transport
-	// commands don't spit out too much error output, and the agent doesn't spit
-	// out any.
-	//
-	// TODO: If we do start seeing large allocations in these buffers, a simple
-	// size-limited buffer might suffice, at least to get some of the error
-	// message.
-	//
-	// TODO: Since this problem will likely be shared with custom protocols
-	// (which will invoke transport executables), it would be good to implement
-	// a shared solution.
+	// Create a buffer that we can use to capture the process' standard error
+	// output in order to give better feedback when there's an error.
 	errorBuffer := bytes.NewBuffer(nil)
-	agentProcess.Stderr = errorBuffer
+
+	// Wrap the error buffer in a valveWriter and defer the closure of that
+	// writer. This avoids continuing to pipe output into the buffer for the
+	// lifetime of the process.
+	errorWriter := newValveWriter(errorBuffer)
+	defer errorWriter.shut()
+
+	// Redirect the process' standard error output to a tee'd writer that writes
+	// to both our buffer (via the valveWriter) and the logger.
+	agentProcess.Stderr = io.MultiWriter(errorWriter, logger.Sublogger("remote").Writer())
 
 	// Start the process.
 	if err = agentProcess.Start(); err != nil {
@@ -162,7 +160,7 @@ func connect(transport Transport, mode, prompter string, cmdExe bool) (net.Conn,
 
 // Dial connects to an agent-based endpoint using the specified transport,
 // connection mode, and prompter.
-func Dial(transport Transport, mode, prompter string) (net.Conn, error) {
+func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (net.Conn, error) {
 	// Validate that the mode is sane.
 	if !(mode == ModeEndpoint || mode == ModeForwarder) {
 		panic("invalid agent dial mode")
@@ -171,11 +169,11 @@ func Dial(transport Transport, mode, prompter string) (net.Conn, error) {
 	// Attempt a connection. If this fails but we detect a Windows cmd.exe
 	// environment in the process, then re-attempt a connection under the
 	// cmd.exe assumption.
-	connection, tryInstall, cmdExe, err := connect(transport, mode, prompter, false)
+	connection, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false)
 	if err == nil {
 		return connection, nil
 	} else if cmdExe {
-		connection, tryInstall, cmdExe, err = connect(transport, mode, prompter, true)
+		connection, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true)
 		if err == nil {
 			return connection, nil
 		}
@@ -188,12 +186,12 @@ func Dial(transport Transport, mode, prompter string) (net.Conn, error) {
 	}
 
 	// Attempt to install.
-	if err := install(transport, prompter); err != nil {
+	if err := install(logger, transport, prompter); err != nil {
 		return nil, errors.Wrap(err, "unable to install agent")
 	}
 
 	// Re-attempt connectivity.
-	connection, _, _, err = connect(transport, mode, prompter, cmdExe)
+	connection, _, _, err = connect(logger, transport, mode, prompter, cmdExe)
 	if err != nil {
 		return nil, err
 	}

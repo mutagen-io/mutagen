@@ -14,6 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
+	"github.com/havoc-io/mutagen/pkg/logging"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
@@ -45,6 +46,8 @@ const (
 // endpoint provides a local, in-memory implementation of
 // synchronization.Endpoint for local files.
 type endpoint struct {
+	// logger is the endpoint's underlying logger.
+	logger *logging.Logger
 	// root is the synchronization root for the endpoint. This field is static
 	// and thus safe for concurrent reads.
 	root string
@@ -171,6 +174,7 @@ type endpoint struct {
 // NewEndpoint creates a new local endpoint instance using the specified session
 // metadata and options.
 func NewEndpoint(
+	logger *logging.Logger,
 	root string,
 	sessionIdentifier string,
 	version synchronization.Version,
@@ -339,6 +343,7 @@ func NewEndpoint(
 
 	// Create the endpoint.
 	endpoint := &endpoint{
+		logger:                             logger,
 		root:                               root,
 		readOnly:                           readOnly,
 		maximumEntryCount:                  maximumEntryCount,
