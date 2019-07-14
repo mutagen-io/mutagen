@@ -12,7 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/mutagen"
-	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
+	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
 
 const (
@@ -55,8 +55,8 @@ func CreateClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) 
 	// should be more than long enough to dial the daemon and perform a version
 	// check.
 	if enforceVersionMatch {
-		daemonService := daemonsvcpkg.NewDaemonClient(connection)
-		version, err := daemonService.Version(dialContext, &daemonsvcpkg.VersionRequest{})
+		daemonService := daemonsvc.NewDaemonClient(connection)
+		version, err := daemonService.Version(dialContext, &daemonsvc.VersionRequest{})
 		if err != nil {
 			connection.Close()
 			return nil, errors.Wrap(err, "unable to query daemon version")

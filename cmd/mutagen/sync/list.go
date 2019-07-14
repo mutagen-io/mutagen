@@ -13,10 +13,10 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
+	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 func formatPath(path string) string {
@@ -33,7 +33,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems []*core.Problem) {
+func printEndpointStatus(name string, url *url.URL, connected bool, problems []*core.Problem) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -55,7 +55,7 @@ func printEndpointStatus(name string, url *urlpkg.URL, connected bool, problems 
 	}
 }
 
-func printSessionStatus(state *synchronizationpkg.State) {
+func printSessionStatus(state *synchronization.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
@@ -138,10 +138,10 @@ func listMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
 	// Invoke list.
-	request := &synchronizationsvcpkg.ListRequest{
+	request := &synchronizationsvc.ListRequest{
 		Selection: selection,
 	}
 	response, err := sessionService.List(context.Background(), request)

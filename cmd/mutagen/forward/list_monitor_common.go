@@ -3,9 +3,9 @@ package forward
 import (
 	"fmt"
 
-	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 	emptyLabelValueDescription = "<empty>"
 )
 
-func printEndpoint(name string, url *urlpkg.URL, configuration *forwardingpkg.Configuration, version forwardingpkg.Version) {
+func printEndpoint(name string, url *url.URL, configuration *forwarding.Configuration, version forwarding.Version) {
 	// Print the endpoint header.
 	fmt.Println(name, "configuration:")
 
@@ -53,7 +53,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *forwardingpkg.Co
 	fmt.Println("\tSocket permission mode:", socketPermissionModeDescription)
 }
 
-func printSession(state *forwardingpkg.State, long bool) {
+func printSession(state *forwarding.State, long bool) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
 
@@ -78,14 +78,14 @@ func printSession(state *forwardingpkg.State, long bool) {
 		fmt.Println("Configuration:")
 
 		// Compute and print source-specific configuration.
-		sourceConfigurationMerged := forwardingpkg.MergeConfigurations(
+		sourceConfigurationMerged := forwarding.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationSource,
 		)
 		printEndpoint("Source", state.Session.Source, sourceConfigurationMerged, state.Session.Version)
 
 		// Compute and print beta-specific configuration.
-		destinationConfigurationMerged := forwardingpkg.MergeConfigurations(
+		destinationConfigurationMerged := forwarding.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationDestination,
 		)

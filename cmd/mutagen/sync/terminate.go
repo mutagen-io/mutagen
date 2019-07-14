@@ -11,7 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
 )
 
 func terminateMain(command *cobra.Command, arguments []string) error {
@@ -33,7 +33,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
 	// Invoke the session terminate method. The stream will close when the
 	// associated context is cancelled.
@@ -45,7 +45,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &synchronizationsvcpkg.TerminateRequest{
+	request := &synchronizationsvc.TerminateRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
@@ -67,7 +67,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvcpkg.TerminateRequest{}); err != nil {
+			if err := stream.Send(&synchronizationsvc.TerminateRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}

@@ -17,17 +17,17 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvcpkg "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
+	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 // loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
 // it to a Protocol Buffers session configuration, and validates it.
-func loadAndValidateYAMLConfiguration(path string) (*synchronizationpkg.Configuration, error) {
+func loadAndValidateYAMLConfiguration(path string) (*synchronization.Configuration, error) {
 	// Load the YAML configuration.
 	yamlConfiguration, err := configuration.Load(path)
 	if err != nil {
@@ -97,7 +97,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create a default session configuration which will form the basis of our
 	// cumulative configuration.
-	configuration := &synchronizationpkg.Configuration{}
+	configuration := &synchronization.Configuration{}
 
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
@@ -105,7 +105,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateYAMLConfiguration(""); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
-			configuration = synchronizationpkg.MergeConfigurations(configuration, c)
+			configuration = synchronization.MergeConfigurations(configuration, c)
 		}
 	}
 
@@ -115,7 +115,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateYAMLConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
-			configuration = synchronizationpkg.MergeConfigurations(configuration, c)
+			configuration = synchronization.MergeConfigurations(configuration, c)
 		}
 	}
 
@@ -159,7 +159,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert scan mode specifications.
-	var scanMode, scanModeAlpha, scanModeBeta synchronizationpkg.ScanMode
+	var scanMode, scanModeAlpha, scanModeBeta synchronization.ScanMode
 	if createConfiguration.scanMode != "" {
 		if err := scanMode.UnmarshalText([]byte(createConfiguration.scanMode)); err != nil {
 			return errors.Wrap(err, "unable to parse scan mode")
@@ -177,7 +177,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert staging mode specifications.
-	var stageMode, stageModeAlpha, stageModeBeta synchronizationpkg.StageMode
+	var stageMode, stageModeAlpha, stageModeBeta synchronization.StageMode
 	if createConfiguration.stageMode != "" {
 		if err := stageMode.UnmarshalText([]byte(createConfiguration.stageMode)); err != nil {
 			return errors.Wrap(err, "unable to parse staging mode")
@@ -203,7 +203,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert watch mode specifications.
-	var watchMode, watchModeAlpha, watchModeBeta synchronizationpkg.WatchMode
+	var watchMode, watchModeAlpha, watchModeBeta synchronization.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
 			return errors.Wrap(err, "unable to parse watch mode")
@@ -336,7 +336,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create the command line configuration and merge it into our cumulative
 	// configuration.
-	configuration = synchronizationpkg.MergeConfigurations(configuration, &synchronizationpkg.Configuration{
+	configuration = synchronization.MergeConfigurations(configuration, &synchronization.Configuration{
 		SynchronizationMode:    synchronizationMode,
 		MaximumEntryCount:      createConfiguration.maximumEntryCount,
 		MaximumStagingFileSize: maximumStagingFileSize,
@@ -362,7 +362,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := synchronizationsvcpkg.NewSynchronizationClient(daemonConnection)
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
 	// Invoke the session create method. The stream will close when the
 	// associated context is cancelled.
@@ -374,12 +374,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &synchronizationsvcpkg.CreateRequest{
-		Specification: &synchronizationsvcpkg.CreationSpecification{
+	request := &synchronizationsvc.CreateRequest{
+		Specification: &synchronizationsvc.CreationSpecification{
 			Alpha:         alpha,
 			Beta:          beta,
 			Configuration: configuration,
-			ConfigurationAlpha: &synchronizationpkg.Configuration{
+			ConfigurationAlpha: &synchronization.Configuration{
 				ProbeMode:            probeModeAlpha,
 				ScanMode:             scanModeAlpha,
 				StageMode:            stageModeAlpha,
@@ -390,7 +390,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 				DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 				DefaultGroup:         createConfiguration.defaultGroupAlpha,
 			},
-			ConfigurationBeta: &synchronizationpkg.Configuration{
+			ConfigurationBeta: &synchronization.Configuration{
 				ProbeMode:            probeModeBeta,
 				ScanMode:             scanModeBeta,
 				StageMode:            stageModeBeta,
@@ -423,14 +423,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvcpkg.CreateRequest{}); err != nil {
+			if err := stream.Send(&synchronizationsvc.CreateRequest{}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&synchronizationsvcpkg.CreateRequest{Response: response}); err != nil {
+			} else if err = stream.Send(&synchronizationsvc.CreateRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}

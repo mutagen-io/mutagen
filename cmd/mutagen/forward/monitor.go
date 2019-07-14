@@ -12,13 +12,13 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	selectionpkg "github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 )
 
-func computeMonitorStatusLine(state *forwardingpkg.State) string {
+func computeMonitorStatusLine(state *forwarding.State) string {
 	// Build the status line.
 	status := "Status: "
 	if state.Session.Paused {
@@ -33,7 +33,7 @@ func computeMonitorStatusLine(state *forwardingpkg.State) string {
 		status += state.Status.Description()
 
 		// If we're forwarding then add connection statistics.
-		if state.Status == forwardingpkg.Status_ForwardingConnections {
+		if state.Status == forwarding.Status_ForwardingConnections {
 			status += fmt.Sprintf(
 				": %d active, %d total",
 				state.OpenConnections,
@@ -73,7 +73,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Create a status line printer and defer a break.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
@@ -86,7 +86,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// Create the list request. If there's no session specified, then we
 		// need to grab all sessions and identify the most recently created one
 		// for future queries.
-		request := &forwardingsvcpkg.ListRequest{
+		request := &forwardingsvc.ListRequest{
 			Selection:          selection,
 			PreviousStateIndex: previousStateIndex,
 		}
@@ -104,7 +104,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// the loop, then set up monitoring to use the one session identified by
 		// the label selector or the most recently created session (which will
 		// be the last in the returned results).
-		var state *forwardingpkg.State
+		var state *forwarding.State
 		previousStateIndex = response.StateIndex
 		if session == "" {
 			if len(response.SessionStates) == 0 {

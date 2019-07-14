@@ -11,7 +11,7 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 )
 
 func pauseMain(command *cobra.Command, arguments []string) error {
@@ -33,7 +33,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Invoke the session pause method. The stream will close when the
 	// associated context is cancelled.
@@ -45,7 +45,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &forwardingsvcpkg.PauseRequest{
+	request := &forwardingsvc.PauseRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
@@ -67,7 +67,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvcpkg.PauseRequest{}); err != nil {
+			if err := stream.Send(&forwardingsvc.PauseRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}

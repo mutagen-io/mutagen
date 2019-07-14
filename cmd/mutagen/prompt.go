@@ -9,7 +9,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
-	promptsvcpkg "github.com/havoc-io/mutagen/pkg/service/prompt"
+	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 )
 
 func promptMain(arguments []string) error {
@@ -33,10 +33,10 @@ func promptMain(arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a prompt service client.
-	promptService := promptsvcpkg.NewPromptingClient(daemonConnection)
+	promptService := promptsvc.NewPromptingClient(daemonConnection)
 
 	// Invoke prompt.
-	request := &promptsvcpkg.PromptRequest{
+	request := &promptsvc.PromptRequest{
 		Prompter: prompter,
 		Prompt:   prompt,
 	}

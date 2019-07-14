@@ -11,11 +11,11 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 func formatConnectionStatus(connected bool) string {
@@ -25,7 +25,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
-func printEndpointStatus(name string, url *urlpkg.URL, connected bool) {
+func printEndpointStatus(name string, url *url.URL, connected bool) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -39,7 +39,7 @@ func printEndpointStatus(name string, url *urlpkg.URL, connected bool) {
 	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
 }
 
-func printSessionStatus(state *forwardingpkg.State) {
+func printSessionStatus(state *forwarding.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
@@ -72,10 +72,10 @@ func listMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Invoke list.
-	request := &forwardingsvcpkg.ListRequest{
+	request := &forwardingsvc.ListRequest{
 		Selection: selection,
 	}
 	response, err := sessionService.List(context.Background(), request)

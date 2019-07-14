@@ -7,8 +7,8 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationpkg "github.com/havoc-io/mutagen/pkg/synchronization"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/havoc-io/mutagen/pkg/url"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	emptyLabelValueDescription = "<empty>"
 )
 
-func printEndpoint(name string, url *urlpkg.URL, configuration *synchronizationpkg.Configuration, version synchronizationpkg.Version) {
+func printEndpoint(name string, url *url.URL, configuration *synchronization.Configuration, version synchronization.Version) {
 	// Print the endpoint header.
 	fmt.Println(name, "configuration:")
 
@@ -38,7 +38,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronizationp
 
 	// Compute and print the watch polling interval, so long as we're not in
 	// no-watch mode.
-	if configuration.WatchMode != synchronizationpkg.WatchMode_WatchModeNoWatch {
+	if configuration.WatchMode != synchronization.WatchMode_WatchModeNoWatch {
 		var watchPollingIntervalDescription string
 		if configuration.WatchPollingInterval == 0 {
 			watchPollingIntervalDescription = fmt.Sprintf("Default (%d seconds)", version.DefaultWatchPollingInterval())
@@ -102,7 +102,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronizationp
 	fmt.Println("\tDefault file/directory group:", defaultGroupDescription)
 }
 
-func printSession(state *synchronizationpkg.State, long bool) {
+func printSession(state *synchronization.State, long bool) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
 
@@ -202,14 +202,14 @@ func printSession(state *synchronizationpkg.State, long bool) {
 		}
 
 		// Compute and print alpha-specific configuration.
-		alphaConfigurationMerged := synchronizationpkg.MergeConfigurations(
+		alphaConfigurationMerged := synchronization.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationAlpha,
 		)
 		printEndpoint("Alpha", state.Session.Alpha, alphaConfigurationMerged, state.Session.Version)
 
 		// Compute and print beta-specific configuration.
-		betaConfigurationMerged := synchronizationpkg.MergeConfigurations(
+		betaConfigurationMerged := synchronization.MergeConfigurations(
 			state.Session.Configuration,
 			state.Session.ConfigurationBeta,
 		)

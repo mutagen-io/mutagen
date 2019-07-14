@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/havoc-io/mutagen/pkg/daemon"
-	daemonsvcpkg "github.com/havoc-io/mutagen/pkg/service/daemon"
+	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
 )
 
 func stopMain(command *cobra.Command, arguments []string) error {
@@ -36,11 +36,11 @@ func stopMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a daemon service client.
-	daemonService := daemonsvcpkg.NewDaemonClient(daemonConnection)
+	daemonService := daemonsvc.NewDaemonClient(daemonConnection)
 
 	// Invoke shutdown. We don't check the response or error, because the daemon
 	// may terminate before it has a chance to send the response.
-	daemonService.Terminate(context.Background(), &daemonsvcpkg.TerminateRequest{})
+	daemonService.Terminate(context.Background(), &daemonsvc.TerminateRequest{})
 
 	// Success.
 	return nil

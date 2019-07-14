@@ -13,18 +13,18 @@ import (
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
-	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 	"github.com/havoc-io/mutagen/pkg/url"
 	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
 
 // loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
 // it to a Protocol Buffers session configuration, and validates it.
-func loadAndValidateYAMLConfiguration(path string) (*forwardingpkg.Configuration, error) {
+func loadAndValidateYAMLConfiguration(path string) (*forwarding.Configuration, error) {
 	// Load the YAML configuration.
 	yamlConfiguration, err := configuration.Load(path)
 	if err != nil {
@@ -103,7 +103,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create a default session configuration which will form the basis of our
 	// cumulative configuration.
-	configuration := &forwardingpkg.Configuration{}
+	configuration := &forwarding.Configuration{}
 
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
@@ -111,7 +111,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateYAMLConfiguration(""); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
-			configuration = forwardingpkg.MergeConfigurations(configuration, c)
+			configuration = forwarding.MergeConfigurations(configuration, c)
 		}
 	}
 
@@ -121,12 +121,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 		if c, err := loadAndValidateYAMLConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
-			configuration = forwardingpkg.MergeConfigurations(configuration, c)
+			configuration = forwarding.MergeConfigurations(configuration, c)
 		}
 	}
 
 	// Validate and convert socket overwrite mode specifications.
-	var socketOverwriteMode, socketOverwriteModeSource, socketOverwriteModeDestination forwardingpkg.SocketOverwriteMode
+	var socketOverwriteMode, socketOverwriteModeSource, socketOverwriteModeDestination forwarding.SocketOverwriteMode
 	if createConfiguration.socketOverwriteMode != "" {
 		if err := socketOverwriteMode.UnmarshalText([]byte(createConfiguration.socketOverwriteMode)); err != nil {
 			return errors.Wrap(err, "unable to socket overwrite mode")
@@ -209,7 +209,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Create the command line configuration and merge it into our cumulative
 	// configuration.
-	configuration = forwardingpkg.MergeConfigurations(configuration, &forwardingpkg.Configuration{
+	configuration = forwarding.MergeConfigurations(configuration, &forwarding.Configuration{
 		SocketOverwriteMode:  socketOverwriteMode,
 		SocketOwner:          createConfiguration.socketOwner,
 		SocketGroup:          createConfiguration.socketGroup,
@@ -224,7 +224,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Invoke the session create method. The stream will close when the
 	// associated context is cancelled.
@@ -236,18 +236,18 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &forwardingsvcpkg.CreateRequest{
-		Specification: &forwardingsvcpkg.CreationSpecification{
+	request := &forwardingsvc.CreateRequest{
+		Specification: &forwardingsvc.CreationSpecification{
 			Source:        source,
 			Destination:   destination,
 			Configuration: configuration,
-			ConfigurationSource: &forwardingpkg.Configuration{
+			ConfigurationSource: &forwarding.Configuration{
 				SocketOverwriteMode:  socketOverwriteModeSource,
 				SocketOwner:          createConfiguration.socketOwnerSource,
 				SocketGroup:          createConfiguration.socketGroupSource,
 				SocketPermissionMode: uint32(socketPermissionModeSource),
 			},
-			ConfigurationDestination: &forwardingpkg.Configuration{
+			ConfigurationDestination: &forwarding.Configuration{
 				SocketOverwriteMode:  socketOverwriteModeDestination,
 				SocketOwner:          createConfiguration.socketOwnerDestination,
 				SocketGroup:          createConfiguration.socketGroupDestination,
@@ -275,14 +275,14 @@ func createMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvcpkg.CreateRequest{}); err != nil {
+			if err := stream.Send(&forwardingsvc.CreateRequest{}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&forwardingsvcpkg.CreateRequest{Response: response}); err != nil {
+			} else if err = stream.Send(&forwardingsvc.CreateRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}

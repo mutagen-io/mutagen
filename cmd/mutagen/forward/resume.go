@@ -10,9 +10,9 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {
@@ -34,7 +34,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvcpkg.NewForwardingClient(daemonConnection)
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Invoke the session resume method. The stream will close when the
 	// associated context is cancelled.
@@ -46,7 +46,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Send the initial request.
-	request := &forwardingsvcpkg.ResumeRequest{
+	request := &forwardingsvc.ResumeRequest{
 		Selection: selection,
 	}
 	if err := stream.Send(request); err != nil {
@@ -69,15 +69,15 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			return nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvcpkg.ResumeRequest{}); err != nil {
+			if err := stream.Send(&forwardingsvc.ResumeRequest{}); err != nil {
 				statusLinePrinter.BreakIfNonEmpty()
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := promptpkg.PromptCommandLine(response.Prompt); err != nil {
+			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&forwardingsvcpkg.ResumeRequest{Response: response}); err != nil {
+			} else if err = stream.Send(&forwardingsvc.ResumeRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
