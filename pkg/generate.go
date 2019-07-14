@@ -1,6 +1,6 @@
 //go:generate go build github.com/golang/protobuf/protoc-gen-go
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. filesystem/behavior/probe_mode.proto
-//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. forwarding/configuration.proto forwarding/session.proto forwarding/state.proto forwarding/version.proto
+//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. forwarding/configuration.proto forwarding/session.proto forwarding/socket_overwrite_mode.proto forwarding/state.proto forwarding/version.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. forwarding/endpoint/remote/protocol.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. selection/selection.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative,plugins=grpc:. service/daemon/daemon.proto

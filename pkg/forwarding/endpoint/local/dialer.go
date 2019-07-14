@@ -24,7 +24,12 @@ type dialerEndpoint struct {
 
 // NewDialerEndpoint creates a new forwarding.Endpoint that behaves as a
 // dialer.
-func NewDialerEndpoint(protocol, address string) (forwarding.Endpoint, error) {
+func NewDialerEndpoint(
+	version forwarding.Version,
+	configuration *forwarding.Configuration,
+	protocol string,
+	address string,
+) (forwarding.Endpoint, error) {
 	// Create a cancellable context that we can use to regulate connections.
 	dialingContext, dialingCancel := context.WithCancel(context.Background())
 

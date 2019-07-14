@@ -4,7 +4,33 @@ package forwarding;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
 
+import "forwarding/socket_overwrite_mode.proto";
+
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
 // options, and for storing a merged configuration inside sessions.
-message Configuration{}
+message Configuration{
+    // Fields 1-20 are reserved for core forwarding configuration parameters.
+
+    // Fields 21-40 are reserved for endpoint-specific TCP configuration
+    // parameters.
+
+    // SocketOverwriteMode specifies whether or not existing Unix domain sockets
+    // should be overwritten when creating new listener sockets.
+    SocketOverwriteMode socketOverwriteMode = 41;
+
+    // SocketOwner specifies the owner identifier to use for Unix domain
+    // listener sockets.
+    string socketOwner = 42;
+
+    // SocketGroup specifies the group identifier to use for Unix domain
+    // listener sockets.
+    string socketGroup = 43;
+
+    // SocketPermissionMode specifies the permission mode to use for Unix domain
+    // listener sockets.
+    uint32 socketPermissionMode = 44;
+
+    // Fields 45-60 are reserved for endpoint-specific Unix domain socket
+    // configuration parameters.
+}

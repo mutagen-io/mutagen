@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package forwarding;
+
+option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
+
+// SocketOverwriteMode specifies the behavior for overwriting (removing)
+// existing Unix domain sockets.
+enum SocketOverwriteMode {
+    // SocketOverwriteMode_SocketOverwriteModeDefault represents an unspecified
+    // socket overwrite mode. It should be converted to one of the following
+    // values based on the desired default behavior.
+    SocketOverwriteModeDefault = 0;
+    // SocketOverwriteMode_SocketOverwriteModeLeave specifies that existing
+    // sockets should not be overwritten when creating a Unix domain socket
+    // listener.
+    SocketOverwriteModeLeave = 1;
+    // SocketOverwriteMode_SocketOverwriteModeOverwrite specifies that existing
+    // sockets should be overwritten when creating a Unix domain socket
+    // listener.
+    SocketOverwriteModeOverwrite = 2;
+}

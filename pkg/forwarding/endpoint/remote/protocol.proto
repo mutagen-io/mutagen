@@ -4,16 +4,23 @@ package remote;
 
 option go_package = "github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote";
 
+import "forwarding/configuration.proto";
+import "forwarding/version.proto";
+
 // InitializeForwardingRequest is the initialization request sent to remote
 // forwarding endpoints.
 message InitializeForwardingRequest {
+    // Version is the session version.
+    forwarding.Version version = 1;
+    // Configuration is the session configuration.
+    forwarding.Configuration configuration = 2;
+    // Protocol is the protocol specification for the listener/dialer.
+    string protocol = 3;
+    // Address it the bind address for a listener or dial address for a dialer.
+    string address = 4;
     // Listener indicates whether this endpoint should function as a listener or
     // dialer for the associated address.
-    bool listener = 1;
-    // Protocol is the protocol specification for the listener/dialer.
-    string protocol = 2;
-    // Address it the bind address for a listener or dial address for a dialer.
-    string address = 3;
+    bool listener = 5;
 }
 
 // InitializeForwardingResponse is the initialization response sent from remote

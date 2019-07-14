@@ -26,7 +26,14 @@ type client struct {
 // will be closed. Once the endpoint has been established, the underlying
 // connection is owned by that endpoint and will be closed when the endpoint is
 // shut down.
-func NewEndpoint(connection net.Conn, protocol, address string, source bool) (forwarding.Endpoint, error) {
+func NewEndpoint(
+	connection net.Conn,
+	version forwarding.Version,
+	configuration *forwarding.Configuration,
+	protocol string,
+	address string,
+	source bool,
+) (forwarding.Endpoint, error) {
 	// Wrap the connection in a multiplexer. This constructor won't close the
 	// underlying connnection on error, so we need to do that manually if an
 	// error occurs.
@@ -57,9 +64,11 @@ func NewEndpoint(connection net.Conn, protocol, address string, source bool) (fo
 
 	// Create and send the initialization request.
 	request := &InitializeForwardingRequest{
-		Listener: source,
-		Protocol: protocol,
-		Address:  address,
+		Version:       version,
+		Configuration: configuration,
+		Protocol:      protocol,
+		Address:       address,
+		Listener:      source,
 	}
 	if err := encoding.NewProtobufEncoder(stream).Encode(request); err != nil {
 		return nil, errors.Wrap(err, "unable to send initialization request")

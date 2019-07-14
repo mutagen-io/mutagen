@@ -29,8 +29,11 @@ func printEndpointStatus(name string, url *urlpkg.URL, connected bool) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
-	// Print URL.
-	fmt.Println("\tURL:", url.Format("\n\t\t"))
+	// Print URL if we're not in long-listing mode (otherwise it will be
+	// printed elsewhere).
+	if !listConfiguration.long {
+		fmt.Println("\tURL:", url.Format("\n\t\t"))
+	}
 
 	// Print connection status.
 	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
@@ -85,7 +88,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 	// Loop through and print sessions.
 	for _, state := range response.SessionStates {
 		fmt.Println(delimiterLine)
-		printSession(state)
+		printSession(state, listConfiguration.long)
 		printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
 		printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
 		printSessionStatus(state)
@@ -111,6 +114,8 @@ var listConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
+	// long indicates whether or not to use long-format listing.
+	long bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
@@ -128,5 +133,6 @@ func init() {
 	flags.BoolVarP(&listConfiguration.help, "help", "h", false, "Show help information")
 
 	// Wire up list flags.
+	flags.BoolVarP(&listConfiguration.long, "long", "l", false, "Show detailed session information")
 	flags.StringVar(&listConfiguration.labelSelector, "label-selector", "", "List sessions matching the specified label selector")
 }

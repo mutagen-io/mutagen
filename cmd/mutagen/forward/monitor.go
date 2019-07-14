@@ -134,11 +134,14 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 		// Print session information the first time through the loop.
 		if !sessionInformationPrinted {
 			// Print session information.
-			printSession(state)
+			printSession(state, monitorConfiguration.long)
 
-			// Print endpoint URLs.
-			fmt.Println("Source:", state.Session.Source.Format("\n\t"))
-			fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
+			// Print endpoint URLs, but only if not in long mode (where they're
+			// already printed in the session metadata).
+			if !monitorConfiguration.long {
+				fmt.Println("Source:", state.Session.Source.Format("\n\t"))
+				fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
+			}
 
 			// Mark session information as printed.
 			sessionInformationPrinted = true
@@ -163,6 +166,8 @@ var monitorConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
+	// long indicates whether or not to use long-format monitoring.
+	long bool
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
@@ -180,5 +185,6 @@ func init() {
 	flags.BoolVarP(&monitorConfiguration.help, "help", "h", false, "Show help information")
 
 	// Wire up monitor flags.
+	flags.BoolVarP(&monitorConfiguration.long, "long", "l", false, "Show detailed session information")
 	flags.StringVar(&monitorConfiguration.labelSelector, "label-selector", "", "Monitor the most recently created session matching the specified label selector")
 }

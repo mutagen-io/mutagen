@@ -21,9 +21,39 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *forwardingpkg.Co
 
 	// Print the URL.
 	fmt.Println("\tURL:", url.Format("\n\t\t"))
+
+	// Compute and print the socket overwrite mode.
+	socketOverwriteModeDescription := configuration.SocketOverwriteMode.Description()
+	if configuration.SocketOverwriteMode.IsDefault() {
+		socketOverwriteModeDescription += fmt.Sprintf(" (%s)", version.DefaultSocketOverwriteMode().Description())
+	}
+	fmt.Println("\tSocket overwrite mode:", socketOverwriteModeDescription)
+
+	// Compute and print the socket owner.
+	socketOwnerDescription := "Default"
+	if configuration.SocketOwner != "" {
+		socketOwnerDescription = configuration.SocketOwner
+	}
+	fmt.Println("\tSocket owner:", socketOwnerDescription)
+
+	// Compute and print the socket group.
+	socketGroupDescription := "Default"
+	if configuration.SocketGroup != "" {
+		socketGroupDescription = configuration.SocketGroup
+	}
+	fmt.Println("\tSocket group:", socketGroupDescription)
+
+	// Compute and print the socket permission mode.
+	var socketPermissionModeDescription string
+	if configuration.SocketPermissionMode == 0 {
+		socketPermissionModeDescription = fmt.Sprintf("Default (%#o)", version.DefaultSocketPermissionMode())
+	} else {
+		socketPermissionModeDescription = fmt.Sprintf("%#o", configuration.SocketPermissionMode)
+	}
+	fmt.Println("\tSocket permission mode:", socketPermissionModeDescription)
 }
 
-func printSession(state *forwardingpkg.State) {
+func printSession(state *forwardingpkg.State, long bool) {
 	// Print the session identifier.
 	fmt.Println("Session:", state.Session.Identifier)
 
@@ -40,5 +70,25 @@ func printSession(state *forwardingpkg.State) {
 		}
 	} else {
 		fmt.Println("Labels: None")
+	}
+
+	// Print extended information, if desired.
+	if long {
+		// Print the configuration header.
+		fmt.Println("Configuration:")
+
+		// Compute and print source-specific configuration.
+		sourceConfigurationMerged := forwardingpkg.MergeConfigurations(
+			state.Session.Configuration,
+			state.Session.ConfigurationSource,
+		)
+		printEndpoint("Source", state.Session.Source, sourceConfigurationMerged, state.Session.Version)
+
+		// Compute and print beta-specific configuration.
+		destinationConfigurationMerged := forwardingpkg.MergeConfigurations(
+			state.Session.Configuration,
+			state.Session.ConfigurationDestination,
+		)
+		printEndpoint("Destination", state.Session.Destination, destinationConfigurationMerged, state.Session.Version)
 	}
 }

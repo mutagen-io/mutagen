@@ -54,9 +54,19 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	var endpoint forwarding.Endpoint
 	var initializationError error
 	if request.Listener {
-		endpoint, initializationError = local.NewListenerEndpoint(request.Protocol, request.Address)
+		endpoint, initializationError = local.NewListenerEndpoint(
+			request.Version,
+			request.Configuration,
+			request.Protocol,
+			request.Address,
+		)
 	} else {
-		endpoint, initializationError = local.NewDialerEndpoint(request.Protocol, request.Address)
+		endpoint, initializationError = local.NewDialerEndpoint(
+			request.Version,
+			request.Configuration,
+			request.Protocol,
+			request.Address,
+		)
 	}
 
 	// Send the initialization response, indicating any initialization error

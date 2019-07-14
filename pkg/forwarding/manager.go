@@ -208,7 +208,7 @@ func (m *Manager) Shutdown() {
 // Create tells the manager to create a new session.
 func (m *Manager) Create(
 	source, destination *url.URL,
-	configuration, configurationAlpha, configurationBeta *Configuration,
+	configuration, configurationSource, configurationDestination *Configuration,
 	labels map[string]string,
 	prompter string,
 ) (string, error) {
@@ -225,7 +225,7 @@ func (m *Manager) Create(
 		m.tracker,
 		identifier,
 		source, destination,
-		configuration, configurationAlpha, configurationBeta,
+		configuration, configurationSource, configurationDestination,
 		labels,
 		prompter,
 	)

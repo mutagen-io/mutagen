@@ -304,7 +304,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate default file owner owner specifications.
+	// Validate default file owner specifications.
 	if createConfiguration.defaultOwner != "" {
 		if kind, _ := filesystem.ParseOwnershipIdentifier(
 			createConfiguration.defaultOwner,
@@ -327,26 +327,26 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate default file owner group specifications.
+	// Validate default file group specifications.
 	if createConfiguration.defaultGroup != "" {
 		if kind, _ := filesystem.ParseOwnershipIdentifier(
 			createConfiguration.defaultGroup,
 		); kind == filesystem.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid group ownership specification")
+			return errors.New("invalid group specification")
 		}
 	}
 	if createConfiguration.defaultGroupAlpha != "" {
 		if kind, _ := filesystem.ParseOwnershipIdentifier(
 			createConfiguration.defaultGroupAlpha,
 		); kind == filesystem.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid group ownership specification for alpha")
+			return errors.New("invalid group specification for alpha")
 		}
 	}
 	if createConfiguration.defaultGroupBeta != "" {
 		if kind, _ := filesystem.ParseOwnershipIdentifier(
 			createConfiguration.defaultGroupBeta,
 		); kind == filesystem.OwnershipIdentifierKindInvalid {
-			return errors.New("invalid group ownership specification for beta")
+			return errors.New("invalid group specification for beta")
 		}
 	}
 

@@ -11,7 +11,15 @@ func (r *InitializeForwardingRequest) ensureValid() error {
 		return errors.New("nil request")
 	}
 
-	// There's no verification to be performed on the listener field.
+	// Ensure that the session version is supported.
+	if !r.Version.Supported() {
+		return errors.New("unsupported session version")
+	}
+
+	// Ensure that the configuration is valid.
+	if err := r.Configuration.EnsureValid(false); err != nil {
+		return errors.Wrap(err, "invalid configuration")
+	}
 
 	// Enforce that protocol is non-empty.
 	if r.Protocol == "" {
@@ -22,6 +30,8 @@ func (r *InitializeForwardingRequest) ensureValid() error {
 	if r.Address == "" {
 		return errors.New("empty address")
 	}
+
+	// There's no verification to be performed on the listener field.
 
 	// Success.
 	return nil
