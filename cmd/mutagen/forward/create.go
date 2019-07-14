@@ -11,6 +11,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
+	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
@@ -20,6 +21,26 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
+
+// loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
+// it to a Protocol Buffers session configuration, and validates it.
+func loadAndValidateYAMLConfiguration(path string) (*forwardingpkg.Configuration, error) {
+	// Load the YAML configuration.
+	yamlConfiguration, err := configuration.Load(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the YAML configuration to a Protocol Buffers representation and
+	// validate it.
+	configuration := yamlConfiguration.Forwarding.Configuration()
+	if err := configuration.EnsureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid configuration")
+	}
+
+	// Success.
+	return configuration, nil
+}
 
 func createMain(command *cobra.Command, arguments []string) error {
 	// Validate, extract, and parse URLs.
@@ -86,11 +107,23 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
-	// TODO: Implement.
+	if !createConfiguration.noGlobalConfiguration {
+		if c, err := loadAndValidateYAMLConfiguration(""); err != nil {
+			return errors.Wrap(err, "unable to load global configuration")
+		} else {
+			configuration = forwardingpkg.MergeConfigurations(configuration, c)
+		}
+	}
 
 	// If a configuration file has been specified, then load it and merge it
 	// into our cumulative configuration.
-	// TODO: Implement.
+	if createConfiguration.configurationFile != "" {
+		if c, err := loadAndValidateYAMLConfiguration(createConfiguration.configurationFile); err != nil {
+			return errors.Wrap(err, "unable to load configuration file")
+		} else {
+			configuration = forwardingpkg.MergeConfigurations(configuration, c)
+		}
+	}
 
 	// Validate and convert socket overwrite mode specifications.
 	var socketOverwriteMode, socketOverwriteModeSource, socketOverwriteModeDestination forwardingpkg.SocketOverwriteMode
@@ -269,6 +302,12 @@ var createConfiguration struct {
 	help bool
 	// labels are the label specifications for the session.
 	labels []string
+	// noGlobalConfiguration specifies whether or not the global configuration
+	// file should be ignored.
+	noGlobalConfiguration bool
+	// configurationFile specifies a file from which to load configuration. It
+	// should be a path relative to the working directory.
+	configurationFile string
 	// socketOverwriteMode specifies the socket overwrite mode to use for the
 	// session.
 	socketOverwriteMode string
@@ -329,6 +368,10 @@ func init() {
 
 	// Wire up label flags.
 	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
+
+	// Wire up general configuration flags.
+	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
+	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load session configuration")
 
 	// Wire up socket flags.
 	flags.StringVar(&createConfiguration.socketOverwriteMode, "socket-overwrite-mode", "", "Specify socket overwrite mode (leave|overwrite)")

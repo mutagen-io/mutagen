@@ -12,9 +12,13 @@ const (
 	// inside the user's home directory.
 	MutagenDataDirectoryName = ".mutagen"
 
-	// MutagenConfigurationName is the name of the global Mutagen configuration
-	// file inside the user's home directory.
-	MutagenConfigurationName = ".mutagen.toml"
+	// MutagenLegacyGlobalConfigurationName is the name of the global Mutagen
+	// configuration file inside the user's home directory.
+	MutagenLegacyGlobalConfigurationName = ".mutagen.toml"
+
+	// MutagenGlobalConfigurationName is the name of the global Mutagen
+	// configuration file inside the user's home directory.
+	MutagenGlobalConfigurationName = ".mutagen.yml"
 
 	// MutagenDaemonDirectoryName is the name of the daemon storage directory
 	// within the Mutagen data directory.

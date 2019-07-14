@@ -28,7 +28,7 @@ var expectedConfiguration = &Configuration{
 }
 
 // TestLoadYAMLConfiguration tests loading a YAML session configuration.
-func TestLoadHumanReadableConfiguration(t *testing.T) {
+func TestLoadYAMLConfiguration(t *testing.T) {
 	// Write a valid configuration to a temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_configuration")
 	if err != nil {

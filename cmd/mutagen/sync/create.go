@@ -3,8 +3,6 @@ package sync
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -15,7 +13,7 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/havoc-io/mutagen/pkg/configuration"
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
@@ -27,22 +25,18 @@ import (
 	"github.com/havoc-io/mutagen/pkg/url"
 )
 
-// loadAndValidateTOMLConfiguration loads a TOML-based session configuration,
-// converts it to a Protocol Buffers session configuration, and validates it.
-func loadAndValidateTOMLConfiguration(path string) (*synchronizationpkg.Configuration, error) {
-	// Load the human-readable configuration. If the path doesn't exist, then we
-	// can just return a default configuration.
-	humanReadableConfiguration := &synchronizationpkg.HumanReadableConfiguration{}
-	if err := encoding.LoadAndUnmarshalTOML(path, humanReadableConfiguration); err != nil {
-		if os.IsNotExist(err) {
-			return &synchronizationpkg.Configuration{}, nil
-		}
-		return nil, errors.Wrap(err, "unable to load TOML file")
+// loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
+// it to a Protocol Buffers session configuration, and validates it.
+func loadAndValidateYAMLConfiguration(path string) (*synchronizationpkg.Configuration, error) {
+	// Load the YAML configuration.
+	yamlConfiguration, err := configuration.Load(path)
+	if err != nil {
+		return nil, err
 	}
 
-	// Convert the configuration to a Protocol Buffers representation and
-	// validate it (as a non-endpoint-specific configuration).
-	configuration := humanReadableConfiguration.Configuration()
+	// Convert the YAML configuration to a Protocol Buffers representation and
+	// validate it.
+	configuration := yamlConfiguration.Synchronization.Configuration()
 	if err := configuration.EnsureValid(false); err != nil {
 		return nil, errors.Wrap(err, "invalid configuration")
 	}
@@ -108,17 +102,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, load configuration from the global configuration file
 	// and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		// Compute the path to the user's home directory.
-		homeDirectory, err := os.UserHomeDir()
-		if err != nil {
-			return errors.Wrap(err, "unable to compute path to home directory")
-		}
-
-		// Compute the path to the global configuration.
-		globalConfigurationPath := filepath.Join(homeDirectory, filesystem.MutagenConfigurationName)
-
-		// Load the configuration.
-		if c, err := loadAndValidateTOMLConfiguration(globalConfigurationPath); err != nil {
+		if c, err := loadAndValidateYAMLConfiguration(""); err != nil {
 			return errors.Wrap(err, "unable to load global configuration")
 		} else {
 			configuration = synchronizationpkg.MergeConfigurations(configuration, c)
@@ -128,7 +112,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// If a configuration file has been specified, then load it and merge it
 	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
-		if c, err := loadAndValidateTOMLConfiguration(createConfiguration.configurationFile); err != nil {
+		if c, err := loadAndValidateYAMLConfiguration(createConfiguration.configurationFile); err != nil {
 			return errors.Wrap(err, "unable to load configuration file")
 		} else {
 			configuration = synchronizationpkg.MergeConfigurations(configuration, c)

@@ -14,15 +14,12 @@ type YAMLConfiguration struct {
 		// OverwriteMode specifies the default socket overwrite mode to use for
 		// Unix domain socket endpoints.
 		OverwriteMode SocketOverwriteMode `yaml:"overwriteMode"`
-
 		// Owner specifies the owner identifier to use for Unix domain listener
 		// sockets.
 		Owner string `yaml:"owner"`
-
 		// Group specifies the group identifier to use for Unix domain listener
 		// sockets.
 		Group string `yaml:"group"`
-
 		// PermissionMode specifies the permission mode to use for Unix domain
 		// listener sockets.
 		PermissionMode filesystem.Mode `yaml:"permissionMode"`
