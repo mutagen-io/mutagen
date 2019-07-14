@@ -18,45 +18,80 @@ import (
 const (
 	// dialTimeout is the timeout to use when attempting to connect to the
 	// daemon IPC endpoint.
-	dialTimeout = 1 * time.Second
+	dialTimeout = 100 * time.Millisecond
+	// autostartWaitInterval is the wait period between reconnect attempts after
+	// autostarting the daemon.
+	autostartWaitInterval = 100 * time.Millisecond
+	// autostartRetryCount is the number of times to try reconnecting after
+	// autostarting the daemon.
+	autostartRetryCount = 10
 )
 
 // CreateClientConnection creates a new daemon client connection and optionally
 // verifies that the daemon version matches the current process' version.
-func CreateClientConnection(enforceVersionMatch bool) (*grpc.ClientConn, error) {
+func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute endpoint path")
 	}
 
-	// Create a context to timeout the dial.
-	dialContext, cancel := context.WithTimeout(context.Background(), dialTimeout)
-	defer cancel()
+	// Perform dialing in a loop until failure or success.
+	remainingPostAutostatAttempts := autostartRetryCount
+	invokedStart := false
+	var connection *grpc.ClientConn
+	for {
+		// Create a context to timeout the dial.
+		dialContext, dialCancel := context.WithTimeout(context.Background(), dialTimeout)
 
-	// Perform dialing.
-	connection, err := grpc.DialContext(
-		dialContext, endpoint,
-		grpc.WithInsecure(),
-		grpc.WithContextDialer(ipc.DialContext),
-		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(grpcutil.MaximumMessageSize)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(grpcutil.MaximumMessageSize)),
-	)
-	if err != nil {
-		if err == context.DeadlineExceeded {
-			return nil, errors.New("connection timed out (is the daemon running?)")
+		// Attempt to dial.
+		connection, err = grpc.DialContext(
+			dialContext, endpoint,
+			grpc.WithInsecure(),
+			grpc.WithContextDialer(ipc.DialContext),
+			grpc.WithBlock(),
+			grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(grpcutil.MaximumMessageSize)),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(grpcutil.MaximumMessageSize)),
+		)
+
+		// Cancel the dialing context. If the dialing operation has already
+		// succeeded, this has no effect, but it is necessary to clean up the
+		// Goroutine that backs the context.
+		dialCancel()
+
+		// Check for errors.
+		if err != nil {
+			// Handle failure due to timeouts.
+			if err == context.DeadlineExceeded {
+				// If autostart is enabled, and we have attempts remaining, then
+				// try autostarting, waiting, and retrying.
+				if autostart && remainingPostAutostatAttempts > 0 {
+					if !invokedStart {
+						startMain(nil, nil)
+						invokedStart = true
+					}
+					time.Sleep(autostartWaitInterval)
+					remainingPostAutostatAttempts--
+					continue
+				}
+
+				// Otherwise just fail due to the timeout.
+				return nil, errors.New("connection timed out (is the daemon running?)")
+			}
+
+			// If we failed for any other reason, then bail.
+			return nil, err
 		}
-		return nil, err
+
+		// We've successfully dialed, so break out of the dialing loop.
+		break
 	}
 
 	// If requested, verify that the daemon version matches the current process'
-	// version. We'll perform this call within the dialing context since it
-	// should be more than long enough to dial the daemon and perform a version
-	// check.
+	// version.
 	if enforceVersionMatch {
 		daemonService := daemonsvc.NewDaemonClient(connection)
-		version, err := daemonService.Version(dialContext, &daemonsvc.VersionRequest{})
+		version, err := daemonService.Version(context.Background(), &daemonsvc.VersionRequest{})
 		if err != nil {
 			connection.Close()
 			return nil, errors.Wrap(err, "unable to query daemon version")
