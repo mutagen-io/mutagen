@@ -11,12 +11,14 @@ import (
 
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
+	"github.com/havoc-io/mutagen/pkg/filesystem"
 	forwardingpkg "github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
 	"github.com/havoc-io/mutagen/pkg/selection"
 	forwardingsvcpkg "github.com/havoc-io/mutagen/pkg/service/forwarding"
 	"github.com/havoc-io/mutagen/pkg/url"
+	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
 
 func createMain(command *cobra.Command, arguments []string) error {
@@ -31,6 +33,31 @@ func createMain(command *cobra.Command, arguments []string) error {
 	destination, err := url.Parse(arguments[1], url.Kind_Forwarding, false)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse destination URL")
+	}
+
+	// If either URL is a local Unix domain socket path, make sure it's
+	// normalized.
+	if source.Protocol == url.Protocol_Local {
+		if protocol, path, err := forwardingurl.Parse(source.Path); err != nil {
+			return errors.Wrap(err, "unable to parse source forwarding endpoint URL")
+		} else if protocol == "unix" {
+			if normalized, err := filesystem.Normalize(path); err != nil {
+				return errors.Wrap(err, "unable to normalize source forwarding endpoint socket path")
+			} else {
+				source.Path = fmt.Sprintf("%s:%s", protocol, normalized)
+			}
+		}
+	}
+	if destination.Protocol == url.Protocol_Local {
+		if protocol, path, err := forwardingurl.Parse(destination.Path); err != nil {
+			return errors.Wrap(err, "unable to parse destination forwarding endpoint URL")
+		} else if protocol == "unix" {
+			if normalized, err := filesystem.Normalize(path); err != nil {
+				return errors.Wrap(err, "unable to normalize destination forwarding endpoint socket path")
+			} else {
+				destination.Path = fmt.Sprintf("%s:%s", protocol, normalized)
+			}
+		}
 	}
 
 	// Parse, validate, and record labels.
