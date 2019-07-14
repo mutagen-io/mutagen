@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
 	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
@@ -87,7 +88,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 	// Loop through and print sessions.
 	for _, state := range response.SessionStates {
-		fmt.Println(delimiterLine)
+		fmt.Println(cmd.DelimiterLine)
 		printSession(state, listConfiguration.long)
 		printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
 		printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
@@ -96,7 +97,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 	// Print a final delimiter line if there were any sessions.
 	if len(response.SessionStates) > 0 {
-		fmt.Println(delimiterLine)
+		fmt.Println(cmd.DelimiterLine)
 	}
 
 	// Success.
