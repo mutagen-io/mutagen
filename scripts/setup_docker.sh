@@ -5,7 +5,7 @@
 # that might not exist inside the container.
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
     -o scripts/docker_linux/httpdemo \
-    github.com/havoc-io/mutagen/pkg/integration/fixtures/httpdemo
+    github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
 # Print the Docker version.
 docker version
