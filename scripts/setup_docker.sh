@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Build the HTTP demo server that will serve as the Dockerfile entry point.
-GOOS=linux GOARCH=amd64 go build -o scripts/docker_linux/httpdemo \
+# Build the HTTP demo server that will serve as the Dockerfile entry point. We
+# have to disable cgo because to avoid creating dependencies on host libraries
+# that might not exist inside the container.
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+    -o scripts/docker_linux/httpdemo \
     github.com/havoc-io/mutagen/pkg/integration/fixtures/httpdemo
 
 # Print the Docker version.
