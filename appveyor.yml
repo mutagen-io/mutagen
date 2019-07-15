@@ -72,7 +72,7 @@ after_test:
 notifications:
   - provider: Email
     to:
-      - jacob@havoc.io
+      - jacob@mutagen.io
     on_build_success: false
     on_build_failure: true
     on_build_status_changed: true

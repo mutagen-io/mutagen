@@ -27,24 +27,24 @@ Information about more advanced topics is also available in
 Mutagen is a very powerful tool that is still in early beta. It will almost
 certainly have unknown issues. It should not be used on production or
 mission-critical systems. Use on *any* system is at your own risk (please see
-the [license](https://github.com/havoc-io/mutagen/blob/master/LICENSE)).
+the [license](https://github.com/mutagen-io/mutagen/blob/master/LICENSE)).
 
 That being said, Mutagen is a very useful tool and I use it daily for work on
 remote systems. The more people who use it and report
-[issues](https://github.com/havoc-io/mutagen/issues), the better it will get!
+[issues](https://github.com/mutagen-io/mutagen/issues), the better it will get!
 
 | Windows                           | macOS/Linux                                   | Code coverage                           | Report card                           |
 | :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :-----------------------------------: |
 | [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link]   |
 
 [win-badge]: https://ci.appveyor.com/api/projects/status/qywidv5a1vf7g3b5/branch/master?svg=true "Windows build status"
-[win-link]:  https://ci.appveyor.com/project/havoc-io/mutagen/branch/master "Windows build status"
-[mac-lin-badge]: https://travis-ci.org/havoc-io/mutagen.svg?branch=master "macOS/Linux build status"
-[mac-lin-link]:  https://travis-ci.org/havoc-io/mutagen "macOS/Linux build status"
-[cov-badge]: https://codecov.io/gh/havoc-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
-[cov-link]: https://codecov.io/gh/havoc-io/mutagen/tree/master/pkg "Code coverage status"
-[rc-badge]: https://goreportcard.com/badge/github.com/havoc-io/mutagen "Report card status"
-[rc-link]: https://goreportcard.com/report/github.com/havoc-io/mutagen "Report card status"
+[win-link]:  https://ci.appveyor.com/project/mutagen-io/mutagen/branch/master "Windows build status"
+[mac-lin-badge]: https://travis-ci.org/mutagen-io/mutagen.svg?branch=master "macOS/Linux build status"
+[mac-lin-link]:  https://travis-ci.org/mutagen-io/mutagen "macOS/Linux build status"
+[cov-badge]: https://codecov.io/gh/mutagen-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
+[cov-link]: https://codecov.io/gh/mutagen-io/mutagen/tree/master/pkg "Code coverage status"
+[rc-badge]: https://goreportcard.com/badge/github.com/mutagen-io/mutagen "Report card status"
+[rc-link]: https://goreportcard.com/report/github.com/mutagen-io/mutagen "Report card status"
 
 
 ## Community

@@ -3,7 +3,7 @@
 Mutagen is *not* `go get`able for end-users because it needs to cross-compile
 agent binaries for remote platforms and generate a bundle of these binaries. In
 general, users should download the release builds from the
-[releases page](https://github.com/havoc-io/mutagen/releases/latest).
+[releases page](https://github.com/mutagen-io/mutagen/releases/latest).
 
 Mutagen can, however, be built locally for testing and development. Mutagen
 relies on the Go toolchain's module support, so make sure that you have Go

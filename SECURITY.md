@@ -6,7 +6,7 @@ information about security issues directly to
 [security@mutagen.io](mailto:security@mutagen.io) so that a proper assessment
 can be made and a fix prepared before a wide announcement. You will receive an
 acknowledgement within 24 hours. If you do not, please contact the project
-maintainer directly at [jacob@havoc.io](mailto:jacob@havoc.io).
+maintainer directly at [jacob@mutagen.io](mailto:jacob@mutagen.io).
 
 Even in cases where you have limited or incomplete information, or you're not
 sure whether or not a problem constitutes a security issue, please make contact
