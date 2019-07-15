@@ -10,14 +10,14 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 func formatPath(path string) string {

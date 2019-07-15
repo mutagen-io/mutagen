@@ -3,7 +3,7 @@ package daemon
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {

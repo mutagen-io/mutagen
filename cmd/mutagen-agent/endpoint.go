@@ -10,12 +10,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/housekeeping"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/housekeeping"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote"
 )
 
 const (

@@ -6,9 +6,9 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 const (

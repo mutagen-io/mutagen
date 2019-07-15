@@ -1,7 +1,7 @@
 package synchronization
 
 import (
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 // isRootDeletion determines whether or not the specified change is a root

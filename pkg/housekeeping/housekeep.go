@@ -8,9 +8,9 @@ import (
 
 	"github.com/shibukawa/extstat"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 const (

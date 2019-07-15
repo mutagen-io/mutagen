@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // Supported returns whether or not a URL kind is supported.

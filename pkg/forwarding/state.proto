@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package forwarding;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/forwarding";
+option go_package = "github.com/mutagen-io/mutagen/pkg/forwarding";
 
 import "forwarding/session.proto";
 

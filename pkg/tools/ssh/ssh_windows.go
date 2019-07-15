@@ -1,7 +1,7 @@
 package ssh
 
 import (
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 // commandSearchPaths specifies locations on Windows where we might find ssh.exe

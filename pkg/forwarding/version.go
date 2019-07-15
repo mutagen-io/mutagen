@@ -1,7 +1,7 @@
 package forwarding
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // Supported indicates whether or not the session version is supported.

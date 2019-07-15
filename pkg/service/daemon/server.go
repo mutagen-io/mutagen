@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/havoc-io/mutagen/pkg/housekeeping"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/housekeeping"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 const (

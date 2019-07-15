@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	fssyscall "github.com/havoc-io/mutagen/pkg/filesystem/internal/syscall"
+	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // ensureValidName verifies that the provided name does not reference the

@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/groupcache/lru"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching/internal/third_party/notify"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/watching/internal/third_party/notify"
 )
 
 const (

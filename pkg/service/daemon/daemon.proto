@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package daemon;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/service/daemon";
+option go_package = "github.com/mutagen-io/mutagen/pkg/service/daemon";
 
 message VersionRequest{}
 

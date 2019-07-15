@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package behavior;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/filesystem/behavior";
+option go_package = "github.com/mutagen-io/mutagen/pkg/filesystem/behavior";
 
 // ProbeMode specifies the mode for filesystem probing.
 enum ProbeMode {

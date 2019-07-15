@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
 // setPrompterVariables sets up environment variables for prompting based on the

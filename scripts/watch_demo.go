@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/filesystem/watching"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
 )
 
 const (

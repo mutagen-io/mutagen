@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 // CompressionArgument returns a flag that can be passed to scp or ssh to enable

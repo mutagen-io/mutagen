@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package remote;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote";
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote";
 
 import "synchronization/rsync/engine.proto";
 import "synchronization/configuration.proto";

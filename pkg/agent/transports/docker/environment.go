@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // setDockerVariables sets all Docker environment variables to their values

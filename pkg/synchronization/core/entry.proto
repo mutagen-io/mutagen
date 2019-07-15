@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package core;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/core";
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
 
 // EntryKind encodes the type of entry represented by an Entry object.
 enum EntryKind {

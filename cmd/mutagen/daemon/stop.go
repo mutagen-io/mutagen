@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/pkg/daemon"
-	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
+	"github.com/mutagen-io/mutagen/pkg/daemon"
+	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
 func stopMain(command *cobra.Command, arguments []string) error {

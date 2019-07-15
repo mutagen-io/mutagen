@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/gopass"
+	"github.com/mutagen-io/gopass"
 )
 
 // PromptCommandLineWithResponseMode performs command line prompting using the

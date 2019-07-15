@@ -3,7 +3,7 @@ package synchronization
 import (
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 // supportedSessionVersions defines the supported session versions that should

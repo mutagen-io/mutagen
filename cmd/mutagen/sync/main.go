@@ -4,9 +4,9 @@ import (
 	"github.com/spf13/cobra"
 
 	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/docker"
-	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/local"
-	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/ssh"
+	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/docker"
+	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/local"
+	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/ssh"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {

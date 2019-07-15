@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 // CommandPath returns the absolute path specification to use for invoking

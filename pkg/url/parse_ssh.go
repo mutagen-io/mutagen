@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // isSCPSSHURL determines whether or not a raw URL is an SCP-style SSH URL.

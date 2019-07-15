@@ -13,7 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // RegistrationSupported indicates whether or not daemon registration is

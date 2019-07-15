@@ -7,11 +7,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 )
 
 func pauseMain(command *cobra.Command, arguments []string) error {

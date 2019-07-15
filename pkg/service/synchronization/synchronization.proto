@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package synchronization;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/service/synchronization";
+option go_package = "github.com/mutagen-io/mutagen/pkg/service/synchronization";
 
 import "selection/selection.proto";
 import "synchronization/configuration.proto";

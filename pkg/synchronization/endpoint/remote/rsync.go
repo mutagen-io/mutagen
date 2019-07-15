@@ -3,8 +3,8 @@ package remote
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 const (

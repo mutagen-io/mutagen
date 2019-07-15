@@ -3,7 +3,7 @@ package daemon
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem/locking"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 )
 
 // Lock represents the global daemon lock. It is held by a single daemon

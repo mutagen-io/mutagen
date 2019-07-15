@@ -3,7 +3,7 @@ package rsync
 import (
 	"github.com/pkg/errors"
 
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	fs "github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // Transmit performs streaming transmission of files (in rsync deltafied form)

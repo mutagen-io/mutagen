@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
 )
 
 // dialerEndpoint implements forwarding.Endpoint for dialer endpoints.

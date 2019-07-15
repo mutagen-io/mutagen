@@ -6,10 +6,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 // YAMLConfiguration is the global YAML configuration object type.

@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	promptpkg "github.com/havoc-io/mutagen/pkg/prompt"
-	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	promptpkg "github.com/mutagen-io/mutagen/pkg/prompt"
+	promptsvc "github.com/mutagen-io/mutagen/pkg/service/prompt"
 )
 
 func promptMain(arguments []string) error {

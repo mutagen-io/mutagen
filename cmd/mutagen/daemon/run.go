@@ -10,17 +10,17 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/ipc"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
-	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
-	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
-	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/ipc"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	promptsvc "github.com/mutagen-io/mutagen/pkg/service/prompt"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 func runMain(command *cobra.Command, arguments []string) error {

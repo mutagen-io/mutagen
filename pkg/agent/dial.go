@@ -11,11 +11,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/process"
-	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
 const (

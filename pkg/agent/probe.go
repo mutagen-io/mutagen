@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
 // unameSToGOOS maps uname -s output values to their corresponding GOOS values.

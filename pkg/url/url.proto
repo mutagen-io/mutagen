@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package url;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/url";
+option go_package = "github.com/mutagen-io/mutagen/pkg/url";
 
 // Kind indicates the kind of a URL.
 enum Kind {

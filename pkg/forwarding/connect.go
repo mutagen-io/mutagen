@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/logging"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // ProtocolHandler defines the interface that protocol handlers must support in

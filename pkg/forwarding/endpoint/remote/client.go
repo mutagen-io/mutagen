@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/yamux"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements

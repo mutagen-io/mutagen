@@ -10,12 +10,12 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	selectionpkg "github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 )
 
 func computeMonitorStatusLine(state *forwarding.State) string {

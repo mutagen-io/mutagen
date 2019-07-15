@@ -9,18 +9,18 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/integration/fixtures/constants"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/integration/fixtures/constants"
 
 	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 
-	"github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
-	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/integration/protocols/netpipe"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {

@@ -8,12 +8,12 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/daemon"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/ipc"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
-	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/ipc"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
 const (

@@ -9,7 +9,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 // writer is an io.Writer that splits its input stream into lines and writes

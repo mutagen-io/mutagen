@@ -3,7 +3,7 @@ package docker
 import (
 	"os/exec"
 
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 // commandSearchPaths specifies locations on macOS where we might find the

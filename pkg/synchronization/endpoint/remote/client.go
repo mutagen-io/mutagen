@@ -8,11 +8,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/havoc-io/mutagen/pkg/compression"
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
-	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
+	"github.com/mutagen-io/mutagen/pkg/compression"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 // endpointClient provides an implementation of synchronization.Endpoint by

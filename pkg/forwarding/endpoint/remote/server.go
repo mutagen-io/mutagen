@@ -8,10 +8,10 @@ import (
 
 	"github.com/hashicorp/yamux"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/local"
-	"github.com/havoc-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // ServeEndpoint creates and serves a remote endpoint server on the specified

@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 func forwarderMain(command *cobra.Command, arguments []string) error {

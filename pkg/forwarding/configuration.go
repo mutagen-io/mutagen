@@ -3,7 +3,7 @@ package forwarding
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // YAMLConfiguration represents a YAML-based Mutagen forwarding session

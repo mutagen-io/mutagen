@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
 // Server provides an implementation of the Prompting service.

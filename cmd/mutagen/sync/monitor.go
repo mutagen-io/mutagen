@@ -10,12 +10,12 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	selectionpkg "github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 func computeMonitorStatusLine(state *synchronization.State) string {

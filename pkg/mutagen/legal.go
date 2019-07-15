@@ -258,7 +258,7 @@ fsevents
 
 https://github.com/fsnotify/fsevents
 
-Forked and modified at https://github.com/havoc-io/fsevents.
+Forked and modified at https://github.com/mutagen-io/fsevents.
 
 Copyright (c) 2014 The fsevents Authors. All rights reserved.
 
@@ -277,7 +277,7 @@ notify
 https://github.com/rjeczalik/notify
 
 A subset of this library has been extracted, modified, and vendored inside
-Mutagen at https://github.com/havoc-io/mutagen.
+Mutagen at https://github.com/mutagen-io/mutagen.
 
 Copyright (c) 2014-2015 The Notify Authors
 
@@ -290,7 +290,7 @@ gopass
 
 https://github.com/howeyc/gopass
 
-Forked and modified at https://github.com/havoc-io/gopass.
+Forked and modified at https://github.com/mutagen-io/gopass.
 
 Copyright (c) 2012 Chris Howey
 

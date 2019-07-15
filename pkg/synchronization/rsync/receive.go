@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	fs "github.com/havoc-io/mutagen/pkg/filesystem"
+	fs "github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // EnsureValid ensures that ReceiverStatus' invariants are respected.

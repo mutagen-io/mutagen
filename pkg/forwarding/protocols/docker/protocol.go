@@ -3,13 +3,13 @@ package docker
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/agent/transports/docker"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
-	forwardingurlpkg "github.com/havoc-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/agent/transports/docker"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
+	forwardingurlpkg "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // protocolHandler implements the forwarding.ProtocolHandler interface for

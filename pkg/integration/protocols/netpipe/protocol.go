@@ -1,7 +1,7 @@
 package netpipe
 
 import (
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 const (

@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/havoc-io/mutagen/pkg/compression"
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
-	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/local"
-	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
+	"github.com/mutagen-io/mutagen/pkg/compression"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 // endpointServer wraps a local endpoint instances and dispatches requests to

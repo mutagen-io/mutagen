@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // TestProtocolBuffersCycle tests a Protocol Buffers marshal/save/load/unmarshal

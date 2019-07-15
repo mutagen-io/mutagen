@@ -3,11 +3,11 @@ package local
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/local"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
-	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
+	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // protocolHandler implements the forwarding.ProtocolHandler interface for

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 // TestInstallPath tests that the installPath method functions correctly. This

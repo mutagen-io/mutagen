@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 func legalMain(command *cobra.Command, arguments []string) error {

@@ -5,9 +5,9 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 // ByteSize is a uint64 value that supports unmarshalling from both

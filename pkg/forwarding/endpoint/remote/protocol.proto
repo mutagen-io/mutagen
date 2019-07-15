@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package remote;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote";
+option go_package = "github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote";
 
 import "forwarding/configuration.proto";
 import "forwarding/version.proto";

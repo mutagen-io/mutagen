@@ -13,10 +13,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/profile"
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/sync"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/profile"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/sync"
 )
 
 const (

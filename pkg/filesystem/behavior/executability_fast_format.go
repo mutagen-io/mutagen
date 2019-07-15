@@ -3,8 +3,8 @@
 package behavior
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior/internal/format"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior/internal/format"
 )
 
 // probeExecutabilityPreservationFastByPath attempts to perform a fast

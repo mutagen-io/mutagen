@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/agent"
 )
 
 func installMain(command *cobra.Command, arguments []string) error {

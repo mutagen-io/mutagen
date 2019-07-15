@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 // Server provides an implementation of the Synchronization service.

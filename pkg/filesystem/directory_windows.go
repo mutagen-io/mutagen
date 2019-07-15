@@ -13,7 +13,7 @@ import (
 
 	aclapi "github.com/hectane/go-acl/api"
 
-	osvendor "github.com/havoc-io/mutagen/pkg/filesystem/internal/third_party/os"
+	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
 )
 
 // ensureValidName verifies that the provided name does not reference the

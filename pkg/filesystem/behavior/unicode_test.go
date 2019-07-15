@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {

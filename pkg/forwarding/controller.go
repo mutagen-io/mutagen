@@ -13,12 +13,12 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
-	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/state"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/state"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 const (

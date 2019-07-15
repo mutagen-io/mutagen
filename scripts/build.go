@@ -18,17 +18,17 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 const (
 	// agentPackage is the Go package URL to use for building Mutagen agent
 	// binaries.
-	agentPackage = "github.com/havoc-io/mutagen/cmd/mutagen-agent"
+	agentPackage = "github.com/mutagen-io/mutagen/cmd/mutagen-agent"
 	// cliPackage is the Go package URL to use for building Mutagen binaries.
-	cliPackage = "github.com/havoc-io/mutagen/cmd/mutagen"
+	cliPackage = "github.com/mutagen-io/mutagen/cmd/mutagen"
 
 	// agentBuildSubdirectoryName is the name of the build subdirectory where
 	// agent binaries are built.

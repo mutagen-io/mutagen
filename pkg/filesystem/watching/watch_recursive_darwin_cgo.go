@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/fsevents"
+	"github.com/mutagen-io/fsevents"
 )
 
 const (

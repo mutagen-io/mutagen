@@ -5,10 +5,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // synchronizationProtocolHandler implements the synchronization.ProtocolHandler

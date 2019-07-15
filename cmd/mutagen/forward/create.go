@@ -9,17 +9,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/configuration"
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
-	"github.com/havoc-io/mutagen/pkg/url"
-	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/configuration"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/url"
+	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts

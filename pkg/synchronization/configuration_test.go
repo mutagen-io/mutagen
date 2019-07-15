@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 const (

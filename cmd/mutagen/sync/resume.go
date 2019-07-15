@@ -7,12 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/havoc-io/mutagen/cmd"
-	"github.com/havoc-io/mutagen/cmd/mutagen/daemon"
-	"github.com/havoc-io/mutagen/pkg/grpcutil"
-	"github.com/havoc-io/mutagen/pkg/prompt"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {

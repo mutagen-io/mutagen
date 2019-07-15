@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/process"
-	"github.com/havoc-io/mutagen/pkg/tools/ssh"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/tools/ssh"
 )
 
 const (

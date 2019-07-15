@@ -5,9 +5,9 @@ import (
 	"hash"
 	"math"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 // Supported indicates whether or not the session version is supported.

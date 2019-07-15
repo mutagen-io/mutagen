@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package synchronization;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/synchronization";
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization";
 
 import "filesystem/behavior/probe_mode.proto";
 import "synchronization/scan_mode.proto";

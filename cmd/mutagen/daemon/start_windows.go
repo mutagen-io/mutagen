@@ -3,7 +3,7 @@ package daemon
 import (
 	"syscall"
 
-	"github.com/havoc-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 var daemonProcessAttributes = &syscall.SysProcAttr{

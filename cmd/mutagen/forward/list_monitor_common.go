@@ -3,9 +3,9 @@ package forward
 import (
 	"fmt"
 
-	"github.com/havoc-io/mutagen/pkg/forwarding"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 const (

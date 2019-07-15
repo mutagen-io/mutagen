@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/state"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	"github.com/mutagen-io/mutagen/pkg/state"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // Manager provides forwarding session management facilities. Its methods are

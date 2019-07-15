@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 )
 
 // testAcceleratedCacheIsSubset verifies that accelerated is a subset of

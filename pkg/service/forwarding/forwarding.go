@@ -3,8 +3,8 @@ package forwarding
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/selection"
-	"github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/selection"
+	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // ensureValid verifies that a CreationSpecification is valid.

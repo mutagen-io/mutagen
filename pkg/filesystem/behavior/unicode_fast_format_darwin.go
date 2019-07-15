@@ -1,7 +1,7 @@
 package behavior
 
 import (
-	"github.com/havoc-io/mutagen/pkg/filesystem/behavior/internal/format"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior/internal/format"
 )
 
 // probeUnicodeDecompositionFastByFormat checks if the specified format matches

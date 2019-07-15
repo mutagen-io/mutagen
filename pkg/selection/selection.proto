@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package selection;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/selection";
+option go_package = "github.com/mutagen-io/mutagen/pkg/selection";
 
 // Selection encodes a selection mechanism that can be used to select a
 // collection of sessions. It should have exactly one member set.

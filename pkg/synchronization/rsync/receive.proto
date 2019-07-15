@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rsync;
 
-option go_package = "github.com/havoc-io/mutagen/pkg/synchronization/rsync";
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/rsync";
 
 // ReceivingStatus encodes that status of an rsync receiver.
 message ReceiverStatus {

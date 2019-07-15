@@ -3,12 +3,12 @@ package ssh
 import (
 	"github.com/pkg/errors"
 
-	"github.com/havoc-io/mutagen/pkg/agent"
-	"github.com/havoc-io/mutagen/pkg/agent/transports/ssh"
-	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
-	urlpkg "github.com/havoc-io/mutagen/pkg/url"
+	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // protocolHandler implements the session.ProtocolHandler interface for

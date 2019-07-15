@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/havoc-io/mutagen/pkg/integration/fixtures/constants"
+	"github.com/mutagen-io/mutagen/pkg/integration/fixtures/constants"
 )
 
 func main() {

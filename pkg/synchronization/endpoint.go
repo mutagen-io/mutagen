@@ -3,8 +3,8 @@ package synchronization
 import (
 	"context"
 
-	"github.com/havoc-io/mutagen/pkg/synchronization/core"
-	"github.com/havoc-io/mutagen/pkg/synchronization/rsync"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 // Endpoint defines the interface to which synchronization endpoints must

@@ -1,8 +1,8 @@
 package remote
 
 import (
-	"github.com/havoc-io/mutagen/pkg/synchronization"
-	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local"
 )
 
 // EndpointConnectionValidator is a validator function type for validating

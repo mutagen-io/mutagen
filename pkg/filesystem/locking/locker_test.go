@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 const (
 	// lockerTestExecutablePackage is the Go package to build for running
 	// concurrent lock tests.
-	lockerTestExecutablePackage = "github.com/havoc-io/mutagen/pkg/filesystem/locking/lockertest"
+	lockerTestExecutablePackage = "github.com/mutagen-io/mutagen/pkg/filesystem/locking/lockertest"
 
 	// lockerTestFailMessage is a sentinel message used to indicate lock
 	// acquisition failure in the test executable. We could use an exit code,

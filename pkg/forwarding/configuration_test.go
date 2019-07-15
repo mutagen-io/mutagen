@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/havoc-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/encoding"
 )
 
 const (
