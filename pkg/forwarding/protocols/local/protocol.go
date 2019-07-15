@@ -7,7 +7,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/local"
 	"github.com/havoc-io/mutagen/pkg/logging"
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
-	forwardingurlpkg "github.com/havoc-io/mutagen/pkg/url/forwarding"
+	forwardingurl "github.com/havoc-io/mutagen/pkg/url/forwarding"
 )
 
 // protocolHandler implements the forwarding.ProtocolHandler interface for
@@ -32,7 +32,7 @@ func (p *protocolHandler) Connect(
 	}
 
 	// Parse the target specification from the URL's Path component.
-	protocol, address, err := forwardingurlpkg.Parse(url.Path)
+	protocol, address, err := forwardingurl.Parse(url.Path)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse target specification")
 	}

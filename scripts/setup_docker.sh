@@ -1,19 +1,23 @@
 #!/bin/bash
 
+# Build the HTTP demo server that will serve as the Dockerfile entry point.
+GOOS=linux GOARCH=amd64 go build -o scripts/docker_linux/httpdemo \
+    github.com/havoc-io/mutagen/pkg/integration/fixtures/httpdemo
+
 # Print the Docker version.
 docker version
 
-# Pull our base Docker image.
-docker pull "${MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME}" || exit $?
-
 # Build our image.
-docker build \
+docker image build \
+    --pull \
     --tag "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" \
-    --file scripts/dockerfile_linux \
-    scripts || exit $?
+    scripts/docker_linux || exit $?
+
+# Remove the generated executable.
+rm scripts/docker_linux/httpdemo
 
 # Start a container.
-docker run \
+docker container run \
     --name "${MUTAGEN_TEST_DOCKER_CONTAINER_NAME}" \
     --detach \
     "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" || exit $?

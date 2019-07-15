@@ -1,11 +1,16 @@
 package integration
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/havoc-io/mutagen/pkg/forwarding"
+	"github.com/havoc-io/mutagen/pkg/integration/fixtures/constants"
 
 	"github.com/pkg/errors"
 
@@ -109,7 +114,7 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	return nil
 }
 
-func TestSessionBothRootsNil(t *testing.T) {
+func TestSynchronizationBothRootsNil(t *testing.T) {
 	// Allow this test to run in parallel.
 	t.Parallel()
 
@@ -137,7 +142,7 @@ func TestSessionBothRootsNil(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToBeta(t *testing.T) {
+func TestSynchronizationGOROOTSrcToBeta(t *testing.T) {
 	// Check the end-to-end test mode and compute the source synchronization
 	// root accordingly. If no mode has been specified, then skip the test.
 	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
@@ -179,7 +184,7 @@ func TestSessionGOROOTSrcToBeta(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToAlpha(t *testing.T) {
+func TestSynchronizationGOROOTSrcToAlpha(t *testing.T) {
 	// Check the end-to-end test mode and compute the source synchronization
 	// root accordingly. If no mode has been specified, then skip the test.
 	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
@@ -221,7 +226,7 @@ func TestSessionGOROOTSrcToAlpha(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
+func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 	// Check the end-to-end test mode and compute the source synchronization
 	// root accordingly. If no mode has been specified, then skip the test.
 	endToEndTestMode := os.Getenv("MUTAGEN_TEST_END_TO_END")
@@ -267,7 +272,7 @@ func TestSessionGOROOTSrcToBetaInMemory(t *testing.T) {
 	}
 }
 
-func TestSessionGOROOTSrcToBetaOverSSH(t *testing.T) {
+func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// If localhost SSH support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_SSH") != "true" {
 		t.Skip()
@@ -331,7 +336,7 @@ func (t *testWindowsDockerTransportPrompter) Prompt(_ string) (string, error) {
 	return "yes", nil
 }
 
-func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
+func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 	// If Docker test support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
 		t.Skip()
@@ -408,3 +413,135 @@ func TestSessionGOROOTSrcToBetaOverDocker(t *testing.T) {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
+
+func TestForwardingToHTTPDemo(t *testing.T) {
+	// If Docker test support isn't available, then skip this test.
+	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
+		t.Skip()
+	}
+
+	// Allow the test to run in parallel.
+	t.Parallel()
+
+	// If we're on Windows, register a prompter that will answer yes to
+	// questions about stoping and restarting containers.
+	var prompter string
+	if runtime.GOOS == "windows" {
+		if p, err := prompt.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
+			t.Fatal("unable to register prompter:", err)
+		} else {
+			prompter = p
+			defer prompt.UnregisterPrompter(prompter)
+		}
+	}
+
+	// Pick a local listener address.
+	listenerProtocol := "tcp"
+	listenerAddress := "localhost:7070"
+
+	// Grab Docker environment variables.
+	environment := make(map[string]string, len(url.DockerEnvironmentVariables))
+	for _, variable := range url.DockerEnvironmentVariables {
+		environment[variable] = os.Getenv(variable)
+	}
+
+	// Compute source and destination URLs.
+	source := &url.URL{
+		Kind:     url.Kind_Forwarding,
+		Protocol: url.Protocol_Local,
+		Path:     listenerProtocol + ":" + listenerAddress,
+	}
+	destination := &url.URL{
+		Kind:     url.Kind_Forwarding,
+		Protocol: url.Protocol_Docker,
+		User:     os.Getenv("MUTAGEN_TEST_DOCKER_USERNAME"),
+		Host:     os.Getenv("MUTAGEN_TEST_DOCKER_CONTAINER_NAME"),
+		Path:     "tcp:" + constants.HTTPDemoBindAddress,
+	}
+
+	// Verify that the destination URL is valid (this will validate the test
+	// environment variables as well).
+	if err := destination.EnsureValid(); err != nil {
+		t.Fatal("beta URL is invalid:", err)
+	}
+
+	// Create a function to perform a simple HTTP request and ensure that the
+	// returned contents are as expected.
+	performHTTPRequest := func() error {
+		// Perform the request and defer closure of the response body.
+		response, err := http.Get(fmt.Sprintf("http://%s/", listenerAddress))
+		if err != nil {
+			return errors.Wrap(err, "unable to perform HTTP GET")
+		}
+		defer response.Body.Close()
+
+		// Read the full body.
+		message, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return errors.Wrap(err, "unable to read response body")
+		}
+
+		// Compare the message.
+		if string(message) != constants.HTTPDemoResponse {
+			return errors.New("response does not match expected")
+		}
+
+		// Success.
+		return nil
+	}
+
+	// Create a session.
+	sessionID, err := forwardingManager.Create(
+		source,
+		destination,
+		&forwarding.Configuration{},
+		&forwarding.Configuration{},
+		&forwarding.Configuration{},
+		nil,
+		prompter,
+	)
+	if err != nil {
+		t.Fatal("unable to create session:", err)
+	}
+
+	// Attempt server read.
+	// TODO: Attempt a more complicated exchange here. Maybe gRPC?
+	if err := performHTTPRequest(); err != nil {
+		t.Error("error performing forwarded HTTP request:", err)
+	}
+
+	// Create a session selection specification.
+	selection := &selection.Selection{
+		Specifications: []string{sessionID},
+	}
+
+	// Pause the session.
+	if err := forwardingManager.Pause(selection, ""); err != nil {
+		t.Error("unable to pause session:", err)
+	}
+
+	// Resume the session.
+	if err := forwardingManager.Resume(selection, ""); err != nil {
+		t.Error("unable to resume session:", err)
+	}
+
+	// Attempt server read.
+	// TODO: Attempt a more complicated exchange here. Maybe gRPC?
+	if err := performHTTPRequest(); err != nil {
+		t.Error("error performing forwarded HTTP request:", err)
+	}
+
+	// Attempt an additional resume (this should be a no-op).
+	if err := forwardingManager.Resume(selection, ""); err != nil {
+		t.Error("unable to perform additional resume:", err)
+	}
+
+	// Terminate the session.
+	if err := forwardingManager.Terminate(selection, ""); err != nil {
+		t.Error("unable to terminate session:", err)
+	}
+
+	// TODO: Verify that cleanup took place.
+}
+
+// TODO: Add forwarding tests using the netpipe protocol.

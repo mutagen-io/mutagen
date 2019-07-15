@@ -11,24 +11,34 @@ import (
 	"github.com/havoc-io/mutagen/cmd"
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/daemon"
+	"github.com/havoc-io/mutagen/pkg/forwarding"
 	"github.com/havoc-io/mutagen/pkg/grpcutil"
 	"github.com/havoc-io/mutagen/pkg/ipc"
 	"github.com/havoc-io/mutagen/pkg/logging"
 	daemonsvc "github.com/havoc-io/mutagen/pkg/service/daemon"
+	forwardingsvc "github.com/havoc-io/mutagen/pkg/service/forwarding"
 	promptsvc "github.com/havoc-io/mutagen/pkg/service/prompt"
 	synchronizationsvc "github.com/havoc-io/mutagen/pkg/service/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 
 	// Explicitly import packages that need to register protocol handlers.
+	_ "github.com/havoc-io/mutagen/pkg/forwarding/protocols/docker"
+	_ "github.com/havoc-io/mutagen/pkg/forwarding/protocols/local"
+	_ "github.com/havoc-io/mutagen/pkg/forwarding/protocols/ssh"
 	_ "github.com/havoc-io/mutagen/pkg/integration/protocols/netpipe"
 	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/docker"
 	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/local"
 	_ "github.com/havoc-io/mutagen/pkg/synchronization/protocols/ssh"
 )
 
-// synchronizationManager is the session manager for the integration testing
-// daemon. It is exposed for integration tests that operate at the API level (as
-// opposed to the gRPC or command line level).
+// forwardingManager is the forwarding session manager for the integration
+// testing daemon. It is exposed for integration tests that operate at the API
+// level (as opposed to the gRPC or command line level).
+var forwardingManager *forwarding.Manager
+
+// synchronizationManager is the synchronization session manager for the
+// integration testing daemon. It is exposed for integration tests that operate
+// at the API level (as opposed to the gRPC or command line level).
 var synchronizationManager *synchronization.Manager
 
 // testMainInternal is the internal testing entry point, needed so that shutdown
@@ -48,11 +58,18 @@ func testMainInternal(m *testing.M) (int, error) {
 	}
 	defer lock.Release()
 
+	// Create a forwarding session manager and defer its shutdown.
+	forwardingManager, err = forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
+	if err != nil {
+		return -1, errors.Wrap(err, "unable to create forwarding session manager")
+	}
+	defer forwardingManager.Shutdown()
+
 	// Create a session manager and defer its shutdown. Note that we assign to
 	// the global instance here.
 	synchronizationManager, err = synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to create session manager")
+		return -1, errors.Wrap(err, "unable to create synchronization session manager")
 	}
 	defer synchronizationManager.Shutdown()
 
@@ -71,6 +88,10 @@ func testMainInternal(m *testing.M) (int, error) {
 
 	// Create and register the prompt service.
 	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
+
+	// Create and register the forwarding server.
+	forwardingServer := forwardingsvc.NewServer(forwardingManager)
+	forwardingsvc.RegisterForwardingServer(server, forwardingServer)
 
 	// Create and register the session service.
 	synchronizationServer := synchronizationsvc.NewServer(synchronizationManager)

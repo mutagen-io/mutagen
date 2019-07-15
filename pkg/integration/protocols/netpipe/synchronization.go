@@ -11,20 +11,14 @@ import (
 	urlpkg "github.com/havoc-io/mutagen/pkg/url"
 )
 
-const (
-	// Protocol_Netpipe is a fake protocol used to perform integration tests
-	// over an in-memory setup of the remote client/server architecture.
-	Protocol_Netpipe urlpkg.Protocol = -1
-)
-
-// protocolHandler implements the session.ProtocolHandler interface for
-// connecting to "remote" endpoints that actually exist in memory via an
-// in-memory pipe.
-type protocolHandler struct{}
+// synchronizationProtocolHandler implements the synchronization.ProtocolHandler
+// interface for connecting to "remote" endpoints that actually exist in memory
+// via an in-memory pipe.
+type synchronizationProtocolHandler struct{}
 
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
-func (h *protocolHandler) Connect(
+func (h *synchronizationProtocolHandler) Connect(
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
@@ -33,8 +27,10 @@ func (h *protocolHandler) Connect(
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
-	// Verify that the URL is of the correct protocol.
-	if url.Protocol != Protocol_Netpipe {
+	// Verify that the URL is of the correct kind and protocol.
+	if url.Kind != urlpkg.Kind_Synchronization {
+		panic("non-synchronization URL dispatched to synchronization protocol handler")
+	} else if url.Protocol != Protocol_Netpipe {
 		panic("non-netpipe URL dispatched to netpipe protocol handler")
 	}
 
@@ -64,5 +60,5 @@ func (h *protocolHandler) Connect(
 
 func init() {
 	// Register the netpipe protocol handler with the synchronization package.
-	synchronization.ProtocolHandlers[Protocol_Netpipe] = &protocolHandler{}
+	synchronization.ProtocolHandlers[Protocol_Netpipe] = &synchronizationProtocolHandler{}
 }
