@@ -4,7 +4,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/filesystem"
 )
 
-// Version indicates whether or not the session version is supported.
+// Supported indicates whether or not the session version is supported.
 func (v Version) Supported() bool {
 	switch v {
 	case Version_Version1:

@@ -8,8 +8,8 @@ import (
 	"github.com/havoc-io/gopass"
 )
 
-// PromptCommandLineWithMode performs command line prompting using the specified
-// response mode.
+// PromptCommandLineWithResponseMode performs command line prompting using the
+// specified response mode.
 func PromptCommandLineWithResponseMode(prompt string, mode ResponseMode) (string, error) {
 	// Figure out which getter to use.
 	var getter func() ([]byte, error)

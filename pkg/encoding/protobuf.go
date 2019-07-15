@@ -112,8 +112,8 @@ func (e *ProtobufEncoder) Flush() error {
 	return nil
 }
 
-// EncodeWithoutFlush encodes a length-prefixed Protocol Buffers message into
-// the encoder's internal buffer and writes this data to the underlying stream.
+// Encode encodes a length-prefixed Protocol Buffers message into the encoder's
+// internal buffer and writes this data to the underlying stream.
 func (e *ProtobufEncoder) Encode(message proto.Message) error {
 	// Encode the message.
 	if err := e.EncodeWithoutFlush(message); err != nil {
@@ -136,7 +136,7 @@ type ProtobufDecoder struct {
 	buffer []byte
 }
 
-// NewProtobufEncoder creates a new Protocol Buffers stream decoder.
+// NewProtobufDecoder creates a new Protocol Buffers stream decoder.
 func NewProtobufDecoder(reader io.Reader) *ProtobufDecoder {
 	return &ProtobufDecoder{
 		reader: bufio.NewReaderSize(reader, protobufDecoderReaderBufferSize),
@@ -165,7 +165,7 @@ func (d *ProtobufDecoder) bufferWithSize(size int) []byte {
 	return result
 }
 
-// Encode decodes a length-prefixed Protocol Buffers message from the underlying
+// Decode decodes a length-prefixed Protocol Buffers message from the underlying
 // stream.
 func (d *ProtobufDecoder) Decode(message proto.Message) error {
 	// Read the next message length.

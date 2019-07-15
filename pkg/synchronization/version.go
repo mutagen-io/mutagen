@@ -10,7 +10,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 )
 
-// Version indicates whether or not the session version is supported.
+// Supported indicates whether or not the session version is supported.
 func (v Version) Supported() bool {
 	switch v {
 	case Version_Version1:
@@ -20,7 +20,7 @@ func (v Version) Supported() bool {
 	}
 }
 
-// hasher creates an appropriate hash function for the session version.
+// Hasher creates an appropriate hash function for the session version.
 func (v Version) Hasher() hash.Hash {
 	switch v {
 	case Version_Version1:

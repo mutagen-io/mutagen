@@ -461,7 +461,7 @@ func (r *encodingReceiver) finalize() error {
 	return nil
 }
 
-// Encoder is the interface used by DecodeToReceiver to receive transmissions,
+// Decoder is the interface used by DecodeToReceiver to receive transmissions,
 // usually across a network.
 type Decoder interface {
 	// Decoder decodes a transmission encoded by an encoder. The transmission

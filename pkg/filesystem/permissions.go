@@ -15,7 +15,7 @@ const (
 	OwnershipIdentifierKindPOSIXID
 	// OwnershipIdentifierKindWindowsSID specifies a Windows SID.
 	OwnershipIdentifierKindWindowsSID
-	// OwnershipIdentifierKindWindowsSID specifies a name-based identifier.
+	// OwnershipIdentifierKindName specifies a name-based identifier.
 	OwnershipIdentifierKindName
 )
 

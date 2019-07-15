@@ -803,7 +803,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature *Sig
 	return nil
 }
 
-// Patch applies a series of operations against a base byte slice to
+// PatchBytes applies a series of operations against a base byte slice to
 // reconstitute the target byte slice. For performance reasons, this method does
 // not validate that the provided signature and operation satisfy expected
 // invariants. It is the responsibility of the caller to verify that the
