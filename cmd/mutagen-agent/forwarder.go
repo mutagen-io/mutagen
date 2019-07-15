@@ -12,6 +12,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/forwarding/endpoint/remote"
 	"github.com/havoc-io/mutagen/pkg/logging"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 )
 
 func forwarderMain(command *cobra.Command, arguments []string) error {
@@ -27,6 +28,11 @@ func forwarderMain(command *cobra.Command, arguments []string) error {
 	// Perform an agent handshake.
 	if err := agent.ServerHandshake(connection); err != nil {
 		return errors.Wrap(err, "server handshake failed")
+	}
+
+	// Perform a version handshake.
+	if err := mutagen.ServerVersionHandshake(connection); err != nil {
+		return errors.Wrap(err, "version handshake error")
 	}
 
 	// Serve a forwarder on standard input/output and monitor for its

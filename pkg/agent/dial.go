@@ -154,6 +154,12 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// process connection.
 	connection.SetKillDelay(time.Duration(0))
 
+	// Perform a version handshake.
+	if err := mutagen.ClientVersionHandshake(connection); err != nil {
+		connection.Close()
+		return nil, false, false, errors.Wrap(err, "version handshake error")
+	}
+
 	// Done.
 	return connection, false, false, nil
 }

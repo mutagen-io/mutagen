@@ -11,7 +11,6 @@ import (
 	"github.com/havoc-io/mutagen/pkg/compression"
 	"github.com/havoc-io/mutagen/pkg/encoding"
 	"github.com/havoc-io/mutagen/pkg/logging"
-	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/synchronization"
 	"github.com/havoc-io/mutagen/pkg/synchronization/core"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/local"
@@ -35,17 +34,6 @@ type endpointServer struct {
 func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...EndpointServerOption) error {
 	// Defer closure of the connection.
 	defer connection.Close()
-
-	// Perform a version handshake to ensure that we're talking with a
-	// compatible version of Mutagen.
-	//
-	// TODO: For now, this handshake requires an exact version match, but as we
-	// stabilize the remote endpoint protocol, we may want to allow some version
-	// skew. We'll probably want some sort of facility to blacklist known-bad
-	// versions.
-	if err := mutagen.ServerVersionHandshake(connection); err != nil {
-		return errors.Wrap(err, "version handshake error")
-	}
 
 	// Enable read/write compression on the connection.
 	reader := compression.NewDecompressingReader(connection)

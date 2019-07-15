@@ -14,6 +14,7 @@ import (
 	"github.com/havoc-io/mutagen/pkg/agent"
 	"github.com/havoc-io/mutagen/pkg/housekeeping"
 	"github.com/havoc-io/mutagen/pkg/logging"
+	"github.com/havoc-io/mutagen/pkg/mutagen"
 	"github.com/havoc-io/mutagen/pkg/synchronization/endpoint/remote"
 )
 
@@ -63,6 +64,11 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 	// Perform an agent handshake.
 	if err := agent.ServerHandshake(connection); err != nil {
 		return errors.Wrap(err, "server handshake failed")
+	}
+
+	// Perform a version handshake.
+	if err := mutagen.ServerVersionHandshake(connection); err != nil {
+		return errors.Wrap(err, "version handshake error")
 	}
 
 	// Serve an endpoint on standard input/output and monitor for its
