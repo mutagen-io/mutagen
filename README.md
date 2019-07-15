@@ -37,8 +37,8 @@ remote systems. The more people who use it and report
 | :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :-----------------------------------: |
 | [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link]   |
 
-[win-badge]: https://ci.appveyor.com/api/projects/status/qywidv5a1vf7g3b5/branch/master?svg=true "Windows build status"
-[win-link]:  https://ci.appveyor.com/project/mutagen-io/mutagen/branch/master "Windows build status"
+[win-badge]: https://ci.appveyor.com/api/projects/status/mr8rmxl5hbxgyged/branch/master?svg=true "Windows build status"
+[win-link]:  https://ci.appveyor.com/project/havoc-io/mutagen-87cwp/branch/master "Windows build status"
 [mac-lin-badge]: https://travis-ci.org/mutagen-io/mutagen.svg?branch=master "macOS/Linux build status"
 [mac-lin-link]:  https://travis-ci.org/mutagen-io/mutagen "macOS/Linux build status"
 [cov-badge]: https://codecov.io/gh/mutagen-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
