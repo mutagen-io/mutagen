@@ -5,7 +5,7 @@ FROM microsoft/windowsservercore
 RUN net user /add george
 
 # Add the HTTP demo server.
-COPY ["httpdemo", "C:/httpdemo"]
+COPY ["httpdemo", "C:\\httpdemo"]
 
 # Set the HTTP demo server as the entry point.
-ENTRYPOINT ["C:/httpdemo"]
+ENTRYPOINT ["C:\\httpdemo"]
