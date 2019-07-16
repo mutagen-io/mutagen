@@ -708,7 +708,28 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 	// that are created during this window.
 
 	// Create the symbolic link.
-	return parent.CreateSymbolicLink(name, target.Target)
+	if err := parent.CreateSymbolicLink(name, target.Target); err != nil {
+		return err
+	}
+
+	// RACE: There is a race condition here between the creation of the symbolic
+	// link and the setting of its ownership/permissions that we have to live
+	// with due to limitations in filesystem APIs. The worst case fallout is
+	// that permissions are set for a newly created filesystem entry at the same
+	// path, but it would generally inherit the same permissions over time since
+	// it's also within the synchronization path.
+
+	// Set permissions on the symbolic link. We use the default file permission
+	// mode since (a) a symbolic link's permission bits are generally ignored on
+	// most platforms and (b) on the platforms where they aren't ignored, the
+	// executability bits certainly would be and the default file permission
+	// mode already has these stripped out.
+	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultFilePermissionMode); err != nil {
+		return errors.Wrap(err, "unable to set symbolic link permissions")
+	}
+
+	// Success.
+	return nil
 }
 
 // createDirectory creates the target directory at the specified path. If only a
