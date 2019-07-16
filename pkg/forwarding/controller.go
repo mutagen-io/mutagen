@@ -80,6 +80,7 @@ func newSession(
 	source, destination *url.URL,
 	configuration, configurationSource, configurationDestination *Configuration,
 	labels map[string]string,
+	paused bool,
 	prompter string,
 ) (*controller, error) {
 	// Update status.
@@ -99,35 +100,42 @@ func newSession(
 	mergedSourceConfiguration := MergeConfigurations(configuration, configurationSource)
 	mergedDestinationConfiguration := MergeConfigurations(configuration, configurationDestination)
 
-	// Attempt to connect. Session creation is only allowed after if successful.
-	logger.Println("Connecting to source")
-	sourceEndpoint, err := connect(
-		logger.Sublogger("source"),
-		source,
-		prompter,
-		identifier,
-		version,
-		mergedSourceConfiguration,
-		true,
-	)
-	if err != nil {
-		logger.Println("Source connection failure:", err)
-		return nil, errors.Wrap(err, "unable to connect to source")
-	}
-	logger.Println("Connecting to destination")
-	destinationEndpoint, err := connect(
-		logger.Sublogger("destination"),
-		destination,
-		prompter,
-		identifier,
-		version,
-		mergedDestinationConfiguration,
-		false,
-	)
-	if err != nil {
-		sourceEndpoint.Shutdown()
-		logger.Println("Destination connection failure:", err)
-		return nil, errors.Wrap(err, "unable to connect to destination")
+	// Attempt to connect to the endpoints. Session creation is only allowed
+	// after a successful initial connection, unless the session is created
+	// pre-paused, in which case we skip this step and allow connection errors
+	// to arise on the first resume operation.
+	var sourceEndpoint, destinationEndpoint Endpoint
+	if !paused {
+		// Connect to the source endpoint.
+		logger.Println("Connecting to source endpoint")
+		if sourceEndpoint, err = connect(
+			logger.Sublogger("source"),
+			source,
+			prompter,
+			identifier,
+			version,
+			mergedSourceConfiguration,
+			true,
+		); err != nil {
+			logger.Println("Source connection failure:", err)
+			return nil, errors.Wrap(err, "unable to connect to source")
+		}
+
+		// Connect to the destination endpoint.
+		logger.Println("Connecting to destination endpoint")
+		if destinationEndpoint, err = connect(
+			logger.Sublogger("destination"),
+			destination,
+			prompter,
+			identifier,
+			version,
+			mergedDestinationConfiguration,
+			false,
+		); err != nil {
+			sourceEndpoint.Shutdown()
+			logger.Println("Destination connection failure:", err)
+			return nil, errors.Wrap(err, "unable to connect to destination")
+		}
 	}
 
 	// Create the session.
@@ -144,6 +152,7 @@ func newSession(
 		ConfigurationSource:      configurationSource,
 		ConfigurationDestination: configurationDestination,
 		Labels:                   labels,
+		Paused:                   paused,
 	}
 
 	// Compute the session path.
@@ -174,11 +183,15 @@ func newSession(
 		},
 	}
 
-	// Start a forwarding loop.
-	context, cancel := contextpkg.WithCancel(contextpkg.Background())
-	controller.cancel = cancel
-	controller.done = make(chan struct{})
-	go controller.run(context, sourceEndpoint, destinationEndpoint)
+	// If the session isn't being created pre-paused, then start a forwarding
+	// loop.
+	if !paused {
+		logger.Print("Starting forwarding loop")
+		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		controller.cancel = cancel
+		controller.done = make(chan struct{})
+		go controller.run(context, sourceEndpoint, destinationEndpoint)
+	}
 
 	// Success.
 	logger.Println("Session initialized")

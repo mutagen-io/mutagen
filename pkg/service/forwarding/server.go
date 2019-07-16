@@ -47,6 +47,7 @@ func (s *Server) Create(stream Forwarding_CreateServer) error {
 		request.Specification.ConfigurationSource,
 		request.Specification.ConfigurationDestination,
 		request.Specification.Labels,
+		request.Specification.Paused,
 		prompter,
 	)
 

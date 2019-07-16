@@ -89,6 +89,7 @@ func newSession(
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	labels map[string]string,
+	paused bool,
 	prompter string,
 ) (*controller, error) {
 	// Update status.
@@ -108,35 +109,42 @@ func newSession(
 	mergedAlphaConfiguration := MergeConfigurations(configuration, configurationAlpha)
 	mergedBetaConfiguration := MergeConfigurations(configuration, configurationBeta)
 
-	// Attempt to connect. Session creation is only allowed after if successful.
-	logger.Println("Connecting to alpha")
-	alphaEndpoint, err := connect(
-		logger.Sublogger("alpha"),
-		alpha,
-		prompter,
-		identifier,
-		version,
-		mergedAlphaConfiguration,
-		true,
-	)
-	if err != nil {
-		logger.Println("Alpha connection failure:", err)
-		return nil, errors.Wrap(err, "unable to connect to alpha")
-	}
-	logger.Println("Connecting to beta")
-	betaEndpoint, err := connect(
-		logger.Sublogger("beta"),
-		beta,
-		prompter,
-		identifier,
-		version,
-		mergedBetaConfiguration,
-		false,
-	)
-	if err != nil {
-		alphaEndpoint.Shutdown()
-		logger.Println("Beta connection failure:", err)
-		return nil, errors.Wrap(err, "unable to connect to beta")
+	// Attempt to connect to the endpoints. Session creation is only allowed
+	// after a successful initial connection, unless the session is created
+	// pre-paused, in which case we skip this step and allow connection errors
+	// to arise on the first resume operation.
+	var alphaEndpoint, betaEndpoint Endpoint
+	if !paused {
+		// Connect to the alpha endpoint.
+		logger.Println("Connecting to alpha endpoint")
+		if alphaEndpoint, err = connect(
+			logger.Sublogger("alpha"),
+			alpha,
+			prompter,
+			identifier,
+			version,
+			mergedAlphaConfiguration,
+			true,
+		); err != nil {
+			logger.Println("Alpha connection failure:", err)
+			return nil, errors.Wrap(err, "unable to connect to alpha")
+		}
+
+		// Connect to the beta endpoint.
+		logger.Println("Connecting to beta endpoint")
+		if betaEndpoint, err = connect(
+			logger.Sublogger("beta"),
+			beta,
+			prompter,
+			identifier,
+			version,
+			mergedBetaConfiguration,
+			false,
+		); err != nil {
+			alphaEndpoint.Shutdown()
+			logger.Println("Beta connection failure:", err)
+			return nil, errors.Wrap(err, "unable to connect to beta")
+		}
 	}
 
 	// Create the session and initial archive.
@@ -153,6 +161,7 @@ func newSession(
 		ConfigurationAlpha:   configurationAlpha,
 		ConfigurationBeta:    configurationBeta,
 		Labels:               labels,
+		Paused:               paused,
 	}
 	archive := &core.Archive{}
 
@@ -197,12 +206,16 @@ func newSession(
 		},
 	}
 
-	// Start a synchronization loop.
-	context, cancel := contextpkg.WithCancel(contextpkg.Background())
-	controller.cancel = cancel
-	controller.flushRequests = make(chan chan error, 1)
-	controller.done = make(chan struct{})
-	go controller.run(context, alphaEndpoint, betaEndpoint)
+	// If the session isn't being created pre-paused, then start a
+	// synchronization loop.
+	if !paused {
+		logger.Print("Starting synchronization loop")
+		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		controller.cancel = cancel
+		controller.flushRequests = make(chan chan error, 1)
+		controller.done = make(chan struct{})
+		go controller.run(context, alphaEndpoint, betaEndpoint)
+	}
 
 	// Success.
 	logger.Println("Session initialized")

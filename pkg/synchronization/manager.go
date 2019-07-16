@@ -212,6 +212,7 @@ func (m *Manager) Create(
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	labels map[string]string,
+	paused bool,
 	prompter string,
 ) (string, error) {
 	// Create a unique session identifier.
@@ -229,6 +230,7 @@ func (m *Manager) Create(
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
 		labels,
+		paused,
 		prompter,
 	)
 	if err != nil {

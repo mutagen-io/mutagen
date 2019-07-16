@@ -28,6 +28,8 @@ message CreationSpecification {
     forwarding.Configuration configurationDestination = 5;
     // Labels are the labels for the session object.
     map<string, string> labels = 6;
+    // Paused indicates whether or not to create the session pre-paused.
+    bool paused = 7;
 }
 
 message CreateRequest {

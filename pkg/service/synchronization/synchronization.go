@@ -52,6 +52,8 @@ func (s *CreationSpecification) ensureValid() error {
 		}
 	}
 
+	// There's no need to validate the Paused field - either value is valid.
+
 	// Success.
 	return nil
 }

@@ -54,8 +54,11 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	// Create a session.
 	sessionId, err := synchronizationManager.Create(
 		alpha, beta,
-		configuration, &synchronization.Configuration{}, &synchronization.Configuration{},
+		configuration,
+		&synchronization.Configuration{},
+		&synchronization.Configuration{},
 		nil,
+		false,
 		prompter,
 	)
 	if err != nil {
@@ -498,6 +501,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		&forwarding.Configuration{},
 		&forwarding.Configuration{},
 		nil,
+		false,
 		prompter,
 	)
 	if err != nil {

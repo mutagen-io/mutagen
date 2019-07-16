@@ -254,6 +254,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 				SocketPermissionMode: uint32(socketPermissionModeDestination),
 			},
 			Labels: labels,
+			Paused: createConfiguration.paused,
 		},
 	}
 	if err := stream.Send(request); err != nil {
@@ -302,6 +303,9 @@ var createConfiguration struct {
 	help bool
 	// labels are the label specifications for the session.
 	labels []string
+	// paused indicates whether or not to create the session in a pre-paused
+	// state.
+	paused bool
 	// noGlobalConfiguration specifies whether or not the global configuration
 	// file should be ignored.
 	noGlobalConfiguration bool
@@ -368,6 +372,9 @@ func init() {
 
 	// Wire up label flags.
 	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
+
+	// Wire up paused flags.
+	flags.BoolVarP(&createConfiguration.paused, "paused", "p", false, "Create the session pre-paused")
 
 	// Wire up general configuration flags.
 	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
