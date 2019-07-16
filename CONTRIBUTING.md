@@ -8,10 +8,10 @@ best channels for each of these.
 ## Issues
 
 Issues are best submitted via the
-[issue tracker](https://github.com/mutagen-io/mutagen). If you're reporting a
-security issue (or even just something that you *think* might be a security
-issue), then please follow responsible disclosure practices and submit the issue
-report using the instructions found in the
+[issue tracker](https://github.com/mutagen-io/mutagen/issues). If you're
+reporting a security issue (or even just something that you *think* might be a
+security issue), then please follow responsible disclosure practices and submit
+the issue report using the instructions found in the
 [security documentation](SECURITY.md).
 
 
@@ -19,12 +19,12 @@ report using the instructions found in the
 
 Experience reports are an essential part of improving Mutagen. These reports
 might include problems you've had, use cases that aren't covered by existing
-features, or even just thoughts about how to improve Mutagen. All of this also
-applies to Mutagen's website, documentation, and community portals. You can send
-your feedback via the
+features, or even just general thoughts about how to improve Mutagen. All of
+this also applies to Mutagen's website, documentation, and community portals.
+You can send your feedback via the
 [Mutagen community chat](https://spectrum.chat/mutagen/general), submit it via
-the [issue tracker](https://github.com/mutagen-io/mutagen), or even just email
-us at [hello@mutagen.io](mailto:hello@mutagen.io).
+the [issue tracker](https://github.com/mutagen-io/mutagen/issues), or even just
+email us at [hello@mutagen.io](mailto:hello@mutagen.io).
 
 
 ## Pull requests
@@ -51,8 +51,7 @@ newcomers, we kindly request that:
   [Effective Go](https://golang.org/doc/effective_go.html) and the
   [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 - All code be `go fmt`'d
-- Comments be wrapped at 80 columns (with exceptions for long literal strings
-  like URLs)
+- Comments be wrapped at 80 columns (with exceptions for long strings like URLs)
 - Comments be used to break up code (see existing code for examples) and be
   composed of full and complete sentences
 - New code include full test coverage
@@ -63,9 +62,9 @@ surrounding code.
 
 ### Commit guidelines
 
-To help keep source control logs readable, we also ask that all commits have
-well-formatted commit messages composed of a single subject line of 50-70
-characters, followed by a blank line, and finally the full, correctly
+To help keep source control logs readable and useful, we also ask that all
+commits have well-formatted commit messages composed of a single subject line of
+50-70 characters, followed by a blank line, and finally the full, correctly
 punctuated commit message (also wrapped to 80 lines). We ask the same for the
 pull request message itself.
 
