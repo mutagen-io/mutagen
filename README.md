@@ -72,7 +72,7 @@ their workflows:
 - [**Mutagen Helper**](https://github.com/gfi-centre-ouest/mutagen-helper) is a
   tool that makes the orchestration of synchronization sessions even easier by
   letting you define sessions with configuration files that live inside your
-  codebase. Thanks to **@Toilal**!
+  codebase. Thanks to [**@Toilal**](https://github.com/Toilal)!
 
 
 ## Security
