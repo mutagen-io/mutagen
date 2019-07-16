@@ -76,6 +76,11 @@ their workflows:
   tool that makes the orchestration of synchronization sessions even easier by
   letting you define sessions with configuration files that live inside your
   codebase. Thanks to [**@Toilal**](https://github.com/Toilal)!
+- [**docker-magento-mutagen**](https://github.com/mage2click/docker-magento-mutagen)
+  (from [Mage2click](https://mage2.click/)) is a Docker-based development
+  environment for Magento that uses Mutagen for file synchronization. Thanks to
+  [**@u-maxx**](https://github.com/u-maxx) and
+  [**@shkoliar**](https://github.com/shkoliar).
 
 
 ## Security
