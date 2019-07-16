@@ -64,6 +64,17 @@ If you'd like to contribute to Mutagen, please see the
 [contribution documentation](CONTRIBUTING.md).
 
 
+## External projects
+
+Users have built a number of cool projects to extend and integrate Mutagen into
+their workflows:
+
+- [**Mutagen Helper**](https://github.com/gfi-centre-ouest/mutagen-helper) is a
+  tool that makes the orchestration of synchronization sessions even easier by
+  letting you define sessions with configuration files that live inside your
+  codebase. Thanks to **@Toilal**!
+
+
 ## Security
 
 Mutagen takes security very seriously. If you believe you have found a security
