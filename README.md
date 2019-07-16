@@ -35,7 +35,8 @@ ideas:
 For updates about the project and its releases, you can:
 
 - Subscribe to the
-  [mutagen-announce mailing list](https://groups.google.com/forum/#!forum/mutagen-announce)
+  [mutagen-announce](https://groups.google.com/forum/#!forum/mutagen-announce)
+  mailing list
 - Follow Mutagen [on Twitter](https://twitter.com/mutagen_io)
 
 
