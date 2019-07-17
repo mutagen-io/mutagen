@@ -45,7 +45,7 @@ func TestIsPOSIXShellCommandNotFound(t *testing.T) {
 	// Attempt to run a command that doesn't exist and verify that it has the
 	// correct error classification. Note that we have to run this inside a
 	// shell, otherwise other errors will crop up before the shell's error.
-	command := exec.Command("/bin/sh", "mutagen-test-not-exist")
+	command := exec.Command("/bin/sh", "-c", "mutagen-test-not-exist")
 	if err := command.Run(); err == nil {
 		t.Fatal("expected non-nil error when running non-existent command")
 	} else if !IsPOSIXShellCommandNotFound(command.ProcessState) {
