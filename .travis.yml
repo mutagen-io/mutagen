@@ -111,7 +111,7 @@ deploy:
   file_glob: true
   file: build/release/mutagen_*_*v*
   on:
-    repo: havoc-io/mutagen
+    repo: mutagen-io/mutagen
     condition: '"$TRAVIS_OS_NAME" == "osx"'
     tags: true
 
