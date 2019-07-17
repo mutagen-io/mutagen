@@ -77,7 +77,7 @@ func (v Version) DefaultProbeMode() behavior.ProbeMode {
 func (v Version) DefaultScanMode() ScanMode {
 	switch v {
 	case Version_Version1:
-		return ScanMode_ScanModeFull
+		return ScanMode_ScanModeAccelerated
 	default:
 		panic("unknown or unsupported session version")
 	}
