@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -719,12 +720,22 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 	// path, but it would generally inherit the same permissions over time since
 	// it's also within the synchronization path.
 
-	// Set permissions on the symbolic link. We use the default file permission
-	// mode since (a) a symbolic link's permission bits are generally ignored on
-	// most platforms and (b) on the platforms where they aren't ignored, the
-	// executability bits certainly would be and the default file permission
-	// mode already has these stripped out.
-	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultFilePermissionMode); err != nil {
+	// Set permissions on the symbolic link. For permissions, we always use the
+	// executable form of the file mode, mirroring whats' done by the operating
+	// system (even for non-executable files).
+	//
+	// HACK: On Linux, the AT_SYMLINK_NOFOLLOW flag is not supported by
+	// fchmodat, so our SetPermissions function works around this with an
+	// alternative implementation. Unfortunately this implementation also
+	// doesn't support setting the mode bits for a symbolic link directly, which
+	// seems to be something that Linux doesn't support in general (though it
+	// does support symbolic link ownership). Thus, we zero-out the mode bits on
+	// Linux to skip permission setting (while retaining ownership setting).
+	mode := markExecutableForReaders(t.defaultDirectoryPermissionMode)
+	if runtime.GOOS == "linux" {
+		mode = 0
+	}
+	if err := parent.SetPermissions(name, t.defaultOwnership, mode); err != nil {
 		return errors.Wrap(err, "unable to set symbolic link permissions")
 	}
 
