@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
-	"github.com/mutagen-io/mutagen/pkg/configuration"
+	configurationpkg "github.com/mutagen-io/mutagen/pkg/configuration"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
@@ -23,17 +24,18 @@ import (
 )
 
 // loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
-// it to a Protocol Buffers session configuration, and validates it.
+// it to a Protocol Buffers session configuration, and validates it. If the path
+// doesn't exist, this function returns a default configuration object.
 func loadAndValidateYAMLConfiguration(path string) (*forwarding.Configuration, error) {
 	// Load the YAML configuration.
-	yamlConfiguration, err := configuration.Load(path)
+	yamlConfiguration, err := configurationpkg.Load(path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert the YAML configuration to a Protocol Buffers representation and
 	// validate it.
-	configuration := yamlConfiguration.Forwarding.Configuration()
+	configuration := yamlConfiguration.Forwarding.Defaults.Configuration()
 	if err := configuration.EnsureValid(false); err != nil {
 		return nil, errors.Wrap(err, "invalid configuration")
 	}
@@ -105,13 +107,23 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// cumulative configuration.
 	configuration := &forwarding.Configuration{}
 
-	// Unless disabled, load configuration from the global configuration file
-	// and merge it into our cumulative configuration.
+	// Unless disabled, attempt to load configuration from the global
+	// configuration file and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
-		if c, err := loadAndValidateYAMLConfiguration(""); err != nil {
-			return errors.Wrap(err, "unable to load global configuration")
+		// Compute the path to the global configuration file.
+		globalConfigurationPath, err := configurationpkg.GlobalConfigurationPath()
+		if err != nil {
+			return errors.Wrap(err, "unable to compute path to global configuration file")
+		}
+
+		// Attempt to load the file. We allow it to not exist.
+		globalConfiguration, err := loadAndValidateYAMLConfiguration(globalConfigurationPath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return errors.Wrap(err, "unable to load global configuration")
+			}
 		} else {
-			configuration = forwarding.MergeConfigurations(configuration, c)
+			configuration = forwarding.MergeConfigurations(configuration, globalConfiguration)
 		}
 	}
 

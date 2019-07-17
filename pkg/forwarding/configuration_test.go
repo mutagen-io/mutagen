@@ -19,7 +19,7 @@ socket:
 )
 
 // expectedConfiguration is the configuration that's expected based on the
-// human-readable configurations given above.
+// human-readable configuration given above.
 var expectedConfiguration = &Configuration{
 	SocketOverwriteMode:  SocketOverwriteMode_SocketOverwriteModeOverwrite,
 	SocketOwner:          "george",
@@ -27,7 +27,7 @@ var expectedConfiguration = &Configuration{
 	SocketPermissionMode: 0600,
 }
 
-// TestLoadYAMLConfiguration tests loading a YAML session configuration.
+// TestLoadYAMLConfiguration tests loading a YAML-based session configuration.
 func TestLoadYAMLConfiguration(t *testing.T) {
 	// Write a valid configuration to a temporary file and defer its cleanup.
 	file, err := ioutil.TempFile("", "mutagen_configuration")
