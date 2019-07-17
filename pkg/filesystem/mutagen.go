@@ -5,12 +5,19 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 const (
 	// MutagenDataDirectoryName is the name of the global Mutagen data directory
 	// inside the user's home directory.
 	MutagenDataDirectoryName = ".mutagen"
+
+	// MutagenDataDirectoryDevelopmentName is the name of the global Mutagen
+	// data directory inside the user's home directory for development builds of
+	// Mutagen.
+	MutagenDataDirectoryDevelopmentName = ".mutagen-dev"
 
 	// MutagenLegacyGlobalConfigurationName is the name of the global Mutagen
 	// configuration file inside the user's home directory.
@@ -63,7 +70,12 @@ func Mutagen(create bool, pathComponents ...string) (string, error) {
 	}
 
 	// Compute the path to the Mutagen data directory.
-	mutagenDataDirectoryPath := filepath.Join(homeDirectory, MutagenDataDirectoryName)
+	var mutagenDataDirectoryPath string
+	if !mutagen.DevelopmentVersion {
+		mutagenDataDirectoryPath = filepath.Join(homeDirectory, MutagenDataDirectoryName)
+	} else {
+		mutagenDataDirectoryPath = filepath.Join(homeDirectory, MutagenDataDirectoryDevelopmentName)
+	}
 
 	// Compute the target path.
 	result := filepath.Join(mutagenDataDirectoryPath, filepath.Join(pathComponents...))

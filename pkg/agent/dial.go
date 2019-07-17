@@ -54,8 +54,12 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	if cmdExe {
 		pathSeparator = "\\"
 	}
+	dataDirectoryName := filesystem.MutagenDataDirectoryName
+	if mutagen.DevelopmentVersion {
+		dataDirectoryName = filesystem.MutagenDataDirectoryDevelopmentName
+	}
 	agentInvocationPath := strings.Join([]string{
-		filesystem.MutagenDataDirectoryName,
+		dataDirectoryName,
 		filesystem.MutagenAgentsDirectoryName,
 		mutagen.Version,
 		BaseName,
