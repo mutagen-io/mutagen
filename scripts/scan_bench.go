@@ -16,7 +16,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/profile"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
-	"github.com/mutagen-io/mutagen/pkg/sync"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
 const (
@@ -29,9 +29,9 @@ var usage = `scan_bench [-h|--help] [-p|--profile] [-i|--ignore=<pattern>] <path
 
 // ignoreCachesIntersectionEqual compares two ignore caches, ensuring that keys
 // which are present in both caches have the same value. It's the closest we can
-// get to the sync package's testAcceleratedCacheIsSubset without having access
+// get to the core package's testAcceleratedCacheIsSubset without having access
 // to the members of IgnoreCacheKey.
-func ignoreCachesIntersectionEqual(first, second sync.IgnoreCache) bool {
+func ignoreCachesIntersectionEqual(first, second core.IgnoreCache) bool {
 	// Check matches from first in second.
 	for key, firstValue := range first {
 		if secondValue, ok := second[key]; ok && secondValue != firstValue {
@@ -85,7 +85,7 @@ func main() {
 		}
 	}
 	start := time.Now()
-	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := sync.Scan(
+	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := core.Scan(
 		path,
 		nil,
 		nil,
@@ -94,7 +94,7 @@ func main() {
 		ignores,
 		nil,
 		behavior.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkModePortable,
+		core.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -120,7 +120,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := sync.Scan(
+	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
 		path,
 		nil,
 		nil,
@@ -129,7 +129,7 @@ func main() {
 		ignores,
 		ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkModePortable,
+		core.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -176,7 +176,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = sync.Scan(
+	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
 		path,
 		snapshot,
 		map[string]bool{"fake path": true},
@@ -185,7 +185,7 @@ func main() {
 		ignores,
 		ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkModePortable,
+		core.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -230,7 +230,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = sync.Scan(
+	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
 		path,
 		snapshot,
 		nil,
@@ -239,7 +239,7 @@ func main() {
 		ignores,
 		ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
-		sync.SymlinkMode_SymlinkModePortable,
+		core.SymlinkMode_SymlinkModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
@@ -325,7 +325,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	deserializedSnapshot := &sync.Entry{}
+	deserializedSnapshot := &core.Entry{}
 	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
 	}
@@ -413,7 +413,7 @@ func main() {
 		}
 	}
 	start = time.Now()
-	deserializedCache := &sync.Cache{}
+	deserializedCache := &core.Cache{}
 	if err = proto.Unmarshal(serializedCache, deserializedCache); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to deserialize cache"))
 	}
