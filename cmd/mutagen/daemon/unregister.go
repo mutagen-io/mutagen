@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
@@ -25,7 +27,7 @@ func unregisterMain(command *cobra.Command, arguments []string) error {
 
 var unregisterCommand = &cobra.Command{
 	Use:          "unregister",
-	Short:        "[Experimental] Unregister automatic Mutagen daemon start-up",
+	Short:        "Unregister automatic Mutagen daemon start-up",
 	RunE:         unregisterMain,
 	SilenceUsage: true,
 }
@@ -37,6 +39,9 @@ var unregisterConfiguration struct {
 }
 
 func init() {
+	// Mark the command as experimental.
+	unregisterCommand.Short = unregisterCommand.Short + color.YellowString(" [Experimental]")
+
 	// Grab a handle for the command line flags.
 	flags := unregisterCommand.Flags()
 
