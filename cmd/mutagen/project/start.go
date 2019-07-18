@@ -73,7 +73,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 	if length, err := buffer.ReadFrom(locker); err != nil {
 		return errors.Wrap(err, "unable to read project lock")
 	} else if length != 0 {
-		return errors.New("project session already exists")
+		return errors.New("project already running")
 	}
 
 	// Create a unique project identifier.
@@ -99,8 +99,8 @@ func startMain(command *cobra.Command, arguments []string) error {
 	// Unless disabled, attempt to load configuration from the global
 	// configuration file and use it as the base for our core session
 	// configurations.
-	globalForwardingConfiguration := &forwarding.Configuration{}
-	globalSynchronizationConfiguration := &synchronization.Configuration{}
+	globalConfigurationForwarding := &forwarding.Configuration{}
+	globalConfigurationSynchronization := &synchronization.Configuration{}
 	if !startConfiguration.noGlobalConfiguration {
 		// Compute the path to the global configuration file.
 		globalConfigurationPath, err := configurationpkg.GlobalConfigurationPath()
@@ -127,12 +127,12 @@ func startMain(command *cobra.Command, arguments []string) error {
 				return errors.Wrap(err, "unable to load global configuration")
 			}
 		} else {
-			globalForwardingConfiguration = globalConfiguration.Forwarding.Defaults.Configuration()
-			if err := globalForwardingConfiguration.EnsureValid(false); err != nil {
+			globalConfigurationForwarding = globalConfiguration.Forwarding.Defaults.Configuration()
+			if err := globalConfigurationForwarding.EnsureValid(false); err != nil {
 				return errors.Wrap(err, "invalid global forwarding configuration")
 			}
-			globalSynchronizationConfiguration = globalConfiguration.Synchronization.Defaults.Configuration()
-			if err := globalSynchronizationConfiguration.EnsureValid(false); err != nil {
+			globalConfigurationSynchronization = globalConfiguration.Synchronization.Defaults.Configuration()
+			if err := globalConfigurationSynchronization.EnsureValid(false); err != nil {
 				return errors.Wrap(err, "invalid global synchronization configuration")
 			}
 		}
@@ -140,14 +140,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Extract and validate forwarding defaults.
 	var defaultSource, defaultDestination string
-	defaultForwardingConfiguration := &forwarding.Configuration{}
+	defaultConfigurationForwarding := &forwarding.Configuration{}
 	defaultConfigurationSource := &forwarding.Configuration{}
 	defaultConfigurationDestination := &forwarding.Configuration{}
 	if defaults, ok := configuration.Forwarding["defaults"]; ok {
 		defaultSource = defaults.Source
 		defaultDestination = defaults.Destination
-		defaultForwardingConfiguration = defaults.Configuration.Configuration()
-		if err := defaultForwardingConfiguration.EnsureValid(false); err != nil {
+		defaultConfigurationForwarding = defaults.Configuration.Configuration()
+		if err := defaultConfigurationForwarding.EnsureValid(false); err != nil {
 			return errors.Wrap(err, "invalid default forwarding configuration")
 		}
 		defaultConfigurationSource = defaults.ConfigurationSource.Configuration()
@@ -162,14 +162,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Extract and validate synchronization defaults.
 	var defaultAlpha, defaultBeta string
-	defaultSynchronizationConfiguration := &synchronization.Configuration{}
+	defaultConfigurationSynchronization := &synchronization.Configuration{}
 	defaultConfigurationAlpha := &synchronization.Configuration{}
 	defaultConfigurationBeta := &synchronization.Configuration{}
 	if defaults, ok := configuration.Synchronization["defaults"]; ok {
 		defaultAlpha = defaults.Alpha
 		defaultBeta = defaults.Beta
-		defaultSynchronizationConfiguration = defaults.Configuration.Configuration()
-		if err := defaultSynchronizationConfiguration.EnsureValid(false); err != nil {
+		defaultConfigurationSynchronization = defaults.Configuration.Configuration()
+		if err := defaultConfigurationSynchronization.EnsureValid(false); err != nil {
 			return errors.Wrap(err, "invalid default synchronization configuration")
 		}
 		defaultConfigurationAlpha = defaults.ConfigurationAlpha.Configuration()
@@ -182,14 +182,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Merge global and default configurations.
-	defaultForwardingConfiguration = forwarding.MergeConfigurations(
-		globalForwardingConfiguration,
-		defaultForwardingConfiguration,
+	// Merge global and default configurations, with defaults taking priority.
+	defaultConfigurationForwarding = forwarding.MergeConfigurations(
+		globalConfigurationForwarding,
+		defaultConfigurationForwarding,
 	)
-	defaultSynchronizationConfiguration = synchronization.MergeConfigurations(
-		globalSynchronizationConfiguration,
-		defaultSynchronizationConfiguration,
+	defaultConfigurationSynchronization = synchronization.MergeConfigurations(
+		globalConfigurationSynchronization,
+		defaultConfigurationSynchronization,
 	)
 
 	// Generate forward session creation specifications.
@@ -255,7 +255,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 		if err := configuration.EnsureValid(false); err != nil {
 			return errors.Errorf("invalid forwarding session configuration for %s: %v", name, err)
 		}
-		configuration = forwarding.MergeConfigurations(defaultForwardingConfiguration, configuration)
+		configuration = forwarding.MergeConfigurations(defaultConfigurationForwarding, configuration)
 
 		// Compute source-specific configuration.
 		sourceConfiguration := session.ConfigurationSource.Configuration()
@@ -340,7 +340,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 		if err := configuration.EnsureValid(false); err != nil {
 			return errors.Errorf("invalid synchronization session configuration for %s: %v", name, err)
 		}
-		configuration = synchronization.MergeConfigurations(defaultSynchronizationConfiguration, configuration)
+		configuration = synchronization.MergeConfigurations(defaultConfigurationSynchronization, configuration)
 
 		// Compute alpha-specific configuration.
 		alphaConfiguration := session.ConfigurationAlpha.Configuration()
