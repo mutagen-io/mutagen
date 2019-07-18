@@ -70,12 +70,12 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	// Compute the label selector that we're going to use to pause sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, identifier)
 
-	// Terminate forwarding sessions.
+	// Pause forwarding sessions.
 	if err := forward.PauseWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to pause forwarding session(s)")
 	}
 
-	// Terminate synchronization sessions.
+	// Pause synchronization sessions.
 	if err := sync.PauseWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to pause synchronization session(s)")
 	}

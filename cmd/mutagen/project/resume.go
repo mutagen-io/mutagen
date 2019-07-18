@@ -70,12 +70,12 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	// Compute the label selector that we're going to use to resume sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, identifier)
 
-	// Terminate forwarding sessions.
+	// Resume forwarding sessions.
 	if err := forward.ResumeWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to resume forwarding session(s)")
 	}
 
-	// Terminate synchronization sessions.
+	// Resume synchronization sessions.
 	if err := sync.ResumeWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to resume synchronization session(s)")
 	}
@@ -86,7 +86,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 
 var resumeCommand = &cobra.Command{
 	Use:          "resume",
-	Short:        "Terminate project sessions",
+	Short:        "Resume project sessions",
 	RunE:         resumeMain,
 	SilenceUsage: true,
 }

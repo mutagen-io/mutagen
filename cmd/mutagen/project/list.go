@@ -70,12 +70,14 @@ func listMain(command *cobra.Command, arguments []string) error {
 	// Compute the label selector that we're going to use to list sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, identifier)
 
-	// Terminate forwarding sessions.
+	// List forwarding sessions.
+	fmt.Println("Forwarding sessions:")
 	if err := forward.ListWithLabelSelector(labelSelector, listConfiguration.long); err != nil {
 		return errors.Wrap(err, "unable to list forwarding session(s)")
 	}
 
-	// Terminate synchronization sessions.
+	// List synchronization sessions.
+	fmt.Println("Synchronization sessions:")
 	if err := sync.ListWithLabelSelector(labelSelector, listConfiguration.long); err != nil {
 		return errors.Wrap(err, "unable to list synchronization session(s)")
 	}
@@ -86,7 +88,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 var listCommand = &cobra.Command{
 	Use:          "list",
-	Short:        "Terminate project sessions",
+	Short:        "List project sessions",
 	RunE:         listMain,
 	SilenceUsage: true,
 }
