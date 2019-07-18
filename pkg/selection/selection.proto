@@ -9,9 +9,9 @@ option go_package = "github.com/mutagen-io/mutagen/pkg/selection";
 message Selection {
     // All, if true, indicates that all sessions should be selected.
     bool all = 1;
-    // Specifications is a list of standard Mutagen specifications (identifiers
-    // and/or fragments). If non-empty, it indicates that these specifications
-    // should be used to select sessions.
+    // Specifications is a list of session specifications. Each element may be
+    // either a session identifier or name (or a prefix thereof). If non-empty,
+    // it indicates that these specifications should be used to select sessions.
     repeated string specifications = 2;
     // LabelSelector is a label selector specification. If present (non-empty),
     // it indicates that this selector should be used to select sessions.

@@ -3,7 +3,6 @@ package synchronization
 import (
 	contextpkg "context"
 	"sort"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -86,12 +85,6 @@ func (m *Manager) allControllers() []*controller {
 	return controllers
 }
 
-const (
-	// minimumSessionSpecificationLength is the minimum session specification
-	// length needed for a fuzzy match.
-	minimumSessionSpecificationLength = 5
-)
-
 // findControllersBySpecification generates a list of controllers matching the
 // given specifications.
 func (m *Manager) findControllersBySpecification(specifications []string) ([]*controller, error) {
@@ -99,45 +92,28 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*co
 	m.sessionsLock.Lock()
 	defer m.sessionsLock.UnlockWithoutNotify()
 
-	// Generate a list of controllers matching the specified specifications.
-	controllers := make([]*controller, 0, len(specifications))
+	// Generate a list of controllers matching the specifications. We allow each
+	// specification to match multiple controllers, so we store matches in a set
+	// before converting them to a list. We do require that each specification
+	// match at least one controller.
+	controllerSet := make(map[*controller]bool)
 	for _, specification := range specifications {
-		// Validate the specification.
-		if specification == "" {
-			return nil, errors.New("empty session specification is invalid")
-		} else if len(specification) < minimumSessionSpecificationLength {
-			return nil, errors.Errorf(
-				"session specification must be at least %d characters",
-				minimumSessionSpecificationLength,
-			)
-		}
-
-		// Attempt to find a match.
-		var match *controller
+		var matched bool
 		for _, controller := range m.sessions {
-			// Check for an exact match.
-			if controller.session.Identifier == specification {
-				match = controller
-				break
+			if controller.session.Identifier == specification || controller.session.Name == specification {
+				controllerSet[controller] = true
+				matched = true
 			}
+		}
+		if !matched {
+			return nil, errors.Errorf("specification \"%s\" did not match any sessions", specification)
+		}
+	}
 
-			// Check for a fuzzy match.
-			fuzzy := strings.HasPrefix(controller.session.Identifier, specification) ||
-				strings.Contains(controller.session.Alpha.Path, specification) ||
-				strings.Contains(controller.session.Beta.Path, specification) ||
-				strings.Contains(controller.session.Alpha.Host, specification) ||
-				strings.Contains(controller.session.Beta.Host, specification)
-			if fuzzy {
-				if match != nil {
-					return nil, errors.Errorf("specification \"%s\" matches multiple sessions", specification)
-				}
-				match = controller
-			}
-		}
-		if match == nil {
-			return nil, errors.Errorf("specification \"%s\" doesn't match any sessions", specification)
-		}
-		controllers = append(controllers, match)
+	// Convert the set to a list.
+	controllers := make([]*controller, 0, len(controllerSet))
+	for c := range controllerSet {
+		controllers = append(controllers, c)
 	}
 
 	// Done.

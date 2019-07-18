@@ -25,9 +25,9 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 type Selection struct {
 	// All, if true, indicates that all sessions should be selected.
 	All bool `protobuf:"varint,1,opt,name=all,proto3" json:"all,omitempty"`
-	// Specifications is a list of standard Mutagen specifications (identifiers
-	// and/or fragments). If non-empty, it indicates that these specifications
-	// should be used to select sessions.
+	// Specifications is a list of session specifications. Each element may be
+	// either a session identifier or name (or a prefix thereof). If non-empty,
+	// it indicates that these specifications should be used to select sessions.
 	Specifications []string `protobuf:"bytes,2,rep,name=specifications,proto3" json:"specifications,omitempty"`
 	// LabelSelector is a label selector specification. If present (non-empty),
 	// it indicates that this selector should be used to select sessions.
