@@ -8,8 +8,10 @@ import (
 
 // Locker provides file locking facilities.
 type Locker struct {
-	// The underlying file object to be locked.
+	// file is the underlying file object that's locked.
 	file *os.File
+	// held indicates whether or not the lock is currently held.
+	held bool
 }
 
 // NewLocker attempts to create a lock with the file at the specified path,
@@ -21,6 +23,35 @@ func NewLocker(path string, permissions os.FileMode) (*Locker, error) {
 	} else {
 		return &Locker{file: file}, nil
 	}
+}
+
+// Held returns whether or not the lock is currently held.
+func (l *Locker) Held() bool {
+	return l.held
+}
+
+// Read implements io.Reader.Read on the underlying file, but errors if the lock
+// is not currently held.
+func (l *Locker) Read(buffer []byte) (int, error) {
+	// Verify that the lock is held.
+	if !l.held {
+		return 0, errors.New("lock not held")
+	}
+
+	// Perform the read.
+	return l.file.Read(buffer)
+}
+
+// Write implements io.Writer.Write on the underlying file, but errors if the
+// lock is not currently held.
+func (l *Locker) Write(buffer []byte) (int, error) {
+	// Verify that the lock is held.
+	if !l.held {
+		return 0, errors.New("lock not held")
+	}
+
+	// Perform the write.
+	return l.file.Write(buffer)
 }
 
 // Close closes the file underlying the locker. This will release any lock held

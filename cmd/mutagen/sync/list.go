@@ -120,6 +120,14 @@ func printConflicts(conflicts []*core.Conflict) {
 	}
 }
 
+// ListWithLabelSelector is an orchestration convenience method that invokes the
+// list command using the specified label selector.
+func ListWithLabelSelector(labelSelector string, long bool) error {
+	listConfiguration.long = long
+	listConfiguration.labelSelector = labelSelector
+	return listMain(nil, nil)
+}
+
 func listMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{

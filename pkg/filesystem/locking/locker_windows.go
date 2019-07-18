@@ -44,6 +44,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -114,16 +116,50 @@ func callunlockFileEx(
 
 // Lock attempts to acquire the file lock.
 func (l *Locker) Lock(block bool) error {
+	// Verify that we don't already hold the lock.
+	if l.held {
+		return errors.New("lock already held")
+	}
+
+	// Create an overlapped structure to manage overlapped I/O.
 	var ol syscall.Overlapped
+
+	// Set up the lock and blocking flags.
 	flags := uint32(LOCKFILE_EXCLUSIVE_LOCK)
 	if !block {
 		flags |= LOCKFILE_FAIL_IMMEDIATELY
 	}
-	return callLockFileEx(syscall.Handle(l.file.Fd()), flags, 0, 1, 0, &ol)
+
+	// Attempt to perform locking.
+	err := callLockFileEx(syscall.Handle(l.file.Fd()), flags, 0, 1, 0, &ol)
+
+	// Check for success and update the internal state.
+	if err == nil {
+		l.held = true
+	}
+
+	// Done.
+	return err
 }
 
 // Unlock releases the file lock.
 func (l *Locker) Unlock() error {
+	// Verify that we hold the lock.
+	if !l.held {
+		return errors.New("lock not held")
+	}
+
+	// Create an overlapped structure to manage overlapped I/O.
 	var ol syscall.Overlapped
-	return callunlockFileEx(syscall.Handle(l.file.Fd()), 0, 1, 0, &ol)
+
+	// Attempt to perform unlocking.
+	err := callunlockFileEx(syscall.Handle(l.file.Fd()), 0, 1, 0, &ol)
+
+	// Check for success and update the internal state.
+	if err == nil {
+		l.held = false
+	}
+
+	// Done.
+	return err
 }

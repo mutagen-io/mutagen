@@ -14,6 +14,13 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 )
 
+// PauseWithLabelSelector is an orchestration convenience method invokes the
+// pause command using the specified label selector.
+func PauseWithLabelSelector(labelSelector string) error {
+	pauseConfiguration.labelSelector = labelSelector
+	return pauseMain(nil, nil)
+}
+
 func pauseMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{

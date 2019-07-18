@@ -44,6 +44,58 @@ func loadAndValidateYAMLConfiguration(path string) (*forwarding.Configuration, e
 	return configuration, nil
 }
 
+// CreateWithSpecification is an orchestration convenience method invokes the
+// creation using the provided session specification. Unlike other orchestration
+// methods, it requires provision of a client to avoid creating one for each
+// request.
+func CreateWithSpecification(
+	service forwardingsvc.ForwardingClient,
+	specification *forwardingsvc.CreationSpecification,
+) error {
+	// Invoke the session create method. The stream will close when the
+	// associated context is cancelled.
+	createContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := service.Create(createContext)
+	if err != nil {
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
+	}
+
+	// Send the initial request.
+	request := &forwardingsvc.CreateRequest{Specification: specification}
+	if err := stream.Send(request); err != nil {
+		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
+	}
+
+	// Create a status line printer and defer a break.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+	defer statusLinePrinter.BreakIfNonEmpty()
+
+	// Receive and process responses until we're done.
+	for {
+		if response, err := stream.Recv(); err != nil {
+			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
+		} else if err = response.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid create response received")
+		} else if response.Session != "" {
+			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
+			return nil
+		} else if response.Message != "" {
+			statusLinePrinter.Print(response.Message)
+			if err := stream.Send(&forwardingsvc.CreateRequest{}); err != nil {
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
+			}
+		} else if response.Prompt != "" {
+			statusLinePrinter.BreakIfNonEmpty()
+			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
+				return errors.Wrap(err, "unable to perform prompting")
+			} else if err = stream.Send(&forwardingsvc.CreateRequest{Response: response}); err != nil {
+				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
+			}
+		}
+	}
+}
+
 func createMain(command *cobra.Command, arguments []string) error {
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
@@ -233,6 +285,28 @@ func createMain(command *cobra.Command, arguments []string) error {
 		SocketPermissionMode: uint32(socketPermissionMode),
 	})
 
+	// Create the creation specification.
+	specification := &forwardingsvc.CreationSpecification{
+		Source:        source,
+		Destination:   destination,
+		Configuration: configuration,
+		ConfigurationSource: &forwarding.Configuration{
+			SocketOverwriteMode:  socketOverwriteModeSource,
+			SocketOwner:          createConfiguration.socketOwnerSource,
+			SocketGroup:          createConfiguration.socketGroupSource,
+			SocketPermissionMode: uint32(socketPermissionModeSource),
+		},
+		ConfigurationDestination: &forwarding.Configuration{
+			SocketOverwriteMode:  socketOverwriteModeDestination,
+			SocketOwner:          createConfiguration.socketOwnerDestination,
+			SocketGroup:          createConfiguration.socketGroupDestination,
+			SocketPermissionMode: uint32(socketPermissionModeDestination),
+		},
+		Name:   createConfiguration.name,
+		Labels: labels,
+		Paused: createConfiguration.paused,
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.CreateClientConnection(true, true)
 	if err != nil {
@@ -240,72 +314,11 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
+	// Create a forwarding service client.
+	service := forwardingsvc.NewForwardingClient(daemonConnection)
 
-	// Invoke the session create method. The stream will close when the
-	// associated context is cancelled.
-	createContext, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := sessionService.Create(createContext)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
-	}
-
-	// Send the initial request.
-	request := &forwardingsvc.CreateRequest{
-		Specification: &forwardingsvc.CreationSpecification{
-			Source:        source,
-			Destination:   destination,
-			Configuration: configuration,
-			ConfigurationSource: &forwarding.Configuration{
-				SocketOverwriteMode:  socketOverwriteModeSource,
-				SocketOwner:          createConfiguration.socketOwnerSource,
-				SocketGroup:          createConfiguration.socketGroupSource,
-				SocketPermissionMode: uint32(socketPermissionModeSource),
-			},
-			ConfigurationDestination: &forwarding.Configuration{
-				SocketOverwriteMode:  socketOverwriteModeDestination,
-				SocketOwner:          createConfiguration.socketOwnerDestination,
-				SocketGroup:          createConfiguration.socketGroupDestination,
-				SocketPermissionMode: uint32(socketPermissionModeDestination),
-			},
-			Name:   createConfiguration.name,
-			Labels: labels,
-			Paused: createConfiguration.paused,
-		},
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
-	}
-
-	// Create a status line printer and defer a break.
-	statusLinePrinter := &cmd.StatusLinePrinter{}
-	defer statusLinePrinter.BreakIfNonEmpty()
-
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid create response received")
-		} else if response.Session != "" {
-			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvc.CreateRequest{}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&forwardingsvc.CreateRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
-	}
+	// Perform creation.
+	return CreateWithSpecification(service, specification)
 }
 
 var createCommand = &cobra.Command{

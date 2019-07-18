@@ -60,6 +60,11 @@ func TestLockerCycle(t *testing.T) {
 		t.Fatal("unable to acquire lock:", err)
 	}
 
+	// Verify that the lock state is correct.
+	if !locker.Held() {
+		t.Error("lock incorrectly reported as unlocked")
+	}
+
 	// Attempt to release the lock.
 	if err := locker.Unlock(); err != nil {
 		t.Fatal("unable to release lock:", err)

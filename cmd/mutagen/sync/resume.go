@@ -15,6 +15,13 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
+// ResumeWithLabelSelector is an orchestration convenience method invokes the
+// resume command using the specified label selector.
+func ResumeWithLabelSelector(labelSelector string) error {
+	resumeConfiguration.labelSelector = labelSelector
+	return resumeMain(nil, nil)
+}
+
 func resumeMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{

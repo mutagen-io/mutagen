@@ -14,6 +14,13 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
+// TerminateWithLabelSelector is an orchestration convenience method invokes the
+// terminate command using the specified label selector.
+func TerminateWithLabelSelector(labelSelector string) error {
+	terminateConfiguration.labelSelector = labelSelector
+	return terminateMain(nil, nil)
+}
+
 func terminateMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{

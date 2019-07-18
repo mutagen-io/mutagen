@@ -8,6 +8,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
@@ -62,6 +63,7 @@ func init() {
 	commands := []*cobra.Command{
 		forward.RootCommand,
 		sync.RootCommand,
+		project.RootCommand,
 		daemon.RootCommand,
 		versionCommand,
 		legalCommand,

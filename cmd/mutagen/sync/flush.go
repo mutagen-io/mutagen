@@ -14,6 +14,14 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
+// FlushWithLabelSelector is an orchestration convenience method invokes the
+// flush command using the specified label selector.
+func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
+	flushConfiguration.labelSelector = labelSelector
+	flushConfiguration.skipWait = skipWait
+	return flushMain(nil, nil)
+}
+
 func flushMain(command *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -111,5 +119,5 @@ func init() {
 	// Wire up flush flags.
 	flags.BoolVarP(&flushConfiguration.all, "all", "a", false, "Flush all sessions")
 	flags.StringVar(&flushConfiguration.labelSelector, "label-selector", "", "Flush sessions matching the specified label selector")
-	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle to complete")
+	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle(s) to complete")
 }
