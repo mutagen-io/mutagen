@@ -101,9 +101,9 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 
 		// Validate the response and extract the relevant session state. If no
 		// session has been explicitly specified and it's our first time through
-		// the loop, then set up monitoring to use the one session identified by
-		// the label selector or the most recently created session (which will
-		// be the last in the returned results).
+		// the loop, then set up monitoring to use most recently created session
+		// matching the selection criteria (which will be the last in the
+		// returned results).
 		var state *forwarding.State
 		previousStateIndex = response.StateIndex
 		if session == "" {
@@ -113,8 +113,6 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 				} else {
 					err = errors.New("no sessions exist")
 				}
-			} else if monitorConfiguration.labelSelector != "" && len(response.SessionStates) > 1 {
-				err = errors.New("label selector matched multiple sessions")
 			} else {
 				state = response.SessionStates[len(response.SessionStates)-1]
 				session = state.Session.Identifier
