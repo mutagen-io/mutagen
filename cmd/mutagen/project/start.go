@@ -15,7 +15,9 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
-	configurationpkg "github.com/mutagen-io/mutagen/pkg/configuration"
+	"github.com/mutagen-io/mutagen/pkg/configuration/global"
+	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
+	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
@@ -90,7 +92,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Load the configuration file.
-	configuration, err := project.LoadConfiguration(configurationFileName)
+	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
 	if err != nil {
 		os.Remove(lockPath)
 		return errors.Wrap(err, "unable to load configuration file")
@@ -103,18 +105,18 @@ func startMain(command *cobra.Command, arguments []string) error {
 	globalConfigurationSynchronization := &synchronization.Configuration{}
 	if !startConfiguration.noGlobalConfiguration {
 		// Compute the path to the global configuration file.
-		globalConfigurationPath, err := configurationpkg.GlobalConfigurationPath()
+		globalConfigurationPath, err := global.ConfigurationPath()
 		if err != nil {
 			return errors.Wrap(err, "unable to compute path to global configuration file")
 		}
 
 		// Load the configuration. We allow it do not exist, but we don't fall
 		// back to legacy configuration options.
-		globalConfiguration, err := configurationpkg.Load(globalConfigurationPath)
+		globalConfiguration, err := global.LoadConfiguration(globalConfigurationPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// Compute the path to the global configuration file.
-				legacyGlobalConfigurationPath, err := synchronization.LegacyGlobalConfigurationPath()
+				legacyGlobalConfigurationPath, err := legacy.ConfigurationPath()
 				if err != nil {
 					return errors.Wrap(err, "unable to compute path to legacy global configuration file")
 				}

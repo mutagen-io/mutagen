@@ -1,9 +1,9 @@
 package project
 
 import (
+	"github.com/mutagen-io/mutagen/pkg/configuration/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/configuration/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
-	"github.com/mutagen-io/mutagen/pkg/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 // ForwardingConfiguration encodes a full forwarding session specification.
@@ -13,12 +13,12 @@ type ForwardingConfiguration struct {
 	// Destination is the destination URL for the session.
 	Destination string `yaml:"destination"`
 	// Configuration is the configuration for the session.
-	Configuration forwarding.YAMLConfiguration `yaml:",inline"`
+	Configuration forwarding.Configuration `yaml:",inline"`
 	// ConfigurationSource is the source-specific configuration for the session.
-	ConfigurationSource forwarding.YAMLConfiguration `yaml:"configurationSource"`
+	ConfigurationSource forwarding.Configuration `yaml:"configurationSource"`
 	// ConfigurationDestination is the destination-specific configuration for
 	// the session.
-	ConfigurationDestination forwarding.YAMLConfiguration `yaml:"configurationDestination"`
+	ConfigurationDestination forwarding.Configuration `yaml:"configurationDestination"`
 }
 
 // SynchronizationConfiguration encodes a full synchronization session
@@ -29,11 +29,11 @@ type SynchronizationConfiguration struct {
 	// Beta is the beta URL for the session.
 	Beta string `yaml:"beta"`
 	// Configuration is the configuration for the session.
-	Configuration synchronization.YAMLConfiguration `yaml:",inline"`
+	Configuration synchronization.Configuration `yaml:",inline"`
 	// ConfigurationAlpha is the alpha-specific configuration for the session.
-	ConfigurationAlpha synchronization.YAMLConfiguration `yaml:"configurationAlpha"`
+	ConfigurationAlpha synchronization.Configuration `yaml:"configurationAlpha"`
 	// ConfigurationBeta is the beta-specific configuration for the session.
-	ConfigurationBeta synchronization.YAMLConfiguration `yaml:"configurationBeta"`
+	ConfigurationBeta synchronization.Configuration `yaml:"configurationBeta"`
 }
 
 // Configuration is the orchestration  configuration object type.

@@ -15,7 +15,8 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
-	configurationpkg "github.com/mutagen-io/mutagen/pkg/configuration"
+	"github.com/mutagen-io/mutagen/pkg/configuration/global"
+	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
@@ -27,11 +28,12 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-// loadAndValidateYAMLConfiguration loads a YAML-based configuration, converts
-// it to a Protocol Buffers session configuration, and validates it.
-func loadAndValidateYAMLConfiguration(path string) (*synchronization.Configuration, error) {
+// loadAndValidateGlobalSynchronizationConfiguration loads a YAML-based global
+// configuration, extracts the synchronization component, and converts it to a
+// Protocol Buffers session configuration, and validates it.
+func loadAndValidateGlobalSynchronizationConfiguration(path string) (*synchronization.Configuration, error) {
 	// Load the YAML configuration.
-	yamlConfiguration, err := configurationpkg.Load(path)
+	yamlConfiguration, err := global.LoadConfiguration(path)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,7 @@ func loadAndValidateYAMLConfiguration(path string) (*synchronization.Configurati
 // validates it.
 func loadAndValidateLegacyTOMLConfiguration(path string) (*synchronization.Configuration, error) {
 	// Load the TOML configuration.
-	tomlConfiguration, err := synchronization.LoadLegacyTOML(path)
+	tomlConfiguration, err := legacy.LoadConfiguration(path)
 	if err != nil {
 		return nil, err
 	}
@@ -184,13 +186,13 @@ func createMain(command *cobra.Command, arguments []string) error {
 	var globalConfigurationNonExistent bool
 	if !createConfiguration.noGlobalConfiguration {
 		// Compute the path to the global configuration file.
-		globalConfigurationPath, err := configurationpkg.GlobalConfigurationPath()
+		globalConfigurationPath, err := global.ConfigurationPath()
 		if err != nil {
 			return errors.Wrap(err, "unable to compute path to global configuration file")
 		}
 
 		// Attempt to load the file. We allow it to not exist.
-		globalConfiguration, err := loadAndValidateYAMLConfiguration(globalConfigurationPath)
+		globalConfiguration, err := loadAndValidateGlobalSynchronizationConfiguration(globalConfigurationPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return errors.Wrap(err, "unable to load global configuration")
@@ -205,7 +207,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// try to load the legacy global configuration.
 	if globalConfigurationNonExistent {
 		// Compute the path to the global configuration file.
-		legacyGlobalConfigurationPath, err := synchronization.LegacyGlobalConfigurationPath()
+		legacyGlobalConfigurationPath, err := legacy.ConfigurationPath()
 		if err != nil {
 			return errors.Wrap(err, "unable to compute path to legacy global configuration file")
 		}
@@ -237,7 +239,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 				configuration = synchronization.MergeConfigurations(configuration, c)
 			}
 		} else {
-			if c, err := loadAndValidateYAMLConfiguration(createConfiguration.configurationFile); err != nil {
+			if c, err := loadAndValidateGlobalSynchronizationConfiguration(createConfiguration.configurationFile); err != nil {
 				return errors.Wrap(err, "unable to load configuration file")
 			} else {
 				configuration = synchronization.MergeConfigurations(configuration, c)

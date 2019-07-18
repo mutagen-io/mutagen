@@ -1,2 +1,3 @@
-// Package configuration provides the global configuration file definition.
+// Package configuration provides infrastructure for loading configuration
+// information from human-readable formats.
 package configuration

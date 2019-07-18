@@ -1,4 +1,4 @@
-package configuration
+package global
 
 import (
 	"os"
@@ -9,9 +9,9 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-// GlobalConfigurationPath returns the path of the YAML-based global
-// configuration file. It does not verify that the file exists.
-func GlobalConfigurationPath() (string, error) {
+// ConfigurationPath returns the path of the YAML-based global configuration
+// file. It does not verify that the file exists.
+func ConfigurationPath() (string, error) {
 	// Compute the path to the user's home directory.
 	homeDirectoryPath, err := os.UserHomeDir()
 	if err != nil {
