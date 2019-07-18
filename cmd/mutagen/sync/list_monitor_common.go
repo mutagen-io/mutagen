@@ -103,8 +103,13 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 }
 
 func printSession(state *synchronization.State, long bool) {
+	// Print name, if any.
+	if state.Session.Name != "" {
+		fmt.Println("Name:", state.Session.Name)
+	}
+
 	// Print the session identifier.
-	fmt.Println("Session:", state.Session.Identifier)
+	fmt.Println("Identifier:", state.Session.Identifier)
 
 	// Print labels.
 	if len(state.Session.Labels) > 0 {

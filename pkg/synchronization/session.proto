@@ -56,10 +56,14 @@ message Session {
     // it is not considered valid unless non-nil, so it should be replaced with
     // an empty default value in-memory if a nil on-disk value is detected.
     Configuration configurationBeta = 12;
+    // Name is a user-friendly name for the session. It may be empty and is not
+    // guaranteed to be unique across all sessions. It is only used as a simpler
+    // handle for specifying sessions. It is static.
+    string name = 14;
     // Labels are the session labels. They are static.
     map<string, string> labels = 13;
     // Paused indicates whether or not the session is marked as paused.
     bool paused = 10;
-    // NOTE: Fields 11, 12, and 13 are used above. They are out of order for
+    // NOTE: Fields 11, 12, 13, and 14 are used above. They are out of order for
     // historical reasons.
 }

@@ -88,6 +88,7 @@ func newSession(
 	identifier string,
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
+	name string,
 	labels map[string]string,
 	paused bool,
 	prompter string,
@@ -160,6 +161,7 @@ func newSession(
 		Configuration:        configuration,
 		ConfigurationAlpha:   configurationAlpha,
 		ConfigurationBeta:    configurationBeta,
+		Name:                 name,
 		Labels:               labels,
 		Paused:               paused,
 	}

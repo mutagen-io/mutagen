@@ -209,6 +209,7 @@ func (m *Manager) Shutdown() {
 func (m *Manager) Create(
 	source, destination *url.URL,
 	configuration, configurationSource, configurationDestination *Configuration,
+	name string,
 	labels map[string]string,
 	paused bool,
 	prompter string,
@@ -227,6 +228,7 @@ func (m *Manager) Create(
 		identifier,
 		source, destination,
 		configuration, configurationSource, configurationDestination,
+		name,
 		labels,
 		paused,
 		prompter,

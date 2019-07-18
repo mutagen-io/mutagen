@@ -25,10 +25,12 @@ message CreationSpecification {
     // ConfigurationBeta is the beta-specific session configuration. It is
     // determined based on command line configuration parameters.
     synchronization.Configuration configurationBeta = 5;
+    // Name is the name for the session object.
+    string name = 6;
     // Labels are the labels for the session object.
-    map<string, string> labels = 6;
+    map<string, string> labels = 7;
     // Paused indicates whether or not to create the session pre-paused.
-    bool paused = 7;
+    bool paused = 8;
 }
 
 message CreateRequest {

@@ -43,6 +43,11 @@ func (s *CreationSpecification) ensureValid() error {
 		return errors.Wrap(err, "invalid beta-specific configuration")
 	}
 
+	// Verify that the name is valid.
+	if err := selection.EnsureNameValid(s.Name); err != nil {
+		return errors.Wrap(err, "invalid name")
+	}
+
 	// Verify that labels are valid.
 	for k, v := range s.Labels {
 		if err := selection.EnsureLabelKeyValid(k); err != nil {

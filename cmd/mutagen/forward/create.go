@@ -83,6 +83,11 @@ func createMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate the name.
+	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
+		return errors.Wrap(err, "invalid session name")
+	}
+
 	// Parse, validate, and record labels.
 	var labels map[string]string
 	if len(createConfiguration.labels) > 0 {
@@ -265,6 +270,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 				SocketGroup:          createConfiguration.socketGroupDestination,
 				SocketPermissionMode: uint32(socketPermissionModeDestination),
 			},
+			Name:   createConfiguration.name,
 			Labels: labels,
 			Paused: createConfiguration.paused,
 		},
@@ -313,6 +319,8 @@ var createConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
+	// name is the name specification for the session.
+	name string
 	// labels are the label specifications for the session.
 	labels []string
 	// paused indicates whether or not to create the session in a pre-paused
@@ -382,7 +390,8 @@ func init() {
 	// still implement its logic automatically.
 	flags.BoolVarP(&createConfiguration.help, "help", "h", false, "Show help information")
 
-	// Wire up label flags.
+	// Wire up name and label flags.
+	flags.StringVarP(&createConfiguration.name, "name", "n", "", "Specify a name for the session")
 	flags.StringSliceVarP(&createConfiguration.labels, "label", "l", nil, "Specify labels")
 
 	// Wire up paused flags.

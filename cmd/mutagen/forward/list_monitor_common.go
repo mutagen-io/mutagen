@@ -54,8 +54,13 @@ func printEndpoint(name string, url *url.URL, configuration *forwarding.Configur
 }
 
 func printSession(state *forwarding.State, long bool) {
+	// Print name, if any.
+	if state.Session.Name != "" {
+		fmt.Println("Name:", state.Session.Name)
+	}
+
 	// Print the session identifier.
-	fmt.Println("Session:", state.Session.Identifier)
+	fmt.Println("Identifier:", state.Session.Identifier)
 
 	// Print labels.
 	if len(state.Session.Labels) > 0 {

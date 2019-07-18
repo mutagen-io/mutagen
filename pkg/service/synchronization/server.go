@@ -46,6 +46,7 @@ func (s *Server) Create(stream Synchronization_CreateServer) error {
 		request.Specification.Configuration,
 		request.Specification.ConfigurationAlpha,
 		request.Specification.ConfigurationBeta,
+		request.Specification.Name,
 		request.Specification.Labels,
 		request.Specification.Paused,
 		prompter,

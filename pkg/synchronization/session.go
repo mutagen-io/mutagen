@@ -3,6 +3,8 @@ package synchronization
 import (
 	"github.com/pkg/errors"
 
+	"github.com/google/uuid"
+
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -15,9 +17,10 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the session identifier is valid.
-	// TODO: Should we validate with a UUID regex here?
 	if s.Identifier == "" {
-		return errors.New("invalid session identifier")
+		return errors.New("empty session identifier")
+	} else if _, err := uuid.Parse(s.Identifier); err != nil {
+		return errors.New("session identifier is not a valid UUID")
 	}
 
 	// Ensure that the session version is supported.
@@ -57,6 +60,11 @@ func (s *Session) EnsureValid() error {
 	// Ensure that the beta-specific configuration is valid.
 	if err := s.ConfigurationBeta.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid beta-specific configuration")
+	}
+
+	// Validate the session name.
+	if err := selection.EnsureNameValid(s.Name); err != nil {
+		return errors.Wrap(err, "invalid session name")
 	}
 
 	// Ensure that labels are valid.

@@ -52,8 +52,12 @@ message Session {
     // ConfigurationDestination are the destination-specific session
     // configuration overrides. It is static.
     Configuration configurationDestination = 11;
+    // Name is a user-friendly name for the session. It may be empty and is not
+    // guaranteed to be unique across all sessions. It is only used as a simpler
+    // handle for specifying sessions. It is static.
+    string name = 12;
     // Labels are the session labels. They are static.
-    map<string, string> labels = 12;
+    map<string, string> labels = 13;
     // Paused indicates whether or not the session is marked as paused.
-    bool paused = 13;
+    bool paused = 14;
 }
