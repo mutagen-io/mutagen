@@ -20,7 +20,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/url"
-	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // loadAndValidateGlobalSynchronizationConfiguration loads a YAML-based global

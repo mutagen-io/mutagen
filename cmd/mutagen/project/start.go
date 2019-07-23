@@ -2,7 +2,6 @@ package project
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -26,7 +25,6 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/url"
-	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 func startMain(command *cobra.Command, arguments []string) error {
