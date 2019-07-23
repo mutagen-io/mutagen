@@ -22,6 +22,7 @@ func TestEnsureNameValid(t *testing.T) {
 		{"a b", true},
 		{" ", true},
 		{"a-b", true},
+		{"defaults", true},
 	}
 
 	// Process test cases.

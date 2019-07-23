@@ -28,6 +28,12 @@ func EnsureNameValid(name string) error {
 		return errors.Errorf("invalid name character at index %d: '%c'", i, r)
 	}
 
+	// Disallow "defaults" as a session name since it is used as a special key
+	// in YAML files.
+	if name == "defaults" {
+		return errors.New("\"defaults\" is disallowed as a session name")
+	}
+
 	// Success.
 	return nil
 }
