@@ -32,11 +32,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	// connection).
 	defer multiplexer.Close()
 
-	// Accept the initialization stream. We use a separate stream for this
-	// (rather than initializing on the underlying connection) because
-	// encoding.ProtobufDecoder uses a buffered reader wrapper and thus we can't
-	// rely on the state of the line after using it. Accepting a stream also
-	// serves as a reasonable sanity test. We don't need to close this stream on
+	// Accept the initialization stream. We don't need to close this stream on
 	// failure since closing the multiplexer will implicitly close the stream.
 	stream, err := multiplexer.Accept()
 	if err != nil {
