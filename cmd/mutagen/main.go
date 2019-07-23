@@ -61,8 +61,8 @@ func init() {
 	// HACK: Add the sync commands as direct subcommands of the root command for
 	// temporary backward compatibility.
 	commands := []*cobra.Command{
-		forward.RootCommand,
 		sync.RootCommand,
+		forward.RootCommand,
 		project.RootCommand,
 		daemon.RootCommand,
 		versionCommand,
