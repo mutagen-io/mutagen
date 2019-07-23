@@ -33,24 +33,24 @@ func TimeoutArgument(timeout int) string {
 	return fmt.Sprintf("-oConnectTimeout=%d", timeout)
 }
 
-// sshCommandNameOrPath returns the name or path specification to use for
-// invoking ssh. It will use the MUTAGEN_SSH_PATH environment variable if
-// provided, otherwise falling back to a platform-specific implementation.
-func sshCommandNameOrPath() (string, error) {
+// sshCommandPath returns the full path to use for invoking ssh. It will use the
+// MUTAGEN_SSH_PATH environment variable if provided, otherwise falling back to
+// a platform-specific implementation.
+func sshCommandPath() (string, error) {
 	// If MUTAGEN_SSH_PATH is specified, then use it to perform the lookup.
 	if searchPath := os.Getenv("MUTAGEN_SSH_PATH"); searchPath != "" {
 		return process.FindCommand("ssh", []string{searchPath})
 	}
 
 	// Otherwise fall back to the platform-specific implementation.
-	return sshCommandNameOrPathForPlatform()
+	return sshCommandPathForPlatform()
 }
 
 // SSHCommand prepares (but does not start) an SSH command with the specified
 // arguments and scoped to lifetime of the provided context.
 func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
-	nameOrPath, err := sshCommandNameOrPath()
+	nameOrPath, err := sshCommandPath()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to identify 'ssh' command")
 	}
@@ -59,24 +59,24 @@ func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	return exec.CommandContext(context, nameOrPath, args...), nil
 }
 
-// scpCommandNameOrPath returns the name or path specification to use for
-// invoking scp. It will use the MUTAGEN_SSH_PATH environment variable if
-// provided, otherwise falling back to a platform-specific implementation.
-func scpCommandNameOrPath() (string, error) {
+// scpCommandPath returns the full path to use for invoking scp. It will use the
+// MUTAGEN_SSH_PATH environment variable if provided, otherwise falling back to
+// a platform-specific implementation.
+func scpCommandPath() (string, error) {
 	// If MUTAGEN_SSH_PATH is specified, then use it to perform the lookup.
 	if searchPath := os.Getenv("MUTAGEN_SSH_PATH"); searchPath != "" {
 		return process.FindCommand("scp", []string{searchPath})
 	}
 
 	// Otherwise fall back to the platform-specific implementation.
-	return scpCommandNameOrPathForPlatform()
+	return scpCommandPathForPlatform()
 }
 
 // SCPCommand prepares (but does not start) an SCP command with the specified
 // arguments and scoped to lifetime of the provided context.
 func SCPCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
-	nameOrPath, err := scpCommandNameOrPath()
+	nameOrPath, err := scpCommandPath()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to identify 'scp' command")
 	}

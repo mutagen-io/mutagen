@@ -2,14 +2,16 @@
 
 package ssh
 
-// sshCommandNameOrPathForPlatform returns the name of the ssh command on POSIX platforms,
-// which will force resolution via the PATH environment variable.
-func sshCommandNameOrPathForPlatform() (string, error) {
-	return "ssh", nil
+import (
+	"os/exec"
+)
+
+// sshCommandPathForPlatform searches for the ssh command in the user's path.
+func sshCommandPathForPlatform() (string, error) {
+	return exec.LookPath("ssh")
 }
 
-// scpCommandNameOrPathForPlatform returns the name of the scp command on POSIX platforms,
-// which will force resolution via the PATH environment variable.
-func scpCommandNameOrPathForPlatform() (string, error) {
-	return "scp", nil
+// scpCommandPathForPlatform searches for the scp command in the user's path.
+func scpCommandPathForPlatform() (string, error) {
+	return exec.LookPath("scp")
 }
