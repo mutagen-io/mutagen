@@ -182,12 +182,6 @@ func NewEndpoint(
 	alpha bool,
 	options ...EndpointOption,
 ) (synchronization.Endpoint, error) {
-	// Expand and normalize the root path.
-	root, err := filesystem.Normalize(root)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to normalize root path")
-	}
-
 	// Create an endpoint configuration and apply all options.
 	endpointOptions := &endpointOptions{}
 	for _, o := range options {

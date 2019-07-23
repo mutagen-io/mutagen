@@ -10,6 +10,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/compression"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
@@ -99,6 +100,15 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 		err = errors.Wrap(err, "invalid initialize request")
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
+	}
+
+	// Expand and normalize the root path.
+	if r, err := filesystem.Normalize(request.Root); err != nil {
+		err = errors.Wrap(err, "unable to normalize synchronization root")
+		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+		return err
+	} else {
+		request.Root = r
 	}
 
 	// Create the underlying endpoint. If it fails to create, then send a

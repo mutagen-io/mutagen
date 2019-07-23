@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/yamux"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -50,6 +51,17 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		return errors.Wrap(err, "invalid initialization request received")
 	}
 
+	// If this is a Unix domain socket endpoint, perform normalization on the
+	// socket path.
+	address := request.Address
+	if request.Protocol == "unix" {
+		if a, err := filesystem.Normalize(address); err != nil {
+			return errors.Wrap(err, "unable to normalize socket path")
+		} else {
+			address = a
+		}
+	}
+
 	// Create the underlying endpoint based on the initialization parameters.
 	var endpoint forwarding.Endpoint
 	var initializationError error
@@ -58,14 +70,14 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 			request.Version,
 			request.Configuration,
 			request.Protocol,
-			request.Address,
+			address,
 		)
 	} else {
 		endpoint, initializationError = local.NewDialerEndpoint(
 			request.Version,
 			request.Configuration,
 			request.Protocol,
-			request.Address,
+			address,
 		)
 	}
 
