@@ -30,8 +30,12 @@ func (s *Selection) EnsureValid() error {
 		return errors.New("no selection mechanisms present")
 	}
 
-	// We avoid validating specifications values, if present, because their
-	// format is variable and they simply won't match when searching if invalid.
+	// Enforce that specifications are non-empty.
+	for _, specification := range s.Specifications {
+		if specification == "" {
+			return errors.New("empty specification")
+		}
+	}
 
 	// We avoid validating the label selector, if present, because it doesn't
 	// pose a risk to parse unvalidated and it would only be possible to
