@@ -2,6 +2,8 @@ package remote
 
 import (
 	"github.com/pkg/errors"
+
+	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // ensureValid ensures that InitializeForwardingRequest's invariants are respected.
@@ -21,9 +23,11 @@ func (r *InitializeForwardingRequest) ensureValid() error {
 		return errors.Wrap(err, "invalid configuration")
 	}
 
-	// Enforce that protocol is non-empty.
+	// Enforce that protocol is non-empty and supported.
 	if r.Protocol == "" {
 		return errors.New("empty protocol")
+	} else if !forwarding.IsValidProtocol(r.Protocol) {
+		return errors.New("invalid protocol")
 	}
 
 	// Enforce that address is non-empty.

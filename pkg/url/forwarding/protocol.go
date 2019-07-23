@@ -1,8 +1,8 @@
 package forwarding
 
-// isValidProtocol returns whether or not the specified protocol is valid for
+// IsValidProtocol returns whether or not the specified protocol is valid for
 // use in forwarding (either as a from or to address).
-func isValidProtocol(protocol string) bool {
+func IsValidProtocol(protocol string) bool {
 	switch protocol {
 	case "tcp":
 		return true

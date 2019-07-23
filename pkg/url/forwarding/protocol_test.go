@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestIsValidProtocol tests that the isValidProtocol function behaves as
+// TestIsValidProtocol tests that the IsValidProtocol function behaves as
 // expected for a variety of test cases.
 func TestIsValidProtocol(t *testing.T) {
 	// Set up test cases.
@@ -23,7 +23,7 @@ func TestIsValidProtocol(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if valid := isValidProtocol(testCase.protocol); valid != testCase.expected {
+		if valid := IsValidProtocol(testCase.protocol); valid != testCase.expected {
 			t.Error("protocol validity does not match expected:", valid, "!=", testCase.expected)
 		}
 	}

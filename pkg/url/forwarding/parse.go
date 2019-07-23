@@ -21,7 +21,7 @@ func Parse(url string) (string, string, error) {
 	}
 
 	// Ensure that the protocol is valid.
-	if !isValidProtocol(components[0]) {
+	if !IsValidProtocol(components[0]) {
 		return "", "", errors.Errorf("invalid protocol: %s", components[0])
 	}
 
