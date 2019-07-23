@@ -92,7 +92,7 @@ func TestParseLocalPathRelative(t *testing.T) {
 
 	// Create and run the test case.
 	test := parseTestCase{
-		raw: "relative/path",
+		raw: path,
 		expected: &URL{
 			Protocol: Protocol_Local,
 			User:     "",
@@ -105,14 +105,22 @@ func TestParseLocalPathRelative(t *testing.T) {
 }
 
 func TestParseLocalPathAbsolute(t *testing.T) {
+	// Compute the normalized form of an absolute path.
+	path := "/this/is/a:path"
+	normalized, err := filesystem.Normalize(path)
+	if err != nil {
+		t.Fatal("unable to normalize absolute path:", err)
+	}
+
+	// Create and run the test case.
 	test := parseTestCase{
-		raw: "/this/is/a:path",
+		raw: path,
 		expected: &URL{
 			Protocol: Protocol_Local,
 			User:     "",
 			Host:     "",
 			Port:     0,
-			Path:     "/this/is/a:path",
+			Path:     normalized,
 		},
 	}
 	test.run(t)
@@ -159,8 +167,16 @@ func TestParseForwardingLocalUnixRelativeSocket(t *testing.T) {
 }
 
 func TestParseForwardingLocalUnixAbsoluteSocket(t *testing.T) {
+	// Compute the normalized form of a absolute socket path.
+	path := "/path/to/socket.sock"
+	normalized, err := filesystem.Normalize(path)
+	if err != nil {
+		t.Fatal("unable to normalize absolute socket path:", err)
+	}
+
+	// Create and run the test case.
 	test := parseTestCase{
-		raw:  "unix:/path/to/socket",
+		raw:  "unix:" + path,
 		kind: Kind_Forwarding,
 		expected: &URL{
 			Kind:     Kind_Forwarding,
@@ -168,39 +184,57 @@ func TestParseForwardingLocalUnixAbsoluteSocket(t *testing.T) {
 			User:     "",
 			Host:     "",
 			Port:     0,
-			Path:     "unix:/path/to/socket",
+			Path:     "unix:" + normalized,
 		},
 	}
 	test.run(t)
 }
 
 func TestParseLocalPathWithAtSymbol(t *testing.T) {
+	// Compute the normalized form of the path.
+	path := "/some@path"
+	normalized, err := filesystem.Normalize(path)
+	if err != nil {
+		t.Fatal("unable to normalize path:", err)
+	}
+
+	// Create and run the test case.
 	test := parseTestCase{
-		raw: "/some@path",
+		raw: path,
 		expected: &URL{
 			Protocol: Protocol_Local,
 			User:     "",
 			Host:     "",
 			Port:     0,
-			Path:     "/some@path",
+			Path:     normalized,
 		},
 	}
 	test.run(t)
 }
 
 func TestParsePOSIXSCPSSHWindowsLocal(t *testing.T) {
-	expected := &URL{
-		Protocol: Protocol_SSH,
-		Host:     "C",
-		Path:     "/local/path",
-	}
+	// Compute the expected URL.
+	raw := "C:/local/path"
+	var expected *URL
 	if runtime.GOOS == "windows" {
+		if normalized, err := filesystem.Normalize(raw); err != nil {
+			t.Fatal("unable to normalize path:", err)
+		} else {
+			expected = &URL{
+				Path: normalized,
+			}
+		}
+	} else {
 		expected = &URL{
-			Path: "C:/local/path",
+			Protocol: Protocol_SSH,
+			Host:     "C",
+			Path:     "/local/path",
 		}
 	}
+
+	// Create and run the test case.
 	test := &parseTestCase{
-		raw:      "C:/local/path",
+		raw:      raw,
 		expected: expected,
 	}
 	test.run(t)

@@ -2,6 +2,8 @@ package url
 
 import (
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 func TestURLEnsureValidNilInvalid(t *testing.T) {
@@ -90,7 +92,14 @@ func TestURLEnsureValidLocalEnvironmentVariablesInvalid(t *testing.T) {
 }
 
 func TestURLEnsureValidLocal(t *testing.T) {
-	valid := &URL{Path: "/some/path"}
+	// Compute a normalized path.
+	normalized, err := filesystem.Normalize("/some/path")
+	if err != nil {
+		t.Fatal("unable to normalize path:", err)
+	}
+
+	// Create and validate the URL.
+	valid := &URL{Path: normalized}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL classified as invalid")
 	}
@@ -107,9 +116,16 @@ func TestURLEnsureValidForwardingLocalTCP(t *testing.T) {
 }
 
 func TestURLEnsureValidForwardingLocalUnixDomainSocket(t *testing.T) {
+	// Compute a normalized Unix domain socket path.
+	normalized, err := filesystem.Normalize("/socket/path.sock")
+	if err != nil {
+		t.Fatal("unable to normalize socket path:", err)
+	}
+
+	// Create and validate the URL.
 	valid := &URL{
 		Kind: Kind_Forwarding,
-		Path: "unix:/socket/path.sock",
+		Path: "unix:" + normalized,
 	}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL classified as invalid")
