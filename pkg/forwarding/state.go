@@ -37,6 +37,11 @@ func (s *State) EnsureValid() error {
 		return errors.Wrap(err, "invalid session")
 	}
 
+	// Ensure that the connection counts are sane.
+	if s.OpenConnections > s.TotalConnections {
+		return errors.New("invalid connection counts")
+	}
+
 	// Success.
 	return nil
 }
