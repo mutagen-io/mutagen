@@ -1,8 +1,6 @@
 package synchronization
 
 import (
-	"path/filepath"
-
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -23,21 +21,11 @@ func (s *CreationSpecification) ensureValid() error {
 		return errors.New("alpha URL is not a synchronization URL")
 	}
 
-	// If the alpha URL is local, then verify that its path absolute.
-	if s.Alpha.Protocol == url.Protocol_Local && !filepath.IsAbs(s.Alpha.Path) {
-		return errors.New("alpha URL is a relative local path")
-	}
-
 	// Verify that the beta URL is valid and is a synchronization URL.
 	if err := s.Beta.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid beta URL")
 	} else if s.Beta.Kind != url.Kind_Synchronization {
 		return errors.New("beta URL is not a synchronization URL")
-	}
-
-	// If the beta URL is local, then verify that its path is absolute.
-	if s.Beta.Protocol == url.Protocol_Local && !filepath.IsAbs(s.Beta.Path) {
-		return errors.New("beta URL is a relative local path")
 	}
 
 	// Verify that the configuration is valid.

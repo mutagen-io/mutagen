@@ -21,7 +21,17 @@ func TestURLEnsureValidLocalUsernameInvalid(t *testing.T) {
 	}
 }
 
-func TestURLForwardingEnsureValidForwardingEndpointInvalid(t *testing.T) {
+func TestURLForwardingEnsureValidForwardingEndpointRelativeLocalSocketInvalid(t *testing.T) {
+	invalid := &URL{
+		Kind: Kind_Forwarding,
+		Path: "unix:relative/socket.sock",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLForwardingEnsureValidForwardingEndpointInvalidProtocolInvalid(t *testing.T) {
 	invalid := &URL{
 		Kind: Kind_Forwarding,
 		Path: "tcp5:localhost:4420",
@@ -58,6 +68,15 @@ func TestURLEnsureValidLocalEmptyPathInvalid(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidLocalRelativePathInvalid(t *testing.T) {
+	invalid := &URL{
+		Path: "relative/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
 func TestURLEnsureValidLocalEnvironmentVariablesInvalid(t *testing.T) {
 	invalid := &URL{
 		Path: "some/path",
@@ -71,16 +90,26 @@ func TestURLEnsureValidLocalEnvironmentVariablesInvalid(t *testing.T) {
 }
 
 func TestURLEnsureValidLocal(t *testing.T) {
-	valid := &URL{Path: "some/path"}
+	valid := &URL{Path: "/some/path"}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL classified as invalid")
 	}
 }
 
-func TestURLEnsureValidForwardingLocal(t *testing.T) {
+func TestURLEnsureValidForwardingLocalTCP(t *testing.T) {
 	valid := &URL{
 		Kind: Kind_Forwarding,
 		Path: "tcp:localhost:50505",
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidForwardingLocalUnixDomainSocket(t *testing.T) {
+	valid := &URL{
+		Kind: Kind_Forwarding,
+		Path: "unix:/socket/path.sock",
 	}
 	if err := valid.EnsureValid(); err != nil {
 		t.Error("valid URL classified as invalid")

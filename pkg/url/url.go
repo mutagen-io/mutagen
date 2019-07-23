@@ -2,6 +2,7 @@ package url
 
 import (
 	"math"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 
@@ -74,6 +75,11 @@ func (u *URL) EnsureValid() error {
 			return errors.New("empty path")
 		}
 
+		// If this is a local URL, then ensure that the path is absolute.
+		if u.Protocol == Protocol_Local && !filepath.IsAbs(u.Path) {
+			return errors.New("local URL with relative path")
+		}
+
 		// If this is a Docker URL, we can actually do a bit of additional
 		// validation.
 		if u.Protocol == Protocol_Docker {
@@ -83,8 +89,15 @@ func (u *URL) EnsureValid() error {
 		}
 	} else if u.Kind == Kind_Forwarding {
 		// Parse the forwarding endpoint URL to ensure that it's valid.
-		if _, _, err := forwarding.Parse(u.Path); err != nil {
+		protocol, address, err := forwarding.Parse(u.Path)
+		if err != nil {
 			return errors.Wrap(err, "invalid forwarding endpoint URL")
+		}
+
+		// If this is a local URL and represents a Unix domain socket endpoint,
+		// then ensure that the socket path is absolute.
+		if u.Protocol == Protocol_Local && protocol == "unix" && !filepath.IsAbs(address) {
+			return errors.New("local Unix domain socket URL with relative path")
 		}
 	}
 

@@ -136,22 +136,6 @@ func createMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to parse beta URL")
 	}
 
-	// If either URL is a local path, make sure it's normalized.
-	if alpha.Protocol == url.Protocol_Local {
-		if alphaPath, err := filesystem.Normalize(alpha.Path); err != nil {
-			return errors.Wrap(err, "unable to normalize alpha path")
-		} else {
-			alpha.Path = alphaPath
-		}
-	}
-	if beta.Protocol == url.Protocol_Local {
-		if betaPath, err := filesystem.Normalize(beta.Path); err != nil {
-			return errors.Wrap(err, "unable to normalize beta path")
-		} else {
-			beta.Path = betaPath
-		}
-	}
-
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
 		return errors.Wrap(err, "invalid session name")

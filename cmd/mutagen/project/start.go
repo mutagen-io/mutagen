@@ -18,7 +18,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
 	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
-	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -227,31 +226,6 @@ func startMain(command *cobra.Command, arguments []string) error {
 			return errors.Errorf("unable to parse forwarding destination URL (%s): %v", destination, err)
 		}
 
-		// If either URL is a local Unix domain socket path, make sure it's
-		// normalized.
-		if sourceURL.Protocol == url.Protocol_Local {
-			if protocol, path, err := forwardingurl.Parse(sourceURL.Path); err != nil {
-				return errors.Wrap(err, "unable to parse source forwarding endpoint URL")
-			} else if protocol == "unix" {
-				if normalized, err := filesystem.Normalize(path); err != nil {
-					return errors.Wrap(err, "unable to normalize source forwarding endpoint socket path")
-				} else {
-					sourceURL.Path = fmt.Sprintf("%s:%s", protocol, normalized)
-				}
-			}
-		}
-		if destinationURL.Protocol == url.Protocol_Local {
-			if protocol, path, err := forwardingurl.Parse(destinationURL.Path); err != nil {
-				return errors.Wrap(err, "unable to parse destination forwarding endpoint URL")
-			} else if protocol == "unix" {
-				if normalized, err := filesystem.Normalize(path); err != nil {
-					return errors.Wrap(err, "unable to normalize destination forwarding endpoint socket path")
-				} else {
-					destinationURL.Path = fmt.Sprintf("%s:%s", protocol, normalized)
-				}
-			}
-		}
-
 		// Compute configuration.
 		configuration := session.Configuration.Configuration()
 		if err := configuration.EnsureValid(false); err != nil {
@@ -319,22 +293,6 @@ func startMain(command *cobra.Command, arguments []string) error {
 		betaURL, err := url.Parse(beta, url.Kind_Synchronization, false)
 		if err != nil {
 			return errors.Errorf("unable to parse synchronization beta URL (%s): %v", beta, err)
-		}
-
-		// If either URL is a local path, make sure it's normalized.
-		if alphaURL.Protocol == url.Protocol_Local {
-			if alphaPath, err := filesystem.Normalize(alphaURL.Path); err != nil {
-				return errors.Wrap(err, "unable to normalize alpha path")
-			} else {
-				alphaURL.Path = alphaPath
-			}
-		}
-		if betaURL.Protocol == url.Protocol_Local {
-			if betaPath, err := filesystem.Normalize(betaURL.Path); err != nil {
-				return errors.Wrap(err, "unable to normalize beta path")
-			} else {
-				betaURL.Path = betaPath
-			}
 		}
 
 		// Compute configuration.

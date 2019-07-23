@@ -3,6 +3,8 @@ package url
 import (
 	"runtime"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 type parseTestCase struct {
@@ -80,7 +82,29 @@ func TestParseEmptyInvalid(t *testing.T) {
 	test.run(t)
 }
 
-func TestParseLocalPath(t *testing.T) {
+func TestParseLocalPathRelative(t *testing.T) {
+	// Compute the normalized form of a relative path.
+	path := "relative/path"
+	normalized, err := filesystem.Normalize(path)
+	if err != nil {
+		t.Fatal("unable to normalize relative path:", err)
+	}
+
+	// Create and run the test case.
+	test := parseTestCase{
+		raw: "relative/path",
+		expected: &URL{
+			Protocol: Protocol_Local,
+			User:     "",
+			Host:     "",
+			Port:     0,
+			Path:     normalized,
+		},
+	}
+	test.run(t)
+}
+
+func TestParseLocalPathAbsolute(t *testing.T) {
 	test := parseTestCase{
 		raw: "/this/is/a:path",
 		expected: &URL{
@@ -94,7 +118,7 @@ func TestParseLocalPath(t *testing.T) {
 	test.run(t)
 }
 
-func TestParseForwardingLocal(t *testing.T) {
+func TestParseForwardingLocalTCP(t *testing.T) {
 	test := parseTestCase{
 		raw:  "tcp:localhost:5050",
 		kind: Kind_Forwarding,
@@ -110,15 +134,55 @@ func TestParseForwardingLocal(t *testing.T) {
 	test.run(t)
 }
 
+func TestParseForwardingLocalUnixRelativeSocket(t *testing.T) {
+	// Compute the normalized form of a relative socket path.
+	path := "relative/path/to/socket.sock"
+	normalized, err := filesystem.Normalize(path)
+	if err != nil {
+		t.Fatal("unable to normalize relative socket path:", err)
+	}
+
+	// Create and run the test case.
+	test := parseTestCase{
+		raw:  "unix:" + path,
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Local,
+			User:     "",
+			Host:     "",
+			Port:     0,
+			Path:     "unix:" + normalized,
+		},
+	}
+	test.run(t)
+}
+
+func TestParseForwardingLocalUnixAbsoluteSocket(t *testing.T) {
+	test := parseTestCase{
+		raw:  "unix:/path/to/socket",
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Local,
+			User:     "",
+			Host:     "",
+			Port:     0,
+			Path:     "unix:/path/to/socket",
+		},
+	}
+	test.run(t)
+}
+
 func TestParseLocalPathWithAtSymbol(t *testing.T) {
 	test := parseTestCase{
-		raw: "some@path",
+		raw: "/some@path",
 		expected: &URL{
 			Protocol: Protocol_Local,
 			User:     "",
 			Host:     "",
 			Port:     0,
-			Path:     "some@path",
+			Path:     "/some@path",
 		},
 	}
 	test.run(t)
@@ -220,7 +284,7 @@ func TestParseSCPSSHHostnamePath(t *testing.T) {
 	test.run(t)
 }
 
-func TestParseForwardingSCPSSHHostnameEndpoint(t *testing.T) {
+func TestParseForwardingSCPSSHHostnameTCPEndpoint(t *testing.T) {
 	test := parseTestCase{
 		raw:  "host:tcp4:localhost:5050",
 		kind: Kind_Forwarding,
@@ -231,6 +295,22 @@ func TestParseForwardingSCPSSHHostnameEndpoint(t *testing.T) {
 			Host:     "host",
 			Port:     0,
 			Path:     "tcp4:localhost:5050",
+		},
+	}
+	test.run(t)
+}
+
+func TestParseForwardingSCPSSHHostnameUnixDomainSocketEndpoint(t *testing.T) {
+	test := parseTestCase{
+		raw:  "host:unix:~/socket.sock",
+		kind: Kind_Forwarding,
+		expected: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_SSH,
+			User:     "",
+			Host:     "host",
+			Port:     0,
+			Path:     "unix:~/socket.sock",
 		},
 	}
 	test.run(t)

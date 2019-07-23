@@ -110,31 +110,6 @@ func createMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to parse destination URL")
 	}
 
-	// If either URL is a local Unix domain socket path, make sure it's
-	// normalized.
-	if source.Protocol == url.Protocol_Local {
-		if protocol, path, err := forwardingurl.Parse(source.Path); err != nil {
-			return errors.Wrap(err, "unable to parse source forwarding endpoint URL")
-		} else if protocol == "unix" {
-			if normalized, err := filesystem.Normalize(path); err != nil {
-				return errors.Wrap(err, "unable to normalize source forwarding endpoint socket path")
-			} else {
-				source.Path = fmt.Sprintf("%s:%s", protocol, normalized)
-			}
-		}
-	}
-	if destination.Protocol == url.Protocol_Local {
-		if protocol, path, err := forwardingurl.Parse(destination.Path); err != nil {
-			return errors.Wrap(err, "unable to parse destination forwarding endpoint URL")
-		} else if protocol == "unix" {
-			if normalized, err := filesystem.Normalize(path); err != nil {
-				return errors.Wrap(err, "unable to normalize destination forwarding endpoint socket path")
-			} else {
-				destination.Path = fmt.Sprintf("%s:%s", protocol, normalized)
-			}
-		}
-	}
-
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
 		return errors.Wrap(err, "invalid session name")

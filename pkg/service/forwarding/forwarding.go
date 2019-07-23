@@ -1,13 +1,10 @@
 package forwarding
 
 import (
-	"path/filepath"
-
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/url"
-	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
 // ensureValid verifies that a CreationSpecification is valid.
@@ -24,31 +21,11 @@ func (s *CreationSpecification) ensureValid() error {
 		return errors.New("source URL is not a forwarding URL")
 	}
 
-	// If the source URL is local and represents a Unix domain socket endpoint,
-	// then verify that the socket path is absolute.
-	if s.Source.Protocol == url.Protocol_Local {
-		if protocol, address, err := forwarding.Parse(s.Source.Path); err != nil {
-			return errors.Wrap(err, "unable to parse source URL")
-		} else if protocol == "unix" && !filepath.IsAbs(address) {
-			return errors.New("source URL is local Unix domain socket with relative path")
-		}
-	}
-
 	// Verify that the destination URL is valid and is a forwarding URL.
 	if err := s.Destination.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid destination URL")
 	} else if s.Destination.Kind != url.Kind_Forwarding {
 		return errors.New("destination URL is not a forwarding URL")
-	}
-
-	// If the destination URL is local and represents a Unix domain socket
-	// endpoint, then verify that the socket path is absolute.
-	if s.Destination.Protocol == url.Protocol_Local {
-		if protocol, address, err := forwarding.Parse(s.Destination.Path); err != nil {
-			return errors.Wrap(err, "unable to parse destination URL")
-		} else if protocol == "unix" && !filepath.IsAbs(address) {
-			return errors.New("destination URL is local Unix domain socket with relative path")
-		}
 	}
 
 	// Verify that the configuration is valid.
