@@ -73,6 +73,7 @@ func NewListenerEndpoint(
 			socketGroupSpecification,
 		)
 		if err != nil {
+			listener.Close()
 			return nil, errors.Wrap(err, "unable to create socket ownership specification")
 		}
 
