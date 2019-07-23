@@ -50,9 +50,9 @@ install: true
 # Perform setup for testing. We set up SSH for all platforms, create test
 # partitions for macOS, and set up Docker on Linux.
 before_script:
-  - source scripts/setup_ssh.sh
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/create_test_partitions_darwin.sh ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/setup_docker.sh ; fi
+  - source scripts/ci/setup_ssh.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/ci/create_test_partitions_darwin.sh ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/ci/setup_docker.sh ; fi
 
 # Run tests, upload the coverage report, and build bundles.
 #
@@ -93,14 +93,14 @@ script:
 # https://docs.travis-ci.com/user/customizing-the-build/ for more information.
 # It also keeps better symmetry with AppVeyor's configuration.
 after_script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/teardown_docker.sh ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then source scripts/ci/teardown_docker.sh ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
 # format. This is a lot simpler than trying to add zip file support to the build
 # script. Note that we don't convert the agent bundles - Mutagen knows how to
 # read those and users don't need to unzip them (and shouldn't).
 before_deploy:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then scripts/convert_windows_release_bundles.sh ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then scripts/ci/convert_windows_release_bundles.sh ; fi
 
 # Upload build artifacts from macOS builders on tagged releases.
 deploy:

@@ -28,9 +28,9 @@ build: off
 # version on Windows. We also create test partitions and set up Docker.
 before_test:
   - pip install codecov
-  - diskpart /s scripts\create_test_partitions_windows.txt
+  - diskpart /s scripts\ci\create_test_partitions_windows.txt
   - set MUTAGEN_TEST_FAT32_ROOT=V:\
-  - scripts\setup_docker.bat
+  - scripts\ci\setup_docker.bat
 
 # Run tests, upload the coverage report, and build bundles.
 #
@@ -66,7 +66,7 @@ test_script:
 # Perform teardown after testing. We tear down any Docker infrastructure that
 # we've set up.
 after_test:
-  - scripts\teardown_docker.bat
+  - scripts\ci\teardown_docker.bat
 
 # Send notifications.
 notifications:

@@ -4,7 +4,7 @@
 # have to disable cgo because to avoid creating dependencies on host libraries
 # that might not exist inside the container.
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
-    -o scripts/docker_linux/httpdemo \
+    -o scripts/ci/docker/linux/httpdemo \
     github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
 # Print the Docker version.
@@ -14,10 +14,10 @@ docker version
 docker image build \
     --pull \
     --tag "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" \
-    scripts/docker_linux || exit $?
+    scripts/ci/docker/linux || exit $?
 
 # Remove the generated executable.
-rm scripts/docker_linux/httpdemo
+rm scripts/ci/docker/linux/httpdemo
 
 # Start a container.
 docker container run \
