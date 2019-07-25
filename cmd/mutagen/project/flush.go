@@ -79,7 +79,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 }
 
 var flushCommand = &cobra.Command{
-	Use:          "flush",
+	Use:          "flush [<configuration-file>]",
 	Short:        "Flush project synchronization sessions",
 	RunE:         flushMain,
 	SilenceUsage: true,

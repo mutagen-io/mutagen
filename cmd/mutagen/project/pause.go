@@ -85,7 +85,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 }
 
 var pauseCommand = &cobra.Command{
-	Use:          "pause",
+	Use:          "pause [<configuration-file>]",
 	Short:        "Pause project sessions",
 	RunE:         pauseMain,
 	SilenceUsage: true,

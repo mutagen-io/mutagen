@@ -357,7 +357,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 }
 
 var startCommand = &cobra.Command{
-	Use:          "start",
+	Use:          "start [<configuration-file>]",
 	Short:        "Start project sessions",
 	RunE:         startMain,
 	SilenceUsage: true,

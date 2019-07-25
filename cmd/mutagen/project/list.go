@@ -87,7 +87,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 }
 
 var listCommand = &cobra.Command{
-	Use:          "list",
+	Use:          "list [<configuration-file>]",
 	Short:        "List project sessions",
 	RunE:         listMain,
 	SilenceUsage: true,
