@@ -21,7 +21,7 @@ const (
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = "beta1"
+	VersionTag = "beta2"
 	// DevelopmentVersion indicates whether or not this a development version of
 	// Mutagen. If this is set to true, then Mutagen's data directory will be
 	// changed to ~/.mutagen-dev. This setting should be considered independent
