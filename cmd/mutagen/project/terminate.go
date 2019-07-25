@@ -90,7 +90,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 }
 
 var terminateCommand = &cobra.Command{
-	Use:          "terminate",
+	Use:          "terminate [<configuration-file>]",
 	Short:        "Terminate project sessions",
 	RunE:         terminateMain,
 	SilenceUsage: true,

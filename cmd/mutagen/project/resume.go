@@ -85,7 +85,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 }
 
 var resumeCommand = &cobra.Command{
-	Use:          "resume",
+	Use:          "resume [<configuration-file>]",
 	Short:        "Resume project sessions",
 	RunE:         resumeMain,
 	SilenceUsage: true,
