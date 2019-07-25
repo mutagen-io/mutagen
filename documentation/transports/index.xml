@@ -1,44 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>Transports on Mutagen</title>
-    <link>https://mutagen.io/documentation/transports/</link>
-    <description>Recent content in Transports on Mutagen</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language>
-    
-	<atom:link href="https://mutagen.io/documentation/transports/index.xml" rel="self" type="application/rss+xml" />
-    
-    
-    <item>
-      <title>Local</title>
-      <link>https://mutagen.io/documentation/transports/local/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://mutagen.io/documentation/transports/local/</guid>
-      <description>Local Mutagen&amp;rsquo;s most basic transport provides support for synchronizing with local filesystem locations.
-Usage Local filesystem endpoints can be specified to Mutagen&amp;rsquo;s create command using their local path in either an absolute or relative format. If a relative path is specified, then it will be resolved relative to the working directory in which the create command is issued before being used to create the session.</description>
-    </item>
-    
-    <item>
-      <title>SSH</title>
-      <link>https://mutagen.io/documentation/transports/ssh/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://mutagen.io/documentation/transports/ssh/</guid>
-      <description>SSH Mutagen provides support for synchronizing with filesystem locations accessible via SSH. This support extends to SSH clients and servers found on both POSIX and Windows systems.
-Requirements Mutagen requires an OpenSSH client installation to be available on your system. This is the default for almost all POSIX operating systems, so you probably don&amp;rsquo;t need to do anything if you&amp;rsquo;re on macOS, Linux®, or one of the BSDs. Windows is supported as well, but please see the section on Windows support for more detailed information.</description>
-    </item>
-    
-    <item>
-      <title>Support for Docker® containers</title>
-      <link>https://mutagen.io/documentation/transports/docker/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://mutagen.io/documentation/transports/docker/</guid>
-      <description>Support for Docker® containers Mutagen has support for synchronizing with filesystems inside Docker® containers. This support extends to all Docker client platforms (Linux®, macOS, Windows, etc.), Docker daemon setups (local, remote, VM, Hyper-V, etc.), and Docker container types (both Linux and Windows containers are supported).
-NOTE: Mutagen&amp;rsquo;s support for Docker containers is considered &amp;ldquo;experimental&amp;rdquo; in the sense that it is new (less mature than SSH support), minimalist, and designed for experimentation.</description>
-    </item>
-    
-  </channel>
-</rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Transports on Mutagen</title><link>https://mutagen.io/documentation/transports/</link><description>Recent content in Transports on Mutagen</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><copyright>© 2016 – 2019 Mutagen IO, Inc.</copyright><atom:link href="https://mutagen.io/documentation/transports/index.xml" rel="self" type="application/rss+xml"/><item><title>Docker® containers</title><link>https://mutagen.io/documentation/transports/docker/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://mutagen.io/documentation/transports/docker/</guid><description>Support for Docker® containers Mutagen has support for synchronizing files and forwarding network traffic in and out of Docker® containers. This support extends to all Docker client platforms (Linux®, macOS, Windows, etc.), Docker daemon setups (local, remote, VM, Hyper-V, etc.), and Docker container types (both Linux and Windows containers are supported).
+Requirements Mutagen requires the docker command to be in the user&amp;rsquo;s path. Due to its use of the -w/--workdir flag with the docker exec command, Mutagen requires a Docker client and daemon supporting API 1.</description></item><item><title>Local</title><link>https://mutagen.io/documentation/transports/local/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://mutagen.io/documentation/transports/local/</guid><description>Local Mutagen&amp;rsquo;s most basic transport provides support for synchronizing and forwarding to and from local filesystem locations and network endpoints, respectively.
+Synchronization Local filesystem endpoints can be specified to the mutagen sync create command using their local path in either an absolute or relative format. If a relative path is specified, then it will be resolved relative to the working directory in which the mutagen sync create command is issued before being used to create the session.</description></item><item><title>SSH</title><link>https://mutagen.io/documentation/transports/ssh/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://mutagen.io/documentation/transports/ssh/</guid><description>SSH Mutagen provides support for synchronizing files and forwarding network traffic via SSH. This support extends to SSH clients and servers found on both POSIX and Windows systems.
+Requirements Mutagen requires an OpenSSH client installation to be available on your system. This is the default for almost all POSIX operating systems, so you probably don&amp;rsquo;t need to do anything if you&amp;rsquo;re on macOS, Linux®, or one of the BSDs. Windows is supported as well, but please see the section on Windows support for more detailed information.</description></item></channel></rss>

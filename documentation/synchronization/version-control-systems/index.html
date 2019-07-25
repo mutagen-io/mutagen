@@ -1,0 +1,84 @@
+<!doctype html><html lang=en class=h-100><head><title>Version control systems | Mutagen</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><link rel="shortcut icon" href=/img/favicon.png><script src=/js/bundle.3aeab2414d60a7503e5e48309329f68fc244713a80665f3baba323d52f60b764.js integrity="sha256-OuqyQU1gp1A&#43;Xkgwkyn2j8JEcTqAZl87q6Mj1S9gt2Q="></script><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono"><link rel=stylesheet href=/scss/main.min.6cd9493828aaf9946db37459e87631b3e2fa26d368112903942cdcab8dcb259f.css integrity="sha256-bNlJOCiq&#43;ZRts3RZ6HYxs&#43;L6JtNoESkDlCzcq43LJZ8="></head><body class="d-flex flex-column h-100"><div class=flex-shrink-0><nav class="navbar navbar-expand-md navbar-light py-0"><div class=container><a class="navbar-brand mutagen-brand" href=/><img class="d-inline-block align-top logo" src=/img/logo.svg alt="Mutagen logo">
+Mutagen</a>
+<button class="navbar-toggler mr-2" type=button data-toggle=collapse data-target=#navigation-content aria-controls=navigation-content aria-expanded=false aria-label="Toggle navigation" style=border:none>
+<span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse" id=navigation-content><ul class="navbar-nav ml-auto"><li class="nav-item mr-3"><a class=nav-link href=/documentation/introduction/installation>Install</a></li><li class="nav-item mr-3"><a class=nav-link href=/documentation>Documentation</a></li><li class="nav-item mr-3"><a class=nav-link href=https://spectrum.chat/mutagen target=_blank>Spectrum</a></li><li class="nav-item mr-3"><a class=nav-link href=https://twitter.com/mutagen_io target=_blank>Twitter</a></li><li class=nav-item><a class=nav-link href=https://github.com/mutagen-io/mutagen target=_blank>GitHub</a></li></ul></div></div></nav><nav class="navbar navbar-expand-md navbar-dark bg-dark py-0"><div class=container><div class="collapse navbar-collapse" id=navigation-content><ul class="navbar-nav ml-auto"><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=introduction-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Introduction</a><div class=dropdown-menu aria-labelledby=introduction-dropdown><a class=dropdown-item href=/documentation/introduction>Overview</a>
+<a class=dropdown-item href=/documentation/introduction/installation>Installation</a>
+<a class=dropdown-item href=/documentation/introduction/getting-started>Getting started</a>
+<a class=dropdown-item href=/documentation/introduction/daemon>Daemon</a>
+<a class=dropdown-item href=/documentation/introduction/configuration>Configuration</a>
+<a class=dropdown-item href=/documentation/introduction/names-labels-identifiers>Names, labels, and identifiers</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=transports-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Transports</a><div class=dropdown-menu aria-labelledby=transports-dropdown><a class=dropdown-item href=/documentation/transports>Overview</a>
+<a class=dropdown-item href=/documentation/transports/local>Local</a>
+<a class=dropdown-item href=/documentation/transports/ssh>SSH</a>
+<a class=dropdown-item href=/documentation/transports/docker>Docker<sup>®</sup> containers</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=synchronization-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Synchronization</a><div class=dropdown-menu aria-labelledby=synchronization-dropdown><a class=dropdown-item href=/documentation/synchronization>Overview</a>
+<a class=dropdown-item href=/documentation/synchronization/ignores>Ignores</a>
+<a class=dropdown-item href=/documentation/synchronization/version-control-systems>Version control systems</a>
+<a class=dropdown-item href=/documentation/synchronization/permissions>Permissions</a>
+<a class=dropdown-item href=/documentation/synchronization/symbolic-links>Symbolic links</a>
+<a class=dropdown-item href=/documentation/synchronization/watching>Watching</a>
+<a class=dropdown-item href=/documentation/synchronization/probing-and-scanning>Probing and scanning</a>
+<a class=dropdown-item href=/documentation/synchronization/staging>Staging</a>
+<a class=dropdown-item href=/documentation/synchronization/size-limits>Size limits</a>
+<a class=dropdown-item href=/documentation/synchronization/safety-mechanisms>Safety mechanisms</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=forwarding-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Forwarding</a><div class=dropdown-menu aria-labelledby=forwarding-dropdown><a class=dropdown-item href=/documentation/forwarding>Overview</a>
+<a class=dropdown-item href=/documentation/forwarding/unix-domain-sockets>Unix domain sockets</a></div></li><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href=# id=orchestration-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Orchestration</a><div class=dropdown-menu aria-labelledby=orchestration-dropdown><a class=dropdown-item href=/documentation/orchestration>Overview</a>
+<a class=dropdown-item href=/documentation/orchestration/configuration>Configuration</a>
+<a class=dropdown-item href=/documentation/orchestration/example>Example</a></div></li></ul></div></div></nav><div class="container my-5"><div class=row><div class="d-none d-lg-block col-lg-3"><div class="sticky-top padded-sticky-top"><nav id=TableOfContents><ul><li><a href=#version-control-systems>Version control systems</a><ul><li><a href=#vcs-directories-should-not-be-synced>VCS directories should not be synced</a></li><li><a href=#recommended-workflow>Recommended workflow</a></li><li><a href=#additional-workflows-to-avoid>Additional workflows to avoid</a></li></ul></li></ul></nav></div></div><div id=content class="col-md-12 col-lg-9 mb-3"><h1 id=version-control-systems>Version control systems</h1><p>Mutagen is designed to work in tandem with version control systems (VCSs),
+allowing you to, e.g., clone and edit a project while mirroring it to a remote
+system and testing it as your make edits. This helps you to avoid needing a
+push/pull cycle every time you make a change that you want to test.</p><p>When using Mutagen with a VCS repository, there are a few &ldquo;best practices&rdquo; of
+which you should be aware.</p><h2 id=vcs-directories-should-not-be-synced>VCS directories should not be synced</h2><p>VCS directories (e.g. <code>.git</code>, <code>.svn</code>, <code>.hg</code>, etc.) <em>can</em> be synchronized by
+Mutagen like any other directory, but they <em>shouldn&rsquo;t</em> be for a number of
+reasons. The reasons are more or less the same for each VCS, but we&rsquo;ll cover the
+common case of a <code>.git</code> directory. These reasons are also not specific to
+Mutagen — they apply to any file synchronization tool or service.</p><p>The first and most important reason is that the <code>.git</code> directory can contain
+<a href=https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks>scripts that are executed when certain Git commands are run</a>.
+These hooks are generally designed to help with Git workflows, but they&rsquo;re also
+a potential attack vector for remote code execution if synchronizing a <code>.git</code>
+directory with an untrusted remote.</p><p>The second reason is that the Git index data structure (which resides in <code>.git</code>)
+records inode numbers, device ids, and modification times that are specific to
+the filesystem on which it resides. If you move it to another system, then the
+next time you run <code>git status</code> (or any command relying on similar Git
+infrastructure), Git is going to have to do a full re-hash of the working tree
+and will then write a new copy of the index with the inode numbers, device ids,
+and modification times for the working tree on which it was just run. This is
+fine if you just want to move a Git repository once, since you&rsquo;ll just incur a
+little extra penalty the first time you run <code>git status</code>, but it won&rsquo;t play well
+with constant synchronization. The Git index can also be a bit large (up to tens
+of MB for very large working trees) and is rewritten every time you run certain
+Git commands (e.g. <code>git status</code>), so you&rsquo;d be constantly resynchronizing it.</p><p>A third reason is that Git&rsquo;s object store is not homogenous or immutable.
+Some objects are stored as loose objects and some are stored in pack files, and
+it will be completely dependent on the history of a particular copy of a Git
+repository. They can also be pruned or relocated into pack files at any point by
+Git&rsquo;s garbage collection. This will not play well with synchronization for a
+variety of reasons that are a bit too numerous to go into, but it will be more
+than a performance nuisance like the Git index — it may actually cause Git to
+complain about duplicate objects, or cause weird behavior when Git does its
+garbage collection. Again, this doesn&rsquo;t matter when you&rsquo;re just copying a Git
+repository one time, since in that case you&rsquo;re not continuing to synchronize
+against it.</p><p>The fourth reason is that Git isn&rsquo;t expecting concurrent modifications of its
+<code>.git</code> directory. In fact it has an index lock that has to be held by Git
+processes specifically for this reason.</p><p>There are a number of other reasons, but it basically comes down to the fact
+that only Git is in a position to be in control of what&rsquo;s in its <code>.git</code>
+directory (at least when it comes to the index and object stores).</p><h2 id=recommended-workflow>Recommended workflow</h2><p>The recommended workflow for using Mutagen with VCS repositories is to
+<a href=../ignores#version-control-systems>ignore VCS directories</a>, keeping a copy of
+the VCS directory on only one side of the synchronization session and
+synchronizing only the working tree around it. You can think of the side with
+the VCS directory as the &ldquo;master&rdquo; and the side without as the &ldquo;slave&rdquo;, even
+though the synchronization is bidirectional. You can even have multiple &ldquo;slaves&rdquo;
+with a hub-spoke model. With this model, you can invoke VCS commands on the
+&ldquo;master&rdquo; side (usually your actual workstation) and, if any changes are made to
+the working tree, those changes will be synchronized out to the &ldquo;slaves&rdquo;.</p><h2 id=additional-workflows-to-avoid>Additional workflows to avoid</h2><p>In addition to avoiding direct synchronization of VCS directories, there are
+other setups that are also probably best avoided.</p><p>For example, you could imagine a set up with a Git repository where you
+synchronize two copies of the repository, each with a <code>.git</code> directory, but
+exclude the <code>.git</code> directories from synchronization. At first this will appear
+to work, because both will show you the same result for <code>git status</code> and
+<code>git diff</code>. However, as soon as you do a <code>git commit</code> operation on one side, the
+other side will still be on the previous commit and see modified files while the
+committed side will show a clean working tree (even though both repositories
+have the exact same files in their working trees). The only way to propagate the
+commit to the other side would be to do a push/pull cycle, but to pull the
+commit you&rsquo;d need to stash your working tree changes, which would revert your
+working directory back to the previous commit, which in the mean time would be
+sync&rsquo;d back to the committed side, which would then show modifications, at least
+until you pulled down the commit on the other side, etc., etc. This is
+theoretically safe, but it is very clunky and likely to cause confusing
+behavior.</p></div></div></div></div><footer class="mt-auto bg-light py-4"><div class=container><div class=row><div class="col-md-4 my-3"><strong class=text-dark>© 2016 – 2019 Mutagen IO, Inc.</strong><br><span class=text-muted>All rights reserved.</span><br><strong><a class=text-info href=mailto:hello@mutagen.io>hello@mutagen.io</a></strong></div><div class=col-md-8><div class=row><div class="col-md-4 my-3"><h6 class=text-dark>Resources</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=/documentation>Documentation</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://groups.google.com/forum/#!forum/mutagen-announce>Announcements</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://github.com/mutagen-io/mutagen/blob/master/SECURITY.md>Security</a></li></ul></div><div class="col-md-4 my-3"><h6 class=text-dark>Legal</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=/legal/licenses>Licenses</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=/legal/third-party-trademarks>Third-party trademarks</a></li></ul></div><div class="col-md-4 my-3"><h6 class=text-dark>Links</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://twitter.com/mutagen_io>Twitter</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://spectrum.chat/mutagen>Spectrum</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://github.com/mutagen-io/mutagen>GitHub</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=#>Top of page ▲</a></li></ul></div></div></div></div></div></footer></body></html>

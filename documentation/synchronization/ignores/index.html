@@ -1,0 +1,88 @@
+<!doctype html><html lang=en class=h-100><head><title>Ignores | Mutagen</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><link rel="shortcut icon" href=/img/favicon.png><script src=/js/bundle.3aeab2414d60a7503e5e48309329f68fc244713a80665f3baba323d52f60b764.js integrity="sha256-OuqyQU1gp1A&#43;Xkgwkyn2j8JEcTqAZl87q6Mj1S9gt2Q="></script><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Mukta|Roboto:300,400|Roboto+Mono"><link rel=stylesheet href=/scss/main.min.6cd9493828aaf9946db37459e87631b3e2fa26d368112903942cdcab8dcb259f.css integrity="sha256-bNlJOCiq&#43;ZRts3RZ6HYxs&#43;L6JtNoESkDlCzcq43LJZ8="></head><body class="d-flex flex-column h-100"><div class=flex-shrink-0><nav class="navbar navbar-expand-md navbar-light py-0"><div class=container><a class="navbar-brand mutagen-brand" href=/><img class="d-inline-block align-top logo" src=/img/logo.svg alt="Mutagen logo">
+Mutagen</a>
+<button class="navbar-toggler mr-2" type=button data-toggle=collapse data-target=#navigation-content aria-controls=navigation-content aria-expanded=false aria-label="Toggle navigation" style=border:none>
+<span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse" id=navigation-content><ul class="navbar-nav ml-auto"><li class="nav-item mr-3"><a class=nav-link href=/documentation/introduction/installation>Install</a></li><li class="nav-item mr-3"><a class=nav-link href=/documentation>Documentation</a></li><li class="nav-item mr-3"><a class=nav-link href=https://spectrum.chat/mutagen target=_blank>Spectrum</a></li><li class="nav-item mr-3"><a class=nav-link href=https://twitter.com/mutagen_io target=_blank>Twitter</a></li><li class=nav-item><a class=nav-link href=https://github.com/mutagen-io/mutagen target=_blank>GitHub</a></li></ul></div></div></nav><nav class="navbar navbar-expand-md navbar-dark bg-dark py-0"><div class=container><div class="collapse navbar-collapse" id=navigation-content><ul class="navbar-nav ml-auto"><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=introduction-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Introduction</a><div class=dropdown-menu aria-labelledby=introduction-dropdown><a class=dropdown-item href=/documentation/introduction>Overview</a>
+<a class=dropdown-item href=/documentation/introduction/installation>Installation</a>
+<a class=dropdown-item href=/documentation/introduction/getting-started>Getting started</a>
+<a class=dropdown-item href=/documentation/introduction/daemon>Daemon</a>
+<a class=dropdown-item href=/documentation/introduction/configuration>Configuration</a>
+<a class=dropdown-item href=/documentation/introduction/names-labels-identifiers>Names, labels, and identifiers</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=transports-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Transports</a><div class=dropdown-menu aria-labelledby=transports-dropdown><a class=dropdown-item href=/documentation/transports>Overview</a>
+<a class=dropdown-item href=/documentation/transports/local>Local</a>
+<a class=dropdown-item href=/documentation/transports/ssh>SSH</a>
+<a class=dropdown-item href=/documentation/transports/docker>Docker<sup>®</sup> containers</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=synchronization-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Synchronization</a><div class=dropdown-menu aria-labelledby=synchronization-dropdown><a class=dropdown-item href=/documentation/synchronization>Overview</a>
+<a class=dropdown-item href=/documentation/synchronization/ignores>Ignores</a>
+<a class=dropdown-item href=/documentation/synchronization/version-control-systems>Version control systems</a>
+<a class=dropdown-item href=/documentation/synchronization/permissions>Permissions</a>
+<a class=dropdown-item href=/documentation/synchronization/symbolic-links>Symbolic links</a>
+<a class=dropdown-item href=/documentation/synchronization/watching>Watching</a>
+<a class=dropdown-item href=/documentation/synchronization/probing-and-scanning>Probing and scanning</a>
+<a class=dropdown-item href=/documentation/synchronization/staging>Staging</a>
+<a class=dropdown-item href=/documentation/synchronization/size-limits>Size limits</a>
+<a class=dropdown-item href=/documentation/synchronization/safety-mechanisms>Safety mechanisms</a></div></li><li class="nav-item dropdown mr-1"><a class="nav-link dropdown-toggle" href=# id=forwarding-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Forwarding</a><div class=dropdown-menu aria-labelledby=forwarding-dropdown><a class=dropdown-item href=/documentation/forwarding>Overview</a>
+<a class=dropdown-item href=/documentation/forwarding/unix-domain-sockets>Unix domain sockets</a></div></li><li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href=# id=orchestration-dropdown role=button data-toggle=dropdown aria-haspopup=true aria-expanded=false>Orchestration</a><div class=dropdown-menu aria-labelledby=orchestration-dropdown><a class=dropdown-item href=/documentation/orchestration>Overview</a>
+<a class=dropdown-item href=/documentation/orchestration/configuration>Configuration</a>
+<a class=dropdown-item href=/documentation/orchestration/example>Example</a></div></li></ul></div></div></nav><div class="container my-5"><div class=row><div class="d-none d-lg-block col-lg-3"><div class="sticky-top padded-sticky-top"><nav id=TableOfContents><ul><li><a href=#ignores>Ignores</a><ul><li><a href=#global-ignores>Global ignores</a></li><li><a href=#per-session-ignores>Per-session ignores</a></li><li><a href=#ignore-groups>Ignore groups</a><ul><li><a href=#version-control-systems>Version control systems</a></li></ul></li><li><a href=#format-and-behavior>Format and behavior</a></li></ul></li></ul></nav></div></div><div id=content class="col-md-12 col-lg-9 mb-3"><h1 id=ignores>Ignores</h1><p>By default, Mutagen attempts to propagate all files that it sees within a
+synchronization root. This isn&rsquo;t always desirable, so Mutagen supports ignoring
+paths within a synchronization root and excluding them from synchronization.
+When a path is ignored, it won&rsquo;t be scanned, it won&rsquo;t be propagated, and it
+won&rsquo;t be deleted.</p><p>Mutagen allows ignores to be specified on both a default and per-session basis,
+and provides utilities for ignoring certain kinds of common directories.</p><p>Mutagen also provides a rich syntax for specifying ignores, which should be
+familiar to Git users.</p><h2 id=global-ignores>Global ignores</h2><p>Global ignores affect all newly created sessions. These should be used for files
+that should always be ignored, e.g. those pesky <code>.DS_Store</code> files on macOS.</p><p>When a new session is created, global ignores are &ldquo;locked in&rdquo; to the session
+configuration, meaning that subsequent changes to global ignores will only be
+reflected in subsequently created sessions. This is for simplicity (no need to
+think through the effects of changing ignores in one place) and safety (no files
+will suddenly become unignored and propagated (causing conflicts or security
+risks) or silently ignored).</p><p>Global ignores are specified in the <code>~/.mutagen.yml</code> file as follows:</p><pre><code>sync:
+  defaults:
+    ignore:
+      paths:
+        - &lt;ignore1&gt;
+        - &lt;ignore2&gt;
+        - ...
+</code></pre><p>The format of ignore specifications is outline below.</p><h2 id=per-session-ignores>Per-session ignores</h2><p>Per-session ignores only affect the session to which they are attached. They are
+processed after global ignores, meaning that they can extend or cancel out
+global ignores.</p><p>To specify ignores on a per-session basis, use the <code>-i/--ignore</code> flag of the
+<code>mutagen sync create</code> command.</p><h2 id=ignore-groups>Ignore groups</h2><p>Mutagen provides ignore &ldquo;groups&rdquo; that provide a pre-defined set of ignores that
+can be used for sessions. At the moment, only one ignore group is defined in
+Mutagen, which ignores VCS directories (e.g. <code>.git</code>, <code>.svn</code>, etc.), though
+additional ignore groups (e.g. for Python object code files, <code>node_modules</code>
+directories, etc.) will be coming in future versions.</p><p>Ignore groups are processed before both global and per-session ignores, so they
+can be extended or cancelled out by global and per-session ignores.</p><h3 id=version-control-systems>Version control systems</h3><p>Version control system (VCS) directories can be ignored on a per-session basis
+by passing the <code>--ignore-vcs</code> flag to the <code>create</code> command and on a default
+basis by including the following configuration in <code>~/.mutagen.yml</code>:</p><pre><code>sync:
+  defaults:
+    ignore:
+      vcs: true
+</code></pre><p>A default VCS ignore setting can be overridden on a per-session basis by passing
+the <code>--no-ignore-vcs</code> flag to the <code>create</code> command.</p><h2 id=format-and-behavior>Format and behavior</h2><p>The format and behavior of Mutagen&rsquo;s ignore patterns are designed to match those
+of Git, insofar as that makes sense for Mutagen&rsquo;s somewhat different
+application.</p><p>Ignore patterns are essentially paths that support special syntax for matching.
+At a base level, ignore patterns are built using the
+<a href=https://github.com/bmatcuk/doublestar>doublestar</a> package, so all of the
+syntax there carries over.</p><p>Ignore patterns use <code>/</code> as a path separator. All paths are treated as relative
+to the synchronization root.</p><p>If an ignore pattern does not contain a <code>/</code>, i.e. it is a leaf name, then it
+will also be treated as relative to any subdirectory in the synchronization
+root. For example, an ignore pattern of <code>some/path</code> will only ignore content at
+<code>&lt;root&gt;/some/path</code>, but an ignore pattern of <code>path</code> will ignore content at
+<code>&lt;root&gt;/path</code>, <code>&lt;root&gt;/some/path</code>, <code>&lt;root&gt;/other/path</code>, etc. If you want to
+ignore content that exists directly at the root and not any other subpath, then
+prefix the ignore with <code>/</code>. For example, <code>build</code> will ignore content named
+<code>build</code> at any subdirectory, but <code>/build</code> will only ignore content at
+<code>&lt;root&gt;/build</code>.</p><p>Suffixing a pattern with <code>/</code> will cause it to match only directories. It&rsquo;s
+important to note that this is the only way that a path can &ldquo;become&rdquo; ignored or
+unignored, and the way that this behaves with a three-way merge might be
+non-intuitive. For example, imagine that an ignore of <code>name/</code> is specified, and
+that both endpoints of the connection have a copy of a synchronized file (not a
+directory) called <code>name</code>. Imagine that one endpoint then replaces the file
+<code>name</code> with a directory called <code>name</code>. This directory will now be ignored. Since
+Mutagen will ignore a directory called <code>name</code> in its scans, it will appear to
+Mutagen&rsquo;s three-way merge algorithm that the content at this path has been
+deleted on the side where the type has changed to a directory, and it will thus
+propagate deletion of the file called <code>name</code> to the other endpoint. This is
+still technically correct behavior, but it&rsquo;s worth understanding before using
+this type of ignore pattern.</p><p>Prefixing a pattern with <code>!</code> will cause it to negate previously matching
+ignores. E.g. specifying an ignore list like <code>[&quot;hot*&quot;, &quot;!hotel&quot;]</code> will ignore
+any content whose name begins with &ldquo;hot&rdquo;, unless the full content name is
+&ldquo;hotel&rdquo;. This can be a useful mechanism for overriding global ignores on a
+per-session basis.</p></div></div></div></div><footer class="mt-auto bg-light py-4"><div class=container><div class=row><div class="col-md-4 my-3"><strong class=text-dark>© 2016 – 2019 Mutagen IO, Inc.</strong><br><span class=text-muted>All rights reserved.</span><br><strong><a class=text-info href=mailto:hello@mutagen.io>hello@mutagen.io</a></strong></div><div class=col-md-8><div class=row><div class="col-md-4 my-3"><h6 class=text-dark>Resources</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=/documentation>Documentation</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://groups.google.com/forum/#!forum/mutagen-announce>Announcements</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://github.com/mutagen-io/mutagen/blob/master/SECURITY.md>Security</a></li></ul></div><div class="col-md-4 my-3"><h6 class=text-dark>Legal</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=/legal/licenses>Licenses</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=/legal/third-party-trademarks>Third-party trademarks</a></li></ul></div><div class="col-md-4 my-3"><h6 class=text-dark>Links</h6><ul class="nav flex-column"><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://twitter.com/mutagen_io>Twitter</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://spectrum.chat/mutagen>Spectrum</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=https://github.com/mutagen-io/mutagen>GitHub</a></li><li class=nav-item><a class="nav-link px-0 text-secondary" href=#>Top of page ▲</a></li></ul></div></div></div></div></div></footer></body></html>
