@@ -21,8 +21,8 @@ guides. You can find information about all of Mutagen's features in the
 ## Installation
 
 You can find
-[installation instructions](https://mutagen.io/documentation/installation/) in
-the [Mutagen documentation](https://mutagen.io/documentation/).
+[installation instructions](https://mutagen.io/documentation/introduction/installation/)
+in the [Mutagen documentation](https://mutagen.io/documentation/).
 
 
 ## Community
