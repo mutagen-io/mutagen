@@ -76,6 +76,9 @@ func listMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to list forwarding session(s)")
 	}
 
+	// Print an empty line.
+	fmt.Println()
+
 	// List synchronization sessions.
 	fmt.Println("Synchronization sessions:")
 	if err := sync.ListWithLabelSelector(labelSelector, listConfiguration.long); err != nil {

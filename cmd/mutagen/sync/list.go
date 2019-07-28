@@ -160,20 +160,22 @@ func listMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "invalid list response received")
 	}
 
-	// Loop through and print sessions.
-	for _, state := range response.SessionStates {
-		fmt.Println(cmd.DelimiterLine)
-		printSession(state, listConfiguration.long)
-		printEndpointStatus("Alpha", state.Session.Alpha, state.AlphaConnected, state.AlphaProblems)
-		printEndpointStatus("Beta", state.Session.Beta, state.BetaConnected, state.BetaProblems)
-		printSessionStatus(state)
-		if len(state.Conflicts) > 0 {
-			printConflicts(state.Conflicts)
-		}
-	}
-
-	// Print a final delimiter line if there were any sessions.
+	// Handle output based on whether or not any sessions were returned.
 	if len(response.SessionStates) > 0 {
+		for _, state := range response.SessionStates {
+			fmt.Println(cmd.DelimiterLine)
+			printSession(state, listConfiguration.long)
+			printEndpointStatus("Alpha", state.Session.Alpha, state.AlphaConnected, state.AlphaProblems)
+			printEndpointStatus("Beta", state.Session.Beta, state.BetaConnected, state.BetaProblems)
+			printSessionStatus(state)
+			if len(state.Conflicts) > 0 {
+				printConflicts(state.Conflicts)
+			}
+		}
+		fmt.Println(cmd.DelimiterLine)
+	} else {
+		fmt.Println(cmd.DelimiterLine)
+		fmt.Println("No sessions found")
 		fmt.Println(cmd.DelimiterLine)
 	}
 
