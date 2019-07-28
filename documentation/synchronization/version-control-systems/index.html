@@ -25,15 +25,18 @@ Mutagen</a>
 allowing you to, e.g., clone and edit a project while mirroring it to a remote
 system and testing it as your make edits. This helps you to avoid needing a
 push/pull cycle every time you make a change that you want to test.</p><p>When using Mutagen with a VCS repository, there are a few &ldquo;best practices&rdquo; of
-which you should be aware.</p><h2 id=vcs-directories-should-not-be-synced>VCS directories should not be synced</h2><p>VCS directories (e.g. <code>.git</code>, <code>.svn</code>, <code>.hg</code>, etc.) <em>can</em> be synchronized by
+which you should be aware.</p><h2 id=vcs-directories-should-not-be-synced>VCS directories should not be synced</h2><div class="alert alert-warning"><strong>NOTE:</strong> In addition to the reasons listed below, the most
+important reason that VCS directories should not be synced is that they
+often contain scripts that are executed when certain VCS commands are run
+(e.g.
+<a href=https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks>Git hooks</a>).
+These hooks are generally designed to help with VCS workflows, but
+they're also a potential attack vector for remote code execution if
+synchronizing a VCS directory with an untrusted remote.</div><p>VCS directories (e.g. <code>.git</code>, <code>.svn</code>, <code>.hg</code>, etc.) <em>can</em> be synchronized by
 Mutagen like any other directory, but they <em>shouldn&rsquo;t</em> be for a number of
 reasons. The reasons are more or less the same for each VCS, but we&rsquo;ll cover the
 common case of a <code>.git</code> directory. These reasons are also not specific to
-Mutagen — they apply to any file synchronization tool or service.</p><p>The first and most important reason is that the <code>.git</code> directory can contain
-<a href=https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks>scripts that are executed when certain Git commands are run</a>.
-These hooks are generally designed to help with Git workflows, but they&rsquo;re also
-a potential attack vector for remote code execution if synchronizing a <code>.git</code>
-directory with an untrusted remote.</p><p>The second reason is that the Git index data structure (which resides in <code>.git</code>)
+Mutagen — they apply to any file synchronization tool or service.</p><p>The first reason is that the Git index data structure (which resides in <code>.git</code>)
 records inode numbers, device ids, and modification times that are specific to
 the filesystem on which it resides. If you move it to another system, then the
 next time you run <code>git status</code> (or any command relying on similar Git
@@ -44,9 +47,9 @@ fine if you just want to move a Git repository once, since you&rsquo;ll just inc
 little extra penalty the first time you run <code>git status</code>, but it won&rsquo;t play well
 with constant synchronization. The Git index can also be a bit large (up to tens
 of MB for very large working trees) and is rewritten every time you run certain
-Git commands (e.g. <code>git status</code>), so you&rsquo;d be constantly resynchronizing it.</p><p>A third reason is that Git&rsquo;s object store is not homogenous or immutable.
-Some objects are stored as loose objects and some are stored in pack files, and
-it will be completely dependent on the history of a particular copy of a Git
+Git commands (e.g. <code>git status</code>), so you&rsquo;d be constantly resynchronizing it.</p><p>A second reason is that Git&rsquo;s object store is not homogenous or immutable. Some
+objects are stored as loose objects and some are stored in pack files, and it
+will be completely dependent on the history of a particular copy of a Git
 repository. They can also be pruned or relocated into pack files at any point by
 Git&rsquo;s garbage collection. This will not play well with synchronization for a
 variety of reasons that are a bit too numerous to go into, but it will be more
@@ -54,7 +57,7 @@ than a performance nuisance like the Git index — it may actually cause Git to
 complain about duplicate objects, or cause weird behavior when Git does its
 garbage collection. Again, this doesn&rsquo;t matter when you&rsquo;re just copying a Git
 repository one time, since in that case you&rsquo;re not continuing to synchronize
-against it.</p><p>The fourth reason is that Git isn&rsquo;t expecting concurrent modifications of its
+against it.</p><p>The third reason is that Git isn&rsquo;t expecting concurrent modifications of its
 <code>.git</code> directory. In fact it has an index lock that has to be held by Git
 processes specifically for this reason.</p><p>There are a number of other reasons, but it basically comes down to the fact
 that only Git is in a position to be in control of what&rsquo;s in its <code>.git</code>

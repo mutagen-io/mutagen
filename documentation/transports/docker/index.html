@@ -25,13 +25,14 @@ Mutagen</a>
 and out of Docker<sup>®</sup> containers. This support extends to all Docker
 client platforms (Linux<sup>®</sup>, macOS, Windows, etc.), Docker daemon setups
 (local, remote, VM, Hyper-V, etc.), and Docker container types (both Linux and
-Windows containers are supported).</p><h2 id=requirements>Requirements</h2><p>Mutagen requires the <code>docker</code> command to be in the user&rsquo;s path. Due to its use
+Windows containers are supported).</p><div class="alert alert-warning"><strong>NOTE:</strong> Mutagen assumes that the transport from the
+<code>docker</code> command to the Docker daemon is secure, and thus Mutagen
+provides no encryption on top of this transport. For information about
+securing the Docker daemon, please see the
+<a href=https://docs.docker.com/engine/security/https/>relevant documentation</a>.</div><h2 id=requirements>Requirements</h2><p>Mutagen requires the <code>docker</code> command to be in the user&rsquo;s path. Due to its use
 of the <code>-w/--workdir</code> flag with the <code>docker exec</code> command, Mutagen requires a
 Docker client and daemon supporting API 1.35+. You can check the API version
-support of your Docker client and daemon by using the <code>docker version</code> command.</p><p><strong>NOTE:</strong> Mutagen assumes that the transport from the <code>docker</code> command to the
-Docker daemon is secure, and thus Mutagen provides no encryption on top of this
-transport. For information about securing the Docker daemon, please see the
-<a href=https://docs.docker.com/engine/security/https/>relevant documentation</a>.</p><h2 id=synchronization>Synchronization</h2><p>Docker container filesystem endpoints can be specified to the
+support of your Docker client and daemon by using the <code>docker version</code> command.</p><h2 id=synchronization>Synchronization</h2><p>Docker container filesystem endpoints can be specified to the
 <code>mutagen sync create</code> command using URLs of the form:</p><pre><code>docker://[&lt;user&gt;@]&lt;container&gt;/path
 </code></pre><p>These URLs support Unicode names and paths and neither require nor support URL
 escape encoding (i.e. just type &ldquo;ö&rdquo;, not &ldquo;%C3%B6&rdquo;, etc.).</p><p>The <code>&lt;user&gt;</code> component is optional and tells Mutagen to act as the specified
