@@ -60,14 +60,13 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 }
 
 func monitorMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification. If we don't extract an explicit
-	// session specifier now, then it'll be determined automatically after the
-	// first listing.
-	var session string
-	if len(arguments) == 1 {
-		session = arguments[0]
-	} else if len(arguments) > 1 {
-		return errors.New("multiple session specification not allowed")
+	// Create a session selection specification that will select our initial
+	// batch of sessions. From this batch, we'll determine which session to
+	// monitor based on creation date. In any case, we only allow one
+	// specification to be provided in order to enforce the notion that this is
+	// a single-session command.
+	if len(arguments) > 1 {
+		return errors.New("multiple session specifications not allowed")
 	}
 	selection := &selectionpkg.Selection{
 		All:            len(arguments) == 0 && monitorConfiguration.labelSelector == "",
@@ -93,6 +92,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	defer statusLinePrinter.BreakIfNonEmpty()
 
 	// Loop and print monitoring information indefinitely.
+	var identifier string
 	var previousStateIndex uint64
 	sessionInformationPrinted := false
 	for {
@@ -112,25 +112,20 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 			return errors.Wrap(err, "invalid list response received")
 		}
 
-		// Validate the response and extract the relevant session state. If no
-		// session has been explicitly specified and it's our first time through
-		// the loop, then set up monitoring to use most recently created session
-		// matching the selection criteria (which will be the last in the
-		// returned results).
+		// Validate the response and extract the relevant session state. If we
+		// haven't already selected our target monitoring session, then we
+		// choose the last session in the batch (which will be the one with the
+		// most recent creation date).
 		var state *synchronization.State
 		previousStateIndex = response.StateIndex
-		if session == "" {
+		if identifier == "" {
 			if len(response.SessionStates) == 0 {
-				if monitorConfiguration.labelSelector != "" {
-					err = errors.New("no matching sessions exist")
-				} else {
-					err = errors.New("no sessions exist")
-				}
+				err = errors.New("no matching sessions exist")
 			} else {
 				state = response.SessionStates[len(response.SessionStates)-1]
-				session = state.Session.Identifier
+				identifier = state.Session.Identifier
 				selection = &selectionpkg.Selection{
-					Specifications: []string{session},
+					Specifications: []string{identifier},
 				}
 			}
 		} else if len(response.SessionStates) != 1 {
