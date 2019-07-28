@@ -1,28 +1,28 @@
 # Mutagen
 
-Mutagen offers **fast**, continuous, multidirectional file synchronization,
-allowing you to work with remote code and files using your local editor and
-tools in effectively real-time. Support is currently implemented for
-synchronization between local filesystems, SSH-accessible filesystems, and
-Docker container filesystems, with more on the way!
+Mutagen is a new kind of remote development tool that enables your existing
+local tools to work with code in remote environments like cloud servers and
+containers. It does this by providing high-performance real-time file
+synchronization and flexible network forwarding. Support is currently
+implemented for synchronization and forwarding between local filesystems,
+SSH-accessible filesystems, and Docker container filesystems, with more on the
+way!
 
 
 ## Getting started
 
-After [installing](https://mutagen.io/documentation/installation/) Mutagen,
-creating a synchronization session is as simple as:
+The best way to understand Mutagen and its features is to read the
+[Overview](https://mutagen.io/documentation/introduction/) and
+[Getting started](https://mutagen.io/documentation/introduction/getting-started/)
+guides. You can find information about all of Mutagen's features in the
+[documentation](https://mutagen.io/documentation/).
 
-    mutagen create ~/my_project me@example.org:~/my_remote_project
 
-Using Mutagen, you can create synchronization sessions between arbitrary pairs
-of endpoints (including sessions where both endpoints are remote) and control
-them from your local system. You also have granular control over the exact
-synchronization behavior in case Mutagen's defaults don't meet your needs.
+## Installation
 
-You can learn more in Mutagen's
-[design and usage guide](https://mutagen.io/documentation/design-and-usage/) and
-find information about all of Mutagen's features in
-[the documentation](https://mutagen.io/documentation).
+You can find
+[installation instructions](https://mutagen.io/documentation/installation/) in
+the [Mutagen documentation](https://mutagen.io/documentation/).
 
 
 ## Community
