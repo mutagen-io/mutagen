@@ -60,7 +60,7 @@ Mutagen is built and tested on Windows, macOS, and Linux, and it's available for
 [cov-link]: https://codecov.io/gh/mutagen-io/mutagen/tree/master/pkg "Code coverage status"
 [rc-badge]: https://goreportcard.com/badge/github.com/mutagen-io/mutagen "Report card status"
 [rc-link]: https://goreportcard.com/report/github.com/mutagen-io/mutagen "Report card status"
-[license-badge]: https://img.shields.io/github/license/wasmerio/wasmer.svg "MIT licensed"
+[license-badge]: https://img.shields.io/github/license/mutagen-io/mutagen.svg "MIT licensed"
 [license-link]: LICENSE "MIT licensed"
 
 
