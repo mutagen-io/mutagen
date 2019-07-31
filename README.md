@@ -95,6 +95,22 @@ opening a GitHub issue. For more information, please see the
 [security documentation](SECURITY.md).
 
 
+## Versioning and support
+
+Mutagen uses [semantic versioning](https://semver.org/) for tracking releases.
+Each minor release series is supported for the release cycle of the next minor
+release series or for 3 months, whichever is longer.
+
+The builds for each minor release series are pinned to the same Go minor release
+and dependency versions used for developing that series (though patch releases
+will be incorporated if they contain security fixes).
+
+We reserve the right to break or bend these rules if necessary for the sake of
+security, e.g. discontinuing support for a minor release to which a security fix
+cannot be backported or upgrading Go minor versions for a release series to
+incorporate important security fixes.
+
+
 ## Building
 
 Please see the [build instructions](BUILDING.md).
