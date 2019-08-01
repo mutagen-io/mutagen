@@ -38,7 +38,7 @@ support of your Docker client and daemon by using the <code>docker version</code
 escape encoding (i.e. just type &ldquo;ö&rdquo;, not &ldquo;%C3%B6&rdquo;, etc.).</p><p>The <code>&lt;user&gt;</code> component is optional and tells Mutagen to act as the specified
 user inside the container. If unspecified, Mutagen uses the default container
 user (usually <code>root</code> for Linux containers or <code>ContainerAdministrator</code> for
-Windows containers).</p><p>The <code>container</code> component can specify any type of container identifier
+Windows containers).</p><p>The <code>&lt;container&gt;</code> component can specify any type of container identifier
 understood by <code>docker cp</code> and <code>docker exec</code>, e.g. a name or hexidecimal
 identifier.</p><p>The <code>&lt;path&gt;</code> component must be non-empty (i.e. at least a <code>/</code> character) and can
 take one of four forms: an absolute path, a home-directory-relative path, a
