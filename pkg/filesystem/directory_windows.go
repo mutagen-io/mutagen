@@ -485,7 +485,19 @@ func (d *Directory) RemoveFile(name string) error {
 // RemoveSymbolicLink deletes a symbolic link with the specified name inside the
 // directory.
 func (d *Directory) RemoveSymbolicLink(name string) error {
-	return d.RemoveFile(name)
+	// Verify that the name is valid.
+	if err := ensureValidName(name); err != nil {
+		return err
+	}
+
+	// Compute the full path.
+	path := filepath.Join(d.file.Name(), name)
+
+	// On Windows, we need the same type-based fallback logic used in os.Remove
+	// (i.e. trying file removal first and then directory removal), so we just
+	// use that. This is necessary because Windows symbolic links are typed and
+	// have to be removed with the appropriate removal function.
+	return os.Remove(path)
 }
 
 // Rename performs an atomic rename operation from one filesystem location (the
