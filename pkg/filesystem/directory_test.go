@@ -46,3 +46,54 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 		t.Fatal("directory contents nil for GOROOT")
 	}
 }
+
+// TestDirectorySymbolicLinkRemoval tests that removal of symbolic links that
+// point to directories works as expected.
+func TestDirectorySymbolicLinkRemoval(t *testing.T) {
+	// Create a temporary directory and defer its cleanup.
+	temporaryDirectoryPath, err := ioutil.TempDir("", "mutagen_filesystem_test")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(temporaryDirectoryPath)
+
+	// Create a directory handle for this temporary directory and defer its
+	// closure.
+	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
+	if err != nil {
+		t.Fatal("unable to open directory handle:", err)
+	}
+	defer directory.Close()
+
+	// Create a directory that will serve as our target.
+	if err := directory.CreateDirectory("target"); err != nil {
+		t.Fatal("unable to create target directory:", err)
+	}
+
+	// Open the target directory and defer its closure.
+	target, err := directory.OpenDirectory("target")
+	if err != nil {
+		t.Fatal("unable to open target directory:", err)
+	}
+	defer target.Close()
+
+	// Create content within the target.
+	if err := target.CreateDirectory("content"); err != nil {
+		t.Fatal("unable to create content in target directory:", err)
+	}
+
+	// Create a symbolic link to the target.
+	if err := directory.CreateSymbolicLink("link", "target"); err != nil {
+		t.Fatal("unable to create symbolic link:", err)
+	}
+
+	// Remove the symbolic link.
+	if err := directory.RemoveSymbolicLink("link"); err != nil {
+		t.Fatal("unable to remove symbolic link:", err)
+	}
+
+	// Grab the target metadata to ensure that it still exists.
+	if _, err := directory.ReadContentMetadata("target"); err != nil {
+		t.Error("unable to read target metadata:", err)
+	}
+}
