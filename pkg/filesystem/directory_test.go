@@ -3,6 +3,7 @@ package filesystem
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"unicode/utf8"
@@ -92,8 +93,12 @@ func TestDirectorySymbolicLinkRemoval(t *testing.T) {
 		t.Fatal("unable to remove symbolic link:", err)
 	}
 
-	// Grab the target metadata to ensure that it still exists.
+	// Grab the target metadata to ensure that it still exists. As an additional
+	// sanity check, also ensure that the content path still exists, but do so
+	// using path-based access.
 	if _, err := directory.ReadContentMetadata("target"); err != nil {
 		t.Error("unable to read target metadata:", err)
+	} else if _, err = os.Lstat(filepath.Join(temporaryDirectoryPath, "target", "content")); err != nil {
+		t.Error("unable to read target content metadata:", err)
 	}
 }
