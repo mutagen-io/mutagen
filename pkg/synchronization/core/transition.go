@@ -552,6 +552,10 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// Attempt to atomically rename the file. If we succeed, we're done.
 	renameErr := filesystem.Rename(nil, stagedPath, parent, name)
 	if renameErr == nil {
+		if true { // TODO: Only touch when configured to
+			// Ignore errors, since updating access and modification times is not mandatory
+			filesystem.Touch(parent, name)
+		}
 		return nil
 	}
 
@@ -611,6 +615,10 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// Remove the staged file. We don't bother checking for errors because
 	// there's not much we can or need to do about them at this point.
 	os.Remove(stagedPath)
+
+	if true { // TODO: Only touch when configured to
+		filesystem.Touch(parent, name)
+	}
 
 	// Success.
 	return nil

@@ -4,6 +4,7 @@ package filesystem
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -517,6 +518,28 @@ func Rename(
 		sourceDescriptor, sourceNameOrPath,
 		targetDescriptor, targetNameOrPath,
 	)
+}
+
+// Touch updates the access and modification times of the given path to the
+// current time.
+//
+// This function does not create non-existent files.
+func Touch(directory *Directory, nameOrPath string) error {
+	var filePath string
+
+	// If a target directory has been provided, then verify that the target name
+	// is a valid name and not a path.
+	if directory != nil {
+		if err := ensureValidName(nameOrPath); err != nil {
+			return errors.Wrap(err, "target name invalid")
+		}
+		filePath = filepath.Join(directory.file.Name(), nameOrPath)
+	} else {
+		filePath = nameOrPath
+	}
+
+	now := time.Now()
+	return os.Chtimes(filePath, now, now)
 }
 
 // IsCrossDeviceError checks whether or not an error returned from rename
