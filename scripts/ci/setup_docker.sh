@@ -10,6 +10,7 @@ fi
 # have to disable cgo because to avoid creating dependencies on host libraries
 # that might not exist inside the container.
 CGO_ENABLED=0 go build \
+    -mod=readonly \
     -o "scripts/ci/docker/${TRAVIS_OS_NAME}/httpdemo${EXE_EXT}" \
     github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
