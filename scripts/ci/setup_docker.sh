@@ -1,10 +1,16 @@
 #!/bin/bash
 
+# Compute the executable extension for this platform.
+EXE_EXT=""
+if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    EXE_EXT=".exe"
+fi
+
 # Build the HTTP demo server that will serve as the Dockerfile entry point. We
 # have to disable cgo because to avoid creating dependencies on host libraries
 # that might not exist inside the container.
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
-    -o scripts/ci/docker/linux/httpdemo \
+CGO_ENABLED=0 go build \
+    -o "scripts/ci/docker/${TRAVIS_OS_NAME}/httpdemo${EXE_EXT}" \
     github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
 # Print the Docker version.
@@ -14,10 +20,10 @@ docker version
 docker image build \
     --pull \
     --tag "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" \
-    scripts/ci/docker/linux || exit $?
+    "scripts/ci/docker/${TRAVIS_OS_NAME}" || exit $?
 
 # Remove the generated executable.
-rm scripts/ci/docker/linux/httpdemo
+rm "scripts/ci/docker/${TRAVIS_OS_NAME}/httpdemo${EXE_EXT}"
 
 # Start a container.
 docker container run \

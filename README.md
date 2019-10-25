@@ -48,14 +48,12 @@ For updates about the project and its releases, you can:
 Mutagen is built and tested on Windows, macOS, and Linux, and it's available for
 [many more platforms](https://github.com/mutagen-io/mutagen/releases/latest).
 
-| Windows                           | macOS/Linux                                   | Code coverage                           | Report card                         | License                                   |
-| :-------------------------------: | :-------------------------------------------: | :-------------------------------------: | :---------------------------------: | :---------------------------------------: |
-| [![Windows][win-badge]][win-link] | [![macOS/Linux][mac-lin-badge]][mac-lin-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link] | [![License][license-badge]][license-link] |
+| Tests                               | Code coverage                           | Report card                         | License                                   |
+| :---------------------------------: | :-------------------------------------: | :---------------------------------: | :---------------------------------------: |
+| [![Tests][tests-badge]][tests-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link] | [![License][license-badge]][license-link] |
 
-[win-badge]: https://ci.appveyor.com/api/projects/status/mr8rmxl5hbxgyged/branch/master?svg=true "Windows build status"
-[win-link]:  https://ci.appveyor.com/project/havoc-io/mutagen-87cwp/branch/master "Windows build status"
-[mac-lin-badge]: https://travis-ci.org/mutagen-io/mutagen.svg?branch=master "macOS/Linux build status"
-[mac-lin-link]:  https://travis-ci.org/mutagen-io/mutagen "macOS/Linux build status"
+[tests-badge]: https://travis-ci.org/mutagen-io/mutagen.svg?branch=master "Test status"
+[tests-link]:  https://travis-ci.org/mutagen-io/mutagen "Test status"
 [cov-badge]: https://codecov.io/gh/mutagen-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
 [cov-link]: https://codecov.io/gh/mutagen-io/mutagen/tree/master/pkg "Code coverage status"
 [rc-badge]: https://goreportcard.com/badge/github.com/mutagen-io/mutagen "Report card status"

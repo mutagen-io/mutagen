@@ -6,6 +6,10 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     sudo apt-get -qq install openssh-client openssh-server || exit $?
     sudo service ssh restart || exit $?
+else
+    # TODO: Eventually it would be nice to support Windows.
+    echo "SSH not supported on Windows" 1>&2
+    exit 1
 fi
 
 # Ensure our SSH configuration directory exists.
