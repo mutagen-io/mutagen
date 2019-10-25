@@ -42,6 +42,11 @@ func init() {
 	// setting that affects all Cobra command instances.
 	cobra.EnableCommandSorting = false
 
+	// Disable Cobra's use of mousetrap. This breaks daemon registration on
+	// Windows because it tries to enforce that the CLI only be launched from
+	// a console, which it's not when running automatically.
+	cobra.MousetrapHelpText = ""
+
 	// Grab a handle for the command line flags.
 	flags := rootCommand.Flags()
 
@@ -51,11 +56,6 @@ func init() {
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
-
-	// Disable Cobra's use of mousetrap. This breaks daemon registration on
-	// Windows because it tries to enforce that the CLI only be launched from
-	// a console, which it's not when running automatically.
-	cobra.MousetrapHelpText = ""
 
 	// Register commands.
 	// HACK: Add the sync commands as direct subcommands of the root command for

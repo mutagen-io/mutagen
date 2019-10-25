@@ -39,13 +39,6 @@ var rootConfiguration struct {
 }
 
 func init() {
-	// Grab a handle for the command line flags.
-	flags := rootCommand.Flags()
-
-	// Manually add a help flag to override the default message. Cobra will
-	// still implement its logic automatically.
-	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
-
 	// Disable Cobra's command sorting behavior. By default, it sorts commands
 	// alphabetically in the help output.
 	cobra.EnableCommandSorting = false
@@ -54,6 +47,13 @@ func init() {
 	// Windows because it tries to enforce that the CLI only be launched from
 	// a console, which it's not when running automatically.
 	cobra.MousetrapHelpText = ""
+
+	// Grab a handle for the command line flags.
+	flags := rootCommand.Flags()
+
+	// Manually add a help flag to override the default message. Cobra will
+	// still implement its logic automatically.
+	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
 
 	// Register commands. We do this here (rather than in individual init
 	// functions) so that we can control the order.
