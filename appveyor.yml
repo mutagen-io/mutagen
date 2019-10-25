@@ -9,7 +9,7 @@ clone_folder: C:\mutagen
 
 # Set Go versions and environment variables.
 environment:
-  GOROOT: C:\go112
+  GOROOT: C:\go113
   GO111MODULE: "on"
   MINGW_PATH: C:\mingw-w64\x86_64-7.2.0-posix-seh-rt_v5-rev1
   MUTAGEN_TEST_END_TO_END: "full"
