@@ -95,11 +95,15 @@ script:
 # Upload the coverage report and perform any tear down and Docker infrastructure
 # after testing.
 # TODO: We may want to add SSH teardown in here.
+# HACK: We have to use a non-standard Codecov invocation because Bash on Windows
+# doesn't seem to support process substitution, at least not on Travis.
 # NOTE: This actually runs after before_deploy, but it's more logical to have it
 # at this point in the file. See
 # https://docs.travis-ci.com/user/customizing-the-build/ for more information.
 after_script:
-  - bash <(curl -s https://codecov.io/bash)
+  - curl -s https://codecov.io/bash > codecov
+  - chmod +x codecov
+  - ./codecov
   - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then scripts/ci/teardown_docker.sh ; fi
 
 # HACK: If we're doing a release deployment, convert the Windows bundles to zip
