@@ -24,7 +24,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	golang.org/x/crypto v0.0.0-20190418161225-b43e412143f9 // indirect
 	golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2 // indirect
-	golang.org/x/sys v0.0.0-20190418153312-f0ce4c0180be
+	golang.org/x/sys v0.0.0-20191026070338-33540a1f6037
 	golang.org/x/text v0.3.0
 	google.golang.org/grpc v1.20.1
 	gopkg.in/yaml.v2 v2.2.2

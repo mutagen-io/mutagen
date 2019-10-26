@@ -73,15 +73,12 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return nil, nil, errors.Wrap(err, "unable to query file metadata")
 	}
 
-	// Extract modification time specification.
-	modificationTime := extractModificationTime(&rawMetadata)
-
 	// Convert the raw system-level metadata.
 	metadata := &Metadata{
 		Name:             filepath.Base(path),
 		Mode:             Mode(rawMetadata.Mode),
 		Size:             uint64(rawMetadata.Size),
-		ModificationTime: time.Unix(modificationTime.Unix()),
+		ModificationTime: time.Unix(rawMetadata.Mtim.Unix()),
 		DeviceID:         uint64(rawMetadata.Dev),
 		FileID:           uint64(rawMetadata.Ino),
 	}

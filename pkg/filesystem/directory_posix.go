@@ -333,15 +333,12 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 		return nil, err
 	}
 
-	// Extract modification time specification.
-	modificationTime := extractModificationTime(&metadata)
-
 	// Success.
 	return &Metadata{
 		Name:             name,
 		Mode:             Mode(metadata.Mode),
 		Size:             uint64(metadata.Size),
-		ModificationTime: time.Unix(modificationTime.Unix()),
+		ModificationTime: time.Unix(metadata.Mtim.Unix()),
 		DeviceID:         uint64(metadata.Dev),
 		FileID:           uint64(metadata.Ino),
 	}, nil
