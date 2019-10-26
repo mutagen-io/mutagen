@@ -64,6 +64,8 @@ func init() {
 		sync.RootCommand,
 		forward.RootCommand,
 		project.RootCommand,
+		loginCommand,
+		logoutCommand,
 		daemon.RootCommand,
 		versionCommand,
 		legalCommand,
