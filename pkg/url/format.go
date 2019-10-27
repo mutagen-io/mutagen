@@ -10,6 +10,8 @@ func (u *URL) Format(environmentPrefix string) string {
 		return u.formatLocal()
 	} else if u.Protocol == Protocol_SSH {
 		return u.formatSSH()
+	} else if u.Protocol == Protocol_Tunnel {
+		return u.formatTunnel()
 	} else if u.Protocol == Protocol_Docker {
 		return u.formatDocker(environmentPrefix)
 	}
@@ -43,6 +45,46 @@ func (u *URL) formatSSH() string {
 	return result
 }
 
+// invalidTunnelURLFormat is the value returned by formatTunnel when a URL is
+// provided that breaks invariants.
+const invalidTunnelURLFormat = "<invalid-tunnel-url>"
+
+// formatTunnel formats a tunnel URL.
+func (u *URL) formatTunnel() string {
+	// Start with the tunnel identifier/name.
+	result := u.Host
+
+	// Add username if present.
+	if u.User != "" {
+		result = fmt.Sprintf("%s@%s", u.User, result)
+	}
+
+	// Append the path in a manner that depends on the URL kind.
+	if u.Kind == Kind_Synchronization {
+		// If this is a home-directory-relative path or a Windows path, then we
+		// need to prepend a slash.
+		if u.Path == "" {
+			return invalidTunnelURLFormat
+		} else if u.Path[0] == '/' {
+			result += u.Path
+		} else if u.Path[0] == '~' || isWindowsPath(u.Path) {
+			result += fmt.Sprintf("/%s", u.Path)
+		} else {
+			return invalidTunnelURLFormat
+		}
+	} else if u.Kind == Kind_Forwarding {
+		result += fmt.Sprintf(":%s", u.Path)
+	} else {
+		panic("unhandled URL kind")
+	}
+
+	// Add the scheme.
+	result = tunnelURLPrefix + result
+
+	// Done.
+	return result
+}
+
 // invalidDockerURLFormat is the value returned by formatDocker when a URL is
 // provided that breaks invariants.
 const invalidDockerURLFormat = "<invalid-docker-url>"
@@ -51,6 +93,11 @@ const invalidDockerURLFormat = "<invalid-docker-url>"
 func (u *URL) formatDocker(environmentPrefix string) string {
 	// Start with the container name.
 	result := u.Host
+
+	// Add username if present.
+	if u.User != "" {
+		result = fmt.Sprintf("%s@%s", u.User, result)
+	}
 
 	// Append the path in a manner that depends on the URL kind.
 	if u.Kind == Kind_Synchronization {
@@ -69,11 +116,6 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 		result += fmt.Sprintf(":%s", u.Path)
 	} else {
 		panic("unhandled URL kind")
-	}
-
-	// Add username if present.
-	if u.User != "" {
-		result = fmt.Sprintf("%s@%s", u.User, result)
 	}
 
 	// Add the scheme.

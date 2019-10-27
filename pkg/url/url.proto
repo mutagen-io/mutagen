@@ -21,7 +21,10 @@ enum Protocol {
 
     // Enumeration value 2 is reserved for custom protocols.
 
-    // Enumeration values 3-10 are reserved for core protocols.
+    // Tunnel indicates that the resource is available via a mutagen.io tunnel.
+    Tunnel = 3;
+
+    // Enumeration values 4-10 are reserved for core protocols.
 
     // Docker indicates that the resource is inside a Docker container.
     Docker = 11;

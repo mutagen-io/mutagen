@@ -53,6 +53,14 @@ func (u *URL) EnsureValid() error {
 		} else if len(u.Environment) != 0 {
 			return errors.New("SSH URL with environment variables")
 		}
+	} else if u.Protocol == Protocol_Tunnel {
+		if u.Host == "" {
+			return errors.New("tunnel URL with empty tunnel identifier/name")
+		} else if u.Port != 0 {
+			return errors.New("tunnel URL with non-zero port")
+		} else if len(u.Environment) != 0 {
+			return errors.New("tunnel URL with environment variables")
+		}
 	} else if u.Protocol == Protocol_Docker {
 		// In the case of Docker, we intentionally avoid validating environment
 		// variables since the values used could change over time. Since we
@@ -80,11 +88,11 @@ func (u *URL) EnsureValid() error {
 			return errors.New("local URL with relative path")
 		}
 
-		// If this is a Docker URL, we can actually do a bit of additional
-		// validation.
-		if u.Protocol == Protocol_Docker {
+		// If this is a tunnel or Docker URL, we can actually do a bit of
+		// additional validation.
+		if u.Protocol == Protocol_Tunnel || u.Protocol == Protocol_Docker {
 			if !(u.Path[0] == '/' || u.Path[0] == '~' || isWindowsPath(u.Path)) {
-				return errors.New("Docker URL with incorrect first path character")
+				return errors.New("incorrect first path character")
 			}
 		}
 	} else if u.Kind == Kind_Forwarding {

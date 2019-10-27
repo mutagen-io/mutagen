@@ -192,6 +192,106 @@ func TestURLEnsureValidSSH(t *testing.T) {
 	}
 }
 
+func TestURLEnsureValidTunnelPortInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Port:     50,
+		Path:     "~/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidTunnelEmptyPathInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidTunnelBadPathInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "$path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidTunnelEnvironmentVariablesInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "~/path",
+		Environment: map[string]string{
+			"key": "value",
+		},
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidTunnelHomeRelativePath(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "~/path",
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidTunnelUserRelativePath(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "~otheruser/path",
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidTunnelWindowsPath(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     `C:\path`,
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
+func TestURLEnsureValidTunnel(t *testing.T) {
+	valid := &URL{
+		Protocol: Protocol_Tunnel,
+		User:     "george",
+		Host:     "tunnelName",
+		Path:     "/path",
+	}
+	if err := valid.EnsureValid(); err != nil {
+		t.Error("valid URL classified as invalid")
+	}
+}
+
 func TestURLEnsureValidDockerPortInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Docker,

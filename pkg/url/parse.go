@@ -24,7 +24,9 @@ func Parse(raw string, kind Kind, first bool) (*URL, error) {
 	// Docker URL would also be classified as an SCP-style SSH URL), but we only
 	// want them to be parsed according to the better and more specific match.
 	// If we don't match anything, we assume the URL is a local path.
-	if isDockerURL(raw) {
+	if isTunnelURL(raw) {
+		return parseTunnel(raw, kind)
+	} else if isDockerURL(raw) {
 		return parseDocker(raw, kind, first)
 	} else if isSCPSSHURL(raw, kind) {
 		return parseSCPSSH(raw, kind)

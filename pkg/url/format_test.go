@@ -120,6 +120,93 @@ func TestFormatSSHUsernameHostnamePortPath(t *testing.T) {
 	test.run(t)
 }
 
+func TestFormatTunnelInvalidEmptyPath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			Host:     "tunnelname",
+			Path:     "",
+		},
+		expected: invalidTunnelURLFormat,
+	}
+	test.run(t)
+}
+
+func TestFormatTunnelInvalidBadFirstPathCharacter(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			Host:     "tunnelname",
+			Path:     "$5",
+		},
+		expected: invalidTunnelURLFormat,
+	}
+	test.run(t)
+}
+
+func TestFormatTunnel(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			Host:     "tunnelname",
+			Path:     "/test/path/to/the file",
+		},
+		expected: "tunnel://tunnelname/test/path/to/the file",
+	}
+	test.run(t)
+}
+
+func TestFormatForwardingTunnel(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Kind:     Kind_Forwarding,
+			Protocol: Protocol_Tunnel,
+			Host:     "tunnelname",
+			Path:     "tcp4:localhost:8080",
+		},
+		expected: "tunnel://tunnelname:tcp4:localhost:8080",
+	}
+	test.run(t)
+}
+
+func TestFormatTunnelWithUsernameAndHomeRelativePath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			User:     "user",
+			Host:     "tunnelname",
+			Path:     "~/test/path/to/the file",
+		},
+		expected: "tunnel://user@tunnelname/~/test/path/to/the file",
+	}
+	test.run(t)
+}
+
+func TestFormatTunnelWithUsernameAndUserRelativePath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			User:     "user",
+			Host:     "tunnelname",
+			Path:     "~otheruser/test/path/to/the file",
+		},
+		expected: "tunnel://user@tunnelname/~otheruser/test/path/to/the file",
+	}
+	test.run(t)
+}
+
+func TestFormatTunnelWithWindowsPathPath(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			Host:     "tunnelname",
+			Path:     `C:\A\Windows\File Path `,
+		},
+		expected: `tunnel://tunnelname/C:\A\Windows\File Path `,
+	}
+	test.run(t)
+}
+
 func TestFormatDockerInvalidEmptyPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
