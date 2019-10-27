@@ -11,12 +11,12 @@ import (
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
-// protocolHandler implements the session.ProtocolHandler interface for
+// protocolHandler implements the synchronization.ProtocolHandler interface for
 // connecting to remote endpoints over SSH. It uses the agent infrastructure
 // over an SSH transport.
 type protocolHandler struct{}
 
-// Dial connects to an SSH endpoint.
+// Connect connects to an SSH endpoint.
 func (h *protocolHandler) Connect(
 	logger *logging.Logger,
 	url *urlpkg.URL,

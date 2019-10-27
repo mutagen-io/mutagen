@@ -9,11 +9,11 @@ import (
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
-// protocolHandler implements the session.ProtocolHandler interface for
+// protocolHandler implements the synchronization.ProtocolHandler interface for
 // connecting to local endpoints.
 type protocolHandler struct{}
 
-// Dial connects to a local endpoint.
+// Connect connects to a local endpoint.
 func (h *protocolHandler) Connect(
 	logger *logging.Logger,
 	url *urlpkg.URL,

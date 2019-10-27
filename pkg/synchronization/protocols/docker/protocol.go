@@ -11,7 +11,7 @@ import (
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
-// protocolHandler implements the session.ProtocolHandler interface for
+// protocolHandler implements the synchronization.ProtocolHandler interface for
 // connecting to remote endpoints inside Docker containers. It uses the agent
 // infrastructure over a Docker transport.
 type protocolHandler struct{}
