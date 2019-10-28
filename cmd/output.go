@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 )
@@ -9,6 +10,9 @@ import (
 // StatusLinePrinter provides printing facilities for dynamically updating
 // status lines in the console. It supports colorized printing.
 type StatusLinePrinter struct {
+	// UseStandardError causes the printer to use standard error for its output
+	// instead of standard output (the default).
+	UseStandardError bool
 	// nonEmpty indicates whether or not the printer has printed any non-empty
 	// content to the status line.
 	nonEmpty bool
@@ -18,6 +22,12 @@ type StatusLinePrinter struct {
 // Color escape sequences are supported. Messages will be truncated to a
 // platform-dependent maximum length and padded appropriately.
 func (p *StatusLinePrinter) Print(message string) {
+	// Determine output stream.
+	output := color.Output
+	if p.UseStandardError {
+		output = color.Error
+	}
+
 	// Print the message, prefixed with a carriage return to wipe out the
 	// previous line (if any). Ensure that the status prints as a specified
 	// width, truncating or right-padding with space as necessary. On POSIX
@@ -29,7 +39,7 @@ func (p *StatusLinePrinter) Print(message string) {
 	// the color output so that color escape sequences are properly handled - in
 	// all other cases this will behave just like standard output.
 	// TODO: We should probably try to detect the console width.
-	fmt.Fprintf(color.Output, statusLineFormat, message)
+	fmt.Fprintf(output, statusLineFormat, message)
 
 	// Update our non-empty status. We're always non-empty after printing
 	// because we print padding as well.
@@ -42,8 +52,14 @@ func (p *StatusLinePrinter) Clear() {
 	// Write over any existing data.
 	p.Print("")
 
+	// Determine output stream.
+	output := os.Stdout
+	if p.UseStandardError {
+		output = os.Stderr
+	}
+
 	// Wipe out any existing line.
-	fmt.Print("\r")
+	fmt.Fprint(output, "\r")
 
 	// Update our non-empty status.
 	p.nonEmpty = false
@@ -54,7 +70,16 @@ func (p *StatusLinePrinter) BreakIfNonEmpty() {
 	// If the status line contents are non-empty, then print a newline and mark
 	// ourselves as empty.
 	if p.nonEmpty {
-		fmt.Println()
+		// Determine output stream.
+		output := os.Stdout
+		if p.UseStandardError {
+			output = os.Stderr
+		}
+
+		// Print a line break.
+		fmt.Fprintln(output)
+
+		// Update our non-empty status.
 		p.nonEmpty = false
 	}
 }
