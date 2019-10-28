@@ -10,6 +10,8 @@ type ResponseMode uint8
 const (
 	// ResponseModeSecret indicates that a prompt response shouldn't be echoed.
 	ResponseModeSecret ResponseMode = iota
+	// ResponseModeMasked indicates that a prompt response should be masked.
+	ResponseModeMasked
 	// ResponseModeEcho indicates that a prompt response should be echoed.
 	ResponseModeEcho
 	// ResponseModeBinary indicates that a prompt response should be echoed and
