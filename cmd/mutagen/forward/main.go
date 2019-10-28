@@ -4,11 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
-
-	// Explicitly import packages that need to register protocol handlers.
-	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/docker"
-	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/local"
-	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/ssh"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
