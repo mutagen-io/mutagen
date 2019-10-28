@@ -332,7 +332,7 @@ func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Co
 
 	// If we don't want to wait, then we can simply send the request in a
 	// non-blocking manner, in which case either this request (or one that's
-	// already queued) will be processed eventually. After that, we'd done.
+	// already queued) will be processed eventually. After that, we're done.
 	if skipWait {
 		// Send the request in a non-blocking manner.
 		select {
