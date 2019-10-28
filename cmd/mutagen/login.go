@@ -2,24 +2,33 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
+	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
 func loginMain(command *cobra.Command, arguments []string) error {
-	// Validate and extract the API token.
-	if len(arguments) == 0 {
-		return errors.New("API token required")
-	} else if len(arguments) != 1 {
-		return errors.New("invalid number of arguments")
+	// Validate arguments.
+	if len(arguments) != 0 {
+		return errors.New("unexpected arguments")
 	}
-	apiToken := arguments[0]
-	if apiToken == "" {
-		return errors.New("empty API token")
+
+	// Prompt for the API token.
+	apiToken, err := prompt.PromptCommandLineWithResponseMode("Enter API token: ", prompt.ResponseModeMasked)
+	if err != nil {
+		return fmt.Errorf("unable to read API token: %w", err)
+	}
+
+	// Perform basic validation of the token.
+	if scheme, err := mutagenio.ExtractTokenScheme(apiToken); err != nil {
+		return fmt.Errorf("unable to extract token scheme: %w", err)
+	} else if scheme != mutagenio.TokenSchemeAPI {
+		return errors.New("incorrect token scheme")
 	}
 
 	// Perform the login.
@@ -32,7 +41,7 @@ func loginMain(command *cobra.Command, arguments []string) error {
 }
 
 var loginCommand = &cobra.Command{
-	Use:          "login <api-token>",
+	Use:          "login",
 	Short:        "Log in to mutagen.io",
 	Hidden:       true,
 	RunE:         loginMain,
