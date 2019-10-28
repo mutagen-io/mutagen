@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 )
 
@@ -33,6 +35,9 @@ var logoutConfiguration struct {
 }
 
 func init() {
+	// Mark the command as experimental.
+	logoutCommand.Short = logoutCommand.Short + color.YellowString(" [Experimental]")
+
 	// Grab a handle for the command line flags.
 	flags := logoutCommand.Flags()
 

@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 )
 
@@ -44,6 +46,9 @@ var loginConfiguration struct {
 }
 
 func init() {
+	// Mark the command as experimental.
+	loginCommand.Short = loginCommand.Short + color.YellowString(" [Experimental]")
+
 	// Grab a handle for the command line flags.
 	flags := loginCommand.Flags()
 
