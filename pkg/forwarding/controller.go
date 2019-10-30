@@ -188,7 +188,7 @@ func newSession(
 	// If the session isn't being created pre-paused, then start a forwarding
 	// loop.
 	if !paused {
-		logger.Print("Starting forwarding loop")
+		logger.Println("Starting forwarding loop")
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})

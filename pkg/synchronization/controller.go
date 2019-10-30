@@ -75,7 +75,7 @@ type controller struct {
 	cancel contextpkg.CancelFunc
 	// flushRequests is used pass flush requests to the synchronization loop. It
 	// is buffered, allowing a single request to be queued. All requests passed
-	// via that channel must be buffered and contain room for one error.
+	// via this channel must be buffered and contain room for one error.
 	flushRequests chan chan error
 	// done will be closed by the current synchronization loop when it exits.
 	done chan struct{}
@@ -211,7 +211,7 @@ func newSession(
 	// If the session isn't being created pre-paused, then start a
 	// synchronization loop.
 	if !paused {
-		logger.Print("Starting synchronization loop")
+		logger.Println("Starting synchronization loop")
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
