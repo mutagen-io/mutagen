@@ -128,7 +128,8 @@ func (e *ProtobufEncoder) Encode(message proto.Message) error {
 // performance reasons, this type wraps the underlying stream in a buffering
 // reader, which means that the decoder should persist for the lifetime of the
 // stream (since there's no way to know how much data has been read from the
-// stream).
+// stream). For single-message decoding that won't over-read a stream, use
+// DecodeProtobuf.
 type ProtobufDecoder struct {
 	// reader is a buffered reader wrapping the underlying reader.
 	reader *bufio.Reader
@@ -184,6 +185,67 @@ func (d *ProtobufDecoder) Decode(message proto.Message) error {
 
 	// Read the message bytes.
 	if _, err := io.ReadFull(d.reader, messageBytes); err != nil {
+		return errors.Wrap(err, "unable to read message")
+	}
+
+	// Unmarshal the message.
+	if err := proto.Unmarshal(messageBytes, message); err != nil {
+		return errors.Wrap(err, "unable to unmarshal message")
+	}
+
+	// Success.
+	return nil
+}
+
+// EncodeProtobuf writes a single Protocol Buffers messages that can be read by
+// ProtobufDecoder or ReadProtobuf. It is a useful shorthand for creating a
+// ProtobufEncoder and writing a single message. For multiple message sends, it
+// is far more efficient to use a ProtobufEncoder directly.
+func EncodeProtobuf(writer io.Writer, message proto.Message) error {
+	return NewProtobufEncoder(writer).Encode(message)
+}
+
+// simpleByteReader is a naïve io.ByteReader implementation that operates on top
+// of an io.Reader. It is not efficient, so it should not be used except for
+// single message reads where a buffered reader would not be appropriate.
+type simpleByteReader struct {
+	// reader is the underlying reader.
+	reader io.Reader
+}
+
+// ReadByte implements io.ByteReader.ReadByte.
+func (r *simpleByteReader) ReadByte() (byte, error) {
+	var data [1]byte
+	if _, err := io.ReadFull(r.reader, data[:]); err != nil {
+		return 0, err
+	}
+	return data[0], nil
+}
+
+// DecodeProtobuf reads and decodes a single Protocol Buffers message as
+// transmitted by ProtobufEncoder or WriteProtobuf. It is useful in cases where
+// a ProtobufDecoder cannot be used because the underlying stream will send data
+// after the Protocol Buffers message that could be gobbled up by the decoder's
+// buffered reads, but it is not an efficient implementation, and thus should
+// only be used for a fixed number of messages (e.g. a single initialization
+// message).
+func DecodeProtobuf(reader io.Reader, message proto.Message) error {
+	// Read the next message length.
+	length, err := binary.ReadUvarint(&simpleByteReader{reader})
+	if err != nil {
+		return errors.Wrap(err, "unable to read message length")
+	}
+
+	// Check if the message is too long to read.
+	if length > protobufDecoderMaximumAllowedMessageSize {
+		return errors.New("message size too large")
+	}
+
+	// Create a buffer to read the message.
+	messageBytes := make([]byte, length)
+
+	// Read the message bytes.
+	if _, err := io.ReadFull(reader, messageBytes); err != nil {
 		return errors.Wrap(err, "unable to read message")
 	}
 
