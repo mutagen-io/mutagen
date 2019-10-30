@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package tunneling;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/tunneling";
+
+import "tunneling/tunnel.proto";
+
+// Status encodes the status of a tunnel.
+enum Status {
+    // Status_Disconnected indicates that the tunnel is disconnected.
+    Disconnected = 0;
+    // Status_HaltedOnUnrecoverableError indicates that the tunnel has halted
+    // due to an unrecoverable error.
+    HaltedOnUnrecoverableError = 1;
+    // Status_Connecting indicates that the tunnel is in the process of
+    // connecting.
+    Connecting = 2;
+    // Status_Connected indicates that the tunnel is connected.
+    Connected = 3;
+}
+
+// State encodes the state of a tunnel.
+message State {
+    // Tunnel is the tunnel client specification.
+    Tunnel tunnel = 1;
+    // Status is the status of the tunnel.
+    Status status = 2;
+    // LastError indicates the last error that occurred while connecting.
+    string lastError = 3;
+    // ActiveSessions is the number of sessions currently operating via the
+    // tunnel.
+    uint64 activeSessions = 4;
+    // TotalSessions is the number of total sessions that have operated via the
+    // tunnel (including those that are currently operating).
+    uint64 totalSessions = 5;
+}

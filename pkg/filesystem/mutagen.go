@@ -63,6 +63,10 @@ const (
 	// MutagenIODirectoryName is the name of the mutagen.io data directory
 	// within the Mutagen data directory.
 	MutagenIODirectoryName = "mutagen.io"
+
+	// MutagenTunnelsDirectoryName is the name of the tunnel storage directory
+	// within the Mutagen data directory.
+	MutagenTunnelsDirectoryName = "tunnels"
 )
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen

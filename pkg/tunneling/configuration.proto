@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package tunneling;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/tunneling";
+
+// Configuration encodes tunnel configuration parameters.
+message Configuration {}

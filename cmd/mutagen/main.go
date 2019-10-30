@@ -10,6 +10,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/tunnel"
 	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
 
@@ -64,6 +65,7 @@ func init() {
 		sync.RootCommand,
 		forward.RootCommand,
 		project.RootCommand,
+		tunnel.RootCommand,
 		loginCommand,
 		logoutCommand,
 		daemon.RootCommand,

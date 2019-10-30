@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package tunneling;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/service/tunneling";
+
+import "selection/selection.proto";
+import "tunneling/configuration.proto";
+import "tunneling/state.proto";
+import "tunneling/tunnel.proto";
+
+message CreationSpecification {
+    // Configuration is the base tunnel configuration. It is the result of
+    // merging the global configuration (unless disabled), any manually
+    // specified configuration file, and any command line configuration
+    // parameters.
+    tunneling.Configuration configuration = 1;
+    // Name is the name for the tunnel object.
+    string name = 2;
+    // Labels are the labels for the tunnel object.
+    map<string, string> labels = 3;
+    // Paused indicates whether or not to create the tunnel pre-paused.
+    bool paused = 4;
+}
+
+message CreateRequest {
+    CreationSpecification specification = 1;
+    string response = 2;
+}
+
+message CreateResponse {
+    tunneling.TunnelHostParameters hostParameters = 1;
+    string message = 2;
+    string prompt = 3;
+}
+
+message ListRequest {
+    selection.Selection selection = 1;
+    uint64 previousStateIndex = 2;
+}
+
+message ListResponse {
+    uint64 stateIndex = 1;
+    repeated tunneling.State tunnelStates = 2;
+}
+
+message PauseRequest {
+    selection.Selection selection = 1;
+}
+
+message PauseResponse{
+    string message = 1;
+}
+
+message ResumeRequest {
+    selection.Selection selection = 1;
+    string response = 2;
+}
+
+message ResumeResponse {
+    string message = 1;
+    string prompt = 2;
+}
+
+message TerminateRequest {
+    selection.Selection selection = 1;
+}
+
+message TerminateResponse{
+    string message = 1;
+}
+
+service Tunneling {
+    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    rpc List(ListRequest) returns (ListResponse) {}
+    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
+    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
+}
