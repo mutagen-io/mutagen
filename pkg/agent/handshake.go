@@ -47,8 +47,8 @@ func receiveAndCompareMagicNumber(reader io.Reader, expected magicNumberBytes) (
 	return received == expected, nil
 }
 
-// clientHandshake performs a client-side handshake on the connection.
-func clientHandshake(connection net.Conn) error {
+// ClientHandshake performs a client-side handshake on the connection.
+func ClientHandshake(connection net.Conn) error {
 	// Receive the server's magic number.
 	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
 		return errors.Wrap(err, "unable to receive server magic number")

@@ -112,7 +112,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Perform a handshake with the remote to ensure that we're talking with a
 	// Mutagen agent.
-	if err := clientHandshake(connection); err != nil {
+	if err := ClientHandshake(connection); err != nil {
 		// Close the connection to ensure that the underlying process and its
 		// I/O-forwarding Goroutines have terminated. The error returned from
 		// Close will be non-nil if the process exits with a non-0 exit code, so
