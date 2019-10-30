@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 const (
@@ -44,9 +45,10 @@ var ExpectedBundleLocation BundleLocation
 // ExecutableForPlatform attempts to locate the agent bundle and extract an
 // agent executable for the specified target platform. If no output path is
 // specified, then the extracted file will be in a temporary location accessible
-// to only the user, and will have the executability bit set if it makes sense.
-// The path to the extracted file will be returned, and the caller is
-// responsible for cleaning up the file if this function returns a nil error.
+// to only the user, will have an appropriate extension for the target platform,
+// and will have the executability bit set if it makes sense. The path to the
+// extracted file will be returned, and the caller is responsible for cleaning
+// up the file if this function returns a nil error.
 func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	// Compute the path to the location in which we expect to find the agent
 	// bundle.
@@ -112,7 +114,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	if outputPath != "" {
 		file, err = os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	} else {
-		file, err = ioutil.TempFile("", BaseName)
+		file, err = ioutil.TempFile("", process.ExecutableName(BaseName+".*", goos))
 	}
 	if err != nil {
 		return "", errors.Wrap(err, "unable to create output file")
