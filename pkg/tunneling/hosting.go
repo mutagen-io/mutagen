@@ -190,7 +190,7 @@ func hostDataChannel(
 ) {
 	// Convert the data channel to a connection and ensure it's closed when
 	// we're done.
-	connection, err := webrtcutil.NewConnection(dataChannel)
+	connection, err := webrtcutil.NewConnection(dataChannel, nil)
 	if err != nil {
 		logger.Println("Unable to create data channel connection:", err)
 		dataChannel.Close()

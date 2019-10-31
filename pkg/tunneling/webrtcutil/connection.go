@@ -75,6 +75,8 @@ type connection struct {
 	writeNotifier *sync.Cond
 	// writeClosed indicates whether or not the connection is closed to writes.
 	writeClosed bool
+	// closureCallback is a callback that is invoked on closure. It may be nil.
+	closureCallback func()
 }
 
 // NewConnection creates a new net.Conn using the specified data channel as its
@@ -85,7 +87,7 @@ type connection struct {
 // the data channel. If this function succeeds, then the data channel should not
 // be closed directly but will instead be closed by closing the returned
 // connection.
-func NewConnection(dataChannel *webrtc.DataChannel) (net.Conn, error) {
+func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) (net.Conn, error) {
 	// Monitor for the first data channel open event. Later events may be
 	// dropped or ignored.
 	dataChannelOpens := make(chan struct{}, 1)
@@ -158,11 +160,12 @@ func NewConnection(dataChannel *webrtc.DataChannel) (net.Conn, error) {
 
 	// Create the connection object.
 	connection := &connection{
-		dataChannel:    dataChannel,
-		stream:         stream,
-		readPipeWriter: readPipeWriter,
-		readPipeReader: readPipeReader,
-		writeNotifier:  writeNotifier,
+		dataChannel:     dataChannel,
+		stream:          stream,
+		readPipeWriter:  readPipeWriter,
+		readPipeReader:  readPipeReader,
+		writeNotifier:   writeNotifier,
+		closureCallback: closureCallback,
 	}
 
 	// Start the read loop.
@@ -269,6 +272,11 @@ func (c *connection) Write(data []byte) (int, error) {
 
 // Close implements net.Conn.Close.
 func (c *connection) Close() error {
+	// Call the closure callback, in any.
+	if c.closureCallback != nil {
+		c.closureCallback()
+	}
+
 	// Close the incoming data pipe to ensure that neither the read loop nor any
 	// readers are blocked on it. This never returns an error.
 	c.readPipeWriter.CloseWithError(nil)

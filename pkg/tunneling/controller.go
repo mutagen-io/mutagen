@@ -650,8 +650,25 @@ func (c *controller) serve(
 			return fmt.Errorf("unable to create data channel: %w", err)
 		}
 
+		// Increment session counts and extract the current state object.
+		c.stateLock.Lock()
+		c.state.ActiveSessions += 1
+		c.state.TotalSessions += 1
+		state := c.state
+		c.stateLock.Unlock()
+
+		// Create a callback that will update the state when the associated
+		// connection is closed. We use the state object that we extracted
+		// earlier since the state object associated with the controller may be
+		// different at closing time. The locks, however, will remain the same.
+		closureCallback := func() {
+			c.stateLock.Lock()
+			state.ActiveSessions -= 1
+			c.stateLock.Unlock()
+		}
+
 		// Wrap the channel in a connection.
-		connection, err := webrtcutil.NewConnection(dataChannel)
+		connection, err := webrtcutil.NewConnection(dataChannel, closureCallback)
 		if err != nil {
 			select {
 			case dialRequest.errors <- err:
