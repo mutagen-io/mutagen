@@ -59,7 +59,7 @@ func init() {
 	// functions) so that we can control the order.
 	rootCommand.AddCommand(
 		installCommand,
-		endpointCommand,
+		synchronizerCommand,
 		forwarderCommand,
 		versionCommand,
 		legalCommand,

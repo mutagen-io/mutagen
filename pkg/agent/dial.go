@@ -172,7 +172,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 // connection mode, and prompter.
 func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (net.Conn, error) {
 	// Validate that the mode is sane.
-	if !(mode == ModeEndpoint || mode == ModeForwarder) {
+	if !(mode == ModeSynchronizer || mode == ModeForwarder) {
 		panic("invalid agent dial mode")
 	}
 

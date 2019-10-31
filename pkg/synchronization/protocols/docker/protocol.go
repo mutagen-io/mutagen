@@ -40,7 +40,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Dial an agent in endpoint mode.
-	connection, err := agent.Dial(logger, transport, agent.ModeEndpoint, prompter)
+	connection, err := agent.Dial(logger, transport, agent.ModeSynchronizer, prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to dial agent endpoint")
 	}

@@ -46,7 +46,7 @@ func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	}
 }
 
-func endpointMain(command *cobra.Command, arguments []string) error {
+func synchronizerMain(command *cobra.Command, arguments []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
@@ -71,30 +71,30 @@ func endpointMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "version handshake error")
 	}
 
-	// Serve an endpoint on standard input/output and monitor for its
+	// Serve a synchronizer on standard input/output and monitor for its
 	// termination.
-	endpointTermination := make(chan error, 1)
+	synchronizationTermination := make(chan error, 1)
 	go func() {
-		endpointTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
+		synchronizationTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
 	}()
 
-	// Wait for termination from a signal or the endpoint.
+	// Wait for termination from a signal or the synchronizer.
 	select {
 	case sig := <-signalTermination:
 		return errors.Errorf("terminated by signal: %s", sig)
-	case err := <-endpointTermination:
-		return errors.Wrap(err, "endpoint terminated")
+	case err := <-synchronizationTermination:
+		return errors.Wrap(err, "synchronization terminated")
 	}
 }
 
-var endpointCommand = &cobra.Command{
-	Use:          agent.ModeEndpoint,
-	Short:        "Run the agent in endpoint mode",
-	RunE:         endpointMain,
+var synchronizerCommand = &cobra.Command{
+	Use:          agent.ModeSynchronizer,
+	Short:        "Run the agent in synchronizer mode",
+	RunE:         synchronizerMain,
 	SilenceUsage: true,
 }
 
-var endpointConfiguration struct {
+var synchronizerConfiguration struct {
 	// help indicates whether or not help information should be shown for the
 	// command.
 	help bool
@@ -102,9 +102,9 @@ var endpointConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := endpointCommand.Flags()
+	flags := synchronizerCommand.Flags()
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&endpointConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&synchronizerConfiguration.help, "help", "h", false, "Show help information")
 }
