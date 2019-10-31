@@ -625,21 +625,10 @@ func (c *controller) forward(source, destination Endpoint) error {
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	defer cancel()
 
-	// Clear any error state upon restart of this function. If there was a
-	// terminal error previously caused synchronization to fail, then the user
-	// will have had 30 seconds to review it (while the run loop is waiting to
-	// reconnect), so it's not like we're getting rid of it too quickly.
-	c.stateLock.Lock()
-	if c.state.LastError != "" {
-		c.state.LastError = ""
-		c.stateLock.Unlock()
-	} else {
-		c.stateLock.UnlockWithoutNotify()
-	}
-
-	// Update status to forwarding.
+	// Update status to forwarding and clear any previous error.
 	c.stateLock.Lock()
 	c.state.Status = Status_ForwardingConnections
+	c.state.LastError = ""
 	c.stateLock.Unlock()
 
 	// Accept and forward connections until there's an error.
