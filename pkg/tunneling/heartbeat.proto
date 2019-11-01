@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package tunneling;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/tunneling";
+
+// HeartbeatVersion1 is the heartbeat format for tunnels with version
+// Version_Version1.
+message HeartbeatVersion1{
+    // Magic is a numeric value that must be set to a specific magic number to
+    // indicate that heartbeat decoding was not a fluke.
+    uint32 magic = 1;
+}

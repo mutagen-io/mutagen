@@ -619,6 +619,17 @@ func (c *controller) serve(
 	peerConnection *webrtc.PeerConnection,
 	failures chan struct{},
 ) error {
+	// Create the first data channel, which will be the heartbeat channel, and
+	// start the heartbeat tracker.
+	heartbeatDataChannel, err := peerConnection.CreateDataChannel("heartbeat", nil)
+	if err != nil {
+		return fmt.Errorf("unable to create heartbeat data channel: %w", err)
+	}
+	heartbeatFailures := make(chan error, 1)
+	go func() {
+		heartbeatFailures <- heartbeat(ctx, heartbeatDataChannel, c.tunnel.Version)
+	}()
+
 	// Track data channel indices so we can create unique names.
 	var dataChannelIndex int
 
@@ -631,6 +642,8 @@ func (c *controller) serve(
 		case <-failures:
 			// TODO: Can we get more detailed failure information?
 			return errors.New("peer connection failure")
+		case err := <-heartbeatFailures:
+			return err
 		case <-ctx.Done():
 			return errors.New("cancelled")
 		}
