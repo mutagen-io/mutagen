@@ -622,9 +622,6 @@ func (c *controller) serve(
 	// Track data channel indices so we can create unique names.
 	var dataChannelIndex int
 
-	// TODO: Figure out how to track active vs. total sessions. Basically just
-	// look what we do in forwarding.controller.
-
 	// Loop and serve until there's an error or cancellation.
 	for {
 		// Wait for the next dial request, failure, or cancellation.
