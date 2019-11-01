@@ -489,12 +489,13 @@ func (c *controller) run(ctx context.Context) {
 
 func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan struct{}, ErrorSeverity, error) {
 	// Create an unconnected peer connection.
-	// TODO: Switch to Mutagen STUN servers. Potentially load from API.
-	// TODO: Add credentials to these servers if supporting TURN.
 	peerConnection, err := webrtcutil.API.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
+				URLs: []string{"stun:stun1.mutagen.io"},
+			},
+			{
+				URLs: []string{"stun:stun2.mutagen.io"},
 			},
 		},
 	})
