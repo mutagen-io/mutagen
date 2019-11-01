@@ -400,7 +400,10 @@ func (c *controller) run(ctx context.Context) {
 	// Loop until cancelled or until an unrecoverable error has occurred.
 	var unrecoverableErr error
 	for {
-		// TODO: Update the state to connecting.
+		// Update the state to connecting.
+		c.stateLock.Lock()
+		c.state.Status = Status_Connecting
+		c.stateLock.Unlock()
 
 		// Create the peer connection.
 		c.logger.Println("Attempting a peer connection")
@@ -444,8 +447,9 @@ func (c *controller) run(ctx context.Context) {
 
 		// Upate the state to connected.
 		c.logger.Println("Peer connection successful")
-		// TODO: Technically we may not be connected yet, we may want to put
-		// this update later, e.g. on the first data channel.
+		c.stateLock.Lock()
+		c.state.Status = Status_Connected
+		c.stateLock.Unlock()
 
 		// Perform serving.
 		c.logger.Println("Serving peer connection")
