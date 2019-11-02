@@ -487,7 +487,7 @@ func (c *controller) run(ctx context.Context) {
 	<-ctx.Done()
 }
 
-func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan struct{}, ErrorSeverity, error) {
+func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan error, ErrorSeverity, error) {
 	// Create an unconnected peer connection.
 	peerConnection, err := webrtcutil.API.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -503,8 +503,8 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 		return nil, nil, ErrorSeverityUnrecoverable, fmt.Errorf("unable to create new peer connection: %w", err)
 	}
 
-	// Track connection success. If we return without succeeding, then ensure
-	// that the connection is closed out.
+	// Track success. If we return without succeeding, then ensure that the
+	// connection is closed out.
 	var successful bool
 	defer func() {
 		if !successful {
@@ -512,18 +512,45 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 		}
 	}()
 
-	// Track any states that indicate failure for the connection. If any are
-	// detected, then the tracking channel will be populated.
-	peerConnectionFailures := make(chan struct{}, 1)
+	// Track connection state changes, dispatching connectivity and error states
+	// appropriately.
+	peerConnectionConnected := make(chan struct{}, 1)
+	peerConnectionFailures := make(chan error, 1)
 	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		failed := state == webrtc.PeerConnectionStateDisconnected ||
-			state == webrtc.PeerConnectionStateFailed ||
-			state == webrtc.PeerConnectionStateClosed
-		if failed {
+		// Log the state change.
+		c.logger.Println("Connection state change to", state)
+
+		// If the connection state has switched to connected, then send a
+		// notification. We do this in a non-blocking fashion because (a) we
+		// only need to monitor for this state once and (b) we don't have any
+		// guarantees by the WebRTC implementation that we won't see it twice.
+		if state == webrtc.PeerConnectionStateConnected {
 			select {
-			case peerConnectionFailures <- struct{}{}:
+			case peerConnectionConnected <- struct{}{}:
 			default:
 			}
+			return
+		}
+
+		// If an error state has occurred, then send a notification. Once again,
+		// we send the error in a non-blocking fashion, because we only need to
+		// monitor for the first error and we don't have control over which
+		// states we'll see.
+		var err error
+		switch state {
+		case webrtc.PeerConnectionStateDisconnected:
+			err = errors.New("connection disconnected")
+		case webrtc.PeerConnectionStateFailed:
+			err = errors.New("connection failed")
+		case webrtc.PeerConnectionStateClosed:
+			err = errors.New("connection closed")
+		}
+		if err != nil {
+			select {
+			case peerConnectionFailures <- err:
+			default:
+			}
+			return
 		}
 	})
 
@@ -614,6 +641,13 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 		return nil, nil, ErrorSeverityDelayedRecoverable, fmt.Errorf("unable to finalize offer exchange: %w", err)
 	}
 
+	// Wait for the connection to complete.
+	select {
+	case <-peerConnectionConnected:
+	case err := <-peerConnectionFailures:
+		return nil, nil, ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
+	}
+
 	// Success.
 	successful = true
 	return peerConnection, peerConnectionFailures, ErrorSeverityRecoverable, nil
@@ -622,7 +656,7 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 func (c *controller) serve(
 	ctx context.Context,
 	peerConnection *webrtc.PeerConnection,
-	failures chan struct{},
+	failures chan error,
 ) error {
 	// Create the first data channel, which will be the heartbeat channel, and
 	// start the heartbeat tracker.
@@ -644,9 +678,8 @@ func (c *controller) serve(
 		var dialRequest dialRequest
 		select {
 		case dialRequest = <-c.dialRequests:
-		case <-failures:
-			// TODO: Can we get more detailed failure information?
-			return errors.New("peer connection failure")
+		case err := <-failures:
+			return fmt.Errorf("peer connection failure: %w", err)
 		case err := <-heartbeatFailures:
 			return err
 		case <-ctx.Done():

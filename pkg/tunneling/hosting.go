@@ -56,17 +56,28 @@ func HostTunnel(
 	}
 	defer peerConnection.Close()
 
-	// Track any states that indicate failure for the connection. If any are
-	// detected, then the tracking channel will be populated.
-	peerConnectionFailures := make(chan struct{}, 1)
+	// Track connection failure states.
+	peerConnectionFailures := make(chan error, 1)
 	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+		// Log the state change.
 		logger.Println("Connection state change to", state)
-		failed := state == webrtc.PeerConnectionStateDisconnected ||
-			state == webrtc.PeerConnectionStateFailed ||
-			state == webrtc.PeerConnectionStateClosed
-		if failed {
+
+		// If an error state has occurred, then send a notification. We send the
+		// the error in a non-blocking fashion, because we only need to monitor
+		// for the first error and we don't have control over which states (and
+		// how many) we'll see.
+		var err error
+		switch state {
+		case webrtc.PeerConnectionStateDisconnected:
+			err = errors.New("connection disconnected")
+		case webrtc.PeerConnectionStateFailed:
+			err = errors.New("connection failed")
+		case webrtc.PeerConnectionStateClosed:
+			err = errors.New("connection closed")
+		}
+		if err != nil {
 			select {
-			case peerConnectionFailures <- struct{}{}:
+			case peerConnectionFailures <- err:
 			default:
 			}
 		}
@@ -175,9 +186,8 @@ func HostTunnel(
 				hostParameters.Version,
 			)
 		}()
-	case <-peerConnectionFailures:
-		// TODO: Can we get more detailed failure information?
-		return ErrorSeverityRecoverable, errors.New("peer connection failure")
+	case err := <-peerConnectionFailures:
+		return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
 	case <-hostingCtx.Done():
 		return ErrorSeverityRecoverable, errors.New("cancelled")
 	}
@@ -193,9 +203,8 @@ func HostTunnel(
 				dataChannel,
 				hostParameters.Version,
 			)
-		case <-peerConnectionFailures:
-			// TODO: Can we get more detailed failure information?
-			return ErrorSeverityRecoverable, errors.New("peer connection failure")
+		case err := <-peerConnectionFailures:
+			return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
 		case err := <-heartbeatFailures:
 			return ErrorSeverityRecoverable, fmt.Errorf("heartbeat failure: %w", err)
 		case <-hostingCtx.Done():
