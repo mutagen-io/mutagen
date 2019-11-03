@@ -7,7 +7,7 @@ import (
 
 const (
 	// CollisionResistantLength is the number of random bytes needed to ensure
-	// collision-resistance.
+	// collision-resistance in an identifier.
 	CollisionResistantLength = 32
 )
 

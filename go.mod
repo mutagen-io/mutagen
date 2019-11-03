@@ -8,6 +8,7 @@ require (
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
+	github.com/eknkc/basex v1.0.0
 	github.com/fatih/color v1.7.0
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef
 	github.com/golang/protobuf v1.3.1

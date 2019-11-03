@@ -6,9 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
-
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/state"
@@ -49,7 +48,6 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 		return nil, errors.Wrap(err, "unable to read contents of sessions directory")
 	}
 	for _, c := range sessionsDirectoryContents {
-		// TODO: Ensure that the name matches the expected format.
 		identifier := c.Name()
 		logger.Println("Loading session", identifier)
 		if controller, err := loadSession(logger.Sublogger(identifier), tracker, identifier); err != nil {
@@ -193,11 +191,10 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Create a unique session identifier.
-	randomUUID, err := uuid.NewRandom()
+	identifier, err := identifier.New(identifier.PrefixSynchronization)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to generate UUID for session")
+		return "", errors.Wrap(err, "unable to generate identifier for session")
 	}
-	identifier := randomUUID.String()
 
 	// Attempt to create a session.
 	controller, err := newSession(
