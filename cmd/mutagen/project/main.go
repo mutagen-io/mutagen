@@ -3,8 +3,6 @@ package project
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/docker"
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/local"
@@ -36,9 +34,6 @@ var rootConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := RootCommand.Flags()
 
