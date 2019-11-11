@@ -9,8 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/google/uuid"
-
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
@@ -19,6 +17,7 @@ import (
 	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
@@ -76,11 +75,10 @@ func startMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Create a unique project identifier.
-	randomUUID, err := uuid.NewRandom()
+	identifier, err := identifier.New(identifier.PrefixProject)
 	if err != nil {
-		return errors.Wrap(err, "unable to generate UUID for session")
+		return errors.Wrap(err, "unable to generate project identifier")
 	}
-	identifier := randomUUID.String()
 
 	// Write the project identifier to the lock file.
 	if _, err := locker.Write([]byte(identifier)); err != nil {

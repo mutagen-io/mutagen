@@ -11,6 +11,8 @@ const (
 	PrefixSynchronization = "sync_"
 	// PrefixForwarding is the prefix used for forwarding session identifiers.
 	PrefixForwarding = "fwrd_"
+	// PrefixProject is the prefix used for project identifiers.
+	PrefixProject = "proj_"
 )
 
 // New generates a new collision-resistant identifier with the specified prefix.
