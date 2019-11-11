@@ -75,7 +75,6 @@ func hostMain(command *cobra.Command, arguments []string) error {
 var hostCommand = &cobra.Command{
 	Use:          "host <tunnel-host-parameters-path>",
 	Short:        "Host a tunnel",
-	Hidden:       true,
 	RunE:         hostMain,
 	SilenceUsage: true,
 }
