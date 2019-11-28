@@ -20,13 +20,13 @@ require (
 	github.com/mattn/go-isatty v0.0.7
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
-	github.com/pion/datachannel v1.4.12
-	github.com/pion/webrtc/v2 v2.1.12
+	github.com/pion/datachannel v1.4.13
+	github.com/pion/webrtc/v2 v2.1.15
 	github.com/pkg/errors v0.8.1
 	github.com/shibukawa/extstat v0.0.0-20150809151201-4113c04d0977
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
-	golang.org/x/sys v0.0.0-20191026070338-33540a1f6037
+	golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c
 	golang.org/x/text v0.3.0
 	google.golang.org/grpc v1.20.1
 	gopkg.in/yaml.v2 v2.2.4
