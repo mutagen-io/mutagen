@@ -3,29 +3,29 @@
 Mutagen is a new kind of remote development tool that enables your existing
 local tools to work with code in remote environments like cloud servers and
 containers. It does this by providing high-performance real-time
-[file synchronization](https://mutagen.io/documentation/synchronization/) and
-flexible [network forwarding](https://mutagen.io/documentation/forwarding/).
+[file synchronization](https://mutagen.io/documentation/synchronization) and
+flexible [network forwarding](https://mutagen.io/documentation/forwarding).
 Support is currently implemented for synchronization and forwarding between
-[local systems](https://mutagen.io/documentation/transports/local/),
-[SSH-accessible locations](https://mutagen.io/documentation/transports/ssh/),
-and [Docker containers](https://mutagen.io/documentation/transports/docker/),
+[local systems](https://mutagen.io/documentation/transports/local),
+[SSH-accessible locations](https://mutagen.io/documentation/transports/ssh),
+and [Docker containers](https://mutagen.io/documentation/transports/docker),
 with more on the way!
 
 
 ## Getting started
 
 The best way to understand Mutagen and its features is to read the
-[Overview](https://mutagen.io/documentation/introduction/) and
-[Getting started](https://mutagen.io/documentation/introduction/getting-started/)
+[Overview](https://mutagen.io/documentation/introduction) and
+[Getting started](https://mutagen.io/documentation/introduction/getting-started)
 guides. You can find information about all of Mutagen's features in the
-[documentation](https://mutagen.io/documentation/).
+[documentation](https://mutagen.io/documentation).
 
 
 ## Installation
 
 You can find
-[installation instructions](https://mutagen.io/documentation/introduction/installation/)
-in the [Mutagen documentation](https://mutagen.io/documentation/).
+[installation instructions](https://mutagen.io/documentation/introduction/installation)
+in the [Mutagen documentation](https://mutagen.io/documentation).
 
 
 ## Community
