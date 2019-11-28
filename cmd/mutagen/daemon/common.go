@@ -43,7 +43,7 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 	}
 
 	// Create a status line printer and defer a clear.
-	statusLinePrinter := &cmd.StatusLinePrinter{}
+	statusLinePrinter := &cmd.StatusLinePrinter{UseStandardError: true}
 	defer statusLinePrinter.BreakIfNonEmpty()
 
 	// Perform dialing in a loop until failure or success.
