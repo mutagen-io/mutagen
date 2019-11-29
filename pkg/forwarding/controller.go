@@ -24,7 +24,7 @@ import (
 const (
 	// autoReconnectInterval is the period of time to wait before attempting an
 	// automatic reconnect after disconnection or a failed reconnect.
-	autoReconnectInterval = 30 * time.Second
+	autoReconnectInterval = 15 * time.Second
 )
 
 // controller manages and executes a single session.
@@ -484,6 +484,9 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		close(c.done)
 	}()
 
+	// Track the last time that forwarding failed.
+	var lastForwardingFailureTime time.Time
+
 	// Loop until cancelled.
 	for {
 		// Loop until we're connected to both endpoints. We do a non-blocking
@@ -514,9 +517,9 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			}
 			c.stateLock.Unlock()
 
-			// Do a non-blocking check for cancellation to avoid a spurious
-			// connection to destination in case cancellation occurred while
-			// connecting to source.
+			// Check for cancellation to avoid a spurious connection to
+			// destination in case cancellation occurred while connecting to
+			// source.
 			select {
 			case <-context.Done():
 				return
@@ -548,7 +551,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 
 			// If both endpoints are connected, we're done. We perform this
 			// check here (rather than in the loop condition) because if we did
-			// it in the loop condition we'd still need this check to avoid a
+			// it in the loop condition we'd still need a check here to avoid a
 			// sleep every time (even if already successfully connected).
 			if source != nil && destination != nil {
 				break
@@ -607,14 +610,28 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		}
 		c.stateLock.Unlock()
 
-		// If forwarding failed, wait and then try to reconnect. Watch for
-		// cancellation in the mean time. This cancellation check will also
-		// catch cases where the forwarding loop has been cancelled.
-		select {
-		case <-context.Done():
-			return
-		case <-time.After(autoReconnectInterval):
+		// When forwarding fails, we generally want to restart it as quickly as
+		// possible. Thus, if it's been longer than our usual waiting period
+		// since forwarding failed last, simply try to reconnect immediately
+		// (though still check for cancellation). If it's been less than our
+		// usual waiting period since forwarding failed last, then something is
+		// probably wrong, so wait for our usual waiting period (while checking
+		// and monitoring for cancellation).
+		now := time.Now()
+		if now.Sub(lastForwardingFailureTime) >= autoReconnectInterval {
+			select {
+			case <-context.Done():
+				return
+			default:
+			}
+		} else {
+			select {
+			case <-context.Done():
+				return
+			case <-time.After(autoReconnectInterval):
+			}
 		}
+		lastForwardingFailureTime = now
 	}
 }
 
