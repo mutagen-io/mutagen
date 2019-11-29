@@ -278,10 +278,6 @@ func hostDataChannel(
 	// If we didn't find an agent in the directory, then check if we're a
 	// compatible version. If so, extract a temporary agent binary for the
 	// current platform and defer its removal.
-	// TODO: If we do eventually support user specification, then we need to
-	// ensure that the binary we extract here, if any, is accessible to the user
-	// that will be executing it. This will likely involve a change of ownership
-	// and possibly a change of permission bits.
 	if agentPath == "" {
 		compatible := initializeRequest.VersionMajor == mutagen.VersionMajor &&
 			initializeRequest.VersionMinor == mutagen.VersionMinor
