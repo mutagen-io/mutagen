@@ -52,7 +52,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Dial an agent over the tunnel in endpoint mode.
-	connection, err := h.manager.Dial(context.Background(), url.User, url.Host, agent.ModeForwarder, prompter)
+	connection, err := h.manager.Dial(context.Background(), url.Host, agent.ModeForwarder, prompter)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial agent endpoint: %w", err)
 	}

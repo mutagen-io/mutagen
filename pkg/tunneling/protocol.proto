@@ -13,11 +13,8 @@ message InitializeRequestVersion1 {
     uint32 versionMinor = 2;
     // VersionPatch is the patch version component of the tunnel client.
     uint32 versionPatch = 3;
-    // User is the user under which the agent binary should be run. An empty
-    // string indicates that the agent binary should be run as the current user.
-    string user = 4;
     // Mode is the mode in which the agent should be run.
-    string mode = 5;
+    string mode = 4;
 }
 
 // InitializeResponseVersion1 is the data channel initialization response format

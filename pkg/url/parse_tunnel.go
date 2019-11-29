@@ -35,21 +35,12 @@ func parseTunnel(raw string, kind Kind) (*URL, error) {
 		panic("unhandled URL kind")
 	}
 
-	// Parse off the username. If we hit a '/', then we've reached the end of a
-	// container specification and there was no username. Similarly, if we hit
-	// the end of the string without seeing an '@', then there's also no
-	// username specified. Ideally we'd want also to break on any character that
-	// isn't allowed in a username, but that isn't well-defined, even for POSIX
-	// (it's effectively determined by a configurable regular expression -
-	// NAME_REGEX).
-	var username string
-	for i, r := range raw {
+	// Ensure that no username is specified.
+	for _, r := range raw {
 		if r == splitCharacter {
 			break
 		} else if r == '@' {
-			username = raw[:i]
-			raw = raw[i+1:]
-			break
+			return nil, errors.New("user specification not allowed for tunnel URLs")
 		}
 	}
 
@@ -116,7 +107,6 @@ func parseTunnel(raw string, kind Kind) (*URL, error) {
 	return &URL{
 		Kind:     kind,
 		Protocol: Protocol_Tunnel,
-		User:     username,
 		Host:     identifierOrName,
 		Path:     path,
 	}, nil

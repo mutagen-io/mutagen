@@ -185,7 +185,7 @@ func (m *Manager) Shutdown() {
 // compatible with the current Mutagen version.
 func (m *Manager) Dial(
 	ctx context.Context,
-	user, identifierOrName string,
+	identifierOrName string,
 	mode string,
 	prompter string,
 ) (net.Conn, error) {
@@ -203,7 +203,7 @@ func (m *Manager) Dial(
 	}
 
 	// Perform the dial operation.
-	return controllers[0].dial(ctx, user, mode)
+	return controllers[0].dial(ctx, mode)
 }
 
 // Create tells the manager to create a new tunnel.

@@ -192,10 +192,21 @@ func TestURLEnsureValidSSH(t *testing.T) {
 	}
 }
 
-func TestURLEnsureValidTunnelPortInvalid(t *testing.T) {
+func TestURLEnsureValidTunnelUsernameInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Tunnel,
 		User:     "george",
+		Host:     "tunnelName",
+		Path:     "~/path",
+	}
+	if invalid.EnsureValid() == nil {
+		t.Error("invalid URL classified as valid")
+	}
+}
+
+func TestURLEnsureValidTunnelPortInvalid(t *testing.T) {
+	invalid := &URL{
+		Protocol: Protocol_Tunnel,
 		Host:     "tunnelName",
 		Port:     50,
 		Path:     "~/path",
@@ -208,7 +219,6 @@ func TestURLEnsureValidTunnelPortInvalid(t *testing.T) {
 func TestURLEnsureValidTunnelEmptyPathInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "",
 	}
@@ -220,7 +230,6 @@ func TestURLEnsureValidTunnelEmptyPathInvalid(t *testing.T) {
 func TestURLEnsureValidTunnelBadPathInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "$path",
 	}
@@ -232,7 +241,6 @@ func TestURLEnsureValidTunnelBadPathInvalid(t *testing.T) {
 func TestURLEnsureValidTunnelEnvironmentVariablesInvalid(t *testing.T) {
 	invalid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "~/path",
 		Environment: map[string]string{
@@ -247,7 +255,6 @@ func TestURLEnsureValidTunnelEnvironmentVariablesInvalid(t *testing.T) {
 func TestURLEnsureValidTunnelHomeRelativePath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "~/path",
 	}
@@ -259,7 +266,6 @@ func TestURLEnsureValidTunnelHomeRelativePath(t *testing.T) {
 func TestURLEnsureValidTunnelUserRelativePath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "~otheruser/path",
 	}
@@ -271,7 +277,6 @@ func TestURLEnsureValidTunnelUserRelativePath(t *testing.T) {
 func TestURLEnsureValidTunnelWindowsPath(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     `C:\path`,
 	}
@@ -283,7 +288,6 @@ func TestURLEnsureValidTunnelWindowsPath(t *testing.T) {
 func TestURLEnsureValidTunnel(t *testing.T) {
 	valid := &URL{
 		Protocol: Protocol_Tunnel,
-		User:     "george",
 		Host:     "tunnelName",
 		Path:     "/path",
 	}

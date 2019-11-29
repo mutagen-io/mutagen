@@ -254,14 +254,6 @@ func hostDataChannel(
 		return
 	}
 
-	// Ensure that a user has not been specified.
-	// TODO: If we do eventually support user specification, then use the
-	// principal package to parse the provided identifier.
-	if initializeRequest.User != "" {
-		sendInitializationResponse(errors.New("user specification not supported"))
-		return
-	}
-
 	// Track our success in finding an agent binary.
 	var agentPath string
 

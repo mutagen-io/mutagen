@@ -54,9 +54,9 @@ func (u *URL) formatTunnel() string {
 	// Start with the tunnel identifier/name.
 	result := u.Host
 
-	// Add username if present.
+	// Ensure that a username is not present
 	if u.User != "" {
-		result = fmt.Sprintf("%s@%s", u.User, result)
+		return invalidTunnelURLFormat
 	}
 
 	// Append the path in a manner that depends on the URL kind.

@@ -120,6 +120,19 @@ func TestFormatSSHUsernameHostnamePortPath(t *testing.T) {
 	test.run(t)
 }
 
+func TestFormatTunnelInvalidUsername(t *testing.T) {
+	test := &formatTestCase{
+		url: &URL{
+			Protocol: Protocol_Tunnel,
+			User:     "george",
+			Host:     "tunnelname",
+			Path:     "/test/path/to/the file",
+		},
+		expected: invalidTunnelURLFormat,
+	}
+	test.run(t)
+}
+
 func TestFormatTunnelInvalidEmptyPath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
@@ -169,28 +182,26 @@ func TestFormatForwardingTunnel(t *testing.T) {
 	test.run(t)
 }
 
-func TestFormatTunnelWithUsernameAndHomeRelativePath(t *testing.T) {
+func TestFormatTunnelWithHomeRelativePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Tunnel,
-			User:     "user",
 			Host:     "tunnelname",
 			Path:     "~/test/path/to/the file",
 		},
-		expected: "tunnel://user@tunnelname/~/test/path/to/the file",
+		expected: "tunnel://tunnelname/~/test/path/to/the file",
 	}
 	test.run(t)
 }
 
-func TestFormatTunnelWithUsernameAndUserRelativePath(t *testing.T) {
+func TestFormatTunnelWithUserRelativePath(t *testing.T) {
 	test := &formatTestCase{
 		url: &URL{
 			Protocol: Protocol_Tunnel,
-			User:     "user",
 			Host:     "tunnelname",
 			Path:     "~otheruser/test/path/to/the file",
 		},
-		expected: "tunnel://user@tunnelname/~otheruser/test/path/to/the file",
+		expected: "tunnel://tunnelname/~otheruser/test/path/to/the file",
 	}
 	test.run(t)
 }

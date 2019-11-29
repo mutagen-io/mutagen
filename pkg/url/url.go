@@ -54,7 +54,9 @@ func (u *URL) EnsureValid() error {
 			return errors.New("SSH URL with environment variables")
 		}
 	} else if u.Protocol == Protocol_Tunnel {
-		if u.Host == "" {
+		if u.User != "" {
+			return errors.New("tunnel URL with non-empty username")
+		} else if u.Host == "" {
 			return errors.New("tunnel URL with empty tunnel identifier/name")
 		} else if u.Port != 0 {
 			return errors.New("tunnel URL with non-zero port")

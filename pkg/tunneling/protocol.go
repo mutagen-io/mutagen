@@ -15,9 +15,6 @@ func (r *InitializeRequestVersion1) ensureValid() error {
 	// There's nothing we can do the validate the client version, but there's
 	// also nothing we need to do since we'll require a match later.
 
-	// There's no need to validate the user specification. Any value is valid
-	// for processing, and any format error will be caught during parsing.
-
 	// Ensure that the mode is non-empty. There's not much more we can do in the
 	// way of validation without knowing the available modes of every agent
 	// binary that we offer.

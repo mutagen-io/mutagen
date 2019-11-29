@@ -566,30 +566,10 @@ func TestParseTunnelWithWindowsPath(t *testing.T) {
 	test.run(t)
 }
 
-func TestParseTunnelWithUsernameHomeRelativePath(t *testing.T) {
+func TestParseTunnelWithUsernameInvalid(t *testing.T) {
 	test := parseTestCase{
 		raw:  "tunnel://üsér@tünnel/~/пат/to/the file",
-		fail: false,
-		expected: &URL{
-			Protocol: Protocol_Tunnel,
-			User:     "üsér",
-			Host:     "tünnel",
-			Path:     "~/пат/to/the file",
-		},
-	}
-	test.run(t)
-}
-
-func TestParseTunnelWithUsernameUserRelativePath(t *testing.T) {
-	test := parseTestCase{
-		raw:  "tunnel://üsér@tünnel/~otheruser/пат/to/the file",
-		fail: false,
-		expected: &URL{
-			Protocol: Protocol_Tunnel,
-			User:     "üsér",
-			Host:     "tünnel",
-			Path:     "~otheruser/пат/to/the file",
-		},
+		fail: true,
 	}
 	test.run(t)
 }

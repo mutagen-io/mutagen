@@ -735,10 +735,9 @@ func (c *controller) serve(
 }
 
 // dial performs a dial operation by creating a new data channel, requesting
-// that it be connected to an agent binary running on the remote endpoint as the
-// specified user in the specified mode, and performing an agent handshake
-// operation.
-func (c *controller) dial(ctx context.Context, user, mode string) (net.Conn, error) {
+// that it be connected to an agent binary running on the remote endpoint in the
+// specified mode, and performing an agent handshake operation.
+func (c *controller) dial(ctx context.Context, mode string) (net.Conn, error) {
 	// Create a context to regulate the dial operation's exchanges. We could
 	// theoretically use the provided context directly if we enforced that this
 	// function only ever abandoned an exchange when that context was cancelled,
@@ -777,7 +776,6 @@ func (c *controller) dial(ctx context.Context, user, mode string) (net.Conn, err
 		VersionMajor: mutagen.VersionMajor,
 		VersionMinor: mutagen.VersionMinor,
 		VersionPatch: mutagen.VersionPatch,
-		User:         user,
 		Mode:         mode,
 	}
 	if err := encoding.EncodeProtobuf(connection, initializeRequest); err != nil {
