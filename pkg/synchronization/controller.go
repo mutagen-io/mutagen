@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
+	"github.com/mutagen-io/mutagen/pkg/contextutil"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
@@ -24,7 +25,7 @@ import (
 const (
 	// autoReconnectInterval is the period of time to wait before attempting an
 	// automatic reconnect after disconnection or a failed reconnect.
-	autoReconnectInterval = 30 * time.Second
+	autoReconnectInterval = 15 * time.Second
 	// rescanWaitDuration is the period of time to wait before attempting to
 	// rescan after an ephemeral scan failure.
 	rescanWaitDuration = 5 * time.Second
@@ -595,6 +596,9 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 		close(c.done)
 	}()
 
+	// Track the last time that synchronization failed.
+	var lastSynchronizationFailureTime time.Time
+
 	// Loop until cancelled.
 	for {
 		// Loop until we're connected to both endpoints. We do a non-blocking
@@ -621,13 +625,10 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 			c.state.AlphaConnected = (alpha != nil)
 			c.stateLock.Unlock()
 
-			// Do a non-blocking check for cancellation to avoid a spurious
-			// connection to beta in case cancellation occurred while connecting
-			// to alpha.
-			select {
-			case <-context.Done():
+			// Check for cancellation to avoid a spurious connection to beta in
+			// case cancellation occurred while connecting to alpha.
+			if contextutil.IsCancelled(context) {
 				return
-			default:
 			}
 
 			// Ensure that beta is connected.
@@ -651,7 +652,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 
 			// If both endpoints are connected, we're done. We perform this
 			// check here (rather than in the loop condition) because if we did
-			// it in the loop condition we'd still need this check to avoid a
+			// it in the loop condition we'd still need a check here to avoid a
 			// sleep every time (even if already successfully connected).
 			if alpha != nil && beta != nil {
 				break
@@ -684,14 +685,26 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 		}
 		c.stateLock.Unlock()
 
-		// If synchronization failed, wait and then try to reconnect. Watch for
-		// cancellation in the mean time. This cancellation check will also
-		// catch cases where the synchronization loop has been cancelled.
-		select {
-		case <-context.Done():
-			return
-		case <-time.After(autoReconnectInterval):
+		// When synchronization fails, we generally want to restart it as
+		// quickly as possible. Thus, if it's been longer than our usual waiting
+		// period since synchronization failed last, simply try to reconnect
+		// immediately (though still check for cancellation). If it's been less
+		// than our usual waiting period since synchronization failed last, then
+		// something is probably wrong, so wait for our usual waiting period
+		// (while checking and monitoring for cancellation).
+		now := time.Now()
+		if now.Sub(lastSynchronizationFailureTime) >= autoReconnectInterval {
+			if contextutil.IsCancelled(context) {
+				return
+			}
+		} else {
+			select {
+			case <-context.Done():
+				return
+			case <-time.After(autoReconnectInterval):
+			}
 		}
+		lastSynchronizationFailureTime = now
 	}
 }
 
