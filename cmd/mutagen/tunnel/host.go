@@ -33,7 +33,7 @@ func hostMain(command *cobra.Command, arguments []string) error {
 		}
 	} else if len(arguments) == 1 {
 		if os.Getenv(hostCredentialsEnvironmentVariable) != "" {
-			return errors.New("tunnel host credentials path specified in environment and on command line")
+			return errors.New("tunnel host credentials path specified both in environment and on command line")
 		} else {
 			hostCredentialsPath = arguments[0]
 		}
@@ -89,7 +89,7 @@ func hostMain(command *cobra.Command, arguments []string) error {
 }
 
 var hostCommand = &cobra.Command{
-	Use:          "host <tunnel-host-parameters-path>",
+	Use:          "host <tunnel-host-credentials-path>",
 	Short:        "Host a tunnel",
 	RunE:         hostMain,
 	SilenceUsage: true,
