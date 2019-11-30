@@ -115,16 +115,16 @@ before_deploy:
 
 # Upload build artifacts from macOS builders on tagged releases.
 deploy:
-  provider: releases
-  api_key:
-    secure: oGoH8k4iqfXizSDUNaFRMqG+q0hYjJcPQBkCSlDWC/enMtn2HyT4UI+vRCksastjNS6ltGrwlebKVyOzkWQCvN/apiteDHgcwPvaJr4ioEZ/UdNobbD2sRyQ6mntXZoQLmTCouDpj47xQA/8bpWSsKNJscIrWuzBr1IUCnDWGPR27ninXX7eueIB9W2BCiuaXvRcvOmLOQslQ+sZEsUjZ2tJ1IB2gQiQdE0yIeHR3A6WsEKkkQWecCnNvuuhtAJZ0bcvR/aKGm3NPPzmvNHu05whvb55qpWjVBdxExatHNXFal4xvesgmFGzlbxkTOHl6QMauuVPJ0ctAEsWMjeNGYHVtmjR7d9+bpgMhpTtxFz6j/HEVs1hzLcsE96LUkxsK6Mc6xpOVI41rsTMLNYIPqjcfBa4/VNUEBFbX8J68BhJ9Ou3zV1f1N1b4nm6PO3asfVgCbYQNTg0Yx3/27KlNzymccui/LmR3l9jbNdQ/KaH689ZFi6+kTL1U8/i/cPo3rv1goQM0vSbuUe9zoydlfCmn5mnFH85PV2/oW55NrTDoHOD6OMUMAma7c48I4+unVSdg4k3IM+YE0uXHJ/OyPifNUXgp+TMQRb5LerMfjvf7HMyMnPjZZsV4COb55hsdH3dx6Yp8BIUxtRV1yzWlBzRo3DIZ5QqYNydc4Cirok=
-  skip_cleanup: true
-  file_glob: true
-  file: build/release/mutagen_*_*v*
-  on:
-    repo: mutagen-io/mutagen
-    condition: '"$TRAVIS_OS_NAME" == "osx"'
-    tags: true
+  - provider: releases
+    api_key:
+      secure: oGoH8k4iqfXizSDUNaFRMqG+q0hYjJcPQBkCSlDWC/enMtn2HyT4UI+vRCksastjNS6ltGrwlebKVyOzkWQCvN/apiteDHgcwPvaJr4ioEZ/UdNobbD2sRyQ6mntXZoQLmTCouDpj47xQA/8bpWSsKNJscIrWuzBr1IUCnDWGPR27ninXX7eueIB9W2BCiuaXvRcvOmLOQslQ+sZEsUjZ2tJ1IB2gQiQdE0yIeHR3A6WsEKkkQWecCnNvuuhtAJZ0bcvR/aKGm3NPPzmvNHu05whvb55qpWjVBdxExatHNXFal4xvesgmFGzlbxkTOHl6QMauuVPJ0ctAEsWMjeNGYHVtmjR7d9+bpgMhpTtxFz6j/HEVs1hzLcsE96LUkxsK6Mc6xpOVI41rsTMLNYIPqjcfBa4/VNUEBFbX8J68BhJ9Ou3zV1f1N1b4nm6PO3asfVgCbYQNTg0Yx3/27KlNzymccui/LmR3l9jbNdQ/KaH689ZFi6+kTL1U8/i/cPo3rv1goQM0vSbuUe9zoydlfCmn5mnFH85PV2/oW55NrTDoHOD6OMUMAma7c48I4+unVSdg4k3IM+YE0uXHJ/OyPifNUXgp+TMQRb5LerMfjvf7HMyMnPjZZsV4COb55hsdH3dx6Yp8BIUxtRV1yzWlBzRo3DIZ5QqYNydc4Cirok=
+    skip_cleanup: true
+    file_glob: true
+    file: build/release/mutagen_*_*v*
+    on:
+      repo: mutagen-io/mutagen
+      condition: '"$TRAVIS_OS_NAME" == "osx"'
+      tags: true
 
 # Send notifications.
 notifications:
