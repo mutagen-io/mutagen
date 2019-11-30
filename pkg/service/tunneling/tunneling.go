@@ -82,7 +82,7 @@ func (r *CreateResponse) EnsureValid() error {
 
 	// Count the number of fields that are set.
 	var fieldsSet uint
-	if r.HostParameters != nil {
+	if r.HostCredentials != nil {
 		fieldsSet++
 	}
 	if r.Message != "" {
@@ -97,10 +97,10 @@ func (r *CreateResponse) EnsureValid() error {
 		return errors.New("incorrect number of fields set")
 	}
 
-	// If the tunnel host parameters are set, validate them.
-	if r.HostParameters != nil {
-		if err := r.HostParameters.EnsureValid(); err != nil {
-			return fmt.Errorf("invalid tunnel host parameters: %w", err)
+	// If the tunnel host credentials are set, validate them.
+	if r.HostCredentials != nil {
+		if err := r.HostCredentials.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid tunnel host credentials: %w", err)
 		}
 	}
 
@@ -237,7 +237,7 @@ func (r *ResumeResponse) EnsureValid() error {
 
 	// Enforce that at most a single field is set. Unlike CreateResponse, we
 	// allow neither to be set, which indicates completion. In CreateResponse,
-	// this completion is indicated by the tunnel host parameters being set.
+	// this completion is indicated by the tunnel host credentials being set.
 	if fieldsSet > 1 {
 		return errors.New("multiple fields set")
 	}

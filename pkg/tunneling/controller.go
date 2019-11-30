@@ -94,7 +94,7 @@ func newTunnel(
 	labels map[string]string,
 	paused bool,
 	prompter string,
-) (*controller, *TunnelHostParameters, error) {
+) (*controller, *TunnelHostCredentials, error) {
 	// Update status.
 	prompt.Message(prompter, "Creating tunnel...")
 
@@ -123,7 +123,7 @@ func newTunnel(
 	}
 
 	// Create the host endpoint parameters.
-	hostParameters := &TunnelHostParameters{
+	hostCredentials := &TunnelHostCredentials{
 		Identifier:           identifier,
 		Version:              version,
 		CreationTime:         creationTimeProto,
@@ -186,7 +186,7 @@ func newTunnel(
 
 	// Success.
 	logger.Println("Tunnel initialized")
-	return controller, hostParameters, nil
+	return controller, hostCredentials, nil
 }
 
 // loadTunnel loads an existing tunnel and creates a corresponding controller.

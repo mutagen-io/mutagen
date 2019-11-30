@@ -16,14 +16,30 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
+const (
+	// hostCredentialsEnvironmentVariable is the name of the environment
+	// variable that can be used to specified tunnel host credentials.
+	hostCredentialsEnvironmentVariable = "MUTAGEN_TUNNEL_HOST_CREDENTIALS"
+)
+
 func hostMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
+	// Validate arguments and determine the path to the host credentials file.
+	var hostCredentialsPath string
 	if len(arguments) == 0 {
-		return errors.New("missing tunnel host parameters path")
-	} else if len(arguments) != 1 {
+		if p := os.Getenv(hostCredentialsEnvironmentVariable); p != "" {
+			hostCredentialsPath = p
+		} else {
+			return errors.New("missing tunnel host credentials path")
+		}
+	} else if len(arguments) == 1 {
+		if os.Getenv(hostCredentialsEnvironmentVariable) != "" {
+			return errors.New("tunnel host credentials path specified in environment and on command line")
+		} else {
+			hostCredentialsPath = arguments[0]
+		}
+	} else {
 		return errors.New("invalid number of arguments")
 	}
-	hostParametersPath := arguments[0]
 
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
@@ -32,10 +48,10 @@ func hostMain(command *cobra.Command, arguments []string) error {
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
 	// Load host parameters.
-	hostParameters := &tunneling.TunnelHostParameters{}
-	if err := encoding.LoadAndUnmarshalProtobuf(hostParametersPath, hostParameters); err != nil {
+	hostCredentials := &tunneling.TunnelHostCredentials{}
+	if err := encoding.LoadAndUnmarshalProtobuf(hostCredentialsPath, hostCredentials); err != nil {
 		return fmt.Errorf("unable to load host parameters: %w", err)
-	} else if err = hostParameters.EnsureValid(); err != nil {
+	} else if err = hostCredentials.EnsureValid(); err != nil {
 		return fmt.Errorf("invalid host parameters: %w", err)
 	}
 
@@ -46,7 +62,7 @@ func hostMain(command *cobra.Command, arguments []string) error {
 			severity, err := tunneling.HostTunnel(
 				context.Background(),
 				logging.RootLogger,
-				hostParameters,
+				hostCredentials,
 			)
 			switch severity {
 			case tunneling.ErrorSeverityRecoverable:

@@ -38,7 +38,7 @@ const (
 func HostTunnel(
 	ctx context.Context,
 	logger *logging.Logger,
-	hostParameters *TunnelHostParameters,
+	hostCredentials *TunnelHostCredentials,
 ) (ErrorSeverity, error) {
 	// Create an unconnected peer connection and defer its closure.
 	peerConnection, err := webrtcutil.API.NewPeerConnection(webrtc.Configuration{
@@ -103,8 +103,8 @@ func HostTunnel(
 	// Compute the local offer signature.
 	localSignatureBytes := signOffer(
 		localOfferBytes,
-		hostParameters.Version.hmacHash(),
-		hostParameters.Secret,
+		hostCredentials.Version.hmacHash(),
+		hostCredentials.Secret,
 	)
 
 	// Encode the local offer and signature.
@@ -114,8 +114,8 @@ func HostTunnel(
 	// Perform a host-side offer exchange.
 	remoteOffer, remoteSignature, err := mutagenio.TunnelHostExchange(
 		ctx,
-		hostParameters.Identifier,
-		hostParameters.Token,
+		hostCredentials.Identifier,
+		hostCredentials.Token,
 		localOffer,
 		localSignature,
 	)
@@ -140,8 +140,8 @@ func HostTunnel(
 	// error since it's an indication of a man-in-the-middle attack.
 	signatureMatch := verifyOfferSignature(
 		remoteOfferBytes,
-		hostParameters.Version.hmacHash(),
-		hostParameters.Secret,
+		hostCredentials.Version.hmacHash(),
+		hostCredentials.Secret,
 		remoteSignatureBytes,
 	)
 	if !signatureMatch {
@@ -183,7 +183,7 @@ func HostTunnel(
 			heartbeatFailures <- heartbeat(
 				hostingCtx,
 				heartbeatDataChannel,
-				hostParameters.Version,
+				hostCredentials.Version,
 			)
 		}()
 	case err := <-peerConnectionFailures:
@@ -201,7 +201,7 @@ func HostTunnel(
 				hostingCtx,
 				logger.Sublogger(dataChannel.Label()),
 				dataChannel,
-				hostParameters.Version,
+				hostCredentials.Version,
 			)
 		case err := <-peerConnectionFailures:
 			return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)

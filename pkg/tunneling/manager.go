@@ -213,11 +213,11 @@ func (m *Manager) Create(
 	labels map[string]string,
 	paused bool,
 	prompter string,
-) (*TunnelHostParameters, error) {
+) (*TunnelHostCredentials, error) {
 	// Attempt to create a tunnel.
 	// TODO: Can we create a (meaningful) sublogger here? We don't know the
 	// tunnel identifier. I suppose we could use the tunnel name.
-	controller, hostParameters, err := newTunnel(
+	controller, hostCredentials, err := newTunnel(
 		m.logger,
 		m.tracker,
 		configuration,
@@ -236,7 +236,7 @@ func (m *Manager) Create(
 	m.tunnelsLock.Unlock()
 
 	// Done.
-	return hostParameters, nil
+	return hostCredentials, nil
 }
 
 // List requests a state snapshot for the specified tunnels.

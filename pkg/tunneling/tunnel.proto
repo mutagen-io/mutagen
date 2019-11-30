@@ -9,8 +9,8 @@ import "google/protobuf/timestamp.proto";
 import "tunneling/configuration.proto";
 import "tunneling/version.proto";
 
-// TunnelHostParameters is the format for the tunnel host configuration file.
-message TunnelHostParameters {
+// TunnelHostCredentials is the format for the tunnel host credentials file.
+message TunnelHostCredentials {
     // The identifier, version, creationTime, and creatingVersion* fields are
     // considered the "header" fields for all tunnel versions. A message
     // composed purely of these fields is guaranteed to be compatible with all

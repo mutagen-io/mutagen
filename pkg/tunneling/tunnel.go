@@ -7,8 +7,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/selection"
 )
 
-// EnsureValid ensures that TunnelHostParameters' invariants are respected.
-func (p *TunnelHostParameters) EnsureValid() error {
+// EnsureValid ensures that TunnelHostCredentials' invariants are respected.
+func (p *TunnelHostCredentials) EnsureValid() error {
 	// Ensure that the parameters are non-nil.
 	if p == nil {
 		return errors.New("nil parameters")

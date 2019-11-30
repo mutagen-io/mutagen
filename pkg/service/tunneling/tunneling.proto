@@ -29,7 +29,7 @@ message CreateRequest {
 }
 
 message CreateResponse {
-    tunneling.TunnelHostParameters hostParameters = 1;
+    tunneling.TunnelHostCredentials hostCredentials = 1;
     string message = 2;
     string prompt = 3;
 }

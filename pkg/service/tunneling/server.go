@@ -39,7 +39,7 @@ func (s *Server) Create(stream Tunneling_CreateServer) error {
 
 	// Perform creation.
 	// TODO: Figure out a way to monitor for cancellation.
-	hostParameters, err := s.manager.Create(
+	hostCredentials, err := s.manager.Create(
 		request.Specification.Configuration,
 		request.Specification.Name,
 		request.Specification.Labels,
@@ -56,7 +56,7 @@ func (s *Server) Create(stream Tunneling_CreateServer) error {
 	}
 
 	// Signal completion.
-	if err := stream.Send(&CreateResponse{HostParameters: hostParameters}); err != nil {
+	if err := stream.Send(&CreateResponse{HostCredentials: hostCredentials}); err != nil {
 		return fmt.Errorf("unable to send response: %w", err)
 	}
 

@@ -100,12 +100,12 @@ func createMain(command *cobra.Command, arguments []string) error {
 			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
 		} else if err = response.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid create response received")
-		} else if response.HostParameters != nil {
-			statusLinePrinter.Print(fmt.Sprintf("Created tunnel %s", response.HostParameters.Identifier))
-			encodedHostParameters, err := proto.Marshal(response.HostParameters)
+		} else if response.HostCredentials != nil {
+			statusLinePrinter.Print(fmt.Sprintf("Created tunnel %s", response.HostCredentials.Identifier))
+			encodedHostCredentials, err := proto.Marshal(response.HostCredentials)
 			if err != nil {
 				return errors.Wrap(err, "unable to encode host parameters")
-			} else if _, err := os.Stdout.Write(encodedHostParameters); err != nil {
+			} else if _, err := os.Stdout.Write(encodedHostCredentials); err != nil {
 				return errors.Wrap(err, "unable to write encoded host parameters")
 			}
 			return nil
