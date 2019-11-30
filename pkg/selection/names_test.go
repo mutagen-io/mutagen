@@ -21,7 +21,10 @@ func TestEnsureNameValid(t *testing.T) {
 		{"a9B_1", true},
 		{"a b", true},
 		{" ", true},
-		{"a-b", true},
+		{"-ab4", true},
+		{"a-b", false},
+		{"d9d02c4d-6328-4cb2-95ac-1eedde979ee0", true},
+		{"D9D02C4D-6328-4CB2-95AC-1EEDDE979EE0", true},
 		{"defaults", true},
 	}
 
