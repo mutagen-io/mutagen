@@ -16,6 +16,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
@@ -257,11 +258,10 @@ func hostDataChannel(
 	// Track our success in finding an agent binary.
 	var agentPath string
 
-	// If a directory of tunnel agents has been specified, then see if there's a
-	// compatible agent binary.
-	if tunnelAgentsPath := os.Getenv("MUTAGEN_TUNNEL_AGENTS"); tunnelAgentsPath != "" {
+	// Start by looking in the libexec directory to tunnel agents.
+	if libexecPath, err := filesystem.LibexecPath(); err == nil {
 		agentPath = filepath.Join(
-			tunnelAgentsPath,
+			libexecPath, "mutagen", "tunnel", "agents",
 			fmt.Sprintf("%d.%d",
 				initializeRequest.VersionMajor,
 				initializeRequest.VersionMinor,
@@ -275,8 +275,8 @@ func hostDataChannel(
 		}
 	}
 
-	// If we didn't find an agent in the directory, then check if we're a
-	// compatible version. If so, extract a temporary agent binary for the
+	// If we didn't find an agent in the libexec directory, then check if we're
+	// a compatible version. If so, extract a temporary agent binary for the
 	// current platform and defer its removal.
 	if agentPath == "" {
 		compatible := initializeRequest.VersionMajor == mutagen.VersionMajor &&
