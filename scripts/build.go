@@ -346,7 +346,7 @@ func buildAgentForTargetInTesting(target Target) bool {
 		(target.GOOS == "freebsd" && target.GOARCH == "amd64")
 }
 
-var usage = `usage: build [-h|--help] [-m|--mode=<mode>] [-s|--skip-bundles]
+var usage = `usage: build [-h|--help] [-m|--mode=<mode>]
 
 The mode flag takes three values: 'slim', 'testing', and 'release'. 'slim' will
 build binaries only for the current platform. 'testing' will build the CLI
@@ -354,9 +354,7 @@ binary for only the current platform and agents for a small subset of platforms.
 Both 'slim' and 'testing' will place their build output (CLI binary and agent
 bundle) in the '$GOPATH/bin' directory. 'release' will build CLI and agent
 binaries for all platforms and package them in the 'build' subdirectory of the
-Mutagen source tree. The default mode is 'slim'. If 'release' mode is specified
-with the -s/--skip-bundles flag, then all release artifacts will be built but
-release bundles won't be produced.
+Mutagen source tree. The default mode is 'slim'.
 `
 
 func main() {
@@ -364,9 +362,7 @@ func main() {
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(ioutil.Discard)
 	var mode string
-	var skipBundles bool
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
-	flagSet.BoolVarP(&skipBundles, "skip-bundles", "s", false, "skip release bundle building")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -429,7 +425,7 @@ func main() {
 	if err := os.MkdirAll(cliBuildSubdirectoryPath, 0700); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to create CLI build subdirectory"))
 	}
-	if mode == "release" && !skipBundles {
+	if mode == "release" {
 		if err := os.MkdirAll(releaseBuildSubdirectoryPath, 0700); err != nil {
 			cmd.Fatal(errors.Wrap(err, "unable to create release build subdirectory"))
 		}
@@ -492,7 +488,7 @@ func main() {
 
 		// If we're in release mode, create the release bundle, unless we're
 		// explicitly requested not to.
-		if mode == "release" && !skipBundles {
+		if mode == "release" {
 			// Print information.
 			log.Println("Building release bundle for", target)
 
