@@ -145,9 +145,9 @@ func (t Target) goEnv() ([]string, error) {
 	return result, nil
 }
 
-// Cross determines whether or not this target represents a cross-compilation
+// IsCross determines whether or not this target represents a cross-compilation
 // target (i.e. not the native target for the current Go toolchain).
-func (t Target) Cross() bool {
+func (t Target) IsCross() bool {
 	return t.GOOS != runtime.GOOS || t.GOARCH != runtime.GOARCH
 }
 
@@ -339,7 +339,7 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 }
 
 func buildAgentForTargetInTesting(target Target) bool {
-	return !target.Cross() ||
+	return !target.IsCross() ||
 		target.GOOS == "darwin" ||
 		target.GOOS == "windows" ||
 		(target.GOOS == "linux" && (target.GOARCH == "amd64" || target.GOARCH == "arm")) ||
@@ -444,7 +444,7 @@ func main() {
 	}
 	for _, target := range targets {
 		// Skip agent targets that aren't appropriate for this build mode.
-		if mode == "slim" && target.Cross() {
+		if mode == "slim" && target.IsCross() {
 			continue
 		} else if mode == "testing" && !buildAgentForTargetInTesting(target) {
 			continue
@@ -475,7 +475,7 @@ func main() {
 	// Build CLI binaries.
 	for _, target := range targets {
 		// If we're not in release mode, we don't do any cross-compilation.
-		if mode != "release" && target.Cross() {
+		if mode != "release" && target.IsCross() {
 			continue
 		}
 
@@ -526,7 +526,7 @@ func main() {
 
 		// If the CLI is for the current platform, move it into the build
 		// directory root for testing.
-		if !target.Cross() {
+		if !target.IsCross() {
 			// Print information.
 			log.Println("Relocating binary for testing")
 
