@@ -11,6 +11,8 @@ import (
 	selection "github.com/mutagen-io/mutagen/pkg/selection"
 	url "github.com/mutagen-io/mutagen/pkg/url"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -813,6 +815,26 @@ type ForwardingServer interface {
 	Pause(Forwarding_PauseServer) error
 	Resume(Forwarding_ResumeServer) error
 	Terminate(Forwarding_TerminateServer) error
+}
+
+// UnimplementedForwardingServer can be embedded to have forward compatible implementations.
+type UnimplementedForwardingServer struct {
+}
+
+func (*UnimplementedForwardingServer) Create(srv Forwarding_CreateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (*UnimplementedForwardingServer) List(ctx context.Context, req *ListRequest) (*ListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (*UnimplementedForwardingServer) Pause(srv Forwarding_PauseServer) error {
+	return status.Errorf(codes.Unimplemented, "method Pause not implemented")
+}
+func (*UnimplementedForwardingServer) Resume(srv Forwarding_ResumeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Resume not implemented")
+}
+func (*UnimplementedForwardingServer) Terminate(srv Forwarding_TerminateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterForwardingServer(s *grpc.Server, srv ForwardingServer) {

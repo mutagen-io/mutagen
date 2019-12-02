@@ -10,6 +10,8 @@ import (
 	selection "github.com/mutagen-io/mutagen/pkg/selection"
 	tunneling "github.com/mutagen-io/mutagen/pkg/tunneling"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -767,6 +769,26 @@ type TunnelingServer interface {
 	Pause(Tunneling_PauseServer) error
 	Resume(Tunneling_ResumeServer) error
 	Terminate(Tunneling_TerminateServer) error
+}
+
+// UnimplementedTunnelingServer can be embedded to have forward compatible implementations.
+type UnimplementedTunnelingServer struct {
+}
+
+func (*UnimplementedTunnelingServer) Create(srv Tunneling_CreateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (*UnimplementedTunnelingServer) List(ctx context.Context, req *ListRequest) (*ListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (*UnimplementedTunnelingServer) Pause(srv Tunneling_PauseServer) error {
+	return status.Errorf(codes.Unimplemented, "method Pause not implemented")
+}
+func (*UnimplementedTunnelingServer) Resume(srv Tunneling_ResumeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Resume not implemented")
+}
+func (*UnimplementedTunnelingServer) Terminate(srv Tunneling_TerminateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterTunnelingServer(s *grpc.Server, srv TunnelingServer) {

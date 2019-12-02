@@ -8,6 +8,8 @@ import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -255,6 +257,17 @@ func (c *daemonClient) Terminate(ctx context.Context, in *TerminateRequest, opts
 type DaemonServer interface {
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 	Terminate(context.Context, *TerminateRequest) (*TerminateResponse, error)
+}
+
+// UnimplementedDaemonServer can be embedded to have forward compatible implementations.
+type UnimplementedDaemonServer struct {
+}
+
+func (*UnimplementedDaemonServer) Version(ctx context.Context, req *VersionRequest) (*VersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
+}
+func (*UnimplementedDaemonServer) Terminate(ctx context.Context, req *TerminateRequest) (*TerminateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterDaemonServer(s *grpc.Server, srv DaemonServer) {
