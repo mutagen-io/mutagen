@@ -84,13 +84,13 @@ before_script:
 # capable of building release bundles.
 script:
   - go version
-  - go run scripts/build.go --mode=slim
+  - go run scripts/build.go --mode=local
   - go test -p 1 -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
   - MUTAGEN_TEST_END_TO_END=slim go test -p 1 -race ./pkg/...
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go run scripts/build.go --mode=slim ; fi
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go run scripts/build.go --mode=local ; fi
   - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then GOARCH=386 go test -p 1 ./pkg/... ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go run scripts/build.go --mode=release ; fi
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then go run scripts/build.go --mode=testing ; fi
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then go run scripts/build.go --mode=slim ; fi
 
 # Upload the coverage report and perform any tear down and Docker infrastructure
 # after testing.

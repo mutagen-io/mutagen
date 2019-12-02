@@ -145,10 +145,29 @@ func (t Target) goEnv() ([]string, error) {
 	return result, nil
 }
 
-// IsCross determines whether or not this target represents a cross-compilation
-// target (i.e. not the native target for the current Go toolchain).
-func (t Target) IsCross() bool {
+// IsCrossTarget determines whether or not a target represents a
+// cross-compilation target (i.e. not the native target for the current Go
+// toolchain).
+func (t Target) IsCrossTarget() bool {
 	return t.GOOS != runtime.GOOS || t.GOARCH != runtime.GOARCH
+}
+
+// IsSlimTarget indicates whether or not a target should be included in slim
+// builds.
+func (t Target) IsSlimTarget() bool {
+	return !t.IsCrossTarget() ||
+		t.GOOS == "darwin" ||
+		t.GOOS == "windows" ||
+		(t.GOOS == "linux" && (t.GOARCH == "amd64" || t.GOARCH == "arm")) ||
+		(t.GOOS == "freebsd" && t.GOARCH == "amd64")
+}
+
+// IsContainerTarget indicates whether or not a target is used for containers.
+// It doesn't mean that the target is used exclusively for containers, but it
+// means that individual CLI and agent release bundles should be generated for
+// the target (in addition to the standard release bundles).
+func (t Target) IsContainerTarget() bool {
+	return t.GOOS == "linux" && t.GOARCH == "amd64"
 }
 
 // Build executes a module-aware build of the specified package URL, storing the
@@ -338,41 +357,73 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 	return nil
 }
 
-func buildAgentForTargetInTesting(target Target) bool {
-	return !target.IsCross() ||
-		target.GOOS == "darwin" ||
-		target.GOOS == "windows" ||
-		(target.GOOS == "linux" && (target.GOARCH == "amd64" || target.GOARCH == "arm")) ||
-		(target.GOOS == "freebsd" && target.GOARCH == "amd64")
+// copyFile copies the contents at sourcePath to a newly created file at
+// destinationPath that inherits the permissions of sourcePath.
+func copyFile(sourcePath, destinationPath string) error {
+	// Open the source file and defer its closure.
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return errors.Wrap(err, "unable to open source file")
+	}
+	defer source.Close()
+
+	// Grab source file metadata.
+	metadata, err := source.Stat()
+	if err != nil {
+		return errors.Wrap(err, "unable to query source file metadata")
+	}
+
+	// Remove the destination.
+	os.Remove(destinationPath)
+
+	// Create the destination file and defer its closure. We open with exclusive
+	// creation flags to ensure that we're the ones creating the file so that
+	// its permissions are set correctly.
+	destination, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, metadata.Mode()&os.ModePerm)
+	if err != nil {
+		return errors.Wrap(err, "unable to create destination file")
+	}
+	defer destination.Close()
+
+	// Copy contents.
+	if count, err := io.Copy(destination, source); err != nil {
+		return errors.Wrap(err, "unable to copy data")
+	} else if count != metadata.Size() {
+		return errors.New("copied size does not match expected")
+	}
+
+	// Success.
+	return nil
 }
 
 var usage = `usage: build [-h|--help] [-m|--mode=<mode>]
 
-The mode flag takes three values: 'slim', 'testing', and 'release'. 'slim' will
-build binaries only for the current platform. 'testing' will build the CLI
-binary for only the current platform and agents for a small subset of platforms.
-Both 'slim' and 'testing' will place their build output (CLI binary and agent
-bundle) in the '$GOPATH/bin' directory. 'release' will build CLI and agent
-binaries for all platforms and package them in the 'build' subdirectory of the
-Mutagen source tree. The default mode is 'slim'.
+The mode flag accepts four values: 'local', 'slim', 'release', and
+'release-slim'. 'local' will build CLI and agent binaries only for the current
+platform. 'slim' will build the CLI binary for only the current platform and
+agents for a small subset of platforms. 'release' will build CLI and agent
+binaries for all platforms and package for release. 'release-slim' is the same
+as release but only builds release bundles for a small subset of platforms. The
+default mode is 'local'.
 `
 
-func main() {
+// build is the primary entry point.
+func build() error {
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(ioutil.Discard)
 	var mode string
-	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
+	flagSet.StringVarP(&mode, "mode", "m", "local", "specify the build mode")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
-			return
+			return nil
 		} else {
-			cmd.Fatal(errors.Wrap(err, "unable to parse command line"))
+			return errors.Wrap(err, "unable to parse command line")
 		}
 	}
-	if mode != "slim" && mode != "testing" && mode != "release" {
-		cmd.Fatal(errors.New("invalid build mode"))
+	if !(mode == "local" || mode == "slim" || mode == "release" || mode == "release-slim") {
+		return fmt.Errorf("invalid build mode: %w", mode)
 	}
 
 	// The only platform really suited to cross-compiling for every other
@@ -383,8 +434,8 @@ func main() {
 	// other platforms can survive with pure Go compilation.
 	if runtime.GOOS != "darwin" {
 		if mode == "release" {
-			cmd.Fatal(errors.New("macOS required for release builds"))
-		} else if mode == "testing" {
+			return errors.New("macOS required for release builds")
+		} else if mode == "slim" || mode == "release-slim" {
 			cmd.Warning("macOS agents will be built without cgo support")
 		}
 	}
@@ -392,27 +443,27 @@ func main() {
 	// Compute the path to the Mutagen source directory.
 	mutagenSourcePath, err := mutagen.SourceTreePath()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to compute Mutagen source tree path"))
+		return errors.Wrap(err, "unable to compute Mutagen source tree path")
 	}
 
 	// Verify that we're running inside the Mutagen source directory, otherwise
 	// we can't rely on Go modules working.
 	workingDirectory, err := os.Getwd()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to compute working directory"))
+		return errors.Wrap(err, "unable to compute working directory")
 	}
 	workingDirectoryRelativePath, err := filepath.Rel(mutagenSourcePath, workingDirectory)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to determine working directory relative path"))
+		return errors.Wrap(err, "unable to determine working directory relative path")
 	}
 	if strings.Contains(workingDirectoryRelativePath, "..") {
-		cmd.Fatal(errors.New("build script run outside Mutagen source tree"))
+		return errors.New("build script run outside Mutagen source tree")
 	}
 
 	// Compute the path to the build directory and ensure that it exists.
 	buildPath := filepath.Join(mutagenSourcePath, mutagen.BuildDirectoryName)
 	if err := os.MkdirAll(buildPath, 0700); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create build directory"))
+		return errors.Wrap(err, "unable to create build directory")
 	}
 
 	// Create the necessary build directory hierarchy.
@@ -420,117 +471,161 @@ func main() {
 	cliBuildSubdirectoryPath := filepath.Join(buildPath, cliBuildSubdirectoryName)
 	releaseBuildSubdirectoryPath := filepath.Join(buildPath, releaseBuildSubdirectoryName)
 	if err := os.MkdirAll(agentBuildSubdirectoryPath, 0700); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create agent build subdirectory"))
+		return errors.Wrap(err, "unable to create agent build subdirectory")
 	}
 	if err := os.MkdirAll(cliBuildSubdirectoryPath, 0700); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create CLI build subdirectory"))
+		return errors.Wrap(err, "unable to create CLI build subdirectory")
 	}
-	if mode == "release" {
+	if mode == "release" || mode == "release-slim" {
 		if err := os.MkdirAll(releaseBuildSubdirectoryPath, 0700); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create release build subdirectory"))
+			return errors.Wrap(err, "unable to create release build subdirectory")
 		}
 	}
 
-	// Build agent binaries and the combined agent bundle.
-	log.Println("Building agent bundle...")
-	agentBundlePath := filepath.Join(buildPath, agent.BundleName)
-	agentBundle, err := NewArchiveBuilder(agentBundlePath)
-	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create agent archive builder"))
-	}
+	// Compute the local target.
+	localTarget := Target{runtime.GOOS, runtime.GOARCH}
+
+	// Compute agent targets.
+	var agentTargets []Target
 	for _, target := range targets {
-		// Skip agent targets that aren't appropriate for this build mode.
-		if mode == "slim" && target.IsCross() {
+		if mode == "local" && target.IsCrossTarget() {
 			continue
-		} else if mode == "testing" && !buildAgentForTargetInTesting(target) {
+		} else if (mode == "slim" || mode == "release-slim") && !target.IsSlimTarget() {
 			continue
 		}
-
-		// Print information.
-		log.Println("Building agent for", target)
-
-		// Compute the output path for the agent.
-		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
-
-		// Build the agent.
-		if err := target.Build(agentPackage, agentBuildPath); err != nil {
-			agentBundle.Close()
-			cmd.Fatal(errors.Wrap(err, "unable to build agent"))
-		}
-
-		// Add it to the bundle.
-		if err := agentBundle.Add(target.Name(), agentBuildPath, 0700); err != nil {
-			agentBundle.Close()
-			cmd.Fatal(errors.Wrap(err, "unable to add agent to bundle"))
-		}
+		agentTargets = append(agentTargets, target)
 	}
-	if err := agentBundle.Close(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to finalize agent bundle"))
+
+	// Compute CLI targets.
+	var cliTargets []Target
+	for _, target := range targets {
+		if (mode == "local" || mode == "slim") && target.IsCrossTarget() {
+			continue
+		} else if mode == "release-slim" && !target.IsSlimTarget() {
+			continue
+		}
+		cliTargets = append(cliTargets, target)
+	}
+
+	// Build agent binaries.
+	log.Println("Building agent binaries...")
+	for _, target := range agentTargets {
+		log.Println("Building agent for", target)
+		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
+		if err := target.Build(agentPackage, agentBuildPath); err != nil {
+			return errors.Wrap(err, "unable to build agent")
+		}
 	}
 
 	// Build CLI binaries.
-	for _, target := range targets {
-		// If we're not in release mode, we don't do any cross-compilation.
-		if mode != "release" && target.IsCross() {
-			continue
-		}
-
-		// Print information.
-		log.Println("Building CLI for", target)
-
-		// Compute the output path for the CLI.
+	log.Println("Building CLI binaries...")
+	for _, target := range cliTargets {
+		log.Println("Build CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
-
-		// Build.
 		if err := target.Build(cliPackage, cliBuildPath); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to build CLI"))
+			return errors.Wrap(err, "unable to build CLI")
 		}
+	}
 
-		// If we're in release mode, create the release bundle, unless we're
-		// explicitly requested not to.
-		if mode == "release" {
-			// Print information.
+	// Build the agent bundle.
+	log.Println("Building agent bundle...")
+	agentBundlePath := filepath.Join(buildPath, agent.BundleName)
+	agentBundleBuilder, err := NewArchiveBuilder(agentBundlePath)
+	if err != nil {
+		return errors.Wrap(err, "unable to create agent bundle archive builder")
+	}
+	for _, target := range agentTargets {
+		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
+		if err := agentBundleBuilder.Add(target.Name(), agentBuildPath, 0755); err != nil {
+			agentBundleBuilder.Close()
+			return errors.Wrap(err, "unable to add agent to bundle")
+		}
+	}
+	if err := agentBundleBuilder.Close(); err != nil {
+		return errors.Wrap(err, "unable to finalize agent bundle")
+	}
+
+	// Build release bundles if necessary.
+	if mode == "release" || mode == "release-slim" {
+		log.Println("Building release bundles...")
+		for _, target := range cliTargets {
+			// Update status.
 			log.Println("Building release bundle for", target)
 
-			// Compute the bundle path.
-			bundlePath := filepath.Join(
+			// Compute paths.
+			cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
+			releaseBundlePath := filepath.Join(
 				releaseBuildSubdirectoryPath,
 				fmt.Sprintf("mutagen_%s_v%s.tar.gz", target.Name(), mutagen.Version),
 			)
 
-			// Create the bundle.
-			bundle, err := NewArchiveBuilder(bundlePath)
-			if err != nil {
-				cmd.Fatal(errors.Wrap(err, "unable to create release bundle"))
+			// Build the release bundle.
+			if releaseBundle, err := NewArchiveBuilder(releaseBundlePath); err != nil {
+				return errors.Wrap(err, "unable to create release bundle")
+			} else if err = releaseBundle.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0755); err != nil {
+				releaseBundle.Close()
+				return errors.Wrap(err, "unable to add CLI to release bundle")
+			} else if err = releaseBundle.Add("", agentBundlePath, 0644); err != nil {
+				releaseBundle.Close()
+				return errors.Wrap(err, "unable to add agent bundle to release bundle")
+			} else if err = releaseBundle.Close(); err != nil {
+				return errors.Wrap(err, "unable to finalize release bundle")
 			}
 
-			// Add contents.
-			if err := bundle.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0700); err != nil {
-				bundle.Close()
-				cmd.Fatal(errors.Wrap(err, "unable to bundle CLI"))
-			}
-			if err := bundle.Add("", agentBundlePath, 0600); err != nil {
-				bundle.Close()
-				cmd.Fatal(errors.Wrap(err, "unable to bundle agent bundle"))
-			}
+			// If this is a container platform, then build individual CLI and
+			// agent archives.
+			if target.IsContainerTarget() {
+				// Update status.
+				log.Println("Building archives for", target)
 
-			// Close the bundle.
-			if err := bundle.Close(); err != nil {
-				cmd.Fatal(errors.Wrap(err, "unable to finalize release bundle"))
+				// Compute additional paths.
+				agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
+				agentArchivePath := filepath.Join(
+					releaseBuildSubdirectoryPath,
+					fmt.Sprintf("agent_%s_v%s.tar.gz", target.Name(), mutagen.Version),
+				)
+				cliArchivePath := filepath.Join(
+					releaseBuildSubdirectoryPath,
+					fmt.Sprintf("cli_%s_v%s.tar.gz", target.Name(), mutagen.Version),
+				)
+
+				// Build the agent archive.
+				if agentArchive, err := NewArchiveBuilder(agentArchivePath); err != nil {
+					return errors.Wrap(err, "unable to create agent archive")
+				} else if err = agentArchive.Add(target.ExecutableName(agentBaseName), agentBuildPath, 0755); err != nil {
+					agentArchive.Close()
+					return errors.Wrap(err, "unable to add agent to agent archive")
+				} else if err = agentArchive.Close(); err != nil {
+					return errors.Wrap(err, "unable to finalize agent archive")
+				}
+
+				// Build the CLI archive.
+				if cliArchive, err := NewArchiveBuilder(cliArchivePath); err != nil {
+					return errors.Wrap(err, "unable to create CLI archive")
+				} else if err = cliArchive.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0755); err != nil {
+					cliArchive.Close()
+					return errors.Wrap(err, "unable to add CLI to CLI archive")
+				} else if err = cliArchive.Close(); err != nil {
+					return errors.Wrap(err, "unable to finalize CLI archive")
+				}
 			}
 		}
+	}
 
-		// If the CLI is for the current platform, move it into the build
-		// directory root for testing.
-		if !target.IsCross() {
-			// Print information.
-			log.Println("Relocating binary for testing")
+	// Relocate the CLI binary for the current platform.
+	log.Println("Copying binary for testing")
+	localCLIBuildPath := filepath.Join(cliBuildSubdirectoryPath, localTarget.Name())
+	localCLIRelocationPath := filepath.Join(buildPath, localTarget.ExecutableName(cliBaseName))
+	if err := copyFile(localCLIBuildPath, localCLIRelocationPath); err != nil {
+		return errors.Wrap(err, "unable to copy current platform CLI")
+	}
 
-			// Relocate.
-			targetPath := filepath.Join(buildPath, target.ExecutableName(cliBaseName))
-			if err := os.Rename(cliBuildPath, targetPath); err != nil {
-				cmd.Fatal(errors.Wrap(err, "unable to relocate platform CLI"))
-			}
-		}
+	// Success.
+	return nil
+}
+
+func main() {
+	if err := build(); err != nil {
+		cmd.Fatal(err)
 	}
 }

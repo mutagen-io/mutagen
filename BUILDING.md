@@ -15,11 +15,13 @@ To see information about the build script, run:
 
     go run scripts/build.go --help
 
-The build script can do three different types of builds: slim (with support for
-the local system only), testing (with support for a selection of common
-platforms used in testing), and release (used for generating complete release
-artifacts). macOS is currently the only platform that supports doing release
-builds, because the macOS binaries require cgo support for file monitoring.
+The build script can do four different types of builds: `local` (with support
+for the local system only), `slim` (with support for a selection of common
+platforms used in testing), `release` (used for generating complete release
+artifacts), and `release-slim` (used for generating complete release artifacts
+for a selection of common platforms used in testing). macOS is currently the
+only platform that supports doing `release` builds, because the macOS binaries
+require cgo support for file monitoring.
 
 All artifacts from the build are placed in a `build` directory at the root of
 the Mutagen source tree. As a convenience, artifacts built for the current
