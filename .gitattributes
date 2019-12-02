@@ -1,2 +1,9 @@
 # Automatically normalize line endings to \n when checking in text files.
 * text=auto
+
+# Enforce that Go module metadata files are always checked out with newline
+# endings, because Go will try to normalize them to newline line endings even if
+# there are no changes, which will cause builds to fail on Windows if the
+# -mod=readonly flag is specified to go build.
+go.mod text eol=lf
+go.sum text eol=lf
