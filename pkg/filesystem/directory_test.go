@@ -48,6 +48,45 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 	}
 }
 
+// TestNonEmptyDirectoryRemovalFailure tests that removal of a non-empty
+// directory results in failure.
+func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
+	// Create a temporary directory and defer its cleanup.
+	temporaryDirectoryPath, err := ioutil.TempDir("", "mutagen_filesystem_test")
+	if err != nil {
+		t.Fatal("unable to create temporary directory:", err)
+	}
+	defer os.RemoveAll(temporaryDirectoryPath)
+
+	// Create a directory handle for this temporary directory and defer its
+	// closure.
+	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
+	if err != nil {
+		t.Fatal("unable to open directory handle:", err)
+	}
+	defer directory.Close()
+
+	// Create a directory that will serve as our target.
+	if err := directory.CreateDirectory("target"); err != nil {
+		t.Fatal("unable to create target directory:", err)
+	}
+
+	// Create content inside the directory.
+	if target, err := directory.OpenDirectory("target"); err != nil {
+		t.Fatal("unable to open target directory:", err)
+	} else if err = target.CreateDirectory("content"); err != nil {
+		target.Close()
+		t.Fatal("unable to create content in target directory:", err)
+	} else if err = target.Close(); err != nil {
+		t.Fatal("unable to close target directory:", err)
+	}
+
+	// Attempt to remove the target directory.
+	if directory.RemoveDirectory("target") == nil {
+		t.Error("able to remove non-empty directory")
+	}
+}
+
 // TestDirectorySymbolicLinkRemoval tests that removal of symbolic links that
 // point to directories works as expected.
 func TestDirectorySymbolicLinkRemoval(t *testing.T) {
