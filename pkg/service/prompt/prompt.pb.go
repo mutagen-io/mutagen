@@ -8,6 +8,8 @@ import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -166,6 +168,14 @@ func (c *promptingClient) Prompt(ctx context.Context, in *PromptRequest, opts ..
 // PromptingServer is the server API for Prompting service.
 type PromptingServer interface {
 	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
+}
+
+// UnimplementedPromptingServer can be embedded to have forward compatible implementations.
+type UnimplementedPromptingServer struct {
+}
+
+func (*UnimplementedPromptingServer) Prompt(ctx context.Context, req *PromptRequest) (*PromptResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Prompt not implemented")
 }
 
 func RegisterPromptingServer(s *grpc.Server, srv PromptingServer) {

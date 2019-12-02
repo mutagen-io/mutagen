@@ -11,6 +11,8 @@ import (
 	synchronization "github.com/mutagen-io/mutagen/pkg/synchronization"
 	url "github.com/mutagen-io/mutagen/pkg/url"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -936,6 +938,29 @@ type SynchronizationServer interface {
 	Pause(Synchronization_PauseServer) error
 	Resume(Synchronization_ResumeServer) error
 	Terminate(Synchronization_TerminateServer) error
+}
+
+// UnimplementedSynchronizationServer can be embedded to have forward compatible implementations.
+type UnimplementedSynchronizationServer struct {
+}
+
+func (*UnimplementedSynchronizationServer) Create(srv Synchronization_CreateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (*UnimplementedSynchronizationServer) List(ctx context.Context, req *ListRequest) (*ListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (*UnimplementedSynchronizationServer) Flush(srv Synchronization_FlushServer) error {
+	return status.Errorf(codes.Unimplemented, "method Flush not implemented")
+}
+func (*UnimplementedSynchronizationServer) Pause(srv Synchronization_PauseServer) error {
+	return status.Errorf(codes.Unimplemented, "method Pause not implemented")
+}
+func (*UnimplementedSynchronizationServer) Resume(srv Synchronization_ResumeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Resume not implemented")
+}
+func (*UnimplementedSynchronizationServer) Terminate(srv Synchronization_TerminateServer) error {
+	return status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterSynchronizationServer(s *grpc.Server, srv SynchronizationServer) {
