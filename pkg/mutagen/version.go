@@ -26,7 +26,7 @@ const (
 	// Mutagen. If this is set to true, then Mutagen's data directory will be
 	// changed to ~/.mutagen-dev. This setting should be considered independent
 	// of whether or not VersionTag is empty.
-	DevelopmentVersion = true
+	DevelopmentVersion = false
 )
 
 // Version provides a stringified version of the current Mutagen version.
