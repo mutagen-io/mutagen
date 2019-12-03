@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -76,6 +78,23 @@ func init() {
 	// registering them with the root command so that they have the correct
 	// parent command and thus the correct help output.
 	sync.RootCommand.AddCommand(sync.Commands...)
+
+	// Enable color support for command usage and error output in the root
+	// command and all of its child commands.
+	enableColorForCommand(rootCommand)
+}
+
+// enableColorForCommand recursively enables colorized usage and error output
+// for a command and all of its child commands.
+func enableColorForCommand(command *cobra.Command) {
+	// Enable color support for the command itself.
+	command.SetOut(color.Output)
+	command.SetErr(color.Error)
+
+	// Recursively enable color support for child commands.
+	for _, c := range command.Commands() {
+		enableColorForCommand(c)
+	}
 }
 
 func main() {
