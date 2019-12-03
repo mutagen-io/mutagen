@@ -2,6 +2,8 @@ package forward
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/fatih/color"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -29,6 +31,9 @@ var rootConfiguration struct {
 }
 
 func init() {
+	// Mark the command as experimental.
+	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
+
 	// Grab a handle for the command line flags.
 	flags := RootCommand.Flags()
 
