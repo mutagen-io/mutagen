@@ -15,3 +15,8 @@ rm mutagen.exe mutagen-agents.tar.gz
 tar xzf build/release/mutagen_windows_amd64_v${MUTAGEN_VERSION}.tar.gz
 zip build/release/mutagen_windows_amd64_v${MUTAGEN_VERSION}.zip mutagen.exe mutagen-agents.tar.gz
 rm mutagen.exe mutagen-agents.tar.gz
+
+# Convert the arm bundle.
+tar xzf build/release/mutagen_windows_arm_v${MUTAGEN_VERSION}.tar.gz
+zip build/release/mutagen_windows_arm_v${MUTAGEN_VERSION}.zip mutagen.exe mutagen-agents.tar.gz
+rm mutagen.exe mutagen-agents.tar.gz
