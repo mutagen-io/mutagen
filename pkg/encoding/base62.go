@@ -25,3 +25,8 @@ func init() {
 func EncodeBase62(value []byte) string {
 	return base62.Encode(value)
 }
+
+// DecodeBase62 performs Base62 decoding.
+func DecodeBase62(value string) ([]byte, error) {
+	return base62.Decode(value)
+}
