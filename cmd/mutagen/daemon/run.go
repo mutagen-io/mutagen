@@ -73,7 +73,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 	defer forwardingManager.Shutdown()
 
 	// Create a synchronization session manager and defer its shutdown.
-	synchronizationManager, err := synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
+	synchronizationManager, err := synchronization.NewManager(logging.RootLogger.Sublogger("synchronization"))
 	if err != nil {
 		return errors.Wrap(err, "unable to create synchronization session manager")
 	}
