@@ -261,7 +261,7 @@ func hostDataChannel(
 	// Start by looking in the libexec directory to tunnel agents.
 	if libexecPath, err := filesystem.LibexecPath(); err == nil {
 		agentPath = filepath.Join(
-			libexecPath, "mutagen", "tunnel", "agents",
+			libexecPath, "mutagen", "agents",
 			fmt.Sprintf("%d.%d",
 				initializeRequest.VersionMajor,
 				initializeRequest.VersionMinor,

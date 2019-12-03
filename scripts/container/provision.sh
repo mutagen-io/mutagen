@@ -53,7 +53,7 @@ IFS=":"
 
 # Install agents.
 echo "Installing agents"
-MUTAGEN_TUNNEL_AGENTS_PATH="/usr/libexec/mutagen/tunnel/agents"
+MUTAGEN_TUNNEL_AGENTS_PATH="/usr/libexec/mutagen/agents"
 mkdir -p "${MUTAGEN_TUNNEL_AGENTS_PATH}"
 for MUTAGEN_AGENT_VERSION in $MUTAGEN_TUNNEL_AGENT_VERSIONS; do
     # Update status.
