@@ -96,7 +96,7 @@ func printConflicts(conflicts []*core.Conflict) {
 		// Print the alpha changes.
 		for _, a := range c.AlphaChanges {
 			color.Red(
-				"\t(α) %s (%s -> %s)\n",
+				"\t(alpha) %s (%s -> %s)\n",
 				formatPath(a.Path),
 				formatEntryKind(a.Old),
 				formatEntryKind(a.New),
@@ -106,7 +106,7 @@ func printConflicts(conflicts []*core.Conflict) {
 		// Print the beta changes.
 		for _, b := range c.BetaChanges {
 			color.Red(
-				"\t(β) %s (%s -> %s)\n",
+				"\t(beta)  %s (%s -> %s)\n",
 				formatPath(b.Path),
 				formatEntryKind(b.Old),
 				formatEntryKind(b.New),
