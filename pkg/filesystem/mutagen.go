@@ -92,7 +92,7 @@ func Mutagen(create bool, pathComponents ...string) (string, error) {
 		}
 
 		// Compute the path to the Mutagen data directory.
-		if !mutagen.DevelopmentVersion {
+		if !mutagen.DevelopmentModeEnabled {
 			mutagenDataDirectoryPath = filepath.Join(homeDirectory, MutagenDataDirectoryName)
 		} else {
 			mutagenDataDirectoryPath = filepath.Join(homeDirectory, MutagenDataDirectoryDevelopmentName)

@@ -47,7 +47,7 @@ func callAPI(ctx context.Context, method, resource, token string, request, respo
 
 	// Compute the API endpoint.
 	apiEndpoint := apiEndpoint
-	if mutagen.DevelopmentVersion {
+	if mutagen.DevelopmentModeEnabled {
 		apiEndpoint = apiEndpointDevelopment
 	}
 
