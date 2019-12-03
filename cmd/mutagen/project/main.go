@@ -37,7 +37,7 @@ var rootConfiguration struct {
 
 func init() {
 	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
+	RootCommand.Short = RootCommand.Short + color.YellowString(" [Beta]")
 
 	// Grab a handle for the command line flags.
 	flags := RootCommand.Flags()
