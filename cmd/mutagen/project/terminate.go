@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -43,18 +44,42 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	// Compute the lock path.
 	lockPath := configurationFileName + project.LockFileExtension
 
-	// Create a locker and defer its closure.
+	// Track whether or not we should remove the lock file on return.
+	var removeLockFileOnReturn bool
+
+	// Create a locker and defer its closure and potential removal. On Windows
+	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
 		return errors.Wrap(err, "unable to create project locker")
 	}
-	defer locker.Close()
+	defer func() {
+		locker.Close()
+		if removeLockFileOnReturn && runtime.GOOS == "windows" {
+			os.Remove(lockPath)
+		}
+	}()
 
-	// Acquire the project lock and defer its release.
+	// Acquire the project lock and defer its release and potential removal. On
+	// Windows systems, we can't remove the lock file if it's locked or even
+	// just opened, so we handle removal for Windows systems after we close the
+	// lock file (see above). In this case, we truncate the lock file before
+	// releasing it to ensure that any other process that opens or acquires the
+	// lock file before we manage to remove it will simply see an empty lock
+	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
 		return errors.Wrap(err, "unable to acquire project lock")
 	}
-	defer locker.Unlock()
+	defer func() {
+		if removeLockFileOnReturn {
+			if runtime.GOOS == "windows" {
+				locker.Truncate(0)
+			} else {
+				os.Remove(lockPath)
+			}
+		}
+		locker.Unlock()
+	}()
 
 	// Read the full contents of the lock file. If it's empty, then assume we
 	// created it and just remove it.
@@ -62,7 +87,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	if length, err := buffer.ReadFrom(locker); err != nil {
 		return errors.Wrap(err, "unable to read project lock")
 	} else if length == 0 {
-		os.Remove(lockPath)
+		removeLockFileOnReturn = true
 		return errors.New("project not running")
 	}
 	identifier := buffer.String()
@@ -80,10 +105,8 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to terminate synchronization session(s)")
 	}
 
-	// Remove the project lock.
-	if err := os.Remove(lockPath); err != nil {
-		return errors.Wrap(err, "unable to remove project lock")
-	}
+	// Schedule the project lock for removal.
+	removeLockFileOnReturn = true
 
 	// Success.
 	return nil
