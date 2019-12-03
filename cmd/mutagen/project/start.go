@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -53,18 +54,42 @@ func startMain(command *cobra.Command, arguments []string) error {
 	// Compute the lock path.
 	lockPath := configurationFileName + project.LockFileExtension
 
-	// Create a locker and defer its closure.
+	// Track whether or not we should remove the lock file on return.
+	var removeLockFileOnReturn bool
+
+	// Create a locker and defer its closure and potential removal. On Windows
+	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
 		return errors.Wrap(err, "unable to create project locker")
 	}
-	defer locker.Close()
+	defer func() {
+		locker.Close()
+		if removeLockFileOnReturn && runtime.GOOS == "windows" {
+			os.Remove(lockPath)
+		}
+	}()
 
-	// Acquire the project lock and defer its release.
+	// Acquire the project lock and defer its release and potential removal. On
+	// Windows systems, we can't remove the lock file if it's locked or even
+	// just opened, so we handle removal for Windows systems after we close the
+	// lock file (see above). In this case, we truncate the lock file before
+	// releasing it to ensure that any other process that opens or acquires the
+	// lock file before we manage to remove it will simply see an empty lock
+	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
 		return errors.Wrap(err, "unable to acquire project lock")
 	}
-	defer locker.Unlock()
+	defer func() {
+		if removeLockFileOnReturn {
+			if runtime.GOOS == "windows" {
+				locker.Truncate(0)
+			} else {
+				os.Remove(lockPath)
+			}
+		}
+		locker.Unlock()
+	}()
 
 	// Read the full contents of the lock file and ensure that it's empty.
 	buffer := &bytes.Buffer{}
@@ -74,6 +99,12 @@ func startMain(command *cobra.Command, arguments []string) error {
 		return errors.New("project already running")
 	}
 
+	// At this point we know that there was no previous project running, but we
+	// haven't yet created any resources, so defer removal of the lock file that
+	// we've created in case we run into any errors loading configuration
+	// information.
+	removeLockFileOnReturn = true
+
 	// Create a unique project identifier.
 	identifier, err := identifier.New(identifier.PrefixProject)
 	if err != nil {
@@ -82,14 +113,12 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Write the project identifier to the lock file.
 	if _, err := locker.Write([]byte(identifier)); err != nil {
-		os.Remove(lockPath)
 		return errors.Wrap(err, "unable to write project session identifier")
 	}
 
 	// Load the configuration file.
 	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
 	if err != nil {
-		os.Remove(lockPath)
 		return errors.Wrap(err, "unable to load configuration file")
 	}
 
@@ -333,6 +362,10 @@ func startMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}
 	defer daemonConnection.Close()
+
+	// At this point, we're going to try to create resources, so we need to
+	// maintain the lock file in case even some of them are successful.
+	removeLockFileOnReturn = false
 
 	// Create forwarding sessions.
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)

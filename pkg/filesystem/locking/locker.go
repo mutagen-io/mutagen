@@ -54,6 +54,18 @@ func (l *Locker) Write(buffer []byte) (int, error) {
 	return l.file.Write(buffer)
 }
 
+// Truncate implements file truncation for the underlying file, but errors if
+// the lock is not currently held.
+func (l *Locker) Truncate(size int64) error {
+	// Verify that the lock is held.
+	if !l.held {
+		return errors.New("lock not held")
+	}
+
+	// Perform the truncation.
+	return l.file.Truncate(size)
+}
+
 // Close closes the file underlying the locker. This will release any lock held
 // on the file and disable future locking. On POSIX platforms, this also
 // releases other locks held on the same file.
