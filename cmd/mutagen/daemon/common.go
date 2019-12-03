@@ -19,7 +19,7 @@ import (
 const (
 	// dialTimeout is the timeout to use when attempting to connect to the
 	// daemon IPC endpoint.
-	dialTimeout = 100 * time.Millisecond
+	dialTimeout = 500 * time.Millisecond
 	// autostartWaitInterval is the wait period between reconnect attempts after
 	// autostarting the daemon.
 	autostartWaitInterval = 100 * time.Millisecond
