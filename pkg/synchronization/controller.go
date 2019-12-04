@@ -963,6 +963,20 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
+		// If using a bidirectional synchronization mode, check if the root has
+		// been completely emptied on one side by deleting 2 or more content
+		// entries (usually indicating a non-persistent filesystem like a
+		// container filesystem). If so, switch to a halted state and wait for
+		// the user to manually propagate the deletion to indicate confirmation
+		// (or recreate the session).
+		if synchronizationMode.IsBidirectional() && oneEndpointEmptiedRoot(ancestor, αSnapshot, βSnapshot) {
+			c.stateLock.Lock()
+			c.state.Status = Status_HaltedOnRootEmptied
+			c.stateLock.Unlock()
+			<-context.Done()
+			return errors.New("cancelled while halted on emptied root")
+		}
+
 		// Perform reconciliation.
 		ancestorChanges, αTransitions, βTransitions, conflicts := core.Reconcile(
 			ancestor,
@@ -984,20 +998,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		c.state.Conflicts = slimConflicts
 		c.stateLock.Unlock()
 
-		// Check if a root deletion is being propagated. If so, switch to a
-		// halted state. This is a best-effort safety check. While we'll
-		// definitely detect root deletion, it may happen (for directories) that
-		// a large portion of the root is deleted before the root itself and
-		// that this partial deletion is captured during a scan and propagated
-		// and the root deletion is not detected until the next scan. Scans have
-		// been designed to completely abort if they detect concurrent
-		// modifications, and there's a high cross-section for this detection.
-		// But there's no silver bullet for this problem, at least not without
-		// rendering Mutagen basically useless when it comes to propagating
-		// changes. We may be able to add a flag to avoid propagating deletions
-		// of any kind in the future, but that would be specialized and a
-		// relatively harsh restriction to put in place as a general safety
-		// mechanism.
+		// Check if a root deletion is being propgated. If so, switch to a
+		// halted state and wait for the user to manually propagate the
+		// deletion to indicate confirmation.
 		rootDeletion := false
 		for _, t := range αTransitions {
 			if isRootDeletion(t) {
@@ -1021,7 +1024,9 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			return errors.New("cancelled while halted on root deletion")
 		}
 
-		// Check if a root type change is being propagated and halt if so.
+		// Check if a root type change is being propagated. If so, switch to a
+		// halted state and wait for the user to delete the content that's being
+		// overwritten to indicate confirmation.
 		rootTypeChange := false
 		for _, t := range αTransitions {
 			if isRootTypeChange(t) {

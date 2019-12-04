@@ -4,6 +4,26 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
+// oneEndpointEmptiedRoot determines whether or not one endpoint (but not both)
+// transitioned from a directory root with two or more content entries to a
+// directory root without any content.
+func oneEndpointEmptiedRoot(ancestor, αSnapshot, βSnapshot *core.Entry) bool {
+	// Check if alpha emptied root content.
+	αEmptiedRoot := ancestor != nil && αSnapshot != nil &&
+		ancestor.Kind == core.EntryKind_Directory &&
+		αSnapshot.Kind == core.EntryKind_Directory &&
+		len(ancestor.Contents) >= 2 && len(αSnapshot.Contents) == 0
+
+	// Check if beta emptied root content.
+	βEmptiedRoot := ancestor != nil && βSnapshot != nil &&
+		ancestor.Kind == core.EntryKind_Directory &&
+		βSnapshot.Kind == core.EntryKind_Directory &&
+		len(ancestor.Contents) >= 2 && len(βSnapshot.Contents) == 0
+
+	// Determine whether one (and only one) endpoint emptied root content.
+	return (αEmptiedRoot || βEmptiedRoot) && !(αEmptiedRoot && βEmptiedRoot)
+}
+
 // isRootDeletion determines whether or not the specified change is a root
 // deletion.
 func isRootDeletion(change *core.Change) bool {

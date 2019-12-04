@@ -10,6 +10,13 @@ func (m SynchronizationMode) IsDefault() bool {
 	return m == SynchronizationMode_SynchronizationModeDefault
 }
 
+// IsBidirectional indicates whether or not a synchronization mode is
+// bidirectional.
+func (m SynchronizationMode) IsBidirectional() bool {
+	return m == SynchronizationMode_SynchronizationModeTwoWaySafe ||
+		m == SynchronizationMode_SynchronizationModeTwoWayResolved
+}
+
 // UnmarshalText implements the text unmarshalling interface used when loading
 // from TOML files.
 func (m *SynchronizationMode) UnmarshalText(textBytes []byte) error {
