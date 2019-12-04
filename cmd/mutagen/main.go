@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -79,9 +80,12 @@ func init() {
 	// parent command and thus the correct help output.
 	sync.RootCommand.AddCommand(sync.Commands...)
 
-	// Enable color support for command usage and error output in the root
-	// command and all of its child commands.
-	enableColorForCommand(rootCommand)
+	// HACK If we're on Windows, enable color support for command usage and
+	// error output by recursively replacing the output streams for Cobra
+	// commands.
+	if runtime.GOOS == "windows" {
+		enableColorForCommand(rootCommand)
+	}
 }
 
 // enableColorForCommand recursively enables colorized usage and error output
