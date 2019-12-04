@@ -11,18 +11,19 @@ import "synchronization/core/problem.proto";
 
 enum Status {
     Disconnected = 0;
-    HaltedOnRootDeletion = 1;
-    HaltedOnRootTypeChange = 2;
-    ConnectingAlpha = 3;
-    ConnectingBeta = 4;
-    Watching = 5;
-    Scanning = 6;
-    WaitingForRescan = 7;
-    Reconciling = 8;
-    StagingAlpha = 9;
-    StagingBeta = 10;
-    Transitioning = 11;
-    Saving = 12;
+    HaltedOnRootEmptied = 1;
+    HaltedOnRootDeletion = 2;
+    HaltedOnRootTypeChange = 3;
+    ConnectingAlpha = 4;
+    ConnectingBeta = 5;
+    Watching = 6;
+    Scanning = 7;
+    WaitingForRescan = 8;
+    Reconciling = 9;
+    StagingAlpha = 10;
+    StagingBeta = 11;
+    Transitioning = 12;
+    Saving = 13;
 }
 
 message State {
