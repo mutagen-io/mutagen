@@ -6,6 +6,30 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
+// TestKindSupported tests that URL kind support detection works as expected.
+func TestKindSupported(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		kind     Kind
+		expected bool
+	}{
+		{Kind_Synchronization, true},
+		{Kind_Forwarding, true},
+		{(Kind_Forwarding + 1), false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if supported := testCase.kind.Supported(); supported != testCase.expected {
+			t.Errorf(
+				"kind support (%t) does not match expected (%t)",
+				supported,
+				testCase.expected,
+			)
+		}
+	}
+}
+
 func TestURLEnsureValidNilInvalid(t *testing.T) {
 	var invalid *URL
 	if invalid.EnsureValid() == nil {
