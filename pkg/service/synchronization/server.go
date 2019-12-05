@@ -69,7 +69,7 @@ func (s *Server) Create(stream Synchronization_CreateServer) error {
 	return nil
 }
 
-// List lists existing sessions.
+// List queries session status.
 func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, error) {
 	// Validate the request.
 	if err := request.ensureValid(); err != nil {
@@ -90,7 +90,7 @@ func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, e
 	}, nil
 }
 
-// Flush flushes existing sessions.
+// Flush flushes sessions.
 func (s *Server) Flush(stream Synchronization_FlushServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()
@@ -106,7 +106,7 @@ func (s *Server) Flush(stream Synchronization_FlushServer) error {
 		return errors.Wrap(err, "unable to register prompter")
 	}
 
-	// Perform flush.
+	// Perform flush(es).
 	err = s.manager.Flush(request.Selection, prompter, request.SkipWait, stream.Context())
 
 	// Unregister the prompter.
@@ -126,7 +126,7 @@ func (s *Server) Flush(stream Synchronization_FlushServer) error {
 	return nil
 }
 
-// Pause pauses existing sessions.
+// Pause pauses sessions.
 func (s *Server) Pause(stream Synchronization_PauseServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()
@@ -142,7 +142,7 @@ func (s *Server) Pause(stream Synchronization_PauseServer) error {
 		return errors.Wrap(err, "unable to register prompter")
 	}
 
-	// Perform termination.
+	// Perform pause(s).
 	// TODO: Figure out a way to monitor for cancellation.
 	err = s.manager.Pause(request.Selection, prompter)
 
@@ -163,7 +163,7 @@ func (s *Server) Pause(stream Synchronization_PauseServer) error {
 	return nil
 }
 
-// Resume resumes existing sessions.
+// Resume resumes sessions.
 func (s *Server) Resume(stream Synchronization_ResumeServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()
@@ -179,7 +179,7 @@ func (s *Server) Resume(stream Synchronization_ResumeServer) error {
 		return errors.Wrap(err, "unable to register prompter")
 	}
 
-	// Perform resuming.
+	// Perform resume(s).
 	// TODO: Figure out a way to monitor for cancellation.
 	err = s.manager.Resume(request.Selection, prompter)
 
@@ -200,7 +200,44 @@ func (s *Server) Resume(stream Synchronization_ResumeServer) error {
 	return nil
 }
 
-// Terminate terminates existing sessions.
+// Reset resets sessions.
+func (s *Server) Reset(stream Synchronization_ResetServer) error {
+	// Receive the first request.
+	request, err := stream.Recv()
+	if err != nil {
+		return errors.Wrap(err, "unable to receive request")
+	} else if err = request.ensureValid(true); err != nil {
+		return errors.Wrap(err, "received invalid reset request")
+	}
+
+	// Wrap the stream in a prompter and register it with the prompt server.
+	prompter, err := prompt.RegisterPrompter(&resetStreamPrompter{stream})
+	if err != nil {
+		return errors.Wrap(err, "unable to register prompter")
+	}
+
+	// Perform reset(s).
+	// TODO: Figure out a way to monitor for cancellation.
+	err = s.manager.Reset(request.Selection, prompter)
+
+	// Unregister the prompter.
+	prompt.UnregisterPrompter(prompter)
+
+	// Handle any errors.
+	if err != nil {
+		return err
+	}
+
+	// Signal completion.
+	if err := stream.Send(&ResetResponse{}); err != nil {
+		return errors.Wrap(err, "unable to send response")
+	}
+
+	// Success.
+	return nil
+}
+
+// Terminate terminates sessions.
 func (s *Server) Terminate(stream Synchronization_TerminateServer) error {
 	// Receive the first request.
 	request, err := stream.Recv()

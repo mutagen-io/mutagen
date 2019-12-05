@@ -368,14 +368,18 @@ func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Co
 }
 
 // resume attempts to reconnect and resume the session if it isn't currently
-// connected and synchronizing.
-func (c *controller) resume(prompter string) error {
+// connected and synchronizing. If lifecycleLockHeld is true, then halt will
+// assume that the lifecycle lock is held by the caller and will not attempt to
+// acquire it.
+func (c *controller) resume(prompter string, lifecycleLockHeld bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
-	// Lock the controller's lifecycle and defer its release.
-	c.lifecycleLock.Lock()
-	defer c.lifecycleLock.Unlock()
+	// If not already held, acquire the lifecycle lock and defer its release.
+	if !lifecycleLockHeld {
+		c.lifecycleLock.Lock()
+		defer c.lifecycleLock.Unlock()
+	}
 
 	// Don't allow any resume operations if the controller is disabled.
 	if c.disabled {
@@ -509,14 +513,18 @@ func (m controllerHaltMode) description() string {
 	}
 }
 
-// halt halts the session with the specified behavior.
-func (c *controller) halt(mode controllerHaltMode, prompter string) error {
+// halt halts the session with the specified behavior. If lifecycleLockHeld is
+// true, then halt will assume that the lifecycle lock is held by the caller and
+// will not attempt to acquire it.
+func (c *controller) halt(mode controllerHaltMode, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 
-	// Lock the controller's lifecycle and defer its release.
-	c.lifecycleLock.Lock()
-	defer c.lifecycleLock.Unlock()
+	// If not already held, acquire the lifecycle lock and defer its release.
+	if !lifecycleLockHeld {
+		c.lifecycleLock.Lock()
+		defer c.lifecycleLock.Unlock()
+	}
 
 	// Don't allow any additional halt operations if the controller is disabled,
 	// because either this session is being terminated or the service is
@@ -564,6 +572,41 @@ func (c *controller) halt(mode controllerHaltMode, prompter string) error {
 		}
 	} else {
 		panic("invalid halt mode specified")
+	}
+
+	// Success.
+	return nil
+}
+
+// reset resets synchronization session history by pausing the session (if it's
+// running), overwriting the ancestor data stored on disk with an empty
+// ancestor, and then resuming the session (if it was previously running).
+func (c *controller) reset(prompter string) error {
+	// Lock the controller's lifecycle and defer its release.
+	c.lifecycleLock.Lock()
+	defer c.lifecycleLock.Unlock()
+
+	// Check if the session is currently running.
+	running := c.cancel != nil
+
+	// If the session is running, pause it.
+	if running {
+		if err := c.halt(controllerHaltModePause, prompter, true); err != nil {
+			return errors.Wrap(err, "unable to pause session")
+		}
+	}
+
+	// Reset the session archive on disk.
+	archive := &core.Archive{}
+	if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
+		return errors.Wrap(err, "unable to clear session history")
+	}
+
+	// Resume the session if it was previously running.
+	if running {
+		if err := c.resume(prompter, true); err != nil {
+			return errors.Wrap(err, "unable to resume session")
+		}
 	}
 
 	// Success.
