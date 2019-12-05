@@ -423,7 +423,7 @@ func build() error {
 		}
 	}
 	if !(mode == "local" || mode == "slim" || mode == "release" || mode == "release-slim") {
-		return fmt.Errorf("invalid build mode: %w", mode)
+		return fmt.Errorf("invalid build mode: %s", mode)
 	}
 
 	// The only platform really suited to cross-compiling for every other
