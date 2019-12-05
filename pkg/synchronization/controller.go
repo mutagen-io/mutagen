@@ -1010,8 +1010,8 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		// been completely emptied on one side by deleting 2 or more content
 		// entries (usually indicating a non-persistent filesystem like a
 		// container filesystem). If so, switch to a halted state and wait for
-		// the user to manually propagate the deletion to indicate confirmation
-		// (or recreate the session).
+		// the user to manually propagate the deletion or recreate/reset the
+		// session.
 		if synchronizationMode.IsBidirectional() && oneEndpointEmptiedRoot(ancestor, αSnapshot, βSnapshot) {
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootEmptied
@@ -1043,7 +1043,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// Check if a root deletion is being propgated. If so, switch to a
 		// halted state and wait for the user to manually propagate the
-		// deletion to indicate confirmation.
+		// deletion or recreate/reset the session.
 		rootDeletion := false
 		for _, t := range αTransitions {
 			if isRootDeletion(t) {
@@ -1069,7 +1069,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 
 		// Check if a root type change is being propagated. If so, switch to a
 		// halted state and wait for the user to delete the content that's being
-		// overwritten to indicate confirmation.
+		// overwritten or recreate/reset the session.
 		rootTypeChange := false
 		for _, t := range αTransitions {
 			if isRootTypeChange(t) {
