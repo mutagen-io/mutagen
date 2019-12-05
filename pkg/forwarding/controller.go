@@ -102,15 +102,25 @@ func newSession(
 	mergedSourceConfiguration := MergeConfigurations(configuration, configurationSource)
 	mergedDestinationConfiguration := MergeConfigurations(configuration, configurationDestination)
 
-	// Attempt to connect to the endpoints. Session creation is only allowed
-	// after a successful initial connection, unless the session is created
-	// pre-paused, in which case we skip this step and allow connection errors
-	// to arise on the first resume operation.
+	// If the session isn't be created paused, then try to establish connections
+	// to any endpoints that might require prompting (e.g. SSH endpoints). This
+	// allows users to specify credentials during creation instead of having to
+	// invoke a separate resume command. If we connect endpoints here and don't
+	// hand them off to the runloop below, then defer their shutdown.
 	var sourceEndpoint, destinationEndpoint Endpoint
-	if !paused {
-		// Connect to the source endpoint.
+	defer func() {
+		if sourceEndpoint != nil {
+			sourceEndpoint.Shutdown()
+			sourceEndpoint = nil
+		}
+		if destinationEndpoint != nil {
+			destinationEndpoint.Shutdown()
+			destinationEndpoint = nil
+		}
+	}()
+	if !paused && source.Protocol.MightRequireInput() {
 		logger.Println("Connecting to source endpoint")
-		if sourceEndpoint, err = connect(
+		sourceEndpoint, err = connect(
 			logger.Sublogger("source"),
 			source,
 			prompter,
@@ -118,14 +128,15 @@ func newSession(
 			version,
 			mergedSourceConfiguration,
 			true,
-		); err != nil {
+		)
+		if err != nil {
 			logger.Println("Source connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to source")
 		}
-
-		// Connect to the destination endpoint.
+	}
+	if !paused && destination.Protocol.MightRequireInput() {
 		logger.Println("Connecting to destination endpoint")
-		if destinationEndpoint, err = connect(
+		destinationEndpoint, err = connect(
 			logger.Sublogger("destination"),
 			destination,
 			prompter,
@@ -133,8 +144,8 @@ func newSession(
 			version,
 			mergedDestinationConfiguration,
 			false,
-		); err != nil {
-			sourceEndpoint.Shutdown()
+		)
+		if err != nil {
 			logger.Println("Destination connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to destination")
 		}
@@ -161,15 +172,11 @@ func newSession(
 	// Compute the session path.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		sourceEndpoint.Shutdown()
-		destinationEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to compute session path")
 	}
 
 	// Save the session to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		sourceEndpoint.Shutdown()
-		destinationEndpoint.Shutdown()
 		return nil, errors.Wrap(err, "unable to save session")
 	}
 
@@ -187,13 +194,16 @@ func newSession(
 	}
 
 	// If the session isn't being created pre-paused, then start a forwarding
-	// loop.
+	// loop and mark the endpoints as handed off to that loop so that we don't
+	// defer their shutdown.
 	if !paused {
 		logger.Println("Starting forwarding loop")
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
 		go controller.run(context, sourceEndpoint, destinationEndpoint)
+		sourceEndpoint = nil
+		destinationEndpoint = nil
 	}
 
 	// Success.

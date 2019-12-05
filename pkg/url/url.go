@@ -21,6 +21,17 @@ func (k Kind) Supported() bool {
 	}
 }
 
+// MightRequireInput indicates whether or not a protocol might require
+// interactive user input (e.g. a password) while connecting.
+func (p Protocol) MightRequireInput() bool {
+	switch p {
+	case Protocol_SSH:
+		return true
+	default:
+		return false
+	}
+}
+
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
 	// Ensure that the URL is non-nil.
