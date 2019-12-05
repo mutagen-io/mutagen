@@ -488,8 +488,14 @@ func (c *controller) run(ctx context.Context) {
 }
 
 func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan error, ErrorSeverity, error) {
+	// Load the WebRTC API.
+	api, err := loadWebRTCAPI()
+	if err != nil {
+		return nil, nil, ErrorSeverityUnrecoverable, fmt.Errorf("unable to initialize tunnel network API: %w", err)
+	}
+
 	// Create an unconnected peer connection.
-	peerConnection, err := webrtcutil.API.NewPeerConnection(webrtc.Configuration{
+	peerConnection, err := api.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
 				URLs: []string{"stun:stun1.mutagen.io"},

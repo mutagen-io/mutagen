@@ -41,8 +41,14 @@ func HostTunnel(
 	logger *logging.Logger,
 	hostCredentials *TunnelHostCredentials,
 ) (ErrorSeverity, error) {
+	// Load the WebRTC API.
+	api, err := loadWebRTCAPI()
+	if err != nil {
+		return ErrorSeverityUnrecoverable, fmt.Errorf("unable to initialize tunnel network API: %w", err)
+	}
+
 	// Create an unconnected peer connection and defer its closure.
-	peerConnection, err := webrtcutil.API.NewPeerConnection(webrtc.Configuration{
+	peerConnection, err := api.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
 				URLs: []string{"stun:stun1.mutagen.io"},
