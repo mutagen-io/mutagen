@@ -56,6 +56,7 @@ func init() {
 		flushCommand,
 		pauseCommand,
 		resumeCommand,
+		resetCommand,
 		terminateCommand,
 	)
 }

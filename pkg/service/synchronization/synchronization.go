@@ -303,6 +303,68 @@ func (r *ResumeResponse) EnsureValid() error {
 	return nil
 }
 
+// ensureValid verifies that a ResetRequest is valid.
+func (r *ResetRequest) ensureValid(first bool) error {
+	// A nil reset request is not valid.
+	if r == nil {
+		return errors.New("nil reset request")
+	}
+
+	// Handle validation based on whether or not this is the first request in
+	// the stream.
+	if first {
+		// Validate the session selection specification.
+		if err := r.Selection.EnsureValid(); err != nil {
+			return errors.Wrap(err, "invalid session selection specification")
+		}
+
+		// Verify that the response field is empty.
+		if r.Response != "" {
+			return errors.New("non-empty prompt response")
+		}
+	} else {
+		// Ensure that no session selection specification is present when
+		// acknowledging messages.
+		if r.Selection != nil {
+			return errors.New("non-nil session selection specification on message acknowledgement")
+		}
+
+		// We can't really validate the response field, and an empty value may
+		// be appropriate. It's up to the process performing the prompting to
+		// decide.
+	}
+
+	// Success.
+	return nil
+}
+
+// EnsureValid verifies that a ResetResponse is valid.
+func (r *ResetResponse) EnsureValid() error {
+	// A nil reset response is not valid.
+	if r == nil {
+		return errors.New("nil reset response")
+	}
+
+	// Count the number of fields that are set.
+	var fieldsSet uint
+	if r.Message != "" {
+		fieldsSet++
+	}
+	if r.Prompt != "" {
+		fieldsSet++
+	}
+
+	// Enforce that at most a single field is set. Unlike CreateResponse, we
+	// allow neither to be set, which indicates completion. In CreateResponse,
+	// this completion is indicated by the session identifier being set.
+	if fieldsSet > 1 {
+		return errors.New("multiple fields set")
+	}
+
+	// Success.
+	return nil
+}
+
 // ensureValid verifies that a TerminateRequest is valid.
 func (r *TerminateRequest) ensureValid(first bool) error {
 	// A nil terminate request is not valid.

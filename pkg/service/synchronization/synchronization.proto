@@ -81,6 +81,16 @@ message ResumeResponse {
     string prompt = 2;
 }
 
+message ResetRequest {
+    selection.Selection selection = 1;
+    string response = 2;
+}
+
+message ResetResponse {
+    string message = 1;
+    string prompt = 2;
+}
+
 message TerminateRequest {
     selection.Selection selection = 1;
 }
@@ -95,5 +105,6 @@ service Synchronization {
     rpc Flush(stream FlushRequest) returns (stream FlushResponse) {}
     rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
     rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
+    rpc Reset(stream ResetRequest) returns (stream ResetResponse) {}
     rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
 }

@@ -175,7 +175,7 @@ func (m *Manager) Shutdown() {
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
 		m.logger.Println("Halting session", controller.session.Identifier)
-		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
+		if err := controller.halt(controllerHaltModeShutdown, "", false); err != nil {
 			// TODO: Log this halt failure.
 		}
 	}
@@ -282,7 +282,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 
 	// Attempt to pause the sessions.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModePause, prompter); err != nil {
+		if err := controller.halt(controllerHaltModePause, prompter, false); err != nil {
 			return errors.Wrap(err, "unable to pause session")
 		}
 	}
@@ -302,8 +302,28 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 	// Attempt to resume.
 	for _, controller := range controllers {
-		if err := controller.resume(prompter); err != nil {
+		if err := controller.resume(prompter, false); err != nil {
 			return errors.Wrap(err, "unable to resume session")
+		}
+	}
+
+	// Success.
+	return nil
+}
+
+// Reset tells the manager to reset session histories for sessions matching the
+// given specifications.
+func (m *Manager) Reset(selection *selection.Selection, prompter string) error {
+	// Extract the controllers for the sessions of interest.
+	controllers, err := m.selectControllers(selection)
+	if err != nil {
+		return errors.Wrap(err, "unable to locate requested sessions")
+	}
+
+	// Attempt to reset.
+	for _, controller := range controllers {
+		if err := controller.reset(prompter); err != nil {
+			return errors.Wrap(err, "unable to reset session")
 		}
 	}
 
@@ -323,7 +343,7 @@ func (m *Manager) Terminate(selection *selection.Selection, prompter string) err
 	// Attempt to terminate the sessions. Since we're terminating them, we're
 	// responsible for removing them from the session map.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModeTerminate, prompter); err != nil {
+		if err := controller.halt(controllerHaltModeTerminate, prompter, false); err != nil {
 			return errors.Wrap(err, "unable to terminate session")
 		}
 		m.sessionsLock.Lock()

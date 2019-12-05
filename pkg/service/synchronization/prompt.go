@@ -116,6 +116,46 @@ func (p *pauseStreamPrompter) Prompt(_ string) (string, error) {
 	return "", errors.New("prompting not supported on pause message streams")
 }
 
+// resetStreamPrompter implements Prompter on top of a
+// Synchronization_ResetServer stream.
+type resetStreamPrompter struct {
+	// stream is the underlying Synchronization_ResetServer stream.
+	stream Synchronization_ResetServer
+}
+
+// sendReceive performs a send/receive cycle by sending a ResetResponse and
+// receiving a ResetRequest.
+func (p *resetStreamPrompter) sendReceive(request *ResetResponse) (*ResetRequest, error) {
+	// Send the request.
+	if err := p.stream.Send(request); err != nil {
+		return nil, errors.Wrap(err, "unable to send request")
+	}
+
+	// Receive the response.
+	if response, err := p.stream.Recv(); err != nil {
+		return nil, errors.Wrap(err, "unable to receive response")
+	} else if err = response.ensureValid(false); err != nil {
+		return nil, errors.Wrap(err, "invalid response received")
+	} else {
+		return response, nil
+	}
+}
+
+// Message implements the Message method of Prompter.
+func (p *resetStreamPrompter) Message(message string) error {
+	_, err := p.sendReceive(&ResetResponse{Message: message})
+	return err
+}
+
+// Prompt implements the Prompt method of Prompter.
+func (p *resetStreamPrompter) Prompt(prompt string) (string, error) {
+	if response, err := p.sendReceive(&ResetResponse{Prompt: prompt}); err != nil {
+		return "", err
+	} else {
+		return response.Response, nil
+	}
+}
+
 // resumeStreamPrompter implements Prompter on top of a
 // Synchronization_ResumeServer stream.
 type resumeStreamPrompter struct {

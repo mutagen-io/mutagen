@@ -16,5 +16,6 @@ var Commands = []*cobra.Command{
 	flushCommand,
 	pauseCommand,
 	resumeCommand,
+	resetCommand,
 	terminateCommand,
 }
