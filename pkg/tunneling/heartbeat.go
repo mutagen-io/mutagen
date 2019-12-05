@@ -14,12 +14,12 @@ import (
 
 const (
 	// heartbeatInterval is the interval at which heartbeats are sent.
-	heartbeatInterval = 10 * time.Second
+	heartbeatInterval = 5 * time.Second
 	// heartbeatTimeout is the time after which a connection is considered timed
 	// out if not heartbeat request/response is received. Given a specific
 	// heartbeatInterval value, this timeout effectively regulates the maximum
 	// 1-way network latency.
-	heartbeatTimeout = heartbeatInterval + 5*time.Second
+	heartbeatTimeout = heartbeatInterval + 3*time.Second
 	// heartbeatMagic is the magic number used for hearbeats.
 	heartbeatMagic = 0x23571113
 )
