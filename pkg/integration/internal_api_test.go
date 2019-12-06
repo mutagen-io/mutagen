@@ -360,8 +360,14 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
 	}
 
-	// Allow the test to run in parallel.
-	t.Parallel()
+	// If we're on a POSIX system, then allow this test to run concurrently with
+	// other tests. On Windows, agent installation into Docker containers
+	// requires temporarily halting the container, meaning that multiple
+	// simultaneous Docker tests could conflict with each other, so we don't
+	// allow Docker-based tests to run concurrently on Windows.
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	// If we're on Windows, register a prompter that will answer yes to
 	// questions about stoping and restarting containers.
@@ -424,8 +430,14 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		t.Skip()
 	}
 
-	// Allow the test to run in parallel.
-	t.Parallel()
+	// If we're on a POSIX system, then allow this test to run concurrently with
+	// other tests. On Windows, agent installation into Docker containers
+	// requires temporarily halting the container, meaning that multiple
+	// simultaneous Docker tests could conflict with each other, so we don't
+	// allow Docker-based tests to run concurrently on Windows.
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	// If we're on Windows, register a prompter that will answer yes to
 	// questions about stoping and restarting containers.
@@ -494,7 +506,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		return nil
 	}
 
-	// Create a session.
+	// Create a forwarding session.
 	sessionID, err := forwardingManager.Create(
 		source,
 		destination,
@@ -515,9 +527,13 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		Specifications: []string{sessionID},
 	}
 
-	// Perform a resume on the session to ensure that it's connected. This is
-	// necessary since Create will perform asynchronous connections for local
-	// and Docker endpoints.
+	// Perform a resume operation to ensure that the session is connected and
+	// forwarding connections. Because the local endpoint connection will happen
+	// asynchronously, the session might not be forwarding connections by the
+	// time this command is invoked. In that case, this may end up killing the
+	// run loop started by the create operation and performing an extra
+	// reconnection to the Docker endpoint, but that's fine - it'll just
+	// exercise the code a bit more and serve as a check of correctness.
 	if err := forwardingManager.Resume(selection, ""); err != nil {
 		t.Error("unable to ensure session connectivity via resume:", err)
 	}

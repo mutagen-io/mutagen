@@ -41,7 +41,7 @@ func TestProtocolMightRequireInput(t *testing.T) {
 		{Protocol_Local, false},
 		{Protocol_SSH, true},
 		{Protocol_Tunnel, false},
-		{Protocol_Docker, false},
+		{Protocol_Docker, true},
 		{(Protocol_Docker + 1), false},
 	}
 

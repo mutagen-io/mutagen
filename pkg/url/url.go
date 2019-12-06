@@ -22,10 +22,12 @@ func (k Kind) Supported() bool {
 }
 
 // MightRequireInput indicates whether or not a protocol might require
-// interactive user input (e.g. a password) while connecting.
+// interactive user input (e.g. a password or confirmation) while connecting.
 func (p Protocol) MightRequireInput() bool {
 	switch p {
 	case Protocol_SSH:
+		return true
+	case Protocol_Docker:
 		return true
 	default:
 		return false
