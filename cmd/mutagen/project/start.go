@@ -41,7 +41,10 @@ func startMain(command *cobra.Command, arguments []string) error {
 			return errors.New("empty configuration file name")
 		}
 
-		// Switch to the directory (if it's not the current directory).
+		// Switch to the directory (if it's not the current directory). This is
+		// required for relative paths (including relative synchronization paths
+		// and relative Unix Domain Socket paths) to be resolved relative to the
+		// project configuration file.
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
 				return errors.Wrap(err, "unable to switch to target directory")
