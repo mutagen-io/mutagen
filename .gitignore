@@ -1,2 +1,5 @@
 # Ignore the output of the Mutagen build script.
 /build/
+
+# Ignore tunnel credentials.
+*.tunn
