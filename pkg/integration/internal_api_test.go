@@ -510,15 +510,22 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		t.Fatal("unable to create session:", err)
 	}
 
+	// Create a session selection specification.
+	selection := &selection.Selection{
+		Specifications: []string{sessionID},
+	}
+
+	// Perform a resume on the session to ensure that it's connected. This is
+	// necessary since Create will perform asynchronous connections for local
+	// and Docker endpoints.
+	if err := forwardingManager.Resume(selection, ""); err != nil {
+		t.Error("unable to ensure session connectivity via resume:", err)
+	}
+
 	// Attempt server read.
 	// TODO: Attempt a more complicated exchange here. Maybe gRPC?
 	if err := performHTTPRequest(); err != nil {
 		t.Error("error performing forwarded HTTP request:", err)
-	}
-
-	// Create a session selection specification.
-	selection := &selection.Selection{
-		Specifications: []string{sessionID},
 	}
 
 	// Pause the session.
