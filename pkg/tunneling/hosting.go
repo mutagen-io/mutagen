@@ -344,7 +344,11 @@ func hostDataChannel(
 	// Wait for cancellation or connectivity failure.
 	select {
 	case err = <-copyErrors:
-		logger.Println("Connection forwarding failed with error:", err)
+		if err != nil {
+			logger.Println("Connection forwarding failed with error:", err)
+		} else {
+			logger.Println("Connection closed")
+		}
 		connection.Close()
 		return
 	case <-ctx.Done():
