@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/pion/webrtc/v2"
+
+	"github.com/mutagen-io/mutagen/pkg/tunneling/webrtcutil"
 )
 
 // webrtcAPIOnce restricts the global WebRTC API to a single initialization.
@@ -28,6 +30,9 @@ func loadWebRTCAPI() (*webrtc.API, error) {
 	webrtcAPIOnce.Do(func() {
 		// Creating the setting engine.
 		settings := webrtc.SettingEngine{}
+
+		// Set up logging.
+		settings.LoggerFactory = webrtcutil.NewLoggerFactory("webrtc")
 
 		// Enable data channel detaching.
 		settings.DetachDataChannels()
