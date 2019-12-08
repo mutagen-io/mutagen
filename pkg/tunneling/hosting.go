@@ -67,7 +67,7 @@ func HostTunnel(
 	peerConnectionFailures := make(chan error, 1)
 	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		// Log the state change.
-		logger.Println("Connection state change to", state)
+		logger.Info("Connection state change to", state)
 
 		// If an error state has occurred, then send a notification. We send the
 		// the error in a non-blocking fashion, because we only need to monitor
@@ -173,7 +173,7 @@ func HostTunnel(
 	// Track incoming data channels.
 	dataChannels := make(chan *webrtc.DataChannel)
 	peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
-		logger.Println("Received data channel:", dataChannel.Label())
+		logger.Info("Received data channel:", dataChannel.Label())
 		select {
 		case dataChannels <- dataChannel:
 		case <-hostingCtx.Done():
@@ -231,7 +231,7 @@ func hostDataChannel(
 	// we're done.
 	connection, err := webrtcutil.NewConnection(dataChannel, nil)
 	if err != nil {
-		logger.Println("Unable to create data channel connection:", err)
+		logger.Info("Unable to create data channel connection:", err)
 		dataChannel.Close()
 		return
 	}
@@ -241,10 +241,10 @@ func hostDataChannel(
 	sendInitializationResponse := func(err error) error {
 		var errorMessage string
 		if err != nil {
-			logger.Println("Initialization failed with error:", err)
+			logger.Info("Initialization failed with error:", err)
 			errorMessage = err.Error()
 		} else {
-			logger.Println("Initialization succeeded")
+			logger.Info("Initialization succeeded")
 		}
 		return encoding.EncodeProtobuf(connection, &InitializeResponseVersion1{
 			Error: errorMessage,
@@ -254,7 +254,7 @@ func hostDataChannel(
 	// Receive an initialization request.
 	initializeRequest := &InitializeRequestVersion1{}
 	if err := encoding.DecodeProtobuf(connection, initializeRequest); err != nil {
-		logger.Println("Unable to decode initialization request:", err)
+		logger.Info("Unable to decode initialization request:", err)
 		return
 	} else if err = initializeRequest.ensureValid(); err != nil {
 		sendInitializationResponse(fmt.Errorf("Invalid initialization request: %w", err))
@@ -318,7 +318,7 @@ func hostDataChannel(
 		sendInitializationResponse(fmt.Errorf("unable to redirect agent output: %w", err))
 		return
 	}
-	agent.Stderr = logger.Sublogger("agent").Writer()
+	agent.Stderr = logger.Sublogger("agent").Writer(logging.LevelInfo)
 	if err := agent.Start(); err != nil {
 		sendInitializationResponse(fmt.Errorf("unable to start agent: %w", err))
 		return
@@ -326,7 +326,7 @@ func hostDataChannel(
 
 	// Send the initialization response.
 	if err := sendInitializationResponse(nil); err != nil {
-		logger.Println("Unable to send successful initialization response:", err)
+		logger.Info("Unable to send successful initialization response:", err)
 		return
 	}
 
@@ -345,14 +345,14 @@ func hostDataChannel(
 	select {
 	case err = <-copyErrors:
 		if err != nil {
-			logger.Println("Connection forwarding failed with error:", err)
+			logger.Info("Connection forwarding failed with error:", err)
 		} else {
-			logger.Println("Connection closed")
+			logger.Info("Connection closed")
 		}
 		connection.Close()
 		return
 	case <-ctx.Done():
-		logger.Println("Cancelled")
+		logger.Info("Cancelled")
 		return
 	}
 }

@@ -119,7 +119,7 @@ func newSession(
 		}
 	}()
 	if !paused && source.Protocol.MightRequireInput() {
-		logger.Println("Connecting to source endpoint")
+		logger.Info("Connecting to source endpoint")
 		sourceEndpoint, err = connect(
 			logger.Sublogger("source"),
 			source,
@@ -130,12 +130,12 @@ func newSession(
 			true,
 		)
 		if err != nil {
-			logger.Println("Source connection failure:", err)
+			logger.Info("Source connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to source")
 		}
 	}
 	if !paused && destination.Protocol.MightRequireInput() {
-		logger.Println("Connecting to destination endpoint")
+		logger.Info("Connecting to destination endpoint")
 		destinationEndpoint, err = connect(
 			logger.Sublogger("destination"),
 			destination,
@@ -146,7 +146,7 @@ func newSession(
 			false,
 		)
 		if err != nil {
-			logger.Println("Destination connection failure:", err)
+			logger.Info("Destination connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to destination")
 		}
 	}
@@ -197,7 +197,7 @@ func newSession(
 	// loop and mark the endpoints as handed off to that loop so that we don't
 	// defer their shutdown.
 	if !paused {
-		logger.Println("Starting forwarding loop")
+		logger.Info("Starting forwarding loop")
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
@@ -207,7 +207,7 @@ func newSession(
 	}
 
 	// Success.
-	logger.Println("Session initialized")
+	logger.Info("Session initialized")
 	return controller, nil
 }
 
@@ -256,7 +256,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	}
 
 	// Success.
-	logger.Println("Session loaded")
+	logger.Info("Session loaded")
 	return controller, nil
 }
 

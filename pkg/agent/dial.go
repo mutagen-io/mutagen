@@ -103,7 +103,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Redirect the process' standard error output to a tee'd writer that writes
 	// to both our buffer (via the valveWriter) and the logger.
-	agentProcess.Stderr = io.MultiWriter(errorWriter, logger.Sublogger("remote").Writer())
+	agentProcess.Stderr = io.MultiWriter(errorWriter, logger.Sublogger("remote").Writer(logging.LevelInfo))
 
 	// Start the process.
 	if err = agentProcess.Start(); err != nil {

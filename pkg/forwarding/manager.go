@@ -36,7 +36,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	sessions := make(map[string]*controller)
 
 	// Load existing sessions.
-	logger.Println("Looking for existing sessions")
+	logger.Info("Looking for existing sessions")
 	sessionsDirectory, err := pathForSession("")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute sessions directory")
@@ -47,7 +47,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	}
 	for _, c := range sessionsDirectoryContents {
 		identifier := c.Name()
-		logger.Println("Loading session", identifier)
+		logger.Info("Loading session", identifier)
 		if controller, err := loadSession(logger.Sublogger(identifier), tracker, identifier); err != nil {
 			continue
 		} else {
@@ -56,7 +56,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	}
 
 	// Success.
-	logger.Println("Session manager initialized")
+	logger.Info("Session manager initialized")
 	return &Manager{
 		logger:       logger,
 		tracker:      tracker,
@@ -160,7 +160,7 @@ func (m *Manager) selectControllers(selection *selection.Selection) ([]*controll
 // Shutdown tells the manager to gracefully halt sessions.
 func (m *Manager) Shutdown() {
 	// Log the shutdown.
-	m.logger.Println("Shutting down")
+	m.logger.Info("Shutting down")
 
 	// Poison state tracking to terminate monitoring.
 	m.tracker.Poison()
@@ -172,7 +172,7 @@ func (m *Manager) Shutdown() {
 	// Attempt to halt each session so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
-		m.logger.Println("Halting session", controller.session.Identifier)
+		m.logger.Info("Halting session", controller.session.Identifier)
 		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}

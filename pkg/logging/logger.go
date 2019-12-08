@@ -6,10 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-
-	"github.com/fatih/color"
-
-	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 // writer is an io.Writer that splits its input stream into lines and writes
@@ -106,104 +102,100 @@ func (l *Logger) Sublogger(name string) *Logger {
 	}
 }
 
-// output is the internal logging method.
-func (l *Logger) output(calldepth int, line string) {
-	// Add a prefix if necessary.
+// output is the shared internal logging method.
+func (l *Logger) output(level, line string) {
+	// Compute the formatted line.
 	if l.prefix != "" {
-		line = fmt.Sprintf("[%s] %s", l.prefix, line)
+		line = fmt.Sprintf("[%s|%s] %s", l.prefix, level, line)
+	} else {
+		line = fmt.Sprintf("[%s] %s", level, line)
 	}
 
 	// Log.
-	log.Output(calldepth, line)
+	log.Output(4, line)
 }
 
-// Print logs information with semantics equivalent to fmt.Print.
-func (l *Logger) Print(v ...interface{}) {
-	if l != nil {
-		l.output(3, fmt.Sprint(v...))
+// println provides logging with formatting semantics equivalent to fmt.Println.
+func (l *Logger) println(level Level, v ...interface{}) {
+	if l != nil && currentLevel >= level {
+		l.output(level.String(), fmt.Sprintln(v...))
 	}
 }
 
-// Printf logs information with semantics equivalent to fmt.Printf.
-func (l *Logger) Printf(format string, v ...interface{}) {
-	if l != nil {
-		l.output(3, fmt.Sprintf(format, v...))
+// printf provides logging with formatting semantics equivalent to fmt.Printf.
+func (l *Logger) printf(level Level, format string, v ...interface{}) {
+	if l != nil && currentLevel >= level {
+		l.output(level.String(), fmt.Sprintf(format, v...))
 	}
 }
 
-// Println logs information with semantics equivalent to fmt.Println.
-func (l *Logger) Println(v ...interface{}) {
-	if l != nil {
-		l.output(3, fmt.Sprintln(v...))
-	}
+// Error logs errors with formatting semantics equivalent to fmt.Println.
+func (l *Logger) Error(v ...interface{}) {
+	l.println(LevelError, v...)
 }
 
-// Writer returns an io.Writer that writes lines using Println.
-func (l *Logger) Writer() io.Writer {
-	// If the logger is nil, then we can just discard input since it won't be
-	// logged anyway. This saves us the overhead of scanning lines.
-	if l == nil {
-		return ioutil.Discard
-	}
-
-	// Create the writer.
-	return &writer{
-		callback: func(s string) {
-			l.Println(s)
-		},
-	}
+// Errorf logs errors with formatting semantics equivalent to fmt.Printf.
+func (l *Logger) Errorf(format string, v ...interface{}) {
+	l.printf(LevelError, format, v...)
 }
 
-// Debug logs information with semantics equivalent to fmt.Print, but only if
-// debugging is enabled (otherwise it's a no-op).
+// Warning logs warnings with formatting semantics equivalent to fmt.Println.
+func (l *Logger) Warning(v ...interface{}) {
+	l.println(LevelWarning, v...)
+}
+
+// Warningf logs warnings with formatting semantics equivalent to fmt.Printf.
+func (l *Logger) Warningf(format string, v ...interface{}) {
+	l.printf(LevelWarning, format, v...)
+}
+
+// Info logs information with formatting semantics equivalent to fmt.Println.
+func (l *Logger) Info(v ...interface{}) {
+	l.println(LevelInfo, v...)
+}
+
+// Infof logs information with formatting semantics equivalent to fmt.Printf.
+func (l *Logger) Infof(format string, v ...interface{}) {
+	l.printf(LevelInfo, format, v...)
+}
+
+// Debug logs debug information with formatting semantics equivalent to
+// fmt.Println.
 func (l *Logger) Debug(v ...interface{}) {
-	if l != nil && mutagen.DebugEnabled {
-		l.output(3, fmt.Sprint(v...))
-	}
+	l.println(LevelDebug, v...)
 }
 
-// Debugf logs information with semantics equivalent to fmt.Printf, but only if
-// debugging is enabled (otherwise it's a no-op).
+// Debugf logs debug information with formatting semantics equivalent to
+// fmt.Printf.
 func (l *Logger) Debugf(format string, v ...interface{}) {
-	if l != nil && mutagen.DebugEnabled {
-		l.output(3, fmt.Sprintf(format, v...))
-	}
+	l.printf(LevelDebug, format, v...)
 }
 
-// Debugln logs information with semantics equivalent to fmt.Println, but only
-// if debugging is enabled (otherwise it's a no-op).
-func (l *Logger) Debugln(v ...interface{}) {
-	if l != nil && mutagen.DebugEnabled {
-		l.output(3, fmt.Sprintln(v...))
-	}
+// Trace logs tracing information with formatting semantics equivalent to
+// fmt.Println.
+func (l *Logger) Trace(v ...interface{}) {
+	l.println(LevelTrace, v...)
 }
 
-// DebugWriter returns an io.Writer that writes lines using Debugln.
-func (l *Logger) DebugWriter() io.Writer {
-	// If the logger is nil, then we can just discard input since it won't be
-	// logged anyway. This saves us the overhead of scanning lines.
-	if l == nil {
+// Tracef logs tracing information with formatting semantics equivalent to
+// fmt.Printf.
+func (l *Logger) Tracef(format string, v ...interface{}) {
+	l.printf(LevelTrace, format, v...)
+}
+
+// Writer returns an io.Writer that logs output lines using the specified level.
+func (l *Logger) Writer(level Level) io.Writer {
+	// If the logger is nil or the current logging level is set lower than the
+	// requested level, then we can just discard input since it won't be logged
+	// anyway. This saves us the overhead of scanning lines.
+	if l == nil || currentLevel < level {
 		return ioutil.Discard
 	}
 
 	// Create the writer.
 	return &writer{
 		callback: func(s string) {
-			l.Debugln(s)
+			l.println(level, s)
 		},
-	}
-}
-
-// Warn logs error information with a warning prefix and yellow color.
-func (l *Logger) Warn(err error) {
-	if l != nil {
-		l.output(3, color.YellowString("Warning: %v", err))
-	}
-}
-
-// Error logs error information with an error prefix and red color.
-func (l *Logger) Error(err error) {
-	if l != nil {
-		l.output(3, color.RedString("Error: %v", err))
 	}
 }

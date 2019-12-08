@@ -36,7 +36,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	tunnels := make(map[string]*controller)
 
 	// Load existing tunnels.
-	logger.Println("Looking for existing tunnels")
+	logger.Info("Looking for existing tunnels")
 	tunnelsDirectory, err := pathForTunnel("")
 	if err != nil {
 		return nil, fmt.Errorf("unable to compute tunnels directory: %w", err)
@@ -48,7 +48,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	for _, c := range tunnelsDirectoryContents {
 		// TODO: Ensure that the name matches the expected format.
 		identifier := c.Name()
-		logger.Println("Loading tunnel", identifier)
+		logger.Info("Loading tunnel", identifier)
 		if controller, err := loadTunnel(logger.Sublogger(identifier), tracker, identifier); err != nil {
 			continue
 		} else {
@@ -57,7 +57,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	}
 
 	// Success.
-	logger.Println("Tunnel manager initialized")
+	logger.Info("Tunnel manager initialized")
 	return &Manager{
 		logger:      logger,
 		tracker:     tracker,
@@ -161,7 +161,7 @@ func (m *Manager) selectControllers(selection *selection.Selection) ([]*controll
 // Shutdown tells the manager to gracefully halt tunnels.
 func (m *Manager) Shutdown() {
 	// Log the shutdown.
-	m.logger.Println("Shutting down")
+	m.logger.Info("Shutting down")
 
 	// Poison state tracking to terminate monitoring.
 	m.tracker.Poison()
@@ -173,7 +173,7 @@ func (m *Manager) Shutdown() {
 	// Attempt to halt each tunnel so that it can shutdown cleanly. Ignore but
 	// log any that fail to halt.
 	for _, controller := range m.tunnels {
-		m.logger.Println("Halting tunnel", controller.tunnel.Identifier)
+		m.logger.Info("Halting tunnel", controller.tunnel.Identifier)
 		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}

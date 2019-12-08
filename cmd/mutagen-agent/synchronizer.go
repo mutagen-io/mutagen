@@ -27,7 +27,7 @@ const (
 func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
-	logger.Println("Performing initial housekeeping")
+	logger.Info("Performing initial housekeeping")
 	housekeeping.Housekeep()
 
 	// Create a ticker to regulate housekeeping and defer its shutdown.
@@ -40,7 +40,7 @@ func housekeepRegularly(context context.Context, logger *logging.Logger) {
 		case <-context.Done():
 			return
 		case <-ticker.C:
-			logger.Println("Performing regular housekeeping")
+			logger.Info("Performing regular housekeeping")
 			housekeeping.Housekeep()
 		}
 	}

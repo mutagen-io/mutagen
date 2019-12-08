@@ -177,7 +177,7 @@ func newTunnel(
 
 	// If the tunnel isn't being created paused, then start a connection loop.
 	if !paused {
-		logger.Println("Starting tunnel connection loop")
+		logger.Info("Starting tunnel connection loop")
 		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
@@ -185,7 +185,7 @@ func newTunnel(
 	}
 
 	// Success.
-	logger.Println("Tunnel initialized")
+	logger.Info("Tunnel initialized")
 	return controller, hostCredentials, nil
 }
 
@@ -227,7 +227,7 @@ func loadTunnel(logger *logging.Logger, tracker *state.Tracker, identifier strin
 	}
 
 	// Success.
-	logger.Println("Tunnel loaded")
+	logger.Info("Tunnel loaded")
 	return controller, nil
 }
 
@@ -379,7 +379,7 @@ func (c *controller) run(ctx context.Context) {
 	// Defer resource and state cleanup.
 	defer func() {
 		// Log the termination.
-		c.logger.Println("Run loop terminating")
+		c.logger.Info("Run loop terminating")
 
 		// Shut down any active peer connection.
 		if peerConnection != nil {
@@ -406,16 +406,16 @@ func (c *controller) run(ctx context.Context) {
 		c.stateLock.Unlock()
 
 		// Create the peer connection.
-		c.logger.Println("Attempting a peer connection")
+		c.logger.Info("Attempting a peer connection")
 		peerConnection, peerConnectionFailures, severity, err := c.connect(ctx)
 		if err != nil {
 			// If this is an unrecoverable error, then halt.
 			if severity == ErrorSeverityUnrecoverable {
-				c.logger.Println("Peer connection unrecoverable error:", err)
+				c.logger.Info("Peer connection unrecoverable error:", err)
 				unrecoverableErr = err
 				break
 			} else {
-				c.logger.Println("Peer connection error:", err)
+				c.logger.Info("Peer connection error:", err)
 			}
 
 			// Update the error state.
@@ -433,7 +433,7 @@ func (c *controller) run(ctx context.Context) {
 
 			// If this is a delayed recovery error, then wait before retrying.
 			if severity == ErrorSeverityDelayedRecoverable {
-				c.logger.Println("Waiting to attempt reconnection")
+				c.logger.Info("Waiting to attempt reconnection")
 				select {
 				case <-time.After(tunnelConnectRetryDelayTime):
 				case <-ctx.Done():
@@ -446,17 +446,17 @@ func (c *controller) run(ctx context.Context) {
 		}
 
 		// Upate the state to connected.
-		c.logger.Println("Peer connection successful")
+		c.logger.Info("Peer connection successful")
 		c.stateLock.Lock()
 		c.state.Status = Status_Connected
 		c.stateLock.Unlock()
 
 		// Perform serving.
-		c.logger.Println("Serving peer connection")
+		c.logger.Info("Serving peer connection")
 		err = c.serve(ctx, peerConnection, peerConnectionFailures)
 
 		// Close the peer connection.
-		c.logger.Println("Closing peer connection due to error:", err)
+		c.logger.Info("Closing peer connection due to error:", err)
 		peerConnection.Close()
 		peerConnection = nil
 
@@ -524,7 +524,7 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 	peerConnectionFailures := make(chan error, 1)
 	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		// Log the state change.
-		c.logger.Println("Connection state change to", state)
+		c.logger.Info("Connection state change to", state)
 
 		// If the connection state has switched to connected, then send a
 		// notification. We do this in a non-blocking fashion because (a) we

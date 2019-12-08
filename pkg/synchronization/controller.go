@@ -128,7 +128,7 @@ func newSession(
 		}
 	}()
 	if !paused && alpha.Protocol.MightRequireInput() {
-		logger.Println("Connecting to alpha endpoint")
+		logger.Info("Connecting to alpha endpoint")
 		alphaEndpoint, err = connect(
 			logger.Sublogger("alpha"),
 			alpha,
@@ -139,12 +139,12 @@ func newSession(
 			true,
 		)
 		if err != nil {
-			logger.Println("Alpha connection failure:", err)
+			logger.Info("Alpha connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to alpha")
 		}
 	}
 	if !paused && beta.Protocol.MightRequireInput() {
-		logger.Println("Connecting to beta endpoint")
+		logger.Info("Connecting to beta endpoint")
 		betaEndpoint, err = connect(
 			logger.Sublogger("beta"),
 			beta,
@@ -155,7 +155,7 @@ func newSession(
 			false,
 		)
 		if err != nil {
-			logger.Println("Beta connection failure:", err)
+			logger.Info("Beta connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to beta")
 		}
 	}
@@ -216,7 +216,7 @@ func newSession(
 	// synchronization loop and mark the endpoints as handed off to that loop so
 	// that we don't defer their shutdown.
 	if !paused {
-		logger.Println("Starting synchronization loop")
+		logger.Info("Starting synchronization loop")
 		context, cancel := contextpkg.WithCancel(contextpkg.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
@@ -227,7 +227,7 @@ func newSession(
 	}
 
 	// Success.
-	logger.Println("Session initialized")
+	logger.Info("Session initialized")
 	return controller, nil
 }
 
@@ -291,7 +291,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	}
 
 	// Success.
-	logger.Println("Session loaded")
+	logger.Info("Session loaded")
 	return controller, nil
 }
 
