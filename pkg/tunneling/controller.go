@@ -445,10 +445,11 @@ func (c *controller) run(ctx context.Context) {
 			continue
 		}
 
-		// Upate the state to connected.
+		// Upate the state to connected and clear any previous error.
 		c.logger.Info("Peer connection successful")
 		c.stateLock.Lock()
 		c.state.Status = Status_Connected
+		c.state.LastError = ""
 		c.stateLock.Unlock()
 
 		// Perform serving.
