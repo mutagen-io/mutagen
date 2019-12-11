@@ -16,16 +16,16 @@ questions (to the extent that they apply):
 ### Which version of Mutagen are you using (`mutagen version`)?
 
 
-### Which operating system (type/version/architecture) are you using?
+### Which operating system (platform/version/architecture) are you using?
 
 
 ### What is the issue that you're experiencing?
 
 
-#### What are the steps to reproduce?
+#### What are the steps to reproduce the issue?
 
 
-#### What is the expected result?
+#### What is the expected result of these steps in the absence of the issue?
 
 
 #### What is the actual result?
