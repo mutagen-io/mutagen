@@ -35,9 +35,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 		case OwnershipIdentifierKindInvalid:
 			return nil, errors.New("invalid user specification")
 		case OwnershipIdentifierKindPOSIXID:
-			if _, err := userpkg.LookupId(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup user by ID")
-			} else if u, err := strconv.Atoi(identifier); err != nil {
+			if u, err := strconv.Atoi(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
 			} else if u < 0 {
 				return nil, errors.New("negative user ID")
@@ -68,9 +66,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 		case OwnershipIdentifierKindInvalid:
 			return nil, errors.New("invalid group specification")
 		case OwnershipIdentifierKindPOSIXID:
-			if _, err := userpkg.LookupGroupId(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup group by ID")
-			} else if g, err := strconv.Atoi(identifier); err != nil {
+			if g, err := strconv.Atoi(identifier); err != nil {
 				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
 			} else if g < 0 {
 				return nil, errors.New("negative group ID")
