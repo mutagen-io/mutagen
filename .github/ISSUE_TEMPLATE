@@ -1,12 +1,17 @@
+<!--
+
 If you have a question about Mutagen or a feature request, please use the
-[Spectrum chat](https://spectrum.chat/mutagen) to discuss.
+Spectrum chat to discuss:
+https://spectrum.chat/mutagen
 
 For security issues, or even those that you just suspect might be
-security-related, please see the
-[security documentation](https://github.com/mutagen-io/mutagen/blob/master/SECURITY.md).
+security-related, please see the security documentation:
+https://github.com/mutagen-io/mutagen/blob/master/SECURITY.md
 
 If you're experiencing an issue with Mutagen, please answer the following
 questions (to the extent that they apply):
+
+-->
 
 ### Which version of Mutagen are you using (`mutagen version`)?
 
