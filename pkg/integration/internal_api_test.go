@@ -360,8 +360,14 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 		t.Fatal("unknown end-to-end test mode specified:", endToEndTestMode)
 	}
 
-	// Allow the test to run in parallel.
-	t.Parallel()
+	// If we're on a POSIX system, then allow this test to run concurrently with
+	// other tests. On Windows, agent installation into Docker containers
+	// requires temporarily halting the container, meaning that multiple
+	// simultaneous Docker tests could conflict with each other, so we don't
+	// allow Docker-based tests to run concurrently on Windows.
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	// If we're on Windows, register a prompter that will answer yes to
 	// questions about stoping and restarting containers.
@@ -424,8 +430,14 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		t.Skip()
 	}
 
-	// Allow the test to run in parallel.
-	t.Parallel()
+	// If we're on a POSIX system, then allow this test to run concurrently with
+	// other tests. On Windows, agent installation into Docker containers
+	// requires temporarily halting the container, meaning that multiple
+	// simultaneous Docker tests could conflict with each other, so we don't
+	// allow Docker-based tests to run concurrently on Windows.
+	if runtime.GOOS != "windows" {
+		t.Parallel()
+	}
 
 	// If we're on Windows, register a prompter that will answer yes to
 	// questions about stoping and restarting containers.
