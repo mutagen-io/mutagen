@@ -5,37 +5,58 @@ import (
 )
 
 // oneEndpointEmptiedRoot determines whether or not one endpoint (but not both)
-// transitioned from a directory root with two or more content entries to a
+// transitioned from a directory root with a non-trivial amount of content to a
 // directory root without any content.
-func oneEndpointEmptiedRoot(ancestor, αSnapshot, βSnapshot *core.Entry) bool {
-	// Check if alpha emptied root content.
-	αEmptiedRoot := ancestor != nil && αSnapshot != nil &&
-		ancestor.Kind == core.EntryKind_Directory &&
-		αSnapshot.Kind == core.EntryKind_Directory &&
-		len(ancestor.Contents) >= 2 && len(αSnapshot.Contents) == 0
+func oneEndpointEmptiedRoot(ancestor, alpha, beta *core.Entry) bool {
+	// Check that all three entries are directories. If not, then this check
+	// doesn't apply.
+	if !(ancestor.IsDirectory() && alpha.IsDirectory() && beta.IsDirectory()) {
+		return false
+	}
 
-	// Check if beta emptied root content.
-	βEmptiedRoot := ancestor != nil && βSnapshot != nil &&
-		ancestor.Kind == core.EntryKind_Directory &&
-		βSnapshot.Kind == core.EntryKind_Directory &&
-		len(ancestor.Contents) >= 2 && len(βSnapshot.Contents) == 0
+	// Check whether or not the ancestor has a non-trivial amount of content.
+	// We define that as having more than one entry as immediate children of the
+	// synchronization root. If not, then this check doesn't apply.
+	if len(ancestor.Contents) < 2 {
+		return false
+	}
+
+	// Check if alpha deleted all content within the root.
+	alphaEmptied := len(alpha.Contents) == 0
+
+	// Check if beta deleted all content within the root.
+	betaEmptied := len(beta.Contents) == 0
 
 	// Determine whether one (and only one) endpoint emptied root content.
-	return (αEmptiedRoot || βEmptiedRoot) && !(αEmptiedRoot && βEmptiedRoot)
+	return (alphaEmptied || betaEmptied) && !(alphaEmptied && betaEmptied)
 }
 
-// isRootDeletion determines whether or not the specified change is a root
-// deletion.
-func isRootDeletion(change *core.Change) bool {
-	return change.Path == "" && change.Old != nil && change.New == nil
+// containsRootDeletion determines whether or not any of the specified changes
+// is a root deletion change.
+func containsRootDeletion(changes []*core.Change) bool {
+	// Look for root deletions.
+	for _, change := range changes {
+		if change.IsRootDeletion() {
+			return true
+		}
+	}
+
+	// Done.
+	return false
 }
 
-// isRootTypeChange determines whether or not the specified change is a root
-// type change.
-func isRootTypeChange(change *core.Change) bool {
-	return change.Path == "" &&
-		change.Old != nil && change.New != nil &&
-		change.Old.Kind != change.New.Kind
+// containsRootTypeChange determines whether or not any of the specified changes
+// is a root type change.
+func containsRootTypeChange(changes []*core.Change) bool {
+	// Look for root type changes.
+	for _, change := range changes {
+		if change.IsRootTypeChange() {
+			return true
+		}
+	}
+
+	// Done.
+	return false
 }
 
 // filteredPathsAreSubset checks whether or not a slice of filtered paths is a

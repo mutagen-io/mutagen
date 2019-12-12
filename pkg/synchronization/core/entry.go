@@ -77,6 +77,11 @@ func (e *Entry) EnsureValid() error {
 	return nil
 }
 
+// IsDirectory indicates whether or not the entry represents a directory.
+func (e *Entry) IsDirectory() bool {
+	return e != nil && e.Kind == EntryKind_Directory
+}
+
 // entryVisitor is a callback type used for Entry.walk. It receives two
 // arguments: the path of the entry within the entry hierarchy and the entry
 // itself.
