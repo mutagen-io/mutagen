@@ -197,9 +197,9 @@ func (t *transport) probeContainer() error {
 	// env on Windows, and we'd never see what error arose on the Windows side.
 	if home == "" {
 		t.containerProbeError = errors.Errorf(
-			"container probing failed under POSIX hypothesis (%s) and Windows hypothesis (%s)",
-			posixErr.Error(),
-			windowsErr.Error(),
+			"container probing failed under POSIX hypothesis (%v) and Windows hypothesis (%v)",
+			posixErr,
+			windowsErr,
 		)
 		return t.containerProbeError
 	}
