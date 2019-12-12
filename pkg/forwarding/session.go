@@ -3,8 +3,6 @@ package forwarding
 import (
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
-
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -19,8 +17,6 @@ func (s *Session) EnsureValid() error {
 	// Ensure that the session identifier is valid.
 	if s.Identifier == "" {
 		return errors.New("empty session identifier")
-	} else if _, err := uuid.Parse(s.Identifier); err != nil {
-		return errors.New("session identifier is not a valid UUID")
 	}
 
 	// Ensure that the session version is supported.

@@ -5,10 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
-
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/url"
@@ -191,11 +190,10 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Create a unique session identifier.
-	randomUUID, err := uuid.NewRandom()
+	identifier, err := identifier.New(identifier.PrefixForwarding)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to generate UUID for session")
+		return "", errors.Wrap(err, "unable to generate identifier for session")
 	}
-	identifier := randomUUID.String()
 
 	// Attempt to create a session.
 	controller, err := newSession(

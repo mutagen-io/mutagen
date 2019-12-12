@@ -144,6 +144,17 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
+basex
+
+https://github.com/eknkc/basex
+
+Copyright (c) 2017 Ekin Koc
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
 go-acl
 
 https://github.com/hectane/go-acl
