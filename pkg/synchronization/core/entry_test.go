@@ -224,6 +224,29 @@ func TestEntryInvalidKindInvalid(t *testing.T) {
 	}
 }
 
+func TestIsDirectory(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		entry             *Entry
+		expectIsDirectory bool
+	}{
+		{testNilEntry, false},
+		{testFile1Entry, false},
+		{testSymlinkEntry, false},
+		{testDirectory1Entry, true},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		isDirectory := testCase.entry.IsDirectory()
+		if isDirectory && !testCase.expectIsDirectory {
+			t.Error("test case incorrectly classified as directory")
+		} else if !isDirectory && testCase.expectIsDirectory {
+			t.Error("test case not correctly classified as directory")
+		}
+	}
+}
+
 func TestEntryWalk(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {

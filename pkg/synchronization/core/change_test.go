@@ -49,3 +49,56 @@ func TestChangeValid(t *testing.T) {
 		t.Error("valid change considered invalid:", err)
 	}
 }
+
+// TestIsRootDeletion tests that Change.IsRootDeletion behaves as expected.
+func TestIsRootDeletion(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		change               *Change
+		expectIsRootDeletion bool
+	}{
+		{&Change{New: testDirectory1Entry}, false},
+		{&Change{Old: testFile1Entry, New: testDirectory1Entry}, false},
+		{&Change{}, false},
+		{&Change{Old: testFile1Entry, New: testFile1Entry}, false},
+		{&Change{Old: testFile1Entry}, true},
+		{&Change{Old: testDirectory1Entry}, true},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		isRootDeletion := testCase.change.IsRootDeletion()
+		if isRootDeletion && !testCase.expectIsRootDeletion {
+			t.Error("test case incorrectly classified as root deletion")
+		} else if !isRootDeletion && testCase.expectIsRootDeletion {
+			t.Error("test case not correctly classified as root deletion")
+		}
+	}
+}
+
+// TestIsRootTypeChange tests that Change.IsRootTypeChange behaves as expected.
+func TestIsRootTypeChange(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		change                 *Change
+		expectIsRootTypeChange bool
+	}{
+		{&Change{}, false},
+		{&Change{Old: testFile1Entry}, false},
+		{&Change{Old: testDirectory1Entry}, false},
+		{&Change{Old: testFile1Entry, New: testFile1Entry}, false},
+		{&Change{Old: testDirectory1Entry, New: testDirectory1Entry}, false},
+		{&Change{Old: testFile1Entry, New: testDirectory1Entry}, true},
+		{&Change{Old: testDirectory1Entry, New: testFile1Entry}, true},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		isRootTypeChange := testCase.change.IsRootTypeChange()
+		if isRootTypeChange && !testCase.expectIsRootTypeChange {
+			t.Error("test case incorrectly classified as root type change")
+		} else if !isRootTypeChange && testCase.expectIsRootTypeChange {
+			t.Error("test case not correctly classified as root type change")
+		}
+	}
+}

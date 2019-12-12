@@ -40,34 +40,6 @@ func TestSynchronizationModeUnmarshal(t *testing.T) {
 	}
 }
 
-// TestSynchronizationModeIsBidirectional tests that SynchronizationMode
-// bidirectionality detection works as expected.
-func TestSynchronizationModeIsBidirectional(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		mode     SynchronizationMode
-		expected bool
-	}{
-		{SynchronizationMode_SynchronizationModeDefault, false},
-		{SynchronizationMode_SynchronizationModeTwoWaySafe, true},
-		{SynchronizationMode_SynchronizationModeTwoWayResolved, true},
-		{SynchronizationMode_SynchronizationModeOneWaySafe, false},
-		{SynchronizationMode_SynchronizationModeOneWayReplica, false},
-		{(SynchronizationMode_SynchronizationModeOneWayReplica + 1), false},
-	}
-
-	// Process test cases.
-	for _, testCase := range testCases {
-		if bidirectional := testCase.mode.IsBidirectional(); bidirectional != testCase.expected {
-			t.Errorf(
-				"mode bidirectionality (%t) does not match expected (%t)",
-				bidirectional,
-				testCase.expected,
-			)
-		}
-	}
-}
-
 // TestSynchronizationModeSupported tests that SynchronizationMode support
 // detection works as expected.
 func TestSynchronizationModeSupported(t *testing.T) {

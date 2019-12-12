@@ -30,3 +30,15 @@ func (c *Change) EnsureValid() error {
 	// Success.
 	return nil
 }
+
+// IsRootDeletion indicates whether or not the change represents a root
+// deletion.
+func (c *Change) IsRootDeletion() bool {
+	return c.Path == "" && c.Old != nil && c.New == nil
+}
+
+// IsRootTypeChange indicates whether or not the change represents a root type
+// change.
+func (c *Change) IsRootTypeChange() bool {
+	return c.Path == "" && c.Old != nil && c.New != nil && c.Old.Kind != c.New.Kind
+}
