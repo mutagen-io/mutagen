@@ -3,8 +3,6 @@ package forwarding
 import (
 	contextpkg "context"
 	"fmt"
-	"io"
-	"net"
 	"os"
 	syncpkg "sync"
 	"time"
@@ -642,88 +640,50 @@ func (c *controller) forward(source, destination Endpoint) error {
 	context, cancel := contextpkg.WithCancel(contextpkg.Background())
 	defer cancel()
 
-	// Clear any error state upon restart of this function. If there was a
-	// terminal error previously caused synchronization to fail, then the user
-	// will have had 30 seconds to review it (while the run loop is waiting to
-	// reconnect), so it's not like we're getting rid of it too quickly.
+	// Clear any error state and update the status to forwarding. While we're at
+	// it, capture a pointer to the state instance that all forwarding
+	// Goroutines spawned by this loop will update. This state instance will be
+	// replaced once this loop returns, so those background Goroutines can
+	// continue to safely update it without any risk of updating a future loop's
+	// state object. The only penalty is that both state objects will share the
+	// same lock, but that's a negligible overhead.
+	var state *State
 	c.stateLock.Lock()
-	if c.state.LastError != "" {
-		c.state.LastError = ""
-		c.stateLock.Unlock()
-	} else {
-		c.stateLock.UnlockWithoutNotify()
-	}
-
-	// Update status to forwarding.
-	c.stateLock.Lock()
+	c.state.LastError = ""
 	c.state.Status = Status_ForwardingConnections
+	state = c.state
 	c.stateLock.Unlock()
 
 	// Accept and forward connections until there's an error.
 	for {
 		// Accept a connection from the source.
-		connection, err := source.Open()
+		incoming, err := source.Open()
 		if err != nil {
 			return errors.Wrap(err, "unable to accept connection")
 		}
 
-		// Open the target connection to which we should forward.
-		target, err := destination.Open()
+		// Open the outgoing connection to which we should forward.
+		outgoing, err := destination.Open()
 		if err != nil {
-			connection.Close()
+			incoming.Close()
 			return errors.Wrap(err, "unable to open forwarding connection")
 		}
 
-		// Perform forwarding.
-		go forwardAndClose(context, connection, target, c.stateLock, c.state)
+		// Increment the open and total connection counts.
+		c.stateLock.Lock()
+		state.OpenConnections++
+		state.TotalConnections++
+		c.stateLock.Unlock()
+
+		// Perform forwarding and update state in a background Goroutine.
+		go func() {
+			// Perform forwarding.
+			ForwardAndClose(context, incoming, outgoing)
+
+			// Decrement open connection counts.
+			c.stateLock.Lock()
+			state.OpenConnections--
+			c.stateLock.Unlock()
+		}()
 	}
-}
-
-// forwardAndClose is a utility function used by controller.forward to handle
-// forwarding between an individual pair of connections in a background
-// Goroutine. It forwards until either the provided context is cancelled or one
-// of the connections fails, at which point it closes both connections. It
-// accepts state tracking parameters so that forwarding connection counts can be
-// tracked. Since controller's forwarding loop replaces the state object
-// entirely on failure, these forwarding Goroutines can safely continue to
-// update the old state that they're passed, even if they die off after the
-// forwarding loop has terminated (at the cost of a few spurious tracker
-// updates).
-func forwardAndClose(
-	context contextpkg.Context,
-	first, second net.Conn,
-	stateLock *state.TrackingLock,
-	state *State,
-) {
-	// Increment open and total connection counts.
-	stateLock.Lock()
-	state.OpenConnections++
-	state.TotalConnections++
-	stateLock.Unlock()
-
-	// Forward in background Goroutines and track failure.
-	copyErrors := make(chan error, 2)
-	go func() {
-		_, err := io.Copy(first, second)
-		copyErrors <- err
-	}()
-	go func() {
-		_, err := io.Copy(second, first)
-		copyErrors <- err
-	}()
-
-	// Wait for a copy error or termination.
-	select {
-	case <-context.Done():
-	case <-copyErrors:
-	}
-
-	// Close both connections.
-	first.Close()
-	second.Close()
-
-	// Decrement open connection counts.
-	stateLock.Lock()
-	state.OpenConnections--
-	stateLock.Unlock()
 }
