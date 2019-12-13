@@ -9,6 +9,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/closewrite"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements
@@ -95,12 +96,25 @@ func NewEndpoint(
 }
 
 // Open implements forwarding.Endpoint.Open.
-func (c *client) Open() (net.Conn, error) {
+func (c *client) Open() (connection net.Conn, err error) {
+	// Perform the appropriate opening operation.
 	if c.listener {
-		return c.multiplexer.Accept()
+		connection, err = c.multiplexer.Accept()
 	} else {
-		return c.multiplexer.Open()
+		connection, err = c.multiplexer.Open()
 	}
+
+	// Check for errors.
+	if err != nil {
+		return
+	}
+
+	// Wrap the connection to enable write closure since yamux doesn't support
+	// it natively.
+	connection = closewrite.Enable(connection)
+
+	// Done.
+	return
 }
 
 // Shutdown implements forwarding.Endpoint.Shutdown.

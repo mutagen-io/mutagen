@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"io"
+	"context"
 	"net"
 
 	"github.com/pkg/errors"
@@ -12,6 +12,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/closewrite"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
@@ -99,58 +100,42 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 
 	// Receive and forward connections indefinitely.
 	for {
-		// Receive the next connection. If this fails, then we should terminate
-		// serving because either the local listener has failed or the
-		// multiplexer has failed.
-		var receivedConnection net.Conn
+		// Receive the next incoming connection. If this fails, then we should
+		// terminate serving because either the local listener has failed or the
+		// multiplexer has failed. We wrap multiplexer connections to enable
+		// write closure since yamux doesn't support it natively.
+		var incoming net.Conn
 		if request.Listener {
-			if receivedConnection, err = endpoint.Open(); err != nil {
+			if incoming, err = endpoint.Open(); err != nil {
 				return errors.Wrap(err, "listener failure")
 			}
 		} else {
-			if receivedConnection, err = multiplexer.Accept(); err != nil {
+			incoming, err = multiplexer.Accept()
+			if err != nil {
 				return errors.Wrap(err, "multiplexer failure")
 			}
+			incoming = closewrite.Enable(incoming)
 		}
 
-		// Open the corresponding target connection. If the multiplexer fails,
+		// Open the corresponding outgoing connection. If the multiplexer fails,
 		// then we should terminate serving. If local dialing fails, then we can
-		// just close the accepted connection.
-		var outgoingConnection net.Conn
+		// just close the incoming connection. We wrap multiplexer connections
+		// to enable write closure since yamux doesn't support it natively.
+		var outgoing net.Conn
 		if request.Listener {
-			if outgoingConnection, err = multiplexer.Open(); err != nil {
+			outgoing, err = multiplexer.Open()
+			if err != nil {
 				return errors.Wrap(err, "multiplexer failure")
 			}
+			outgoing = closewrite.Enable(outgoing)
 		} else {
-			if outgoingConnection, err = endpoint.Open(); err != nil {
-				receivedConnection.Close()
+			if outgoing, err = endpoint.Open(); err != nil {
+				incoming.Close()
 				continue
 			}
 		}
 
 		// Perform forwarding.
-		go forwardAndClose(receivedConnection, outgoingConnection)
+		go forwarding.ForwardAndClose(context.Background(), incoming, outgoing)
 	}
-}
-
-// forwardAndClose is a simple utility function designed to perform connection
-// forwarding (and closure on failure) in a background Goroutine.
-func forwardAndClose(first, second net.Conn) {
-	// Forward in background Goroutines and track failure.
-	copyErrors := make(chan error, 2)
-	go func() {
-		_, err := io.Copy(first, second)
-		copyErrors <- err
-	}()
-	go func() {
-		_, err := io.Copy(second, first)
-		copyErrors <- err
-	}()
-
-	// Wait for a copy error.
-	<-copyErrors
-
-	// Close both connections.
-	first.Close()
-	second.Close()
 }
