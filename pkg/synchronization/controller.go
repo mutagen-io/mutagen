@@ -761,7 +761,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
 	// Clear any error state upon restart of this function. If there was a
 	// terminal error previously caused synchronization to fail, then the user
-	// will have had 30 seconds to review it (while the run loop is waiting to
+	// will have had time to review it (while the run loop is waiting to
 	// reconnect), so it's not like we're getting rid of it too quickly.
 	c.stateLock.Lock()
 	if c.state.LastError != "" {
