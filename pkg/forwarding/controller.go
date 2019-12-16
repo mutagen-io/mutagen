@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/mutagen-io/mutagen/pkg/contextutil"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
@@ -529,8 +528,10 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			// Check for cancellation to avoid a spurious connection to
 			// destination in case cancellation occurred while connecting to
 			// source.
-			if contextutil.IsCancelled(context) {
+			select {
+			case <-context.Done():
 				return
+			default:
 			}
 
 			// Ensure that destination is connected.
@@ -626,8 +627,10 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		// and monitoring for cancellation).
 		now := time.Now()
 		if now.Sub(lastForwardingFailureTime) >= autoReconnectInterval {
-			if contextutil.IsCancelled(context) {
+			select {
+			case <-context.Done():
 				return
+			default:
 			}
 		} else {
 			select {
