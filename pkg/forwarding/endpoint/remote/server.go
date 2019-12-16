@@ -125,6 +125,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		if request.Listener {
 			outgoing, err = multiplexer.Open()
 			if err != nil {
+				incoming.Close()
 				return errors.Wrap(err, "multiplexer failure")
 			}
 			outgoing = closewrite.Enable(outgoing)
