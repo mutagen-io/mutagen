@@ -21,7 +21,7 @@ const (
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = "alpha6"
+	VersionTag = "alpha7"
 )
 
 // Version provides a stringified version of the current Mutagen version.
