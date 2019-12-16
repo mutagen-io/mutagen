@@ -116,7 +116,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Write the project identifier to the lock file.
 	if _, err := locker.Write([]byte(identifier)); err != nil {
-		return errors.Wrap(err, "unable to write project session identifier")
+		return errors.Wrap(err, "unable to write project identifier")
 	}
 
 	// Load the configuration file.
