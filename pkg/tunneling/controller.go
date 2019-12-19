@@ -15,7 +15,6 @@ import (
 	"github.com/pion/webrtc/v2"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
-	"github.com/mutagen-io/mutagen/pkg/contextutil"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
@@ -427,8 +426,10 @@ func (c *controller) run(ctx context.Context) {
 			c.stateLock.Unlock()
 
 			// If the context has been cancelled, then terminate.
-			if contextutil.IsCancelled(ctx) {
+			select {
+			case <-ctx.Done():
 				return
+			default:
 			}
 
 			// If this is a delayed recovery error, then wait before retrying.
@@ -471,8 +472,10 @@ func (c *controller) run(ctx context.Context) {
 		c.stateLock.Unlock()
 
 		// If the context has been cancelled, then terminate.
-		if contextutil.IsCancelled(ctx) {
+		select {
+		case <-ctx.Done():
 			return
+		default:
 		}
 	}
 
