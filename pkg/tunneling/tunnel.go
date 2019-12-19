@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 )
 
@@ -15,8 +16,8 @@ func (p *TunnelHostCredentials) EnsureValid() error {
 	}
 
 	// Ensure that the tunnel identifier is valid.
-	if p.Identifier == "" {
-		return errors.New("empty tunnel identifier")
+	if !identifier.IsValid(p.Identifier) {
+		return errors.New("invalid tunnel identifier")
 	}
 
 	// Ensure that the tunnel version is supported.
@@ -56,8 +57,8 @@ func (t *Tunnel) EnsureValid() error {
 	}
 
 	// Ensure that the tunnel identifier is valid.
-	if t.Identifier == "" {
-		return errors.New("empty tunnel identifier")
+	if !identifier.IsValid(p.Identifier) {
+		return errors.New("invalid tunnel identifier")
 	}
 
 	// Ensure that the tunnel version is supported.

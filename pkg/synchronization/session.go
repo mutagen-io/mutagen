@@ -3,6 +3,7 @@ package synchronization
 import (
 	"github.com/pkg/errors"
 
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -15,8 +16,8 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the session identifier is valid.
-	if s.Identifier == "" {
-		return errors.New("empty session identifier")
+	if !identifier.IsValid(s.Identifier) {
+		return errors.New("invalid session identifier")
 	}
 
 	// Ensure that the session version is supported.
