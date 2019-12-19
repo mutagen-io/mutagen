@@ -6,12 +6,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// CollisionResistantLength is the number of random bytes needed to ensure
-	// collision-resistance in an identifier.
-	CollisionResistantLength = 32
-)
-
 // New returns a byte slice of the specified length with cryptographically
 // random conents.
 func New(length int) ([]byte, error) {

@@ -14,6 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
@@ -81,8 +82,9 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		locker.Unlock()
 	}()
 
-	// Read the full contents of the lock file. If it's empty, then assume we
-	// created it and just remove it.
+	// Read the project identifier from the lock file. If the lock file is
+	// empty, then we can assume that we created it when we created the lock and
+	// just remove it.
 	buffer := &bytes.Buffer{}
 	if length, err := buffer.ReadFrom(locker); err != nil {
 		return errors.Wrap(err, "unable to read project lock")
@@ -90,10 +92,15 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		removeLockFileOnReturn = true
 		return errors.New("project not running")
 	}
-	identifier := buffer.String()
+	projectIdentifier := buffer.String()
+
+	// Ensure that the project identifier is valid.
+	if !identifier.IsValid(projectIdentifier) {
+		return errors.New("invalid project identifier found in project lock")
+	}
 
 	// Compute the label selector that we're going to use to resume sessions.
-	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, identifier)
+	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
 
 	// Resume forwarding sessions.
 	if err := forward.ResumeWithLabelSelector(labelSelector); err != nil {
