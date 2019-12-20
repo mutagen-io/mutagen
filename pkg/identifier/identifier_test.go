@@ -79,6 +79,7 @@ func TestIsValid(t *testing.T) {
 		{"proj_jndACgB0qejgkorhU21q4oA56QvEfqV1p2yBH9N40h+", false},
 		{"proj_jndACgB0qejgkorhU21q4oA56QvEfqV1p2yBH9N40hK1", false},
 		{"pro9_jndACgB0qejgkorhU21q4oA56QvEfqV1p2yBH9N40hK", false},
+		{"PROJ_jndACgB0qejgkorhU21q4oA56QvEfqV1p2yBH9N40hK", false},
 		{"75a0fdc4-5c08-4aa4-99b5-154350dea3db", true},
 		{"proj_jndACgB0qejgkorhU21q4oA56QvEfqV1p2yBH9N40hK", true},
 	}
