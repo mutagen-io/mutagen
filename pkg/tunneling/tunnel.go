@@ -9,39 +9,39 @@ import (
 )
 
 // EnsureValid ensures that TunnelHostCredentials' invariants are respected.
-func (p *TunnelHostCredentials) EnsureValid() error {
+func (c *TunnelHostCredentials) EnsureValid() error {
 	// Ensure that the parameters are non-nil.
-	if p == nil {
+	if c == nil {
 		return errors.New("nil parameters")
 	}
 
 	// Ensure that the tunnel identifier is valid.
-	if !identifier.IsValid(p.Identifier) {
+	if !identifier.IsValid(c.Identifier) {
 		return errors.New("invalid tunnel identifier")
 	}
 
 	// Ensure that the tunnel version is supported.
-	if !p.Version.Supported() {
+	if !c.Version.Supported() {
 		return errors.New("unknown or unsupported tunnel version")
 	}
 
 	// Ensure that the creation time is present.
-	if p.CreationTime == nil {
+	if c.CreationTime == nil {
 		return errors.New("missing creation time")
 	}
 
 	// Ensure that the token is present.
-	if p.Token == "" {
+	if c.Token == "" {
 		return errors.New("empty token")
 	}
 
 	// Ensure that the secret has the correct length.
-	if len(p.Secret) != p.Version.secretLength() {
+	if len(c.Secret) != c.Version.secretLength() {
 		return errors.New("secret has incorrect length")
 	}
 
 	// Ensure that the configuration is valid.
-	if err := p.Configuration.EnsureValid(); err != nil {
+	if err := c.Configuration.EnsureValid(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
@@ -57,7 +57,7 @@ func (t *Tunnel) EnsureValid() error {
 	}
 
 	// Ensure that the tunnel identifier is valid.
-	if !identifier.IsValid(p.Identifier) {
+	if !identifier.IsValid(t.Identifier) {
 		return errors.New("invalid tunnel identifier")
 	}
 
