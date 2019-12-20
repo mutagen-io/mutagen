@@ -20,7 +20,7 @@ func TestBase62RoundTrip(t *testing.T) {
 	// Process test cases.
 	for _, value := range testCases {
 		if decoded, err := DecodeBase62(EncodeBase62(value)); err != nil {
-			t.Errorf("unable to decode value: %v", err)
+			t.Error("unable to decode value:", err)
 		} else if !bytes.Equal(decoded, value) {
 			t.Error("decoded bytes do not match original")
 		}
