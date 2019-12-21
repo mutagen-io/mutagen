@@ -20,7 +20,6 @@ func rootMain(command *cobra.Command, arguments []string) error {
 var RootCommand = &cobra.Command{
 	Use:          "tunnel",
 	Short:        "Create and manage tunnels",
-	Hidden:       true,
 	RunE:         rootMain,
 	SilenceUsage: true,
 }

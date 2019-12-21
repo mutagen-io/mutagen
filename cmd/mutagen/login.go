@@ -6,8 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 	"github.com/mutagen-io/mutagen/pkg/prompt"
 )
@@ -43,7 +41,6 @@ func loginMain(command *cobra.Command, arguments []string) error {
 var loginCommand = &cobra.Command{
 	Use:          "login",
 	Short:        "Log in to mutagen.io",
-	Hidden:       true,
 	RunE:         loginMain,
 	SilenceUsage: true,
 }
@@ -55,9 +52,6 @@ var loginConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	loginCommand.Short = loginCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := loginCommand.Flags()
 

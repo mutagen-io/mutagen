@@ -5,8 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 )
 
@@ -23,7 +21,6 @@ func logoutMain(command *cobra.Command, arguments []string) error {
 var logoutCommand = &cobra.Command{
 	Use:          "logout",
 	Short:        "Log out from mutagen.io",
-	Hidden:       true,
 	RunE:         logoutMain,
 	SilenceUsage: true,
 }
@@ -35,9 +32,6 @@ var logoutConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	logoutCommand.Short = logoutCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := logoutCommand.Flags()
 
