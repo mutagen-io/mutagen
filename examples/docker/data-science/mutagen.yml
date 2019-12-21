@@ -1,0 +1,23 @@
+# Set up network forwarding for godoc.
+forward:
+  jupyter:
+    source: "tcp:localhost:8888"
+    destination: "docker://data-science-container:tcp:localhost:8888"
+
+# Set up code and notebook synchronization.
+sync:
+  defaults:
+    ignore:
+      vcs: true
+  code:
+    alpha: "analysis"
+    beta: "docker://data-science-container/home/jovyan/data-science/analysis"
+    mode: "one-way-safe"
+  notebooks:
+    alpha: "."
+    beta: "docker://data-science-container/home/jovyan/data-science"
+    mode: "two-way-safe"
+    ignore:
+      paths:
+        - '*'
+        - '!*.ipynb'

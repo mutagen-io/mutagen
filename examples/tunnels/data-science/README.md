@@ -11,9 +11,11 @@ Mutagen v0.11.0-beta1 or later.
 
 This directory contains an example Python data science environment designed to
 run on a cloud-based container host (though it can also be run locally). It uses
-Mutagen's tunnel transport to synchronize code from the local editor to the
-remote environment and to forward local network traffic to a Jupyter notebook
-server running in the remote environment.
+Mutagen's
+[tunnel transport](https://mutagen.io/documentation/transports/tunnels) to
+synchronize code from the local editor to the remote environment and to forward
+local network traffic to a Jupyter notebook server running in the remote
+environment.
 
 
 ## Usage
@@ -31,8 +33,8 @@ with remote containers:
 mutagen tunnel create --name=data-science-tunnel > containers/tunnel/tunnel.tunn
 ```
 
-Next, start the Mutagen sessions for this project that will communicate over the
-tunnel:
+Next, start the Mutagen synchronization and forwarding sessions for this project
+that will communicate over the tunnel:
 
 ```
 mutagen project start
