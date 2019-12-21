@@ -15,8 +15,9 @@ func oneEndpointEmptiedRoot(ancestor, alpha, beta *core.Entry) bool {
 	}
 
 	// Check whether or not the ancestor has a non-trivial amount of content.
-	// We define that as having more than one entry as immediate children of the
-	// synchronization root. If not, then this check doesn't apply.
+	// We define a non-trivial amount of content as two or more entries that are
+	// immediate children of the synchronization root. If that's not the case,
+	// then this check doesn't apply.
 	if len(ancestor.Contents) < 2 {
 		return false
 	}
