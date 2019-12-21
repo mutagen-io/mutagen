@@ -2,9 +2,10 @@
 
 ---
 
-**Note:** This example uses as-of-yet unreleased Mutagen features. These
-features will ship with Mutagen v0.11.0. If you're interested in trying them
-early, please email [hello@mutagen.io](mailto:hello@mutagen.io).
+**Note:** This example uses Mutagen's new
+[tunnels transport](https://mutagen.io/documentation/transports/tunnels) that
+will ship with Mutagen v0.11.0, but you can already test these features using
+Mutagen v0.11.0-beta1 or later.
 
 ---
 
