@@ -88,6 +88,8 @@ func TestIsRootTypeChange(t *testing.T) {
 		{&Change{Old: testDirectory1Entry}, false},
 		{&Change{Old: testFile1Entry, New: testFile1Entry}, false},
 		{&Change{Old: testDirectory1Entry, New: testDirectory1Entry}, false},
+		{&Change{Old: testFile1Entry, New: testFile2Entry}, false},
+		{&Change{Old: testDirectory1Entry, New: testDirectory2Entry}, false},
 		{&Change{Old: testFile1Entry, New: testDirectory1Entry}, true},
 		{&Change{Old: testDirectory1Entry, New: testFile1Entry}, true},
 	}
