@@ -81,7 +81,10 @@ their workflows:
   (from [Mage2click](https://mage2.click/)) is a Docker-based development
   environment for Magento that uses Mutagen for file synchronization. Thanks to
   [**@u-maxx**](https://github.com/u-maxx) and
-  [**@shkoliar**](https://github.com/shkoliar).
+  [**@shkoliar**](https://github.com/shkoliar)!
+- [**MutagenMon**](https://github.com/rualark/MutagenMon) is a Python-based GUI
+  for monitoring Mutagen sessions. Thanks to
+  [**@rualark**](https://github.com/rualark)!
 
 
 ## Security
