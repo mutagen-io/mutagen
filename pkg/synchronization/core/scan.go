@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -8,8 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/text/unicode/norm"
 
@@ -97,7 +96,7 @@ func (s *scanner) file(
 	if cacheHit {
 		cachedModificationTime, err = ptypes.Timestamp(cached.ModificationTime)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to convert cached modification time")
+			return nil, fmt.Errorf("unable to convert cached modification time (%s): %w", path, err)
 		}
 	}
 
@@ -127,7 +126,7 @@ func (s *scanner) file(
 		if file == nil {
 			file, err = parent.OpenFile(metadata.Name)
 			if err != nil {
-				return nil, errors.Wrap(err, "unable to open file")
+				return nil, fmt.Errorf("unable to open file (%s): %w", path, err)
 			}
 			defer file.Close()
 		}
@@ -138,9 +137,9 @@ func (s *scanner) file(
 		// Copy data into the hash and verify that we copied the amount
 		// expected.
 		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
-			return nil, errors.Wrap(err, "unable to hash file contents")
+			return nil, fmt.Errorf("unable to hash file contents (%s): %w", path, err)
 		} else if uint64(copied) != metadata.Size {
-			return nil, errors.New("hashed size mismatch")
+			return nil, fmt.Errorf("hashed size mismatch (%s): %d != %d", path, copied, metadata.Size)
 		}
 
 		// Compute the digest.
@@ -156,7 +155,7 @@ func (s *scanner) file(
 		// Convert the new modification time to Protocol Buffers format.
 		modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to convert modification time")
+			return nil, fmt.Errorf("unable to convert file modification time (%s): %w", path, err)
 		}
 
 		// Create the new cache entry.
@@ -187,7 +186,7 @@ func (s *scanner) symbolicLink(
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read symbolic link target")
+		return nil, fmt.Errorf("unable to read symbolic link target (%s): %w", path, err)
 	}
 
 	// If requested, enforce that the link is portable, otherwise just ensure
@@ -195,10 +194,10 @@ func (s *scanner) symbolicLink(
 	if enforcePortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("invalid symbolic link (%s)", path))
+			return nil, fmt.Errorf("invalid symbolic link (%s): %w", path, err)
 		}
 	} else if target == "" {
-		return nil, errors.New("symbolic link target is empty")
+		return nil, fmt.Errorf("symbolic link target is empty (%s)", path)
 	}
 
 	// Success.
@@ -231,13 +230,13 @@ func (s *scanner) directory(
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
 	if metadata.DeviceID != s.deviceID {
-		return nil, errors.New("scan crossed filesystem boundary")
+		return nil, fmt.Errorf("scan crossed filesystem boundary (%s)", path)
 	}
 
 	// If the directory is not yet opened, then open it and defer its closure.
 	if directory == nil {
 		if d, err := parent.OpenDirectory(metadata.Name); err != nil {
-			return nil, errors.Wrap(err, "unable to open directory")
+			return nil, fmt.Errorf("unable to open directory (%s): %w", path, err)
 		} else {
 			directory = d
 			defer directory.Close()
@@ -247,7 +246,7 @@ func (s *scanner) directory(
 	// Read directory contents.
 	directoryContents, err := directory.ReadContents()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read directory contents")
+		return nil, fmt.Errorf("unable to read directory contents (%s): %w", path, err)
 	}
 
 	// RACE: There is technically a race condition here between the listing of
@@ -389,7 +388,7 @@ func Scan(
 		if os.IsNotExist(err) {
 			return nil, false, false, &Cache{}, nil, nil
 		} else {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to open synchronization root")
+			return nil, false, false, nil, nil, fmt.Errorf("unable to open synchronization root: %w", err)
 		}
 	}
 	defer rootObject.Close()
@@ -422,14 +421,14 @@ func Scan(
 	if rootKind == EntryKind_Directory {
 		// Probe and set Unicode decomposition behavior.
 		if decomposes, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root Unicode decomposition behavior")
+			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root Unicode decomposition behavior: %w", err)
 		} else {
 			decomposesUnicode = decomposes
 		}
 
 		// Probe and set executability preservation behavior.
 		if preserves, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root executability preservation behavior")
+			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
 		}
@@ -451,7 +450,7 @@ func Scan(
 		// the filesystem identifier alone may not be enough to determine this
 		// behavior.
 		if preserves, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
-			return nil, false, false, nil, nil, errors.Wrap(err, "unable to probe root parent executability preservation behavior")
+			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root parent executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
 		}
@@ -500,7 +499,7 @@ func Scan(
 	// Create the ignorer.
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
-		return nil, false, false, nil, nil, errors.Wrap(err, "unable to create ignorer")
+		return nil, false, false, nil, nil, fmt.Errorf("unable to create ignorer: %w", err)
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
