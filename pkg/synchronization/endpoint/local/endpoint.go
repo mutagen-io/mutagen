@@ -46,7 +46,9 @@ const (
 // endpoint provides a local, in-memory implementation of
 // synchronization.Endpoint for local files.
 type endpoint struct {
-	// logger is the endpoint's underlying logger.
+	// logger is the endpoint's underlying logger. This field is static and thus
+	// safe for concurrent usage (since the logger itself is safe for concurrent
+	// usage).
 	logger *logging.Logger
 	// root is the synchronization root for the endpoint. This field is static
 	// and thus safe for concurrent reads.
@@ -447,6 +449,9 @@ func stopAndDrainTimer(timer *time.Timer) {
 // watchRecursive is the watch loop for platforms where native recursive
 // watching facilities are available.
 func (e *endpoint) watchRecursive(context context.Context, pollingInterval uint32) {
+	// Create a sublogger for watching.
+	logger := e.logger.Sublogger("watching")
+
 	// Convert the polling interval to a duration.
 	pollingDuration := time.Duration(pollingInterval) * time.Second
 
@@ -473,6 +478,9 @@ func (e *endpoint) watchRecursive(context context.Context, pollingInterval uint3
 	// Loop and manage watches.
 WatchEstablishment:
 	for {
+		// Log the attempted watch establishment.
+		logger.Debug("Attempting to initialize recursive watching")
+
 		// Create our events channel.
 		events := make(chan string, nativeEventsChannelCapacity)
 
@@ -488,8 +496,15 @@ WatchEstablishment:
 		// before attempting to re-establish the watch.
 		select {
 		case <-context.Done():
+			// Log cancellation.
+			logger.Debug("Cancelled during initialization")
+
+			// Terminate watching.
 			return
-		case <-watchErrors:
+		case err := <-watchErrors:
+			// Log the error.
+			logger.Debug("Error during initialization:", err)
+
 			// If there's a watch error, then something interesting may have
 			// happened on disk, so we may as well strobe the poll events
 			// channel.
@@ -513,9 +528,14 @@ WatchEstablishment:
 				continue WatchEstablishment
 			}
 		case path := <-events:
+			// Ensure that the path is empty. Recursive watchers always send an
+			// empty path to signal completed initialization.
 			if path != "" {
 				panic("watch initialization path non-empty")
 			}
+
+			// Log the initialization.
+			logger.Debug("Initialization complete")
 		}
 
 		// Now that the watch has been successfully established, strobe the poll
@@ -532,7 +552,7 @@ WatchEstablishment:
 		e.strobePollEvents()
 
 		// Reset the scan timer (which won't be running) to fire immediately in
-		// our watch loop.
+		// our watch loop in order to try to enable accelerated scanning.
 		scanTimer.Reset(0)
 
 		// Loop and process events.
@@ -540,31 +560,41 @@ WatchEstablishment:
 		for {
 			select {
 			case <-context.Done():
+				// Log cancellation.
+				logger.Debug("Cancelled")
+
+				// Terminate watching.
 				return
 			case <-scanTimer.C:
+				// Log the scan.
+				logger.Debug("Timer fired to enable accelerated scanning")
+
 				// If acceleration isn't allowed on the endpoint, then we don't
-				// need to perform a baseline scan, so we can just continue
-				// watching.
+				// need to enable it, so there's nothing to do here.
 				if !e.accelerationAllowed {
 					continue EventProcessing
 				}
 
 				// Attempt to perform a full (warm) baseline scan. If this
-				// succeeds, then we can enable accelerated scanning (since our
-				// watch is established and we'll see all events after the
-				// baseline scan time). If this fails, then we'll reset the scan
-				// timer (which won't be running) and try again after the
-				// polling interval.
+				// succeeds, then we can enable acceleration. If this fails,
+				// then we'll reset the scan timer (which won't be running) and
+				// try again after the polling interval.
+				logger.Debug("Performing baseline scan")
 				e.scanLock.Lock()
 				if err := e.scan(nil, nil); err != nil {
+					logger.Debug("Unable to perform baseline scan:", err)
 					scanTimer.Reset(pollingDuration)
 				} else {
+					logger.Debug("Enabling accelerated scanning")
 					e.accelerateScan = true
 				}
 				e.scanLock.Unlock()
 			case <-e.recursiveWatchReenableAcceleration:
+				// Log the request.
+				logger.Debug("Received request to enable accelerated scanning")
+
 				// If acceleration isn't allowed on the endpoint, then we don't
-				// need to re-enable it, so we can just continue watching.
+				// need to enable it, so there's nothing to do here.
 				if !e.accelerationAllowed {
 					continue EventProcessing
 				}
@@ -576,17 +606,23 @@ WatchEstablishment:
 				stopAndDrainTimer(scanTimer)
 
 				// Attempt to perform a full (warm) baseline scan. If this
-				// succeeds, then we can re-enable acceleration. If this fails,
+				// succeeds, then we can enable acceleration. If this fails,
 				// then we'll reset the scan timer (which won't be running) and
 				// try again after the polling interval.
+				logger.Debug("Performing baseline scan")
 				e.scanLock.Lock()
 				if err := e.scan(nil, nil); err != nil {
+					logger.Debug("Unable to perform baseline scan:", err)
 					scanTimer.Reset(pollingDuration)
 				} else {
+					logger.Debug("Enabling accelerated scanning")
 					e.accelerateScan = true
 				}
 				e.scanLock.Unlock()
-			case <-watchErrors:
+			case err := <-watchErrors:
+				// Log the error.
+				logger.Debug("Error:", err)
+
 				// If acceleration is allowed on the endpoint, then disable scan
 				// acceleration and clear out the re-check path set.
 				if e.accelerationAllowed {
@@ -623,6 +659,10 @@ WatchEstablishment:
 				// settle.
 				select {
 				case <-context.Done():
+					// Log cancellation.
+					logger.Debug("Cancelled while waiting for watch recreation")
+
+					// Terminate watching.
 					return
 				case <-watchRecreationTimer.C:
 					continue WatchEstablishment
@@ -631,9 +671,13 @@ WatchEstablishment:
 				// If the path is a temporary file generated by Mutagen, then
 				// ignore it. We can use our fast-path base computation since
 				// recursive watchers generate synchronization-root-relative
-				// paths.
+				// paths. We take this opportunity to log whether or not we're
+				// processing the path.
 				if filesystem.IsTemporaryFileName(core.PathBase(path)) {
+					logger.Trace("Ignoring change at", path)
 					continue EventProcessing
+				} else {
+					logger.Trace("Processing change at", path)
 				}
 
 				// If acceleration is allowed on the endpoint, then register the
@@ -658,6 +702,9 @@ WatchEstablishment:
 				stopAndDrainTimer(coalescingTimer)
 				coalescingTimer.Reset(recursiveWatchingEventCoalescingWindow)
 			case <-coalescingTimer.C:
+				// Log the coalesced event.
+				logger.Trace("Coalesced event")
+
 				// Strobe the poll events channel.
 				e.strobePollEvents()
 			}
@@ -673,6 +720,9 @@ func (e *endpoint) watchPoll(
 	pollingInterval uint32,
 	useNonRecursiveWatching bool,
 ) {
+	// Create a sublogger for watching.
+	logger := e.logger.Sublogger("polling")
+
 	// Create a ticker to regulate polling and defer its shutdown.
 	ticker := time.NewTicker(time.Duration(pollingInterval) * time.Second)
 	defer ticker.Stop()
@@ -695,6 +745,9 @@ func (e *endpoint) watchPoll(
 	var coalescingTimer *time.Timer
 	var coalescingTimerEvents <-chan time.Time
 	if useNonRecursiveWatching {
+		// Log the establishment of non-recursive watching.
+		logger.Debug("Enabling non-recursive watching")
+
 		// Set up the events channel.
 		nonRecursiveWatchEvents = make(chan string, nativeEventsChannelCapacity)
 
@@ -703,6 +756,9 @@ func (e *endpoint) watchPoll(
 		var err error
 		nonRecursiveWatcher, err = watching.NewNonRecursiveMRUWatcher(nonRecursiveWatchEvents, 0)
 		if err == nil {
+			// Log the successful initialization.
+			logger.Debug("Non-recursive watching successfully initialized")
+
 			// Extract the watcher's errors channel.
 			nonRecursiveWatcherErrors = nonRecursiveWatcher.Errors
 
@@ -723,6 +779,9 @@ func (e *endpoint) watchPoll(
 
 			// Extract the timer's event channel.
 			coalescingTimerEvents = coalescingTimer.C
+		} else {
+			// Log the reason for failure.
+			logger.Debug("Unable to establish non-recursive watching:", err)
 		}
 	}
 
@@ -756,9 +815,18 @@ func (e *endpoint) watchPoll(
 		if !skipWaiting {
 			select {
 			case <-context.Done():
+				// Log cancellation.
+				logger.Debug("Cancelled")
+
+				// Terminate polling.
 				return
 			case <-ticker.C:
-			case <-nonRecursiveWatcherErrors:
+				// Log the tick.
+				logger.Trace("Received polling signal")
+			case err := <-nonRecursiveWatcherErrors:
+				// Log the error.
+				logger.Debug("Non-recursive watching error:", err)
+
 				// Terminate the watcher and nil it out. We don't bother trying
 				// to re-establish it. Also nil out the errors channel in case
 				// the watcher pumps any additional errors into it (in which
@@ -773,9 +841,13 @@ func (e *endpoint) watchPoll(
 				// If the path is a temporary file generated by Mutagen, then
 				// ignore it. Unlike in the recurisve watcher case, we can't use
 				// our fast-path base computation since non-recursive watching
-				// won't return root-relative paths.
+				// won't return root-relative paths. We take this opportunity to
+				// log whether or not we're processing the path.
 				if filesystem.IsTemporaryFileName(filepath.Base(path)) {
+					logger.Trace("Ignoring change at", path)
 					continue
+				} else {
+					logger.Trace("Processing change at", path)
 				}
 
 				// Reset the coalescing timer (which may or may not be running)
@@ -784,6 +856,8 @@ func (e *endpoint) watchPoll(
 				coalescingTimer.Reset(recursiveWatchingEventCoalescingWindow)
 				continue
 			case <-coalescingTimerEvents:
+				// Log the coalesced event.
+				logger.Trace("Coalesced event")
 			}
 		}
 
@@ -798,7 +872,13 @@ func (e *endpoint) watchPoll(
 		// strobe the poll events channel. The controller can then perform a
 		// full scan.
 		if err := e.scan(nil, nil); err != nil {
+			// Log the error.
+			logger.Debug("Scan failed:", err)
+
+			// Release the scan lock.
 			e.scanLock.Unlock()
+
+			// Strobe the poll events channel and continue polling.
 			e.strobePollEvents()
 			continue
 		}
@@ -839,7 +919,14 @@ func (e *endpoint) watchPoll(
 		// If we've seen modifications, and we're not ignoring them, then strobe
 		// the poll events channel.
 		if modified && !ignoreModifications {
+			// Log the modifications.
+			logger.Trace("Modifications detected")
+
+			// Strobe the poll events channel.
 			e.strobePollEvents()
+		} else {
+			// Log the lack of modifications.
+			logger.Trace("No modifications detected")
 		}
 	}
 }
