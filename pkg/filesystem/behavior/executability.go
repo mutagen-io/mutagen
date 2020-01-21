@@ -18,11 +18,13 @@ const (
 
 // PreservesExecutabilityByPath determines whether or not the filesystem on
 // which the directory at the specified path resides preserves POSIX
-// executability bits. It allows for the path leaf to be a symbolic link.
-func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error) {
+// executability bits. It allows for the path leaf to be a symbolic link. The
+// second value returned by this function indicates whether or not probe files
+// were used in determining behavior.
+func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return assumeExecutabilityPreservation, nil
+		return assumeExecutabilityPreservation, false, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
@@ -34,7 +36,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 	// could possibly be adapted in case we add a force-probe probe mode), which
 	// is why we require that the fast path succeeds on Windows.
 	if result, ok := probeExecutabilityPreservationFastByPath(path); ok {
-		return result, nil
+		return result, false, nil
 	} else if runtime.GOOS == "windows" {
 		panic("fast path not used on Windows")
 	}
@@ -42,7 +44,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 	// Create a temporary file.
 	file, err := ioutil.TempFile(path, executabilityProbeFileNamePrefix)
 	if err != nil {
-		return false, errors.Wrap(err, "unable to create test file")
+		return false, true, errors.Wrap(err, "unable to create test file")
 	}
 
 	// Ensure that the file is cleaned up and removed when we're done.
@@ -54,7 +56,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = file.Chmod(0700); err != nil {
-		return false, errors.Wrap(err, "unable to mark test file as executable")
+		return false, true, errors.Wrap(err, "unable to mark test file as executable")
 	}
 
 	// Grab the file statistics and check for executability. We enforce that
@@ -65,18 +67,20 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, error
 	// Linux marks every file as having no executable bit set), but this test
 	// should be.
 	if info, err := file.Stat(); err != nil {
-		return false, errors.Wrap(err, "unable to check test file executability")
+		return false, true, errors.Wrap(err, "unable to check test file executability")
 	} else {
-		return info.Mode()&0111 == 0100, nil
+		return info.Mode()&0111 == 0100, true, nil
 	}
 }
 
 // PreservesExecutability determines whether or not the specified directory (and
-// its underlying filesystem) preserves POSIX executability bits.
-func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode) (bool, error) {
+// its underlying filesystem) preserves POSIX executability bits. The second
+// value returned by this function indicates whether or not probe files were
+// used in determining behavior.
+func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return assumeExecutabilityPreservation, nil
+		return assumeExecutabilityPreservation, false, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
@@ -88,7 +92,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// could possibly be adapted in case we add a force-probe probe mode), which
 	// is why we require that the fast path succeeds on Windows.
 	if result, ok := probeExecutabilityPreservationFast(directory); ok {
-		return result, nil
+		return result, false, nil
 	} else if runtime.GOOS == "windows" {
 		panic("fast path not used on Windows")
 	}
@@ -96,7 +100,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Create a temporary file.
 	name, file, err := directory.CreateTemporaryFile(executabilityProbeFileNamePrefix)
 	if err != nil {
-		return false, errors.Wrap(err, "unable to create test file")
+		return false, true, errors.Wrap(err, "unable to create test file")
 	}
 
 	// Ensure that the file is cleaned up and removed when we're done.
@@ -116,7 +120,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = osFile.Chmod(0700); err != nil {
-		return false, errors.Wrap(err, "unable to mark test file as executable")
+		return false, true, errors.Wrap(err, "unable to mark test file as executable")
 	}
 
 	// Grab the file statistics and check for executability. We enforce that
@@ -127,8 +131,8 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Linux marks every file as having no executable bit set), but this test
 	// should be.
 	if info, err := osFile.Stat(); err != nil {
-		return false, errors.Wrap(err, "unable to check test file executability")
+		return false, true, errors.Wrap(err, "unable to check test file executability")
 	} else {
-		return info.Mode()&0111 == 0100, nil
+		return info.Mode()&0111 == 0100, true, nil
 	}
 }

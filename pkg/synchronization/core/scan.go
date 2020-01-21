@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"golang.org/x/text/unicode/norm"
@@ -33,6 +34,33 @@ const (
 	// somewhat arbitrary.
 	defaultInitialCacheCapacity = 1024
 )
+
+// behaviorCache is a cache mapping device IDs to behavioral information. It's
+// only used in cases where probe files are required for probing behavior,
+// because those cases are (a) more expensive and (b) cause watching/scanning
+// feedback loops if not cached. For cases where filesystem behavior is assumed
+// or probed directly, there's no need to cache the information since (a) it's
+// relatively cheap and (b) it won't cause watching/scanning feedback loops
+// since it doesn't perturb the filesystem.
+//
+// It's worth noting that, because Windows never uses probe files for querying
+// filesystem behavior, this cache is never used on Windows. This is good,
+// because we don't actually compute real device IDs on Windows, and thus this
+// cache would be potentially inaccurate.
+var behaviorCache struct {
+	sync.RWMutex
+	// preservesExecutability maps device IDs to executability preservation
+	// behavior.
+	preservesExecutability map[uint64]bool
+	// decomposesUnicode maps device IDs to Unicode decomposition behavior.
+	decomposesUnicode map[uint64]bool
+}
+
+func init() {
+	// Initialize the behavior cache.
+	behaviorCache.preservesExecutability = make(map[uint64]bool)
+	behaviorCache.decomposesUnicode = make(map[uint64]bool)
+}
 
 // scanner provides the recursive implementation of scanning.
 type scanner struct {
@@ -419,22 +447,53 @@ func Scan(
 	// Probe the behavior of the synchronization root.
 	var decomposesUnicode, preservesExecutability bool
 	if rootKind == EntryKind_Directory {
-		// Probe and set Unicode decomposition behavior.
-		if decomposes, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
+		// Check if there is cached behavior information.
+		behaviorCache.RLock()
+		cachedDecomposes, cachedDecomposesOk := behaviorCache.decomposesUnicode[metadata.DeviceID]
+		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
+		behaviorCache.RUnlock()
+
+		// Track whether or not we use probe files.
+		var usedProbeFiles bool
+
+		// Determine Unicode decomposition behavior.
+		if cachedDecomposesOk {
+			decomposesUnicode = cachedDecomposes
+		} else if decomposes, usedFiles, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
 			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root Unicode decomposition behavior: %w", err)
 		} else {
 			decomposesUnicode = decomposes
+			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 
-		// Probe and set executability preservation behavior.
-		if preserves, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
+		// Determine executability preservation behavior.
+		if cachedPreservesOk {
+			preservesExecutability = cachedPreserves
+		} else if preserves, usedFiles, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
 			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
+			usedProbeFiles = usedProbeFiles || usedFiles
+		}
+
+		// If we used probe files, update the cache.
+		if usedProbeFiles {
+			behaviorCache.Lock()
+			behaviorCache.decomposesUnicode[metadata.DeviceID] = decomposesUnicode
+			behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
+			behaviorCache.Unlock()
 		}
 	} else if rootKind == EntryKind_File {
-		// Probe and set executability preservation behavior for the parent of
-		// the root path.
+		// Check if there is cached behavior information.
+		behaviorCache.RLock()
+		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
+		behaviorCache.RUnlock()
+
+		// Track whether or not we use probe files.
+		var usedProbeFiles bool
+
+		// Determine executability preservation behavior for the parent of the
+		// root path.
 		//
 		// RACE: There is technically a race condition here on POSIX because the
 		// root file that we have open may have been unlinked and the parent
@@ -449,10 +508,23 @@ func Scan(
 		// each platform. Even on platforms where detailed metadata is provided,
 		// the filesystem identifier alone may not be enough to determine this
 		// behavior.
-		if preserves, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
+		if cachedPreservesOk {
+			preservesExecutability = cachedPreserves
+		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
 			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root parent executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
+			usedProbeFiles = usedProbeFiles || usedFiles
+		}
+
+		// If we used probe files, update the behavior cache. We're okay to
+		// cache by device ID here (even though it's the file's device ID) since
+		// we know the parent directory will have the same device ID as the file
+		// within it.
+		if usedProbeFiles {
+			behaviorCache.Lock()
+			behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
+			behaviorCache.Unlock()
 		}
 	} else {
 		panic("unhandled root kind")

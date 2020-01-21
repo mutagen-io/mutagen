@@ -32,7 +32,11 @@ func (c *preservesExecutabilityByPathTestCase) run(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if preserves, err := PreservesExecutabilityByPath(c.path, probeMode); err != nil {
+	//
+	// TODO: We should perform some validation on the second parameter returned
+	// by PreservesExecutabilityByPath (indicating whether or not probe files
+	// were used).
+	if preserves, _, err := PreservesExecutabilityByPath(c.path, probeMode); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")
@@ -128,7 +132,11 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	}
 
 	// Probe the behavior of the root and ensure it matches what's expected.
-	if preserves, err := PreservesExecutability(directory, probeMode); err != nil {
+	//
+	// TODO: We should perform some validation on the second parameter returned
+	// by PreservesExecutability (indicating whether or not probe files were
+	// used).
+	if preserves, _, err := PreservesExecutability(directory, probeMode); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")

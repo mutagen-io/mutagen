@@ -21,26 +21,30 @@ const (
 )
 
 // DecomposesUnicodeByPath determines whether or not the filesystem on which the
-// directory at the specified path resides decomposes Unicode filenames.
-func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
+// directory at the specified path resides decomposes Unicode filenames. The
+// second value returned by this function indicates whether or not probe files
+// were used in determining behavior.
+func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return assumeUnicodeDecomposition, nil
+		return assumeUnicodeDecomposition, false, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
 
 	// Check if we have a fast test that will work.
 	if result, ok := probeUnicodeDecompositionFastByPath(path); ok {
-		return result, nil
+		return result, false, nil
+	} else if runtime.GOOS == "windows" {
+		panic("fast path not used on Windows")
 	}
 
 	// Create and close a temporary file using the composed filename.
 	file, err := ioutil.TempFile(path, composedFileNamePrefix)
 	if err != nil {
-		return false, errors.Wrap(err, "unable to create test file")
+		return false, true, errors.Wrap(err, "unable to create test file")
 	} else if err = file.Close(); err != nil {
-		return false, errors.Wrap(err, "unable to close test file")
+		return false, true, errors.Wrap(err, "unable to close test file")
 	}
 
 	// Grab the file's name. This is calculated from the parameters passed to
@@ -65,7 +69,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
 	// Grab the contents of the path.
 	contents, err := filesystem.DirectoryContentsByPath(path)
 	if err != nil {
-		return false, errors.Wrap(err, "unable to read directory contents")
+		return false, true, errors.Wrap(err, "unable to read directory contents")
 	}
 
 	// Loop through contents and see if we find a match for the decomposed file
@@ -73,37 +77,41 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, error) {
 	for _, c := range contents {
 		name := c.Name()
 		if name == decomposedFilename {
-			return true, nil
+			return true, true, nil
 		} else if name == composedFilename {
-			return false, nil
+			return false, true, nil
 		}
 	}
 
 	// If we didn't find any match, something's fishy.
-	return false, errors.New("unable to find test file after creation")
+	return false, true, errors.New("unable to find test file after creation")
 }
 
 // DecomposesUnicode determines whether or not the specified directory (and its
-// underlying filesystem) decomposes Unicode filenames.
-func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bool, error) {
+// underlying filesystem) decomposes Unicode filenames. The second value
+// returned by this function indicates whether or not probe files were used in
+// determining behavior.
+func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
-		return assumeUnicodeDecomposition, nil
+		return assumeUnicodeDecomposition, false, nil
 	} else if !probeMode.Supported() {
 		panic("invalid probe mode")
 	}
 
 	// Check if we have a fast test that will work.
 	if result, ok := probeUnicodeDecompositionFast(directory); ok {
-		return result, nil
+		return result, false, nil
+	} else if runtime.GOOS == "windows" {
+		panic("fast path not used on Windows")
 	}
 
 	// Create and close a temporary file using the composed filename.
 	composedName, file, err := directory.CreateTemporaryFile(composedFileNamePrefix)
 	if err != nil {
-		return false, errors.Wrap(err, "unable to create test file")
+		return false, true, errors.Wrap(err, "unable to create test file")
 	} else if err = file.Close(); err != nil {
-		return false, errors.Wrap(err, "unable to close test file")
+		return false, true, errors.Wrap(err, "unable to close test file")
 	}
 
 	// The name returned from CreateTemporaryFile is calculated from the
@@ -141,7 +149,7 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	if runtime.GOOS == "linux" {
 		directoryForContentRead, err = directory.OpenDirectory(".")
 		if err != nil {
-			return false, errors.Wrap(err, "unable to re-open directory")
+			return false, true, errors.Wrap(err, "unable to re-open directory")
 		}
 		defer directoryForContentRead.Close()
 	}
@@ -149,19 +157,19 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// Grab the content names in the directory.
 	names, err := directoryForContentRead.ReadContentNames()
 	if err != nil {
-		return false, errors.Wrap(err, "unable to read directory content names")
+		return false, true, errors.Wrap(err, "unable to read directory content names")
 	}
 
 	// Loop through the names and see if we find a match for either the composed
 	// or decomposed name.
 	for _, name := range names {
 		if name == decomposedName {
-			return true, nil
+			return true, true, nil
 		} else if name == composedName {
-			return false, nil
+			return false, true, nil
 		}
 	}
 
 	// If we didn't find any match, something's fishy.
-	return false, errors.New("unable to find test file after creation")
+	return false, true, errors.New("unable to find test file after creation")
 }
