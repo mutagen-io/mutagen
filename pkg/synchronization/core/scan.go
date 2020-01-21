@@ -97,7 +97,7 @@ func (s *scanner) file(
 	if cacheHit {
 		cachedModificationTime, err = ptypes.Timestamp(cached.ModificationTime)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to convert cached modification time")
+			return nil, errors.Wrapf(err, "unable to convert cached modification time (%s)", path)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (s *scanner) file(
 		if file == nil {
 			file, err = parent.OpenFile(metadata.Name)
 			if err != nil {
-				return nil, errors.Wrap(err, "unable to open file")
+				return nil, errors.Wrapf(err, "unable to open file (%s)", path)
 			}
 			defer file.Close()
 		}
@@ -138,9 +138,9 @@ func (s *scanner) file(
 		// Copy data into the hash and verify that we copied the amount
 		// expected.
 		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
-			return nil, errors.Wrap(err, "unable to hash file contents")
+			return nil, errors.Wrapf(err, "unable to hash file contents (%s)", path)
 		} else if uint64(copied) != metadata.Size {
-			return nil, errors.New("hashed size mismatch")
+			return nil, fmt.Errorf("hashed size mismatch (%s): %d != %d", path, copied, metadata.Size)
 		}
 
 		// Compute the digest.
@@ -156,7 +156,7 @@ func (s *scanner) file(
 		// Convert the new modification time to Protocol Buffers format.
 		modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to convert modification time")
+			return nil, errors.Wrapf(err, "unable to convert file modification time (%s)", path)
 		}
 
 		// Create the new cache entry.
@@ -187,7 +187,7 @@ func (s *scanner) symbolicLink(
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read symbolic link target")
+		return nil, errors.Wrapf(err, "unable to read symbolic link target (%s)", path)
 	}
 
 	// If requested, enforce that the link is portable, otherwise just ensure
@@ -195,10 +195,10 @@ func (s *scanner) symbolicLink(
 	if enforcePortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("invalid symbolic link (%s)", path))
+			return nil, errors.Wrapf(err, "invalid symbolic link (%s)", path)
 		}
 	} else if target == "" {
-		return nil, errors.New("symbolic link target is empty")
+		return nil, fmt.Errorf("symbolic link target is empty (%s)", path)
 	}
 
 	// Success.
@@ -231,13 +231,13 @@ func (s *scanner) directory(
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
 	if metadata.DeviceID != s.deviceID {
-		return nil, errors.New("scan crossed filesystem boundary")
+		return nil, fmt.Errorf("scan crossed filesystem boundary (%s)", path)
 	}
 
 	// If the directory is not yet opened, then open it and defer its closure.
 	if directory == nil {
 		if d, err := parent.OpenDirectory(metadata.Name); err != nil {
-			return nil, errors.Wrap(err, "unable to open directory")
+			return nil, errors.Wrapf(err, "unable to open directory (%s)", path)
 		} else {
 			directory = d
 			defer directory.Close()
@@ -247,7 +247,7 @@ func (s *scanner) directory(
 	// Read directory contents.
 	directoryContents, err := directory.ReadContents()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read directory contents")
+		return nil, errors.Wrapf(err, "unable to read directory contents (%s)", path)
 	}
 
 	// RACE: There is technically a race condition here between the listing of
