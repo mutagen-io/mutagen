@@ -761,7 +761,7 @@ func (e *endpoint) watchPoll(
 				nonRecursiveWatcher = nil
 				nonRecursiveWatcherErrors = nil
 				continue
-			case path := <-nonRecursiveWatchEvents:
+			case <-nonRecursiveWatchEvents:
 				// Reset the coalescing timer (which may or may not be running)
 				// and continue. Once it fires, we'll perform a rescan.
 				stopAndDrainTimer(coalescingTimer)
