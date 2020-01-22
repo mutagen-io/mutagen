@@ -35,18 +35,33 @@ const (
 	defaultInitialCacheCapacity = 1024
 )
 
-// behaviorCache is a cache mapping device IDs to behavioral information. It's
-// only used in cases where probe files are required for probing behavior,
-// because those cases are (a) more expensive and (b) cause watching/scanning
-// feedback loops if not cached. For cases where filesystem behavior is assumed
-// or probed directly, there's no need to cache the information since (a) it's
-// relatively cheap and (b) it won't cause watching/scanning feedback loops
-// since it doesn't perturb the filesystem.
+// behaviorCache is a cache mapping filesystem device IDs to behavioral
+// information. It is only used in cases where probe files are required for
+// probing behavior, because those cases are (a) more expensive and (b) cause
+// watching/scanning feedback loops with synchronization endpoints if not
+// cached. For cases where filesystem behavior is assumed or probed via fstatfs,
+// there's no need to cache the information since (a) it's relatively cheap and
+// (b) it won't cause watching/scanning feedback loops since it doesn't perturb
+// the filesystem.
 //
-// It's worth noting that, because Windows never uses probe files for querying
-// filesystem behavior, this cache is never used on Windows. This is good,
-// because we don't actually compute real device IDs on Windows, and thus this
-// cache would be potentially inaccurate.
+// HACK: This cache is really a hack and something of a layering violation. Its
+// purpose isn't really optimization by avoidance of probe files (which is a
+// nice side-effect), but rather avoidance of synchronization endpoint
+// watching/scanning feedback loops caused by probe files. The fact that it
+// really only exists for this latter reason indicates some knowledge of how
+// synchronization endpoints behave. The implementation of this cache is also
+// a layering violation in the sense that we rely on it not being used on
+// Windows because we don't actually compute real device IDs on Windows and
+// would thus have cache collisions. Fortunately, we know that it won't be used
+// on Windows because probe files aren't used on Windows. A more "correct"
+// approach would probably be to have the scan return behavioral information and
+// information about whether or not probe files were used to the endpoint, and
+// then accept cached behavioral information from the endpoint (which *should*
+// be allowed to know about both probe files and filesystem watching). But the
+// Scan function and endpoint implementation are already so complex that this
+// makes code significantly more cumbersome and fragile, so in the end this
+// layering violation is the lesser evil. Eventually we'll get rid of probe
+// files and the need for this cache will go away.
 var behaviorCache struct {
 	sync.RWMutex
 	// preservesExecutability maps device IDs to executability preservation
@@ -447,7 +462,8 @@ func Scan(
 	// Probe the behavior of the synchronization root.
 	var decomposesUnicode, preservesExecutability bool
 	if rootKind == EntryKind_Directory {
-		// Check if there is cached behavior information.
+		// Check if there is cached behavior information. This is an indication
+		// that we previously had to use probe files for this filesystem.
 		behaviorCache.RLock()
 		cachedDecomposes, cachedDecomposesOk := behaviorCache.decomposesUnicode[metadata.DeviceID]
 		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
@@ -484,7 +500,8 @@ func Scan(
 			behaviorCache.Unlock()
 		}
 	} else if rootKind == EntryKind_File {
-		// Check if there is cached behavior information.
+		// Check if there is cached behavior information. This is an indication
+		// that we previously had to use probe files for this filesystem.
 		behaviorCache.RLock()
 		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
 		behaviorCache.RUnlock()
@@ -495,19 +512,26 @@ func Scan(
 		// Determine executability preservation behavior for the parent of the
 		// root path.
 		//
-		// RACE: There is technically a race condition here on POSIX because the
-		// root file that we have open may have been unlinked and the parent
-		// directory path removed or replaced. Even if the file hasn't been
-		// unlinked, we still have to make this probe by path since there's no
-		// way (both due to API and underlying design) to grab a parent
-		// directory by file descriptor on POSIX (it's not a well-defined
-		// concept (due at least to the existence of hard links)). Anyway, this
-		// race does not have any significant risk. The only other option would
-		// be to switch executability preservation detection to use fstatfs, but
-		// this is a non-standardized call that returns different metadata on
-		// each platform. Even on platforms where detailed metadata is provided,
-		// the filesystem identifier alone may not be enough to determine this
-		// behavior.
+		// RACE: There is technically a race condition here on POSIX systems
+		// because the root file that we have open may have been unlinked and
+		// the parent directory path removed or replaced. Even if the file
+		// hasn't been unlinked, we still have to make this probe by path since
+		// there's no way (due to both APIs and underlying designs) to grab a
+		// parent directory by file descriptor on POSIX (it's not a well-defined
+		// concept (due at least to the existence of hard links)). In any case,
+		// the minimal cross-section for this occurrence combined with the minor
+		// consequences of such a case arising mean that we're content to live
+		// with this situation for now.
+		//
+		// TODO: Now that we have fstatfs-based behavior checks (which will also
+		// work for file roots), we should try to extract behavior information
+		// from the file itself before falling back to path-based checks on the
+		// parent directory. The only case where we'd need to fall back would be
+		// when probe files are used because of an unknown filesystem. In theory
+		// we could even fold all of this logic (including the parent path
+		// fallback) into the behavior package itself, though it'll be complex
+		// because of platform-specific interfaces and the fact that we'd need
+		// to pass through the full parent path.
 		if cachedPreservesOk {
 			preservesExecutability = cachedPreserves
 		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
