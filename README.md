@@ -99,9 +99,9 @@ opening a GitHub issue. For more information, please see the
 ## Versioning and support
 
 Mutagen uses [semantic versioning](https://semver.org/) for tracking releases.
-Before Mutagen hits version 1.0, each minor release series will be supported for
-1 month after the first release in the next minor release series (e.g. v0.10.x
-will be supported until one month after the release of v0.11.0).
+Before Mutagen reaches version 1.0, each minor release series will be supported
+for 1 month after the first release in the next minor release series (e.g.
+v0.10.x will be supported until one month after the release of v0.11.0).
 
 The builds for each minor release series are pinned to the same Go minor release
 and dependency versions used for developing that series (though patch releases
