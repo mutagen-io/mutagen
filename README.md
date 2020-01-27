@@ -116,3 +116,10 @@ incorporate important security fixes.
 ## Building
 
 Please see the [build instructions](BUILDING.md).
+
+
+## Unrelated projects
+
+Please note that this project is unrelated to the
+[Mutagen](https://github.com/quodlibet/mutagen) Python module used for handling
+audio metadata.
