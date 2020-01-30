@@ -1,0 +1,32 @@
+# This file specifies the context that should be ignored by the development
+# service's build context. We ignore all content by default and selectively
+# unignore content that we want to pull into the development service's snapshot.
+# The content that we unignore mirrors the content that we'll synchronize with
+# Mutagen (for which a similar set of ignores are specified).
+
+*
+
+!api/
+api/*
+!api/entrypoint.sh
+!api/go.mod
+!api/go.sum
+!api/server.go
+
+!development/
+development/*
+!development/entrypoint.sh
+
+!frontend/
+frontend/*
+!frontend/entrypoint.sh
+!frontend/gulpfile.js
+!frontend/index.html
+!frontend/package*.json
+
+!web/
+web/*
+!web/entrypoint.sh
+!web/go.mod
+!web/go.sum
+!web/server.go

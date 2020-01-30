@@ -1,0 +1,5 @@
+# Node.js module directories
+node_modules/
+
+# Project lock files
+*.lock

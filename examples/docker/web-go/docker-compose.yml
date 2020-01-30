@@ -1,0 +1,44 @@
+# Set the Docker Compose file format.
+version: "3.7"
+
+# Define services. We use a different build context for the development service
+# so that we can bake a code snapshot into its image.
+services:
+  development:
+    build:
+      context: .
+      dockerfile: development/Dockerfile
+    container_name: go-web-development
+    stop_grace_period: 0s
+    volumes:
+      - development:/development
+  database:
+    build: ./database
+  api:
+    build: ./api
+    stop_grace_period: 0s
+    environment:
+      DATABASE_URL: "postgres://messagessvc:InSeCUr3Dem0PasS@database:5432/messagesdb?sslmode=disable"
+      SERVER_BIND: ":8081"
+      CORS_ORIGIN: "http://localhost:8080"
+    volumes:
+      - development:/development
+  frontend:
+    build: ./frontend
+    stop_grace_period: 0s
+    environment:
+      OUTPUT_PATH: "/development/build"
+    volumes:
+      - development:/development
+  web:
+    build: ./web
+    stop_grace_period: 0s
+    environment:
+      SERVER_ROOT: "/development/build"
+      SERVER_BIND: ":8080"
+    volumes:
+      - development:/development
+
+# Create a persistent shared volume to store and share synchronized code.
+volumes:
+  development:

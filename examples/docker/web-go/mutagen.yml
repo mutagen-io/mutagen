@@ -1,0 +1,28 @@
+forward:
+  api:
+    source: "tcp:localhost:8081"
+    destination: "docker://go-web-development:tcp:api:8081"
+  web:
+    source: "tcp:localhost:8080"
+    destination: "docker://go-web-development:tcp:web:8080"
+
+sync:
+  defaults:
+    ignore:
+      vcs: true
+  code:
+    alpha: "."
+    beta: "docker://go-web-development/development/code"
+    mode: "two-way-resolved"
+    ignore:
+      paths:
+        - "/*"
+        - "!/api"
+        - "/api/*"
+        - "!/api/{entrypoint.sh,go.mod,go.sum,server.go}"
+        - "!/frontend"
+        - "/frontend/*"
+        - "!/frontend/{entrypoint.sh,gulpfile.js,index.html,package*.json}"
+        - "!/web"
+        - "/web/*"
+        - "!/web/{entrypoint.sh,go.mod,go.sum,server.go}"
