@@ -92,8 +92,7 @@ var resumeCommand = &cobra.Command{
 }
 
 var resumeConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 	// all indicates whether or not all tunnels should be resumed.
 	all bool

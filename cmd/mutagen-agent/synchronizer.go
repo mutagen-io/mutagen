@@ -95,8 +95,7 @@ var synchronizerCommand = &cobra.Command{
 }
 
 var synchronizerConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 }
 

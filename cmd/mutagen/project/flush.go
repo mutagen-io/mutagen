@@ -118,8 +118,7 @@ var flushCommand = &cobra.Command{
 }
 
 var flushConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 	// skipWait indicates whether or not the flush operation should block until
 	// a synchronization cycle completes for each sesion requested.

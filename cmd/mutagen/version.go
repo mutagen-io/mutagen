@@ -24,8 +24,7 @@ var versionCommand = &cobra.Command{
 }
 
 var versionConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 }
 

@@ -38,8 +38,7 @@ var generateCommand = &cobra.Command{
 }
 
 var generateConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 	// bashCompletionScript indicates the path, if any, at which to generate the
 	// bash completion script.

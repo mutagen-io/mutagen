@@ -129,8 +129,7 @@ var listCommand = &cobra.Command{
 }
 
 var listConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 	// long indicates whether or not to use long-format listing.
 	long bool

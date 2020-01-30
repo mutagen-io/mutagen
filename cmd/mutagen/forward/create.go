@@ -303,8 +303,7 @@ var createCommand = &cobra.Command{
 }
 
 var createConfiguration struct {
-	// help indicates whether or not help information should be shown for the
-	// command.
+	// help indicates whether or not to show help information and exit.
 	help bool
 	// name is the name specification for the session.
 	name string
