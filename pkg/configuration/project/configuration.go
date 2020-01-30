@@ -36,7 +36,7 @@ type SynchronizationConfiguration struct {
 	ConfigurationBeta synchronization.Configuration `yaml:"configurationBeta"`
 }
 
-// Configuration is the orchestration  configuration object type.
+// Configuration is the orchestration configuration object type.
 type Configuration struct {
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
