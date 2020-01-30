@@ -1,5 +1,8 @@
-# Ignore the output of the Mutagen build script.
+# Build output
 /build/
 
-# Ignore tunnel credentials.
+# Tunnel credentials
 *.tunn
+
+# Project lock files
+*.lock
