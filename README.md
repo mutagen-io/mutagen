@@ -35,12 +35,8 @@ ideas:
 
 [![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/mutagen)
 
-For updates about the project and its releases, you can:
-
-- Subscribe to the
-  [mutagen-announce](https://groups.google.com/forum/#!forum/mutagen-announce)
-  mailing list
-- Follow Mutagen [on Twitter](https://twitter.com/mutagen_io)
+For updates about the project and its releases, you can
+[follow Mutagen on Twitter](https://twitter.com/mutagen_io).
 
 
 ## Status
