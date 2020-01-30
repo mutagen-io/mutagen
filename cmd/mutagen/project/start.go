@@ -2,6 +2,7 @@ package project
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -369,6 +370,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 	// At this point, we're going to try to create resources, so we need to
 	// maintain the lock file in case even some of them are successful.
 	removeLockFileOnReturn = false
+
+	// Perform setup commands.
+	for _, command := range configuration.Setup {
+		fmt.Println(">", command)
+		if err := runCommand(command); err != nil {
+			return errors.Wrap(err, "setup command failed")
+		}
+	}
 
 	// Create forwarding sessions.
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)

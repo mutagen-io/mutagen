@@ -38,6 +38,10 @@ type SynchronizationConfiguration struct {
 
 // Configuration is the orchestration configuration object type.
 type Configuration struct {
+	// Setup are the setup commands to be run at project initialization.
+	Setup []string
+	// Teardown are the teardown commands to be run at project termination.
+	Teardown []string
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
 	// configurations are layered, thus keeping syntactic compatibility with the

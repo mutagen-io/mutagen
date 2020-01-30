@@ -13,6 +13,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -99,6 +100,12 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		return errors.New("invalid project identifier found in project lock")
 	}
 
+	// Load the configuration file.
+	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
+	if err != nil {
+		return errors.Wrap(err, "unable to load configuration file")
+	}
+
 	// Compute the label selector that we're going to use to terminate sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
 
@@ -110,6 +117,14 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	// Terminate synchronization sessions.
 	if err := sync.TerminateWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to terminate synchronization session(s)")
+	}
+
+	// Perform teardown commands.
+	for _, command := range configuration.Teardown {
+		fmt.Println(">", command)
+		if err := runCommand(command); err != nil {
+			return errors.Wrap(err, "teardown command failed")
+		}
 	}
 
 	// Schedule the project lock for removal.
