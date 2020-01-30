@@ -3,5 +3,5 @@ version: "3.7"
 services:
   development:
     build: ./scripts/environments/development
-    container_name: mutagen-development-container
+    container_name: mutagen-development
     stop_grace_period: 0s
