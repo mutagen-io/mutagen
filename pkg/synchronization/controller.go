@@ -859,7 +859,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			αPollResults := make(chan error, 1)
 			go func() {
 				if αDisablePolling {
-					if err := <-alpha.Poll(pollContext); err != nil {
+					if err := alpha.Poll(pollContext); err != nil {
 						αPollResults <- err
 					} else {
 						<-pollContext.Done()
@@ -874,7 +874,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			βPollResults := make(chan error, 1)
 			go func() {
 				if βDisablePolling {
-					if err := <-beta.Poll(pollContext); err != nil {
+					if err := beta.Poll(pollContext); err != nil {
 						βPollResults <- err
 					} else {
 						<-pollContext.Done()
