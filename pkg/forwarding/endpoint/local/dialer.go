@@ -43,7 +43,7 @@ func NewDialerEndpoint(
 	}, nil
 }
 
-// Shutdown implements forwarding.Endpoint.Open.
+// Open implements forwarding.Endpoint.Open.
 func (e *dialerEndpoint) Open() (net.Conn, error) {
 	return e.dialer.DialContext(e.dialingContext, e.protocol, e.address)
 }
