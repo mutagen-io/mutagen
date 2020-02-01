@@ -27,7 +27,7 @@ const (
 	LevelTrace
 )
 
-// String provides a human-readable represenation of a logging level.
+// String provides a human-readable representation of a logging level.
 func (l Level) String() string {
 	switch l {
 	case LevelDisabled:
