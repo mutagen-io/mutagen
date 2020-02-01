@@ -841,14 +841,30 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			pollContext, pollCancel := contextpkg.WithCancel(contextpkg.Background())
 
 			// Start alpha polling. If alpha has been put into a no-watch mode,
-			// then don't actually start polling there, because we don't want a
-			// malfunctioning (or malicious) endpoint to be able to force
-			// synchronization when it's not supposed to be able to.
+			// then we still perform polling in order to detect transport errors
+			// that might occur while the session is sitting idle, but we ignore
+			// any non-error responses and instead wait for the polling context
+			// to be cancelled. We perform this ignore operation because we
+			// don't want a broken or malicious endpoint to be able to force
+			// synchronization, especially if its watching has been
+			// intentionally disabled.
+			//
+			// It's worth noting that, because a well-behaved endpoint in
+			// no-watch mode never returns events, we'll always be polling on it
+			// (and thereby testing the transport) right up until the polling
+			// context is cancelled. Thus, there's no need to worry about cases
+			// where the endpoint sends back an event that we ignore and then
+			// has a transport failure without us noticing while we wait on the
+			// polling context (at least not for well-behaved endpoints).
 			αPollResults := make(chan error, 1)
 			go func() {
 				if αDisablePolling {
-					<-pollContext.Done()
-					αPollResults <- nil
+					if err := <-alpha.Poll(pollContext); err != nil {
+						αPollResults <- err
+					} else {
+						<-pollContext.Done()
+						αPollResults <- nil
+					}
 				} else {
 					αPollResults <- alpha.Poll(pollContext)
 				}
@@ -858,8 +874,12 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			βPollResults := make(chan error, 1)
 			go func() {
 				if βDisablePolling {
-					<-pollContext.Done()
-					βPollResults <- nil
+					if err := <-beta.Poll(pollContext); err != nil {
+						βPollResults <- err
+					} else {
+						<-pollContext.Done()
+						βPollResults <- nil
+					}
 				} else {
 					βPollResults <- beta.Poll(pollContext)
 				}
