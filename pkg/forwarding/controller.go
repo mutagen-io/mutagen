@@ -574,6 +574,10 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			}
 		}
 
+		// Grab transport error channels for each endpoint.
+		sourceTransportErrors := source.TransportErrors()
+		destinationTransportErrors := destination.TransportErrors()
+
 		// Create a cancellable subcontext that we can use to manage shutdown.
 		shutdownContext, forceShutdown := contextpkg.WithCancel(context)
 
@@ -587,8 +591,26 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			close(shutdownComplete)
 		}()
 
-		// Perform forwarding.
-		err := c.forward(source, destination)
+		// Perform forwarding in a background Goroutine and monitor for errors.
+		forwardingErrors := make(chan error, 1)
+		go func() {
+			forwardingErrors <- c.forward(source, destination)
+		}()
+
+		// Wait for cancellation, an error from forwarding, or an error from
+		// either transport.
+		var sessionErr error
+		var forwardingErrorReceived bool
+		select {
+		case <-context.Done():
+			sessionErr = errors.New("session cancelled")
+		case sessionErr = <-forwardingErrors:
+			forwardingErrorReceived = true
+		case err := <-sourceTransportErrors:
+			sessionErr = fmt.Errorf("source transport failure: %w", err)
+		case err := <-destinationTransportErrors:
+			sessionErr = fmt.Errorf("destination transport failure: %w", err)
+		}
 
 		// Force shutdown, which may have already occurred due to cancellation.
 		forceShutdown()
@@ -596,18 +618,17 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		// Wait for shutdown to complete.
 		<-shutdownComplete
 
+		// If the forwarding loop wasn't what unblocked our wait, then wait for
+		// it to return a result so that we know it has exited. This isn't
+		// strictly necessary with our current design, but it's cleaner and more
+		// robust.
+		if !forwardingErrorReceived {
+			<-forwardingErrors
+		}
+
 		// Nil out endpoints to update our state.
 		source = nil
 		destination = nil
-
-		// Determine the failure mode.
-		var sessionErr error
-		select {
-		case <-context.Done():
-			sessionErr = errors.New("session cancelled")
-		default:
-			sessionErr = err
-		}
 
 		// Reset the forwarding state, but propagate the error that caused
 		// failure.

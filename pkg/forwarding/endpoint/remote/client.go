@@ -10,11 +10,14 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/closewrite"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/monitor"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements
 // forwarding.Endpoint itself.
 type client struct {
+	// transportErrors is the transport error channel.
+	transportErrors chan error
 	// multiplexer is the underlying multiplexer.
 	multiplexer *yamux.Session
 	// listener indicates whether or not the remote endpoint is operating as a
@@ -35,6 +38,12 @@ func NewEndpoint(
 	address string,
 	source bool,
 ) (forwarding.Endpoint, error) {
+	// Monitor the connection for read and write errors. The multiplexer we'll
+	// create has an internal read loop that will trigger an error if the
+	// transport fails, allowing us to monitor for transport errors without
+	// implementing our own heartbeat mechanism.
+	connection, transportErrors := monitor.Enable(connection)
+
 	// Wrap the connection in a multiplexer. This constructor won't close the
 	// underlying connnection on error, so we need to do that manually if an
 	// error occurs.
@@ -90,9 +99,15 @@ func NewEndpoint(
 	// Success.
 	successful = true
 	return &client{
-		multiplexer: multiplexer,
-		listener:    source,
+		transportErrors: transportErrors,
+		multiplexer:     multiplexer,
+		listener:        source,
 	}, nil
+}
+
+// TransportErrors implements forwarding.Endpoint.TransportErrors.
+func (e *client) TransportErrors() chan error {
+	return e.transportErrors
 }
 
 // Open implements forwarding.Endpoint.Open.

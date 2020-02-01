@@ -43,6 +43,13 @@ func NewDialerEndpoint(
 	}, nil
 }
 
+// TransportErrors implements forwarding.Endpoint.TransportErrors.
+func (e *dialerEndpoint) TransportErrors() chan error {
+	// Local endpoints don't have a transport that can fail, so we can return an
+	// unbuffered empty channel that will never be populated.
+	return make(chan error)
+}
+
 // Open implements forwarding.Endpoint.Open.
 func (e *dialerEndpoint) Open() (net.Conn, error) {
 	return e.dialer.DialContext(e.dialingContext, e.protocol, e.address)

@@ -96,6 +96,13 @@ func NewListenerEndpoint(
 	}, nil
 }
 
+// TransportErrors implements forwarding.Endpoint.TransportErrors.
+func (e *listenerEndpoint) TransportErrors() chan error {
+	// Local endpoints don't have a transport that can fail, so we can return an
+	// unbuffered empty channel that will never be populated.
+	return make(chan error)
+}
+
 // Open implements forwarding.Endpoint.Open.
 func (e *listenerEndpoint) Open() (net.Conn, error) {
 	return e.listener.Accept()
