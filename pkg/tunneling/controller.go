@@ -748,36 +748,34 @@ func (c *controller) serve(
 // that it be connected to an agent binary running on the remote endpoint in the
 // specified mode, and performing an agent handshake operation.
 func (c *controller) dial(ctx context.Context, mode string) (net.Conn, error) {
-	// Create a context to regulate the dial operation's exchanges. We could
-	// theoretically use the provided context directly if we enforced that this
-	// function only ever abandoned an exchange when that context was cancelled,
-	// but any implementation changes could leave the serve function blocked
-	// indefinitely. This mechanism ensures that serve isn't blocked regardless
-	// of how this function exits.
-	dialCtx, dialCancel := context.WithCancel(ctx)
-	defer dialCancel()
-
-	// Create a dial request.
+	// Submit the dial request and then wait for the dial response. For both
+	// operations, we monitor for cancellation. It's imperative that, after
+	// successful submission of the dialing request, this function only exit in
+	// cases where the context is cancelled (or, equivalently, that the context
+	// that's submitted in the request is cancelled when this function exits).
+	// If this behavior isn't adhered to, then the serving loop will block
+	// forever while trying to return the response. If, during a future
+	// refactor, the need arises to return after submission of the dialing
+	// request but before receiving a dial response, then the provided context
+	// should just be wrapped in a cancellable subcontext before being submitted
+	// in the dialing request, and the cancellation of this subcontext should be
+	// deferred.
 	dialRequest := dialRequest{
-		ctx:     dialCtx,
+		ctx:     ctx,
 		results: make(chan net.Conn),
 		errors:  make(chan error),
 	}
-
-	// Submit the dial request, monitoring for cancellation.
+	var connection net.Conn
 	select {
 	case c.dialRequests <- dialRequest:
-	case <-dialCtx.Done():
+	case <-ctx.Done():
 		return nil, errors.New("cancelled")
 	}
-
-	// Wait for the dial response or error, monitoring for cancellation.
-	var connection net.Conn
 	select {
 	case connection = <-dialRequest.results:
 	case err := <-dialRequest.errors:
 		return nil, err
-	case <-dialCtx.Done():
+	case <-ctx.Done():
 		return nil, errors.New("cancelled")
 	}
 
