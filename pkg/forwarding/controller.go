@@ -1,10 +1,10 @@
 package forwarding
 
 import (
-	contextpkg "context"
+	"context"
 	"fmt"
 	"os"
-	syncpkg "sync"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -49,24 +49,23 @@ type controller struct {
 	// overrides). It is considered static and safe for concurrent access. It is
 	// a derived field and not saved to disk.
 	mergedDestinationConfiguration *Configuration
-	// state represents the current synchronization state.
+	// state represents the current forwarding state.
 	state *State
 	// lifecycleLock guards setting of the disabled, cancel, flushRequests, and
-	// done members. Access to these members is allowed for the synchronization
-	// loop without holding the lock. Any code wishing to set these members
-	// should first acquire the lock, then cancel the synchronization loop, and
-	// wait for it to complete before making any such changes.
-	lifecycleLock syncpkg.Mutex
-	// disabled indicates that no more changes to the synchronization loop
-	// lifecycle are allowed (i.e. no more synchronization loops can be started
-	// for this controller). This is used by terminate and shutdown. It should
-	// only be set to true once any existing synchronization loop has been
-	// stopped.
+	// done members. Access to these members is allowed for the forwarding loop
+	// without holding the lock. Any code wishing to set these members should
+	// first acquire the lock, then cancel the forwarding loop, and wait for it
+	// to complete before making any such changes.
+	lifecycleLock sync.Mutex
+	// disabled indicates that no more changes to the forwarding loop lifecycle
+	// are allowed (i.e. no more forwarding loops can be started for this
+	// controller). This is used by terminate and shutdown. It should only be
+	// set to true once any existing forwarding loop has been stopped.
 	disabled bool
-	// cancel cancels the synchronization loop execution context. It should be
-	// nil if and only if there is no synchronization loop running.
-	cancel contextpkg.CancelFunc
-	// done will be closed by the current synchronization loop when it exits.
+	// cancel cancels the forwarding loop execution context. It should be nil if
+	// and only if there is no forwarding loop running.
+	cancel context.CancelFunc
+	// done will be closed by the current forwarding loop when it exits.
 	done chan struct{}
 }
 
@@ -195,10 +194,10 @@ func newSession(
 	// defer their shutdown.
 	if !paused {
 		logger.Info("Starting forwarding loop")
-		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
-		go controller.run(context, sourceEndpoint, destinationEndpoint)
+		go controller.run(ctx, sourceEndpoint, destinationEndpoint)
 		sourceEndpoint = nil
 		destinationEndpoint = nil
 	}
@@ -246,10 +245,10 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 
 	// If the session isn't marked as paused, start a forwarding loop.
 	if !session.Paused {
-		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
-		go controller.run(context, nil, nil)
+		go controller.run(ctx, nil, nil)
 	}
 
 	// Success.
@@ -361,14 +360,14 @@ func (c *controller) resume(prompter string) error {
 	// Start the forwarding loop with what we have. Source or destination may
 	// have failed to connect (and be nil), but in any case that'll just make
 	// the run loop keep trying to connect.
-	context, cancel := contextpkg.WithCancel(contextpkg.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	c.done = make(chan struct{})
-	go c.run(context, source, destination)
+	go c.run(ctx, source, destination)
 
-	// Report any errors. Since we always want to start a synchronization loop,
-	// even on partial or complete failure (since it might be able to
-	// auto-reconnect on its own), we wait until the end to report errors.
+	// Report any errors. Since we always want to start a forwarding loop, even
+	// on partial or complete failure (since it might be able to auto-reconnect
+	// on its own), we wait until the end to report errors.
 	if saveErr != nil {
 		return errors.Wrap(saveErr, "unable to save session")
 	} else if sourceConnectErr != nil {
@@ -467,8 +466,8 @@ func (c *controller) halt(mode controllerHaltMode, prompter string) error {
 }
 
 // run is the main runloop for the controller, managing connectivity and
-// synchronization.
-func (c *controller) run(context contextpkg.Context, source, destination Endpoint) {
+// forwarding.
+func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
 		// Shutdown any endpoints. These might be non-nil if the runloop was
@@ -509,7 +508,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 				c.state.Status = Status_ConnectingSource
 				c.stateLock.Unlock()
 				source, sourceConnectErr = reconnect(
-					context,
+					ctx,
 					c.logger.Sublogger("source"),
 					c.session.Source,
 					c.session.Identifier,
@@ -529,7 +528,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			// destination in case cancellation occurred while connecting to
 			// source.
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
@@ -541,7 +540,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 				c.state.Status = Status_ConnectingDestination
 				c.stateLock.Unlock()
 				destination, destinationConnectErr = reconnect(
-					context,
+					ctx,
 					c.logger.Sublogger("destination"),
 					c.session.Destination,
 					c.session.Identifier,
@@ -568,7 +567,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 			// If we failed to connect, wait and then retry. Watch for
 			// cancellation in the mean time.
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(autoReconnectInterval):
 			}
@@ -579,13 +578,13 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		destinationTransportErrors := destination.TransportErrors()
 
 		// Create a cancellable subcontext that we can use to manage shutdown.
-		shutdownContext, forceShutdown := contextpkg.WithCancel(context)
+		shutdownCtx, forceShutdown := context.WithCancel(ctx)
 
 		// Create a Goroutine that will shut down (and unblock) endpoints. This
 		// is the only way to unblock forwarding on cancellation.
 		shutdownComplete := make(chan struct{})
 		go func() {
-			<-shutdownContext.Done()
+			<-shutdownCtx.Done()
 			source.Shutdown()
 			destination.Shutdown()
 			close(shutdownComplete)
@@ -602,7 +601,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		var sessionErr error
 		var forwardingErrorReceived bool
 		select {
-		case <-context.Done():
+		case <-ctx.Done():
 			sessionErr = errors.New("session cancelled")
 		case sessionErr = <-forwardingErrors:
 			forwardingErrorReceived = true
@@ -649,13 +648,13 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 		now := time.Now()
 		if now.Sub(lastForwardingFailureTime) >= autoReconnectInterval {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
 		} else {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(autoReconnectInterval):
 			}
@@ -668,7 +667,7 @@ func (c *controller) run(context contextpkg.Context, source, destination Endpoin
 func (c *controller) forward(source, destination Endpoint) error {
 	// Create a context that we can use to regulate the lifecycle of forwarding
 	// Goroutines and defer its cancellation.
-	context, cancel := contextpkg.WithCancel(contextpkg.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Clear any error state and update the status to forwarding. While we're at
@@ -709,7 +708,7 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Perform forwarding and update state in a background Goroutine.
 		go func() {
 			// Perform forwarding.
-			ForwardAndClose(context, incoming, outgoing)
+			ForwardAndClose(ctx, incoming, outgoing)
 
 			// Decrement open connection counts.
 			c.stateLock.Lock()
