@@ -175,7 +175,7 @@ func (m *Manager) Shutdown() {
 	// log any that fail to halt.
 	for _, controller := range m.sessions {
 		m.logger.Info("Halting session", controller.session.Identifier)
-		if err := controller.halt(controllerHaltModeShutdown, "", false); err != nil {
+		if err := controller.halt(context.Background(), controllerHaltModeShutdown, "", false); err != nil {
 			// TODO: Log this halt failure.
 		}
 	}
@@ -183,6 +183,7 @@ func (m *Manager) Shutdown() {
 
 // Create tells the manager to create a new session.
 func (m *Manager) Create(
+	ctx context.Context,
 	alpha, beta *url.URL,
 	configuration, configurationAlpha, configurationBeta *Configuration,
 	name string,
@@ -198,6 +199,7 @@ func (m *Manager) Create(
 
 	// Attempt to create a session.
 	controller, err := newSession(
+		ctx,
 		m.logger.Sublogger(identifier),
 		m.tracker,
 		identifier,
@@ -222,8 +224,12 @@ func (m *Manager) Create(
 }
 
 // List requests a state snapshot for the specified sessions.
-func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
+func (m *Manager) List(_ context.Context, selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
+	// TODO: Figure out if we can use the provided context to preempt this wait.
+	// Unfortunately this will be tricky to implement since state tracking is
+	// implemented via condition variables whereas contexts are implemented via
+	// channels.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
 	if poisoned {
 		return 0, nil, errors.New("state tracking terminated")
@@ -273,7 +279,7 @@ func (m *Manager) Flush(ctx context.Context, selection *selection.Selection, pro
 }
 
 // Pause tells the manager to pause sessions matching the given specifications.
-func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
+func (m *Manager) Pause(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -282,7 +288,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 
 	// Attempt to pause the sessions.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModePause, prompter, false); err != nil {
+		if err := controller.halt(ctx, controllerHaltModePause, prompter, false); err != nil {
 			return errors.Wrap(err, "unable to pause session")
 		}
 	}
@@ -293,7 +299,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 
 // Resume tells the manager to resume sessions matching the given
 // specifications.
-func (m *Manager) Resume(selection *selection.Selection, prompter string) error {
+func (m *Manager) Resume(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -302,7 +308,7 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 	// Attempt to resume.
 	for _, controller := range controllers {
-		if err := controller.resume(prompter, false); err != nil {
+		if err := controller.resume(ctx, prompter, false); err != nil {
 			return errors.Wrap(err, "unable to resume session")
 		}
 	}
@@ -313,7 +319,7 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 // Reset tells the manager to reset session histories for sessions matching the
 // given specifications.
-func (m *Manager) Reset(selection *selection.Selection, prompter string) error {
+func (m *Manager) Reset(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -322,7 +328,7 @@ func (m *Manager) Reset(selection *selection.Selection, prompter string) error {
 
 	// Attempt to reset.
 	for _, controller := range controllers {
-		if err := controller.reset(prompter); err != nil {
+		if err := controller.reset(ctx, prompter); err != nil {
 			return errors.Wrap(err, "unable to reset session")
 		}
 	}
@@ -333,7 +339,7 @@ func (m *Manager) Reset(selection *selection.Selection, prompter string) error {
 
 // Terminate tells the manager to terminate sessions matching the given
 // specifications.
-func (m *Manager) Terminate(selection *selection.Selection, prompter string) error {
+func (m *Manager) Terminate(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -343,7 +349,7 @@ func (m *Manager) Terminate(selection *selection.Selection, prompter string) err
 	// Attempt to terminate the sessions. Since we're terminating them, we're
 	// responsible for removing them from the session map.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModeTerminate, prompter, false); err != nil {
+		if err := controller.halt(ctx, controllerHaltModeTerminate, prompter, false); err != nil {
 			return errors.Wrap(err, "unable to terminate session")
 		}
 		m.sessionsLock.Lock()

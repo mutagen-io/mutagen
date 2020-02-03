@@ -39,8 +39,8 @@ func (s *Server) Create(stream Forwarding_CreateServer) error {
 	}
 
 	// Perform creation.
-	// TODO: Figure out a way to monitor for cancellation.
 	session, err := s.manager.Create(
+		stream.Context(),
 		request.Specification.Source,
 		request.Specification.Destination,
 		request.Specification.Configuration,
@@ -70,15 +70,14 @@ func (s *Server) Create(stream Forwarding_CreateServer) error {
 }
 
 // List lists existing sessions.
-func (s *Server) List(_ context.Context, request *ListRequest) (*ListResponse, error) {
+func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse, error) {
 	// Validate the request.
 	if err := request.ensureValid(); err != nil {
 		return nil, errors.Wrap(err, "received invalid list request")
 	}
 
 	// Perform listing.
-	// TODO: Figure out a way to monitor for cancellation.
-	stateIndex, states, err := s.manager.List(request.Selection, request.PreviousStateIndex)
+	stateIndex, states, err := s.manager.List(ctx, request.Selection, request.PreviousStateIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +106,7 @@ func (s *Server) Pause(stream Forwarding_PauseServer) error {
 	}
 
 	// Perform termination.
-	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Pause(request.Selection, prompter)
+	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)
@@ -144,8 +142,7 @@ func (s *Server) Resume(stream Forwarding_ResumeServer) error {
 	}
 
 	// Perform resuming.
-	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Resume(request.Selection, prompter)
+	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)
@@ -181,8 +178,7 @@ func (s *Server) Terminate(stream Forwarding_TerminateServer) error {
 	}
 
 	// Perform termination.
-	// TODO: Figure out a way to monitor for cancellation.
-	err = s.manager.Terminate(request.Selection, prompter)
+	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)

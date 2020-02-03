@@ -71,6 +71,7 @@ type controller struct {
 
 // newSession creates a new session and corresponding controller.
 func newSession(
+	_ context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	identifier string,
@@ -270,7 +271,7 @@ func (c *controller) currentState() *State {
 
 // resume attempts to reconnect and resume the session if it isn't currently
 // connected and forwarding.
-func (c *controller) resume(prompter string) error {
+func (c *controller) resume(_ context.Context, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
@@ -409,7 +410,7 @@ func (m controllerHaltMode) description() string {
 }
 
 // halt halts the session with the specified behavior.
-func (c *controller) halt(mode controllerHaltMode, prompter string) error {
+func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 

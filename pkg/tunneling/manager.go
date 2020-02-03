@@ -174,7 +174,7 @@ func (m *Manager) Shutdown() {
 	// log any that fail to halt.
 	for _, controller := range m.tunnels {
 		m.logger.Info("Halting tunnel", controller.tunnel.Identifier)
-		if err := controller.halt(controllerHaltModeShutdown, ""); err != nil {
+		if err := controller.halt(context.Background(), controllerHaltModeShutdown, ""); err != nil {
 			// TODO: Log this halt failure.
 		}
 	}
@@ -208,6 +208,7 @@ func (m *Manager) Dial(
 
 // Create tells the manager to create a new tunnel.
 func (m *Manager) Create(
+	ctx context.Context,
 	configuration *Configuration,
 	name string,
 	labels map[string]string,
@@ -218,6 +219,7 @@ func (m *Manager) Create(
 	// TODO: Can we create a (meaningful) sublogger here? We don't know the
 	// tunnel identifier. I suppose we could use the tunnel name.
 	controller, hostCredentials, err := newTunnel(
+		ctx,
 		m.logger,
 		m.tracker,
 		configuration,
@@ -240,8 +242,12 @@ func (m *Manager) Create(
 }
 
 // List requests a state snapshot for the specified tunnels.
-func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
+func (m *Manager) List(_ context.Context, selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
+	// TODO: Figure out if we can use the provided context to preempt this wait.
+	// Unfortunately this will be tricky to implement since state tracking is
+	// implemented via condition variables whereas contexts are implemented via
+	// channels.
 	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
 	if poisoned {
 		return 0, nil, errors.New("state tracking terminated")
@@ -272,7 +278,7 @@ func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64
 }
 
 // Pause tells the manager to pause tunnels matching the given specifications.
-func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
+func (m *Manager) Pause(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the tunnels of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -281,7 +287,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 
 	// Attempt to pause the tunnels.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModePause, prompter); err != nil {
+		if err := controller.halt(ctx, controllerHaltModePause, prompter); err != nil {
 			return fmt.Errorf("unable to pause tunnel: %w", err)
 		}
 	}
@@ -291,7 +297,7 @@ func (m *Manager) Pause(selection *selection.Selection, prompter string) error {
 }
 
 // Resume tells the manager to resume tunnels matching the given specifications.
-func (m *Manager) Resume(selection *selection.Selection, prompter string) error {
+func (m *Manager) Resume(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the tunnels of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -300,7 +306,7 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 	// Attempt to resume.
 	for _, controller := range controllers {
-		if err := controller.resume(prompter); err != nil {
+		if err := controller.resume(ctx, prompter); err != nil {
 			return fmt.Errorf("unable to resume tunnel: %w", err)
 		}
 	}
@@ -311,7 +317,7 @@ func (m *Manager) Resume(selection *selection.Selection, prompter string) error 
 
 // Terminate tells the manager to terminate tunnels matching the given
 // specifications.
-func (m *Manager) Terminate(selection *selection.Selection, prompter string) error {
+func (m *Manager) Terminate(ctx context.Context, selection *selection.Selection, prompter string) error {
 	// Extract the controllers for the tunnels of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -321,7 +327,7 @@ func (m *Manager) Terminate(selection *selection.Selection, prompter string) err
 	// Attempt to terminate the tunnels. Since we're terminating them, we're
 	// responsible for removing them from the tunnel map.
 	for _, controller := range controllers {
-		if err := controller.halt(controllerHaltModeTerminate, prompter); err != nil {
+		if err := controller.halt(ctx, controllerHaltModeTerminate, prompter); err != nil {
 			return fmt.Errorf("unable to terminate tunnel: %w", err)
 		}
 		m.tunnelsLock.Lock()

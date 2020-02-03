@@ -83,6 +83,7 @@ type controller struct {
 
 // newSession creates a new session and corresponding controller.
 func newSession(
+	_ context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	identifier string,
@@ -377,7 +378,7 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 // connected and synchronizing. If lifecycleLockHeld is true, then halt will
 // assume that the lifecycle lock is held by the caller and will not attempt to
 // acquire it.
-func (c *controller) resume(prompter string, lifecycleLockHeld bool) error {
+func (c *controller) resume(_ context.Context, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
@@ -522,7 +523,7 @@ func (m controllerHaltMode) description() string {
 // halt halts the session with the specified behavior. If lifecycleLockHeld is
 // true, then halt will assume that the lifecycle lock is held by the caller and
 // will not attempt to acquire it.
-func (c *controller) halt(mode controllerHaltMode, prompter string, lifecycleLockHeld bool) error {
+func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 
@@ -587,7 +588,7 @@ func (c *controller) halt(mode controllerHaltMode, prompter string, lifecycleLoc
 // reset resets synchronization session history by pausing the session (if it's
 // running), overwriting the ancestor data stored on disk with an empty
 // ancestor, and then resuming the session (if it was previously running).
-func (c *controller) reset(prompter string) error {
+func (c *controller) reset(ctx context.Context, prompter string) error {
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
 	defer c.lifecycleLock.Unlock()
@@ -597,7 +598,7 @@ func (c *controller) reset(prompter string) error {
 
 	// If the session is running, pause it.
 	if running {
-		if err := c.halt(controllerHaltModePause, prompter, true); err != nil {
+		if err := c.halt(ctx, controllerHaltModePause, prompter, true); err != nil {
 			return fmt.Errorf("unable to pause session: %w", err)
 		}
 	}
@@ -610,7 +611,7 @@ func (c *controller) reset(prompter string) error {
 
 	// Resume the session if it was previously running.
 	if running {
-		if err := c.resume(prompter, true); err != nil {
+		if err := c.resume(ctx, prompter, true); err != nil {
 			return fmt.Errorf("unable to resume session: %w", err)
 		}
 	}

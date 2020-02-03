@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -23,7 +24,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, allowProblems bool) error {
+func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string, allowConflicts, allowProblems bool) error {
 	// Create a session selection specification.
 	selection := &selection.Selection{
 		Specifications: []string{sessionId},
@@ -34,7 +35,7 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 	var states []*synchronization.State
 	var err error
 	for {
-		previousStateIndex, states, err = synchronizationManager.List(selection, previousStateIndex)
+		previousStateIndex, states, err = synchronizationManager.List(ctx, selection, previousStateIndex)
 		if err != nil {
 			return errors.Wrap(err, "unable to list session states")
 		} else if len(states) != 1 {
@@ -50,9 +51,10 @@ func waitForSuccessfulSynchronizationCycle(sessionId string, allowConflicts, all
 	}
 }
 
-func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowConflicts, allowProblems bool) error {
+func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowConflicts, allowProblems bool) error {
 	// Create a session.
 	sessionId, err := synchronizationManager.Create(
+		ctx,
 		alpha, beta,
 		configuration,
 		&synchronization.Configuration{},
@@ -69,7 +71,7 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	// Wait for the session to have at least one successful synchronization
 	// cycle.
 	// TODO: Should we add a timeout on this?
-	if err := waitForSuccessfulSynchronizationCycle(sessionId, allowConflicts, allowProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowConflicts, allowProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for successful synchronization")
 	}
 
@@ -86,29 +88,28 @@ func testSessionLifecycle(prompter string, alpha, beta *url.URL, configuration *
 	}
 
 	// Pause the session.
-	if err := synchronizationManager.Pause(selection, ""); err != nil {
+	if err := synchronizationManager.Pause(ctx, selection, ""); err != nil {
 		return errors.Wrap(err, "unable to pause session")
 	}
 
 	// Resume the session.
-	if err := synchronizationManager.Resume(selection, ""); err != nil {
+	if err := synchronizationManager.Resume(ctx, selection, ""); err != nil {
 		return errors.Wrap(err, "unable to resume session")
 	}
 
 	// Wait for the session to have at least one additional synchronization
 	// cycle.
-	// TODO: Should we add a timeout on this?
-	if err := waitForSuccessfulSynchronizationCycle(sessionId, allowConflicts, allowProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowConflicts, allowProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for additional synchronization")
 	}
 
 	// Attempt an additional resume (this should be a no-op).
-	if err := synchronizationManager.Resume(selection, ""); err != nil {
+	if err := synchronizationManager.Resume(ctx, selection, ""); err != nil {
 		return errors.Wrap(err, "unable to perform additional resume")
 	}
 
 	// Terminate the session.
-	if err := synchronizationManager.Terminate(selection, ""); err != nil {
+	if err := synchronizationManager.Terminate(ctx, selection, ""); err != nil {
 		return errors.Wrap(err, "unable to terminate session")
 	}
 
@@ -141,7 +142,7 @@ func TestSynchronizationBothRootsNil(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -183,7 +184,7 @@ func TestSynchronizationGOROOTSrcToBeta(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -225,7 +226,7 @@ func TestSynchronizationGOROOTSrcToAlpha(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -271,7 +272,7 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -322,7 +323,7 @@ func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle("", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -419,7 +420,7 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(prompter, alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), prompter, alphaURL, betaURL, configuration, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -506,6 +507,9 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		return nil
 	}
 
+	// Create a context to regulate the test.
+	ctx := context.Background()
+
 	// Create a forwarding session in a paused state. The reason we do this is a
 	// little complex. Essentially, the core of the issue is that the create
 	// operation won't perform a synchronous connection to the local endpoint
@@ -527,6 +531,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	// still ensuring the session is fully connected before attempting an HTTP
 	// request.
 	sessionID, err := forwardingManager.Create(
+		ctx,
 		source,
 		destination,
 		&forwarding.Configuration{},
@@ -548,7 +553,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 
 	// Perform a resume operation to ensure that the session is connected and
 	// forwarding connections.
-	if err := forwardingManager.Resume(selection, ""); err != nil {
+	if err := forwardingManager.Resume(ctx, selection, ""); err != nil {
 		t.Error("unable to ensure session connectivity via resume:", err)
 	}
 
@@ -559,12 +564,12 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	}
 
 	// Pause the session.
-	if err := forwardingManager.Pause(selection, ""); err != nil {
+	if err := forwardingManager.Pause(ctx, selection, ""); err != nil {
 		t.Error("unable to pause session:", err)
 	}
 
 	// Resume the session.
-	if err := forwardingManager.Resume(selection, ""); err != nil {
+	if err := forwardingManager.Resume(ctx, selection, ""); err != nil {
 		t.Error("unable to resume session:", err)
 	}
 
@@ -575,12 +580,12 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	}
 
 	// Attempt an additional resume (this should be a no-op).
-	if err := forwardingManager.Resume(selection, ""); err != nil {
+	if err := forwardingManager.Resume(ctx, selection, ""); err != nil {
 		t.Error("unable to perform additional resume:", err)
 	}
 
 	// Terminate the session.
-	if err := forwardingManager.Terminate(selection, ""); err != nil {
+	if err := forwardingManager.Terminate(ctx, selection, ""); err != nil {
 		t.Error("unable to terminate session:", err)
 	}
 

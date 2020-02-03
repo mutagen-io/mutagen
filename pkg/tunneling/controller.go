@@ -86,6 +86,7 @@ type controller struct {
 // newTunnel creates a new tunnel and corresponding controller. It also returns
 // the parameters needed to host the tunnel.
 func newTunnel(
+	_ context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	configuration *Configuration,
@@ -243,7 +244,7 @@ func (c *controller) currentState() *State {
 }
 
 // resume attempts to resume the tunnel if it isn't currently connected.
-func (c *controller) resume(prompter string) error {
+func (c *controller) resume(_ context.Context, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming tunnel %s...", c.tunnel.Identifier))
 
@@ -314,7 +315,7 @@ func (m controllerHaltMode) description() string {
 }
 
 // halt halts the tunnel with the specified behavior.
-func (c *controller) halt(mode controllerHaltMode, prompter string) error {
+func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("%s tunnel %s...", mode.description(), c.tunnel.Identifier))
 
