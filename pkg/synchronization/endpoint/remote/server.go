@@ -404,12 +404,11 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	// Perform the transition.
 	results, problems, stagerMissingFiles, err := s.endpoint.Transition(request.Transitions)
 	if err != nil {
-		s.encoder.Encode(&TransitionResponse{Error: err.Error()})
-		return errors.Wrap(err, "unable to perform transition")
+		return s.encoder.Encode(&TransitionResponse{Error: err.Error()})
 	}
 
-	// HACK: Wrap the results in Archives since neither Protocol Buffers can't
-	// encode nil pointers in the result array.
+	// HACK: Wrap the results in Archives since Protocol Buffers can't encode
+	// nil pointers in the result array.
 	wrappedResults := make([]*core.Archive, len(results))
 	for r, result := range results {
 		wrappedResults[r] = &core.Archive{Root: result}
@@ -422,7 +421,7 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 		StagerMissingFiles: stagerMissingFiles,
 	}
 	if err = s.encoder.Encode(response); err != nil {
-		return errors.Wrap(err, "unable to send transition response")
+		return err
 	}
 
 	// Success.
