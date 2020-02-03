@@ -83,7 +83,7 @@ type controller struct {
 
 // newSession creates a new session and corresponding controller.
 func newSession(
-	_ context.Context,
+	ctx context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	identifier string,
@@ -130,6 +130,7 @@ func newSession(
 	if !paused && alpha.Protocol.MightRequireInput() {
 		logger.Info("Connecting to alpha endpoint")
 		alphaEndpoint, err = connect(
+			ctx,
 			logger.Sublogger("alpha"),
 			alpha,
 			prompter,
@@ -146,6 +147,7 @@ func newSession(
 	if !paused && beta.Protocol.MightRequireInput() {
 		logger.Info("Connecting to beta endpoint")
 		betaEndpoint, err = connect(
+			ctx,
 			logger.Sublogger("beta"),
 			beta,
 			prompter,
@@ -378,7 +380,7 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 // connected and synchronizing. If lifecycleLockHeld is true, then halt will
 // assume that the lifecycle lock is held by the caller and will not attempt to
 // acquire it.
-func (c *controller) resume(_ context.Context, prompter string, lifecycleLockHeld bool) error {
+func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
@@ -439,6 +441,7 @@ func (c *controller) resume(_ context.Context, prompter string, lifecycleLockHel
 	c.state.Status = Status_ConnectingAlpha
 	c.stateLock.Unlock()
 	alpha, alphaConnectErr := connect(
+		ctx,
 		c.logger.Sublogger("alpha"),
 		c.session.Alpha,
 		prompter,
@@ -456,6 +459,7 @@ func (c *controller) resume(_ context.Context, prompter string, lifecycleLockHel
 	c.state.Status = Status_ConnectingBeta
 	c.stateLock.Unlock()
 	beta, betaConnectErr := connect(
+		ctx,
 		c.logger.Sublogger("beta"),
 		c.session.Beta,
 		prompter,
@@ -660,10 +664,11 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 				c.stateLock.Lock()
 				c.state.Status = Status_ConnectingAlpha
 				c.stateLock.Unlock()
-				alpha, _ = reconnect(
+				alpha, _ = connect(
 					ctx,
 					c.logger.Sublogger("alpha"),
 					c.session.Alpha,
+					"",
 					c.session.Identifier,
 					c.session.Version,
 					c.mergedAlphaConfiguration,
@@ -687,10 +692,11 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 				c.stateLock.Lock()
 				c.state.Status = Status_ConnectingBeta
 				c.stateLock.Unlock()
-				beta, _ = reconnect(
+				beta, _ = connect(
 					ctx,
 					c.logger.Sublogger("beta"),
 					c.session.Beta,
+					"",
 					c.session.Identifier,
 					c.session.Version,
 					c.mergedBetaConfiguration,

@@ -71,7 +71,7 @@ type controller struct {
 
 // newSession creates a new session and corresponding controller.
 func newSession(
-	_ context.Context,
+	ctx context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	identifier string,
@@ -118,6 +118,7 @@ func newSession(
 	if !paused && source.Protocol.MightRequireInput() {
 		logger.Info("Connecting to source endpoint")
 		sourceEndpoint, err = connect(
+			ctx,
 			logger.Sublogger("source"),
 			source,
 			prompter,
@@ -134,6 +135,7 @@ func newSession(
 	if !paused && destination.Protocol.MightRequireInput() {
 		logger.Info("Connecting to destination endpoint")
 		destinationEndpoint, err = connect(
+			ctx,
 			logger.Sublogger("destination"),
 			destination,
 			prompter,
@@ -271,7 +273,7 @@ func (c *controller) currentState() *State {
 
 // resume attempts to reconnect and resume the session if it isn't currently
 // connected and forwarding.
-func (c *controller) resume(_ context.Context, prompter string) error {
+func (c *controller) resume(ctx context.Context, prompter string) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
@@ -329,6 +331,7 @@ func (c *controller) resume(_ context.Context, prompter string) error {
 	c.state.Status = Status_ConnectingSource
 	c.stateLock.Unlock()
 	source, sourceConnectErr := connect(
+		ctx,
 		c.logger.Sublogger("source"),
 		c.session.Source,
 		prompter,
@@ -346,6 +349,7 @@ func (c *controller) resume(_ context.Context, prompter string) error {
 	c.state.Status = Status_ConnectingDestination
 	c.stateLock.Unlock()
 	destination, destinationConnectErr := connect(
+		ctx,
 		c.logger.Sublogger("destination"),
 		c.session.Destination,
 		prompter,
@@ -508,10 +512,11 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				c.stateLock.Lock()
 				c.state.Status = Status_ConnectingSource
 				c.stateLock.Unlock()
-				source, sourceConnectErr = reconnect(
+				source, sourceConnectErr = connect(
 					ctx,
 					c.logger.Sublogger("source"),
 					c.session.Source,
+					"",
 					c.session.Identifier,
 					c.session.Version,
 					c.mergedSourceConfiguration,
@@ -540,10 +545,11 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				c.stateLock.Lock()
 				c.state.Status = Status_ConnectingDestination
 				c.stateLock.Unlock()
-				destination, destinationConnectErr = reconnect(
+				destination, destinationConnectErr = connect(
 					ctx,
 					c.logger.Sublogger("destination"),
 					c.session.Destination,
+					"",
 					c.session.Identifier,
 					c.session.Version,
 					c.mergedDestinationConfiguration,

@@ -16,6 +16,7 @@ type ProtocolHandler interface {
 	// provided URL and the specified prompter (if any). It then initializes the
 	// endpoint using the specified parameters.
 	Connect(
+		ctx context.Context,
 		logger *logging.Logger,
 		url *urlpkg.URL,
 		prompter string,
@@ -32,6 +33,7 @@ var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 
 // connect attempts to establish a connection to an endpoint.
 func connect(
+	ctx context.Context,
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
@@ -49,58 +51,11 @@ func connect(
 	}
 
 	// Dispatch the dialing.
-	endpoint, err := handler.Connect(logger, url, prompter, session, version, configuration, alpha)
+	endpoint, err := handler.Connect(ctx, logger, url, prompter, session, version, configuration, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to connect to endpoint")
 	}
 
 	// Success.
 	return endpoint, nil
-}
-
-// asyncConnectResult provides asynchronous connection results.
-type asyncConnectResult struct {
-	// endpoint is the endpoint returned by connect.
-	endpoint Endpoint
-	// error is the error returned by connect.
-	error error
-}
-
-// reconnect is a version of connect that accepts a context for cancellation. It
-// is only designed for auto-reconnection purposes, so it does not accept a
-// prompter.
-func reconnect(
-	ctx context.Context,
-	logger *logging.Logger,
-	url *urlpkg.URL,
-	session string,
-	version Version,
-	configuration *Configuration,
-	alpha bool,
-) (Endpoint, error) {
-	// Create a channel to deliver the connection result.
-	results := make(chan asyncConnectResult)
-
-	// Start a connection operation in the background.
-	go func() {
-		// Perform the connection.
-		endpoint, err := connect(logger, url, "", session, version, configuration, alpha)
-
-		// If we can't transmit the resulting endpoint, shut it down.
-		select {
-		case <-ctx.Done():
-			if endpoint != nil {
-				endpoint.Shutdown()
-			}
-		case results <- asyncConnectResult{endpoint, err}:
-		}
-	}()
-
-	// Wait for context cancellation or results.
-	select {
-	case <-ctx.Done():
-		return nil, errors.New("reconnect cancelled")
-	case result := <-results:
-		return result.endpoint, result.error
-	}
 }

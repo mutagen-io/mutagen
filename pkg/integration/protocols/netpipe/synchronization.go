@@ -1,6 +1,7 @@
 package netpipe
 
 import (
+	"context"
 	"net"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ type synchronizationProtocolHandler struct{}
 // Dial starts an endpoint server in a background Goroutine and creates an
 // endpoint client connected to the server via an in-memory connection.
 func (h *synchronizationProtocolHandler) Connect(
+	_ context.Context,
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,

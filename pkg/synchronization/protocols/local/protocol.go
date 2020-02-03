@@ -1,6 +1,8 @@
 package local
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -15,6 +17,7 @@ type protocolHandler struct{}
 
 // Connect connects to a local endpoint.
 func (h *protocolHandler) Connect(
+	_ context.Context,
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,

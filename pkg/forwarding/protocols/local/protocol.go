@@ -1,6 +1,8 @@
 package local
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
@@ -16,6 +18,7 @@ type protocolHandler struct{}
 
 // Connect implements forwarding.ProtocolHandler.Connect.
 func (p *protocolHandler) Connect(
+	_ context.Context,
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,

@@ -1,6 +1,9 @@
 package ssh
 
 import (
+	"context"
+	"net"
+
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
@@ -17,8 +20,17 @@ import (
 // over an SSH transport.
 type protocolHandler struct{}
 
+// dialResult provides asynchronous agent dialing results.
+type dialResult struct {
+	// connection is the connection returned by agent dialing.
+	connection net.Conn
+	// error is the error returned by agent dialing.
+	error error
+}
+
 // Connect connects to an SSH endpoint.
 func (p *protocolHandler) Connect(
+	ctx context.Context,
 	logger *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
@@ -46,10 +58,35 @@ func (p *protocolHandler) Connect(
 		return nil, errors.Wrap(err, "unable to create SSH transport")
 	}
 
-	// Dial an agent in forwarding mode.
-	connection, err := agent.Dial(logger, transport, agent.ModeForwarder, prompter)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to dial agent endpoint")
+	// Create a channel to deliver the dialing result.
+	results := make(chan dialResult)
+
+	// Perform dialing in a background Goroutine so that we can monitor for
+	// cancellation.
+	go func() {
+		// Perform the dialing operation.
+		connection, err := agent.Dial(logger, transport, agent.ModeForwarder, prompter)
+
+		// Transmit the result or, if cancelled, close the connection.
+		select {
+		case results <- dialResult{connection, err}:
+		case <-ctx.Done():
+			if connection != nil {
+				connection.Close()
+			}
+		}
+	}()
+
+	// Wait for dialing results or cancellation.
+	var connection net.Conn
+	select {
+	case result := <-results:
+		if result.error != nil {
+			return nil, errors.Wrap(err, "unable to dial agent endpoint")
+		}
+		connection = result.connection
+	case <-ctx.Done():
+		return nil, errors.New("connect operation cancelled")
 	}
 
 	// Create the endpoint.

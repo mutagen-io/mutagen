@@ -29,7 +29,8 @@ func RegisterManager(manager *tunneling.Manager) {
 
 // Connect connects to an tunnel-based endpoint.
 func (h *protocolHandler) Connect(
-	logger *logging.Logger,
+	ctx context.Context,
+	_ *logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,
@@ -45,7 +46,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Dial an agent over the tunnel in endpoint mode.
-	connection, err := h.manager.Dial(context.Background(), url.Host, agent.ModeSynchronizer, prompter)
+	connection, err := h.manager.Dial(ctx, url.Host, agent.ModeSynchronizer, prompter)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial agent endpoint: %w", err)
 	}
