@@ -97,16 +97,12 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 		return errors.Wrap(err, "unable to send poll request")
 	}
 
-	// Wrap the completion context in a context that we can cancel in order to
-	// force sending the completion response if we receive an event. The context
-	// may be cancelled before we return (in the event that we receive an early
-	// completion request), but we defer its (idempotent) cancellation to ensure
-	// the context is cancelled.
-	completionCtx, forceCompletionSend := context.WithCancel(ctx)
-	defer forceCompletionSend()
+	// Create a subcontext that we can cancel to regulate transmission of the
+	// completion request.
+	completionCtx, cancel := context.WithCancel(ctx)
 
 	// Create a Goroutine that will send a poll completion request when the
-	// context is cancelled.
+	// subcontext is cancelled.
 	completionSendResults := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
@@ -130,17 +126,21 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 		responseReceiveResults <- nil
 	}()
 
-	// Wait for both a completion encode to finish and a response to be
-	// received. Both of these will happen, though their order is not
-	// guaranteed. If the completion send comes first, we know the response is
-	// on its way. If the response comes first, we need to force the completion
-	// send.
+	// Wait for both a completion request to be sent and a response to be
+	// received. Both of these will occur, though their order is not known. If
+	// the completion request is sent first, then we know that the polling
+	// context has been cancelled and that a response is on its way. In this
+	// case, we still cancel the subcontext we created to as required by the
+	// context package to avoid leaking resources. If the response comes first,
+	// then we need to force sending of the completion request and wait for the
+	// result of that operation.
 	var completionSendErr, responseReceiveErr error
 	select {
 	case completionSendErr = <-completionSendResults:
+		cancel()
 		responseReceiveErr = <-responseReceiveResults
 	case responseReceiveErr = <-responseReceiveResults:
-		forceCompletionSend()
+		cancel()
 		completionSendErr = <-completionSendResults
 	}
 
