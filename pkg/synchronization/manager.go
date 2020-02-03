@@ -1,7 +1,7 @@
 package synchronization
 
 import (
-	contextpkg "context"
+	"context"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -254,7 +254,7 @@ func (m *Manager) List(selection *selection.Selection, previousStateIndex uint64
 }
 
 // Flush tells the manager to flush sessions matching the given specifications.
-func (m *Manager) Flush(selection *selection.Selection, prompter string, skipWait bool, context contextpkg.Context) error {
+func (m *Manager) Flush(ctx context.Context, selection *selection.Selection, prompter string, skipWait bool) error {
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
@@ -263,7 +263,7 @@ func (m *Manager) Flush(selection *selection.Selection, prompter string, skipWai
 
 	// Attempt to flush the sessions.
 	for _, controller := range controllers {
-		if err := controller.flush(prompter, skipWait, context); err != nil {
+		if err := controller.flush(ctx, prompter, skipWait); err != nil {
 			return errors.Wrap(err, "unable to flush session")
 		}
 	}

@@ -107,7 +107,7 @@ func (s *Server) Flush(stream Synchronization_FlushServer) error {
 	}
 
 	// Perform flush(es).
-	err = s.manager.Flush(request.Selection, prompter, request.SkipWait, stream.Context())
+	err = s.manager.Flush(stream.Context(), request.Selection, prompter, request.SkipWait)
 
 	// Unregister the prompter.
 	prompt.UnregisterPrompter(prompter)

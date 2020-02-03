@@ -369,18 +369,18 @@ func (r *monitoringReceiver) finalize() error {
 // preemptableReceiver is a Receiver implementation that provides preemption
 // facilities.
 type preemptableReceiver struct {
+	// ctx is the context in which the receiver is receiving.
+	ctx context.Context
 	// receiver is the underlying receiver.
 	receiver Receiver
-	// run is the context in which the receiver is receiving.
-	run context.Context
 }
 
 // NewPreemptableReceiver wraps a receiver and aborts on Receive if the
 // specified context has been cancelled.
-func NewPreemptableReceiver(receiver Receiver, run context.Context) Receiver {
+func NewPreemptableReceiver(ctx context.Context, receiver Receiver) Receiver {
 	return &preemptableReceiver{
+		ctx:      ctx,
 		receiver: receiver,
-		run:      run,
 	}
 }
 
@@ -390,7 +390,7 @@ func NewPreemptableReceiver(receiver Receiver, run context.Context) Receiver {
 func (r *preemptableReceiver) Receive(transmission *Transmission) error {
 	// Check for preemption in a non-blocking fashion.
 	select {
-	case <-r.run.Done():
+	case <-r.ctx.Done():
 		return errors.New("reception cancelled")
 	default:
 	}

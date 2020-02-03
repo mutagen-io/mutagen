@@ -1,10 +1,10 @@
 package synchronization
 
 import (
-	contextpkg "context"
+	"context"
 	"fmt"
 	"os"
-	syncpkg "sync"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -63,7 +63,7 @@ type controller struct {
 	// loop without holding the lock. Any code wishing to set these members
 	// should first acquire the lock, then cancel the synchronization loop, and
 	// wait for it to complete before making any such changes.
-	lifecycleLock syncpkg.Mutex
+	lifecycleLock sync.Mutex
 	// disabled indicates that no more changes to the synchronization loop
 	// lifecycle are allowed (i.e. no more synchronization loops can be started
 	// for this controller). This is used by terminate and shutdown. It should
@@ -72,7 +72,7 @@ type controller struct {
 	disabled bool
 	// cancel cancels the synchronization loop execution context. It should be
 	// nil if and only if there is no synchronization loop running.
-	cancel contextpkg.CancelFunc
+	cancel context.CancelFunc
 	// flushRequests is used pass flush requests to the synchronization loop. It
 	// is buffered, allowing a single request to be queued. All requests passed
 	// via this channel must be buffered and contain room for one error.
@@ -216,11 +216,11 @@ func newSession(
 	// that we don't defer their shutdown.
 	if !paused {
 		logger.Info("Starting synchronization loop")
-		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
 		controller.done = make(chan struct{})
-		go controller.run(context, alphaEndpoint, betaEndpoint)
+		go controller.run(ctx, alphaEndpoint, betaEndpoint)
 		alphaEndpoint = nil
 		betaEndpoint = nil
 	}
@@ -282,11 +282,11 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 
 	// If the session isn't marked as paused, start a synchronization loop.
 	if !session.Paused {
-		context, cancel := contextpkg.WithCancel(contextpkg.Background())
+		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
 		controller.done = make(chan struct{})
-		go controller.run(context, nil, nil)
+		go controller.run(ctx, nil, nil)
 	}
 
 	// Success.
@@ -310,7 +310,7 @@ func (c *controller) currentState() *State {
 // specified, then the method will wait until a post-flush synchronization cycle
 // has completed. The provided context (which must be non-nil) can terminate
 // this wait early.
-func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Context) error {
+func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) error {
 	// Update status.
 	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
@@ -354,7 +354,7 @@ func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Co
 	// cancellation in the mean time.
 	select {
 	case c.flushRequests <- request:
-	case <-context.Done():
+	case <-ctx.Done():
 		return errors.New("flush cancelled before request could be sent")
 	}
 
@@ -365,7 +365,7 @@ func (c *controller) flush(prompter string, skipWait bool, context contextpkg.Co
 		if err != nil {
 			return err
 		}
-	case <-context.Done():
+	case <-ctx.Done():
 		return errors.New("flush cancelled while waiting for synchronization cycle")
 	}
 
@@ -470,11 +470,11 @@ func (c *controller) resume(prompter string, lifecycleLockHeld bool) error {
 	// Start the synchronization loop with what we have. Alpha or beta may have
 	// failed to connect (and be nil), but in any case that'll just make the run
 	// loop keep trying to connect.
-	context, cancel := contextpkg.WithCancel(contextpkg.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	c.flushRequests = make(chan chan error, 1)
 	c.done = make(chan struct{})
-	go c.run(context, alpha, beta)
+	go c.run(ctx, alpha, beta)
 
 	// Report any errors. Since we always want to start a synchronization loop,
 	// even on partial or complete failure (since it might be able to
@@ -621,7 +621,7 @@ func (c *controller) reset(prompter string) error {
 
 // run is the main runloop for the controller, managing connectivity and
 // synchronization.
-func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
+func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 	// Defer resource and state cleanup.
 	defer func() {
 		// Shutdown any endpoints. These might be non-nil if the runloop was
@@ -660,7 +660,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.state.Status = Status_ConnectingAlpha
 				c.stateLock.Unlock()
 				alpha, _ = reconnect(
-					context,
+					ctx,
 					c.logger.Sublogger("alpha"),
 					c.session.Alpha,
 					c.session.Identifier,
@@ -676,7 +676,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 			// Check for cancellation to avoid a spurious connection to beta in
 			// case cancellation occurred while connecting to alpha.
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
@@ -687,7 +687,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 				c.state.Status = Status_ConnectingBeta
 				c.stateLock.Unlock()
 				beta, _ = reconnect(
-					context,
+					ctx,
 					c.logger.Sublogger("beta"),
 					c.session.Beta,
 					c.session.Identifier,
@@ -711,14 +711,14 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 			// If we failed to connect, wait and then retry. Watch for
 			// cancellation in the mean time.
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(autoReconnectInterval):
 			}
 		}
 
 		// Perform synchronization.
-		err := c.synchronize(context, alpha, beta)
+		err := c.synchronize(ctx, alpha, beta)
 
 		// Shutdown the endpoints.
 		alpha.Shutdown()
@@ -745,13 +745,13 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 		now := time.Now()
 		if now.Sub(lastSynchronizationFailureTime) >= autoReconnectInterval {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			default:
 			}
 		} else {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(autoReconnectInterval):
 			}
@@ -761,7 +761,7 @@ func (c *controller) run(context contextpkg.Context, alpha, beta Endpoint) {
 }
 
 // synchronize is the main synchronization loop for the controller.
-func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoint) error {
+func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) error {
 	// Clear any error state upon restart of this function. If there was a
 	// terminal error previously caused synchronization to fail, then the user
 	// will have had time to review it (while the run loop is waiting to
@@ -838,7 +838,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			// Create a polling context that we can cancel. We don't make it a
 			// subcontext of our own cancellation context because it's easier to
 			// just track cancellation there separately.
-			pollContext, pollCancel := contextpkg.WithCancel(contextpkg.Background())
+			pollCtx, pollCancel := context.WithCancel(context.Background())
 
 			// Start alpha polling. If alpha has been put into a no-watch mode,
 			// then we still perform polling in order to detect transport errors
@@ -859,14 +859,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			αPollResults := make(chan error, 1)
 			go func() {
 				if αDisablePolling {
-					if err := alpha.Poll(pollContext); err != nil {
+					if err := alpha.Poll(pollCtx); err != nil {
 						αPollResults <- err
 					} else {
-						<-pollContext.Done()
+						<-pollCtx.Done()
 						αPollResults <- nil
 					}
 				} else {
-					αPollResults <- alpha.Poll(pollContext)
+					αPollResults <- alpha.Poll(pollCtx)
 				}
 			}()
 
@@ -874,14 +874,14 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			βPollResults := make(chan error, 1)
 			go func() {
 				if βDisablePolling {
-					if err := beta.Poll(pollContext); err != nil {
+					if err := beta.Poll(pollCtx); err != nil {
 						βPollResults <- err
 					} else {
-						<-pollContext.Done()
+						<-pollCtx.Done()
 						βPollResults <- nil
 					}
 				} else {
-					βPollResults <- beta.Poll(pollContext)
+					βPollResults <- beta.Poll(pollCtx)
 				}
 			}()
 
@@ -904,7 +904,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				pollCancel()
 				αPollErr = <-αPollResults
 				βPollErr = <-βPollResults
-			case <-context.Done():
+			case <-ctx.Done():
 				cancelled = true
 				pollCancel()
 				αPollErr = <-αPollResults
@@ -934,7 +934,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		var αPreservesExecutability, βPreservesExecutability bool
 		var αScanErr, βScanErr error
 		var αTryAgain, βTryAgain bool
-		scanDone := &syncpkg.WaitGroup{}
+		scanDone := &sync.WaitGroup{}
 		scanDone.Add(2)
 		go func() {
 			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(
@@ -994,7 +994,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 				// Wait before trying to rescan, but watch for cancellation.
 				select {
 				case <-time.After(rescanWaitDuration):
-				case <-context.Done():
+				case <-ctx.Done():
 					return errors.New("cancelled during rescan wait")
 				}
 			}
@@ -1043,7 +1043,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootEmptied
 			c.stateLock.Unlock()
-			<-context.Done()
+			<-ctx.Done()
 			return errors.New("cancelled while halted on emptied root")
 		}
 
@@ -1078,7 +1078,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootDeletion
 			c.stateLock.Unlock()
-			<-context.Done()
+			<-ctx.Done()
 			return errors.New("cancelled while halted on root deletion")
 		}
 
@@ -1090,7 +1090,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootTypeChange
 			c.stateLock.Unlock()
-			<-context.Done()
+			<-ctx.Done()
 			return errors.New("cancelled while halted on root type change")
 		}
 
@@ -1118,7 +1118,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			}
 			if len(filteredPaths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
-				receiver = rsync.NewPreemptableReceiver(receiver, context)
+				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on alpha")
 				}
@@ -1141,7 +1141,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 			}
 			if len(filteredPaths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
-				receiver = rsync.NewPreemptableReceiver(receiver, context)
+				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
 					return errors.Wrap(err, "unable to stage files on beta")
 				}
@@ -1160,7 +1160,7 @@ func (c *controller) synchronize(context contextpkg.Context, alpha, beta Endpoin
 		var αMissingFiles, βMissingFiles bool
 		var αTransitionErr, βTransitionErr error
 		var αChanges, βChanges []*core.Change
-		transitionDone := &syncpkg.WaitGroup{}
+		transitionDone := &sync.WaitGroup{}
 		if len(αTransitions) > 0 {
 			transitionDone.Add(1)
 		}
