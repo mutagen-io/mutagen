@@ -52,11 +52,11 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 	var connection *grpc.ClientConn
 	for {
 		// Create a context to timeout the dial.
-		dialContext, dialCancel := context.WithTimeout(context.Background(), dialTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)
 
 		// Attempt to dial.
 		connection, err = grpc.DialContext(
-			dialContext, endpoint,
+			ctx, endpoint,
 			grpc.WithInsecure(),
 			grpc.WithContextDialer(ipc.DialContext),
 			grpc.WithBlock(),
@@ -67,7 +67,7 @@ func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientCo
 		// Cancel the dialing context. If the dialing operation has already
 		// succeeded, this has no effect, but it is necessary to clean up the
 		// Goroutine that backs the context.
-		dialCancel()
+		cancel()
 
 		// Check for errors.
 		if err != nil {

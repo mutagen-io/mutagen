@@ -38,9 +38,9 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the tunnel resume method. The stream will close when the
 	// associated context is cancelled.
-	resumeContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := tunnelingService.Resume(resumeContext)
+	stream, err := tunnelingService.Resume(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}

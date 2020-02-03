@@ -75,9 +75,9 @@ func createMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the tunnel create method. The stream will close when the
 	// associated context is cancelled.
-	createContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := tunnelingService.Create(createContext)
+	stream, err := tunnelingService.Create(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
 	}

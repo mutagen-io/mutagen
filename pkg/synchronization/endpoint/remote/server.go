@@ -1,7 +1,7 @@
 package remote
 
 import (
-	contextpkg "context"
+	"context"
 	"net"
 
 	"github.com/pkg/errors"
@@ -201,13 +201,13 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 	// cancelled to force a response, but in case the response comes naturally,
 	// ensure the context is cancelled before we're done to avoid leaking a
 	// Goroutine.
-	pollContext, forceResponse := contextpkg.WithCancel(contextpkg.Background())
+	ctx, forceResponse := context.WithCancel(context.Background())
 	defer forceResponse()
 
 	// Start a Goroutine to execute the poll and send a response when done.
 	responseSendResults := make(chan error, 1)
 	go func() {
-		if err := s.endpoint.Poll(pollContext); err != nil {
+		if err := s.endpoint.Poll(ctx); err != nil {
 			s.encoder.Encode(&PollResponse{Error: err.Error()})
 			responseSendResults <- errors.Wrap(err, "polling error")
 		}

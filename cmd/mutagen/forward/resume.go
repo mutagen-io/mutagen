@@ -45,9 +45,9 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the session resume method. The stream will close when the
 	// associated context is cancelled.
-	resumeContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Resume(resumeContext)
+	stream, err := sessionService.Resume(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}

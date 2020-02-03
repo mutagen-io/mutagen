@@ -5,7 +5,7 @@ import (
 	"hash"
 	"io"
 	"path/filepath"
-	syncpkg "sync"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -132,7 +132,7 @@ type endpoint struct {
 	// Endpoint interface (since it doesn't allow concurrent usage), but rather
 	// the endpoint's background worker Goroutines for cache saving and
 	// (potentially) watching, which also access/modify these fields.
-	scanLock syncpkg.Mutex
+	scanLock sync.Mutex
 	// accelerateScan indicates that the Scan function should attempt to
 	// accelerate scanning by using data from a background watcher Goroutine.
 	accelerateScan bool

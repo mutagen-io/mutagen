@@ -45,9 +45,9 @@ func flushMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the session flush method. The stream will close when the
 	// associated context is cancelled.
-	flushContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Flush(flushContext)
+	stream, err := sessionService.Flush(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
 	}

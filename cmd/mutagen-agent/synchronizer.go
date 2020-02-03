@@ -54,9 +54,9 @@ func synchronizerMain(command *cobra.Command, arguments []string) error {
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
 	// Set up regular housekeeping and defer its shutdown.
-	housekeepingContext, housekeepingCancel := context.WithCancel(context.Background())
-	defer housekeepingCancel()
-	go housekeepRegularly(housekeepingContext, logging.RootLogger.Sublogger("housekeeping"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go housekeepRegularly(ctx, logging.RootLogger.Sublogger("housekeeping"))
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()

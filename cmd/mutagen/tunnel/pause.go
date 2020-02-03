@@ -37,9 +37,9 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the tunnel pause method. The stream will close when the
 	// associated context is cancelled.
-	pauseContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := tunnelingService.Pause(pauseContext)
+	stream, err := tunnelingService.Pause(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
 	}

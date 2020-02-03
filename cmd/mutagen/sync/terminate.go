@@ -44,9 +44,9 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the session terminate method. The stream will close when the
 	// associated context is cancelled.
-	terminateContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Terminate(terminateContext)
+	stream, err := sessionService.Terminate(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke terminate")
 	}

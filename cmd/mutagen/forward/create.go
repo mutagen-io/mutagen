@@ -53,9 +53,9 @@ func CreateWithSpecification(
 ) error {
 	// Invoke the session create method. The stream will close when the
 	// associated context is cancelled.
-	createContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := service.Create(createContext)
+	stream, err := service.Create(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
 	}

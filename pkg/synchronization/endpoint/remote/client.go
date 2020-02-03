@@ -1,7 +1,7 @@
 package remote
 
 import (
-	contextpkg "context"
+	"context"
 	"net"
 
 	"github.com/pkg/errors"
@@ -90,7 +90,7 @@ func NewEndpointClient(
 }
 
 // Poll implements the Poll method for remote endpoints.
-func (e *endpointClient) Poll(context contextpkg.Context) error {
+func (e *endpointClient) Poll(ctx context.Context) error {
 	// Create and send the poll request.
 	request := &EndpointRequest{Poll: &PollRequest{}}
 	if err := e.encoder.Encode(request); err != nil {
@@ -102,14 +102,14 @@ func (e *endpointClient) Poll(context contextpkg.Context) error {
 	// may be cancelled before we return (in the event that we receive an early
 	// completion request), but we defer its (idempotent) cancellation to ensure
 	// the context is cancelled.
-	completionContext, forceCompletionSend := contextpkg.WithCancel(context)
+	completionCtx, forceCompletionSend := context.WithCancel(ctx)
 	defer forceCompletionSend()
 
 	// Create a Goroutine that will send a poll completion request when the
 	// context is cancelled.
 	completionSendResults := make(chan error, 1)
 	go func() {
-		<-completionContext.Done()
+		<-completionCtx.Done()
 		completionSendResults <- errors.Wrap(
 			e.encoder.Encode(&PollCompletionRequest{}),
 			"unable to send poll completion request",

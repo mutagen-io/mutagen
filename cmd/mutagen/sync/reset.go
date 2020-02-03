@@ -45,9 +45,9 @@ func resetMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the session reset method. The stream will close when the
 	// associated context is cancelled.
-	resetContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Reset(resetContext)
+	stream, err := sessionService.Reset(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke reset")
 	}

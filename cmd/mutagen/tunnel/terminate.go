@@ -37,9 +37,9 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the tunnel terminate method. The stream will close when the
 	// associated context is cancelled.
-	terminateContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := tunnelingService.Terminate(terminateContext)
+	stream, err := tunnelingService.Terminate(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke terminate")
 	}

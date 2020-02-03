@@ -44,9 +44,9 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 
 	// Invoke the session pause method. The stream will close when the
 	// associated context is cancelled.
-	pauseContext, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Pause(pauseContext)
+	stream, err := sessionService.Pause(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
 	}
