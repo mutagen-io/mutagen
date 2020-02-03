@@ -103,52 +103,52 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 
 	// Create a Goroutine that will send a poll completion request when the
 	// subcontext is cancelled.
-	completionSendResults := make(chan error, 1)
+	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		completionSendResults <- errors.Wrap(
-			e.encoder.Encode(&PollCompletionRequest{}),
-			"unable to send poll completion request",
-		)
+		completionSendErrors <- e.encoder.Encode(&PollCompletionRequest{})
 	}()
 
 	// Create a Goroutine that will receive a poll response.
-	responseReceiveResults := make(chan error, 1)
+	response := &PollResponse{}
+	responseReceiveErrors := make(chan error, 1)
 	go func() {
-		response := &PollResponse{}
 		if err := e.decoder.Decode(response); err != nil {
-			responseReceiveResults <- errors.Wrap(err, "unable to receive poll response")
+			responseReceiveErrors <- err
 		} else if err = response.ensureValid(); err != nil {
-			responseReceiveResults <- errors.Wrap(err, "invalid poll response")
-		} else if response.Error != "" {
-			responseReceiveResults <- errors.Errorf("remote error: %s", response.Error)
+			responseReceiveErrors <- errors.Wrap(err, "invalid poll response")
 		}
-		responseReceiveResults <- nil
+		responseReceiveErrors <- nil
 	}()
 
 	// Wait for both a completion request to be sent and a response to be
 	// received. Both of these will occur, though their order is not known. If
 	// the completion request is sent first, then we know that the polling
 	// context has been cancelled and that a response is on its way. In this
-	// case, we still cancel the subcontext we created to as required by the
+	// case, we still cancel the subcontext we created as required by the
 	// context package to avoid leaking resources. If the response comes first,
 	// then we need to force sending of the completion request and wait for the
 	// result of that operation.
 	var completionSendErr, responseReceiveErr error
 	select {
-	case completionSendErr = <-completionSendResults:
+	case completionSendErr = <-completionSendErrors:
 		cancel()
-		responseReceiveErr = <-responseReceiveResults
-	case responseReceiveErr = <-responseReceiveResults:
+		responseReceiveErr = <-responseReceiveErrors
+	case responseReceiveErr = <-responseReceiveErrors:
 		cancel()
-		completionSendErr = <-completionSendResults
+		completionSendErr = <-completionSendErrors
 	}
 
-	// Check for errors.
+	// Check for transmission errors.
 	if responseReceiveErr != nil {
 		return responseReceiveErr
 	} else if completionSendErr != nil {
 		return completionSendErr
+	}
+
+	// Check for remote errors.
+	if response.Error != "" {
+		return errors.Errorf("remote error: %s", response.Error)
 	}
 
 	// Done.
@@ -156,7 +156,7 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 }
 
 // Scan implements the Scan method for remote endpoints.
-func (e *endpointClient) Scan(ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
+func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
@@ -189,17 +189,58 @@ func (e *endpointClient) Scan(ancestor *core.Entry, full bool) (*core.Entry, boo
 		return nil, false, errors.Wrap(err, "unable to send scan request"), false
 	}
 
-	// Receive the response.
+	// Create a subcontext that we can cancel to regulate transmission of the
+	// completion request.
+	completionCtx, cancel := context.WithCancel(ctx)
+
+	// Create a Goroutine that will send a scan completion request when the
+	// subcontext is cancelled.
+	completionSendErrors := make(chan error, 1)
+	go func() {
+		<-completionCtx.Done()
+		completionSendErrors <- e.encoder.Encode(&ScanCompletionRequest{})
+	}()
+
+	// Create a Goroutine that will receive a scan response.
 	response := &ScanResponse{}
-	if err := e.decoder.Decode(response); err != nil {
-		return nil, false, errors.Wrap(err, "unable to receive scan response"), false
-	} else if err = response.ensureValid(); err != nil {
-		return nil, false, errors.Wrap(err, "invalid scan response"), false
+	responseReceiveErrors := make(chan error)
+	go func() {
+		if err := e.decoder.Decode(response); err != nil {
+			responseReceiveErrors <- err
+		} else if err = response.ensureValid(); err != nil {
+			responseReceiveErrors <- errors.Wrap(err, "invalid scan response")
+		}
+		responseReceiveErrors <- nil
+	}()
+
+	// Wait for both a completion request to be sent and a response to be
+	// received. Both of these will occur, though their order is not known. If
+	// the completion request is sent first, then we know that the scanning
+	// context has been cancelled and that a response is on its way. In this
+	// case, we still cancel the subcontext we created as required by the
+	// context package to avoid leaking resources. If the response comes first,
+	// then we need to force sending of the completion request and wait for the
+	// result of that operation.
+	var completionSendErr, responseReceiveErr error
+	select {
+	case completionSendErr = <-completionSendErrors:
+		cancel()
+		responseReceiveErr = <-responseReceiveErrors
+	case responseReceiveErr = <-responseReceiveErrors:
+		cancel()
+		completionSendErr = <-completionSendErrors
 	}
 
-	// Check if the endpoint says we should try again.
-	if response.TryAgain {
-		return nil, false, errors.New(response.Error), true
+	// Check for transmission errors.
+	if responseReceiveErr != nil {
+		return nil, false, responseReceiveErr, false
+	} else if completionSendErr != nil {
+		return nil, false, completionSendErr, false
+	}
+
+	// Check for remote errors.
+	if response.Error != "" {
+		return nil, false, errors.Errorf("remote error: %s", response.Error), response.TryAgain
 	}
 
 	// Apply the remote's deltas to the expected snapshot.

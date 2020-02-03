@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"hash"
@@ -44,6 +45,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 
 	// Perform a scan.
 	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := Scan(
+		context.Background(),
 		root,
 		nil, nil,
 		hasher, nil,
@@ -67,6 +69,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	// Perform an accelerated scan (with a re-check path) using the snapshot as
 	// a baseline.
 	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := Scan(
+		context.Background(),
 		root,
 		snapshot, map[string]bool{"fake path": true},
 		hasher, cache,
@@ -104,6 +107,7 @@ func testCreateScanCycle(temporaryDirectory string, entry *Entry, contentMap map
 	// Perform an accelerated scan (without any re-check paths) using the
 	// snapshot as a baseline.
 	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = Scan(
+		context.Background(),
 		root,
 		snapshot, nil,
 		hasher, cache,
@@ -349,6 +353,7 @@ func TestScanSymlinkRoot(t *testing.T) {
 
 	// Attempt a scan of the symlink.
 	if _, _, _, _, _, err := Scan(
+		context.Background(),
 		root,
 		nil,
 		nil,
@@ -392,6 +397,7 @@ func TestEfficientRescan(t *testing.T) {
 
 	// Create an initial snapshot and validate the results.
 	snapshot, preservesExecutability, _, cache, _, err := Scan(
+		context.Background(),
 		root,
 		nil,
 		nil,
@@ -419,6 +425,7 @@ func TestEfficientRescan(t *testing.T) {
 	// Attempt a rescan and ensure that no hashing occurs.
 	hasher = &rescanHashProxy{hasher, t}
 	snapshot, preservesExecutability, _, cache, _, err = Scan(
+		context.Background(),
 		root,
 		nil,
 		nil,
@@ -470,6 +477,7 @@ func TestScanCrossDeviceFail(t *testing.T) {
 
 	// Perform a scan and ensure that it fails.
 	if _, _, _, _, _, err := Scan(
+		context.Background(),
 		parent,
 		nil,
 		nil,

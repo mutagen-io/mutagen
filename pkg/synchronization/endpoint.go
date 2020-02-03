@@ -18,7 +18,7 @@ type Endpoint interface {
 	// endpoint's root. It blocks until an event occurs, the provided context is
 	// cancelled, or an error occurs. In the first two cases it returns nil. The
 	// provided context is guaranteed to be cancelled eventually.
-	Poll(context context.Context) error
+	Poll(ctx context.Context) error
 
 	// Scan performs a scan of the endpoint's synchronization root. It requires
 	// the ancestor to be passed in for optimized snapshot transfers if the
@@ -30,7 +30,7 @@ type Endpoint interface {
 	// POSIX executability bits, any error that occurred while trying to create
 	// the scan, and a boolean indicating whether or not to re-try the scan (in
 	// the event of an error).
-	Scan(ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
+	Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
 
 	// Stage performs staging on the endpoint. It accepts a list of file paths
 	// and a separate list of desired digests corresponding to those paths. For

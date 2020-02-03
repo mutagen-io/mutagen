@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,6 +74,23 @@ func main() {
 	}
 	path := arguments[0]
 
+	// Create a context for the scan. The main reason for using a custom context
+	// instead of using context.Background() is that the latter provides a
+	// context that returns a nil result from Done(). To ensure that we fully
+	// understand the impact of preemption checks, we want a context that will
+	// return a non-nil completion channel. This also allows us to wire up
+	// interrupt handling to this context.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Wire up termination signals to context cancellation.
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
+	go func() {
+		<-signalTermination
+		cancel()
+	}()
+
 	// Print information.
 	fmt.Println("Analyzing", path)
 
@@ -86,6 +105,7 @@ func main() {
 	}
 	start := time.Now()
 	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := core.Scan(
+		ctx,
 		path,
 		nil,
 		nil,
@@ -121,6 +141,7 @@ func main() {
 	}
 	start = time.Now()
 	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
+		ctx,
 		path,
 		nil,
 		nil,
@@ -177,6 +198,7 @@ func main() {
 	}
 	start = time.Now()
 	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
+		ctx,
 		path,
 		snapshot,
 		map[string]bool{"fake path": true},
@@ -231,6 +253,7 @@ func main() {
 	}
 	start = time.Now()
 	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
+		ctx,
 		path,
 		snapshot,
 		nil,

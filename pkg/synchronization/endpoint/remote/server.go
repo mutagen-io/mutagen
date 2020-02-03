@@ -197,48 +197,41 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 		return errors.Wrap(err, "invalid poll request")
 	}
 
-	// Create a cancellable context for executing the poll. The context may be
-	// cancelled to force a response, but in case the response comes naturally,
-	// ensure the context is cancelled before we're done to avoid leaking a
-	// Goroutine.
-	ctx, forceResponse := context.WithCancel(context.Background())
-	defer forceResponse()
+	// Create a cancellable context for executing the poll.
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// Start a Goroutine to execute the poll and send a response when done.
-	responseSendResults := make(chan error, 1)
+	responseSendErrors := make(chan error, 1)
 	go func() {
+		response := &PollResponse{}
 		if err := s.endpoint.Poll(ctx); err != nil {
-			s.encoder.Encode(&PollResponse{Error: err.Error()})
-			responseSendResults <- errors.Wrap(err, "polling error")
+			response.Error = err.Error()
 		}
-		responseSendResults <- errors.Wrap(
-			s.encoder.Encode(&PollResponse{}),
-			"unable to send poll response",
-		)
+		responseSendErrors <- s.encoder.Encode(response)
 	}()
 
-	// Start a Goroutine to watch for the done request.
-	completionReceiveResults := make(chan error, 1)
+	// Start a Goroutine to watch for the completion request.
+	completionReceiveErrors := make(chan error, 1)
 	go func() {
 		request := &PollCompletionRequest{}
-		completionReceiveResults <- errors.Wrap(
-			s.decoder.Decode(request),
-			"unable to receive completion request",
-		)
+		completionReceiveErrors <- s.decoder.Decode(request)
 	}()
 
 	// Wait for both a completion request to be received and a response to be
-	// sent. Both of these will happen, though their order is not guaranteed. If
-	// the response has been sent, then we know the completion request is on its
-	// way, so just wait for it. If the completion receive comes first, then
-	// force the response and wait for it to be sent.
+	// sent. Both of these will occur, though their order is not known. If the
+	// completion request is received first, then we cancel the subcontext to
+	// preempt the scan and force transmission of a response. If the response is
+	// sent first, then we know the completion request is on its way. In this
+	// case, we still cancel the subcontext we created as required by the
+	// context package to avoid leaking resources.
 	var responseSendErr, completionReceiveErr error
 	select {
-	case responseSendErr = <-responseSendResults:
-		completionReceiveErr = <-completionReceiveResults
-	case completionReceiveErr = <-completionReceiveResults:
-		forceResponse()
-		responseSendErr = <-responseSendResults
+	case completionReceiveErr = <-completionReceiveErrors:
+		cancel()
+		responseSendErr = <-responseSendErrors
+	case responseSendErr = <-responseSendErrors:
+		cancel()
+		completionReceiveErr = <-completionReceiveErrors
 	}
 
 	// Check for errors.
@@ -259,45 +252,81 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 		return errors.Wrap(err, "invalid scan request")
 	}
 
-	// Perform a scan. Passing a nil ancestor is fine - it's not used for local
-	// endpoints anyway. If a retry is requested or an error occurs, send a
-	// response.
-	snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(nil, request.Full)
-	if tryAgain {
-		response := &ScanResponse{
-			Error:    err.Error(),
-			TryAgain: true,
+	// Create a cancellable context for executing the scan. The context may be
+	// cancelled to force a response, but in case the response comes naturally,
+	// ensure the context is cancelled before we're done to avoid leaking a
+	// Goroutine.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start a Goroutine to execute the scan and send a response when done.
+	responseSendErrors := make(chan error, 1)
+	go func() {
+		// Perform a scan. Passing a nil ancestor is fine - it's not used for
+		// local endpoints anyway. If a retry is requested or an error occurs,
+		// send a response.
+		snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(ctx, nil, request.Full)
+		if err != nil {
+			responseSendErrors <- s.encoder.Encode(&ScanResponse{
+				Error:    err.Error(),
+				TryAgain: tryAgain,
+			})
+			return
 		}
-		if err := s.encoder.Encode(response); err != nil {
-			return errors.Wrap(err, "unable to send scan retry response")
+
+		// Marshal the snapshot in a deterministic fashion.
+		buffer := proto.NewBuffer(nil)
+		buffer.SetDeterministic(true)
+		if err := buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
+			responseSendErrors <- s.encoder.Encode(&ScanResponse{
+				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
+			})
+			return
 		}
-		return nil
-	} else if err != nil {
-		s.encoder.Encode(&ScanResponse{Error: err.Error()})
-		return errors.Wrap(err, "unable to perform scan")
+		snapshotBytes := buffer.Bytes()
+
+		// Create an rsync engine.
+		engine := rsync.NewEngine()
+
+		// Compute the snapshot's delta against the base.
+		delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
+
+		// Send the response.
+		responseSendErrors <- s.encoder.Encode(&ScanResponse{
+			SnapshotDelta:          delta,
+			PreservesExecutability: preservesExecutability,
+		})
+	}()
+
+	// Start a Goroutine to watch for the completion request.
+	completionReceiveErrors := make(chan error, 1)
+	go func() {
+		request := &ScanCompletionRequest{}
+		completionReceiveErrors <- s.decoder.Decode(request)
+	}()
+
+	// Wait for both a completion request to be received and a response to be
+	// sent. Both of these will occur, though their order is not known. If the
+	// completion request is received first, then we cancel the subcontext to
+	// preempt the scan and force transmission of a response. If the response is
+	// sent first, then we know the completion request is on its way. In this
+	// case, we still cancel the subcontext we created as required by the
+	// context package to avoid leaking resources.
+	var responseSendErr, completionReceiveErr error
+	select {
+	case completionReceiveErr = <-completionReceiveErrors:
+		cancel()
+		responseSendErr = <-responseSendErrors
+	case responseSendErr = <-responseSendErrors:
+		cancel()
+		completionReceiveErr = <-completionReceiveErrors
 	}
 
-	// Marshal the snapshot in a deterministic fashion.
-	buffer := proto.NewBuffer(nil)
-	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
-		return errors.Wrap(err, "unable to marshal snapshot")
-	}
-	snapshotBytes := buffer.Bytes()
-
-	// Create an rsync engine.
-	engine := rsync.NewEngine()
-
-	// Compute the snapshot's delta against the base.
-	delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
-
-	// Send the response.
-	response := &ScanResponse{
-		SnapshotDelta:          delta,
-		PreservesExecutability: preservesExecutability,
-	}
-	if err := s.encoder.Encode(response); err != nil {
-		return errors.Wrap(err, "unable to send scan response")
+	// Check for errors.
+	if responseSendErr != nil {
+		return responseSendErr
+	} else if completionReceiveErr != nil {
+		return completionReceiveErr
 	}
 
 	// Success.

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hash"
@@ -26,6 +27,13 @@ const (
 	// is taken from Go's io.Copy method, which defaults to allocating a 32k
 	// buffer if none is provided.
 	scannerCopyBufferSize = 32 * 1024
+
+	// scannerCopyPreemptionInterval specifies the interval between preemption
+	// checks when performing digest writes. This, multiplied by
+	// scannerCopyBufferSize, determines the maximum number of bytes that can be
+	// written to a digest between preemption checks and thus controls the
+	// maximum preemption latency.
+	scannerCopyPreemptionInterval = 1024
 
 	// defaultInitialCacheCapacity specifies the default capacity for new
 	// filesystem and ignore caches when the corresponding existing cache is nil
@@ -77,8 +85,41 @@ func init() {
 	behaviorCache.decomposesUnicode = make(map[uint64]bool)
 }
 
+// preemptableWriter is an io.Writer implementation that checks for preemption
+// every N writes.
+type preemptableWriter struct {
+	// cancelled is the channel that, when closed, indicates preemption.
+	cancelled <-chan struct{}
+	// writer is the underlying writer.
+	writer io.Writer
+	// checkInterval is the number of writes to allow between preemption checks.
+	checkInterval uint
+	// writeCount is the number of writes since the last preemption check.
+	writeCount uint
+}
+
+// Write implements io.Writer.Write.
+func (w *preemptableWriter) Write(data []byte) (int, error) {
+	// Handle preemption checking.
+	if w.writeCount >= w.checkInterval {
+		select {
+		case <-w.cancelled:
+			return 0, errors.New("write preempted")
+		default:
+		}
+		w.writeCount = 0
+	} else {
+		w.writeCount++
+	}
+
+	// Perform the write.
+	return w.writer.Write(data)
+}
+
 // scanner provides the recursive implementation of scanning.
 type scanner struct {
+	// cancelled is the cancellation channel from the scan context.
+	cancelled <-chan struct{}
 	// root is the path to the synchronization root.
 	root string
 	// dirtyPaths is the set of tainted paths for which a baseline snapshot
@@ -124,6 +165,13 @@ func (s *scanner) file(
 	metadata *filesystem.Metadata,
 	file filesystem.ReadableFile,
 ) (*Entry, error) {
+	// Check for cancellation.
+	select {
+	case <-s.cancelled:
+		return nil, errors.New("scan cancelled")
+	default:
+	}
+
 	// Compute executability.
 	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
 
@@ -178,8 +226,14 @@ func (s *scanner) file(
 		s.hasher.Reset()
 
 		// Copy data into the hash and verify that we copied the amount
-		// expected.
-		if copied, err := io.CopyBuffer(s.hasher, file, s.buffer); err != nil {
+		// expected. We use a preemptable wrapper around the hasher to enable
+		// timely cancellation.
+		preemptableHasher := &preemptableWriter{
+			cancelled:     s.cancelled,
+			writer:        s.hasher,
+			checkInterval: scannerCopyPreemptionInterval,
+		}
+		if copied, err := io.CopyBuffer(preemptableHasher, file, s.buffer); err != nil {
 			return nil, fmt.Errorf("unable to hash file contents (%s): %w", path, err)
 		} else if uint64(copied) != metadata.Size {
 			return nil, fmt.Errorf("hashed size mismatch (%s): %d != %d", path, copied, metadata.Size)
@@ -226,6 +280,13 @@ func (s *scanner) symbolicLink(
 	name string,
 	enforcePortable bool,
 ) (*Entry, error) {
+	// Check for cancellation.
+	select {
+	case <-s.cancelled:
+		return nil, errors.New("scan cancelled")
+	default:
+	}
+
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
@@ -264,6 +325,13 @@ func (s *scanner) directory(
 	directory *filesystem.Directory,
 	baseline *Entry,
 ) (*Entry, error) {
+	// Check for cancellation.
+	select {
+	case <-s.cancelled:
+		return nil, errors.New("scan cancelled")
+	default:
+	}
+
 	// Verify that the baseline, if any, is sane.
 	if baseline != nil && baseline.Kind != EntryKind_Directory {
 		panic("non-directory baseline passed to directory handler")
@@ -409,6 +477,7 @@ func (s *scanner) directory(
 // Scan provides recursive filesystem scanning facilities for synchronization
 // roots.
 func Scan(
+	ctx context.Context,
 	root string,
 	baseline *Entry,
 	recheckPaths map[string]bool,
@@ -620,6 +689,7 @@ func Scan(
 
 	// Create a scanner.
 	s := &scanner{
+		cancelled:              ctx.Done(),
 		root:                   root,
 		dirtyPaths:             dirtyPaths,
 		hasher:                 hasher,

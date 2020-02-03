@@ -448,7 +448,7 @@ func stopAndDrainTimer(timer *time.Timer) {
 
 // watchRecursive is the watch loop for platforms where native recursive
 // watching facilities are available.
-func (e *endpoint) watchRecursive(context context.Context, pollingInterval uint32) {
+func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
 	// Create a sublogger for watching.
 	logger := e.logger.Sublogger("watching")
 
@@ -487,7 +487,7 @@ WatchEstablishment:
 		// Establish a watch and monitor for its termination.
 		watchErrors := make(chan error, 1)
 		go func() {
-			watchErrors <- watching.WatchRecursive(context, e.root, events)
+			watchErrors <- watching.WatchRecursive(ctx, e.root, events)
 		}()
 
 		// Wait for the watch to be established (as indicated by an empty string
@@ -495,7 +495,7 @@ WatchEstablishment:
 		// then we'll strobe poll events and then wait for one polling interval
 		// before attempting to re-establish the watch.
 		select {
-		case <-context.Done():
+		case <-ctx.Done():
 			// Log cancellation.
 			logger.Debug("Cancelled during initialization")
 
@@ -519,7 +519,7 @@ WatchEstablishment:
 			// reason for watch errors here is non-existence of the
 			// synchronization root.
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case <-watchRecreationTimer.C:
 				continue WatchEstablishment
@@ -559,7 +559,7 @@ WatchEstablishment:
 	EventProcessing:
 		for {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				// Log cancellation.
 				logger.Debug("Cancelled")
 
@@ -581,7 +581,7 @@ WatchEstablishment:
 				// try again after the polling interval.
 				logger.Debug("Performing baseline scan")
 				e.scanLock.Lock()
-				if err := e.scan(nil, nil); err != nil {
+				if err := e.scan(ctx, nil, nil); err != nil {
 					logger.Debug("Unable to perform baseline scan:", err)
 					scanTimer.Reset(pollingDuration)
 				} else {
@@ -611,7 +611,7 @@ WatchEstablishment:
 				// try again after the polling interval.
 				logger.Debug("Performing baseline scan")
 				e.scanLock.Lock()
-				if err := e.scan(nil, nil); err != nil {
+				if err := e.scan(ctx, nil, nil); err != nil {
 					logger.Debug("Unable to perform baseline scan:", err)
 					scanTimer.Reset(pollingDuration)
 				} else {
@@ -658,7 +658,7 @@ WatchEstablishment:
 				// and we're better off giving the filesystem some time to
 				// settle.
 				select {
-				case <-context.Done():
+				case <-ctx.Done():
 					// Log cancellation.
 					logger.Debug("Cancelled while waiting for watch recreation")
 
@@ -716,7 +716,7 @@ WatchEstablishment:
 // for using native non-recursive watching facilities to reduce notification
 // latency on frequently updated contents.
 func (e *endpoint) watchPoll(
-	context context.Context,
+	ctx context.Context,
 	pollingInterval uint32,
 	useNonRecursiveWatching bool,
 ) {
@@ -814,7 +814,7 @@ func (e *endpoint) watchPoll(
 		// a notification from our non-recursive watches, or a coalesced event.
 		if !skipWaiting {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				// Log cancellation.
 				logger.Debug("Cancelled")
 
@@ -871,7 +871,7 @@ func (e *endpoint) watchPoll(
 		// concurrent modification. In that case, release the scan lock and
 		// strobe the poll events channel. The controller can then perform a
 		// full scan.
-		if err := e.scan(nil, nil); err != nil {
+		if err := e.scan(ctx, nil, nil); err != nil {
 			// Log the error.
 			logger.Debug("Scan failed:", err)
 
@@ -958,9 +958,10 @@ func (e *endpoint) Poll(context context.Context) error {
 // scan is the internal function which performs a scan operation on the root and
 // updates the endpoint scan parameters. The caller must hold the endpoint's
 // scan lock.
-func (e *endpoint) scan(baseline *core.Entry, recheckPaths map[string]bool) error {
+func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths map[string]bool) error {
 	// Perform a full (warm) scan, watching for errors.
 	snapshot, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
+		ctx,
 		e.root,
 		baseline, recheckPaths,
 		e.hasher, e.cache,
@@ -995,7 +996,7 @@ func (e *endpoint) scan(baseline *core.Entry, recheckPaths map[string]bool) erro
 }
 
 // Scan implements the Scan method for local endpoints.
-func (e *endpoint) Scan(_ *core.Entry, full bool) (*core.Entry, bool, error, bool) {
+func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Entry, bool, error, bool) {
 	// Grab the scan lock and defer its release.
 	e.scanLock.Lock()
 	defer e.scanLock.Unlock()
@@ -1025,14 +1026,14 @@ func (e *endpoint) Scan(_ *core.Entry, full bool) (*core.Entry, bool, error, boo
 	// to concurrent modifications and suggest a retry.
 	if e.accelerateScan && !full {
 		if e.watchIsRecursive {
-			if err := e.scan(e.snapshot, e.recheckPaths); err != nil {
+			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
 				return nil, false, err, true
 			} else {
 				e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
 			}
 		}
 	} else {
-		if err := e.scan(nil, nil); err != nil {
+		if err := e.scan(ctx, nil, nil); err != nil {
 			return nil, false, err, true
 		}
 	}

@@ -944,20 +944,23 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		scanDone := &sync.WaitGroup{}
 		scanDone.Add(2)
 		go func() {
-			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(
-				ancestor,
-				forceFullScan,
-			)
+			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(ctx, ancestor, forceFullScan)
 			scanDone.Done()
 		}()
 		go func() {
-			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(
-				ancestor,
-				forceFullScan,
-			)
+			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(ctx, ancestor, forceFullScan)
 			scanDone.Done()
 		}()
 		scanDone.Wait()
+
+		// Check if cancellation occurred during scanning.
+		select {
+		case <-ctx.Done():
+			return errors.New("cancelled during scanning")
+		default:
+		}
+
+		// Check for scan errors.
 		if αScanErr != nil {
 			αScanErr = errors.Wrap(αScanErr, "alpha scan error")
 			if !αTryAgain {

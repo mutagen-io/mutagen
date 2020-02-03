@@ -36,7 +36,7 @@ message InitializeSynchronizationResponse {
 // PollRequest encodes a request for one-shot polling.
 message PollRequest {}
 
-// PollCompletionRequest is paired with pollRequest and indicates a request for
+// PollCompletionRequest is paired with PollRequest and indicates a request for
 // early polling completion or an acknowledgement of completion.
 message PollCompletionRequest{}
 
@@ -55,6 +55,10 @@ message ScanRequest {
     // avoiding any acceleration that might be available on the endpoint.
     bool full = 2;
 }
+
+// ScanCompletionRequest is paired with a ScanRequest and indicates a request
+// for scan cancellation or an acknowledgement of completion.
+message ScanCompletionRequest{}
 
 // ScanResponse encodes the results of a scan.
 message ScanResponse {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hash"
 	"io/ioutil"
@@ -300,6 +301,7 @@ func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map
 
 	// Perform a scan.
 	snapshot, preservesExecutability, _, cache, _, err := Scan(
+		context.Background(),
 		root,
 		nil,
 		nil,
@@ -403,6 +405,7 @@ func TestTransitionSwapFile(t *testing.T) {
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
 		_, _, recomposeUnicode, cache, _, err := Scan(
+			context.Background(),
 			root,
 			nil,
 			nil,
@@ -478,6 +481,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
 		_, _, recomposeUnicode, cache, _, err := Scan(
+			context.Background(),
 			root,
 			nil,
 			nil,
@@ -585,6 +589,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 	modifier := func(root string, expected *Entry) (*Entry, error) {
 		// Perform a scan to grab Unicode recomposition behavior and a cache.
 		_, _, recomposeUnicode, cache, _, err := Scan(
+			context.Background(),
 			root,
 			nil,
 			nil,
