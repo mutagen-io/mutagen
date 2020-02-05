@@ -43,6 +43,14 @@ const (
 	defaultInitialCacheCapacity = 1024
 )
 
+var (
+	// errScanCancelled indicates that the scan was cancelled.
+	errScanCancelled = errors.New("scan cancelled")
+	// errWritePreempted indicates that a write was preempted in a
+	// preemptableWriter instance.
+	errWritePreempted = errors.New("write preempted")
+)
+
 // behaviorCache is a cache mapping filesystem device IDs to behavioral
 // information. It is only used in cases where probe files are required for
 // probing behavior, because those cases are (a) more expensive and (b) cause
@@ -104,7 +112,7 @@ func (w *preemptableWriter) Write(data []byte) (int, error) {
 	if w.writeCount >= w.checkInterval {
 		select {
 		case <-w.cancelled:
-			return 0, errors.New("write preempted")
+			return 0, errWritePreempted
 		default:
 		}
 		w.writeCount = 0
@@ -168,7 +176,7 @@ func (s *scanner) file(
 	// Check for cancellation.
 	select {
 	case <-s.cancelled:
-		return nil, errors.New("scan cancelled")
+		return nil, errScanCancelled
 	default:
 	}
 
@@ -234,6 +242,9 @@ func (s *scanner) file(
 			checkInterval: scannerCopyPreemptionInterval,
 		}
 		if copied, err := io.CopyBuffer(preemptableHasher, file, s.buffer); err != nil {
+			if err == errWritePreempted {
+				return nil, errScanCancelled
+			}
 			return nil, fmt.Errorf("unable to hash file contents (%s): %w", path, err)
 		} else if uint64(copied) != metadata.Size {
 			return nil, fmt.Errorf("hashed size mismatch (%s): %d != %d", path, copied, metadata.Size)
@@ -283,7 +294,7 @@ func (s *scanner) symbolicLink(
 	// Check for cancellation.
 	select {
 	case <-s.cancelled:
-		return nil, errors.New("scan cancelled")
+		return nil, errScanCancelled
 	default:
 	}
 
@@ -328,7 +339,7 @@ func (s *scanner) directory(
 	// Check for cancellation.
 	select {
 	case <-s.cancelled:
-		return nil, errors.New("scan cancelled")
+		return nil, errScanCancelled
 	default:
 	}
 
