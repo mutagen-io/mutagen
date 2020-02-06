@@ -18,6 +18,11 @@ import (
 )
 
 func flushMain(command *cobra.Command, arguments []string) error {
+	// Validate arguments.
+	if len(arguments) > 0 {
+		return errors.New("unexpected arguments provided")
+	}
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -104,7 +109,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 }
 
 var flushCommand = &cobra.Command{
-	Use:          "flush [<configuration-file>]",
+	Use:          "flush",
 	Short:        "Flush project synchronization sessions",
 	RunE:         flushMain,
 	SilenceUsage: true,

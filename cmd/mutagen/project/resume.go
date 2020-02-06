@@ -19,6 +19,11 @@ import (
 )
 
 func resumeMain(command *cobra.Command, arguments []string) error {
+	// Validate arguments.
+	if len(arguments) > 0 {
+		return errors.New("unexpected arguments provided")
+	}
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -110,7 +115,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 }
 
 var resumeCommand = &cobra.Command{
-	Use:          "resume [<configuration-file>]",
+	Use:          "resume",
 	Short:        "Resume project sessions",
 	RunE:         resumeMain,
 	SilenceUsage: true,

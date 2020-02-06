@@ -19,6 +19,11 @@ import (
 )
 
 func pauseMain(command *cobra.Command, arguments []string) error {
+	// Validate arguments.
+	if len(arguments) > 0 {
+		return errors.New("unexpected arguments provided")
+	}
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -110,7 +115,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 }
 
 var pauseCommand = &cobra.Command{
-	Use:          "pause [<configuration-file>]",
+	Use:          "pause",
 	Short:        "Pause project sessions",
 	RunE:         pauseMain,
 	SilenceUsage: true,

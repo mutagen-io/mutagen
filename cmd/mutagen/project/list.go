@@ -19,6 +19,11 @@ import (
 )
 
 func listMain(command *cobra.Command, arguments []string) error {
+	// Validate arguments.
+	if len(arguments) > 0 {
+		return errors.New("unexpected arguments provided")
+	}
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -115,7 +120,7 @@ func listMain(command *cobra.Command, arguments []string) error {
 }
 
 var listCommand = &cobra.Command{
-	Use:          "list [<configuration-file>]",
+	Use:          "list",
 	Short:        "List project sessions",
 	RunE:         listMain,
 	SilenceUsage: true,
