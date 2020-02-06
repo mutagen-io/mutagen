@@ -1,5 +1,5 @@
 # Set the base image.
-FROM microsoft/windowsservercore:1809
+FROM mcr.microsoft.com/windows/servercore:1809
 
 # Add a user.
 RUN net user /add george
