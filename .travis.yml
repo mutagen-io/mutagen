@@ -58,7 +58,7 @@ install: true
 before_script:
   - if [[ "$TRAVIS_OS_NAME" != "windows" ]]; then source scripts/ci/setup_ssh.sh ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then source scripts/ci/create_test_partitions_darwin.sh ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then cmd.exe /C 'diskpart /s scripts\ci\create_test_partitions_windows.txt' ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then scripts/ci/create_test_partitions_windows.bat ; fi
   - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then source scripts/ci/setup_docker.sh ; fi
 
 # Run tests, upload the coverage report, and build bundles.
