@@ -18,27 +18,20 @@ import (
 )
 
 func flushMain(command *cobra.Command, arguments []string) error {
-	// Compute the name of the configuration file and change our working
-	// directory to the path in which the file resides.
-	var configurationFileName string
-	if len(arguments) == 0 {
-		configurationFileName = project.DefaultConfigurationFileName
-	} else if len(arguments) == 1 {
-		// Parse the target into directory and file name.
+	// Compute the name of the configuration file and ensure that our working
+	// directory is that in which the file resides. This is required for
+	// relative paths (including relative synchronization paths and relative
+	// Unix Domain Socket paths) to be resolved relative to the project
+	// configuration file.
+	configurationFileName := project.DefaultConfigurationFileName
+	if flushConfiguration.projectFile != "" {
 		var directory string
-		directory, configurationFileName = filepath.Split(arguments[0])
-		if configurationFileName == "" {
-			return errors.New("empty configuration file name")
-		}
-
-		// Switch to the directory (if it's not the current directory).
+		directory, configurationFileName = filepath.Split(flushConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
 				return errors.Wrap(err, "unable to switch to target directory")
 			}
 		}
-	} else {
-		return errors.New("invalid number of arguments")
 	}
 
 	// Compute the lock path.
@@ -120,6 +113,8 @@ var flushCommand = &cobra.Command{
 var flushConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
+	// projectFile is the path to the project file, if non-default.
+	projectFile string
 	// skipWait indicates whether or not the flush operation should block until
 	// a synchronization cycle completes for each sesion requested.
 	skipWait bool
@@ -135,6 +130,9 @@ func init() {
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&flushConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up project file flags.
+	flags.StringVarP(&flushConfiguration.projectFile, "project-file", "f", "", "Specify project file")
 
 	// Wire up flush flags.
 	flags.BoolVar(&flushConfiguration.skipWait, "skip-wait", false, "Avoid waiting for the resulting synchronization cycle(s) to complete")
