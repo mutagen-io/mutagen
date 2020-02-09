@@ -46,9 +46,6 @@ const (
 var (
 	// errScanCancelled indicates that the scan was cancelled.
 	errScanCancelled = errors.New("scan cancelled")
-	// errWritePreempted indicates that a write was preempted in a
-	// preemptableWriter instance.
-	errWritePreempted = errors.New("write preempted")
 )
 
 // behaviorCache is a cache mapping filesystem device IDs to behavioral
@@ -91,37 +88,6 @@ func init() {
 	// Initialize the behavior cache.
 	behaviorCache.preservesExecutability = make(map[uint64]bool)
 	behaviorCache.decomposesUnicode = make(map[uint64]bool)
-}
-
-// preemptableWriter is an io.Writer implementation that checks for preemption
-// every N writes.
-type preemptableWriter struct {
-	// cancelled is the channel that, when closed, indicates preemption.
-	cancelled <-chan struct{}
-	// writer is the underlying writer.
-	writer io.Writer
-	// checkInterval is the number of writes to allow between preemption checks.
-	checkInterval uint
-	// writeCount is the number of writes since the last preemption check.
-	writeCount uint
-}
-
-// Write implements io.Writer.Write.
-func (w *preemptableWriter) Write(data []byte) (int, error) {
-	// Handle preemption checking.
-	if w.writeCount >= w.checkInterval {
-		select {
-		case <-w.cancelled:
-			return 0, errWritePreempted
-		default:
-		}
-		w.writeCount = 0
-	} else {
-		w.writeCount++
-	}
-
-	// Perform the write.
-	return w.writer.Write(data)
 }
 
 // scanner provides the recursive implementation of scanning.
