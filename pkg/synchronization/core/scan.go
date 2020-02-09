@@ -113,8 +113,8 @@ type scanner struct {
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
 	newIgnoreCache IgnoreCache
-	// buffer is the read buffer used for computing file digests.
-	buffer []byte
+	// copyBuffer is the copy buffer used for computing file digests.
+	copyBuffer []byte
 	// deviceID is the device ID of the synchronization root filesystem.
 	deviceID uint64
 	// recomposeUnicode indicates whether or not filenames need to be recomposed
@@ -200,7 +200,7 @@ func (s *scanner) file(
 			writer:        s.hasher,
 			checkInterval: scannerCopyPreemptionInterval,
 		}
-		if copied, err := io.CopyBuffer(preemptableHasher, file, s.buffer); err != nil {
+		if copied, err := io.CopyBuffer(preemptableHasher, file, s.copyBuffer); err != nil {
 			if err == errWritePreempted {
 				return nil, errScanCancelled
 			}
@@ -662,7 +662,7 @@ func Scan(
 		symlinkMode:            symlinkMode,
 		newCache:               newCache,
 		newIgnoreCache:         newIgnoreCache,
-		buffer:                 make([]byte, scannerCopyBufferSize),
+		copyBuffer:             make([]byte, scannerCopyBufferSize),
 		deviceID:               metadata.DeviceID,
 		recomposeUnicode:       decomposesUnicode,
 		preservesExecutability: preservesExecutability,
