@@ -7,3 +7,6 @@
 # -mod=readonly flag is specified to go build.
 go.mod text eol=lf
 go.sum text eol=lf
+
+# Enforce that Windows batch files always use CRLF line endings.
+*.bat text eol=crlf
