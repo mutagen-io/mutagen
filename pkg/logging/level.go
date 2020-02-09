@@ -2,8 +2,6 @@ package logging
 
 import (
 	"os"
-
-	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 // Level represents a logging level.
@@ -51,15 +49,8 @@ func (l Level) String() string {
 var currentLevel Level
 
 func init() {
-	// Set the baseline log level based on whether or not debug mode is enabled.
-	if mutagen.DebugEnabled {
-		currentLevel = LevelDebug
-	} else {
-		currentLevel = LevelInfo
-	}
-
-	// If an explicit log level (that we understand) has been specified, then
-	// use that as an override.
+	// Set the log level based on the MUTAGEN_LOG_LEVEL environment variable. If
+	// unset (or set to an unknown value), then default to LevelInfo.
 	switch os.Getenv("MUTAGEN_LOG_LEVEL") {
 	case "disabled":
 		currentLevel = LevelDisabled
@@ -73,5 +64,7 @@ func init() {
 		currentLevel = LevelDebug
 	case "trace":
 		currentLevel = LevelTrace
+	default:
+		currentLevel = LevelInfo
 	}
 }
