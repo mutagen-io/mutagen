@@ -173,13 +173,6 @@ func (s *scanner) file(
 	metadata *filesystem.Metadata,
 	file filesystem.ReadableFile,
 ) (*Entry, error) {
-	// Check for cancellation.
-	select {
-	case <-s.cancelled:
-		return nil, errScanCancelled
-	default:
-	}
-
 	// Compute executability.
 	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
 
@@ -291,13 +284,6 @@ func (s *scanner) symbolicLink(
 	name string,
 	enforcePortable bool,
 ) (*Entry, error) {
-	// Check for cancellation.
-	select {
-	case <-s.cancelled:
-		return nil, errScanCancelled
-	default:
-	}
-
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
@@ -336,13 +322,6 @@ func (s *scanner) directory(
 	directory *filesystem.Directory,
 	baseline *Entry,
 ) (*Entry, error) {
-	// Check for cancellation.
-	select {
-	case <-s.cancelled:
-		return nil, errScanCancelled
-	default:
-	}
-
 	// Verify that the baseline, if any, is sane.
 	if baseline != nil && baseline.Kind != EntryKind_Directory {
 		panic("non-directory baseline passed to directory handler")
@@ -385,6 +364,13 @@ func (s *scanner) directory(
 	// Compute entries.
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, contentMetadata := range directoryContents {
+		// Check for cancellation.
+		select {
+		case <-s.cancelled:
+			return nil, errScanCancelled
+		default:
+		}
+
 		// Extract the content name.
 		contentName := contentMetadata.Name
 
