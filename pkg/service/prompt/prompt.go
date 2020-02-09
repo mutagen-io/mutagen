@@ -24,3 +24,16 @@ func (r *PromptRequest) ensureValid() error {
 	// Success.
 	return nil
 }
+
+// EnsureValid verifies that a PromptResponse is valid.
+func (r *PromptResponse) EnsureValid() error {
+	// A nil prompt response is not valid.
+	if r == nil {
+		return errors.New("nil prompt response")
+	}
+
+	// Any value of the response itself is considered valid.
+
+	// Success.
+	return nil
+}

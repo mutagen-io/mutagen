@@ -43,6 +43,8 @@ func promptMain(arguments []string) error {
 	response, err := promptService.Prompt(context.Background(), request)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke prompt")
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid prompt response")
 	}
 
 	// Print the response.
