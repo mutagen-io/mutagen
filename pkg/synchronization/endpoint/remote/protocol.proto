@@ -109,6 +109,10 @@ message TransitionRequest {
     repeated core.Change transitions = 1;
 }
 
+// TransitionCompletionRequest is paired with a TransitionRequest and indicates
+// a request for transition cancellation or an acknowledgement of completion.
+message TransitionCompletionRequest{}
+
 // TransitionResponse encodes the results of transitioning.
 message TransitionResponse {
     // Results are the resulting contents post-transition.

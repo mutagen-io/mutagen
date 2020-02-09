@@ -20,7 +20,7 @@ type Endpoint interface {
 	// provided context is guaranteed to be cancelled eventually.
 	Poll(ctx context.Context) error
 
-	// Scan performs a scan of the endpoint's synchronization root. It requires
+	// Scan performs a scan of the endpoint's synchronization root. It allows
 	// the ancestor to be passed in for optimized snapshot transfers if the
 	// endpoint is remote. The ancestor may be nil, in which transfers from
 	// remote endpoints may be less than optimal. The full parameter forces the
@@ -63,7 +63,7 @@ type Endpoint interface {
 	// usually the long-blocking transitions are going to be the ones where
 	// we're creating the root with a huge number of files and wouldn't catch
 	// cancellation until they're all done anyway.
-	Transition(transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error)
+	Transition(ctx context.Context, transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error)
 
 	// Shutdown terminates any resources associated with the endpoint. For local
 	// endpoints, Shutdown will not preempt calls, but for remote endpoints it

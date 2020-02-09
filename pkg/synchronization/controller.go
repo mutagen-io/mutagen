@@ -1179,7 +1179,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 		if len(αTransitions) > 0 {
 			go func() {
-				αResults, αProblems, αMissingFiles, αTransitionErr = alpha.Transition(αTransitions)
+				αResults, αProblems, αMissingFiles, αTransitionErr = alpha.Transition(ctx, αTransitions)
 				if αTransitionErr == nil {
 					for t, transition := range αTransitions {
 						αChanges = append(αChanges, &core.Change{Path: transition.Path, New: αResults[t]})
@@ -1190,7 +1190,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 		if len(βTransitions) > 0 {
 			go func() {
-				βResults, βProblems, βMissingFiles, βTransitionErr = beta.Transition(βTransitions)
+				βResults, βProblems, βMissingFiles, βTransitionErr = beta.Transition(ctx, βTransitions)
 				if βTransitionErr == nil {
 					for t, transition := range βTransitions {
 						βChanges = append(βChanges, &core.Change{Path: transition.Path, New: βResults[t]})

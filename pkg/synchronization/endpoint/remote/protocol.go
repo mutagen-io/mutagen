@@ -61,7 +61,8 @@ func (r *PollRequest) ensureValid() error {
 	return nil
 }
 
-// ensureValid ensures that the PollCompletionRequest's invariants are respected.
+// ensureValid ensures that the PollCompletionRequest's invariants are
+// respected.
 func (r *PollCompletionRequest) ensureValid() error {
 	// A nil poll completion request is not valid.
 	if r == nil {
@@ -96,6 +97,18 @@ func (r *ScanRequest) ensureValid() error {
 	}
 
 	// Full is correct regardless of value, so no validation is required.
+
+	// Success.
+	return nil
+}
+
+// ensureValid ensures that the ScanCompletionRequest's invariants are
+// respected.
+func (r *ScanCompletionRequest) ensureValid() error {
+	// A nil scan completion request is not valid.
+	if r == nil {
+		return errors.New("nil scan completion request")
+	}
 
 	// Success.
 	return nil
@@ -236,6 +249,18 @@ func (r *TransitionRequest) ensureValid() error {
 		if err := change.EnsureValid(); err != nil {
 			return errors.Wrap(err, "invalid transition")
 		}
+	}
+
+	// Success.
+	return nil
+}
+
+// ensureValid ensures that the TransitionCompletionRequest's invariants are
+// respected.
+func (r *TransitionCompletionRequest) ensureValid() error {
+	// A nil transition completion request is not valid.
+	if r == nil {
+		return errors.New("nil transition completion request")
 	}
 
 	// Success.

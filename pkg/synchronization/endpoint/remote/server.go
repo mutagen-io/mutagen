@@ -200,21 +200,38 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 	// Create a cancellable context for executing the poll.
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Start a Goroutine to execute the poll and send a response when done.
-	responseSendErrors := make(chan error, 1)
-	go func() {
-		response := &PollResponse{}
-		if err := s.endpoint.Poll(ctx); err != nil {
-			response.Error = err.Error()
-		}
-		responseSendErrors <- s.encoder.Encode(response)
-	}()
-
 	// Start a Goroutine to watch for the completion request.
 	completionReceiveErrors := make(chan error, 1)
 	go func() {
 		request := &PollCompletionRequest{}
-		completionReceiveErrors <- s.decoder.Decode(request)
+		if err := s.decoder.Decode(request); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+		} else if err = request.ensureValid(); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+		} else {
+			completionReceiveErrors <- nil
+		}
+	}()
+
+	// Start a Goroutine to execute the poll and send a response when done.
+	responseSendErrors := make(chan error, 1)
+	go func() {
+		// Perform polling and set up the response.
+		var response *PollResponse
+		if err := s.endpoint.Poll(ctx); err != nil {
+			response = &PollResponse{
+				Error: err.Error(),
+			}
+		} else {
+			response = &PollResponse{}
+		}
+
+		// Send te response.
+		if err := s.encoder.Encode(response); err != nil {
+			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+		} else {
+			responseSendErrors <- nil
+		}
 	}()
 
 	// Wait for both a completion request to be received and a response to be
@@ -252,57 +269,59 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 		return errors.Wrap(err, "invalid scan request")
 	}
 
-	// Create a cancellable context for executing the scan. The context may be
-	// cancelled to force a response, but in case the response comes naturally,
-	// ensure the context is cancelled before we're done to avoid leaking a
-	// Goroutine.
+	// Create a cancellable context for executing the scan.
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Start a Goroutine to execute the scan and send a response when done.
-	responseSendErrors := make(chan error, 1)
-	go func() {
-		// Perform a scan. Passing a nil ancestor is fine - it's not used for
-		// local endpoints anyway. If a retry is requested or an error occurs,
-		// send a response.
-		snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(ctx, nil, request.Full)
-		if err != nil {
-			responseSendErrors <- s.encoder.Encode(&ScanResponse{
-				Error:    err.Error(),
-				TryAgain: tryAgain,
-			})
-			return
-		}
-
-		// Marshal the snapshot in a deterministic fashion.
-		buffer := proto.NewBuffer(nil)
-		buffer.SetDeterministic(true)
-		if err := buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
-			responseSendErrors <- s.encoder.Encode(&ScanResponse{
-				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
-			})
-			return
-		}
-		snapshotBytes := buffer.Bytes()
-
-		// Create an rsync engine.
-		engine := rsync.NewEngine()
-
-		// Compute the snapshot's delta against the base.
-		delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
-
-		// Send the response.
-		responseSendErrors <- s.encoder.Encode(&ScanResponse{
-			SnapshotDelta:          delta,
-			PreservesExecutability: preservesExecutability,
-		})
-	}()
 
 	// Start a Goroutine to watch for the completion request.
 	completionReceiveErrors := make(chan error, 1)
 	go func() {
 		request := &ScanCompletionRequest{}
-		completionReceiveErrors <- s.decoder.Decode(request)
+		if err := s.decoder.Decode(request); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+		} else if err = request.ensureValid(); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+		} else {
+			completionReceiveErrors <- nil
+		}
+	}()
+
+	// Start a Goroutine to execute the scan and send a response when done.
+	responseSendErrors := make(chan error, 1)
+	go func() {
+		// Create a deterministic Protocol Buffers marshaller.
+		buffer := proto.NewBuffer(nil)
+		buffer.SetDeterministic(true)
+
+		// Create an rsync engine.
+		engine := rsync.NewEngine()
+
+		// Perform a scan and set up the response.
+		var response *ScanResponse
+		snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(ctx, nil, request.Full)
+		if err != nil {
+			response = &ScanResponse{
+				Error:    err.Error(),
+				TryAgain: tryAgain,
+			}
+		} else if err = buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
+			response = &ScanResponse{
+				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
+			}
+		} else {
+			snapshotBytes := buffer.Bytes()
+			delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
+			response = &ScanResponse{
+				SnapshotDelta:          delta,
+				PreservesExecutability: preservesExecutability,
+			}
+		}
+
+		// Send the response.
+		if err := s.encoder.Encode(response); err != nil {
+			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+		} else {
+			responseSendErrors <- nil
+		}
 	}()
 
 	// Wait for both a completion request to be received and a response to be
@@ -401,27 +420,77 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 		return errors.Wrap(err, "invalid transition request")
 	}
 
-	// Perform the transition.
-	results, problems, stagerMissingFiles, err := s.endpoint.Transition(request.Transitions)
-	if err != nil {
-		return s.encoder.Encode(&TransitionResponse{Error: err.Error()})
+	// Create a cancellable context for executing the transition.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Start a Goroutine to watch for the completion request.
+	completionReceiveErrors := make(chan error, 1)
+	go func() {
+		request := &TransitionCompletionRequest{}
+		if err := s.decoder.Decode(request); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+		} else if err = request.ensureValid(); err != nil {
+			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+		} else {
+			completionReceiveErrors <- nil
+		}
+	}()
+
+	// Start a Goroutine to execute the transition and send a response when
+	// done.
+	responseSendErrors := make(chan error, 1)
+	go func() {
+		// Perform the transition and set up the response.
+		var response *TransitionResponse
+		results, problems, stagerMissingFiles, err := s.endpoint.Transition(ctx, request.Transitions)
+		if err != nil {
+			response = &TransitionResponse{
+				Error: err.Error(),
+			}
+		} else {
+			// HACK: Wrap the results in Archives since Protocol Buffers can't
+			// encode nil pointers in the result array.
+			wrappedResults := make([]*core.Archive, len(results))
+			for r, result := range results {
+				wrappedResults[r] = &core.Archive{Root: result}
+			}
+			response = &TransitionResponse{
+				Results:            wrappedResults,
+				Problems:           problems,
+				StagerMissingFiles: stagerMissingFiles,
+			}
+		}
+
+		// Send the response.
+		if err := s.encoder.Encode(response); err != nil {
+			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+		} else {
+			responseSendErrors <- nil
+		}
+	}()
+
+	// Wait for both a completion request to be received and a response to be
+	// sent. Both of these will occur, though their order is not known. If the
+	// completion request is received first, then we cancel the subcontext to
+	// preempt the transition and force transmission of a response. If the
+	// response is sent first, then we know the completion request is on its
+	// way. In this case, we still cancel the subcontext we created as required
+	// by the context package to avoid leaking resources.
+	var responseSendErr, completionReceiveErr error
+	select {
+	case completionReceiveErr = <-completionReceiveErrors:
+		cancel()
+		responseSendErr = <-responseSendErrors
+	case responseSendErr = <-responseSendErrors:
+		cancel()
+		completionReceiveErr = <-completionReceiveErrors
 	}
 
-	// HACK: Wrap the results in Archives since Protocol Buffers can't encode
-	// nil pointers in the result array.
-	wrappedResults := make([]*core.Archive, len(results))
-	for r, result := range results {
-		wrappedResults[r] = &core.Archive{Root: result}
-	}
-
-	// Send the response.
-	response := &TransitionResponse{
-		Results:            wrappedResults,
-		Problems:           problems,
-		StagerMissingFiles: stagerMissingFiles,
-	}
-	if err = s.encoder.Encode(response); err != nil {
-		return err
+	// Check for errors.
+	if responseSendErr != nil {
+		return responseSendErr
+	} else if completionReceiveErr != nil {
+		return completionReceiveErr
 	}
 
 	// Success.

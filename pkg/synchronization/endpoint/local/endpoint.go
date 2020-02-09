@@ -1193,7 +1193,7 @@ func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receive
 }
 
 // Transition implements the Transition method for local endpoints.
-func (e *endpoint) Transition(transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
+func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
 	// If we're in a read-only mode, we shouldn't be performing transitions.
 	if e.readOnly {
 		return nil, nil, false, errors.New("endpoint is in read-only mode")
@@ -1242,6 +1242,7 @@ func (e *endpoint) Transition(transitions []*core.Change) ([]*core.Entry, []*cor
 
 	// Perform the transition.
 	results, problems, stagerMissingFiles := core.Transition(
+		ctx,
 		e.root,
 		transitions,
 		e.cache,

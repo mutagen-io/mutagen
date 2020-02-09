@@ -194,6 +194,7 @@ func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap ma
 	// want to be able to create symbolic links for testing that would be
 	// invalid under portable mode.
 	if entries, problems, providerMissingFiles := Transition(
+		context.Background(),
 		root,
 		transitions,
 		nil,
@@ -250,6 +251,7 @@ func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMod
 
 	// Perform the removal transition.
 	if entries, problems, _ := Transition(
+		context.Background(),
 		root,
 		transitions,
 		cache,
@@ -444,6 +446,7 @@ func TestTransitionSwapFile(t *testing.T) {
 		// Perform the swap transition, ensure that it succeeds, and update the
 		// expected contents.
 		if entries, problems, providerMissingFiles := Transition(
+			context.Background(),
 			root,
 			transitions,
 			cache,
@@ -512,6 +515,7 @@ func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
 		// Perform the swap transition with a nil provider (since it shouldn't
 		// be used), ensure that it succeeds, and update the expected contents.
 		if entries, problems, _ := Transition(
+			context.Background(),
 			root,
 			transitions,
 			cache,
@@ -632,6 +636,7 @@ func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
 		// Perform the create transition and ensure that it fails (with an error
 		// other than missing files).
 		if entries, problems, providerMissingFiles := Transition(
+			context.Background(),
 			root,
 			transitions,
 			cache,
@@ -731,6 +736,7 @@ func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	// Perform the creation transition and ensure that it encounters a problem
 	// (other than missing files).
 	if entries, problems, providerMissingFiles := Transition(
+		context.Background(),
 		root,
 		transitions,
 		nil,
