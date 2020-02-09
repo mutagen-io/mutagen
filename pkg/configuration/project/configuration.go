@@ -39,9 +39,11 @@ type SynchronizationConfiguration struct {
 // Configuration is the orchestration configuration object type.
 type Configuration struct {
 	// Setup are the setup commands to be run at project initialization.
-	Setup []string
+	Setup []string `yaml:"setup"`
 	// Teardown are the teardown commands to be run at project termination.
-	Teardown []string
+	Teardown []string `yaml:"teardown"`
+	// Commands are commands that can be invoked while a project is running.
+	Commands map[string]string `yaml:"commands"`
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
 	// configurations are layered, thus keeping syntactic compatibility with the

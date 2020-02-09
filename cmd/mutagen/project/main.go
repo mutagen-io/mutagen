@@ -51,6 +51,7 @@ func init() {
 	// Register commands.
 	RootCommand.AddCommand(
 		startCommand,
+		runCommand,
 		listCommand,
 		flushCommand,
 		pauseCommand,

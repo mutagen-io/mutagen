@@ -5,9 +5,9 @@ import (
 	"os/exec"
 )
 
-// runCommand runs the specified command using the system shell. On Windows
+// runInShell runs the specified command using the system shell. On Windows
 // systems, this is %COMSPEC% (with a fallback to cmd.exe if unspecified).
-func runCommand(command string) error {
+func runInShell(command string) error {
 	// Determine the shell to use.
 	shell := os.Getenv("COMSPEC")
 	if shell == "" {

@@ -11,18 +11,21 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
-	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
-func terminateMain(command *cobra.Command, arguments []string) error {
+func runMain(_ *cobra.Command, arguments []string) error {
 	// Validate arguments.
-	if len(arguments) > 0 {
-		return errors.New("unexpected arguments provided")
+	var commandName string
+	if len(arguments) == 0 {
+		return errors.New("missing command name")
+	} else if len(arguments) > 1 {
+		return errors.New("invalid number of arguments")
+	} else {
+		commandName = arguments[0]
 	}
 
 	// Compute the name of the configuration file and ensure that our working
@@ -31,9 +34,9 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	// Unix Domain Socket paths) to be resolved relative to the project
 	// configuration file.
 	configurationFileName := project.DefaultConfigurationFileName
-	if terminateConfiguration.projectFile != "" {
+	if runConfiguration.projectFile != "" {
 		var directory string
-		directory, configurationFileName = filepath.Split(terminateConfiguration.projectFile)
+		directory, configurationFileName = filepath.Split(runConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
 				return errors.Wrap(err, "unable to switch to target directory")
@@ -104,42 +107,24 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to load configuration file")
 	}
 
-	// Compute the label selector that we're going to use to terminate sessions.
-	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
-
-	// Terminate forwarding sessions.
-	if err := forward.TerminateWithLabelSelector(labelSelector); err != nil {
-		return errors.Wrap(err, "unable to terminate forwarding session(s)")
+	// Look up the command.
+	command, ok := configuration.Commands[commandName]
+	if !ok {
+		return fmt.Errorf("unable to find command: '%s'", commandName)
 	}
 
-	// Terminate synchronization sessions.
-	if err := sync.TerminateWithLabelSelector(labelSelector); err != nil {
-		return errors.Wrap(err, "unable to terminate synchronization session(s)")
-	}
-
-	// Perform teardown commands.
-	for _, command := range configuration.Teardown {
-		fmt.Println(">", command)
-		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "teardown command failed")
-		}
-	}
-
-	// Schedule the project lock for removal.
-	removeLockFileOnReturn = true
-
-	// Success.
-	return nil
+	// Execute the command.
+	return runInShell(command)
 }
 
-var terminateCommand = &cobra.Command{
-	Use:          "terminate",
-	Short:        "Terminate project sessions",
-	RunE:         terminateMain,
+var runCommand = &cobra.Command{
+	Use:          "run <command-name>",
+	Short:        "Run a project command",
+	RunE:         runMain,
 	SilenceUsage: true,
 }
 
-var terminateConfiguration struct {
+var runConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
 	// projectFile is the path to the project file, if non-default.
@@ -148,15 +133,15 @@ var terminateConfiguration struct {
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := terminateCommand.Flags()
+	flags := runCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&terminateConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&runConfiguration.help, "help", "h", false, "Show help information")
 
 	// Wire up project file flags.
-	flags.StringVarP(&terminateConfiguration.projectFile, "project-file", "f", "", "Specify project file")
+	flags.StringVarP(&runConfiguration.projectFile, "project-file", "f", "", "Specify project file")
 }

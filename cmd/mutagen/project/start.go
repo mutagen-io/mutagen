@@ -369,7 +369,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 	// Perform setup commands.
 	for _, command := range configuration.Setup {
 		fmt.Println(">", command)
-		if err := runCommand(command); err != nil {
+		if err := runInShell(command); err != nil {
 			return errors.Wrap(err, "setup command failed")
 		}
 	}

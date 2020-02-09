@@ -7,9 +7,9 @@ import (
 	"os/exec"
 )
 
-// runCommand runs the specified command using the system shell. On POSIX
+// runInShell runs the specified command using the system shell. On POSIX
 // systems, this is /bin/sh.
-func runCommand(command string) error {
+func runInShell(command string) error {
 	// Set up the process.
 	process := exec.Command("/bin/sh", "-c", command)
 	process.Stdin = os.Stdin
