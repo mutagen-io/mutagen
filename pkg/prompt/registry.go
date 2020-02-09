@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/google/uuid"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 )
 
 // registryLock is the lock on the global prompter registry.
@@ -19,11 +19,10 @@ var registry = make(map[string]chan Prompter)
 // prompting.
 func RegisterPrompter(prompter Prompter) (string, error) {
 	// Generate a unique identifier for this prompter.
-	randomUUID, err := uuid.NewRandom()
+	identifier, err := identifier.New(identifier.PrefixPrompter)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to generate UUID for prompter")
+		return "", errors.Wrap(err, "unable to generate prompter identifier")
 	}
-	identifier := randomUUID.String()
 
 	// Create and populate a channel ("holder") for passing the prompter around.
 	holder := make(chan Prompter, 1)
@@ -32,14 +31,6 @@ func RegisterPrompter(prompter Prompter) (string, error) {
 	// Lock the registry for writing and defer its release.
 	registryLock.Lock()
 	defer registryLock.Unlock()
-
-	// Verify that the identifier isn't currently in use. This is an
-	// astronomically small possibility, though it could be indicative of a UUID
-	// implementation bug, so we at least watch for it and return an error if it
-	// occurs.
-	if _, ok := registry[identifier]; ok {
-		return "", errors.New("UUID collision")
-	}
 
 	// Register the holder.
 	registry[identifier] = holder

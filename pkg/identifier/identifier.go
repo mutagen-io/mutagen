@@ -17,6 +17,8 @@ const (
 	PrefixForwarding = "fwrd"
 	// PrefixProject is the prefix used for project identifiers.
 	PrefixProject = "proj"
+	// PrefixPrompter is the prefix used for prompter identifiers.
+	PrefixPrompter = "pmtr"
 
 	// requiredPrefixLength is the required length for identifier prefixes.
 	requiredPrefixLength = 4

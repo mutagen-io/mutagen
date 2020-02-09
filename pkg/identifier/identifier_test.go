@@ -29,6 +29,7 @@ func TestIdentifierCreation(t *testing.T) {
 		PrefixSynchronization,
 		PrefixForwarding,
 		PrefixProject,
+		PrefixPrompter,
 	}
 
 	// Process test cases.
