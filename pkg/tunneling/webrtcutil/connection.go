@@ -1,8 +1,8 @@
 package webrtcutil
 
 import (
-	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
@@ -15,9 +15,6 @@ import (
 )
 
 const (
-	// connectionEstablishmentTimeout is the maximum amount of time that
-	// NewConnection will wait for a data channel to connect before timing out.
-	connectionEstablishmentTimeout = 10 * time.Second
 	// minimumDataChannelReadBufferSize is the minimum size required for buffers
 	// used in data channel read operations. The underlying SCTP implementation
 	// only has rudimentary internal buffering and thus requires that read
@@ -59,47 +56,30 @@ func (_ address) String() string {
 // restrict read and write sizes, unblocks Read/Write on close, and properly
 // enforces backpressure.
 type connection struct {
-	// dataChannel is the API-level data channel. It is static.
-	dataChannel *webrtc.DataChannel
+	// readPipeWriter is the write end of the read pipe. It is static.
+	readPipeWriter *io.PipeWriter
+	// readPipeReader is the read end of the read pipe. The pipe is never closed
+	// from this end. It is static.
+	readPipeReader io.Reader
 	// callbackOnce ensures only a single invocation of closureCallback. It is
 	// static.
 	callbackOnce sync.Once
 	// closureCallback is a callback that is invoked on explicit closure (i.e. a
 	// call to Close, not remote closure). It is static. It may be nil.
 	closureCallback func()
-	// stateNotifier is used to serialize access to stream, reader, and closed.
-	// It is also used to poll/notify on changes to these members, as well as
-	// changes to the data channel's buffering level.
+	// stateNotifier is used to serialize access to dataChannel, stream, and
+	// closed, as well as the pipe writer's CloseWithError method. It is also
+	// used to poll/notify on changes to these members, including the data
+	// channel's buffering level.
 	stateNotifier *sync.Cond
+	// dataChannel is the API-level data channel. It is static.
+	dataChannel *webrtc.DataChannel
 	// stream is the detached underlying stream. It will be nil before the
 	// connection is open. It is static once set.
 	stream datachannel.ReadWriteCloser
-	// reader is a buffered wrapper around the stream. It is necessary since
-	// the data channel's read buffering is rudimentary and can only return data
-	// in message-sized chunks. If a buffer is provided that's less than the
-	// message size, the read will fail and the data will be dropped. It will be
-	// nil before the connection is open. It is static once set.
-	//
-	// HACK: We're relying on the implementation details of bufio.Reader's Read
-	// method. Specifically, we're assuming that it only ever performs a read on
-	// the underlying stream if its buffer is empty (thus guaranteeing the
-	// minimum buffer size necessary to receive any WebRTC message). One could
-	// argue that this behavior is guaranteed by the following documentation
-	// from bufio.Reader.Read: "The bytes are taken from at most one Read on the
-	// underlying Reader". Taken literally, it means that bytes from multiple
-	// reads won't be mixed into a single output buffer, though more loosely it
-	// might be interpreted as meaning that a call to bufio.Reader.Read will
-	// perform at most one read (potentially to top up a non-empty buffer). And
-	// indeed the bufio.Reader.fill method will mix data from multiple reads in
-	// the buffer, though fortunately it isn't called by bufio.Reader.Read. So
-	// relying on this behavior is slightly sketchy, but it if this changes we
-	// should catch it fairly easily since stream reads will fail with
-	// io.ErrShortBuffer. We tolerate this uncertainty because of the stability,
-	// error tracking and optimizations (e.g. copy avoidance) that bufio.Reader
-	// provides.
-	reader *bufio.Reader
 	// closed indicates that the underlying stream has been closed, either due
-	// to explicit closure, remote closure, or an error. It is static once set.
+	// to explicit closure, remote closure, or an error. It is static once set
+	// to true.
 	closed bool
 }
 
@@ -110,32 +90,20 @@ type connection struct {
 // closure callback will be invoked the first time (and only the first time)
 // that the connections Close method is called.
 func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) net.Conn {
+	// Create the read pipe.
+	readPipeReader, readPipeWriter := io.Pipe()
+
 	// Create the connection object.
 	connection := &connection{
-		dataChannel:     dataChannel,
+		readPipeWriter:  readPipeWriter,
+		readPipeReader:  readPipeReader,
 		closureCallback: closureCallback,
 		stateNotifier:   sync.NewCond(&sync.Mutex{}),
+		dataChannel:     dataChannel,
 	}
 
-	// Monitor for establishment of the connection. If the connection is already
-	// closed, then we re-invoke close on the data channel
-	dataChannel.OnOpen(func() {
-		connection.stateNotifier.L.Lock()
-		if connection.closed {
-			dataChannel.Close()
-		} else if connection.stream != nil {
-			dataChannel.Close()
-			connection.closed = true
-		} else if stream, err := dataChannel.Detach(); err != nil {
-			dataChannel.Close()
-			connection.closed = true
-		} else {
-			connection.stream = stream
-			connection.reader = bufio.NewReaderSize(stream, minimumDataChannelReadBufferSize)
-		}
-		connection.stateNotifier.Broadcast()
-		connection.stateNotifier.L.Unlock()
-	})
+	// Start the read loop.
+	go connection.readLoop()
 
 	// Set the low buffer threshold and wire up the associated callback to
 	// trigger a state change notification. We only trigger a notification if
@@ -150,11 +118,14 @@ func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) net.
 	})
 
 	// Monitor for errors. If the connection is already closed, then we just
-	// ignore the error.
+	// ignore the error. In practice, this callback is unnecessary because the
+	// data channel doesn't yield error events when detached, but we need to
+	// handle it anyway in case the implementation changes.
 	dataChannel.OnError(func(err error) {
 		connection.stateNotifier.L.Lock()
 		if !connection.closed {
 			dataChannel.Close()
+			readPipeWriter.CloseWithError(err)
 			connection.closed = true
 			connection.stateNotifier.Broadcast()
 		}
@@ -162,11 +133,37 @@ func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) net.
 	})
 
 	// Monitor for closure. If the connection is already closed, then there's
-	// nothing we need to do.
+	// nothing we need to do. In practice, this callback is unnecessary because
+	// the data channel doesn't yield close events when detached, but we need to
+	// handle it anyway in case the implementation changes.
 	dataChannel.OnClose(func() {
 		connection.stateNotifier.L.Lock()
 		if !connection.closed {
+			readPipeWriter.CloseWithError(nil)
 			connection.closed = true
+			connection.stateNotifier.Broadcast()
+		}
+		connection.stateNotifier.L.Unlock()
+	})
+
+	// Monitor for establishment of the connection. We also handle an assortment
+	// of cases that shouldn't arise but still need handling.
+	dataChannel.OnOpen(func() {
+		connection.stateNotifier.L.Lock()
+		if connection.closed {
+			dataChannel.Close()
+		} else if connection.stream != nil {
+			dataChannel.Close()
+			readPipeWriter.CloseWithError(errors.New("data channel re-opened"))
+			connection.closed = true
+			connection.stateNotifier.Broadcast()
+		} else if stream, err := dataChannel.Detach(); err != nil {
+			dataChannel.Close()
+			readPipeWriter.CloseWithError(fmt.Errorf("unable to detatch stream: %w", err))
+			connection.closed = true
+			connection.stateNotifier.Broadcast()
+		} else {
+			connection.stream = stream
 			connection.stateNotifier.Broadcast()
 		}
 		connection.stateNotifier.L.Unlock()
@@ -176,23 +173,82 @@ func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) net.
 	return connection
 }
 
-// Read implements net.Conn.Read.
-func (c *connection) Read(buffer []byte) (int, error) {
-	// Wait until closure or until the reader has been set.
+// readLoop is the read loop implementation.
+//
+// This loop is a necessary workaround for data channels' rudimentary internal
+// buffering, which only allows data to be read out in chunks corresponding to
+// their original transmission size. If a buffer that's too small to read a
+// message is provided, the read will fail with io.ErrShortBuffer and the stream
+// will be corrupted. By using a read loop with a sufficiently large buffer and
+// an io.Pipe to adapt buffer sizes, we can allow read sizes that don't
+// correspond to message sizes. In theory, a bufio.Reader with a buffer of the
+// required size could also work, but that relies on an implementation detail of
+// bufio.Reader.Read (specifically that it only performs a read when its buffer
+// is empty), which is only guaranteed in a very strict interpretation of its
+// documentation and is violated by other methods on bufio.Reader.
+//
+// In any case, this loop is equally necessary because close and error events
+// aren't delivered by the data channel when running in detached mode. Those
+// events are normally generated by the read loop used to handle callback-based
+// operation with data channels. Thus, we've effectively replaced that loop with
+// one that has better buffering and way fewer allocations.
+func (c *connection) readLoop() {
+	// Wait until closure until the connection has been established.
 	c.stateNotifier.L.Lock()
 	for {
 		if c.closed {
 			c.stateNotifier.L.Unlock()
-			return 0, errors.New("connection closed")
-		} else if c.reader != nil {
+			return
+		} else if c.stream != nil {
 			break
 		}
 		c.stateNotifier.Wait()
 	}
 	c.stateNotifier.L.Unlock()
 
-	// Perform the read using the reader.
-	return c.reader.Read(buffer)
+	// Create the read buffer.
+	buffer := make([]byte, minimumDataChannelReadBufferSize)
+
+	// Loop and forward data.
+	for {
+		// Perform a read. This will unblock if the data channel is closed.
+		read, text, err := c.stream.ReadDataChannel(buffer)
+
+		// Treat text data as an error.
+		if err == nil && text {
+			err = errors.New("text data received")
+		}
+
+		// Handle errors.
+		if err != nil {
+			c.stateNotifier.L.Lock()
+			if !c.closed {
+				c.dataChannel.Close()
+				c.readPipeWriter.CloseWithError(err)
+				c.closed = true
+				c.stateNotifier.Broadcast()
+			}
+			c.stateNotifier.L.Unlock()
+			return
+		}
+
+		// Forward the data. We rely on the fact that Write won't return an
+		// error unless the read end of the pipe is closed (which we don't
+		// allow) or the write end of the pipe is closed (in which case we can
+		// assume that an error has occurred and the connection is closed). We
+		// also rely on the fact that Write can be preempted by closing the
+		// write end of the pipe, which isn't fully guaranteed by the io
+		// package's pipe implementation, so we include a unit test to verify
+		// that behavior.
+		if _, err := c.readPipeWriter.Write(buffer[:read]); err != nil {
+			return
+		}
+	}
+}
+
+// Read implements net.Conn.Read.
+func (c *connection) Read(buffer []byte) (int, error) {
+	return c.readPipeReader.Read(buffer)
 }
 
 // Write implements net.Conn.Write.
@@ -255,6 +311,7 @@ func (c *connection) Close() error {
 	c.stateNotifier.L.Lock()
 	if !c.closed {
 		result = c.dataChannel.Close()
+		c.readPipeWriter.CloseWithError(nil)
 		c.closed = true
 		c.stateNotifier.Broadcast()
 	}
