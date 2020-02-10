@@ -19,7 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	promptsvc "github.com/mutagen-io/mutagen/pkg/service/prompt"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 
@@ -92,7 +92,7 @@ func testMainInternal(m *testing.M) (int, error) {
 	defer daemonServer.Shutdown()
 
 	// Create and register the prompt service.
-	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
+	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())
 
 	// Create and register the forwarding server.
 	forwardingServer := forwardingsvc.NewServer(forwardingManager)
