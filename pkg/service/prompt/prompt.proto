@@ -4,12 +4,12 @@ package prompt;
 
 option go_package = "github.com/mutagen-io/mutagen/pkg/service/prompt";
 
-message PromptRequest{
+message PromptRequest {
     string prompter = 1;
     string prompt = 2;
 }
 
-message PromptResponse{
+message PromptResponse {
     string response = 1;
 }
 

@@ -41,7 +41,7 @@ message PollRequest {}
 message PollCompletionRequest{}
 
 // PollResponse indicates polling completion.
-message PollResponse{
+message PollResponse {
     // Error is the error message (if any) resulting from polling.
     string error = 1;
 }

@@ -59,7 +59,7 @@ message FlushRequest {
     bool skipWait = 2;
 }
 
-message FlushResponse{
+message FlushResponse {
     string message = 1;
 }
 
@@ -67,7 +67,7 @@ message PauseRequest {
     selection.Selection selection = 1;
 }
 
-message PauseResponse{
+message PauseResponse {
     string message = 1;
 }
 
@@ -95,7 +95,7 @@ message TerminateRequest {
     selection.Selection selection = 1;
 }
 
-message TerminateResponse{
+message TerminateResponse {
     string message = 1;
 }
 
