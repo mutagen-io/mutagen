@@ -180,27 +180,8 @@ func HostTunnel(
 		}
 	})
 
-	// Accept the first data channel, which will be the heartbeat channel, and
-	// start the heartbeat server. We set up failure tracking so that we can
-	// terminate below on heartbeat failure.
-	heartbeatFailures := make(chan error, 1)
-	select {
-	case heartbeatDataChannel := <-dataChannels:
-		go func() {
-			heartbeatFailures <- heartbeat(
-				hostingCtx,
-				heartbeatDataChannel,
-				hostCredentials.Version,
-			)
-		}()
-	case err := <-peerConnectionFailures:
-		return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
-	case <-hostingCtx.Done():
-		return ErrorSeverityRecoverable, errors.New("cancelled")
-	}
-
 	// Loop indefinitely, watching for incoming data channels, peer connection
-	// failure, heartbeat serving failure, and cancellation.
+	// failure, and cancellation.
 	for {
 		select {
 		case dataChannel := <-dataChannels:
@@ -212,8 +193,6 @@ func HostTunnel(
 			)
 		case err := <-peerConnectionFailures:
 			return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
-		case err := <-heartbeatFailures:
-			return ErrorSeverityRecoverable, fmt.Errorf("heartbeat failure: %w", err)
 		case <-hostingCtx.Done():
 			return ErrorSeverityRecoverable, errors.New("cancelled")
 		}

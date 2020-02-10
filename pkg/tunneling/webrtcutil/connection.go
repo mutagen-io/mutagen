@@ -54,11 +54,11 @@ func (_ address) String() string {
 	return "data channel"
 }
 
-// Connection is a wrapper around Pion's DataChannel type that implements a
+// connection is a wrapper around Pion's DataChannel type that implements a
 // net.Conn-compatible interface, namely one that is stream-based, doesn't
 // restrict read and write sizes, unblocks Read/Write on close, and properly
 // enforces backpressure.
-type Connection struct {
+type connection struct {
 	// dataChannel is the API-level data channel. It is static.
 	dataChannel *webrtc.DataChannel
 	// callbackOnce ensures only a single invocation of closureCallback. It is
@@ -109,9 +109,9 @@ type Connection struct {
 // package's API instance), otherwise a panic will occur. If provided, the
 // closure callback will be invoked the first time (and only the first time)
 // that the connections Close method is called.
-func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) *Connection {
+func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) net.Conn {
 	// Create the connection object.
-	connection := &Connection{
+	connection := &connection{
 		dataChannel:     dataChannel,
 		closureCallback: closureCallback,
 		stateNotifier:   sync.NewCond(&sync.Mutex{}),
@@ -176,26 +176,8 @@ func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) *Con
 	return connection
 }
 
-// WaitUntilConnected waits until the connection is connected or closes out due
-// to an error. It returns nil on a successful connection.
-func (c *Connection) WaitUntilConnected() error {
-	// Grab the state lock and defer its release.
-	c.stateNotifier.L.Lock()
-	defer c.stateNotifier.L.Unlock()
-
-	// Wait for a relevant state change.
-	for {
-		if c.closed {
-			return errors.New("connection closed")
-		} else if c.stream != nil {
-			return nil
-		}
-		c.stateNotifier.Wait()
-	}
-}
-
 // Read implements net.Conn.Read.
-func (c *Connection) Read(buffer []byte) (int, error) {
+func (c *connection) Read(buffer []byte) (int, error) {
 	// Wait until closure or until the reader has been set.
 	c.stateNotifier.L.Lock()
 	for {
@@ -214,7 +196,7 @@ func (c *Connection) Read(buffer []byte) (int, error) {
 }
 
 // Write implements net.Conn.Write.
-func (c *Connection) Write(data []byte) (int, error) {
+func (c *connection) Write(data []byte) (int, error) {
 	// Track how much data we've written.
 	var count int
 
@@ -267,7 +249,7 @@ func (c *Connection) Write(data []byte) (int, error) {
 }
 
 // Close implements net.Conn.Close.
-func (c *Connection) Close() error {
+func (c *connection) Close() error {
 	// Perform closure if necessary.
 	var result error
 	c.stateNotifier.L.Lock()
@@ -288,26 +270,26 @@ func (c *Connection) Close() error {
 }
 
 // LocalAddr implements net.Conn.LocalAddr.
-func (c *Connection) LocalAddr() net.Addr {
+func (c *connection) LocalAddr() net.Addr {
 	return address{}
 }
 
 // RemoteAddr implements net.Conn.RemoteAddr.
-func (c *Connection) RemoteAddr() net.Addr {
+func (c *connection) RemoteAddr() net.Addr {
 	return address{}
 }
 
 // SetDeadline implements net.Conn.SetDeadline.
-func (c *Connection) SetDeadline(_ time.Time) error {
+func (c *connection) SetDeadline(_ time.Time) error {
 	return errors.New("deadlines not supported by data channel connections")
 }
 
 // SetReadDeadline implements net.Conn.SetReadDeadline.
-func (c *Connection) SetReadDeadline(_ time.Time) error {
+func (c *connection) SetReadDeadline(_ time.Time) error {
 	return errors.New("read deadlines not supported by data channel connections")
 }
 
 // SetWriteDeadline implements net.Conn.SetWriteDeadline.
-func (c *Connection) SetWriteDeadline(_ time.Time) error {
+func (c *connection) SetWriteDeadline(_ time.Time) error {
 	return errors.New("write deadlines not supported by data channel connections")
 }
