@@ -525,28 +525,29 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 
 	// Track connection state changes, dispatching connectivity and error states
 	// appropriately.
-	peerConnectionConnected := make(chan struct{}, 1)
+	peerConnectionConnected := make(chan struct{})
 	peerConnectionFailures := make(chan error, 1)
 	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		// Log the state change.
 		c.logger.Info("Connection state change to", state)
 
-		// If the connection state has switched to connected, then send a
-		// notification. We do this in a non-blocking fashion because (a) we
-		// only need to monitor for this state once and (b) we don't have any
-		// guarantees by the WebRTC implementation that we won't see it twice.
+		// Handle the case of a connected state. We treat repeated connection
+		// events as errors.
 		if state == webrtc.PeerConnectionStateConnected {
 			select {
-			case peerConnectionConnected <- struct{}{}:
+			case <-peerConnectionConnected:
+				select {
+				case peerConnectionFailures <- errors.New("repeated connection event"):
+				default:
+				}
 			default:
+				close(peerConnectionConnected)
 			}
 			return
 		}
 
-		// If an error state has occurred, then send a notification. Once again,
-		// we send the error in a non-blocking fashion, because we only need to
-		// monitor for the first error and we don't have control over which
-		// states we'll see.
+		// If an error state has occurred, then send a notification in a
+		// non-blocking fashion (since we only care about the first error).
 		var err error
 		switch state {
 		case webrtc.PeerConnectionStateDisconnected:
