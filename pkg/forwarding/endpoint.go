@@ -18,7 +18,7 @@ type Endpoint interface {
 	// should make no assumptions about whether this method will be called or
 	// whether the resulting channel will be read from. Callers should make no
 	// assumptions about whether or not the resulting channel will be populated.
-	TransportErrors() chan error
+	TransportErrors() <-chan error
 
 	// Open should open a network connection for the endpoint. For listener
 	// (source) endpoints, this function should block until an incoming

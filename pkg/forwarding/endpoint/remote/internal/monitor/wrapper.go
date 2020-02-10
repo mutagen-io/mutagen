@@ -22,7 +22,7 @@ type monitoredConnection struct {
 // returns the first read or write error to occur on the channel (if any). This
 // includes any deadline-induced errors. If no error ever occurs during a read
 // or write, no error will be written to the channel.
-func Enable(connection net.Conn) (net.Conn, chan error) {
+func Enable(connection net.Conn) (net.Conn, <-chan error) {
 	// Create the (buffered) error channel.
 	errors := make(chan error, 1)
 

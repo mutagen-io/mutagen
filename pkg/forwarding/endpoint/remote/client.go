@@ -17,7 +17,7 @@ import (
 // forwarding.Endpoint itself.
 type client struct {
 	// transportErrors is the transport error channel.
-	transportErrors chan error
+	transportErrors <-chan error
 	// multiplexer is the underlying multiplexer.
 	multiplexer *yamux.Session
 	// listener indicates whether or not the remote endpoint is operating as a
@@ -106,7 +106,7 @@ func NewEndpoint(
 }
 
 // TransportErrors implements forwarding.Endpoint.TransportErrors.
-func (e *client) TransportErrors() chan error {
+func (e *client) TransportErrors() <-chan error {
 	return e.transportErrors
 }
 
