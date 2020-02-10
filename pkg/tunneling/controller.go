@@ -727,14 +727,7 @@ func (c *controller) serve(
 		}
 
 		// Wrap the channel in a connection.
-		connection, err := webrtcutil.NewConnection(dataChannel, closureCallback)
-		if err != nil {
-			select {
-			case dialRequest.errors <- err:
-			case <-dialRequest.ctx.Done():
-			}
-			return fmt.Errorf("unable to create data channel connection: %w", err)
-		}
+		connection := webrtcutil.NewConnection(dataChannel, closureCallback)
 
 		// Return the connection.
 		select {

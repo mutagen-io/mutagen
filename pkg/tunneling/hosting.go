@@ -227,14 +227,8 @@ func hostDataChannel(
 	dataChannel *webrtc.DataChannel,
 	tunnelVersion Version,
 ) {
-	// Convert the data channel to a connection and ensure it's closed when
-	// we're done.
-	connection, err := webrtcutil.NewConnection(dataChannel, nil)
-	if err != nil {
-		logger.Info("Unable to create data channel connection:", err)
-		dataChannel.Close()
-		return
-	}
+	// Convert the data channel to a connection and defer its closure.
+	connection := webrtcutil.NewConnection(dataChannel, nil)
 	defer connection.Close()
 
 	// Create a utility function to send an initialization response.

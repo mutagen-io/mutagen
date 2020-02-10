@@ -44,12 +44,16 @@ func (h *HeartbeatVersion1) ensureValid() error {
 // erroring out on cancellation, connection failure, or heartbeat timeout.
 func heartbeat(ctx context.Context, dataChannel *webrtc.DataChannel, version Version) error {
 	// Convert the data channel to a connection and defer its closure.
-	connection, err := webrtcutil.NewConnection(dataChannel, nil)
-	if err != nil {
-		dataChannel.Close()
-		return fmt.Errorf("unable to create data channel connection: %w", err)
-	}
+	connection := webrtcutil.NewConnection(dataChannel, nil)
 	defer connection.Close()
+
+	// Wait for the data channel connection to be established (or error out).
+	// Connections are lazily initiated once the data channel is opened, so we
+	// don't want to count that establishment period against the heartbeat
+	// timeout window.
+	if err := connection.WaitUntilConnected(); err != nil {
+		return fmt.Errorf("connection failure: %w", err)
+	}
 
 	// Create a watchdog Goroutine to monitor for timeout or cancellation. Note
 	// that we ensure termination of the watchdog timer in the receiver

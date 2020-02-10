@@ -1,9 +1,8 @@
 package webrtcutil
 
 import (
-	"context"
+	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"net"
@@ -25,7 +24,6 @@ const (
 	// operations be able to consume the entirety of the next "chunk" in a
 	// single read operation.
 	// HACK: This number relies on knowledge of pion/sctp's implementation.
-	// TODO: Is this value correct? Should we use a margin of 2x on here?
 	minimumDataChannelReadBufferSize = math.MaxUint16
 	// maximumWriteSize is the maximum buffer size that the WebRTC packages will
 	// accept in a single write.
@@ -56,173 +54,171 @@ func (_ address) String() string {
 	return "data channel"
 }
 
-// connection is a wrapper around Pion's DataChannel type that implements a
+// Connection is a wrapper around Pion's DataChannel type that implements a
 // net.Conn-compatible interface, namely one that is stream-based, doesn't
 // restrict read and write sizes, unblocks Read/Write on close, and properly
 // enforces backpressure.
-type connection struct {
-	// dataChannel is the API-level data channel.
+type Connection struct {
+	// dataChannel is the API-level data channel. It is static.
 	dataChannel *webrtc.DataChannel
-	// stream is the detached underlying stream. It will be nil before the
-	// connection is open.
-	stream datachannel.ReadWriteCloser
-	// readPipeWriter is the incoming data pipe writer.
-	readPipeWriter *io.PipeWriter
-	// readPipeReader is the incoming data pipe reader.
-	readPipeReader *io.PipeReader
-	// writeNotifier is a condition variable used to regulate writes. It is used
-	// to track write buffer threshold changes and to track closure.
-	writeNotifier *sync.Cond
-	// writeClosed indicates whether or not the connection is closed to writes.
-	writeClosed bool
-	// closureCallback is a callback that is invoked on closure. It may be nil.
+	// callbackOnce ensures only a single invocation of closureCallback. It is
+	// static.
+	callbackOnce sync.Once
+	// closureCallback is a callback that is invoked on explicit closure (i.e. a
+	// call to Close, not remote closure). It is static. It may be nil.
 	closureCallback func()
+	// stateNotifier is used to serialize access to stream, reader, and closed.
+	// It is also used to poll/notify on changes to these members, as well as
+	// changes to the data channel's buffering level.
+	stateNotifier *sync.Cond
+	// stream is the detached underlying stream. It will be nil before the
+	// connection is open. It is static once set.
+	stream datachannel.ReadWriteCloser
+	// reader is a buffered wrapper around the stream. It is necessary since
+	// the data channel's read buffering is rudimentary and can only return data
+	// in message-sized chunks. If a buffer is provided that's less than the
+	// message size, the read will fail and the data will be dropped. It will be
+	// nil before the connection is open. It is static once set.
+	//
+	// HACK: We're relying on the implementation details of bufio.Reader's Read
+	// method. Specifically, we're assuming that it only ever performs a read on
+	// the underlying stream if its buffer is empty (thus guaranteeing the
+	// minimum buffer size necessary to receive any WebRTC message). One could
+	// argue that this behavior is guaranteed by the following documentation
+	// from bufio.Reader.Read: "The bytes are taken from at most one Read on the
+	// underlying Reader". Taken literally, it means that bytes from multiple
+	// reads won't be mixed into a single output buffer, though more loosely it
+	// might be interpreted as meaning that a call to bufio.Reader.Read will
+	// perform at most one read (potentially to top up a non-empty buffer). And
+	// indeed the bufio.Reader.fill method will mix data from multiple reads in
+	// the buffer, though fortunately it isn't called by bufio.Reader.Read. So
+	// relying on this behavior is slightly sketchy, but it if this changes we
+	// should catch it fairly easily since stream reads will fail with
+	// io.ErrShortBuffer. We tolerate this uncertainty because of the stability,
+	// error tracking and optimizations (e.g. copy avoidance) that bufio.Reader
+	// provides.
+	reader *bufio.Reader
+	// closed indicates that the underlying stream has been closed, either due
+	// to explicit closure, remote closure, or an error. It is static once set.
+	closed bool
 }
 
-// NewConnection creates a new net.Conn using the specified data channel as its
-// underlying transport. The data channel must support stream detaching (which
-// it will if created from this package's API instance), otherwise a panic will
-// occur. If this function returns an error, then the data channel should be
-// considered errored, and it will be the responsibility of the caller to close
-// the data channel. If this function succeeds, then the data channel should not
-// be closed directly but will instead be closed by closing the returned
-// connection.
-func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) (net.Conn, error) {
-	// Monitor for the first data channel open event. Later events may be
-	// dropped or ignored.
-	dataChannelOpens := make(chan struct{}, 1)
+// NewConnection creates a new connection object (that implements net.Conn)
+// using the specified data channel as its underlying transport. The data
+// channel must support stream detaching (which it will if created from this
+// package's API instance), otherwise a panic will occur. If provided, the
+// closure callback will be invoked the first time (and only the first time)
+// that the connections Close method is called.
+func NewConnection(dataChannel *webrtc.DataChannel, closureCallback func()) *Connection {
+	// Create the connection object.
+	connection := &Connection{
+		dataChannel:     dataChannel,
+		closureCallback: closureCallback,
+		stateNotifier:   sync.NewCond(&sync.Mutex{}),
+	}
+
+	// Monitor for establishment of the connection. If the connection is already
+	// closed, then we re-invoke close on the data channel
 	dataChannel.OnOpen(func() {
-		select {
-		case dataChannelOpens <- struct{}{}:
-		default:
+		connection.stateNotifier.L.Lock()
+		if connection.closed {
+			dataChannel.Close()
+		} else if connection.stream != nil {
+			dataChannel.Close()
+			connection.closed = true
+		} else if stream, err := dataChannel.Detach(); err != nil {
+			dataChannel.Close()
+			connection.closed = true
+		} else {
+			connection.stream = stream
+			connection.reader = bufio.NewReaderSize(stream, minimumDataChannelReadBufferSize)
 		}
+		connection.stateNotifier.Broadcast()
+		connection.stateNotifier.L.Unlock()
 	})
 
-	// Monitor for the first data channel error. Later errors may be dropped or
-	// ignored.
-	dataChannelErrors := make(chan error, 1)
-	dataChannel.OnError(func(err error) {
-		select {
-		case dataChannelErrors <- err:
-		default:
-		}
-	})
-	dataChannel.OnClose(func() {
-		select {
-		case dataChannelErrors <- errors.New("data channel closed unexpectedly"):
-		default:
-		}
-	})
-
-	// Create a timeout context to regulate connection establishment and ensure
-	// that it's cancelled.
-	timeout, cancelTimeout := context.WithTimeout(context.Background(), connectionEstablishmentTimeout)
-	defer cancelTimeout()
-
-	// Wait for connection establishment, an error, or a timeout.
-	select {
-	case <-dataChannelOpens:
-	case err := <-dataChannelErrors:
-		return nil, fmt.Errorf("data channel error: %w", err)
-	case <-timeout.Done():
-		return nil, errors.New("connection timeout")
-	}
-
-	// Detach the underlying stream.
-	stream, err := dataChannel.Detach()
-	if err != nil {
-		return nil, fmt.Errorf("unable to detach SCTP stream")
-	}
-
-	// Create a pipe to pass data from the read loop to readers.
-	// HACK: We rely on the fact that io.Pipe provides unblock-on-Close
-	// behavior, which isn't documented. If it ever stops implementing this
-	// behavior, we could switch to net.Pipe, which is guaranteed to provide
-	// this behavior since it supports net.Conn, but it uses channels internally
-	// (to support deadlines) whereas io.Pipe uses more performant mutexes and
-	// condition variables.
-	readPipeReader, readPipeWriter := io.Pipe()
-
-	// Create a write notifier condition variable and have it trigger when the
-	// buffer write data size drops below a tolerable threshold. It's important
-	// to note that we have to hold the lock on the condition variable when
-	// broadcasting (even though the sync package doesn't require this) to
-	// ensure that no writer is inside the condition checking block but not yet
-	// in a Wait call, otherwise our broadcast can go unnoticed and the writer
-	// can become stuck in a Wait.
-	writeNotifier := sync.NewCond(&sync.Mutex{})
+	// Set the low buffer threshold and wire up the associated callback to
+	// trigger a state change notification. We only trigger a notification if
+	// the connection isn't already closed.
 	dataChannel.SetBufferedAmountLowThreshold(maximumWriteBufferSize)
 	dataChannel.OnBufferedAmountLow(func() {
-		writeNotifier.L.Lock()
-		writeNotifier.Broadcast()
-		writeNotifier.L.Unlock()
+		connection.stateNotifier.L.Lock()
+		if !connection.closed {
+			connection.stateNotifier.Broadcast()
+		}
+		connection.stateNotifier.L.Unlock()
 	})
 
-	// Create the connection object.
-	connection := &connection{
-		dataChannel:     dataChannel,
-		stream:          stream,
-		readPipeWriter:  readPipeWriter,
-		readPipeReader:  readPipeReader,
-		writeNotifier:   writeNotifier,
-		closureCallback: closureCallback,
-	}
+	// Monitor for errors. If the connection is already closed, then we just
+	// ignore the error.
+	dataChannel.OnError(func(err error) {
+		connection.stateNotifier.L.Lock()
+		if !connection.closed {
+			dataChannel.Close()
+			connection.closed = true
+			connection.stateNotifier.Broadcast()
+		}
+		connection.stateNotifier.L.Unlock()
+	})
 
-	// Start the read loop.
-	go connection.readLoop()
+	// Monitor for closure. If the connection is already closed, then there's
+	// nothing we need to do.
+	dataChannel.OnClose(func() {
+		connection.stateNotifier.L.Lock()
+		if !connection.closed {
+			connection.closed = true
+			connection.stateNotifier.Broadcast()
+		}
+		connection.stateNotifier.L.Unlock()
+	})
 
-	// Success.
-	return connection, nil
+	// Done.
+	return connection
 }
 
-// readLoop is the read loop implementation. It is a necessary workaround for
-// data channels' rudimentary internal buffering that only allows data to be
-// read out in chunks corresponding to their original transmission size (a
-// reasonable design decision that arises from SCTP's message-based nature). If
-// a buffer that's too small to read a message is provided, the read will fail
-// with io.ErrShortBuffer and the stream will be corrupted. By using a read loop
-// with a sufficiently sized buffer and an io.Pipe to adapt buffer sizes, we can
-// allow read sizes that don't correspond to message sizes.
-func (c *connection) readLoop() {
-	// Create the read buffer.
-	buffer := make([]byte, minimumDataChannelReadBufferSize)
+// WaitUntilConnected waits until the connection is connected or closes out due
+// to an error. It returns nil on a successful connection.
+func (c *Connection) WaitUntilConnected() error {
+	// Grab the state lock and defer its release.
+	c.stateNotifier.L.Lock()
+	defer c.stateNotifier.L.Unlock()
 
-	// Loop and read data, watching for closure of the underlying connection or
-	// pipe.
+	// Wait for a relevant state change.
 	for {
-		// Perform a read. This will unblock if the data channel is closed.
-		read, text, err := c.stream.ReadDataChannel(buffer)
-		if err != nil {
-			c.readPipeWriter.CloseWithError(err)
-			return
+		if c.closed {
+			return errors.New("connection closed")
+		} else if c.stream != nil {
+			return nil
 		}
-
-		// Ensure that data type is correct.
-		if text {
-			c.readPipeWriter.CloseWithError(errors.New("text data received"))
-			return
-		}
-
-		// Forward the data. This will unblock if the pipe writer is closed.
-		if forwarded, err := c.readPipeWriter.Write(buffer[:read]); err != nil {
-			c.readPipeWriter.CloseWithError(fmt.Errorf("unable to forward data: %w", err))
-			return
-		} else if forwarded != read {
-			c.readPipeWriter.CloseWithError(io.ErrShortWrite)
-			return
-		}
+		c.stateNotifier.Wait()
 	}
 }
 
 // Read implements net.Conn.Read.
-func (c *connection) Read(buffer []byte) (int, error) {
-	return c.readPipeReader.Read(buffer)
+func (c *Connection) Read(buffer []byte) (int, error) {
+	// Wait until closure or until the reader has been set.
+	c.stateNotifier.L.Lock()
+	for {
+		if c.closed {
+			c.stateNotifier.L.Unlock()
+			return 0, errors.New("connection closed")
+		} else if c.reader != nil {
+			break
+		}
+		c.stateNotifier.Wait()
+	}
+	c.stateNotifier.L.Unlock()
+
+	// Perform the read using the reader.
+	return c.reader.Read(buffer)
 }
 
 // Write implements net.Conn.Write.
-func (c *connection) Write(data []byte) (int, error) {
-	// Loop until all data is written or an error occurred.
+func (c *Connection) Write(data []byte) (int, error) {
+	// Track how much data we've written.
 	var count int
+
+	// Loop until all data is written or an error occurred.
 	for len(data) > 0 {
 		// Extract the slice to write.
 		var partial []byte
@@ -234,27 +230,27 @@ func (c *connection) Write(data []byte) (int, error) {
 			data = nil
 		}
 
-		// Wait until the stream buffer is at or below the size threshold.
-		// NOTE: Technically this allows us to write up to maximumWriteSize
-		// past the buffer threshold, which we may want to fix, though it's fine
-		// for now since maximumWriteSize is sufficiently small. Unfortunately
-		// the only notification available is when the threshold is crossed (or
-		// hit, which is why we have to test for equality here too), so we'd
-		// have to poll periodically once at or below the threshold if we wanted
-		// to find out when the buffered amount was small enough to avoid
-		// exceeding maximumWriteSize.
-		c.writeNotifier.L.Lock()
+		// Wait until closure or until the stream is set and the data channel
+		// buffer is below the size threshold. Technically the check we use here
+		// allows us to write up to maximumWriteSize bytes past the buffer
+		// threshold, which we may want to fix, though it's fine for now since
+		// maximumWriteSize is sufficiently small. Unfortunately, the only
+		// notification available is when the threshold is crossed (or hit,
+		// which is why we have to test for equality here too), so we'd have to
+		// poll periodically once at or below the threshold if we wanted to find
+		// out when the buffered amount was small enough to avoid going beyond
+		// the limit.
+		c.stateNotifier.L.Lock()
 		for {
-			if c.writeClosed {
-				c.writeNotifier.L.Unlock()
+			if c.closed {
+				c.stateNotifier.L.Unlock()
 				return count, errors.New("connection closed")
-			} else if c.dataChannel.BufferedAmount() <= maximumWriteBufferSize {
+			} else if c.stream != nil && c.dataChannel.BufferedAmount() <= maximumWriteBufferSize {
 				break
-			} else {
-				c.writeNotifier.Wait()
 			}
+			c.stateNotifier.Wait()
 		}
-		c.writeNotifier.L.Unlock()
+		c.stateNotifier.L.Unlock()
 
 		// Perform the write.
 		n, err := c.stream.Write(partial)
@@ -271,47 +267,47 @@ func (c *connection) Write(data []byte) (int, error) {
 }
 
 // Close implements net.Conn.Close.
-func (c *connection) Close() error {
+func (c *Connection) Close() error {
+	// Perform closure if necessary.
+	var result error
+	c.stateNotifier.L.Lock()
+	if !c.closed {
+		result = c.dataChannel.Close()
+		c.closed = true
+		c.stateNotifier.Broadcast()
+	}
+	c.stateNotifier.L.Unlock()
+
 	// Call the closure callback, in any.
 	if c.closureCallback != nil {
-		c.closureCallback()
+		c.callbackOnce.Do(c.closureCallback)
 	}
 
-	// Close the incoming data pipe to ensure that neither the read loop nor any
-	// readers are blocked on it. This never returns an error.
-	c.readPipeWriter.CloseWithError(nil)
-
-	// Unblock and prevent any writes.
-	c.writeNotifier.L.Lock()
-	c.writeClosed = true
-	c.writeNotifier.Broadcast()
-	c.writeNotifier.L.Unlock()
-
-	// Close the underlying data channel.
-	return c.dataChannel.Close()
+	// Done.
+	return result
 }
 
 // LocalAddr implements net.Conn.LocalAddr.
-func (c *connection) LocalAddr() net.Addr {
+func (c *Connection) LocalAddr() net.Addr {
 	return address{}
 }
 
 // RemoteAddr implements net.Conn.RemoteAddr.
-func (c *connection) RemoteAddr() net.Addr {
+func (c *Connection) RemoteAddr() net.Addr {
 	return address{}
 }
 
 // SetDeadline implements net.Conn.SetDeadline.
-func (c *connection) SetDeadline(_ time.Time) error {
+func (c *Connection) SetDeadline(_ time.Time) error {
 	return errors.New("deadlines not supported by data channel connections")
 }
 
 // SetReadDeadline implements net.Conn.SetReadDeadline.
-func (c *connection) SetReadDeadline(_ time.Time) error {
+func (c *Connection) SetReadDeadline(_ time.Time) error {
 	return errors.New("read deadlines not supported by data channel connections")
 }
 
 // SetWriteDeadline implements net.Conn.SetWriteDeadline.
-func (c *connection) SetWriteDeadline(_ time.Time) error {
+func (c *Connection) SetWriteDeadline(_ time.Time) error {
 	return errors.New("write deadlines not supported by data channel connections")
 }
