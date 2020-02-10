@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
@@ -33,7 +33,7 @@ func (s *Server) Create(stream Synchronization_CreateServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&createStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&createStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -53,7 +53,7 @@ func (s *Server) Create(stream Synchronization_CreateServer) error {
 	)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -100,7 +100,7 @@ func (s *Server) Flush(stream Synchronization_FlushServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&flushStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&flushStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -109,7 +109,7 @@ func (s *Server) Flush(stream Synchronization_FlushServer) error {
 	err = s.manager.Flush(stream.Context(), request.Selection, prompter, request.SkipWait)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -136,7 +136,7 @@ func (s *Server) Pause(stream Synchronization_PauseServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&pauseStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&pauseStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -145,7 +145,7 @@ func (s *Server) Pause(stream Synchronization_PauseServer) error {
 	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -172,7 +172,7 @@ func (s *Server) Resume(stream Synchronization_ResumeServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&resumeStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&resumeStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -181,7 +181,7 @@ func (s *Server) Resume(stream Synchronization_ResumeServer) error {
 	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -208,7 +208,7 @@ func (s *Server) Reset(stream Synchronization_ResetServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&resetStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&resetStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -217,7 +217,7 @@ func (s *Server) Reset(stream Synchronization_ResetServer) error {
 	err = s.manager.Reset(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -244,7 +244,7 @@ func (s *Server) Terminate(stream Synchronization_TerminateServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&terminateStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&terminateStreamPrompter{stream})
 	if err != nil {
 		return errors.Wrap(err, "unable to register prompter")
 	}
@@ -253,7 +253,7 @@ func (s *Server) Terminate(stream Synchronization_TerminateServer) error {
 	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {

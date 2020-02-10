@@ -1,4 +1,4 @@
-package prompt
+package prompting
 
 import (
 	"github.com/pkg/errors"

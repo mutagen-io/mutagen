@@ -1,4 +1,4 @@
-package prompt
+package prompting
 
 // TODO: Figure out a way to test command line prompting. I'm not sure that this
 // is even possible. We might be able to swap out the OS interfaces that gopass

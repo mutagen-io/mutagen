@@ -1,11 +1,11 @@
-package prompt
+package prompting
 
 import (
 	"context"
 
 	"github.com/pkg/errors"
 
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // Server provides an implementation of the Prompting service.
@@ -35,7 +35,7 @@ func (s *Server) Prompt(ctx context.Context, request *PromptRequest) (*PromptRes
 	// Perform prompting from the global registry asynchronously.
 	asyncResponse := make(chan asyncPromptResponse, 1)
 	go func() {
-		response, err := prompt.Prompt(request.Prompter, request.Prompt)
+		response, err := prompting.Prompt(request.Prompter, request.Prompt)
 		asyncResponse <- asyncPromptResponse{response, err}
 	}()
 	select {

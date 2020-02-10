@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mutagen-io/mutagen/pkg/integration/protocols/netpipe"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/url"
@@ -328,9 +328,9 @@ func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 	}
 }
 
-// testWindowsDockerTransportPrompter is a prompt.Prompter implementation that
-// will answer "yes" to all prompts. It's needed to confirm container restart
-// behavior in the Docker transport on Windows.
+// testWindowsDockerTransportPrompter is a prompting.Prompter implementation
+// that will answer "yes" to all prompts. It's needed to confirm container
+// restart behavior in the Docker transport on Windows.
 type testWindowsDockerTransportPrompter struct{}
 
 func (t *testWindowsDockerTransportPrompter) Message(_ string) error {
@@ -374,11 +374,11 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 	// questions about stoping and restarting containers.
 	var prompter string
 	if runtime.GOOS == "windows" {
-		if p, err := prompt.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
+		if p, err := prompting.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
 			t.Fatal("unable to register prompter:", err)
 		} else {
 			prompter = p
-			defer prompt.UnregisterPrompter(prompter)
+			defer prompting.UnregisterPrompter(prompter)
 		}
 	}
 
@@ -444,11 +444,11 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	// questions about stoping and restarting containers.
 	var prompter string
 	if runtime.GOOS == "windows" {
-		if p, err := prompt.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
+		if p, err := prompting.RegisterPrompter(&testWindowsDockerTransportPrompter{}); err != nil {
 			t.Fatal("unable to register prompter:", err)
 		} else {
 			prompter = p
-			defer prompt.UnregisterPrompter(prompter)
+			defer prompting.UnregisterPrompter(prompter)
 		}
 	}
 

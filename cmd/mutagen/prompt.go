@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
-	promptpkg "github.com/mutagen-io/mutagen/pkg/prompt"
-	promptsvc "github.com/mutagen-io/mutagen/pkg/service/prompt"
+	promptingpkg "github.com/mutagen-io/mutagen/pkg/prompting"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
 
 func promptMain(arguments []string) error {
@@ -20,7 +20,7 @@ func promptMain(arguments []string) error {
 	prompt := arguments[0]
 
 	// Extract environment parameters.
-	prompter := os.Getenv(promptpkg.PrompterEnvironmentVariable)
+	prompter := os.Getenv(promptingpkg.PrompterEnvironmentVariable)
 	if prompter == "" {
 		return errors.New("no prompter specified")
 	}
@@ -33,14 +33,14 @@ func promptMain(arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a prompt service client.
-	promptService := promptsvc.NewPromptingClient(daemonConnection)
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
 
 	// Invoke prompt.
-	request := &promptsvc.PromptRequest{
+	request := &promptingsvc.PromptRequest{
 		Prompter: prompter,
 		Prompt:   prompt,
 	}
-	response, err := promptService.Prompt(context.Background(), request)
+	response, err := promptingService.Prompt(context.Background(), request)
 	if err != nil {
 		return errors.Wrap(err, "unable to invoke prompt")
 	} else if err = response.EnsureValid(); err != nil {

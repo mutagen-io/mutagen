@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // setPrompterVariables sets up environment variables for prompting based on the
@@ -43,7 +43,7 @@ func setPrompterVariables(environment []string, prompter string) ([]string, erro
 		// Add the prompter environment variable to make Mutagen recognize a
 		// prompting invocation.
 		environment = append(environment,
-			fmt.Sprintf("%s=%s", prompt.PrompterEnvironmentVariable, prompter),
+			fmt.Sprintf("%s=%s", prompting.PrompterEnvironmentVariable, prompter),
 		)
 	}
 

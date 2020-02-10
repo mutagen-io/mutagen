@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // Install installs the current binary to the appropriate location for an agent
@@ -48,7 +48,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 
 	// Find the appropriate agent binary. Ensure that it's cleaned up when we're
 	// done with it.
-	if err := prompt.Message(prompter, "Extracting agent..."); err != nil {
+	if err := prompting.Message(prompter, "Extracting agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	agentExecutable, err := ExecutableForPlatform(goos, goarch, "")
@@ -62,7 +62,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	// will automatically make the file executable on the remote (POSIX systems
 	// are handled separately below). For POSIX systems, we add a dot prefix to
 	// hide the executable.
-	if err := prompt.Message(prompter, "Copying agent..."); err != nil {
+	if err := prompting.Message(prompter, "Copying agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	randomUUID, err := uuid.NewRandom()
@@ -87,7 +87,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	// since Windows can't preserve this. This will also be applied to Windows
 	// POSIX remotes, but a "chmod +x" there will just be a no-op.
 	if runtime.GOOS == "windows" && posix {
-		if err := prompt.Message(prompter, "Setting agent executability..."); err != nil {
+		if err := prompting.Message(prompter, "Setting agent executability..."); err != nil {
 			return errors.Wrap(err, "unable to message prompter")
 		}
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
@@ -97,7 +97,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	}
 
 	// Invoke the remote installation.
-	if err := prompt.Message(prompter, "Installing agent..."); err != nil {
+	if err := prompting.Message(prompter, "Installing agent..."); err != nil {
 		return errors.Wrap(err, "unable to message prompter")
 	}
 	var installCommand string

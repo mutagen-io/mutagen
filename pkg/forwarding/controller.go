@@ -14,7 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -83,7 +83,7 @@ func newSession(
 	prompter string,
 ) (*controller, error) {
 	// Update status.
-	prompt.Message(prompter, "Creating session...")
+	prompting.Message(prompter, "Creating session...")
 
 	// Set the session version.
 	version := Version_Version1
@@ -275,7 +275,7 @@ func (c *controller) currentState() *State {
 // connected and forwarding.
 func (c *controller) resume(ctx context.Context, prompter string) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
@@ -416,7 +416,7 @@ func (m controllerHaltMode) description() string {
 // halt halts the session with the specified behavior.
 func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()

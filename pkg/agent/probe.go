@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // unameSToGOOS maps uname -s output values to their corresponding GOOS values.
@@ -171,7 +171,7 @@ func probeWindows(transport Transport) (string, string, error) {
 func probe(transport Transport, prompter string) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
-	if err := prompt.Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
+	if err := prompting.Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
 	if goos, goarch, err := probePOSIX(transport); err == nil {
@@ -179,7 +179,7 @@ func probe(transport Transport, prompter string) (string, string, bool, error) {
 	}
 
 	// If that fails, attempt a Windows fallback.
-	if err := prompt.Message(prompter, "Probing endpoint (Windows)..."); err != nil {
+	if err := prompting.Message(prompter, "Probing endpoint (Windows)..."); err != nil {
 		return "", "", false, errors.Wrap(err, "unable to message prompter")
 	}
 	if goos, goarch, err := probeWindows(transport); err == nil {

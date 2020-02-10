@@ -13,7 +13,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transports/docker/internal/docker"
 	"github.com/mutagen-io/mutagen/pkg/process"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // windowsContainerNotification is a prompt about copying files into Windows
@@ -305,7 +305,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 			return errors.New("no prompter for Docker copy behavior confirmation")
 		}
 		for {
-			if response, err := prompt.Prompt(t.prompter, windowsContainerCopyNotification); err != nil {
+			if response, err := prompting.Prompt(t.prompter, windowsContainerCopyNotification); err != nil {
 				return errors.Wrap(err, "unable to prompt for Docker copy behavior confirmation")
 			} else if response == "no" {
 				return errors.New("user cancelled copy operation")

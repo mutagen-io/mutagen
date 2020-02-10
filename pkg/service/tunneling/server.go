@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
@@ -32,7 +32,7 @@ func (s *Server) Create(stream Tunneling_CreateServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&createStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&createStreamPrompter{stream})
 	if err != nil {
 		return fmt.Errorf("unable to register prompter: %w", err)
 	}
@@ -48,7 +48,7 @@ func (s *Server) Create(stream Tunneling_CreateServer) error {
 	)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -95,7 +95,7 @@ func (s *Server) Pause(stream Tunneling_PauseServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&pauseStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&pauseStreamPrompter{stream})
 	if err != nil {
 		return fmt.Errorf("unable to register prompter: %w", err)
 	}
@@ -104,7 +104,7 @@ func (s *Server) Pause(stream Tunneling_PauseServer) error {
 	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -131,7 +131,7 @@ func (s *Server) Resume(stream Tunneling_ResumeServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&resumeStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&resumeStreamPrompter{stream})
 	if err != nil {
 		return fmt.Errorf("unable to register prompter: %w", err)
 	}
@@ -140,7 +140,7 @@ func (s *Server) Resume(stream Tunneling_ResumeServer) error {
 	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {
@@ -167,7 +167,7 @@ func (s *Server) Terminate(stream Tunneling_TerminateServer) error {
 	}
 
 	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompt.RegisterPrompter(&terminateStreamPrompter{stream})
+	prompter, err := prompting.RegisterPrompter(&terminateStreamPrompter{stream})
 	if err != nil {
 		return fmt.Errorf("unable to register prompter: %w", err)
 	}
@@ -176,7 +176,7 @@ func (s *Server) Terminate(stream Tunneling_TerminateServer) error {
 	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
 
 	// Unregister the prompter.
-	prompt.UnregisterPrompter(prompter)
+	prompting.UnregisterPrompter(prompter)
 
 	// Handle any errors.
 	if err != nil {

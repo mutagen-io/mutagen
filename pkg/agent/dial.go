@@ -15,7 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/process"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 const (
@@ -73,7 +73,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	if cmdExe {
 		message = "Connecting to agent (Windows)..."
 	}
-	if err := prompt.Message(prompter, message); err != nil {
+	if err := prompting.Message(prompter, message); err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to message prompter")
 	}
 	agentProcess, err := transport.Command(command)

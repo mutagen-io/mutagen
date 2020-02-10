@@ -1,4 +1,4 @@
-package prompt
+package prompting
 
 import (
 	"strings"

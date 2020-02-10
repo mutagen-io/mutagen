@@ -1,4 +1,4 @@
-package prompt
+package prompting
 
 // Prompter is the interface to which types supporting prompting must adhere.
 type Prompter interface {

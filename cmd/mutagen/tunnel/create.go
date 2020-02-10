@@ -15,7 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
@@ -116,7 +116,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompt.PromptCommandLine(response.Prompt); err != nil {
+			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
 				return errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&tunnelingsvc.CreateRequest{Response: response}); err != nil {
 				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")

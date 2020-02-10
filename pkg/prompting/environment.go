@@ -1,4 +1,4 @@
-package prompt
+package prompting
 
 const (
 	// PrompterEnvironmentVariable is the environment variable in which the

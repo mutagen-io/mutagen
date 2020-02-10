@@ -18,7 +18,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	promptsvc "github.com/mutagen-io/mutagen/pkg/service/prompt"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -93,7 +93,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 	daemonsvc.RegisterDaemonServer(server, daemonServer)
 
 	// Create and register the prompt server.
-	promptsvc.RegisterPromptingServer(server, promptsvc.NewServer())
+	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())
 
 	// Create and register the tunneling server.
 	tunnelingServer := tunnelingsvc.NewServer(tunnelManager)

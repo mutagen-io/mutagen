@@ -19,7 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/random"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/tunneling/webrtcutil"
@@ -96,7 +96,7 @@ func newTunnel(
 	prompter string,
 ) (*controller, *TunnelHostCredentials, error) {
 	// Update status.
-	prompt.Message(prompter, "Creating tunnel...")
+	prompting.Message(prompter, "Creating tunnel...")
 
 	// Set the tunnel version.
 	version := Version_Version1
@@ -246,7 +246,7 @@ func (c *controller) currentState() *State {
 // resume attempts to resume the tunnel if it isn't currently connected.
 func (c *controller) resume(_ context.Context, prompter string) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("Resuming tunnel %s...", c.tunnel.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("Resuming tunnel %s...", c.tunnel.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
@@ -317,7 +317,7 @@ func (m controllerHaltMode) description() string {
 // halt halts the tunnel with the specified behavior.
 func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("%s tunnel %s...", mode.description(), c.tunnel.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("%s tunnel %s...", mode.description(), c.tunnel.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()

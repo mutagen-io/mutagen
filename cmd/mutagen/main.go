@@ -14,7 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/tunnel"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 func rootMain(command *cobra.Command, arguments []string) error {
@@ -109,7 +109,7 @@ func main() {
 	// request. Prompting is sort of a special pseudo-command that's indicated
 	// by the presence of an environment variable, and hence it has to be
 	// handled in a bit of a special manner.
-	if _, ok := os.LookupEnv(prompt.PrompterEnvironmentVariable); ok {
+	if _, ok := os.LookupEnv(prompting.PrompterEnvironmentVariable); ok {
 		if err := promptMain(os.Args[1:]); err != nil {
 			cmd.Fatal(err)
 		}

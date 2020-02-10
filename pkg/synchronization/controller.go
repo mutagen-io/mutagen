@@ -14,7 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
@@ -95,7 +95,7 @@ func newSession(
 	prompter string,
 ) (*controller, error) {
 	// Update status.
-	prompt.Message(prompter, "Creating session...")
+	prompting.Message(prompter, "Creating session...")
 
 	// Set the session version.
 	version := Version_Version1
@@ -315,7 +315,7 @@ func (c *controller) currentState() *State {
 // this wait early.
 func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
@@ -382,7 +382,7 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 // acquire it.
 func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
 
 	// If not already held, acquire the lifecycle lock and defer its release.
 	if !lifecycleLockHeld {
@@ -529,7 +529,7 @@ func (m controllerHaltMode) description() string {
 // will not attempt to acquire it.
 func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
-	prompt.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
+	prompting.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
 
 	// If not already held, acquire the lifecycle lock and defer its release.
 	if !lifecycleLockHeld {

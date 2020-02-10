@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
-	"github.com/mutagen-io/mutagen/pkg/prompt"
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 func loginMain(command *cobra.Command, arguments []string) error {
@@ -17,7 +17,7 @@ func loginMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Prompt for the API token.
-	apiToken, err := prompt.PromptCommandLineWithResponseMode("Enter API token: ", prompt.ResponseModeMasked)
+	apiToken, err := prompting.PromptCommandLineWithResponseMode("Enter API token: ", prompting.ResponseModeMasked)
 	if err != nil {
 		return fmt.Errorf("unable to read API token: %w", err)
 	}

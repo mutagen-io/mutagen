@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package prompt;
+package prompting;
 
-option go_package = "github.com/mutagen-io/mutagen/pkg/service/prompt";
+option go_package = "github.com/mutagen-io/mutagen/pkg/service/prompting";
 
 message PromptRequest {
     string prompter = 1;
