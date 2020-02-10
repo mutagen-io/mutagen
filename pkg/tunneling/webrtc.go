@@ -6,10 +6,23 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/pion/webrtc/v2"
 
 	"github.com/mutagen-io/mutagen/pkg/tunneling/webrtcutil"
+)
+
+const (
+	// iceConnectionTimeout is the timeout period for an ICE connection. When
+	// neither data nor keep-alive messages have been seen coming in on the
+	// connection for this period of time, the connection is considered timed
+	// out.
+	iceConnectionTimeout = 10 * time.Second
+	// iceKeepAliveInterval is the period at which keep-alive messages should be
+	// sent. It should be less than iceConnectionTimeout, but not so small that
+	// it generates significant network traffic.
+	iceKeepAliveInterval = 5 * time.Second
 )
 
 // webrtcAPIOnce restricts the global WebRTC API to a single initialization.
@@ -36,6 +49,9 @@ func loadWebRTCAPI() (*webrtc.API, error) {
 
 		// Enable data channel detaching.
 		settings.DetachDataChannels()
+
+		// Set up timeouts.
+		settings.SetConnectionTimeout(iceConnectionTimeout, iceKeepAliveInterval)
 
 		// Check if a UDP port range has been specified in the environment and
 		// enforce that any specification is not one-sided. If a UDP port range
