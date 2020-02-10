@@ -86,7 +86,7 @@ type controller struct {
 // newTunnel creates a new tunnel and corresponding controller. It also returns
 // the parameters needed to host the tunnel.
 func newTunnel(
-	_ context.Context,
+	ctx context.Context,
 	logger *logging.Logger,
 	tracker *state.Tracker,
 	configuration *Configuration,
@@ -115,7 +115,7 @@ func newTunnel(
 	}
 
 	// Attempt to create the tunnel via the API.
-	ctx, cancel := context.WithTimeout(context.Background(), tunnelCreateTimeout)
+	ctx, cancel := context.WithTimeout(ctx, tunnelCreateTimeout)
 	defer cancel()
 	identifier, hostToken, clientToken, err := mutagenio.TunnelCreate(ctx)
 	if err != nil {
