@@ -177,6 +177,7 @@ func HostTunnel(
 		select {
 		case dataChannels <- dataChannel:
 		case <-hostingCtx.Done():
+			dataChannel.Close()
 		}
 	})
 
