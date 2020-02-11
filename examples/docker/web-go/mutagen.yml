@@ -16,7 +16,7 @@ sync:
     mode: "two-way-resolved"
     ignore:
       paths:
-        - "/*"
+        - "*"
         - "!/api/"
         - "!/api/{entrypoint.sh,go.mod,go.sum,server.go}"
         - "!/frontend/"
