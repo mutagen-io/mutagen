@@ -7,25 +7,21 @@
 *
 
 !api/
-api/*
 !api/entrypoint.sh
 !api/go.mod
 !api/go.sum
 !api/server.go
 
 !development/
-development/*
 !development/entrypoint.sh
 
 !frontend/
-frontend/*
 !frontend/entrypoint.sh
 !frontend/gulpfile.js
 !frontend/index.html
 !frontend/package*.json
 
 !web/
-web/*
 !web/entrypoint.sh
 !web/go.mod
 !web/go.sum
