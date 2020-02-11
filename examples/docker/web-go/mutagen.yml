@@ -16,10 +16,13 @@ sync:
     mode: "two-way-resolved"
     ignore:
       paths:
-        - "*"
+        - "/*"
         - "!/api/"
+        - "/api/*"
         - "!/api/{entrypoint.sh,go.mod,go.sum,server.go}"
         - "!/frontend/"
+        - "/frontend/*"
         - "!/frontend/{entrypoint.sh,gulpfile.js,index.html,package*.json}"
         - "!/web/"
+        - "/web/*"
         - "!/web/{entrypoint.sh,go.mod,go.sum,server.go}"
