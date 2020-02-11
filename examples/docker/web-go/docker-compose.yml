@@ -1,8 +1,8 @@
 # Set the Docker Compose file format.
 version: "3.7"
 
-# Define services. We use a different build context for the development service
-# so that we can bake a code snapshot into its image.
+# Define the project's services. We use a different build context for the
+# development service so that we can bake a code snapshot into its image.
 services:
   development:
     build:

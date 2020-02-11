@@ -11,8 +11,3 @@ ENV POSTGRES_DB="messagesdb" \
 # Copy in the schema initialization script. The Postgres image will pick up on
 # the presence of this script and run it when the container is first created.
 COPY schema.sql /docker-entrypoint-initdb.d/schema.sql
-
-# Add a utility script that we can use to easily connect to the database from
-# inside the container.
-COPY ["messagesdb", "/usr/bin/messagesdb"]
-RUN ["chmod", "+x", "/usr/bin/messagesdb"]

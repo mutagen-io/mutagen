@@ -1,6 +1,0 @@
-#!/bin/sh
-
-# This utility script provides a shorthand for connecting to the messages
-# database inside the database container.
-
-psql -U messagessvc -d messagesdb

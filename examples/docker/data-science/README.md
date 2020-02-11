@@ -1,11 +1,12 @@
 # Data science
 
-This directory contains an example Python data science environment designed to
-run on a cloud-based container host (though it can also be run locally). It uses
+This directory contains an example [Jupyter](https://jupyter.org/)-based data
+science environment designed to be run on a cloud-based container host (though
+it can also be run locally, e.g. via
+[Docker Desktop](https://www.docker.com/products/docker-desktop)). It uses
 [Mutagen's support for Docker containers](https://mutagen.io/documentation/transports/docker)
-to synchronize code from the local editor to the remote environment and to
-forward local network traffic to a Jupyter notebook server running in the remote
-environment.
+to synchronize code from the local filesystem to the container filesystem and to
+forward network traffic to the containerized Jupyter notebook server.
 
 
 ## Usage
@@ -16,25 +17,22 @@ command. You can achieve this by running a local Docker daemon with a tool like
 configuring access to a cloud-based container host like
 [CoreOS](http://coreos.com/) and setting the `DOCKER_HOST` environment variable
 appropriately. Mutagen will work with either of these cases, though setting up a
-cloud-based container host has numerous benefits.
+cloud-based container host has numerous performance benefits.
 
 This section also assumes and that you have
-[Docker Compose](https://docs.docker.com/compose/) installed, though this is
-usually bundled with Docker client installations, so it should be present if you
-have the `docker` command available.
+[Docker Compose](https://docs.docker.com/compose/) installed. This is often
+bundled with Docker client installations, so check to see if you have it already
+by invoking `docker-compose version`.
 
-Once the Docker daemon is set up, start the environment using:
+Once the Docker daemon is set up, you can start the environment using:
 
-```
-docker-compose up --build --detach
-```
-
-Next, start the Mutagen synchronization and forwarding sessions for this project
-that will communicate with the containers:
-
-```
+```bash
 mutagen project start
 ```
+
+This project uses Mutagen's project `setup` hook (defined in `mutagen.yml`) to
+initialize the Docker Compose containers before establishing synchronization and
+forwarding.
 
 Once the environment is running, you can access the Jupyter notebook server at
 [http://localhost:8888](http://localhost:8888). The password for the notebook
@@ -42,32 +40,32 @@ is `mutagen`. For more information on changing the password, please see the
 [Jupyter documentation](https://jupyter-docker-stacks.readthedocs.io/en/latest/using/common.html#notebook-options),
 as well as the `jupyter` container definition in the `containers` directory.
 
-You can also create interactive command-line sessions in the remote environment,
-e.g.:
+You can also work inside the containers by starting a shell. For example, try
+running `docker-compose exec jupyter bash`. This will start an interactive
+shell inside the `jupyter` service container.
 
-```
-docker-compose exec jupyter bash
-```
+To help automate common workflows, Mutagen offers a way to define custom
+commands for projects. For example, try running the following:
 
-or
-
-```
-docker-compose exec jupyter ipython
+```bash
+mutagen project run ipython
 ```
 
-Once you're done working with the remote environment, you can terminate the
-Mutagen sessions using:
+This invokes a custom command called `ipython` (defined in `mutagen.yml` using
+the `commands` section) that will drop you into an
+[IPython](https://ipython.org/) shell running inside the container.
 
-```
+Using custom commands, you can define shells, common analysis workflows, data
+processing commands, and more. Defining these common workflows becomes even more
+powerful when everyone on a team is using the same environment with the same
+tools available.
+
+Once you're done working, you can terminate the environment using:
+
+```bash
 mutagen project terminate
 ```
 
-The remote environment can be terminated using:
-
-```
-docker-compose down --rmi=all
-```
-
-If you also want to remove the volume created to store synchronized code on the
-remote system, you can include the `--volumes` flag when using
-`docker-compose down`.
+This project uses Mutagen's `teardown` hook (defined in `mutagen.yml`) to
+destroy the Docker Compose containers (and associated resources) after
+terminating synchronization and forwarding.

@@ -1,3 +1,17 @@
+# Create the Docker Compose infrastructure when starting the project.
+setup:
+  - docker-compose up --build --detach
+
+# Destroy the Docker Compose infrastructure when terminating the project.
+teardown:
+  - docker-compose down --rmi=all --volumes
+
+# Define common utility commands.
+commands:
+  database: docker-compose exec database psql -U messagessvc -d messagesdb
+  logs: docker-compose logs --follow
+
+# Forward local traffic to the web and API servers.
 forward:
   api:
     source: "tcp:localhost:8081"
@@ -6,6 +20,7 @@ forward:
     source: "tcp:localhost:8080"
     destination: "docker://go-web-development:tcp:web:8080"
 
+# Synchronize code to the shared Docker volume.
 sync:
   defaults:
     ignore:

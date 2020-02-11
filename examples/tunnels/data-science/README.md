@@ -1,21 +1,11 @@
 # Data science
 
----
-
-**Note:** This example uses Mutagen's new
-[tunnels transport](https://mutagen.io/documentation/transports/tunnels) that
-will ship with Mutagen v0.11.0, but you can already test these features using
-Mutagen v0.11.0-beta1 or later.
-
----
-
-This directory contains an example Python data science environment designed to
-run on a cloud-based container host (though it can also be run locally). It uses
-Mutagen's
-[tunnel transport](https://mutagen.io/documentation/transports/tunnels) to
-synchronize code from the local editor to the remote environment and to forward
-local network traffic to a Jupyter notebook server running in the remote
-environment.
+This example is a clone of the [data science example](../../docker/data-science)
+that's been modified to use Mutagen's new
+[tunnel transport](https://mutagen.io/documentation/transports/tunnels). This
+example is kept simple to illustrate how tunnels work, but they can support far
+more complex scenarios and work with infrastructure other than Docker (e.g.
+Kubernetes clusters).
 
 
 ## Usage
@@ -26,15 +16,17 @@ command. You can achieve this by running a local Docker daemon with a tool like
 configuring access to a cloud-based container host like
 [CoreOS](http://coreos.com/) and setting the `DOCKER_HOST` environment variable
 appropriately. Mutagen will work with either of these cases, though setting up a
-cloud-based container host has numerous benefits.
+cloud-based container host has numerous performance benefits.
 
 This section also assumes and that you have
-[Docker Compose](https://docs.docker.com/compose/) installed, though this is
-usually bundled with Docker client installations, so it should be present if you
-have the `docker` command available.
+[Docker Compose](https://docs.docker.com/compose/) installed. This is often
+bundled with Docker client installations, so check to see if you have it already
+by invoking `docker-compose version`.
 
-It also assumes that you've logged in to [mutagen.io](https://mutagen.io) using
-the `mutagen` command line interface.
+Finally, you'll need to connect Mutagen with the
+[mutagen.io API](https://mutagen.io/login) using the `mutagen login` command.
+More information about this can be found in the
+[tunnel documentation](https://mutagen.io/documentation/transports/tunnels#logging-in)
 
 To use this project, start by creating a tunnel that can be used to communicate
 with remote containers:
@@ -43,18 +35,22 @@ with remote containers:
 mutagen tunnel create --name=data-science-tunnel > containers/tunnel/tunnel.tunn
 ```
 
-Next, start the Mutagen synchronization and forwarding sessions for this project
-that will communicate over the tunnel:
+In this example, we're building the tunnel hosting credentials directly into an
+image, but in practice you'd typically store them using a secret management
+command like `docker secret create` or `kubectl create secret` and then access
+them from inside a container. Tunnels can be re-used indefinitely, so you would
+usually create a tunnel to your remote infrastructure just once (as opposed to
+every time you started the project).
 
-```
+Once this is set up, you can start the environment using:
+
+```bash
 mutagen project start
 ```
 
-Finally, start the environment using:
-
-```
-docker-compose up --build --detach
-```
+This project uses Mutagen's project `setup` hook (defined in `mutagen.yml`) to
+initialize the Docker Compose containers before establishing synchronization and
+forwarding.
 
 Once the environment is running, you can access the Jupyter notebook server at
 [http://localhost:8888](http://localhost:8888). The password for the notebook
@@ -62,40 +58,35 @@ is `mutagen`. For more information on changing the password, please see the
 [Jupyter documentation](https://jupyter-docker-stacks.readthedocs.io/en/latest/using/common.html#notebook-options),
 as well as the `jupyter` container definition in the `containers` directory.
 
-You can also create interactive command-line sessions in the remote environment,
-e.g.:
+You can also work inside the containers by starting a shell. For example, try
+running `docker-compose exec jupyter bash`. This will start an interactive
+shell inside the `jupyter` service container.
 
-```
-docker-compose exec jupyter bash
-```
+To help automate common workflows, Mutagen offers a way to define custom
+commands for projects. For example, try running the following:
 
-or
-
-```
-docker-compose exec jupyter ipython
+```bash
+mutagen project run ipython
 ```
 
-The remote environment can be terminated using:
+This invokes a custom command called `ipython` (defined in `mutagen.yml` using
+the `commands` section) that will drop you into an
+[IPython](https://ipython.org/) shell running inside the container.
 
-```
-docker-compose down --rmi=all
-```
+Using custom commands, you can define shells, common analysis workflows, data
+processing commands, and more. Defining these common workflows becomes even more
+powerful when everyone on a team is using the same environment with the same
+tools available.
 
-If you also want to remove the volume created to store synchronized code on the
-remote system, you can include the `--volumes` flag when using
-`docker-compose down`.
+Once you're done working, you can terminate the environment using:
 
-You can start, stop, and rebuild the remote environment as many times as you'd
-like, without the need to run any Mutagen commands. If you do remove the remote
-volumes, then you'll want to reset the Mutagen synchronization sessions using
-`mutagen project reset` before recreating the remote infrastructure.
-
-Once you're finished using the project, you can stop the Mutagen synchronization
-and forwarding by using:
-
-```
+```bash
 mutagen project terminate
 ```
+
+This project uses Mutagen's `teardown` hook (defined in `mutagen.yml`) to
+destroy the Docker Compose containers (and associated resources) after
+terminating synchronization and forwarding.
 
 If you wish, you can then delete the tunnel you created using:
 

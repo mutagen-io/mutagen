@@ -1,17 +1,9 @@
 # Set the Docker Compose file format.
 version: "3.7"
 
-# Define two containers: one to function as the development environment and one
-# to serve as the tunnel host for synchronizing code and forwarding network
-# traffic.
+# Define the service that constitutes the remote environment.
 services:
   jupyter:
     build: ./containers/jupyter
-    container_name: data-science-container
+    container_name: data-science
     stop_grace_period: 0s
-    volumes:
-      - code:/home/jovyan/data-science
-
-# Create a persistent shared volume to store synchronized code.
-volumes:
-  code:

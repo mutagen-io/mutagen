@@ -1,10 +1,22 @@
-# Set up network forwarding for godoc.
+# Create the Docker Compose infrastructure when starting the project.
+setup:
+  - docker-compose up --build --detach
+
+# Destroy the Docker Compose infrastructure when terminating the project.
+teardown:
+  - docker-compose down --rmi=all --volumes
+
+# Define common utility commands.
+commands:
+  ipython: docker-compose exec jupyter ipython
+
+# Forward local traffic to the Jupyter notebook server.
 forward:
   jupyter:
     source: "tcp:localhost:8888"
     destination: "tunnel://data-science-tunnel:tcp:jupyter:8888"
 
-# Set up code and notebook synchronization.
+# Synchronize analysis code and Jupyter notebooks with the container.
 sync:
   defaults:
     ignore:
