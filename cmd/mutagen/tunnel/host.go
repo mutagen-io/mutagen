@@ -55,15 +55,14 @@ func hostMain(command *cobra.Command, arguments []string) error {
 		return fmt.Errorf("invalid host parameters: %w", err)
 	}
 
+	// Create a logger.
+	logger := logging.RootLogger.Sublogger("hosting")
+
 	// Perform hosting in a background Goroutine and track unrecoverable errors.
 	unrecoverableHostingErrors := make(chan error, 1)
 	go func() {
 		for {
-			severity, err := tunneling.HostTunnel(
-				context.Background(),
-				logging.RootLogger.Sublogger("hosting"),
-				hostCredentials,
-			)
+			severity, err := tunneling.HostTunnel(context.Background(), logger, hostCredentials)
 			switch severity {
 			case tunneling.ErrorSeverityRecoverable:
 				logger.Info("hosting restart due to recoverable error:", err)
