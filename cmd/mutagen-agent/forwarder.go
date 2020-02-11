@@ -39,7 +39,10 @@ func forwarderMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	forwardingTermination := make(chan error, 1)
 	go func() {
-		forwardingTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
+		forwardingTermination <- remote.ServeEndpoint(
+			logging.RootLogger.Sublogger("forwarding"),
+			connection,
+		)
 	}()
 
 	// Wait for termination from a signal or the forwarder.

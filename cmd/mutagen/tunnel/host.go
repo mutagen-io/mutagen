@@ -61,16 +61,19 @@ func hostMain(command *cobra.Command, arguments []string) error {
 		for {
 			severity, err := tunneling.HostTunnel(
 				context.Background(),
-				logging.RootLogger,
+				logging.RootLogger.Sublogger("hosting"),
 				hostCredentials,
 			)
 			switch severity {
 			case tunneling.ErrorSeverityRecoverable:
+				logger.Info("hosting restart due to recoverable error:", err)
 				continue
 			case tunneling.ErrorSeverityDelayedRecoverable:
+				logger.Info("delayed hosting restart due to recoverable error:", err)
 				time.Sleep(tunneling.HostTunnelRetryDelayTime)
 				continue
 			case tunneling.ErrorSeverityUnrecoverable:
+				logger.Info("hosting failed due to unrecoverable error:", err)
 				unrecoverableHostingErrors <- err
 				return
 			default:

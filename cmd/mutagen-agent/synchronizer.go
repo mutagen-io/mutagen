@@ -75,7 +75,10 @@ func synchronizerMain(command *cobra.Command, arguments []string) error {
 	// termination.
 	synchronizationTermination := make(chan error, 1)
 	go func() {
-		synchronizationTermination <- remote.ServeEndpoint(logging.RootLogger, connection)
+		synchronizationTermination <- remote.ServeEndpoint(
+			logging.RootLogger.Sublogger("synchronization"),
+			connection,
+		)
 	}()
 
 	// Wait for termination from a signal or the synchronizer.
