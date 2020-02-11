@@ -94,7 +94,7 @@ func (m *InitializeRequestVersion1) GetMode() string {
 type InitializeResponseVersion1 struct {
 	// Error is any error that occurred during initialization. An empty error
 	// indicates that initialization was successful and that the connection is
-	// read for use by an endpoint client.
+	// ready for use by an endpoint client.
 	Error                string   `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

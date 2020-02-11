@@ -22,6 +22,6 @@ message InitializeRequestVersion1 {
 message InitializeResponseVersion1 {
     // Error is any error that occurred during initialization. An empty error
     // indicates that initialization was successful and that the connection is
-    // read for use by an endpoint client.
+    // ready for use by an endpoint client.
     string error = 1;
 }
