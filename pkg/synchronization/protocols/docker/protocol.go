@@ -2,9 +2,9 @@ package docker
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transports/docker"
@@ -48,7 +48,7 @@ func (h *protocolHandler) Connect(
 	// Create a Docker agent transport.
 	transport, err := docker.NewTransport(url.Host, url.User, url.Environment, prompter)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create Docker transport")
+		return nil, fmt.Errorf("unable to create Docker transport: %w", err)
 	}
 
 	// Create a channel to deliver the dialing result.
@@ -75,7 +75,7 @@ func (h *protocolHandler) Connect(
 	select {
 	case result := <-results:
 		if result.error != nil {
-			return nil, errors.Wrap(err, "unable to dial agent endpoint")
+			return nil, fmt.Errorf("unable to dial agent endpoint: %w", result.error)
 		}
 		connection = result.connection
 	case <-ctx.Done():

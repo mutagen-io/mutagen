@@ -2,9 +2,9 @@ package ssh
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh"
@@ -49,13 +49,13 @@ func (p *protocolHandler) Connect(
 	// Parse the target specification from the URL's Path component.
 	protocol, address, err := forwardingurlpkg.Parse(url.Path)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse target specification")
+		return nil, fmt.Errorf("unable to parse target specification: %w", err)
 	}
 
 	// Create an SSH agent transport.
 	transport, err := ssh.NewTransport(url.User, url.Host, uint16(url.Port), prompter)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create SSH transport")
+		return nil, fmt.Errorf("unable to create SSH transport: %w", err)
 	}
 
 	// Create a channel to deliver the dialing result.
@@ -82,7 +82,7 @@ func (p *protocolHandler) Connect(
 	select {
 	case result := <-results:
 		if result.error != nil {
-			return nil, errors.Wrap(err, "unable to dial agent endpoint")
+			return nil, fmt.Errorf("unable to dial agent endpoint: %w", result.error)
 		}
 		connection = result.connection
 	case <-ctx.Done():
