@@ -14,7 +14,7 @@
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. synchronization/core/archive.proto synchronization/core/cache.proto synchronization/core/change.proto synchronization/core/conflict.proto synchronization/core/entry.proto synchronization/core/ignore_vcs_mode.proto synchronization/core/mode.proto synchronization/core/problem.proto synchronization/core/symlink_mode.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. synchronization/endpoint/remote/protocol.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. synchronization/rsync/engine.proto synchronization/rsync/receive.proto synchronization/rsync/transmission.proto
-//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. tunneling/configuration.proto tunneling/heartbeat.proto tunneling/protocol.proto tunneling/state.proto tunneling/tunnel.proto tunneling/version.proto
+//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. tunneling/configuration.proto tunneling/protocol.proto tunneling/state.proto tunneling/tunnel.proto tunneling/version.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. url/url.proto
 //go:generate rm ./protoc-gen-go
 
