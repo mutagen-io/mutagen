@@ -86,9 +86,6 @@ func loadWebRTCAPI() (*webrtc.API, error) {
 			if maximumPort < minimumPort {
 				webrtcAPIError = errors.New("maximum port specified in environment is less than minimum port specified in environment")
 				return
-			} else if minimumPort < 49152 {
-				webrtcAPIError = errors.New("minimum port specified in environment falls below ephemeral port range ([49152, 65535])")
-				return
 			}
 
 			// Set the port range.
