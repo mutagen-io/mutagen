@@ -566,6 +566,14 @@ func (c *controller) connect(ctx context.Context) (*webrtc.PeerConnection, chan 
 		}
 	})
 
+	// TODO: We may also want to wire up SCTP transport errors to
+	// peerConnectionFailures. Unfortunately the SCTP transport isn't accessible
+	// directly from the peer connection (though oddly it is available on
+	// individual data channels). It seems like this may just be an oversight.
+	// See the following for additional discussion:
+	// https://github.com/pion/webrtc/issues/754
+	// https://github.com/pion/webrtc/commit/896f8e360f96498092b41ae24876de4ba012f63d
+
 	// Initiate a client-side offer exchange.
 	exchangeID, remoteOffer, remoteSignature, err := mutagenio.TunnelClientExchangeStart(
 		ctx,
