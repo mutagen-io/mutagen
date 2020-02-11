@@ -650,11 +650,11 @@ var fileDescriptor_3507425a8852e9f1 = []byte{
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc.ClientConnInterface
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
+const _ = grpc.SupportPackageIsVersion6
 
 // ForwardingClient is the client API for Forwarding service.
 //
@@ -668,10 +668,10 @@ type ForwardingClient interface {
 }
 
 type forwardingClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewForwardingClient(cc *grpc.ClientConn) ForwardingClient {
+func NewForwardingClient(cc grpc.ClientConnInterface) ForwardingClient {
 	return &forwardingClient{cc}
 }
 
