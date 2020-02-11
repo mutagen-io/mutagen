@@ -41,6 +41,11 @@ func HostTunnel(
 	logger *logging.Logger,
 	hostCredentials *TunnelHostCredentials,
 ) (ErrorSeverity, error) {
+	// Create a cancellable subcontext to regulate our hosting Goroutines and
+	// defer its cancellation.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// Load the WebRTC API.
 	api, err := loadWebRTCAPI()
 	if err != nil {
@@ -87,6 +92,17 @@ func HostTunnel(
 			case peerConnectionFailures <- err:
 			default:
 			}
+		}
+	})
+
+	// Track incoming data channels.
+	dataChannels := make(chan *webrtc.DataChannel)
+	peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
+		logger.Info("Received data channel:", dataChannel.Label())
+		select {
+		case dataChannels <- dataChannel:
+		case <-ctx.Done():
+			dataChannel.Close()
 		}
 	})
 
@@ -166,35 +182,20 @@ func HostTunnel(
 		return ErrorSeverityRecoverable, fmt.Errorf("unable to set remote session description: %w", err)
 	}
 
-	// Create a context to regulate hosting.
-	hostingCtx, hostingCancel := context.WithCancel(ctx)
-	defer hostingCancel()
-
-	// Track incoming data channels.
-	dataChannels := make(chan *webrtc.DataChannel)
-	peerConnection.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
-		logger.Info("Received data channel:", dataChannel.Label())
-		select {
-		case dataChannels <- dataChannel:
-		case <-hostingCtx.Done():
-			dataChannel.Close()
-		}
-	})
-
 	// Loop indefinitely, watching for incoming data channels, peer connection
 	// failure, and cancellation.
 	for {
 		select {
 		case dataChannel := <-dataChannels:
 			go hostDataChannel(
-				hostingCtx,
+				ctx,
 				logger.Sublogger(dataChannel.Label()),
 				dataChannel,
 				hostCredentials.Version,
 			)
 		case err := <-peerConnectionFailures:
 			return ErrorSeverityRecoverable, fmt.Errorf("peer connection failure: %w", err)
-		case <-hostingCtx.Done():
+		case <-ctx.Done():
 			return ErrorSeverityRecoverable, errors.New("cancelled")
 		}
 	}
