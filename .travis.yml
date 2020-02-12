@@ -21,7 +21,7 @@ matrix:
       env:
         - MUTAGEN_TEST_END_TO_END=full
         - MUTAGEN_TEST_DOCKER=true
-        - MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME=mcr.microsoft.com/windows/servercore:1809
+        - MUTAGEN_TEST_DOCKER_BASE_IMAGE_NAME=mcr.microsoft.com/windows/servercore:1809-KB4534273
         - MUTAGEN_TEST_DOCKER_IMAGE_NAME=mutagentest
         - MUTAGEN_TEST_DOCKER_CONTAINER_NAME=mutagentester
         - MUTAGEN_TEST_DOCKER_USERNAME=george
