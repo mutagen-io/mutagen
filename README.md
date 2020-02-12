@@ -5,11 +5,12 @@ local tools to work with code in remote environments like cloud servers and
 containers. It does this by providing high-performance real-time
 [file synchronization](https://mutagen.io/documentation/synchronization) and
 flexible [network forwarding](https://mutagen.io/documentation/forwarding).
-Support is currently implemented for synchronization and forwarding between
+It supports synchronization and forwarding between
 [local systems](https://mutagen.io/documentation/transports/local),
 [SSH-accessible locations](https://mutagen.io/documentation/transports/ssh),
-and [Docker containers](https://mutagen.io/documentation/transports/docker),
-with more on the way!
+and [Docker containers](https://mutagen.io/documentation/transports/docker), as
+well as most other infrastructure (such as Kubernetes clusters) using its
+[tunnel transport](https://mutagen.io/documentation/transports/tunnels).
 
 
 ## Getting started
@@ -96,7 +97,7 @@ opening a GitHub issue. For more information, please see the
 
 Mutagen uses [semantic versioning](https://semver.org/) for tracking releases.
 Before Mutagen reaches version 1.0, each minor release series will be supported
-for 1 month after the first release in the next minor release series (e.g.
+for one month after the first release in the next minor release series (e.g.
 v0.10.x will be supported until one month after the release of v0.11.0).
 
 The builds for each minor release series are pinned to the same Go minor release
