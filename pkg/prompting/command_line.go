@@ -13,7 +13,7 @@ import (
 func PromptCommandLineWithResponseMode(prompt string, mode ResponseMode) (string, error) {
 	// Figure out which getter to use.
 	var getter func() ([]byte, error)
-	if mode == ResponseModeEcho || mode == ResponseModeBinary {
+	if mode == ResponseModeEcho {
 		getter = gopass.GetPasswdEchoed
 	} else if mode == ResponseModeMasked {
 		getter = gopass.GetPasswdMasked

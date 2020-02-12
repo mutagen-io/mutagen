@@ -14,26 +14,24 @@ const (
 	ResponseModeMasked
 	// ResponseModeEcho indicates that a prompt response should be echoed.
 	ResponseModeEcho
-	// ResponseModeBinary indicates that a prompt response should be echoed and
-	// additionally restricted to yes/no answers (potentially with an
-	// alternative input control in the case of GUI input).
-	ResponseModeBinary
 )
 
-// binaryPromptSuffixes are the list of binary prompt suffixes known to be used
-// by OpenSSH.
-var binaryPromptSuffixes = []string{
+// echoedPromptSuffixes are the list of prompt suffixes known to be used by
+// OpenSSH for which responses should be echoed.
+var echoedPromptSuffixes = []string{
 	"(yes/no)? ",
 	"(yes/no): ",
+	"(yes/no/[fingerprint])? ",
+	"Please type 'yes', 'no' or the fingerprint: ",
 }
 
 // determineResponseMode attempts to determine the appropriate response mode for
 // a prompt based on the prompt text.
 func determineResponseMode(prompt string) ResponseMode {
-	// Check if this is a yes/no prompt.
-	for _, suffix := range binaryPromptSuffixes {
+	// Check if this is an echoed prompt.
+	for _, suffix := range echoedPromptSuffixes {
 		if strings.HasSuffix(prompt, suffix) {
-			return ResponseModeBinary
+			return ResponseModeEcho
 		}
 	}
 
