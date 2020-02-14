@@ -103,8 +103,7 @@ type Configuration struct {
 	// BeforeTerminate are teardown commands to be run before session
 	// termination.
 	BeforeTerminate []string `yaml:"beforeTerminate"`
-	// AfterTerminate are teardown commands to be run before session
-	// termination.
+	// AfterTerminate are teardown commands to be run after session termination.
 	AfterTerminate []string `yaml:"afterTerminate"`
 	// Commands are commands that can be invoked while a project is running.
 	Commands map[string]string `yaml:"commands"`
