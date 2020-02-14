@@ -107,7 +107,8 @@ will be incorporated if they contain security fixes).
 We reserve the right to break or bend these rules if necessary for the sake of
 security, e.g. discontinuing support for a minor release to which a security fix
 cannot be backported or upgrading Go minor versions for a release series to
-incorporate important security fixes.
+incorporate important security fixes. Features marked as experimental may also
+see breakage when necessary, though we will endeavor to keep this to a minimum.
 
 
 ## Building
