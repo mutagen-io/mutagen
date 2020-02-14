@@ -1,10 +1,21 @@
-# Create the Docker Compose infrastructure when starting the project.
-setup:
-  - docker-compose up --build --detach
+# Set up the Mutagen service, network, and code volume before creating sessions.
+beforeCreate:
+  - docker-compose --file=docker-compose-mutagen.yml --project-name=web-go-mutagen up --build --detach
 
-# Destroy the Docker Compose infrastructure when terminating the project.
-teardown:
-  - docker-compose down --rmi=all --volumes
+# Set up the main services after creating sessions. At this point sessions will
+# have been established and code pushed to the shared volume.
+afterCreate:
+  - docker-compose up --build --detach
+  - docker-compose exec frontend /wait-for-initial-build.sh
+
+# Tear down the main services before terminating sessions.
+beforeTerminate:
+  - docker-compose down --rmi=all
+
+# Tear down the Mutagen service, network, and code volume after terminating
+# sessions.
+afterTerminate:
+  - docker-compose --file=docker-compose-mutagen.yml --project-name=web-go-mutagen down --rmi=all --volumes
 
 # Define common utility commands.
 commands:
@@ -15,19 +26,20 @@ commands:
 forward:
   api:
     source: "tcp:localhost:8081"
-    destination: "docker://go-web-development:tcp:api:8081"
+    destination: "docker://web-go-mutagen:tcp:api:8081"
   web:
     source: "tcp:localhost:8080"
-    destination: "docker://go-web-development:tcp:web:8080"
+    destination: "docker://web-go-mutagen:tcp:web:8080"
 
-# Synchronize code to the shared Docker volume.
+# Synchronize code to the shared Docker volume via the Mutagen service.
 sync:
   defaults:
+    flushOnCreate: true
     ignore:
       vcs: true
   code:
     alpha: "."
-    beta: "docker://go-web-development/development/code"
+    beta: "docker://web-go-mutagen/code/web-go"
     mode: "two-way-resolved"
     ignore:
       paths:

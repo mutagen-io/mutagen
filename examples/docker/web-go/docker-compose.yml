@@ -1,17 +1,12 @@
 # Set the Docker Compose file format.
 version: "3.7"
 
-# Define the project's services. We use a different build context for the
-# development service so that we can bake a code snapshot into its image.
+# Define the services (containers) that make up the project. For services that
+# require forwarding via Mutagen, we'll connect them to the Mutagen network, but
+# also leave them connected to the default network for the project so that they
+# can access other services. For services that need access to code, we'll mount
+# the shared code volume.
 services:
-  development:
-    build:
-      context: .
-      dockerfile: development/Dockerfile
-    container_name: go-web-development
-    stop_grace_period: 0s
-    volumes:
-      - development:/development
   database:
     build: ./database
   api:
@@ -21,24 +16,38 @@ services:
       DATABASE_URL: "postgres://messagessvc:InSeCUr3Dem0PasS@database:5432/messagesdb?sslmode=disable"
       SERVER_BIND: ":8081"
       CORS_ORIGIN: "http://localhost:8080"
+    networks:
+      - default
+      - mutagen
     volumes:
-      - development:/development
+      - mutagen:/code
   frontend:
     build: ./frontend
     stop_grace_period: 0s
     environment:
-      OUTPUT_PATH: "/development/build"
+      OUTPUT_PATH: "/code/build"
     volumes:
-      - development:/development
+      - mutagen:/code
   web:
     build: ./web
     stop_grace_period: 0s
     environment:
-      SERVER_ROOT: "/development/build"
+      SERVER_ROOT: "/code/build"
       SERVER_BIND: ":8080"
+    networks:
+      - default
+      - mutagen
     volumes:
-      - development:/development
+      - mutagen:/code
 
-# Create a persistent shared volume to store and share synchronized code.
+# Create a link to the shared network.
+networks:
+  mutagen:
+    name: web-go-network
+    external: true
+
+# Create a link to the shared code volume.
 volumes:
-  development:
+  mutagen:
+    name: web-go-code
+    external: true

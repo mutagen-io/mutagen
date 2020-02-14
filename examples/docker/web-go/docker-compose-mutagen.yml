@@ -1,0 +1,34 @@
+# Set the Docker Compose file format.
+version: "3.7"
+
+# Define a service to host Mutagen agents, connect it to the virtual network
+# created below, and mount the shared code volume created below. We create
+# external links to the other containers where we'll forward network traffic.
+services:
+  mutagen:
+    build: ./mutagen
+    container_name: web-go-mutagen
+    stop_grace_period: 0s
+    external_links:
+      - web-go_api_1:api
+      - web-go_web_1:web
+    networks:
+      - mutagen
+    volumes:
+      - mutagen:/code
+
+# Create a shared network that we can use to link the Mutagen service to other
+# services. This Docker Compose setup will be responsible for creating the
+# network. We assign it an explicit name so that we can access it from the main
+# Docker Compose configuration.
+networks:
+  mutagen:
+    name: web-go-network
+
+# Create a persistent shared volume to store and share synchronized code. This
+# Docker Compose setup will be responsible for creating the volume. We assign it
+# an explicit name so that we can access it from the main Docker Compose
+# configuration.
+volumes:
+  mutagen:
+    name: web-go-code

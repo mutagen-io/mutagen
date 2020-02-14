@@ -1,9 +1,9 @@
-# Create the Docker Compose infrastructure when starting the project.
-setup:
+# Set up the Docker Compose services before creating sessions.
+beforeCreate:
   - docker-compose up --build --detach
 
-# Destroy the Docker Compose infrastructure when terminating the project.
-teardown:
+# Tear down the Docker Compose services after terminating sessions.
+afterTerminate:
   - docker-compose down --rmi=all --volumes
 
 # Define common utility commands.

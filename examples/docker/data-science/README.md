@@ -30,8 +30,8 @@ Once the Docker daemon is set up, you can start the environment using:
 mutagen project start
 ```
 
-This project uses Mutagen's project `setup` hook (defined in `mutagen.yml`) to
-initialize the Docker Compose containers before establishing synchronization and
+This project uses Mutagen's `beforeCreate` hook (see `mutagen.yml`) to
+initialize the Docker Compose services before establishing synchronization and
 forwarding.
 
 Once the environment is running, you can access the Jupyter notebook server at
@@ -66,6 +66,6 @@ Once you're done working, you can terminate the environment using:
 mutagen project terminate
 ```
 
-This project uses Mutagen's `teardown` hook (defined in `mutagen.yml`) to
-destroy the Docker Compose containers (and associated resources) after
-terminating synchronization and forwarding.
+This project uses Mutagen's `afterTerminate` hook (see `mutagen.yml`) to tear
+down the Docker Compose services (and associated resources) after terminating
+synchronization and forwarding.
