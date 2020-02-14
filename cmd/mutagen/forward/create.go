@@ -50,20 +50,20 @@ func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Conf
 func CreateWithSpecification(
 	service forwardingsvc.ForwardingClient,
 	specification *forwardingsvc.CreationSpecification,
-) error {
+) (string, error) {
 	// Invoke the session create method. The stream will close when the
 	// associated context is cancelled.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream, err := service.Create(ctx)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
+		return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
 	}
 
 	// Send the initial request.
 	request := &forwardingsvc.CreateRequest{Specification: specification}
 	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
+		return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
 	}
 
 	// Create a status line printer and defer a break.
@@ -73,23 +73,23 @@ func CreateWithSpecification(
 	// Receive and process responses until we're done.
 	for {
 		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
+			return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid create response received")
+			return "", errors.Wrap(err, "invalid create response received")
 		} else if response.Session != "" {
 			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
-			return nil
+			return response.Session, nil
 		} else if response.Message != "" {
 			statusLinePrinter.Print(response.Message)
 			if err := stream.Send(&forwardingsvc.CreateRequest{}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
+				return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
 			}
 		} else if response.Prompt != "" {
 			statusLinePrinter.BreakIfNonEmpty()
 			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
+				return "", errors.Wrap(err, "unable to perform prompting")
 			} else if err = stream.Send(&forwardingsvc.CreateRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
+				return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
 			}
 		}
 	}
@@ -292,7 +292,8 @@ func createMain(command *cobra.Command, arguments []string) error {
 	service := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Perform creation.
-	return CreateWithSpecification(service, specification)
+	_, err = CreateWithSpecification(service, specification)
+	return err
 }
 
 var createCommand = &cobra.Command{

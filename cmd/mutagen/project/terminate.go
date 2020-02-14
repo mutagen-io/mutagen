@@ -104,6 +104,14 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to load configuration file")
 	}
 
+	// Perform pre-termination commands.
+	for _, command := range configuration.BeforeTerminate {
+		fmt.Println(">", command)
+		if err := runInShell(command); err != nil {
+			return errors.Wrap(err, "pre-terminate command failed")
+		}
+	}
+
 	// Compute the label selector that we're going to use to terminate sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
 
@@ -117,11 +125,11 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to terminate synchronization session(s)")
 	}
 
-	// Perform teardown commands.
-	for _, command := range configuration.Teardown {
+	// Perform post-termination commands.
+	for _, command := range configuration.AfterTerminate {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "teardown command failed")
+			return errors.Wrap(err, "post-terminate command failed")
 		}
 	}
 

@@ -21,6 +21,62 @@ type ForwardingConfiguration struct {
 	ConfigurationDestination forwarding.Configuration `yaml:"configurationDestination"`
 }
 
+// FlushOnCreateBehavior is a custom YAML type that can encode various
+// flush-on-create specifications, including a lack of specification.
+type FlushOnCreateBehavior uint8
+
+const (
+	// FlushOnCreateBehaviorDefault indicates that flush-on-create behavior is
+	// unspecified.
+	FlushOnCreateBehaviorDefault FlushOnCreateBehavior = iota
+	// FlushOnCreateBehaviorNoFlush indicates that flush-on-create behavior has
+	// been disabled.
+	FlushOnCreateBehaviorNoFlush
+	// FlushOnCreateBehaviorNoFlush indicates that flush-on-create behavior has
+	// been enabled.
+	FlushOnCreateBehaviorFlush
+)
+
+// IsDefault indicates whether or not the flush-on-create behavior is
+// FlushOnCreateBehaviorDefault.
+func (b FlushOnCreateBehavior) IsDefault() bool {
+	return b == FlushOnCreateBehaviorDefault
+}
+
+// FlushOnCreate converts the behavior specification to an actual boolean
+// indicating behavior.
+func (b FlushOnCreateBehavior) FlushOnCreate() bool {
+	switch b {
+	case FlushOnCreateBehaviorDefault:
+		return false
+	case FlushOnCreateBehaviorNoFlush:
+		return false
+	case FlushOnCreateBehaviorFlush:
+		return true
+	default:
+		panic("unhandled flush-on-create behavior")
+	}
+}
+
+// UnmarshalYAML implements Unmarshaler.UnmarshalYAML.
+func (b *FlushOnCreateBehavior) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Call the underlying unmarshaling function.
+	var flush bool
+	if err := unmarshal(&flush); err != nil {
+		return err
+	}
+
+	// Set behavior.
+	if flush {
+		*b = FlushOnCreateBehaviorFlush
+	} else {
+		*b = FlushOnCreateBehaviorNoFlush
+	}
+
+	// Success.
+	return nil
+}
+
 // SynchronizationConfiguration encodes a full synchronization session
 // specification.
 type SynchronizationConfiguration struct {
@@ -28,6 +84,8 @@ type SynchronizationConfiguration struct {
 	Alpha string `yaml:"alpha"`
 	// Beta is the beta URL for the session.
 	Beta string `yaml:"beta"`
+	// FlushOnCreate indicates the flush-on-create behavior for the session.
+	FlushOnCreate FlushOnCreateBehavior `yaml:"flushOnCreate"`
 	// Configuration is the configuration for the session.
 	Configuration synchronization.Configuration `yaml:",inline"`
 	// ConfigurationAlpha is the alpha-specific configuration for the session.
@@ -38,10 +96,16 @@ type SynchronizationConfiguration struct {
 
 // Configuration is the orchestration configuration object type.
 type Configuration struct {
-	// Setup are the setup commands to be run at project initialization.
-	Setup []string `yaml:"setup"`
-	// Teardown are the teardown commands to be run at project termination.
-	Teardown []string `yaml:"teardown"`
+	// BeforeCreate are setup commands to be run before session creation.
+	BeforeCreate []string `yaml:"beforeCreate"`
+	// AfterCreate are setup commands to be run after session creation.
+	AfterCreate []string `yaml:"afterCreate"`
+	// BeforeTerminate are teardown commands to be run before session
+	// termination.
+	BeforeTerminate []string `yaml:"beforeTerminate"`
+	// AfterTerminate are teardown commands to be run before session
+	// termination.
+	AfterTerminate []string `yaml:"afterTerminate"`
 	// Commands are commands that can be invoked while a project is running.
 	Commands map[string]string `yaml:"commands"`
 	// Forwarding represents the forwarding sessions to be created. If a

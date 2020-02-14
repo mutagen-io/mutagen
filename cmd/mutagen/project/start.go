@@ -187,12 +187,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Extract and validate synchronization defaults.
 	var defaultAlpha, defaultBeta string
+	var defaultFlushOnCreate projectcfg.FlushOnCreateBehavior
 	defaultConfigurationSynchronization := &synchronization.Configuration{}
 	defaultConfigurationAlpha := &synchronization.Configuration{}
 	defaultConfigurationBeta := &synchronization.Configuration{}
 	if defaults, ok := configuration.Synchronization["defaults"]; ok {
 		defaultAlpha = defaults.Alpha
 		defaultBeta = defaults.Beta
+		defaultFlushOnCreate = defaults.FlushOnCreate
 		defaultConfigurationSynchronization = defaults.Configuration.Configuration()
 		if err := defaultConfigurationSynchronization.EnsureValid(false); err != nil {
 			return errors.Wrap(err, "invalid default synchronization configuration")
@@ -286,8 +288,10 @@ func startMain(command *cobra.Command, arguments []string) error {
 		})
 	}
 
-	// Generate synchronization session creation specifications.
+	// Generate synchronization session creation specifications and keep track
+	// of those that we should flush on creation.
 	var synchronizationSpecifications []*synchronizationsvc.CreationSpecification
+	var flushOnCreateByIndex []bool
 	for name, session := range configuration.Synchronization {
 		// Ignore defaults.
 		if name == "defaults" {
@@ -307,6 +311,13 @@ func startMain(command *cobra.Command, arguments []string) error {
 		beta := session.Beta
 		if beta == "" {
 			beta = defaultBeta
+		}
+
+		// Compute flush-on-creation behavior.
+		if session.FlushOnCreate.IsDefault() {
+			flushOnCreateByIndex = append(flushOnCreateByIndex, defaultFlushOnCreate.FlushOnCreate())
+		} else {
+			flushOnCreateByIndex = append(flushOnCreateByIndex, session.FlushOnCreate.FlushOnCreate())
 		}
 
 		// Parse URLs.
@@ -366,27 +377,50 @@ func startMain(command *cobra.Command, arguments []string) error {
 	// maintain the lock file in case even some of them are successful.
 	removeLockFileOnReturn = false
 
-	// Perform setup commands.
-	for _, command := range configuration.Setup {
+	// Perform pre-creation commands.
+	for _, command := range configuration.BeforeCreate {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "setup command failed")
+			return errors.Wrap(err, "pre-create command failed")
 		}
 	}
 
 	// Create forwarding sessions.
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	for _, specification := range forwardingSpecifications {
-		if err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
+		if _, err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
 			return errors.Errorf("unable to create forwarding session (%s): %v", specification.Name, err)
 		}
 	}
 
-	// Create synchronization sessions.
+	// Create synchronization sessions and track those that we should flush.
 	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-	for _, specification := range synchronizationSpecifications {
-		if err := sync.CreateWithSpecification(synchronizationService, specification); err != nil {
+	var sessionsToFlush []string
+	for s, specification := range synchronizationSpecifications {
+		// Perform session creation.
+		session, err := sync.CreateWithSpecification(synchronizationService, specification)
+		if err != nil {
 			return errors.Errorf("unable to create synchronization session (%s): %v", specification.Name, err)
+		}
+
+		// Determine whether or not to flush this session.
+		if !startConfiguration.paused && flushOnCreateByIndex[s] {
+			sessionsToFlush = append(sessionsToFlush, session)
+		}
+	}
+
+	// Flush synchronization sessions for which flushing has been requested.
+	if len(sessionsToFlush) > 0 {
+		if err := sync.FlushWithSessionIdentifiers(sessionsToFlush, false); err != nil {
+			return errors.Wrap(err, "unable to flush synchronization session(s)")
+		}
+	}
+
+	// Perform post-creation commands.
+	for _, command := range configuration.AfterCreate {
+		fmt.Println(">", command)
+		if err := runInShell(command); err != nil {
+			return errors.Wrap(err, "post-create command failed")
 		}
 	}
 

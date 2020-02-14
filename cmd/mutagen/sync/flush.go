@@ -14,12 +14,19 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-// FlushWithLabelSelector is an orchestration convenience method invokes the
-// flush command using the specified label selector.
+// FlushWithLabelSelector is an orchestration convenience method that invokes
+// the flush command using the specified label selector.
 func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
 	flushConfiguration.labelSelector = labelSelector
 	flushConfiguration.skipWait = skipWait
 	return flushMain(nil, nil)
+}
+
+// FlushWithSessionIdentifiers is an orchestration convenience method that
+// invokes the flush command with the specified session identifiers.
+func FlushWithSessionIdentifiers(sessions []string, skipWait bool) error {
+	flushConfiguration.skipWait = skipWait
+	return flushMain(nil, sessions)
 }
 
 func flushMain(command *cobra.Command, arguments []string) error {
