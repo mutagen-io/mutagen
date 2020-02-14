@@ -313,13 +313,6 @@ func startMain(command *cobra.Command, arguments []string) error {
 			beta = defaultBeta
 		}
 
-		// Compute flush-on-creation behavior.
-		if session.FlushOnCreate.IsDefault() {
-			flushOnCreateByIndex = append(flushOnCreateByIndex, defaultFlushOnCreate.FlushOnCreate())
-		} else {
-			flushOnCreateByIndex = append(flushOnCreateByIndex, session.FlushOnCreate.FlushOnCreate())
-		}
-
 		// Parse URLs.
 		alphaURL, err := url.Parse(alpha, url.Kind_Synchronization, true)
 		if err != nil {
@@ -364,6 +357,13 @@ func startMain(command *cobra.Command, arguments []string) error {
 			},
 			Paused: startConfiguration.paused,
 		})
+
+		// Compute and store flush-on-creation behavior.
+		if session.FlushOnCreate.IsDefault() {
+			flushOnCreateByIndex = append(flushOnCreateByIndex, defaultFlushOnCreate.FlushOnCreate())
+		} else {
+			flushOnCreateByIndex = append(flushOnCreateByIndex, session.FlushOnCreate.FlushOnCreate())
+		}
 	}
 
 	// Connect to the daemon and defer closure of the connection.
