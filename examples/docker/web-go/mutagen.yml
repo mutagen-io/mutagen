@@ -1,21 +1,16 @@
-# Set up the Mutagen service, network, and code volume before creating sessions.
+# Set up the Mutagen service and code volume before creating sessions.
 beforeCreate:
-  - docker-compose --file=docker-compose-mutagen.yml --project-name=web-go-mutagen up --build --detach
+  - docker-compose up --build --detach mutagen
 
-# Set up the main services after creating sessions. At this point sessions will
+# Set up the main services after creating sessions. At this point, sessions will
 # have been established and code pushed to the shared volume.
 afterCreate:
   - docker-compose up --build --detach
   - docker-compose exec frontend /wait-for-initial-build.sh
 
-# Tear down the main services before terminating sessions.
-beforeTerminate:
-  - docker-compose down --rmi=all
-
-# Tear down the Mutagen service, network, and code volume after terminating
-# sessions.
+# Tear down all services and remove the code volume after terminating sessions.
 afterTerminate:
-  - docker-compose --file=docker-compose-mutagen.yml --project-name=web-go-mutagen down --rmi=all --volumes
+  - docker-compose down --rmi=all --volumes
 
 # Define common utility commands.
 commands:
@@ -39,7 +34,7 @@ sync:
       vcs: true
   code:
     alpha: "."
-    beta: "docker://web-go-mutagen/code/web-go"
+    beta: "docker://web-go-mutagen/code"
     mode: "two-way-resolved"
     ignore:
       paths:

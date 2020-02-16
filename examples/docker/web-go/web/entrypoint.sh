@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Switch to the web server source directory.
-cd /code/web-go/web
+cd /code/web
 
 # Build the web server.
 echo "Building web server..."

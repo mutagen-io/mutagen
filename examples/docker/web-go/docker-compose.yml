@@ -7,6 +7,12 @@ version: "3.7"
 # can access other services. For services that need access to code, we'll mount
 # the shared code volume.
 services:
+  mutagen:
+    build: ./mutagen
+    container_name: web-go-mutagen
+    stop_grace_period: 0s
+    volumes:
+      - mutagen:/code
   database:
     build: ./database
   api:
@@ -16,9 +22,6 @@ services:
       DATABASE_URL: "postgres://messagessvc:InSeCUr3Dem0PasS@database:5432/messagesdb?sslmode=disable"
       SERVER_BIND: ":8081"
       CORS_ORIGIN: "http://localhost:8080"
-    networks:
-      - default
-      - mutagen
     volumes:
       - mutagen:/code
   frontend:
@@ -34,20 +37,9 @@ services:
     environment:
       SERVER_ROOT: "/code/build"
       SERVER_BIND: ":8080"
-    networks:
-      - default
-      - mutagen
     volumes:
       - mutagen:/code
-
-# Create a link to the shared network.
-networks:
-  mutagen:
-    name: web-go-network
-    external: true
 
 # Create a link to the shared code volume.
 volumes:
   mutagen:
-    name: web-go-code
-    external: true

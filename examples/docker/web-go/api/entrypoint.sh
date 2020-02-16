@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Switch to the API server source directory.
-cd /code/web-go/api
+cd /code/api
 
 # Build the API server.
 echo "Building API server..."

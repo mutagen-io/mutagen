@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Switch to the frontend directory.
-cd /code/web-go/frontend
+cd /code/frontend
 
 # Perform a global gulp installation and an npm install operation if needed.
 if [ ! -d node_modules ]; then
