@@ -66,10 +66,11 @@ mutagen project start
 ```
 
 This project uses Mutagen's `beforeCreate` hook (see `mutagen.yml`) to create a
-shared Docker network and volume for forwarding traffic and storing synchronized
-code (as well as an empty service that can access both of these). It then uses
+shared Docker volume for storing and sharing synchronized code (as well as an
+empty service that can access this volume and host Mutagen agents). It then uses
 Mutagen's `flushOnCreate` flag to ensure code is fully synchronized before
-finally starting the main Docker Compose services in the `afterCreate` hook.
+finally starting the remaining Docker Compose services in the `afterCreate`
+hook.
 
 Once the environment is running, you can access the application at
 [http://localhost:8080](http://localhost:8080).
@@ -114,6 +115,6 @@ Once you're done working, you can terminate the project using:
 mutagen project terminate
 ```
 
-This project uses Mutagen's `beforeTerminate` and `afterTerminate` hooks (see
-`mutagen.yml`) to tear down the Docker Compose services (and associated
-resources) after terminating synchronization and forwarding.
+This project uses Mutagen's `afterTerminate` hook (see `mutagen.yml`) to tear
+down the Docker Compose services (and associated resources) after terminating
+synchronization and forwarding.

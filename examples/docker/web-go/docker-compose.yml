@@ -1,18 +1,14 @@
 # Set the Docker Compose file format.
 version: "3.7"
 
-# Define the services (containers) that make up the project. For services that
-# require forwarding via Mutagen, we'll connect them to the Mutagen network, but
-# also leave them connected to the default network for the project so that they
-# can access other services. For services that need access to code, we'll mount
-# the shared code volume.
+# Define the services (containers) that make up the project.
 services:
   mutagen:
     build: ./mutagen
     container_name: web-go-mutagen
     stop_grace_period: 0s
     volumes:
-      - mutagen:/code
+      - code:/code
   database:
     build: ./database
   api:
@@ -23,14 +19,14 @@ services:
       SERVER_BIND: ":8081"
       CORS_ORIGIN: "http://localhost:8080"
     volumes:
-      - mutagen:/code
+      - code:/code
   frontend:
     build: ./frontend
     stop_grace_period: 0s
     environment:
       OUTPUT_PATH: "/code/build"
     volumes:
-      - mutagen:/code
+      - code:/code
   web:
     build: ./web
     stop_grace_period: 0s
@@ -38,8 +34,8 @@ services:
       SERVER_ROOT: "/code/build"
       SERVER_BIND: ":8080"
     volumes:
-      - mutagen:/code
+      - code:/code
 
-# Create a link to the shared code volume.
+# Create a volume to store and share synchronized code.
 volumes:
-  mutagen:
+  code:
