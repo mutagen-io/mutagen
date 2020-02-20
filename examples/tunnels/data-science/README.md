@@ -14,9 +14,10 @@ This section assumes that you have a Docker daemon available to the `docker`
 command. You can achieve this by running a local Docker daemon with a tool like
 [Docker Desktop](https://www.docker.com/products/docker-desktop) or by
 configuring access to a cloud-based container host like
-[CoreOS](http://coreos.com/) and setting the `DOCKER_HOST` environment variable
-appropriately. Mutagen will work with either of these cases, though setting up a
-cloud-based container host has numerous performance benefits.
+[RancherOS](https://rancher.com/rancher-os/) and setting the `DOCKER_HOST`
+environment variable appropriately. Mutagen will work with either of these
+cases, though setting up a cloud-based container host has numerous performance
+benefits.
 
 This section also assumes and that you have
 [Docker Compose](https://docs.docker.com/compose/) installed. This is often

@@ -20,14 +20,14 @@ codebase with slightly different container definitions and orchestration files).
 
 The development setup consists of five services:
 
+- An empty `mutagen` service that sits idle and serves as the hosting point for
+  `mutagen-agent` processes (which provide code synchronization and network
+  forwarding)
 - A database service running [PostgreSQL](https://www.postgresql.org/)
 - A Go-based API server that handles message read/write requests
 - A front-end build service that uses [gulp](https://gulpjs.com/) to build the
   HTML, CSS, and JavaScript that constitute the front-end of the application
 - A Go-based web server that serves the front-end content
-- A development service that populates a shared volume with an initial copy of
-  the code and then waits to host Mutagen agents for code synchronization and
-  network forwarding
 
 In a production setup, you would typically only have three services: the
 database, the API server, and the web server. The front-end would usually be
@@ -50,9 +50,10 @@ This section assumes that you have a Docker daemon available to the `docker`
 command. You can achieve this by running a local Docker daemon with a tool like
 [Docker Desktop](https://www.docker.com/products/docker-desktop) or by
 configuring access to a cloud-based container host like
-[CoreOS](http://coreos.com/) and setting the `DOCKER_HOST` environment variable
-appropriately. Mutagen will work with either of these cases, though setting up a
-cloud-based container host has numerous performance benefits.
+[RancherOS](https://rancher.com/rancher-os/) and setting the `DOCKER_HOST`
+environment variable appropriately. Mutagen will work with either of these
+cases, though setting up a cloud-based container host has numerous performance
+benefits.
 
 This section also assumes and that you have
 [Docker Compose](https://docs.docker.com/compose/) installed. This is often
