@@ -103,7 +103,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	environment = addLocaleVariables(environment)
 
 	// Set prompting environment variables
-	environment, err = setPrompterVariables(environment, t.prompter)
+	environment, err = SetPrompterVariables(environment, t.prompter)
 	if err != nil {
 		return errors.Wrap(err, "unable to create prompter environment")
 	}
@@ -155,7 +155,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	environment = addLocaleVariables(environment)
 
 	// Set prompting environment variables
-	environment, err = setPrompterVariables(environment, t.prompter)
+	environment, err = SetPrompterVariables(environment, t.prompter)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create prompter environment")
 	}

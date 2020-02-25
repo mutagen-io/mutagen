@@ -10,11 +10,11 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
-// setPrompterVariables sets up environment variables for prompting based on the
+// SetPrompterVariables sets up environment variables for prompting based on the
 // provided prompter identifier. If an empty identifier is provided, then any
 // potentially conflicting environment variables (that might cause alternative
 // prompting) are removed.
-func setPrompterVariables(environment []string, prompter string) ([]string, error) {
+func SetPrompterVariables(environment []string, prompter string) ([]string, error) {
 	// Handle based on whether or not there's a prompter.
 	if prompter == "" {
 		// If there is no prompter, then enforce that SSH_ASKPASS is not set,

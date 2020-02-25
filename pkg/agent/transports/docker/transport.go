@@ -12,6 +12,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transports/docker/internal/docker"
+	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
@@ -117,6 +118,14 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)
+
+	// Set SSH prompting environment variables. This is necessary to fully
+	// support Docker's SSH protocol, which shells out to OpenSSH and thus may
+	// require prompting.
+	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to set SSH prompting environment variables")
+	}
 
 	// Set the environment for the command.
 	dockerCommand.Env = environment
@@ -289,6 +298,14 @@ func (t *transport) changeContainerStatus(stop bool) error {
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)
 
+	// Set SSH prompting environment variables. This is necessary to fully
+	// support Docker's SSH protocol, which shells out to OpenSSH and thus may
+	// require prompting.
+	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
+	if err != nil {
+		return errors.Wrap(err, "unable to set SSH prompting environment variables")
+	}
+
 	// Set the environment for the command.
 	dockerCommand.Env = environment
 
@@ -359,6 +376,14 @@ func (t *transport) Copy(localPath, remoteName string) error {
 
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)
+
+	// Set SSH prompting environment variables. This is necessary to fully
+	// support Docker's SSH protocol, which shells out to OpenSSH and thus may
+	// require prompting.
+	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
+	if err != nil {
+		return errors.Wrap(err, "unable to set SSH prompting environment variables")
+	}
 
 	// Set the environment for the command.
 	dockerCommand.Env = environment
