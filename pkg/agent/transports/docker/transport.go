@@ -152,19 +152,22 @@ func (t *transport) probeContainer() error {
 	// that as an error.
 	if command, err := t.command("env", "", ""); err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
-	} else if envBytes, err := command.Output(); err == nil {
-		if !utf8.Valid(envBytes) {
-			t.containerProbeError = errors.New("non-UTF-8 POSIX environment")
-			return t.containerProbeError
-		} else if h, ok := findEnviromentVariable(string(envBytes), "HOME"); ok {
-			if h == "" {
-				t.containerProbeError = errors.New("empty POSIX home directory")
-				return t.containerProbeError
-			}
-			home = h
-		}
-	} else {
+	} else if envBytes, err := command.Output(); err != nil {
 		posixErr = err
+	} else if !utf8.Valid(envBytes) {
+		t.containerProbeError = errors.New("non-UTF-8 POSIX environment")
+		return t.containerProbeError
+	} else if env := string(envBytes); env == "" {
+		t.containerProbeError = errors.New("empty POSIX environment")
+		return t.containerProbeError
+	} else if h, ok := findEnviromentVariable(env, "HOME"); !ok {
+		t.containerProbeError = errors.New("unable to find home directory in POSIX environment")
+		return t.containerProbeError
+	} else if h == "" {
+		t.containerProbeError = errors.New("empty POSIX home directory")
+		return t.containerProbeError
+	} else {
+		home = h
 	}
 
 	// If we didn't find a POSIX home directory, attempt to a similar procedure
@@ -172,20 +175,23 @@ func (t *transport) probeContainer() error {
 	if home == "" {
 		if command, err := t.command("cmd /c set", "", ""); err != nil {
 			return errors.Wrap(err, "unable to set up Docker invocation")
-		} else if envBytes, err := command.Output(); err == nil {
-			if !utf8.Valid(envBytes) {
-				t.containerProbeError = errors.New("non-UTF-8 Windows environment")
-				return t.containerProbeError
-			} else if h, ok := findEnviromentVariable(string(envBytes), "USERPROFILE"); ok {
-				if h == "" {
-					t.containerProbeError = errors.New("empty Windows home directory")
-					return t.containerProbeError
-				}
-				home = h
-				windows = true
-			}
-		} else {
+		} else if envBytes, err := command.Output(); err != nil {
 			windowsErr = err
+		} else if !utf8.Valid(envBytes) {
+			t.containerProbeError = errors.New("non-UTF-8 Windows environment")
+			return t.containerProbeError
+		} else if env := string(envBytes); env == "" {
+			t.containerProbeError = errors.New("empty Windows environment")
+			return t.containerProbeError
+		} else if h, ok := findEnviromentVariable(env, "USERPROFILE"); !ok {
+			t.containerProbeError = errors.New("unable to find home directory in Windows environment")
+			return t.containerProbeError
+		} else if h == "" {
+			t.containerProbeError = errors.New("empty Windows home directory")
+			return t.containerProbeError
+		} else {
+			home = h
+			windows = true
 		}
 	}
 
