@@ -100,6 +100,14 @@ type Configuration struct {
 	BeforeCreate []string `yaml:"beforeCreate"`
 	// AfterCreate are setup commands to be run after session creation.
 	AfterCreate []string `yaml:"afterCreate"`
+	// BeforePause are setup commands to be run before session pausing.
+	BeforePause []string `yaml:"beforePause"`
+	// AfterPause are setup commands to be run after session pausing.
+	AfterPause []string `yaml:"afterPause"`
+	// BeforeResume are setup commands to be run before session resumption.
+	BeforeResume []string `yaml:"beforeResume"`
+	// AfterResume are setup commands to be run after session resumption.
+	AfterResume []string `yaml:"afterResume"`
 	// BeforeTerminate are teardown commands to be run before session
 	// termination.
 	BeforeTerminate []string `yaml:"beforeTerminate"`

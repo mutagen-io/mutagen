@@ -13,6 +13,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -97,6 +98,20 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		return errors.New("invalid project identifier found in project lock")
 	}
 
+	// Load the configuration file.
+	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
+	if err != nil {
+		return errors.Wrap(err, "unable to load configuration file")
+	}
+
+	// Perform pre-resumption commands.
+	for _, command := range configuration.BeforeResume {
+		fmt.Println(">", command)
+		if err := runInShell(command); err != nil {
+			return errors.Wrap(err, "pre-resume command failed")
+		}
+	}
+
 	// Compute the label selector that we're going to use to resume sessions.
 	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
 
@@ -108,6 +123,14 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 	// Resume synchronization sessions.
 	if err := sync.ResumeWithLabelSelector(labelSelector); err != nil {
 		return errors.Wrap(err, "unable to resume synchronization session(s)")
+	}
+
+	// Perform post-resume commands.
+	for _, command := range configuration.AfterResume {
+		fmt.Println(">", command)
+		if err := runInShell(command); err != nil {
+			return errors.Wrap(err, "post-resume command failed")
+		}
 	}
 
 	// Success.
