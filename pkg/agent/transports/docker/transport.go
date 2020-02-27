@@ -204,12 +204,7 @@ func (t *transport) probeContainer() error {
 		}
 	}
 
-	// If both probing mechanisms have failed, then create a combined error
-	// message. This is a bit verbose, but it's the only way to get out all of
-	// the information that we need. We could prioritize POSIX errors over
-	// Windows errors, but that would effectively always mask Windows errors due
-	// to the fact that we'd get a "command not found" error when trying to run
-	// env on Windows, and we'd never see what error arose on the Windows side.
+	// If both probing mechanisms have failed, then create a combined error.
 	if home == "" {
 		t.containerProbeError = errors.Errorf(
 			"container probing failed under POSIX hypothesis (%v) and Windows hypothesis (%v)",
