@@ -122,6 +122,27 @@ func (u *URL) EnsureValid() error {
 		if u.Protocol == Protocol_Local && protocol == "unix" && !filepath.IsAbs(address) {
 			return errors.New("local Unix domain socket URL with relative path")
 		}
+
+		// TODO: It would be nice to perform some sort of validation on Windows
+		// named pipe addresses, but there's not much we can do because the
+		// allowed formats vary between source and destination endpoints (so
+		// we'd have to weave that information through this function). The only
+		// difference is that the ServerName component (see the link below) must
+		// be "." for source endpoints but can also name a remote server in the
+		// case of destination endpoints. But that's not really the biggest
+		// issue. The problem is that the name specification is kind of vague.
+		// It says that the PipeName component (again, see the link below) "can
+		// include any character other than a backslash, including numbers and
+		// special characters", but it doesn't mention whitespace characters
+		// (for example a newline character), which, as far as I'm aware, are
+		// not allowed. It also limits the "entire pipe name string" to 256
+		// characters, but it's not clear if this refers to the PipeName
+		// component or the entire address. Finding an appropriate matcher for
+		// possible server names is also an uphill battle. This might be
+		// specified in the UNC specification. In the end though, we're probably
+		// just better off letting the OS decide what to accept and simply
+		// returning its errors directly. For further reading, see:
+		// https://docs.microsoft.com/en-us/windows/win32/ipc/pipe-names
 	}
 
 	// Success.

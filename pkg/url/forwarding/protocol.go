@@ -12,6 +12,8 @@ func IsValidProtocol(protocol string) bool {
 		return true
 	case "unix":
 		return true
+	case "npipe":
+		return true
 	default:
 		return false
 	}

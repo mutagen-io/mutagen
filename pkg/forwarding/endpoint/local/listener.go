@@ -1,10 +1,9 @@
 package local
 
 import (
+	"fmt"
 	"net"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
@@ -24,36 +23,50 @@ func NewListenerEndpoint(
 	protocol string,
 	address string,
 ) (forwarding.Endpoint, error) {
-	// Compute the effective socket overwrite mode.
-	socketOverwriteMode := configuration.SocketOverwriteMode
-	if socketOverwriteMode.IsDefault() {
-		socketOverwriteMode = version.DefaultSocketOverwriteMode()
+	// If we're dealing with a Windows named pipe target, then perform listening
+	// using the platform-specific listening function.
+	if protocol == "npipe" {
+		listener, err := listenWindowsNamedPipe(address)
+		if err != nil {
+			return nil, err
+		}
+		return &listenerEndpoint{listener: listener}, nil
 	}
 
-	// Create the underlying listener. If this is a Unix domain socket listener
-	// and we fail due to an existing file, then attempt a removal and re-listen
-	// if requested.
+	// Otherwise attempt to create a listener using the generic method.
 	listener, err := net.Listen(protocol, address)
 	if err != nil {
-		// HACK: os.IsExist doesn't seem to recognize the error here, so we
-		// don't perform that check. This may be fixed in Go 1.13.
-		attemptOverwrite := protocol == "unix" &&
-			socketOverwriteMode == forwarding.SocketOverwriteMode_SocketOverwriteModeOverwrite
-		if attemptOverwrite {
-			if err := os.Remove(address); err != nil {
-				return nil, errors.Wrap(err, "unable to overwrite existing socket")
-			}
-			listener, err = net.Listen(protocol, address)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to create listener after socket overwrite")
-			}
-		} else {
-			return nil, errors.Wrap(err, "unable to create listener")
+		// If we're not targeting a Unix domain socket or the error isn't due to
+		// a conflicting socket, then abort.
+		if protocol != "unix" || !isConflictingSocket(err) {
+			return nil, err
+		}
+
+		// Compute the effective socket overwrite mode.
+		socketOverwriteMode := configuration.SocketOverwriteMode
+		if socketOverwriteMode.IsDefault() {
+			socketOverwriteMode = version.DefaultSocketOverwriteMode()
+		}
+
+		// Check if a socket overwrite has been requested. If not, then abort.
+		if !socketOverwriteMode.AttemptOverwrite() {
+			return nil, err
+		}
+
+		// Attempt to remove the conflicting socket.
+		if err := os.Remove(address); err != nil {
+			return nil, fmt.Errorf("unable to remove existing socket: %w", err)
+		}
+
+		// Retry listening.
+		listener, err = net.Listen(protocol, address)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create listener after conflicting socket removal: %w", err)
 		}
 	}
 
-	// If we're dealing with a Unix domain socket, then handle its permissions
-	// and ownership.
+	// If we're dealing with a Unix domain socket, then set ownership and
+	// permissions.
 	if protocol == "unix" {
 		// Compute the effective socket owner specification.
 		socketOwnerSpecification := configuration.SocketOwner
@@ -74,7 +87,7 @@ func NewListenerEndpoint(
 		)
 		if err != nil {
 			listener.Close()
-			return nil, errors.Wrap(err, "unable to create socket ownership specification")
+			return nil, fmt.Errorf("unable to create socket ownership specification: %w", err)
 		}
 
 		// Compute the effective socket permission mode.
@@ -86,7 +99,7 @@ func NewListenerEndpoint(
 		// Set ownership and permissions.
 		if err := filesystem.SetPermissionsByPath(address, socketOwnership, socketPermissionMode); err != nil {
 			listener.Close()
-			return nil, errors.Wrap(err, "unable to set socket permissions")
+			return nil, fmt.Errorf("unable to set socket permissions: %w", err)
 		}
 	}
 

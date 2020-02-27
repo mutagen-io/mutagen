@@ -19,6 +19,7 @@ func TestIsValidProtocol(t *testing.T) {
 		{"tcp4", true},
 		{"tcp6", true},
 		{"unix", true},
+		{"npipe", true},
 	}
 
 	// Process test cases.

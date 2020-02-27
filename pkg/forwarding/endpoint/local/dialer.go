@@ -9,12 +9,11 @@ import (
 
 // dialerEndpoint implements forwarding.Endpoint for dialer endpoints.
 type dialerEndpoint struct {
-	// dialingContext is the context that governs dialing operations.
+	// dialingContext limits the duration of dialing operations.
 	dialingContext context.Context
-	// dialingCancel is the context cancellation function that cancels the
-	// dialing context.
+	// dialingCancel cancels the dialing context.
 	dialingCancel context.CancelFunc
-	// dialer is the underlying dialer.
+	// dialer is the dialer used for TCP and Unix domain socket dialing.
 	dialer *net.Dialer
 	// protocol is the protocol to use for dialing.
 	protocol string
@@ -22,8 +21,7 @@ type dialerEndpoint struct {
 	address string
 }
 
-// NewDialerEndpoint creates a new forwarding.Endpoint that behaves as a
-// dialer.
+// NewDialerEndpoint creates a new forwarding.Endpoint that acts as a dialer.
 func NewDialerEndpoint(
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
@@ -33,11 +31,17 @@ func NewDialerEndpoint(
 	// Create a cancellable context that we can use to regulate connections.
 	dialingContext, dialingCancel := context.WithCancel(context.Background())
 
+	// Create the dialer (unless we're targeting a Windows named pipe).
+	var dialer *net.Dialer
+	if protocol != "npipe" {
+		dialer = &net.Dialer{}
+	}
+
 	// Create the endpoint.
 	return &dialerEndpoint{
 		dialingContext: dialingContext,
 		dialingCancel:  dialingCancel,
-		dialer:         &net.Dialer{},
+		dialer:         dialer,
 		protocol:       protocol,
 		address:        address,
 	}, nil
@@ -52,6 +56,14 @@ func (e *dialerEndpoint) TransportErrors() <-chan error {
 
 // Open implements forwarding.Endpoint.Open.
 func (e *dialerEndpoint) Open() (net.Conn, error) {
+	// If we're dealing with a Windows named pipe target, then perform dialing
+	// using the platform-specific dialing function.
+	if e.protocol == "npipe" {
+		return dialNamedPipe(e.dialingContext, e.address)
+	}
+
+	// For all other protocols (i.e. TCP and Unix domain sockets), use the
+	// standard dialer.
 	return e.dialer.DialContext(e.dialingContext, e.protocol, e.address)
 }
 

@@ -4,10 +4,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// IsDefault indicates whether or not the staging mode is
+// IsDefault indicates whether or not the socket overwrite mode is
 // SocketOverwriteMode_SocketOverwriteModeDefault.
 func (m SocketOverwriteMode) IsDefault() bool {
 	return m == SocketOverwriteMode_SocketOverwriteModeDefault
+}
+
+// AttemptOverwrite indicates whether or not the socket overwrite mode is
+// SocketOverwriteMode_SocketOverwriteModeOverwrite.
+func (m SocketOverwriteMode) AttemptOverwrite() bool {
+	return m == SocketOverwriteMode_SocketOverwriteModeOverwrite
 }
 
 // UnmarshalText implements the text unmarshalling interface used when loading
@@ -16,7 +22,7 @@ func (m *SocketOverwriteMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
-	// Convert to a staging mode.
+	// Convert to a socket overwrite mode.
 	switch text {
 	case "leave":
 		*m = SocketOverwriteMode_SocketOverwriteModeLeave
@@ -43,7 +49,7 @@ func (m SocketOverwriteMode) Supported() bool {
 	}
 }
 
-// Description returns a human-readable description of a staging mode.
+// Description returns a human-readable description of a socket overwrite mode.
 func (m SocketOverwriteMode) Description() string {
 	switch m {
 	case SocketOverwriteMode_SocketOverwriteModeDefault:

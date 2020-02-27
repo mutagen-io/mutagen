@@ -6,8 +6,8 @@ import (
 	"net"
 )
 
-// closeWriter is the interface for connections implementing write closure.
-type closeWriter interface {
+// CloseWriter is the interface for connections implementing write closure.
+type CloseWriter interface {
 	// CloseWrite should close the stream for further writes. It need not
 	// unblock pending writes, but it should prevent future writes and send an
 	// EOF indicator to the read end of the other end of the connection.
@@ -18,8 +18,7 @@ type closeWriter interface {
 // connections. It waits for both directions to see EOF, for one direction to
 // see an error, or for context cancellation. Once one of these events occurs,
 // the connections are closed (terminating forwarding) and the function returns.
-// Both connections must implement a CloseWrite method (for indicating write
-// closure) or this function will panic.
+// Both connections must implement CloseWriter or this function will panic.
 func ForwardAndClose(ctx context.Context, first, second net.Conn) {
 	// Defer closure of the connections.
 	defer func() {
@@ -28,11 +27,11 @@ func ForwardAndClose(ctx context.Context, first, second net.Conn) {
 	}()
 
 	// Extract write closure interfaces.
-	firstCloseWriter, ok := first.(closeWriter)
+	firstCloseWriter, ok := first.(CloseWriter)
 	if !ok {
 		panic("first connection does not implement write closure")
 	}
-	secondCloseWriter, ok := second.(closeWriter)
+	secondCloseWriter, ok := second.(CloseWriter)
 	if !ok {
 		panic("second connection does not implement write closure")
 	}
