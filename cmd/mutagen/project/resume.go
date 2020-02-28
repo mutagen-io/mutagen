@@ -104,7 +104,7 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 		return errors.Wrap(err, "unable to load configuration file")
 	}
 
-	// Perform pre-resumption commands.
+	// Perform pre-resume commands.
 	for _, command := range configuration.BeforeResume {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
