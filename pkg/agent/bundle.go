@@ -3,6 +3,7 @@ package agent
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,8 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/pkg/errors"
-
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/process"
 )
@@ -25,14 +25,16 @@ const (
 type BundleLocation uint8
 
 const (
-	// BundleLocationSameDirectory specifies that the Mutagen executable in
-	// which the agent package resides should expect to find the agent bundle in
-	// the same directory as said executable.
-	BundleLocationSameDirectory BundleLocation = iota
-	// BundleLocationBuildDirectory specifies that the Mutagen executable in
-	// which the agent package resides should expect to find the agent bundle in
-	// the Mutagen build directory. This mode should only be used during
-	// testing.
+	// BundleLocationDefault indicates that the ExecutableForPlatform function
+	// should expect to find the agent bundle in the same directory as the
+	// current executable or (if the current executable resides in the "bin"
+	// directory of a Filesystem Hierarchy Standard layout) in the libexec
+	// directory.
+	BundleLocationDefault BundleLocation = iota
+	// BundleLocationBuildDirectory indicates that the ExecutableForPlatform
+	// function should expect to find the agent bundle in the Mutagen build
+	// directory. This mode is only used during integration testing. It is
+	// required because test executables will be built in temporary directories.
 	BundleLocationBuildDirectory
 )
 
@@ -52,37 +54,59 @@ var ExpectedBundleLocation BundleLocation
 func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	// Compute the path to the location in which we expect to find the agent
 	// bundle.
-	var bundleLocationPath string
-	if ExpectedBundleLocation == BundleLocationSameDirectory {
+	var bundleSearchPaths []string
+	if ExpectedBundleLocation == BundleLocationDefault {
+		// Add the executable directory as a search path.
 		if executablePath, err := os.Executable(); err != nil {
-			return "", errors.Wrap(err, "unable to determine executable path")
+			return "", fmt.Errorf("unable to determine executable path: %w", err)
 		} else {
-			bundleLocationPath = filepath.Dir(executablePath)
+			bundleSearchPaths = append(bundleSearchPaths, filepath.Dir(executablePath))
+		}
+
+		// If the executable is in what appears to be a Filesystem Hierarchy
+		// Standard layout, then add the libexec directory as a search path.
+		if libexecPath, err := filesystem.LibexecPath(); err == nil {
+			bundleSearchPaths = append(bundleSearchPaths, libexecPath)
 		}
 	} else if ExpectedBundleLocation == BundleLocationBuildDirectory {
 		if sourceTreePath, err := mutagen.SourceTreePath(); err != nil {
-			return "", errors.Wrap(err, "unable to determine Mutagen source tree path")
+			return "", fmt.Errorf("unable to determine Mutagen source tree path: %w", err)
 		} else {
-			bundleLocationPath = filepath.Join(sourceTreePath, mutagen.BuildDirectoryName)
+			bundleSearchPaths = append(bundleSearchPaths, filepath.Join(sourceTreePath, mutagen.BuildDirectoryName))
 		}
 	} else {
 		panic("invalid bundle location specification")
 	}
 
-	// Compute the path to the agent bundle.
-	bundlePath := filepath.Join(bundleLocationPath, BundleName)
-
-	// Open the bundle path and ensure its closure.
-	bundle, err := os.Open(bundlePath)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to open agent bundle")
+	// Loop until we find a bundle file. If we fail to locate a bundle, then
+	// abort. If we succeed, then defer its closure.
+	var bundle *os.File
+	for _, path := range bundleSearchPaths {
+		bundlePath := filepath.Join(path, BundleName)
+		if file, err := os.Open(bundlePath); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
+		} else if metadata, err := file.Stat(); err != nil {
+			file.Close()
+			return "", fmt.Errorf("unable to access bundle (%s) file metadata: %w", bundlePath, err)
+		} else if metadata.Mode()&os.ModeType != 0 {
+			file.Close()
+			return "", fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
+		} else {
+			bundle = file
+			defer bundle.Close()
+		}
 	}
-	defer bundle.Close()
+	if bundle == nil {
+		return "", fmt.Errorf("unable to locate agent bundle (search paths: %v)", bundleSearchPaths)
+	}
 
-	// Create a decompressor and ensure its closure.
+	// Create a decompressor and defer its closure.
 	bundleDecompressor, err := gzip.NewReader(bundle)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to decompress agent bundle")
+		return "", fmt.Errorf("unable to decompress agent bundle: %w", err)
 	}
 	defer bundleDecompressor.Close()
 
@@ -96,7 +120,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			return "", errors.Wrap(err, "unable to read archive header")
+			return "", fmt.Errorf("unable to read archive header: %w", err)
 		} else if h.Name == fmt.Sprintf("%s_%s", goos, goarch) {
 			header = h
 			break
@@ -117,14 +141,14 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 		file, err = ioutil.TempFile("", process.ExecutableName(BaseName+".*", goos))
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "unable to create output file")
+		return "", fmt.Errorf("unable to create output file: %w", err)
 	}
 
 	// Copy data into the file.
 	if _, err := io.CopyN(file, bundleArchive, header.Size); err != nil {
 		file.Close()
 		os.Remove(file.Name())
-		return "", errors.Wrap(err, "unable to copy agent data")
+		return "", fmt.Errorf("unable to copy agent data: %w", err)
 	}
 
 	// If we're not on Windows and our target system is not Windows, mark the
@@ -137,14 +161,14 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 		if err := file.Chmod(0700); err != nil {
 			file.Close()
 			os.Remove(file.Name())
-			return "", errors.Wrap(err, "unable to make agent executable")
+			return "", fmt.Errorf("unable to make agent executable: %w", err)
 		}
 	}
 
 	// Close the file.
 	if err := file.Close(); err != nil {
 		os.Remove(file.Name())
-		return "", errors.Wrap(err, "unable to close temporary file")
+		return "", fmt.Errorf("unable to close temporary file: %w", err)
 	}
 
 	// Success.

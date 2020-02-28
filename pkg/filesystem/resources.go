@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 )
 
-// LibexecPath computes the expected libexec path assuming a typical POSIX
-// filesystem structure with the current executable located in the bin
-// directory. It does not verify that the directory exists.
+// LibexecPath computes the expected libexec path assuming a Filesystem
+// Hierarchy Standard layout with the current executable located in the bin
+// directory. It will return an error if the executable does not exist within
+// the "bin" directory of such a layout, but it does not verify that the libexec
+// directory exists.
 func LibexecPath() (string, error) {
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
