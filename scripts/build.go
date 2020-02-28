@@ -145,21 +145,30 @@ func (t Target) goEnv() ([]string, error) {
 	return result, nil
 }
 
-// IsCrossTarget determines whether or not a target represents a
+// IsCrossTarget determines whether or not the target represents a
 // cross-compilation target (i.e. not the native target for the current Go
 // toolchain).
 func (t Target) IsCrossTarget() bool {
 	return t.GOOS != runtime.GOOS || t.GOARCH != runtime.GOARCH
 }
 
-// IsSlimTarget indicates whether or not a target should be included in slim
-// builds.
-func (t Target) IsSlimTarget() bool {
+// IncludeAgentInSlimBuildModes indicates whether or not the target should have
+// an agent binary included in the agent bundle in slim and release-slim modes.
+func (t Target) IncludeAgentInSlimBuildModes() bool {
 	return !t.IsCrossTarget() ||
-		t.GOOS == "darwin" ||
-		t.GOOS == "windows" ||
+		(t.GOOS == "darwin" && t.GOARCH == "amd64") ||
+		(t.GOOS == "windows" && t.GOARCH == "amd64") ||
 		(t.GOOS == "linux" && (t.GOARCH == "amd64" || t.GOARCH == "arm")) ||
 		(t.GOOS == "freebsd" && t.GOARCH == "amd64")
+}
+
+// BuildBundleInReleaseSlimMode indicates whether or not the target should have
+// a release bundle built in release-slim mode.
+func (t Target) BuildBundleInReleaseSlimMode() bool {
+	return !t.IsCrossTarget() ||
+		(t.GOOS == "darwin" && t.GOARCH == "amd64") ||
+		(t.GOOS == "windows" && t.GOARCH == "amd64") ||
+		(t.GOOS == "linux" && t.GOARCH == "amd64")
 }
 
 // IsContainerTarget indicates whether or not a target is used for containers.
@@ -490,7 +499,7 @@ func build() error {
 	for _, target := range targets {
 		if mode == "local" && target.IsCrossTarget() {
 			continue
-		} else if (mode == "slim" || mode == "release-slim") && !target.IsSlimTarget() {
+		} else if (mode == "slim" || mode == "release-slim") && !target.IncludeAgentInSlimBuildModes() {
 			continue
 		}
 		agentTargets = append(agentTargets, target)
@@ -501,7 +510,7 @@ func build() error {
 	for _, target := range targets {
 		if (mode == "local" || mode == "slim") && target.IsCrossTarget() {
 			continue
-		} else if mode == "release-slim" && !target.IsSlimTarget() {
+		} else if mode == "release-slim" && !target.BuildBundleInReleaseSlimMode() {
 			continue
 		}
 		cliTargets = append(cliTargets, target)
