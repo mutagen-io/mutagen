@@ -63,10 +63,10 @@ func (c *npipeCloseWriterConn) SetWriteDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
 }
 
-// dialNamedPipe performs a named pipe dialing operation on Windows. The dialing
-// operation (but not any resulting connection) is limited to the lifecycle of
-// the provided context.
-func dialNamedPipe(ctx context.Context, address string) (net.Conn, error) {
+// dialWindowsNamedPipe performs a named pipe dialing operation on Windows. The
+// dialing operation (but not any resulting connection) is limited to the
+// lifecycle of the provided context.
+func dialWindowsNamedPipe(ctx context.Context, address string) (net.Conn, error) {
 	// Perform the dialing operation.
 	connection, err := winio.DialPipeContext(ctx, address)
 	if err != nil {

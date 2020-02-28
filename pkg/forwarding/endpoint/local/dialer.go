@@ -59,7 +59,7 @@ func (e *dialerEndpoint) Open() (net.Conn, error) {
 	// If we're dealing with a Windows named pipe target, then perform dialing
 	// using the platform-specific dialing function.
 	if e.protocol == "npipe" {
-		return dialNamedPipe(e.dialingContext, e.address)
+		return dialWindowsNamedPipe(e.dialingContext, e.address)
 	}
 
 	// For all other protocols (i.e. TCP and Unix domain sockets), use the
