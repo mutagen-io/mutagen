@@ -352,7 +352,7 @@ func TestParseForwardingSCPSSHHostnameUnixDomainSocketEndpoint(t *testing.T) {
 
 func TestParseForwardingSCPSSHHostnameNamedPipeEndpoint(t *testing.T) {
 	test := parseTestCase{
-		raw:  "host:npipe:\\\\.\\pipe\\pipename",
+		raw:  `host:npipe:\\.\pipe\pipename`,
 		kind: Kind_Forwarding,
 		expected: &URL{
 			Kind:     Kind_Forwarding,
@@ -360,7 +360,7 @@ func TestParseForwardingSCPSSHHostnameNamedPipeEndpoint(t *testing.T) {
 			User:     "",
 			Host:     "host",
 			Port:     0,
-			Path:     "npipe:\\\\.\\pipe\\pipename",
+			Path:     `npipe:\\.\pipe\pipename`,
 		},
 	}
 	test.run(t)
@@ -558,13 +558,13 @@ func TestParseTCP6ForwardingTunnel(t *testing.T) {
 
 func TestParseNamedPipeForwardingTunnel(t *testing.T) {
 	test := parseTestCase{
-		raw:  "tunnel://tünnel:npipe:\\\\.\\pipe\\pipename",
+		raw:  `tunnel://tünnel:npipe:\\.\pipe\pipename`,
 		kind: Kind_Forwarding,
 		expected: &URL{
 			Kind:     Kind_Forwarding,
 			Protocol: Protocol_Tunnel,
 			Host:     "tünnel",
-			Path:     "npipe:\\\\.\\pipe\\pipename",
+			Path:     `npipe:\\.\pipe\pipename`,
 		},
 	}
 	test.run(t)

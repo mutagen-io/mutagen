@@ -22,7 +22,7 @@ func TestParse(t *testing.T) {
 		{"tcp4:localhost:3992", "tcp4", "localhost:3992", false},
 		{"tcp6:[::1]:3992", "tcp6", "[::1]:3992", false},
 		{"unix:/some/socket.sock", "unix", "/some/socket.sock", false},
-		{"npipe://./pipe/pipe_name", "npipe", "//./pipe/pipe_name", false},
+		{`npipe:\\.\pipe\pipe_name`, "npipe", `\\.\pipe\pipe_name`, false},
 	}
 
 	// Process test cases.
