@@ -90,7 +90,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 			return "", fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
 		} else if metadata, err := file.Stat(); err != nil {
 			file.Close()
-			return "", fmt.Errorf("unable to access bundle (%s) file metadata: %w", bundlePath, err)
+			return "", fmt.Errorf("unable to access agent bundle (%s) file metadata: %w", bundlePath, err)
 		} else if metadata.Mode()&os.ModeType != 0 {
 			file.Close()
 			return "", fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
