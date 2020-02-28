@@ -10,54 +10,56 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 )
 
-// closeWriterConn adapts a net.Conn to support CloseWrite as a no-op.
-type closeWriterConn struct {
+// npipeCloseWriterConn adapts a net.Conn to support CloseWrite as a no-op. It
+// is used for non-message mode Windows named pipes, which don't natively
+// support CloseWrite operations.
+type npipeCloseWriterConn struct {
 	// connection is the underlying connection.
 	connection net.Conn
 }
 
 // Read implements net.Conn.Read.
-func (c *closeWriterConn) Read(buffer []byte) (int, error) {
+func (c *npipeCloseWriterConn) Read(buffer []byte) (int, error) {
 	return c.connection.Read(buffer)
 }
 
 // Write implements net.Conn.Write.
-func (c *closeWriterConn) Write(data []byte) (int, error) {
+func (c *npipeCloseWriterConn) Write(data []byte) (int, error) {
 	return c.connection.Write(data)
 }
 
 // CloseWrite implements CloseWriter.CloseWrite.
-func (c *closeWriterConn) CloseWrite() error {
+func (c *npipeCloseWriterConn) CloseWrite() error {
 	return nil
 }
 
 // Close implements net.Conn.Close.
-func (c *closeWriterConn) Close() error {
+func (c *npipeCloseWriterConn) Close() error {
 	return c.connection.Close()
 }
 
 // LocalAddr implements net.Conn.LocalAddr.
-func (c *closeWriterConn) LocalAddr() net.Addr {
+func (c *npipeCloseWriterConn) LocalAddr() net.Addr {
 	return c.connection.LocalAddr()
 }
 
 // RemoteAddr implements net.Conn.RemoteAddr.
-func (c *closeWriterConn) RemoteAddr() net.Addr {
+func (c *npipeCloseWriterConn) RemoteAddr() net.Addr {
 	return c.connection.RemoteAddr()
 }
 
 // SetDeadline implements net.Conn.SetDeadline.
-func (c *closeWriterConn) SetDeadline(t time.Time) error {
+func (c *npipeCloseWriterConn) SetDeadline(t time.Time) error {
 	return c.SetDeadline(t)
 }
 
 // SetReadDeadline implements net.Conn.SetReadDeadline.
-func (c *closeWriterConn) SetReadDeadline(t time.Time) error {
+func (c *npipeCloseWriterConn) SetReadDeadline(t time.Time) error {
 	return c.SetReadDeadline(t)
 }
 
 // SetWriteDeadline implements net.Conn.SetWriteDeadline.
-func (c *closeWriterConn) SetWriteDeadline(t time.Time) error {
+func (c *npipeCloseWriterConn) SetWriteDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
 }
 
@@ -95,5 +97,5 @@ func dialNamedPipe(ctx context.Context, address string) (net.Conn, error) {
 	// make this behavior configurable if the need arises. Fortunately the only
 	// real-world use case is probably Docker, in which case this wrapping
 	// doesn't enter into the picture.
-	return &closeWriterConn{connection: connection}, nil
+	return &npipeCloseWriterConn{connection: connection}, nil
 }
