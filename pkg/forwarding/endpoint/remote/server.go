@@ -68,6 +68,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 			request.Configuration,
 			request.Protocol,
 			address,
+			false,
 		)
 	} else {
 		endpoint, initializationError = local.NewDialerEndpoint(
