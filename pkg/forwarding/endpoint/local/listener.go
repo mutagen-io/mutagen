@@ -35,7 +35,7 @@ type listenerEndpoint struct {
 	initializeOnce sync.Once
 	// listener is the underlying listener. It is set by initialize.
 	listener net.Listener
-	// initializeError is any error that occured during initialization.
+	// initializeError is any error that occurred during initialization.
 	initializeError error
 }
 
