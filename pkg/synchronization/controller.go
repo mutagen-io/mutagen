@@ -111,11 +111,12 @@ func newSession(
 	mergedAlphaConfiguration := MergeConfigurations(configuration, configurationAlpha)
 	mergedBetaConfiguration := MergeConfigurations(configuration, configurationBeta)
 
-	// If the session isn't be created paused, then try to establish connections
-	// to any endpoints that might require prompting (e.g. SSH endpoints). This
-	// allows users to specify credentials during creation instead of having to
-	// invoke a separate resume command. If we connect endpoints here and don't
-	// hand them off to the runloop below, then defer their shutdown.
+	// If the session isn't being created paused, then try to connect to any
+	// endpoints not using the tunnel protocol. The tunnel protocol is the one
+	// case where we want to allow asynchronous connectivity (since it doesn't
+	// require user input but also isn't guaranteed to connect immediately). If
+	// we connect to endpoints here and don't hand them off to the runloop
+	// below, then defer their shutdown.
 	var alphaEndpoint, betaEndpoint Endpoint
 	defer func() {
 		if alphaEndpoint != nil {
@@ -127,7 +128,7 @@ func newSession(
 			betaEndpoint = nil
 		}
 	}()
-	if !paused && alpha.Protocol.MightRequireInput() {
+	if !paused && alpha.Protocol != url.Protocol_Tunnel {
 		logger.Info("Connecting to alpha endpoint")
 		alphaEndpoint, err = connect(
 			ctx,
@@ -144,7 +145,7 @@ func newSession(
 			return nil, errors.Wrap(err, "unable to connect to alpha")
 		}
 	}
-	if !paused && beta.Protocol.MightRequireInput() {
+	if !paused && beta.Protocol != url.Protocol_Tunnel {
 		logger.Info("Connecting to beta endpoint")
 		betaEndpoint, err = connect(
 			ctx,

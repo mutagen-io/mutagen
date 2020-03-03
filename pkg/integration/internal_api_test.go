@@ -10,13 +10,13 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/mutagen-io/mutagen/pkg/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/integration/fixtures/constants"
-
 	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
+	"github.com/mutagen-io/mutagen/pkg/integration/fixtures/constants"
 	"github.com/mutagen-io/mutagen/pkg/integration/protocols/netpipe"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -425,6 +425,12 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 	}
 }
 
+func init() {
+	// HACK: Disable lazy listener initialization since it makes test
+	// coordination difficult.
+	local.DisableLazyListenerInitialization = true
+}
+
 func TestForwardingToHTTPDemo(t *testing.T) {
 	// If Docker test support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
@@ -504,26 +510,10 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	// Create a context to regulate the test.
 	ctx := context.Background()
 
-	// Create a forwarding session in a paused state. The reason we do this is a
-	// little complex. Essentially, the core of the issue is that the create
-	// operation won't perform a synchronous connection to the local endpoint
-	// and will instead start that operation in a background Goroutine. However,
-	// we need to know that the local endpoint is connected before performing
-	// our HTTP request, so we use the resume operation below to ensure that the
-	// session is in a fully connected state before performing the HTTP request.
-	// The problem is that, if the session isn't fully connected by the time the
-	// resume operation starts, the resume operation will cancel the run loop
-	// started by create and attempt to perform a connection itself, but the way
-	// that the run loop and asynchronous connection cancellation works, there
-	// might still be a Goroutine performing a connection operation (for which
-	// the result will be discarded) that will conflict with the synchronous
-	// connect operation performed during the resume operation. This has a very
-	// small cross-section, and it's not incorrect behavior, but it does break
-	// the test, and the race detector is very good at triggering it. If we
-	// instead create the session in a paused state, then we can ensure that
-	// only the resume operation will be attempting connection operations, while
-	// still ensuring the session is fully connected before attempting an HTTP
-	// request.
+	// Create a forwarding session. Note that we've disabled lazy listener
+	// initialization using a private API in the init function above, so we can
+	// be sure that the listener has been established (with some non-empty
+	// backlog) by the time creation is complete.
 	sessionID, err := forwardingManager.Create(
 		ctx,
 		source,
@@ -533,28 +523,22 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		&forwarding.Configuration{},
 		"testForwardingSession",
 		nil,
-		true,
+		false,
 		prompter,
 	)
 	if err != nil {
 		t.Fatal("unable to create session:", err)
 	}
 
-	// Create a session selection specification.
-	selection := &selection.Selection{
-		Specifications: []string{sessionID},
-	}
-
-	// Perform a resume operation to ensure that the session is connected and
-	// forwarding connections.
-	if err := forwardingManager.Resume(ctx, selection, ""); err != nil {
-		t.Error("unable to ensure session connectivity via resume:", err)
-	}
-
-	// Attempt server read.
+	// Attempt an HTTP request.
 	// TODO: Attempt a more complicated exchange here. Maybe gRPC?
 	if err := performHTTPRequest(); err != nil {
 		t.Error("error performing forwarded HTTP request:", err)
+	}
+
+	// Create a session selection specification.
+	selection := &selection.Selection{
+		Specifications: []string{sessionID},
 	}
 
 	// Pause the session.
@@ -567,7 +551,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		t.Error("unable to resume session:", err)
 	}
 
-	// Attempt server read.
+	// Attempt an HTTP request.
 	// TODO: Attempt a more complicated exchange here. Maybe gRPC?
 	if err := performHTTPRequest(); err != nil {
 		t.Error("error performing forwarded HTTP request:", err)

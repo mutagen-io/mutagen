@@ -30,33 +30,6 @@ func TestKindSupported(t *testing.T) {
 	}
 }
 
-// TestProtocolMightRequireInput tests that protocol input requirement detection
-// works as expected.
-func TestProtocolMightRequireInput(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		protocol Protocol
-		expected bool
-	}{
-		{Protocol_Local, false},
-		{Protocol_SSH, true},
-		{Protocol_Tunnel, false},
-		{Protocol_Docker, true},
-		{(Protocol_Docker + 1), false},
-	}
-
-	// Process test cases.
-	for _, testCase := range testCases {
-		if mightRequireInput := testCase.protocol.MightRequireInput(); mightRequireInput != testCase.expected {
-			t.Errorf(
-				"input requirement (%t) does not match expected (%t)",
-				mightRequireInput,
-				testCase.expected,
-			)
-		}
-	}
-}
-
 func TestURLEnsureValidNilInvalid(t *testing.T) {
 	var invalid *URL
 	if invalid.EnsureValid() == nil {

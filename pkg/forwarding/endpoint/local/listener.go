@@ -11,6 +11,13 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 )
 
+// DisableLazyListenerInitialization indicates that lazy listener initialization
+// should be disabled for all endpoints in the current process. It must be set
+// during an init function and must not be changed later. This should only be
+// used for integration tests, where lazy listener initialization needs to be
+// disabled for proper coordination.
+var DisableLazyListenerInitialization bool
+
 // listenerEndpoint implements forwarding.Endpoint for listener endpoints. It
 // optionally support lazy initialization.
 type listenerEndpoint struct {
@@ -64,6 +71,12 @@ func NewListenerEndpoint(
 	address string,
 	lazy bool,
 ) (forwarding.Endpoint, error) {
+	// If lazy listener initialization has been globally disabled, then override
+	// the requested mode.
+	if DisableLazyListenerInitialization {
+		lazy = false
+	}
+
 	// Create the endpoint.
 	endpoint := &listenerEndpoint{
 		version:       version,
