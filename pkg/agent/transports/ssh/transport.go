@@ -15,10 +15,16 @@ import (
 )
 
 const (
-	// connectTimeoutSeconds is the default timeout value (in seconds) to use
-	// with SSH-based commands. We may want to make this configurable in the
-	// future.
+	// connectTimeoutSeconds is the number of seconds to use for OpenSSH's
+	// ConnectTimeout configuration option.
 	connectTimeoutSeconds = 5
+	// serverAliveIntervalSeconds is the number of seconds to use for OpenSSH's
+	// ServerAliveInterval configuration option. Multiplied by
+	// serverAliveCountMax, it effectively limits the maximum allowed latency.
+	serverAliveIntervalSeconds = 10
+	// serverAliveCountMax is the count to use for OpenSSH's ServerAliveCountMax
+	// configuration option.
+	serverAliveCountMax = 1
 )
 
 // transport implements the agent.Transport interface using SSH.
@@ -77,8 +83,9 @@ func (t *transport) Copy(localPath, remoteName string) error {
 
 	// Set up arguments.
 	var scpArguments []string
-	scpArguments = append(scpArguments, ssh.CompressionArgument())
-	scpArguments = append(scpArguments, ssh.TimeoutArgument(connectTimeoutSeconds))
+	scpArguments = append(scpArguments, ssh.CompressionFlag())
+	scpArguments = append(scpArguments, ssh.ConnectTimeoutFlag(connectTimeoutSeconds))
+	scpArguments = append(scpArguments, ssh.ServerAliveFlags(serverAliveIntervalSeconds, serverAliveCountMax)...)
 	if t.port != 0 {
 		scpArguments = append(scpArguments, "-P", fmt.Sprintf("%d", t.port))
 	}
@@ -133,7 +140,8 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	// more efficient to compress at that layer, even with the slower Go
 	// implementation.
 	var sshArguments []string
-	sshArguments = append(sshArguments, ssh.TimeoutArgument(connectTimeoutSeconds))
+	sshArguments = append(sshArguments, ssh.ConnectTimeoutFlag(connectTimeoutSeconds))
+	sshArguments = append(sshArguments, ssh.ServerAliveFlags(serverAliveIntervalSeconds, serverAliveCountMax)...)
 	if t.port != 0 {
 		sshArguments = append(sshArguments, "-p", fmt.Sprintf("%d", t.port))
 	}
