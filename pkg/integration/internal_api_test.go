@@ -456,12 +456,6 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 	listenerProtocol := "tcp"
 	listenerAddress := "localhost:7070"
 
-	// Grab Docker environment variables.
-	environment := make(map[string]string, len(url.DockerEnvironmentVariables))
-	for _, variable := range url.DockerEnvironmentVariables {
-		environment[variable] = os.Getenv(variable)
-	}
-
 	// Compute source and destination URLs.
 	source := &url.URL{
 		Kind:     url.Kind_Forwarding,
