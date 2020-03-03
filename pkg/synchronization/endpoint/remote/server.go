@@ -29,7 +29,7 @@ type endpointServer struct {
 	endpoint synchronization.Endpoint
 }
 
-// ServeEndpoint creates and serves a remote endpoint server on the specified
+// ServeEndpoint creates and serves a endpoint server on the specified
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
 func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...EndpointServerOption) error {

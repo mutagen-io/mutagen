@@ -52,5 +52,5 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create the endpoint client.
-	return remote.NewEndpointClient(connection, url.Path, session, version, configuration, alpha)
+	return remote.NewEndpoint(connection, url.Path, session, version, configuration, alpha)
 }

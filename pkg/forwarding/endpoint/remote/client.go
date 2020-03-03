@@ -25,11 +25,11 @@ type client struct {
 	listener bool
 }
 
-// NewEndpoint creates a new forwarding.Endpoint object that operates over a
-// multiplexed connection. If this function fails, then the provided connection
-// will be closed. Once the endpoint has been established, the underlying
-// connection is owned by that endpoint and will be closed when the endpoint is
-// shut down.
+// NewEndpoint creates a new remote forwarding.Endpoint operating over the
+// specified connection with the specified metadata. If this function fails,
+// then the provided connection will be closed. Once the endpoint has been
+// established, the underlying connection is owned by that endpoint and will be
+// closed when the endpoint is shut down.
 func NewEndpoint(
 	connection net.Conn,
 	version forwarding.Version,

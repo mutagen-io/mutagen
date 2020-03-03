@@ -29,12 +29,12 @@ type endpointClient struct {
 	lastSnapshotBytes []byte
 }
 
-// NewEndpointClient constructs a new endpoint client instance using the
-// specified connection and metadata. If this function fails, then the provided
-// connection will be closed. Once the endpoint has been established, the
-// underlying connection is owned by that endpoint and will be closed when the
-// endpoint is shut down.
-func NewEndpointClient(
+// NewEndpoint creates a new remote synchronization.Endpoint operating over the
+// specified connection with the specified metadata. If this function fails,
+// then the provided connection will be closed. Once the endpoint has been
+// established, the underlying connection is owned by that endpoint and will be
+// closed when the endpoint is shut down.
+func NewEndpoint(
 	connection net.Conn,
 	root string,
 	session string,

@@ -44,7 +44,7 @@ func (h *synchronizationProtocolHandler) Connect(
 	go remote.ServeEndpoint(logger.Sublogger("remote"), serverConnection)
 
 	// Create a client for this endpoint.
-	endpoint, err := remote.NewEndpointClient(
+	endpoint, err := remote.NewEndpoint(
 		clientConnection,
 		url.Path,
 		session,
