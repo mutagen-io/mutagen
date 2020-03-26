@@ -8,6 +8,14 @@ afterCreate:
   - docker-compose up --build --detach
   - docker-compose exec frontend /wait-for-initial-build.sh
 
+# Pause services after pausing sessions.
+afterPause:
+  - docker-compose stop
+
+# Resume services before resume sessions.
+beforeResume:
+  - docker-compose start
+
 # Tear down all services and remove the code volume after terminating sessions.
 afterTerminate:
   - docker-compose down --rmi=all --volumes
