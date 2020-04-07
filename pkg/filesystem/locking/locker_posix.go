@@ -35,16 +35,25 @@ func (l *Locker) Lock(block bool) error {
 		operation = unix.F_SETLKW
 	}
 
-	// Attempt to perform locking.
-	err := unix.FcntlFlock(l.file.Fd(), operation, &lockSpec)
-
-	// Check for success and update the internal state.
-	if err == nil {
-		l.held = true
+	// Attempt to perform locking and handle any signal interrupts that occur.
+	// According to the POSIX standard, EINTR should only be expected in
+	// blocking cases (i.e. when using F_SETLKW), but Linux technically allows
+	// it to be received when using F_SETLK, so we handle it in all cases.
+	for {
+		if err := unix.FcntlFlock(l.file.Fd(), operation, &lockSpec); err == nil {
+			break
+		} else if err == unix.EINTR {
+			continue
+		} else {
+			return err
+		}
 	}
 
-	// Done.
-	return err
+	// Mark the lock as held.
+	l.held = true
+
+	// Success.
+	return nil
 }
 
 // Unlock releases the file lock.
