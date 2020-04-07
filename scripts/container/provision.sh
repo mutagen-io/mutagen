@@ -5,8 +5,8 @@ set -e
 
 # Set the Mutagen version to use for tunnel hosting as well the default list of
 # extra agent versions to install.
-MUTAGEN_TUNNEL_HOST_VERSION="0.11.2"
-DEFAULT_MUTAGEN_TUNNEL_AGENT_VERSIONS="0.11.2"
+MUTAGEN_TUNNEL_HOST_VERSION="0.11.3"
+DEFAULT_MUTAGEN_TUNNEL_AGENT_VERSIONS="0.11.3"
 
 # Determine agent versions.
 MUTAGEN_TUNNEL_AGENT_VERSIONS="${MUTAGEN_TUNNEL_AGENT_VERSIONS=${DEFAULT_MUTAGEN_TUNNEL_AGENT_VERSIONS}}"
