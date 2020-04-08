@@ -11,5 +11,6 @@ if [ ! -d node_modules ]; then
     echo "npm install complete"
 fi
 
-# Run gulp.
-gulp
+# Run gulp. We use exec to replace the shell process so that gulp receives
+# termination signals.
+exec gulp

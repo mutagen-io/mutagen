@@ -7,6 +7,7 @@ cd /code/api
 echo "Building API server..."
 go build -o api-server .
 
-# Run the API server.
+# Run the API server. We use exec to replace the shell process so that the
+# server receives termination signals.
 echo "Starting API server..."
-./api-server
+exec ./api-server

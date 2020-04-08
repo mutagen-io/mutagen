@@ -7,6 +7,7 @@ cd /code/web
 echo "Building web server..."
 go build -o web-server .
 
-# Run the web server.
+# Run the web server. We use exec to replace the shell process so that the
+# server receives termination signals.
 echo "Starting web server..."
-./web-server
+exec ./web-server

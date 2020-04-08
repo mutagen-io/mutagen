@@ -10,4 +10,4 @@ COPY ["wait-for-initial-build.sh", "/wait-for-initial-build.sh"]
 RUN ["chmod", "+x", "/wait-for-initial-build.sh"]
 
 # Set the entrypoint.
-ENTRYPOINT /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

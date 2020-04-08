@@ -1,19 +1,20 @@
 # Set the Docker Compose file format.
 version: "3.7"
 
-# Define the services (containers) that make up the project.
+# Define the services (containers) that make up the project. For those services
+# with an entry point not designed to function as PID 1, we tell Docker to use
+# its own init process.
 services:
   mutagen:
     build: ./mutagen
+    init: true
     container_name: web-go-mutagen
-    stop_grace_period: 0s
     volumes:
       - code:/code
   database:
     build: ./database
   api:
     build: ./api
-    stop_grace_period: 0s
     environment:
       DATABASE_URL: "postgres://messagessvc:InSeCUr3Dem0PasS@database:5432/messagesdb?sslmode=disable"
       SERVER_BIND: ":8081"
@@ -22,14 +23,13 @@ services:
       - code:/code
   frontend:
     build: ./frontend
-    stop_grace_period: 0s
+    init: true
     environment:
       OUTPUT_PATH: "/code/build"
     volumes:
       - code:/code
   web:
     build: ./web
-    stop_grace_period: 0s
     environment:
       SERVER_ROOT: "/code/build"
       SERVER_BIND: ":8080"
