@@ -66,24 +66,39 @@ func runCompose(files, preCommandArguments []string, command nullableString, pos
 }
 
 func rootMain(_ *cobra.Command, arguments []string) error {
-	// Parse the command line to extract file specifications and the command
+	// Parse the command line to extract file specifications, project directory
+	// specifications, environment variable file specifications, and the command
 	// name, if any. We want to avoid any disruption to the behavior of Docker
 	// Compose's parsing, so we only filter out file specifications and we keep
 	// behavioral parity with Docker Compose's parser (docopt) when it comes to
 	// identifying the command name.
 	var files, preCommandArguments, postCommandArguments []string
-	var command nullableString
-	var nextIsFile bool
+	var command, projectDirectory, envFile nullableString
+	var nextIsFile, nextIsProjectDirectory, nextIsEnvFile bool
 	for _, argument := range arguments {
 		if nextIsFile {
 			files = append(files, argument)
 			nextIsFile = false
+		} else if nextIsProjectDirectory {
+			projectDirectory = nonNullString(argument)
+			nextIsProjectDirectory = false
+		} else if nextIsEnvFile {
+			envFile = nonNullString(argument)
+			nextIsEnvFile = false
 		} else if command.set {
 			postCommandArguments = append(postCommandArguments, argument)
 		} else if argument == "--file" {
 			nextIsFile = true
 		} else if strings.HasPrefix(argument, "--file=") {
 			files = append(files, argument[7:])
+		} else if argument == "--project-directory" {
+			nextIsProjectDirectory = true
+		} else if strings.HasPrefix(argument, "--project-directory=") {
+			projectDirectory = nonNullString(argument[20:])
+		} else if argument == "--env-file" {
+			nextIsEnvFile = true
+		} else if strings.HasPrefix(argument, "--env-file=") {
+			envFile = nonNullString(argument[11:])
 		} else if shorthand := shorthandFileFlagMatcher.FindString(argument); shorthand != "" {
 			if len(shorthand) == len(argument) {
 				nextIsFile = true
@@ -101,6 +116,10 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	}
 	if nextIsFile {
 		return errors.New("missing file specification")
+	} else if nextIsProjectDirectory {
+		return errors.New("missing project directory specification")
+	} else if nextIsEnvFile {
+		return errors.New("missing environment file specification")
 	}
 
 	// TODO: Load configuration files and perform translation.
