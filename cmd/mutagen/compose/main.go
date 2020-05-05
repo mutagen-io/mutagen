@@ -13,6 +13,19 @@ import (
 	"github.com/fatih/color"
 )
 
+// nullableString encodes a string whose value may be unset.
+type nullableString struct {
+	// value is the string value, if set. If not set, it's meaning is undefined.
+	value string
+	// set indicates whether or not the string value is set.
+	set bool
+}
+
+// nonNullString creates a non-null string with the specified value.
+func nonNullString(value string) nullableString {
+	return nullableString{value, true}
+}
+
 // shorthandFileFlagMatcher matches shorthand flag specifications containing
 // file specifications at their end or as the next argument. This requires
 // supporting other shorthand flags which don't take an argument and which may
@@ -22,19 +35,21 @@ import (
 var shorthandFileFlagMatcher = regexp.MustCompile(`^-[hv]*f`)
 
 // runCompose invokes Docker Compose with the specified arguments.
-func runCompose(command string, files, preCommandArguments, postCommandArguments []string, commandSet bool) error {
-	// Build the command line specification for Docker Compose.
+func runCompose(files, preCommandArguments []string, command nullableString, postCommandArguments []string) error {
+	// Preallocate the argument slice.
 	argumentCount := len(files) + len(preCommandArguments)
-	if commandSet {
+	if command.set {
 		argumentCount += 1 + len(postCommandArguments)
 	}
 	arguments := make([]string, 0, argumentCount)
+
+	// Populate the argument slice.
 	for _, file := range files {
 		arguments = append(arguments, fmt.Sprintf("--file=%s", file))
 	}
 	arguments = append(arguments, preCommandArguments...)
-	if commandSet {
-		arguments = append(arguments, command)
+	if command.set {
+		arguments = append(arguments, command.value)
 		arguments = append(arguments, postCommandArguments...)
 	}
 
@@ -57,21 +72,21 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	// behavioral parity with Docker Compose's parser (docopt) when it comes to
 	// identifying the command name.
 	var files, preCommandArguments, postCommandArguments []string
-	var command string
-	var commandSet, nextIsFileSpec bool
+	var command nullableString
+	var nextIsFile bool
 	for _, argument := range arguments {
-		if nextIsFileSpec {
+		if nextIsFile {
 			files = append(files, argument)
-			nextIsFileSpec = false
-		} else if commandSet {
+			nextIsFile = false
+		} else if command.set {
 			postCommandArguments = append(postCommandArguments, argument)
 		} else if argument == "--file" {
-			nextIsFileSpec = true
+			nextIsFile = true
 		} else if strings.HasPrefix(argument, "--file=") {
 			files = append(files, argument[7:])
 		} else if shorthand := shorthandFileFlagMatcher.FindString(argument); shorthand != "" {
 			if len(shorthand) == len(argument) {
-				nextIsFileSpec = true
+				nextIsFile = true
 			} else {
 				files = append(files, argument[len(shorthand):])
 			}
@@ -81,11 +96,10 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 		} else if strings.HasPrefix(argument, "-") && argument != "-" && argument != "--" {
 			preCommandArguments = append(preCommandArguments, argument)
 		} else {
-			command = argument
-			commandSet = true
+			command = nonNullString(argument)
 		}
 	}
-	if nextIsFileSpec {
+	if nextIsFile {
 		return errors.New("missing file specification")
 	}
 
@@ -97,7 +111,7 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	// printed its own failure information and thus simply forward its exit
 	// code. Other failure modes should be reported directly.
 	// TODO: Use translated files here.
-	if err := runCompose(command, files, preCommandArguments, postCommandArguments, commandSet); err != nil {
+	if err := runCompose(files, preCommandArguments, command, postCommandArguments); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			os.Exit(exitErr.ExitCode())
 		} else {
