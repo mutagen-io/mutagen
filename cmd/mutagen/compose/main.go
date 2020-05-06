@@ -13,17 +13,11 @@ import (
 	"github.com/fatih/color"
 )
 
-// nullableString encodes a string whose value may be unset.
-type nullableString struct {
-	// value is the string value, if set. If not set, it's meaning is undefined.
-	value string
-	// set indicates whether or not the string value is set.
-	set bool
-}
-
-// nonNullString creates a non-null string with the specified value.
-func nonNullString(value string) nullableString {
-	return nullableString{value, true}
+// stringptr takes a string value and returns a pointer to that value. It is a
+// utility function for extracting string pointers from loop variables. It is
+// guaranteed to return a non-nil result.
+func stringptr(value string) *string {
+	return &value
 }
 
 // shorthandFileFlagMatcher matches shorthand flag specifications containing
@@ -35,10 +29,10 @@ func nonNullString(value string) nullableString {
 var shorthandFileFlagMatcher = regexp.MustCompile(`^-[hv]*f`)
 
 // runCompose invokes Docker Compose with the specified arguments.
-func runCompose(files, preCommandArguments []string, command nullableString, postCommandArguments []string) error {
+func runCompose(files, preCommandArguments []string, command *string, postCommandArguments []string) error {
 	// Preallocate the argument slice.
 	argumentCount := len(files) + len(preCommandArguments)
-	if command.set {
+	if command != nil {
 		argumentCount += 1 + len(postCommandArguments)
 	}
 	arguments := make([]string, 0, argumentCount)
@@ -48,8 +42,8 @@ func runCompose(files, preCommandArguments []string, command nullableString, pos
 		arguments = append(arguments, fmt.Sprintf("--file=%s", file))
 	}
 	arguments = append(arguments, preCommandArguments...)
-	if command.set {
-		arguments = append(arguments, command.value)
+	if command != nil {
+		arguments = append(arguments, *command)
 		arguments = append(arguments, postCommandArguments...)
 	}
 
@@ -73,19 +67,19 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	// behavioral parity with Docker Compose's parser (docopt) when it comes to
 	// identifying the command name.
 	var files, preCommandArguments, postCommandArguments []string
-	var command, projectDirectory, envFile nullableString
+	var command, projectDirectory, envFile *string
 	var nextIsFile, nextIsProjectDirectory, nextIsEnvFile bool
 	for _, argument := range arguments {
 		if nextIsFile {
 			files = append(files, argument)
 			nextIsFile = false
 		} else if nextIsProjectDirectory {
-			projectDirectory = nonNullString(argument)
+			projectDirectory = stringptr(argument)
 			nextIsProjectDirectory = false
 		} else if nextIsEnvFile {
-			envFile = nonNullString(argument)
+			envFile = stringptr(argument)
 			nextIsEnvFile = false
-		} else if command.set {
+		} else if command != nil {
 			postCommandArguments = append(postCommandArguments, argument)
 		} else if argument == "--file" {
 			nextIsFile = true
@@ -94,11 +88,11 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 		} else if argument == "--project-directory" {
 			nextIsProjectDirectory = true
 		} else if strings.HasPrefix(argument, "--project-directory=") {
-			projectDirectory = nonNullString(argument[20:])
+			projectDirectory = stringptr(argument[20:])
 		} else if argument == "--env-file" {
 			nextIsEnvFile = true
 		} else if strings.HasPrefix(argument, "--env-file=") {
-			envFile = nonNullString(argument[11:])
+			envFile = stringptr(argument[11:])
 		} else if shorthand := shorthandFileFlagMatcher.FindString(argument); shorthand != "" {
 			if len(shorthand) == len(argument) {
 				nextIsFile = true
@@ -111,7 +105,7 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 		} else if strings.HasPrefix(argument, "-") && argument != "-" && argument != "--" {
 			preCommandArguments = append(preCommandArguments, argument)
 		} else {
-			command = nonNullString(argument)
+			command = stringptr(argument)
 		}
 	}
 	if nextIsFile {
@@ -122,7 +116,9 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 		return errors.New("missing environment file specification")
 	}
 
-	// TODO: Load configuration files and perform translation.
+	// TODO: Implement project loading.
+	_ = projectDirectory
+	_ = envFile
 
 	// TODO: Intercept special commands and implement custom handling.
 
