@@ -1,35 +1,39 @@
 package compose
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
-// environmentFromOS converts the result of os.Environ to a map type supported
-// by the compose-go package.
-func environmentFromOS() map[string]string {
-	// Grab the environment variable specification.
-	environment := os.Environ()
+// loadEnvironment computes the effective set of environment variables using the
+// same rules as Docker Compose.
+func loadEnvironment(projectDirectory, environmentFileName string) (map[string]string, error) {
+	// Create an empty (but initialized) environment.
+	environment := make(map[string]string)
 
-	// Convert specifications.
-	result := make(map[string]string, len(environment))
-	for _, specification := range environment {
-		keyValue := strings.SplitN(specification, "=", 2)
-		if len(keyValue) != 2 {
-			panic("invalid environment")
-		}
-		result[keyValue[0]] = keyValue[1]
+	// Load the environment file (if it exists) and add its contents.
+	environmentFilePath := filepath.Join(projectDirectory, environmentFileName)
+	fileEnvironment, err := godotenv.Read(environmentFilePath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("unable to load environment file (%s): %w", environmentFilePath, err)
+	}
+	for key, value := range fileEnvironment {
+		environment[key] = value
 	}
 
-	// Done.
-	return result
-}
+	// Add environment variables from the OS.
+	for _, specification := range os.Environ() {
+		keyValue := strings.SplitN(specification, "=", 2)
+		if len(keyValue) != 2 {
+			return nil, fmt.Errorf("invalid OS environment variable specification: %s", specification)
+		}
+		environment[keyValue[0]] = keyValue[1]
+	}
 
-// environmentFromFile loads environment variable specifications from a file
-// adhering to the Docker Compose environment file format:
-// https://docs.docker.com/compose/env-file/
-func environmentFromFile(path string) (map[string]string, error) {
-	return godotenv.Read(path)
+	// Success.
+	return environment, nil
 }

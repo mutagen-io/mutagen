@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -24,30 +23,20 @@ func rootMain(_ *cobra.Command, rawArguments []string) error {
 		projectDirectory = *arguments.projectDirectory
 	}
 
-	// Load environment variables from file (if one exists).
+	// Compute the effective environment file name.
 	environmentFileName := ".env"
 	if arguments.environmentFile != nil {
 		environmentFileName = *arguments.environmentFile
 	}
-	environmentFilePath := filepath.Join(projectDirectory, environmentFileName)
-	fileEnvironment, err := environmentFromFile(environmentFilePath)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("unable to load environment file (%s): %w", environmentFilePath, err)
-	}
-
-	// Load environment variables from the OS.
-	osEnvironment := environmentFromOS()
 
 	// Compute the effective environment.
-	environment := make(map[string]string)
-	for k, v := range fileEnvironment {
-		environment[k] = v
-	}
-	for k, v := range osEnvironment {
-		environment[k] = v
+	environment, err := loadEnvironment(projectDirectory, environmentFileName)
+	if err != nil {
+		return fmt.Errorf("unable to load environment variables: %w", err)
 	}
 
 	// TODO: Implement configuration loading and translation.
+	_ = environment
 
 	// TODO: Implement command hooks.
 
