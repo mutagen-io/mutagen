@@ -88,6 +88,17 @@ holder position of the license.
 
 --------------------------------------------------------------------------------
 
+GoDotEnv
+
+https://github.com/joho/godotenv
+
+Copyright (c) 2013 John Barton
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
 humanize
 
 https://github.com/dustin/go-humanize

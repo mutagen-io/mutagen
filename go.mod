@@ -15,6 +15,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
 	github.com/hectane/go-acl v0.0.0-20190227043046-e28f47eff0c4
+	github.com/joho/godotenv v1.3.0
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
