@@ -7,13 +7,20 @@ import (
 	"strings"
 )
 
-// shorthandFileFlagMatcher matches shorthand flag specifications containing
-// file specifications at their end or as the next argument. This requires
-// supporting other shorthand flags which don't take an argument and which may
-// precede the file flag specification. Such flags are specified in the bracket
-// expression of the regular expression and may need to be updated if Docker
-// Compose's command line interface evolves.
-var shorthandFileFlagMatcher = regexp.MustCompile(`^-[hv]*f`)
+var (
+	// shorthandFileFlagMatcher matches shorthand flag specifications containing
+	// file specifications at their end or as the next argument. This requires
+	// supporting other shorthand flags which don't take an argument and which
+	// may precede the file flag specification. Such flags are specified in the
+	// bracket expression of the regular expression and may need to be updated
+	// if Docker Compose's command line interface evolves.
+	shorthandFileFlagMatcher = regexp.MustCompile(`^-[hv]*f`)
+
+	// shorthandProjectNameFlagMatcher matches shorthand flag specifications
+	// containing project name specifications at their end or as the next
+	// argument. The design is the same as that of shorthandFileFlagMatcher.
+	shorthandProjectNameFlagMatcher = regexp.MustCompile(`^-[hv]*p`)
+)
 
 // arguments stores the components of the (partially) parsed Docker Compose
 // command line arguments and flags.
@@ -34,6 +41,9 @@ type arguments struct {
 	// specification (if any). If a command was not specified, then this slice
 	// will be empty.
 	postCommandArguments []string
+	// projectName is the project name specified by the -p or --project-name
+	// flags, if any.
+	projectName *string
 	// projectDirectory is the project directory specified by the
 	// --project-directory flag, if any.
 	projectDirectory *string
@@ -90,14 +100,17 @@ func stringptr(value string) *string {
 func parseArguments(rawArguments []string) (*arguments, error) {
 	// Set up state tracking.
 	var files, preCommandArguments, postCommandArguments []string
-	var command, projectDirectory, environmentFile *string
-	var nextIsFile, nextIsProjectDirectory, nextIsEnvironmentFile bool
+	var command, projectName, projectDirectory, environmentFile *string
+	var nextIsFile, nextIsProjectName, nextIsProjectDirectory, nextIsEnvironmentFile bool
 
 	// Process arguments.
 	for _, argument := range rawArguments {
 		if nextIsFile {
 			files = append(files, argument)
 			nextIsFile = false
+		} else if nextIsProjectName {
+			projectName = stringptr(argument)
+			nextIsProjectName = false
 		} else if nextIsProjectDirectory {
 			projectDirectory = stringptr(argument)
 			nextIsProjectDirectory = false
@@ -110,6 +123,10 @@ func parseArguments(rawArguments []string) (*arguments, error) {
 			nextIsFile = true
 		} else if strings.HasPrefix(argument, "--file=") {
 			files = append(files, argument[7:])
+		} else if argument == "--project-name" {
+			nextIsProjectName = true
+		} else if strings.HasPrefix(argument, "--project-name=") {
+			files = append(files, argument[15:])
 		} else if argument == "--project-directory" {
 			nextIsProjectDirectory = true
 		} else if strings.HasPrefix(argument, "--project-directory=") {
@@ -127,6 +144,15 @@ func parseArguments(rawArguments []string) (*arguments, error) {
 			if shorthand != "-f" {
 				preCommandArguments = append(preCommandArguments, argument[:len(shorthand)-1])
 			}
+		} else if shorthand = shorthandProjectNameFlagMatcher.FindString(argument); shorthand != "" {
+			if len(shorthand) == len(argument) {
+				nextIsProjectName = true
+			} else {
+				files = append(files, argument[len(shorthand):])
+			}
+			if shorthand != "-p" {
+				preCommandArguments = append(preCommandArguments, argument[:len(shorthand)-1])
+			}
 		} else if strings.HasPrefix(argument, "-") && argument != "-" && argument != "--" {
 			preCommandArguments = append(preCommandArguments, argument)
 		} else {
@@ -137,6 +163,8 @@ func parseArguments(rawArguments []string) (*arguments, error) {
 	// Check for unexpected termination.
 	if nextIsFile {
 		return nil, errors.New("missing file specification")
+	} else if nextIsProjectName {
+		return nil, errors.New("missing project name specification")
 	} else if nextIsProjectDirectory {
 		return nil, errors.New("missing project directory specification")
 	} else if nextIsEnvironmentFile {
@@ -149,6 +177,7 @@ func parseArguments(rawArguments []string) (*arguments, error) {
 		preCommandArguments:  preCommandArguments,
 		command:              command,
 		postCommandArguments: postCommandArguments,
+		projectName:          projectName,
 		projectDirectory:     projectDirectory,
 		environmentFile:      environmentFile,
 	}, nil
