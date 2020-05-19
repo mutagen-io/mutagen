@@ -1,0 +1,41 @@
+package compose
+
+import (
+	"github.com/spf13/cobra"
+)
+
+func versionMain(_ *cobra.Command, arguments []string) {
+	// Handle top-level help and version flags.
+	handleTopLevelHelp()
+	handleTopLevelVersion()
+
+	// Handle command invocation.
+	arguments = append([]string{"version"}, arguments...)
+	compose(arguments, nil, nil, true)
+}
+
+var versionCommand = &cobra.Command{
+	Use:                "version",
+	Run:                versionMain,
+	SilenceUsage:       true,
+	DisableFlagParsing: true,
+}
+
+var versionConfiguration struct {
+	// help indicates the presence of the -h/--help flag.
+	help bool
+	// short indicates the presence of the --short flag.
+	short bool
+}
+
+func init() {
+	// Grab a handle for the command line flags.
+	flags := versionCommand.Flags()
+
+	// Wire up flags. We don't bother specifying usage information since we'll
+	// shell out to Docker Compose if we need to display help information. In
+	// the case of this command, we also disable flag parsing and shell out
+	// directly, so we only register these flags to support shell completion.
+	flags.BoolVarP(&versionConfiguration.help, "help", "h", false, "")
+	flags.BoolVar(&versionConfiguration.short, "short", false, "")
+}
