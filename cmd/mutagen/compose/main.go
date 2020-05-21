@@ -10,12 +10,11 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
-// handleTopLevelHelpAndVersionFlags handles top-level Docker Compose -h/--help
-// and -v/--version flags. If either flag is set, then it will shell out to
-// Docker Compose to print the necessary information and terminate the current
-// process. If this function returns, then neither flag was set and execution
-// can continue normally.
-func handleTopLevelHelpAndVersionFlags() {
+// handleTopLevelFlags handles top-level Docker Compose flags. This is necessary
+// to emulate Docker Compose's handling of these flags, which occurs even if a
+// command is specified. If this function returns, then execution can continue
+// normally.
+func handleTopLevelFlags() {
 	if rootConfiguration.help {
 		compose([]string{"--help"}, nil, nil, true)
 	} else if rootConfiguration.version {
@@ -24,21 +23,19 @@ func handleTopLevelHelpAndVersionFlags() {
 }
 
 // composeEntryPoint adapts a standard Cobra entry point to handle top-level
-// Docker Compose flags. This is necessary to emulate Docker Compose's handling
-// of the top-level -h/--help and -v/--version flags, which occurs regardless of
-// any specified command.
+// Docker Compose flags.
 func composeEntryPoint(run func(*cobra.Command, []string)) func(*cobra.Command, []string) {
 	return func(command *cobra.Command, arguments []string) {
-		handleTopLevelHelpAndVersionFlags()
+		handleTopLevelFlags()
 		run(command, arguments)
 	}
 }
 
-// composeEntryPointE is an alternate version of composeEntryPoint designed to
-// handle error-returning entry points.
+// composeEntryPointE adapts an error-returning Cobra entry point to handle
+// top-level Docker Compose flags.
 func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(command *cobra.Command, arguments []string) error {
-		handleTopLevelHelpAndVersionFlags()
+		handleTopLevelFlags()
 		return run(command, arguments)
 	}
 }
