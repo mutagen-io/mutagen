@@ -7,10 +7,6 @@ import (
 )
 
 func upMain(_ *cobra.Command, arguments []string) error {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// Load the project configuration.
 	if err := initializeProject(); err != nil {
 		return fmt.Errorf("unable to initialize project: %w", err)
@@ -28,7 +24,7 @@ func upMain(_ *cobra.Command, arguments []string) error {
 
 var upCommand = &cobra.Command{
 	Use:          "up",
-	RunE:         upMain,
+	RunE:         composeEntryPointE(upMain),
 	SilenceUsage: true,
 }
 

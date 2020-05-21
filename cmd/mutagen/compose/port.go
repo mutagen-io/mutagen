@@ -7,17 +7,13 @@ import (
 )
 
 func portMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("port not yet implemented")
 }
 
 var portCommand = &cobra.Command{
 	Use:          "port",
-	Run:          portMain,
+	Run:          composeEntryPoint(portMain),
 	SilenceUsage: true,
 }
 

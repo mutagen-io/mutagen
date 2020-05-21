@@ -7,17 +7,13 @@ import (
 )
 
 func eventsMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("events not yet implemented")
 }
 
 var eventsCommand = &cobra.Command{
 	Use:          "events",
-	Run:          eventsMain,
+	Run:          composeEntryPoint(eventsMain),
 	SilenceUsage: true,
 }
 

@@ -7,17 +7,13 @@ import (
 )
 
 func pushMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("push not yet implemented")
 }
 
 var pushCommand = &cobra.Command{
 	Use:          "push",
-	Run:          pushMain,
+	Run:          composeEntryPoint(pushMain),
 	SilenceUsage: true,
 }
 

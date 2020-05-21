@@ -7,17 +7,13 @@ import (
 )
 
 func restartMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("restart not yet implemented")
 }
 
 var restartCommand = &cobra.Command{
 	Use:          "restart",
-	Run:          restartMain,
+	Run:          composeEntryPoint(restartMain),
 	SilenceUsage: true,
 }
 

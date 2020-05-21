@@ -7,17 +7,13 @@ import (
 )
 
 func rmMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("rm not yet implemented")
 }
 
 var rmCommand = &cobra.Command{
 	Use:          "rm",
-	Run:          rmMain,
+	Run:          composeEntryPoint(rmMain),
 	SilenceUsage: true,
 }
 

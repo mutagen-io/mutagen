@@ -7,17 +7,13 @@ import (
 )
 
 func pullMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("pull not yet implemented")
 }
 
 var pullCommand = &cobra.Command{
 	Use:          "pull",
-	Run:          pullMain,
+	Run:          composeEntryPoint(pullMain),
 	SilenceUsage: true,
 }
 

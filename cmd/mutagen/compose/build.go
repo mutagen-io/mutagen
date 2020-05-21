@@ -7,17 +7,13 @@ import (
 )
 
 func buildMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("build not yet implemented")
 }
 
 var buildCommand = &cobra.Command{
 	Use:          "build",
-	Run:          buildMain,
+	Run:          composeEntryPoint(buildMain),
 	SilenceUsage: true,
 }
 

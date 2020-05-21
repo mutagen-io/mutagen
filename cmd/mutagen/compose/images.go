@@ -7,17 +7,13 @@ import (
 )
 
 func imagesMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("images not yet implemented")
 }
 
 var imagesCommand = &cobra.Command{
 	Use:          "images",
-	Run:          imagesMain,
+	Run:          composeEntryPoint(imagesMain),
 	SilenceUsage: true,
 }
 

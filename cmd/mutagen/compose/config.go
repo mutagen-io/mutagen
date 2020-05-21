@@ -7,17 +7,13 @@ import (
 )
 
 func configMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("config not yet implemented")
 }
 
 var configCommand = &cobra.Command{
 	Use:          "config",
-	Run:          configMain,
+	Run:          composeEntryPoint(configMain),
 	SilenceUsage: true,
 }
 

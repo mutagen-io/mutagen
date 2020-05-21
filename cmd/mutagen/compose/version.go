@@ -5,10 +5,6 @@ import (
 )
 
 func versionMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// Handle command invocation.
 	arguments = append([]string{"version"}, arguments...)
 	compose(arguments, nil, nil, true)
@@ -16,7 +12,7 @@ func versionMain(_ *cobra.Command, arguments []string) {
 
 var versionCommand = &cobra.Command{
 	Use:                "version",
-	Run:                versionMain,
+	Run:                composeEntryPoint(versionMain),
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

@@ -7,17 +7,13 @@ import (
 )
 
 func execMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("exec not yet implemented")
 }
 
 var execCommand = &cobra.Command{
 	Use:          "exec",
-	Run:          execMain,
+	Run:          composeEntryPoint(execMain),
 	SilenceUsage: true,
 }
 

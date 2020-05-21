@@ -7,17 +7,13 @@ import (
 )
 
 func logsMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("logs not yet implemented")
 }
 
 var logsCommand = &cobra.Command{
 	Use:          "logs",
-	Run:          logsMain,
+	Run:          composeEntryPoint(logsMain),
 	SilenceUsage: true,
 }
 

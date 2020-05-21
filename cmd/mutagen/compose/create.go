@@ -7,17 +7,13 @@ import (
 )
 
 func createMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("create not yet implemented")
 }
 
 var createCommand = &cobra.Command{
 	Use:          "create",
-	Run:          createMain,
+	Run:          composeEntryPoint(createMain),
 	SilenceUsage: true,
 }
 

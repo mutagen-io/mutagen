@@ -7,17 +7,13 @@ import (
 )
 
 func downMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("down not yet implemented")
 }
 
 var downCommand = &cobra.Command{
 	Use:          "down",
-	Run:          downMain,
+	Run:          composeEntryPoint(downMain),
 	SilenceUsage: true,
 }
 

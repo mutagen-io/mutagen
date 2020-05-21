@@ -10,37 +10,49 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
-// handleTopLevelHelp handles top-level -h/--help flags. Docker Compose will
-// give these flags (and their exit behavior) priority over any additional flags
-// or commands, so to match this behavior, this function needs to be called by
-// all command handlers. If it returns, then the handler should proceed
-// normally. Since -h/--help flags take priority over -v/--version flags (even
-// when the latter is specified first), this function should be called before
-// handleTopLevelVersion.
-func handleTopLevelHelp() {
+// handleTopLevelHelpAndVersionFlags handles top-level Docker Compose -h/--help
+// and -v/--version flags. If either flag is set, then it will shell out to
+// Docker Compose to print the necessary information and terminate the current
+// process. If this function returns, then neither flag was set and execution
+// can continue normally.
+func handleTopLevelHelpAndVersionFlags() {
 	if rootConfiguration.help {
 		compose([]string{"--help"}, nil, nil, true)
-	}
-}
-
-// handleTopLevelVersion handles top-level -v/--version flags. Docker Compose
-// will give these flags (and their exit behavior) priority over any additional
-// flags or commands, so to match this behavior, this function needs to be
-// called by all command handlers. If it returns, then the handler should
-// proceed normally. Since -h/--help flags take priority over -v/--version flags
-// (even when the latter is specified first), this function should be called
-// after handleTopLevelHelp.
-func handleTopLevelVersion() {
-	if rootConfiguration.version {
+	} else if rootConfiguration.version {
 		compose([]string{"--version"}, nil, nil, true)
 	}
 }
 
-func rootMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
+// composeEntryPoint adapts a standard Cobra entry point to handle top-level
+// Docker Compose flags. This is necessary to emulate Docker Compose's handling
+// of the top-level -h/--help and -v/--version flags, which occurs regardless of
+// any specified command.
+func composeEntryPoint(run func(*cobra.Command, []string)) func(*cobra.Command, []string) {
+	return func(command *cobra.Command, arguments []string) {
+		handleTopLevelHelpAndVersionFlags()
+		run(command, arguments)
+	}
+}
 
+// composeEntryPointE is an alternate version of composeEntryPoint designed to
+// handle error-returning entry points.
+func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+	return func(command *cobra.Command, arguments []string) error {
+		handleTopLevelHelpAndVersionFlags()
+		return run(command, arguments)
+	}
+}
+
+// commandHelp is an alternative help function for Cobra that shells out to
+// Docker Compose to display help information for arbitrary commands.
+func commandHelp(command *cobra.Command, _ []string) {
+	if command == RootCommand {
+		compose([]string{"--help"}, nil, nil, true)
+	}
+	compose([]string{command.CalledAs(), "--help"}, nil, nil, true)
+}
+
+func rootMain(_ *cobra.Command, arguments []string) {
 	// If no arguments have been specified, then just print help information,
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
@@ -64,7 +76,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 var RootCommand = &cobra.Command{
 	Use:          "compose",
 	Short:        "Run Docker Compose with Mutagen enhancements",
-	Run:          rootMain,
+	Run:          composeEntryPoint(rootMain),
 	SilenceUsage: true,
 }
 
@@ -111,10 +123,9 @@ func init() {
 	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
 
 	// Avoid Cobra's built-in help functionality that's triggered when the
-	// -h/--help flag is present and instead just redirect control to the
-	// nominal entry point. We'll use the -h/--help flag that we create below to
-	// determine when help functionality needs to be displayed.
-	RootCommand.SetHelpFunc(rootMain)
+	// -h/--help flag is present. We still explicitly register a -h/--help flag
+	// below for shell completion support.
+	RootCommand.SetHelpFunc(commandHelp)
 
 	// Grab a handle for the command line flags.
 	flags := RootCommand.Flags()

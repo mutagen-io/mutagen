@@ -7,17 +7,13 @@ import (
 )
 
 func psMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("ps not yet implemented")
 }
 
 var psCommand = &cobra.Command{
 	Use:          "ps",
-	Run:          psMain,
+	Run:          composeEntryPoint(psMain),
 	SilenceUsage: true,
 }
 

@@ -7,17 +7,13 @@ import (
 )
 
 func unpauseMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("unpause not yet implemented")
 }
 
 var unpauseCommand = &cobra.Command{
 	Use:          "unpause",
-	Run:          unpauseMain,
+	Run:          composeEntryPoint(unpauseMain),
 	SilenceUsage: true,
 }
 

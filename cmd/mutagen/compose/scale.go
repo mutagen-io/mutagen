@@ -7,17 +7,13 @@ import (
 )
 
 func scaleMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("scale not yet implemented")
 }
 
 var scaleCommand = &cobra.Command{
 	Use:          "scale",
-	Run:          scaleMain,
+	Run:          composeEntryPoint(scaleMain),
 	SilenceUsage: true,
 }
 

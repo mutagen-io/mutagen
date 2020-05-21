@@ -7,17 +7,13 @@ import (
 )
 
 func killMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// TODO: Implement.
 	fmt.Println("kill not yet implemented")
 }
 
 var killCommand = &cobra.Command{
 	Use:          "kill",
-	Run:          killMain,
+	Run:          composeEntryPoint(killMain),
 	SilenceUsage: true,
 }
 

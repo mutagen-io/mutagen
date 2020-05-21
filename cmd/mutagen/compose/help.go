@@ -4,17 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// commandHelp is an alternative help function for Cobra that shells out to
-// Docker Compose to display help information for arbitrary commands.
-func commandHelp(command *cobra.Command, _ []string) {
-	compose([]string{command.CalledAs(), "--help"}, nil, nil, true)
-}
-
 func helpMain(_ *cobra.Command, arguments []string) {
-	// Handle top-level help and version flags.
-	handleTopLevelHelp()
-	handleTopLevelVersion()
-
 	// Handle command invocation.
 	arguments = append([]string{"help"}, arguments...)
 	compose(arguments, nil, nil, true)
@@ -22,7 +12,7 @@ func helpMain(_ *cobra.Command, arguments []string) {
 
 var helpCommand = &cobra.Command{
 	Use:                "help",
-	Run:                helpMain,
+	Run:                composeEntryPoint(helpMain),
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }
