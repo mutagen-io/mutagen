@@ -2,13 +2,39 @@ package compose
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/cmd"
 )
+
+// topLevelFlags reconstitutes parsed top-level Docker Compose flags for use
+// with pass-through command implementations.
+func topLevelFlags() (flags []string) {
+	RootCommand.Flags().Visit(func(flag *pflag.Flag) {
+		switch flag.Value.Type() {
+		case "bool":
+			flags = append(flags, "--"+flag.Name)
+		case "string":
+			flags = append(flags, "--"+flag.Name, flag.Value.String())
+		case "stringSlice":
+			sliceValue, ok := flag.Value.(pflag.SliceValue)
+			if !ok {
+				panic("stringSlice flag did not have SliceValue type")
+			}
+			for _, value := range sliceValue.GetSlice() {
+				flags = append(flags, "--"+flag.Name, value)
+			}
+		default:
+			panic("unhandled flag type")
+		}
+	})
+	return
+}
 
 // handleTopLevelFlags handles top-level Docker Compose flags. This is necessary
 // to emulate Docker Compose's handling of these flags, which occurs even if a
@@ -16,9 +42,9 @@ import (
 // normally.
 func handleTopLevelFlags() {
 	if rootConfiguration.help {
-		compose([]string{"--help"}, nil, nil, true)
+		compose([]string{"--help"}, nil, os.Stdin, true)
 	} else if rootConfiguration.version {
-		compose([]string{"--version"}, nil, nil, true)
+		compose([]string{"--version"}, nil, os.Stdin, true)
 	}
 }
 
@@ -44,9 +70,9 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // Docker Compose to display help information for arbitrary commands.
 func commandHelp(command *cobra.Command, _ []string) {
 	if command == RootCommand {
-		compose([]string{"--help"}, nil, nil, true)
+		compose([]string{"--help"}, nil, os.Stdin, true)
 	}
-	compose([]string{command.CalledAs(), "--help"}, nil, nil, true)
+	compose([]string{command.CalledAs(), "--help"}, nil, os.Stdin, true)
 }
 
 func rootMain(_ *cobra.Command, arguments []string) {
@@ -54,7 +80,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		compose(nil, nil, nil, true)
+		compose(nil, nil, os.Stdin, true)
 	}
 
 	// Handle unknown commands. We can't precisely emulate what Docker Compose
@@ -80,8 +106,8 @@ var RootCommand = &cobra.Command{
 var rootConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
-	// files stores the value(s) of the -f/--file flag(s).
-	files []string
+	// file stores the value(s) of the -f/--file flag(s).
+	file []string
 	// projectName stores the value of the -p/--project-name flag.
 	projectName string
 	// verbose indicates the presence of the --verbose flag.
@@ -130,7 +156,7 @@ func init() {
 	// Wire up flags. We don't bother specifying usage information since we'll
 	// shell out to Docker Compose if we need to display help information.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "")
-	flags.StringSliceVarP(&rootConfiguration.files, "file", "f", nil, "")
+	flags.StringSliceVarP(&rootConfiguration.file, "file", "f", nil, "")
 	flags.StringVarP(&rootConfiguration.projectName, "project-name", "p", "", "")
 	flags.BoolVar(&rootConfiguration.verbose, "verbose", false, "")
 	flags.StringVar(&rootConfiguration.logLevel, "log-level", "", "")

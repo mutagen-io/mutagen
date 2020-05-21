@@ -12,6 +12,8 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
@@ -200,8 +202,8 @@ func initializeProject() error {
 	// be used). This code roughly models the logic of the
 	// get_config_path_from_options function in Docker Compose.
 	var configurationFiles []string
-	if len(rootConfiguration.files) > 0 {
-		configurationFiles = rootConfiguration.files
+	if len(rootConfiguration.file) > 0 {
+		configurationFiles = rootConfiguration.file
 	} else if composeFile := project.environment["COMPOSE_FILE"]; composeFile != "" {
 		separator, ok := project.environment["COMPOSE_PATH_SEPARATOR"]
 		if !ok {
@@ -339,4 +341,14 @@ func compose(arguments []string, environment map[string]string, input io.Reader,
 	if exitOnSuccess {
 		os.Exit(0)
 	}
+}
+
+// passthrough is a generic Cobra handler that will pass handling directly to
+// Docker Compose using the command name, reconstituted top-level flags, and
+// command arguments. In order to use this handler, flag parsing must be
+// disabled for the command.
+func passthrough(command *cobra.Command, arguments []string) {
+	arguments = append([]string{command.CalledAs()}, arguments...)
+	arguments = append(topLevelFlags(), arguments...)
+	compose(arguments, nil, os.Stdin, true)
 }

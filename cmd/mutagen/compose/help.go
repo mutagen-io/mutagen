@@ -4,14 +4,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func helpMain(_ *cobra.Command, arguments []string) {
-	arguments = append([]string{"help"}, arguments...)
-	compose(arguments, nil, nil, true)
-}
-
 var helpCommand = &cobra.Command{
 	Use:                "help",
-	Run:                composeEntryPoint(helpMain),
+	Run:                composeEntryPoint(passthrough),
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

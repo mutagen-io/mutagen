@@ -1,37 +1,37 @@
 package compose
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
-func pushMain(_ *cobra.Command, arguments []string) {
-	// TODO: Implement.
-	fmt.Println("push not yet implemented")
-}
-
 var pushCommand = &cobra.Command{
-	Use:          "push",
-	Run:          composeEntryPoint(pushMain),
-	SilenceUsage: true,
+	Use:                "push",
+	Run:                composeEntryPoint(passthrough),
+	SilenceUsage:       true,
+	DisableFlagParsing: true,
 }
 
 var pushConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
+	// ignorePushFailures indicates the presence of the --ignore-push-failures
+	// flag.
+	ignorePushFailures bool
 }
 
 func init() {
-	// Avoid Cobra's built-in help functionality that's triggered when the
-	// -h/--help flag is present. We still explicitly register a -h/--help flag
-	// below for shell completion support.
-	pushCommand.SetHelpFunc(commandHelp)
+	// We don't set an explicit help function since we disable flag parsing for
+	// this command and simply pass arguments directly through to the underlying
+	// command. We still explicitly register a -h/--help flag below for shell
+	// completion support.
 
 	// Grab a handle for the command line flags.
 	flags := pushCommand.Flags()
 
-	// Wire up push command flags.
+	// Wire up flags. We don't bother specifying usage information since we'll
+	// shell out to Docker Compose if we need to display help information. In
+	// the case of this command, we also disable flag parsing and shell out
+	// directly, so we only register these flags to support shell completion.
 	flags.BoolVarP(&pushConfiguration.help, "help", "h", false, "")
-	// TODO: Wire up remaining flags.
+	flags.BoolVar(&pushConfiguration.ignorePushFailures, "ignore-push-failures", false, "")
 }

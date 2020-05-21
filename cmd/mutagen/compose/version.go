@@ -4,14 +4,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func versionMain(_ *cobra.Command, arguments []string) {
-	arguments = append([]string{"version"}, arguments...)
-	compose(arguments, nil, nil, true)
-}
-
 var versionCommand = &cobra.Command{
 	Use:                "version",
-	Run:                composeEntryPoint(versionMain),
+	Run:                composeEntryPoint(passthrough),
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

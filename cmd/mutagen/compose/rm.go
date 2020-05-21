@@ -1,37 +1,46 @@
 package compose
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
-func rmMain(_ *cobra.Command, arguments []string) {
-	// TODO: Implement.
-	fmt.Println("rm not yet implemented")
-}
-
 var rmCommand = &cobra.Command{
-	Use:          "rm",
-	Run:          composeEntryPoint(rmMain),
-	SilenceUsage: true,
+	Use:                "rm",
+	Run:                composeEntryPoint(passthrough),
+	SilenceUsage:       true,
+	DisableFlagParsing: true,
 }
 
 var rmConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
+	// force indicates the presence of the -f/--force flag.
+	force bool
+	// stop indicates the presence of the -s/--stop flag.
+	stop bool
+	// v indicates the presence of the -v flag.
+	v bool
+	// all indicates the presence of the -a/--all flag.
+	all bool
 }
 
 func init() {
-	// Avoid Cobra's built-in help functionality that's triggered when the
-	// -h/--help flag is present. We still explicitly register a -h/--help flag
-	// below for shell completion support.
-	rmCommand.SetHelpFunc(commandHelp)
+	// We don't set an explicit help function since we disable flag parsing for
+	// this command and simply pass arguments directly through to the underlying
+	// command. We still explicitly register a -h/--help flag below for shell
+	// completion support.
 
 	// Grab a handle for the command line flags.
 	flags := rmCommand.Flags()
 
-	// Wire up rm command flags.
+	// Wire up flags. We don't bother specifying usage information since we'll
+	// shell out to Docker Compose if we need to display help information. In
+	// the case of this command, we also disable flag parsing and shell out
+	// directly, so we only register these flags to support shell completion.
 	flags.BoolVarP(&rmConfiguration.help, "help", "h", false, "")
-	// TODO: Wire up remaining flags.
+	flags.BoolVarP(&rmConfiguration.force, "force", "f", false, "")
+	flags.BoolVarP(&rmConfiguration.stop, "stop", "s", false, "")
+	// TODO: Figure out how to do a short-only flag for -v. See the comment on
+	// the -T flag for exec to understand why this isn't currently possible.
+	flags.BoolVarP(&rmConfiguration.all, "all", "a", false, "")
 }
