@@ -36,7 +36,12 @@ var defaultConfigurationOverrideFileNames = []string{
 // the matching file name. It will return os.ErrNotExist if no match is found,
 // as well as any other error that occurs while traversing the filesystem. The
 // specified path will be converted to an absolute path and cleaned, and thus
-// any resulting path will also be absolute and cleaned.
+// any resulting path will also be absolute and cleaned. This function rougly
+// models the logic of the find_candidates_in_parent_dirs function in Docker
+// Compose. It's worth noting that find_candidates_in_parent_dirs will allow
+// multiple matches (unlike get_default_override_file) and will just use the
+// first match (while printing a warning). We do the same in this function,
+// except that we don't print a warning.
 func findConfigurationFileInPathOrParent(path string) (string, string, error) {
 	// Ensure that the path is absolute and cleaned so that filesystem root
 	// detection works.
@@ -67,7 +72,8 @@ func findConfigurationFileInPathOrParent(path string) (string, string, error) {
 // findConfigurationOverrideFileInPath searches the target path for a default
 // Docker Compose configuration override file and returns the matching file
 // name. It will return an error if multiple override files exist and
-// os.ErrNotExist if no match is found.
+// os.ErrNotExist if no match is found. This function roughly models the logic
+// of the get_default_override_file function in Docker Compose.
 func findConfigurationOverrideFileInPath(path string) (string, error) {
 	// Perform the search and watch for multiple matches.
 	var result string
@@ -128,7 +134,8 @@ func loadEnvironment(path string) (map[string]string, error) {
 var normalizeProjectNameReplacer = regexp.MustCompile(`[^-_a-z0-9]`)
 
 // normalizeProjectName normalizes a project name. It roughly models the logic
-// of the get_project_name function in Docker Compose.
+// of the normalize_name function inside the get_project_name function in Docker
+// Compose.
 func normalizeProjectName(name string) string {
 	return normalizeProjectNameReplacer.ReplaceAllString(strings.ToLower(name), "")
 }
