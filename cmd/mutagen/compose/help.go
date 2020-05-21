@@ -5,7 +5,6 @@ import (
 )
 
 func helpMain(_ *cobra.Command, arguments []string) {
-	// Handle command invocation.
 	arguments = append([]string{"help"}, arguments...)
 	compose(arguments, nil, nil, true)
 }

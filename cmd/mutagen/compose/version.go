@@ -5,7 +5,6 @@ import (
 )
 
 func versionMain(_ *cobra.Command, arguments []string) {
-	// Handle command invocation.
 	arguments = append([]string{"version"}, arguments...)
 	compose(arguments, nil, nil, true)
 }
