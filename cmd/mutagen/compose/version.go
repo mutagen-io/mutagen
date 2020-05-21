@@ -29,6 +29,11 @@ var versionConfiguration struct {
 }
 
 func init() {
+	// We don't set an explicit help function since we disable flag parsing for
+	// this command and simply pass arguments directly through to the underlying
+	// command. We still explicitly register a -h/--help flag below for shell
+	// completion support.
+
 	// Grab a handle for the command line flags.
 	flags := versionCommand.Flags()
 

@@ -6,18 +6,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func upMain(_ *cobra.Command, arguments []string) {
+func upMain(_ *cobra.Command, arguments []string) error {
 	// Handle top-level help and version flags.
 	handleTopLevelHelp()
 	handleTopLevelVersion()
 
+	// Load the project configuration.
+	if err := initializeProject(); err != nil {
+		return fmt.Errorf("unable to initialize project: %w", err)
+	}
+	fmt.Println(project.files)
+	fmt.Println(project.workingDirectory)
+	fmt.Println(project.name)
+
 	// TODO: Implement.
 	fmt.Println("up not yet implemented")
+
+	// Success.
+	return nil
 }
 
 var upCommand = &cobra.Command{
 	Use:          "up",
-	Run:          upMain,
+	RunE:         upMain,
 	SilenceUsage: true,
 }
 
@@ -66,10 +77,9 @@ var upConfiguration struct {
 
 func init() {
 	// Avoid Cobra's built-in help functionality that's triggered when the
-	// -h/--help flag is present and instead just redirect control to the
-	// nominal entry point. We'll use the -h/--help flag that we create below to
-	// determine when help functionality needs to be displayed.
-	upCommand.SetHelpFunc(upMain)
+	// -h/--help flag is present. We still explicitly register a -h/--help flag
+	// below for shell completion support.
+	upCommand.SetHelpFunc(commandHelp)
 
 	// Grab a handle for the command line flags.
 	flags := upCommand.Flags()

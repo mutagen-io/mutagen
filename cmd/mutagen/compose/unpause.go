@@ -28,10 +28,9 @@ var unpauseConfiguration struct {
 
 func init() {
 	// Avoid Cobra's built-in help functionality that's triggered when the
-	// -h/--help flag is present and instead just redirect control to the
-	// nominal entry point. We'll use the -h/--help flag that we create below to
-	// determine when help functionality needs to be displayed.
-	unpauseCommand.SetHelpFunc(unpauseMain)
+	// -h/--help flag is present. We still explicitly register a -h/--help flag
+	// below for shell completion support.
+	unpauseCommand.SetHelpFunc(commandHelp)
 
 	// Grab a handle for the command line flags.
 	flags := unpauseCommand.Flags()
