@@ -393,6 +393,18 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
+compose-go
+
+https://github.com/compose-spec/compose-go
+
+Copyright 2020 The Compose Specification Authors.
+
+Used under the terms of the Apache License, Version 2.0. A copy of this license
+can be found later in this text or online at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+
 Yamux
 
 https://github.com/hashicorp/yamux
