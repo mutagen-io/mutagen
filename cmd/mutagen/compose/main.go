@@ -79,6 +79,14 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 	}
 }
 
+// passthrough is a generic Cobra handler that will pass handling directly to
+// Docker Compose using the command name, reconstituted top-level flags, and
+// command arguments. In order to use this handler, flag parsing must be
+// disabled for the command.
+func passthrough(command *cobra.Command, arguments []string) {
+	compose(topLevelFlags(false), command.CalledAs(), arguments)
+}
+
 // commandHelp is an alternative help function for Cobra that shells out to
 // Docker Compose to display help information for arbitrary commands.
 func commandHelp(command *cobra.Command, _ []string) {

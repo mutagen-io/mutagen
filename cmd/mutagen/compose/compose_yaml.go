@@ -15,8 +15,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/configuration/synchronization"
 )
 
-// ForwardingConfiguration encodes a full forwarding session specification.
-type ForwardingConfiguration struct {
+// forwardingConfiguration encodes a full forwarding session specification.
+type forwardingConfiguration struct {
 	// Source is the source URL for the session.
 	Source string `yaml:"source"`
 	// Destination is the destination URL for the session.
@@ -30,9 +30,9 @@ type ForwardingConfiguration struct {
 	ConfigurationDestination forwarding.Configuration `yaml:"configurationDestination"`
 }
 
-// SynchronizationConfiguration encodes a full synchronization session
+// synchronizationConfiguration encodes a full synchronization session
 // specification.
-type SynchronizationConfiguration struct {
+type synchronizationConfiguration struct {
 	// Alpha is the alpha URL for the session.
 	Alpha string `yaml:"alpha"`
 	// Beta is the beta URL for the session.
@@ -45,23 +45,23 @@ type SynchronizationConfiguration struct {
 	ConfigurationBeta synchronization.Configuration `yaml:"configurationBeta"`
 }
 
-// MutagenConfiguration encodes the Mutagen configuration found in a Docker
+// mutagenConfiguration encodes the Mutagen configuration found in a Docker
 // Compose configuration file under the x-mutagen extension.
-type MutagenConfiguration struct {
+type mutagenConfiguration struct {
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
 	// configurations are layered, thus keeping syntactic compatibility with the
 	// global Mutagen configuration file.
-	Forwarding map[string]ForwardingConfiguration `yaml:"forward"`
+	Forwarding map[string]forwardingConfiguration `yaml:"forward"`
 	// Synchronization represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
 	// configurations are layered, thus keeping syntactic compatibility with the
 	// global Mutagen configuration file.
-	Synchronization map[string]SynchronizationConfiguration `yaml:"sync"`
+	Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
 }
 
-// Configuration encodes portions of a Docker Compose configuration file.
-type Configuration struct {
+// configuration encodes a subset of a Docker Compose configuration file.
+type configuration struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
 	// Services are the services defined in the configuration file.
@@ -71,7 +71,7 @@ type Configuration struct {
 	// Networks are the networks defined in the configuration file.
 	Networks map[string]yaml.Node `yaml:"networks"`
 	// Mutagen is the Mutagen configuration defined in the configuration file.
-	Mutagen MutagenConfiguration `yaml:"x-mutagen"`
+	Mutagen mutagenConfiguration `yaml:"x-mutagen"`
 }
 
 // intermediateConfiguration is an intermediate configuration structure used for
@@ -127,11 +127,11 @@ func interpolateNode(node *yaml.Node, mapping template.Mapping) error {
 	return nil
 }
 
-// ReadConfiguration reads, interpolates, and decodes a Docker Compose
+// readConfiguration reads, interpolates, and decodes a Docker Compose
 // configuration file from the specified stream. If the stream contains multiple
 // YAML documents, then only the first will be read. Interpolation is performed
 // using the specified variable mapping.
-func ReadConfiguration(stream io.Reader, variables map[string]string) (*Configuration, error) {
+func readConfiguration(stream io.Reader, variables map[string]string) (*configuration, error) {
 	// Wrap the stream in a YAML decoder.
 	decoder := yaml.NewDecoder(stream)
 
@@ -163,7 +163,7 @@ func ReadConfiguration(stream io.Reader, variables map[string]string) (*Configur
 	}
 
 	// Convert the configuration fields that don't require further processing.
-	result := &Configuration{
+	result := &configuration{
 		Version:  intermediate.Version,
 		Services: intermediate.Services,
 		Volumes:  intermediate.Volumes,
@@ -203,11 +203,11 @@ func ReadConfiguration(stream io.Reader, variables map[string]string) (*Configur
 	return result, nil
 }
 
-// LoadConfiguration reads, interpolates, and decodes a Docker Compose
+// loadConfiguration reads, interpolates, and decodes a Docker Compose
 // configuration file from the specified file. If the file contains multiple
 // YAML documents, then only the first will be read. Interpolation is performed
 // using the specified variable mapping.
-func LoadConfiguration(path string, variables map[string]string) (*Configuration, error) {
+func loadConfiguration(path string, variables map[string]string) (*configuration, error) {
 	// Open the file and defer its closure.
 	file, err := os.Open(path)
 	if err != nil {
@@ -216,5 +216,5 @@ func LoadConfiguration(path string, variables map[string]string) (*Configuration
 	defer file.Close()
 
 	// Perform decoding and interpolation.
-	return ReadConfiguration(file, variables)
+	return readConfiguration(file, variables)
 }
