@@ -3,7 +3,6 @@ package compose
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -295,36 +294,36 @@ func initializeProject() error {
 	return nil
 }
 
-// compose invokes Docker Compose with the specified arguments, environment,
-// standard input, and exit behavior. If environment is nil, then the Docker
-// Compose process will inherit the current environment. If input is nil, then
-// Docker Compose will read from the null device (os.DevNull). If an error
-// occurs while attempting to invoke Docker Compose, then this function will
-// print an error message and terminate the current process with an exit code of
-// 1. If invocation succeeds but Docker Compose exits with a non-0 exit code,
-// then this function won't print an error message but will terminate the
-// current process with a matching exit code. If invocation succeeds and Docker
-// Compose exits with an exit code of 0, then this function will simply return,
-// unless exitOnSuccess is specified, in which case this process will terminate
-// the current process with an exit code of 0.
-func compose(arguments []string, environment map[string]string, input io.Reader, exitOnSuccess bool) {
-	// Create the command.
-	compose := exec.Command("docker-compose", arguments...)
+// compose invokes Docker Compose with the specified top-level flags, command
+// name, and arguments. It forward standard input/output/error to the child
+// process and terminates the current process with the same exit code as the
+// child process. If an error occurs while trying to invoke Docker Compose, then
+// this function will print an error message and terminate the current process
+// with an error exit code. If command is an empty string, then no command is
+// specified to Docker Compose and arguments are ignored (though top-level flags
+// are still included in the Docker Compose invocation).
+func compose(topLevelFlags []string, command string, arguments []string) {
+	// TODO: Figure out if there's any signal handling that we need to set up.
+	// Docker Compose has a bunch of internal signal handling at its entry
+	// point, but this may not be necessary with the Go runtime in the same way
+	// that it is with the Python runtime. In any case, we'll likely need to
+	// forward signals.
 
-	// Set up the command environment.
-	if environment != nil {
-		compose.Env = make([]string, 0, len(environment))
-		for k, v := range environment {
-			compose.Env = append(compose.Env, fmt.Sprintf("%s=%s", k, v))
-		}
+	// Set up the Docker Compose commmand.
+	composeArguments := make([]string, 0, len(topLevelFlags)+1+len(arguments))
+	composeArguments = append(composeArguments, topLevelFlags...)
+	if command != "" {
+		composeArguments = append(composeArguments, command)
+		composeArguments = append(composeArguments, arguments...)
 	}
+	compose := exec.Command("docker-compose", composeArguments...)
 
-	// Set up input and output streams.
-	compose.Stdin = input
+	// Setup input and output streams.
+	compose.Stdin = os.Stdin
 	compose.Stdout = os.Stdout
 	compose.Stderr = os.Stderr
 
-	// Run the command.
+	// Run Docker Compose.
 	if err := compose.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitCode := exitErr.ExitCode(); exitCode < 1 {
@@ -337,10 +336,8 @@ func compose(arguments []string, environment map[string]string, input io.Reader,
 		}
 	}
 
-	// Terminate the current process if necessary.
-	if exitOnSuccess {
-		os.Exit(0)
-	}
+	// Success.
+	os.Exit(0)
 }
 
 // passthrough is a generic Cobra handler that will pass handling directly to
@@ -348,7 +345,5 @@ func compose(arguments []string, environment map[string]string, input io.Reader,
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	arguments = append([]string{command.CalledAs()}, arguments...)
-	arguments = append(topLevelFlags(), arguments...)
-	compose(arguments, nil, os.Stdin, true)
+	compose(topLevelFlags(), command.CalledAs(), arguments)
 }

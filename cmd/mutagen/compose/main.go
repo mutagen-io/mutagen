@@ -2,7 +2,6 @@ package compose
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -42,9 +41,9 @@ func topLevelFlags() (flags []string) {
 // normally.
 func handleTopLevelFlags() {
 	if rootConfiguration.help {
-		compose([]string{"--help"}, nil, os.Stdin, true)
+		compose([]string{"--help"}, "", nil)
 	} else if rootConfiguration.version {
-		compose([]string{"--version"}, nil, os.Stdin, true)
+		compose([]string{"--version"}, "", nil)
 	}
 }
 
@@ -70,9 +69,9 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // Docker Compose to display help information for arbitrary commands.
 func commandHelp(command *cobra.Command, _ []string) {
 	if command == RootCommand {
-		compose([]string{"--help"}, nil, os.Stdin, true)
+		compose([]string{"--help"}, "", nil)
 	}
-	compose([]string{command.CalledAs(), "--help"}, nil, os.Stdin, true)
+	compose(nil, command.CalledAs(), []string{"--help"})
 }
 
 func rootMain(_ *cobra.Command, arguments []string) {
@@ -80,7 +79,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		compose(nil, nil, os.Stdin, true)
+		compose(nil, "", nil)
 	}
 
 	// Handle unknown commands. We can't precisely emulate what Docker Compose
