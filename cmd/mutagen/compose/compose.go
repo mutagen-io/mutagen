@@ -345,5 +345,5 @@ func compose(topLevelFlags []string, command string, arguments []string) {
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	compose(topLevelFlags(), command.CalledAs(), arguments)
+	compose(topLevelFlags(false), command.CalledAs(), arguments)
 }

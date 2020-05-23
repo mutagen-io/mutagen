@@ -11,10 +11,24 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
-// topLevelFlags reconstitutes parsed top-level Docker Compose flags for use
-// with pass-through command implementations.
-func topLevelFlags() (flags []string) {
+// topLevelFlags reconstitutes parsed top-level Docker Compose flags. If
+// excludeProjectFlags is true, then -f/--file, -p/--project-name, and
+// --project-directory flags will be excluded.
+func topLevelFlags(excludeProjectFlags bool) (flags []string) {
 	RootCommand.Flags().Visit(func(flag *pflag.Flag) {
+		// Check for excluded flags.
+		if excludeProjectFlags {
+			switch flag.Name {
+			case "file":
+				return
+			case "project-name":
+				return
+			case "project-directory":
+				return
+			}
+		}
+
+		// Handle flags based on type.
 		switch flag.Value.Type() {
 		case "bool":
 			flags = append(flags, "--"+flag.Name)
