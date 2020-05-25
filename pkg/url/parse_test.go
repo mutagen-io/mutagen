@@ -615,9 +615,9 @@ func TestParseForwardingDockerWithSourceSpecificVariables(t *testing.T) {
 			Host:     "cøntainer",
 			Path:     "unix:/some/socket.sock",
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      sourceSpecificDockerHost,
-				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       defaultDockerHost,
+				"DOCKER_TLS_VERIFY": defaultDockerTLSVerify,
+				"DOCKER_CONTEXT":    sourceSpecificDockerContext,
 			},
 		},
 	}
@@ -634,9 +634,8 @@ func TestParseForwardingDockerWithDestinationSpecificVariables(t *testing.T) {
 			Host:     "cøntainer",
 			Path:     "tcp6:[::1]:5543",
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      defaultDockerHost,
-				DockerTLSVerifyEnvironmentVariable: destinationSpecificDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       defaultDockerHost,
+				"DOCKER_TLS_VERIFY": destinationSpecificDockerTLSVerify,
 			},
 		},
 	}
@@ -652,9 +651,8 @@ func TestParseDockerWithBetaSpecificVariables(t *testing.T) {
 			Host:     "cøntainer",
 			Path:     "/пат/to/the file",
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      defaultDockerHost,
-				DockerTLSVerifyEnvironmentVariable: betaSpecificDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       defaultDockerHost,
+				"DOCKER_TLS_VERIFY": betaSpecificDockerTLSVerify,
 			},
 		},
 	}
@@ -671,9 +669,8 @@ func TestParseDockerWithWindowsPathAndAlphaSpecificVariables(t *testing.T) {
 			Host:     "cøntainer",
 			Path:     `C:\пат/to\the file`,
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
-				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       alphaSpecificDockerHost,
+				"DOCKER_TLS_VERIFY": defaultDockerTLSVerify,
 			},
 		},
 	}
@@ -691,9 +688,8 @@ func TestParseDockerWithUsernameHomeRelativePathAndAlphaSpecificVariables(t *tes
 			Host:     "cøntainer",
 			Path:     "~/пат/to/the file",
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
-				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       alphaSpecificDockerHost,
+				"DOCKER_TLS_VERIFY": defaultDockerTLSVerify,
 			},
 		},
 	}
@@ -711,9 +707,8 @@ func TestParseDockerWithUsernameUserRelativePathAndAlphaSpecificVariables(t *tes
 			Host:     "cøntainer",
 			Path:     "~otheruser/пат/to/the file",
 			Environment: map[string]string{
-				DockerHostEnvironmentVariable:      alphaSpecificDockerHost,
-				DockerTLSVerifyEnvironmentVariable: defaultDockerTLSVerify,
-				DockerCertPathEnvironmentVariable:  "",
+				"DOCKER_HOST":       alphaSpecificDockerHost,
+				"DOCKER_TLS_VERIFY": defaultDockerTLSVerify,
 			},
 		},
 	}

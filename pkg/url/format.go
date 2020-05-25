@@ -124,7 +124,9 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 	// Add environment variable information if requested.
 	if environmentPrefix != "" {
 		for _, variable := range DockerEnvironmentVariables {
-			result += fmt.Sprintf("%s%s=%s", environmentPrefix, variable, u.Environment[variable])
+			if value, present := u.Environment[variable]; present {
+				result += fmt.Sprintf("%s%s=%s", environmentPrefix, variable, value)
+			}
 		}
 	}
 

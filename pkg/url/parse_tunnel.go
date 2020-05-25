@@ -8,10 +8,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
-const (
-	// tunnelURLPrefix is the lowercase version of the tunnel URL prefix.
-	tunnelURLPrefix = "tunnel://"
-)
+// tunnelURLPrefix is the lowercase version of the tunnel URL prefix.
+const tunnelURLPrefix = "tunnel://"
 
 // isTunnelURL checks whether or not a URL is a tunnel URL. It requires the
 // presence of a tunnel protocol prefix.

@@ -8,27 +8,16 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
-const (
-	// dockerURLPrefix is the lowercase version of the Docker URL prefix.
-	dockerURLPrefix = "docker://"
-
-	// DockerHostEnvironmentVariable is the name of the DOCKER_HOST environment
-	// variable.
-	DockerHostEnvironmentVariable = "DOCKER_HOST"
-	// DockerTLSVerifyEnvironmentVariable is the name of the DOCKER_TLS_VERIFY
-	// environment variable.
-	DockerTLSVerifyEnvironmentVariable = "DOCKER_TLS_VERIFY"
-	// DockerCertPathEnvironmentVariable is the name of the DOCKER_CERT_PATH
-	// environment variable.
-	DockerCertPathEnvironmentVariable = "DOCKER_CERT_PATH"
-)
+// dockerURLPrefix is the lowercase version of the Docker URL prefix.
+const dockerURLPrefix = "docker://"
 
 // DockerEnvironmentVariables is a list of Docker environment variables that
 // should be locked in to the URL at parse time.
 var DockerEnvironmentVariables = []string{
-	DockerHostEnvironmentVariable,
-	DockerTLSVerifyEnvironmentVariable,
-	DockerCertPathEnvironmentVariable,
+	"DOCKER_HOST",
+	"DOCKER_TLS_VERIFY",
+	"DOCKER_CERT_PATH",
+	"DOCKER_CONTEXT",
 }
 
 // isDockerURL checks whether or not a URL is a Docker URL. It requires the
@@ -130,19 +119,14 @@ func parseDocker(raw string, kind Kind, first bool) (*URL, error) {
 		panic("unhandled URL kind")
 	}
 
-	// Loop over and record the values for the Docker environment variables that
-	// we need to preserve. For the variables in question, Docker treats an
-	// empty value the same as an unspecified value, so we always store
-	// something for each variable, even if it's just an empty string to
-	// indicate that its value was empty or unspecified.
-	//
-	// TODO: I'm a little concerned that Docker may eventually add environment
-	// variables where an empty value is not the same as an unspecified value,
-	// but we'll cross that bridge when we come to it.
-	environment := make(map[string]string, len(DockerEnvironmentVariables))
+	// Store any Docker environment variables that we need to preserve. We only
+	// store variables that are actually present, because Docker behavior will
+	// vary depending on whether a variable is unset vs. set but empty.
+	environment := make(map[string]string)
 	for _, variable := range DockerEnvironmentVariables {
-		value, _ := getEnvironmentVariable(variable, kind, first)
-		environment[variable] = value
+		if value, present := getEnvironmentVariable(variable, kind, first); present {
+			environment[variable] = value
+		}
 	}
 
 	// Success.

@@ -1,42 +1,43 @@
 package docker
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/mutagen-io/mutagen/pkg/environment"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-// setDockerVariables sets all Docker environment variables to their values
-// frozen into the URL.
-func setDockerVariables(environment []string, variables map[string]string) []string {
-	// Populate all Docker environment variables, overriding any set in the base
-	// environment.
+// setDockerVariables updates a base environment specification by setting Docker
+// environment variables to match those from a Docker URL. Any known Docker
+// environment variables that aren't present in the URL's variables are filtered
+// from the environment.
+func setDockerVariables(base []string, variables map[string]string) []string {
+	// Convert the base environment to a map for easier manipulation.
+	result := environment.ToMap(base)
+
+	// Populate Docker environment variables. If a given variable wasn't stored
+	// in the URL, then remove it from the environment.
 	for _, variable := range url.DockerEnvironmentVariables {
-		environment = append(environment,
-			fmt.Sprintf("%s=%s", variable, variables[variable]),
-		)
+		if value, ok := variables[variable]; ok {
+			result[variable] = value
+		} else {
+			delete(result, variable)
+		}
 	}
 
 	// Done.
-	return environment
+	return environment.FromMap(result)
 }
 
 // findEnviromentVariable parses an environment variable block of the form
 // VAR1=value1[\r]\nVAR2=value2[\r]\n... and searches for the specified
 // variable.
-func findEnviromentVariable(outputBlock, variable string) (string, bool) {
-	// Parse the output block into a series of VAR=value lines. First we replace
-	// \r\n instances with \n, in case the block comes from Windows, trim any
-	// outer whitespace (e.g. trailing newlines), and then split on newlines.
-	// TODO: We might be able to switch this function to use a bufio.Scanner for
-	// greater efficiency.
-	outputBlock = strings.ReplaceAll(outputBlock, "\r\n", "\n")
-	outputBlock = strings.TrimSpace(outputBlock)
-	environment := strings.Split(outputBlock, "\n")
+func findEnviromentVariable(block, variable string) (string, bool) {
+	// Parse the environment variable block.
+	parsed := environment.ParseBlock(block)
 
 	// Search through the environment for the specified variable.
-	for _, line := range environment {
+	for _, line := range parsed {
 		if strings.HasPrefix(line, variable+"=") {
 			return line[len(variable)+1:], true
 		}

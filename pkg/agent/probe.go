@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/mutagen-io/mutagen/pkg/environment"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
@@ -129,15 +130,8 @@ func probeWindows(transport Transport) (string, string, error) {
 		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
 
-	// Parse the output block into a series of VAR=value lines. First we replace
-	// \r\n instances with \n, in case the block comes from Windows, trim any
-	// outer whitespace (e.g. trailing newlines), and then split on newlines.
-	// TODO: We might be able to switch this function to use a bufio.Scanner for
-	// greater efficiency.
-	output := string(outputBytes)
-	output = strings.ReplaceAll(output, "\r\n", "\n")
-	output = strings.TrimSpace(output)
-	environment := strings.Split(output, "\n")
+	// Parse the output block into a series of KEY=value specifications.
+	environment := environment.ParseBlock(string(outputBytes))
 
 	// Extract the OS and PROCESSOR_ARCHITECTURE environment variables.
 	var os, processorArchitecture string
