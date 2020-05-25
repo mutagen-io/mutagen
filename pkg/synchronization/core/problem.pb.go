@@ -71,7 +71,9 @@ func init() {
 	proto.RegisterType((*Problem)(nil), "core.Problem")
 }
 
-func init() { proto.RegisterFile("synchronization/core/problem.proto", fileDescriptor_c69c1ae42800a2d2) }
+func init() {
+	proto.RegisterFile("synchronization/core/problem.proto", fileDescriptor_c69c1ae42800a2d2)
+}
 
 var fileDescriptor_c69c1ae42800a2d2 = []byte{
 	// 142 bytes of a gzipped FileDescriptorProto

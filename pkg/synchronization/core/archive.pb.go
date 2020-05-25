@@ -70,7 +70,9 @@ func init() {
 	proto.RegisterType((*Archive)(nil), "core.Archive")
 }
 
-func init() { proto.RegisterFile("synchronization/core/archive.proto", fileDescriptor_b604a3e22a5b0a8f) }
+func init() {
+	proto.RegisterFile("synchronization/core/archive.proto", fileDescriptor_b604a3e22a5b0a8f)
+}
 
 var fileDescriptor_b604a3e22a5b0a8f = []byte{
 	// 147 bytes of a gzipped FileDescriptorProto

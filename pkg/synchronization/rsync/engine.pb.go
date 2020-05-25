@@ -201,7 +201,9 @@ func init() {
 	proto.RegisterType((*Operation)(nil), "rsync.Operation")
 }
 
-func init() { proto.RegisterFile("synchronization/rsync/engine.proto", fileDescriptor_85ce5fc7179b049d) }
+func init() {
+	proto.RegisterFile("synchronization/rsync/engine.proto", fileDescriptor_85ce5fc7179b049d)
+}
 
 var fileDescriptor_85ce5fc7179b049d = []byte{
 	// 259 bytes of a gzipped FileDescriptorProto
