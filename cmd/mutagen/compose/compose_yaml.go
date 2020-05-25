@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -127,13 +126,20 @@ func interpolateNode(node *yaml.Node, mapping template.Mapping) error {
 	return nil
 }
 
-// readConfiguration reads, interpolates, and decodes a Docker Compose
-// configuration file from the specified stream. If the stream contains multiple
+// loadConfiguration reads, interpolates, and decodes a Docker Compose
+// configuration file from the specified file. If the file contains multiple
 // YAML documents, then only the first will be read. Interpolation is performed
 // using the specified variable mapping.
-func readConfiguration(stream io.Reader, variables map[string]string) (*configuration, error) {
-	// Wrap the stream in a YAML decoder.
-	decoder := yaml.NewDecoder(stream)
+func loadConfiguration(path string, variables map[string]string) (*configuration, error) {
+	// Open the file and defer its closure.
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open configuration file: %w", err)
+	}
+	defer file.Close()
+
+	// Wrap the file in a YAML decoder.
+	decoder := yaml.NewDecoder(file)
 
 	// Perform a generic decoding operation.
 	var root yaml.Node
@@ -201,20 +207,4 @@ func readConfiguration(stream io.Reader, variables map[string]string) (*configur
 
 	// Success.
 	return result, nil
-}
-
-// loadConfiguration reads, interpolates, and decodes a Docker Compose
-// configuration file from the specified file. If the file contains multiple
-// YAML documents, then only the first will be read. Interpolation is performed
-// using the specified variable mapping.
-func loadConfiguration(path string, variables map[string]string) (*configuration, error) {
-	// Open the file and defer its closure.
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open configuration file: %w", err)
-	}
-	defer file.Close()
-
-	// Perform decoding and interpolation.
-	return readConfiguration(file, variables)
 }
