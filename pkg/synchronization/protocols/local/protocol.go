@@ -33,6 +33,14 @@ func (h *protocolHandler) Connect(
 		panic("non-local URL dispatched to local protocol handler")
 	}
 
+	// Ensure that no environment variables or parameters are specified. These
+	// are neither expected nor supported for local URLs.
+	if len(url.Environment) > 0 {
+		return nil, errors.New("local URL contains environment variables")
+	} else if len(url.Parameters) > 0 {
+		return nil, errors.New("local URL contains internal parameters")
+	}
+
 	// Create a local endpoint.
 	endpoint, err := local.NewEndpoint(logger, url.Path, session, version, configuration, alpha)
 	if err != nil {

@@ -46,6 +46,14 @@ func (p *protocolHandler) Connect(
 		panic("non-SSH URL dispatched to SSH protocol handler")
 	}
 
+	// Ensure that no environment variables or parameters are specified. These
+	// are neither expected nor supported for SSH URLs.
+	if len(url.Environment) > 0 {
+		return nil, errors.New("SSH URL contains environment variables")
+	} else if len(url.Parameters) > 0 {
+		return nil, errors.New("SSH URL contains internal parameters")
+	}
+
 	// Parse the target specification from the URL's Path component.
 	protocol, address, err := forwardingurlpkg.Parse(url.Path)
 	if err != nil {

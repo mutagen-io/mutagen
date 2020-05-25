@@ -45,6 +45,14 @@ func (h *protocolHandler) Connect(
 		panic("non-tunnel URL dispatched to tunnel protocol handler")
 	}
 
+	// Ensure that no environment variables or parameters are specified. These
+	// are neither expected nor supported for tunnel URLs.
+	if len(url.Environment) > 0 {
+		return nil, errors.New("tunnel URL contains environment variables")
+	} else if len(url.Parameters) > 0 {
+		return nil, errors.New("tunnel URL contains internal parameters")
+	}
+
 	// Dial an agent over the tunnel in endpoint mode.
 	connection, err := h.manager.Dial(ctx, url.Host, agent.ModeSynchronizer, prompter)
 	if err != nil {

@@ -35,6 +35,8 @@ type transport struct {
 	// environment is the collection of environment variables that need to be
 	// set for the Docker executable.
 	environment map[string]string
+	// topLevelFlags are the top-level flags to use with Docker commands.
+	topLevelFlags []string
 	// prompter is the prompter identifier to use for prompting.
 	prompter string
 	// containerProbed indicates whether or not container probing has occurred.
@@ -62,12 +64,20 @@ type transport struct {
 }
 
 // NewTransport creates a new Docker transport using the specified parameters.
-func NewTransport(container, user string, environment map[string]string, prompter string) (agent.Transport, error) {
+func NewTransport(container, user string, environment, parameters map[string]string, prompter string) (agent.Transport, error) {
+	// Convert parameters to top-level flags.
+	topLevelFlags, err := parametersToTopLevelFlags(parameters)
+	if err != nil {
+		return nil, fmt.Errorf("unable to compute Docker flags: %w", err)
+	}
+
+	// Success.
 	return &transport{
-		container:   container,
-		user:        user,
-		environment: environment,
-		prompter:    prompter,
+		container:     container,
+		user:          user,
+		environment:   environment,
+		topLevelFlags: topLevelFlags,
+		prompter:      prompter,
 	}, nil
 }
 
@@ -76,9 +86,13 @@ func NewTransport(container, user string, environment map[string]string, prompte
 // override of the executing user. An empty user specification means to use the
 // username specified in the remote URL, if any.
 func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, error) {
+	// Set up top-level command-line flags.
+	var dockerArguments []string
+	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+
 	// Tell Docker that we want to execute a command in an interactive (i.e.
 	// with standard input attached) fashion.
-	dockerArguments := []string{"exec", "--interactive"}
+	dockerArguments = append(dockerArguments, "exec", "--interactive")
 
 	// If specified, tell Docker which user should be used to execute commands
 	// inside the container.
@@ -272,14 +286,19 @@ func (t *transport) probeContainer() error {
 // changeContainerStatus stops or starts the container. It is required for
 // copying files on Windows when using Hyper-V.
 func (t *transport) changeContainerStatus(stop bool) error {
-	// Determine the correct Docker operation.
-	operation := "start"
+	// Set up top-level command-line flags.
+	var dockerArguments []string
+	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+
+	// Set up the stop (or start) command.
 	if stop {
-		operation = "stop"
+		dockerArguments = append(dockerArguments, "stop", t.container)
+	} else {
+		dockerArguments = append(dockerArguments, "start", t.container)
 	}
 
 	// Create the command.
-	dockerCommand, err := docker.Command(context.Background(), operation, t.container)
+	dockerCommand, err := docker.Command(context.Background(), dockerArguments...)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}
@@ -357,8 +376,15 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		)
 	}
 
+	// Set up top-level command-line flags.
+	var dockerArguments []string
+	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+
+	// Set up the copy command.
+	dockerArguments = append(dockerArguments, "cp", localPath, containerPath)
+
 	// Create the command.
-	dockerCommand, err := docker.Command(context.Background(), "cp", localPath, containerPath)
+	dockerCommand, err := docker.Command(context.Background(), dockerArguments...)
 	if err != nil {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}

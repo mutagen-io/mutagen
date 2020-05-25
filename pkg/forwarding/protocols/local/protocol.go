@@ -34,6 +34,14 @@ func (p *protocolHandler) Connect(
 		panic("non-local URL dispatched to local protocol handler")
 	}
 
+	// Ensure that no environment variables or parameters are specified. These
+	// are neither expected nor supported for local URLs.
+	if len(url.Environment) > 0 {
+		return nil, errors.New("local URL contains environment variables")
+	} else if len(url.Parameters) > 0 {
+		return nil, errors.New("local URL contains internal parameters")
+	}
+
 	// Parse the target specification from the URL's Path component.
 	protocol, address, err := forwardingurl.Parse(url.Path)
 	if err != nil {
