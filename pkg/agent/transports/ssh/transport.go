@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
-	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh/internal/ssh"
 	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/tools/ssh"
 )
 
 const (
