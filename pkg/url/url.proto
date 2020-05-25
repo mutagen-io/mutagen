@@ -47,9 +47,14 @@ message URL {
     uint32 port = 4;
     // Path indicates the path of a resource.
     string path = 5;
-    // Environment is used to capture environment variable information (if
-    // necessary) for transports which operate by executing a command.
+    // Environment contains captured environment variable information. It is not
+    // a required component and its contents and their behavior depend on the
+    // transport implementation.
     map<string, string> environment = 6;
     // Field 7 is already used above for the kind field. It is out of order for
     // historical reasons.
+    // Parameters are internal transport parameters. These are set for URLs
+    // generated internally that require additional metadata. Parameters are not
+    // requires and their behavior is dependent on the transport implementation.
+    map<string, string> parameters = 8;
 }
