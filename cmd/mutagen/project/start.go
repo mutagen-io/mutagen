@@ -16,7 +16,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
 	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
-	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
@@ -116,7 +115,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Load the configuration file.
-	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
+	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
 		return errors.Wrap(err, "unable to load configuration file")
 	}
@@ -187,7 +186,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Extract and validate synchronization defaults.
 	var defaultAlpha, defaultBeta string
-	var defaultFlushOnCreate projectcfg.FlushOnCreateBehavior
+	var defaultFlushOnCreate project.FlushOnCreateBehavior
 	defaultConfigurationSynchronization := &synchronization.Configuration{}
 	defaultConfigurationAlpha := &synchronization.Configuration{}
 	defaultConfigurationBeta := &synchronization.Configuration{}

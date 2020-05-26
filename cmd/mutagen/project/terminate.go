@@ -13,7 +13,6 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
-	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -99,7 +98,7 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Load the configuration file.
-	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
+	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
 		return errors.Wrap(err, "unable to load configuration file")
 	}

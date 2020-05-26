@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	projectcfg "github.com/mutagen-io/mutagen/pkg/configuration/project"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -102,7 +101,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	}
 
 	// Load the configuration file.
-	configuration, err := projectcfg.LoadConfiguration(configurationFileName)
+	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
 		return errors.Wrap(err, "unable to load configuration file")
 	}
