@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
+	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
-	"github.com/mutagen-io/mutagen/pkg/tools/docker"
 	"github.com/mutagen-io/mutagen/pkg/url"
 	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )

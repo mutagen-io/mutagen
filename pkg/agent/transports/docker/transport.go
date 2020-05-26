@@ -12,9 +12,9 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh"
+	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
-	"github.com/mutagen-io/mutagen/pkg/tools/docker"
 )
 
 // windowsContainerNotification is a prompt about copying files into Windows

@@ -14,7 +14,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/compose"
-	"github.com/mutagen-io/mutagen/pkg/tools/docker"
+	"github.com/mutagen-io/mutagen/pkg/docker"
 )
 
 // invoke invokes Docker Compose with the specified top-level flags, command
