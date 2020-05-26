@@ -16,6 +16,7 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/tools/docker"
 	"github.com/mutagen-io/mutagen/pkg/url"
 	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
@@ -25,11 +26,19 @@ const (
 	mutagenServiceName = "mutagen"
 )
 
-// mutagenDockerfile is the Dockerfile template for the Mutagen service.
-const mutagenDockerfile = `FROM alpine:latest
+// mutagenDockerfileLinux is the Dockerfile template for the Mutagen service
+// when using a Linux-based Docker daemon.
+const mutagenDockerfileLinux = `FROM alpine:latest
 RUN ["mkdir", "/volumes"]
 ENTRYPOINT ["tail", "-f", "/dev/null"]
 `
+
+// mutagenDockerfileWindows is the Dockerfile template for the Mutagen service
+// when using a Windows-based Docker daemon.
+// TODO: Implement this image. We'll likely wnat to use a Windows Server Core
+// base image, but the versioning is more complex and tied to the Docker daemon
+// host. We may need to probe for additional information from the Docker daemon.
+const mutagenDockerfileWindows = ``
 
 // mutagenComposeYAML is the Docker Compose configuration template for the
 // Mutagen service and any reverse forwarding services.
@@ -123,12 +132,40 @@ func parseNetworkURL(raw string, environment map[string]string, mutagenContainer
 	}, network, nil
 }
 
+// isSupportedDaemonOS returns whether or not a Docker daemon OS is supported by
+// Mutagen's Docker Compose integration.
+func isSupportedDaemonOS(daemonOS string) bool {
+	switch daemonOS {
+	case "linux":
+		return true
+	case "windows":
+		// TODO: Enable Windows support once implemented.
+		return false
+	default:
+		return false
+	}
+}
+
 // mountPathForVolumeInMutagenContainer returns the mount path that will be used
 // for a volume inside the Mutagen container. The path will be returned without
-// a trailing slash.
-// TODO: For Windows support, we'll need to use `c:\volumes\` (or similar).
-func mountPathForVolumeInMutagenContainer(volume string) string {
-	return "/volumes/" + volume
+// a trailing slash. The daemon OS must be supported (as indicated by
+// isSupportedDaemonOS) and the volume name non-empty, otherwise this function
+// will panic.
+func mountPathForVolumeInMutagenContainer(daemonOS, volume string) string {
+	// Verify that the volume is non-empty.
+	if volume == "" {
+		panic("empty volume name")
+	}
+
+	// Compute the path based on the daemon OS.
+	switch daemonOS {
+	case "linux":
+		return "/volumes/" + volume
+	case "windows":
+		return `c:\volumes\` + volume
+	default:
+		panic("unsupported daemon OS")
+	}
 }
 
 // volumeURLPrefix is the lowercase version of the volume URL prefix.
@@ -146,7 +183,7 @@ func isVolumeURL(raw string) bool {
 // "dotenv" files). This function also returns the volume dependency for the
 // URL. This function must only be called on URLs that have been classified as
 // volume URLs by isVolumeURL, otherwise this function may panic.
-func parseVolumeURL(raw string, environment map[string]string, mutagenContainerName string) (*url.URL, string, error) {
+func parseVolumeURL(raw string, environment map[string]string, daemonOS, mutagenContainerName string) (*url.URL, string, error) {
 	// Strip off the prefix
 	raw = raw[len(volumeURLPrefix):]
 
@@ -156,12 +193,12 @@ func parseVolumeURL(raw string, environment map[string]string, mutagenContainerN
 	var volume, path string
 	if slashIndex := strings.IndexByte(raw, '/'); slashIndex < 0 {
 		volume = raw
-		path = mountPathForVolumeInMutagenContainer(volume)
+		path = mountPathForVolumeInMutagenContainer(daemonOS, volume)
 	} else if slashIndex == 0 {
 		return nil, "", errors.New("empty volume name")
 	} else {
 		volume = raw[:slashIndex]
-		path = mountPathForVolumeInMutagenContainer(volume) + raw[slashIndex:]
+		path = mountPathForVolumeInMutagenContainer(daemonOS, volume) + raw[slashIndex:]
 	}
 
 	// Store any Docker environment variables that we need to preserve. We only
@@ -222,6 +259,10 @@ type project struct {
 	forwarding map[string]*forwardingsvc.CreationSpecification
 	// synchronization are the synchronization session specifications.
 	synchronization map[string]*synchronizationsvc.CreationSpecification
+	// daemonOS is the target Docker daemon OS.
+	daemonOS string
+	// daemonIdentifier is the target Docker daemon identifier.
+	daemonIdentifier string
 	// temporaryDirectory is the temorary directory in which generated files are
 	// stored for the project.
 	temporaryDirectory string
@@ -282,6 +323,18 @@ func loadProject() (*project, error) {
 	environment, err := compose.LoadEnvironment(environmentFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load/compute environment: %w", err)
+	}
+
+	// Query the Docker daemon metadata.
+	daemonOS, daemonIdentifier, err := docker.GetDaemonMetadata(rootConfiguration.DaemonConnectionFlags, environment)
+	if err != nil {
+		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
+	}
+
+	// Ensure that the Docker daemon is running an OS supported by Mutagen's
+	// Docker Compose integration.
+	if !isSupportedDaemonOS(daemonOS) {
+		return nil, fmt.Errorf("unsupported Docker daemon OS: %s", daemonOS)
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
@@ -606,7 +659,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var alphaURL *url.URL
 		if alphaIsVolume {
-			if a, volume, err := parseVolumeURL(session.Alpha, environment, mutagenContainerName); err != nil {
+			if a, volume, err := parseVolumeURL(session.Alpha, environment, daemonOS, mutagenContainerName); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization alpha URL (%s): %w", session.Alpha, err)
 			} else {
 				alphaURL = a
@@ -625,7 +678,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var betaURL *url.URL
 		if betaIsVolume {
-			if b, volume, err := parseVolumeURL(session.Beta, environment, mutagenContainerName); err != nil {
+			if b, volume, err := parseVolumeURL(session.Beta, environment, daemonOS, mutagenContainerName); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization beta URL (%s): %w", session.Beta, err)
 			} else {
 				betaURL = b
@@ -691,6 +744,8 @@ func loadProject() (*project, error) {
 		name:               projectName,
 		forwarding:         forwardingSpecifications,
 		synchronization:    synchronizationSpecifications,
+		daemonOS:           daemonOS,
+		daemonIdentifier:   daemonIdentifier,
 		temporaryDirectory: temporaryDirectory,
 	}, nil
 }
