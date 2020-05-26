@@ -80,6 +80,21 @@ func isNetworkURL(raw string) bool {
 	return strings.HasPrefix(strings.ToLower(raw), networkURLPrefix)
 }
 
+// isSupportedForwardingProtocol checks if a forwarding endpoint protocol is
+// supported for use with Docker Compose.
+func isSupportedForwardingProtocol(protocol string) bool {
+	switch protocol {
+	case "tcp":
+		return true
+	case "tcp4":
+		return true
+	case "tcp6":
+		return true
+	default:
+		return false
+	}
+}
+
 // parseNetworkURL parses a Docker Compose network pseudo-URL, converting it to
 // a concrete Mutagen Docker URL. It uses the top-level daemon connection flags
 // to determine URL parameters and looks for Docker environment variables in the
@@ -102,9 +117,12 @@ func parseNetworkURL(raw string, environment map[string]string, mutagenContainer
 		endpoint = raw[colonIndex+1:]
 	}
 
-	// Parse the forwarding endpoint URL to ensure that it's valid.
-	if _, _, err := forwardingurl.Parse(endpoint); err != nil {
+	// Parse the forwarding endpoint URL to ensure that it's valid and supported
+	// for use with Docker Compose.
+	if protocol, _, err := forwardingurl.Parse(endpoint); err != nil {
 		return nil, "", fmt.Errorf("invalid forwarding endpoint URL: %w", err)
+	} else if !isSupportedForwardingProtocol(protocol) {
+		return nil, "", fmt.Errorf("forwarding endpoint protocol (%s) not supported", protocol)
 	}
 
 	// Store any Docker environment variables that we need to preserve. We only
@@ -577,6 +595,10 @@ func loadProject() (*project, error) {
 			return nil, fmt.Errorf("unable to parse forwarding source URL (%s): %w", session.Source, err)
 		} else if sourceURL.Protocol != url.Protocol_Local {
 			return nil, errors.New("only local URLs allowed as forwarding sources")
+		} else if protocol, _, err := forwardingurl.Parse(sourceURL.Path); err != nil {
+			panic("forwarding URL failed to reparse")
+		} else if !isSupportedForwardingProtocol(protocol) {
+			return nil, fmt.Errorf("forwarding source endpoint protocol (%s) not supported", protocol)
 		}
 
 		// Parse and validate the destination URL. At the moment, we only allow
@@ -670,6 +692,11 @@ func loadProject() (*project, error) {
 			} else if alphaURL.Protocol != url.Protocol_Local {
 				return nil, errors.New("only local and volume URLs allowed as synchronization URLs")
 			}
+			if !filepath.IsAbs(session.Alpha) {
+				if alphaURL.Path, err = filepath.Abs(filepath.Join(projectDirectory, session.Alpha)); err != nil {
+					return nil, fmt.Errorf("unable to resolve relative alpha URL (%s): %w", session.Alpha, err)
+				}
+			}
 		}
 
 		// Parse and validate the beta URL. If it isn't a volume URL, then it
@@ -688,6 +715,11 @@ func loadProject() (*project, error) {
 				return nil, fmt.Errorf("unable to parse synchronization beta URL (%s): %w", session.Beta, err)
 			} else if betaURL.Protocol != url.Protocol_Local {
 				return nil, errors.New("only local and volume URLs allowed as synchronization URLs")
+			}
+			if !filepath.IsAbs(session.Beta) {
+				if betaURL.Path, err = filepath.Abs(filepath.Join(projectDirectory, session.Beta)); err != nil {
+					return nil, fmt.Errorf("unable to resolve relative beta URL (%s): %w", session.Beta, err)
+				}
 			}
 		}
 
