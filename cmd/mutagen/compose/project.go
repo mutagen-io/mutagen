@@ -259,10 +259,8 @@ type project struct {
 	forwarding map[string]*forwardingsvc.CreationSpecification
 	// synchronization are the synchronization session specifications.
 	synchronization map[string]*synchronizationsvc.CreationSpecification
-	// daemonOS is the target Docker daemon OS.
-	daemonOS string
-	// daemonIdentifier is the target Docker daemon identifier.
-	daemonIdentifier string
+	// daemonMetadata is the target Docker daemon metadata.
+	daemonMetadata *docker.DaemonMetadata
 	// temporaryDirectory is the temorary directory in which generated files are
 	// stored for the project.
 	temporaryDirectory string
@@ -326,15 +324,15 @@ func loadProject() (*project, error) {
 	}
 
 	// Query the Docker daemon metadata.
-	daemonOS, daemonIdentifier, err := docker.GetDaemonMetadata(rootConfiguration.DaemonConnectionFlags, environment)
+	daemonMetadata, err := docker.GetDaemonMetadata(rootConfiguration.DaemonConnectionFlags, environment)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
 	}
 
 	// Ensure that the Docker daemon is running an OS supported by Mutagen's
 	// Docker Compose integration.
-	if !isSupportedDaemonOS(daemonOS) {
-		return nil, fmt.Errorf("unsupported Docker daemon OS: %s", daemonOS)
+	if !isSupportedDaemonOS(daemonMetadata.OSType) {
+		return nil, fmt.Errorf("unsupported Docker daemon OS: %s", daemonMetadata.OSType)
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
@@ -659,7 +657,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var alphaURL *url.URL
 		if alphaIsVolume {
-			if a, volume, err := parseVolumeURL(session.Alpha, environment, daemonOS, mutagenContainerName); err != nil {
+			if a, volume, err := parseVolumeURL(session.Alpha, environment, daemonMetadata.OSType, mutagenContainerName); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization alpha URL (%s): %w", session.Alpha, err)
 			} else {
 				alphaURL = a
@@ -678,7 +676,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var betaURL *url.URL
 		if betaIsVolume {
-			if b, volume, err := parseVolumeURL(session.Beta, environment, daemonOS, mutagenContainerName); err != nil {
+			if b, volume, err := parseVolumeURL(session.Beta, environment, daemonMetadata.OSType, mutagenContainerName); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization beta URL (%s): %w", session.Beta, err)
 			} else {
 				betaURL = b
@@ -744,8 +742,7 @@ func loadProject() (*project, error) {
 		name:               projectName,
 		forwarding:         forwardingSpecifications,
 		synchronization:    synchronizationSpecifications,
-		daemonOS:           daemonOS,
-		daemonIdentifier:   daemonIdentifier,
+		daemonMetadata:     daemonMetadata,
 		temporaryDirectory: temporaryDirectory,
 	}, nil
 }
