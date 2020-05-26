@@ -1,7 +1,11 @@
 package compose
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -9,11 +13,69 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/pkg/compose"
+	"github.com/mutagen-io/mutagen/pkg/tools/docker"
 )
 
+// invoke invokes Docker Compose with the specified top-level flags, command
+// name, and arguments. It forwards standard input/output/error streams to the
+// child process and terminates the current process with the same exit code as
+// the child process. If an error occurs while trying to invoke Docker Compose,
+// then this function will print an error message and terminate the current
+// process with an error exit code. If command is an empty string, then no
+// command is specified to Docker Compose and arguments are ignored (though
+// top-level flags are still included in the Docker Compose invocation). Upon
+// successful invocation, this function will terminate the current process with
+// an exit code of 0 if exitOnSuccess is true, otherwise it will return control
+// to the caller.
+func invoke(topLevelFlags []string, command string, arguments []string, exitOnSuccess bool) {
+	// Compute the Docker Compose arguments.
+	composeArguments := make([]string, 0, len(topLevelFlags)+1+len(arguments))
+	composeArguments = append(composeArguments, topLevelFlags...)
+	if command != "" {
+		composeArguments = append(composeArguments, command)
+		composeArguments = append(composeArguments, arguments...)
+	}
+
+	// Set up the Docker Compose commmand.
+	compose, err := compose.Command(context.Background(), composeArguments...)
+	if err != nil {
+		cmd.Fatal(fmt.Errorf("unable to set up Docker Compose invocation: %w", err))
+	}
+
+	// Setup input and output streams.
+	compose.Stdin = os.Stdin
+	compose.Stdout = os.Stdout
+	compose.Stderr = os.Stderr
+
+	// TODO: Figure out if there's any signal handling that we need to set up.
+	// Docker Compose has a bunch of internal signal handling at its entry
+	// point, but this may not be necessary with the Go runtime in the same way
+	// that it is with the Python runtime. In any case, we'll likely need to
+	// forward signals.
+
+	// Run the command.
+	if err := compose.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitCode := exitErr.ExitCode(); exitCode < 1 {
+				os.Exit(1)
+			} else {
+				os.Exit(exitCode)
+			}
+		} else {
+			cmd.Fatal(fmt.Errorf("unable to invoke Docker Compose: %w", err))
+		}
+	}
+
+	// Success.
+	if exitOnSuccess {
+		os.Exit(0)
+	}
+}
+
 // topLevelFlags reconstitutes parsed top-level Docker Compose flags. If
-// excludeProjectFlags is true, then -f/--file, -p/--project-name, and
-// --project-directory flags will be excluded.
+// excludeProjectFlags is true, then -f/--file, -p/--project-name,
+// --project-directory, and --env-file flags will be excluded.
 func topLevelFlags(excludeProjectFlags bool) (flags []string) {
 	RootCommand.Flags().Visit(func(flag *pflag.Flag) {
 		// Check for excluded flags.
@@ -24,6 +86,8 @@ func topLevelFlags(excludeProjectFlags bool) (flags []string) {
 			case "project-name":
 				return
 			case "project-directory":
+				return
+			case "env-file":
 				return
 			}
 		}
@@ -54,10 +118,20 @@ func topLevelFlags(excludeProjectFlags bool) (flags []string) {
 // command is specified. If this function returns, then execution can continue
 // normally.
 func handleTopLevelFlags() {
+	// Handle help and version flags. Help behavior always take precedence over
+	// version behavior, even if the -v/--version flag is specified before the
+	// -h/--help flag.
 	if rootConfiguration.help {
-		compose([]string{"--help"}, "", nil)
+		invoke([]string{"--help"}, "", nil, true)
 	} else if rootConfiguration.version {
-		compose([]string{"--version"}, "", nil)
+		invoke([]string{"--version"}, "", nil, true)
+	}
+
+	// Enforce that the --skip-hostname-check flag isn't specified. This flag
+	// isn't currently supported by Mutagen's Docker transport because it isn't
+	// supported by the Docker CLI.
+	if rootConfiguration.skipHostnameCheck {
+		cmd.Fatal(errors.New("--skip-hostname-check flag not supported by Mutagen"))
 	}
 }
 
@@ -84,16 +158,16 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	compose(topLevelFlags(false), command.CalledAs(), arguments)
+	invoke(topLevelFlags(false), command.CalledAs(), arguments, true)
 }
 
-// commandHelp is an alternative help function for Cobra that shells out to
-// Docker Compose to display help information for arbitrary commands.
+// commandHelp is a Cobra help function that shells out to Docker Compose to
+// display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
 	if command == RootCommand {
-		compose([]string{"--help"}, "", nil)
+		invoke([]string{"--help"}, "", nil, true)
 	}
-	compose(nil, command.CalledAs(), []string{"--help"})
+	invoke(nil, command.CalledAs(), []string{"--help"}, true)
 }
 
 func rootMain(_ *cobra.Command, arguments []string) {
@@ -101,7 +175,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		compose(nil, "", nil)
+		invoke(nil, "", nil, true)
 	}
 
 	// Handle unknown commands. We can't precisely emulate what Docker Compose
@@ -131,6 +205,9 @@ var rootConfiguration struct {
 	file []string
 	// projectName stores the value of the -p/--project-name flag.
 	projectName string
+	// DaemonConnectionFlags are the flags that control the Docker daemon
+	// connection.
+	docker.DaemonConnectionFlags
 	// verbose indicates the presence of the --verbose flag.
 	verbose bool
 	// logLevel stores the value of the --log-level flag.
@@ -139,18 +216,6 @@ var rootConfiguration struct {
 	noANSI bool
 	// version indicates the presence of the -v/--version flag.
 	version bool
-	// host stores the value of the -H/--host flag.
-	host string
-	// tls indicates the presence of the --tls flag.
-	tls bool
-	// tlsCACert stores the value of the --tlscacert flag.
-	tlsCACert string
-	// tlsCert stores the value of the --tlscert flag.
-	tlsCert string
-	// tlsKey stores the value of the --tlskey flag.
-	tlsKey string
-	// tlsVerify indicates the presence of the --tlsverify flag.
-	tlsVerify bool
 	// skipHostnameCheck indicates the presence of the --skip-hostname-check
 	// flag.
 	skipHostnameCheck bool
@@ -179,16 +244,17 @@ func init() {
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "")
 	flags.StringSliceVarP(&rootConfiguration.file, "file", "f", nil, "")
 	flags.StringVarP(&rootConfiguration.projectName, "project-name", "p", "", "")
+	flags.StringVarP(&rootConfiguration.Context, "context", "c", "", "")
 	flags.BoolVar(&rootConfiguration.verbose, "verbose", false, "")
 	flags.StringVar(&rootConfiguration.logLevel, "log-level", "", "")
 	flags.BoolVar(&rootConfiguration.noANSI, "no-ansi", false, "")
 	flags.BoolVarP(&rootConfiguration.version, "version", "v", false, "")
-	flags.StringVarP(&rootConfiguration.host, "host", "H", "", "")
-	flags.BoolVar(&rootConfiguration.tls, "tls", false, "")
-	flags.StringVar(&rootConfiguration.tlsCACert, "tlscacert", "", "")
-	flags.StringVar(&rootConfiguration.tlsCert, "tlscert", "", "")
-	flags.StringVar(&rootConfiguration.tlsKey, "tlskey", "", "")
-	flags.BoolVar(&rootConfiguration.tlsVerify, "tlsverify", false, "")
+	flags.StringVarP(&rootConfiguration.Host, "host", "H", "", "")
+	flags.BoolVar(&rootConfiguration.TLS, "tls", false, "")
+	flags.StringVar(&rootConfiguration.TLSCACert, "tlscacert", "", "")
+	flags.StringVar(&rootConfiguration.TLSCert, "tlscert", "", "")
+	flags.StringVar(&rootConfiguration.TLSKey, "tlskey", "", "")
+	flags.BoolVar(&rootConfiguration.TLSVerify, "tlsverify", false, "")
 	flags.BoolVar(&rootConfiguration.skipHostnameCheck, "skip-hostname-check", false, "")
 	flags.StringVar(&rootConfiguration.projectDirectory, "project-directory", "", "")
 	flags.BoolVar(&rootConfiguration.compatibility, "compatibility", false, "")

@@ -12,7 +12,7 @@ import (
 const dockerURLPrefix = "docker://"
 
 // DockerEnvironmentVariables is a list of Docker environment variables that
-// should be locked in to the URL at parse time.
+// should be locked in to Docker URLs at parse time.
 var DockerEnvironmentVariables = []string{
 	"DOCKER_HOST",
 	"DOCKER_TLS_VERIFY",

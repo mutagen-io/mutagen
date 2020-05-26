@@ -35,8 +35,9 @@ type transport struct {
 	// environment is the collection of environment variables that need to be
 	// set for the Docker executable.
 	environment map[string]string
-	// topLevelFlags are the top-level flags to use with Docker commands.
-	topLevelFlags []string
+	// daemonConnectionFlags are the top-level flags used to control the daemon
+	// connection. They are reconstituted from URL parameters.
+	daemonConnectionFlags []string
 	// prompter is the prompter identifier to use for prompting.
 	prompter string
 	// containerProbed indicates whether or not container probing has occurred.
@@ -65,19 +66,19 @@ type transport struct {
 
 // NewTransport creates a new Docker transport using the specified parameters.
 func NewTransport(container, user string, environment, parameters map[string]string, prompter string) (agent.Transport, error) {
-	// Convert parameters to top-level flags.
-	topLevelFlags, err := parametersToTopLevelFlags(parameters)
+	// Convert URL parameters to top-level daemon connection flags.
+	daemonConnectionFlags, err := docker.LoadDaemonConnectionFlagsFromURLParameters(parameters)
 	if err != nil {
-		return nil, fmt.Errorf("unable to compute Docker flags: %w", err)
+		return nil, fmt.Errorf("unable to compute Docker daemon connection flags: %w", err)
 	}
 
 	// Success.
 	return &transport{
-		container:     container,
-		user:          user,
-		environment:   environment,
-		topLevelFlags: topLevelFlags,
-		prompter:      prompter,
+		container:             container,
+		user:                  user,
+		environment:           environment,
+		daemonConnectionFlags: daemonConnectionFlags.ToFlags(),
+		prompter:              prompter,
 	}, nil
 }
 
@@ -88,7 +89,7 @@ func NewTransport(container, user string, environment, parameters map[string]str
 func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, error) {
 	// Set up top-level command-line flags.
 	var dockerArguments []string
-	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+	dockerArguments = append(dockerArguments, t.daemonConnectionFlags...)
 
 	// Tell Docker that we want to execute a command in an interactive (i.e.
 	// with standard input attached) fashion.
@@ -288,7 +289,7 @@ func (t *transport) probeContainer() error {
 func (t *transport) changeContainerStatus(stop bool) error {
 	// Set up top-level command-line flags.
 	var dockerArguments []string
-	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+	dockerArguments = append(dockerArguments, t.daemonConnectionFlags...)
 
 	// Set up the stop (or start) command.
 	if stop {
@@ -378,7 +379,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 
 	// Set up top-level command-line flags.
 	var dockerArguments []string
-	dockerArguments = append(dockerArguments, t.topLevelFlags...)
+	dockerArguments = append(dockerArguments, t.daemonConnectionFlags...)
 
 	// Set up the copy command.
 	dockerArguments = append(dockerArguments, "cp", localPath, containerPath)

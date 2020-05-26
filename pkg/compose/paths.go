@@ -22,19 +22,19 @@ var defaultConfigurationOverrideFileNames = []string{
 	"docker-compose.override.yaml",
 }
 
-// findConfigurationFileInPathOrParent searches the specified path and its
-// parent directories for a default Docker Compose configuration file, stopping
-// after the first match. It returns the path at which the match was found and
-// the matching file name. It will return os.ErrNotExist if no match is found,
-// as well as any other error that occurs while traversing the filesystem. The
-// specified path will be converted to an absolute path and cleaned, and thus
-// any resulting path will also be absolute and cleaned. This function rougly
-// models the logic of the find_candidates_in_parent_dirs function in Docker
-// Compose. It's worth noting that find_candidates_in_parent_dirs will allow
-// multiple matches (unlike get_default_override_file) and will just use the
-// first match (while printing a warning). We do the same in this function,
-// except that we don't print a warning.
-func findConfigurationFileInPathOrParent(path string) (string, string, error) {
+// FindDefaultConfigurationFileInPathOrParent searches the specified path and
+// its parent directories for a default Docker Compose configuration file,
+// stopping after the first match. It returns the path at which the match was
+// found and the matching file name. It will return os.ErrNotExist if no match
+// is found, as well as any other error that occurs while traversing the
+// filesystem. The specified path will be converted to an absolute path and
+// cleaned, and thus any resulting path will also be absolute and cleaned. This
+// function rougly models the logic of the find_candidates_in_parent_dirs
+// function in Docker Compose. It's worth noting that
+// find_candidates_in_parent_dirs will allow multiple matches (unlike
+// get_default_override_file) and will just use the first match (while printing
+// a warning). This function does the same, though it doesn't print a warning.
+func FindDefaultConfigurationFileInPathOrParent(path string) (string, string, error) {
 	// Ensure that the path is absolute and cleaned so that filesystem root
 	// detection works.
 	path, err := filepath.Abs(path)
@@ -61,12 +61,12 @@ func findConfigurationFileInPathOrParent(path string) (string, string, error) {
 	}
 }
 
-// findConfigurationOverrideFileInPath searches the target path for a default
-// Docker Compose configuration override file and returns the matching file
-// name. It will return an error if multiple override files exist and
+// FindDefaultConfigurationOverrideFileInPath searches the target path for a
+// default Docker Compose configuration override file and returns the matching
+// file name. It will return an error if multiple override files exist and
 // os.ErrNotExist if no match is found. This function roughly models the logic
 // of the get_default_override_file function in Docker Compose.
-func findConfigurationOverrideFileInPath(path string) (string, error) {
+func FindDefaultConfigurationOverrideFileInPath(path string) (string, error) {
 	// Perform the search and watch for multiple matches.
 	var result string
 	for _, name := range defaultConfigurationOverrideFileNames {

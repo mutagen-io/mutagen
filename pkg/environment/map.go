@@ -26,8 +26,16 @@ func ToMap(environment []string) map[string]string {
 }
 
 // FromMap converts a map of environment variables into a slice of "KEY=value"
-// strings.
+// strings. If the provided environment is nil, then the resulting slice will be
+// nil. If the provided environment is non-nil but empty, then the resulting
+// slice will be empty. These two properties are critical to usage with the
+// os/exec package.
 func FromMap(environment map[string]string) []string {
+	// If the environment is nil, then return a nil slice.
+	if environment == nil {
+		return nil
+	}
+
 	// Allocate result storage.
 	result := make([]string, 0, len(environment))
 

@@ -7,13 +7,18 @@ import (
 )
 
 func upMain(_ *cobra.Command, arguments []string) error {
-	// Load the project configuration.
-	if err := initializeProject(); err != nil {
-		return fmt.Errorf("unable to initialize project: %w", err)
+	// Load project metadata and defer the release of project resources.
+	project, err := loadProject()
+	if err != nil {
+		return fmt.Errorf("unable to load project metadata: %w", err)
 	}
-	fmt.Println(project.files)
-	fmt.Println(project.workingDirectory)
+	defer project.dispose()
+
+	// Load and print configuration
+	fmt.Println(project)
 	fmt.Println(project.name)
+	fmt.Println(topLevelFlags(true))
+	fmt.Println(project.topLevelFlags())
 
 	// TODO: Implement.
 	fmt.Println("up not yet implemented")

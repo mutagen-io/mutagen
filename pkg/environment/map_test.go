@@ -59,3 +59,20 @@ func TestFromMap(t *testing.T) {
 		}
 	}
 }
+
+// TestFromMapNilMap tests FromMap with a nil input.
+func TestFromMapNilMap(t *testing.T) {
+	if FromMap(nil) != nil {
+		t.Fatal("FromMap returned non-nil result with nil input")
+	}
+}
+
+// TestFromMapEmptyMap tests FromMap with an empty input map.
+func TestFromMapEmptyMap(t *testing.T) {
+	result := FromMap(make(map[string]string))
+	if result == nil {
+		t.Fatal("FromMap returned nil result with non-nil input")
+	} else if len(result) != 0 {
+		t.Fatal("FromMap returned non-empty result with empty input")
+	}
+}

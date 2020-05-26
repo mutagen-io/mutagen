@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
