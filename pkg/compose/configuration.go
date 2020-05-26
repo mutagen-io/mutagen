@@ -44,29 +44,33 @@ type synchronizationConfiguration struct {
 	ConfigurationBeta synchronization.Configuration `yaml:"configurationBeta"`
 }
 
+// mutagenConfiguration encodes collections of Mutagen forwarding and
+// synchronization sessions.
+type mutagenConfiguration struct {
+	// Forwarding represents the forwarding sessions to be created. If a
+	// "defaults" key is present, it is treated as a template upon which other
+	// configurations are layered, thus keeping syntactic compatibility with the
+	// global Mutagen configuration file.
+	Forwarding map[string]forwardingConfiguration `yaml:"forward"`
+	// Synchronization represents the forwarding sessions to be created. If a
+	// "defaults" key is present, it is treated as a template upon which other
+	// configurations are layered, thus keeping syntactic compatibility with the
+	// global Mutagen configuration file.
+	Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
+}
+
 // configuration encodes a subset of a Docker Compose configuration file.
 type configuration struct {
-	// Version is the configuration file schema version.
-	Version string `yaml:"version"`
-	// Services are the services defined in the configuration file.
-	Services map[string]struct{} `yaml:"services"`
-	// Volumes are the volumes defined in the configuration file.
-	Volumes map[string]struct{} `yaml:"volumes"`
-	// Networks are the networks defined in the configuration file.
-	Networks map[string]struct{} `yaml:"networks"`
-	// Mutagen is the Mutagen configuration defined in the configuration file.
-	Mutagen struct {
-		// Forwarding represents the forwarding sessions to be created. If a
-		// "defaults" key is present, it is treated as a template upon which
-		// other configurations are layered, thus keeping syntactic
-		// compatibility with the global Mutagen configuration file.
-		Forwarding map[string]forwardingConfiguration `yaml:"forward"`
-		// Synchronization represents the forwarding sessions to be created. If
-		// a "defaults" key is present, it is treated as a template upon which
-		// other configurations are layered, thus keeping syntactic
-		// compatibility with the global Mutagen configuration file.
-		Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
-	} `yaml:"x-mutagen"`
+	// version is the configuration file schema version.
+	version string
+	// services are the services defined in the configuration file.
+	services map[string]struct{}
+	// volumes are the volumes defined in the configuration file.
+	volumes map[string]struct{}
+	// networks are the networks defined in the configuration file.
+	networks map[string]struct{}
+	// mutagen is the Mutagen configuration defined in the configuration file.
+	mutagen mutagenConfiguration
 }
 
 // intermediateConfiguration is an intermediate configuration structure used for
@@ -177,10 +181,10 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 
 	// Convert the configuration fields that don't require further processing.
 	result := &configuration{
-		Version:  intermediate.Version,
-		Services: yamlMapToStructMap(intermediate.Services),
-		Volumes:  yamlMapToStructMap(intermediate.Volumes),
-		Networks: yamlMapToStructMap(intermediate.Networks),
+		version:  intermediate.Version,
+		services: yamlMapToStructMap(intermediate.Services),
+		volumes:  yamlMapToStructMap(intermediate.Volumes),
+		networks: yamlMapToStructMap(intermediate.Networks),
 	}
 
 	// If there was no top-level x-mutagen specification, then we're done. For
@@ -208,7 +212,7 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 	// Now re-parse that YAML with strict decoding to ensure that it's correct.
 	decoder = yaml.NewDecoder(bytes.NewReader(mutagenYAML))
 	decoder.KnownFields(true)
-	if err := decoder.Decode(&result.Mutagen); err != nil {
+	if err := decoder.Decode(&result.mutagen); err != nil {
 		return nil, fmt.Errorf("strict parsing of x-mutagen YAML failed: %w", err)
 	}
 

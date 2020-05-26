@@ -98,10 +98,11 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 	}()
 
-	// Compute the fully resolved path to the environment file. If an absolute
-	// path has been specified, then it should be used directly. If a relative
-	// path has been specified, then it should be treated as relative to the
-	// path specified by the --project-directory flag or the current working
+	// Compute the fully resolved path to the environment file and load/compute
+	// the effective environment. If an absolute path has been specified for the
+	// environment file, then it should be used directly. If a relative path has
+	// been specified, then it should be treated as relative to the path
+	// specified by the --project-directory flag or the current working
 	// directory if the --project-directory flag is unspecified. One detail
 	// worth noting is that Docker Compose uses os.path.join to compute the
 	// final environment path, which will drop any path components prior to an
@@ -124,22 +125,17 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			return nil, fmt.Errorf("unable to convert environment file path to absolute path: %w", err)
 		}
 	}
-
-	// Load/compute the effective environment.
 	environment, err := loadEnvironment(environmentFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load/compute environment: %w", err)
 	}
 
-	// Query the Docker daemon metadata.
+	// Query the Docker daemon metadata and ensure that the Docker daemon is
+	// running an OS supported by Mutagen's Docker Compose integration.
 	daemonMetadata, err := docker.GetDaemonMetadata(daemonFlags, environment)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
-	}
-
-	// Ensure that the Docker daemon is running an OS supported by Mutagen's
-	// Docker Compose integration.
-	if !isSupportedDaemonOS(daemonMetadata.OSType) {
+	} else if !isSupportedDaemonOS(daemonMetadata.OSType) {
 		return nil, fmt.Errorf("unsupported Docker daemon OS: %s", daemonMetadata.OSType)
 	}
 
@@ -173,13 +169,12 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		files = strings.Split(composeFile, separator)
 	}
 
-	// Using the configuration file specifications, determine the final
-	// configuration file paths and the project directory (if it wasn't
-	// explicitly specified). The three scenarios we need to handle are
-	// configuration read from standard input, explicitly specified
-	// configuration files, and default configuration file searching behavior.
-	// This code roughly models the logic of the config.find function in Docker
-	// Compose.
+	// Using the configuration file specifications, determine the configuration
+	// file paths and the project directory (if it wasn't explicitly specified).
+	// The three scenarios we need to handle are configuration read from
+	// standard input, explicitly specified configuration files, and default
+	// configuration file searching behavior. This code roughly models the logic
+	// of the config.find function in Docker Compose.
 	if len(files) == 1 && files[0] == "-" {
 		// Store the standard input stream to a temporary file.
 		configurationFilePath := filepath.Join(temporaryDirectory, "standard-input.yaml")
@@ -258,46 +253,48 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		projectName = "default"
 	}
 
-	// Load each configuration file, store the version specification for the
-	// first file, store Mutagen session configurations, and record service,
-	// volume, and network names.
+	// Load each configuration file, storing the version specification for the
+	// first file, recording service, volume, and network names, and storing
+	// Mutagen session configurations.
 	var version string
 	services := make(map[string]struct{})
 	volumes := make(map[string]struct{})
 	networks := map[string]struct{}{"default": struct{}{}}
-	forwardingConfiguration := make(map[string]forwardingConfiguration)
-	synchronizationConfiguration := make(map[string]synchronizationConfiguration)
+	sessions := mutagenConfiguration{
+		Forwarding:      make(map[string]forwardingConfiguration),
+		Synchronization: make(map[string]synchronizationConfiguration),
+	}
 	for f, file := range files {
 		// Load the configuration file.
 		configuration, err := loadConfiguration(file, environment)
 		if err != nil {
-			return nil, fmt.Errorf("unable to open configuration file (%s): %w", file, err)
+			return nil, fmt.Errorf("unable to load configuration file (%s): %w", file, err)
 		}
 
 		// Store the version if this is the first configuration file.
 		if f == 0 {
-			version = configuration.Version
+			version = configuration.version
 		}
 
 		// Store services, volumes, and networks.
-		for name, service := range configuration.Services {
+		for name, service := range configuration.services {
 			services[name] = service
 		}
-		for name, volume := range configuration.Volumes {
+		for name, volume := range configuration.volumes {
 			volumes[name] = volume
 		}
-		for name, network := range configuration.Networks {
+		for name, network := range configuration.networks {
 			networks[name] = network
 		}
 
 		// Store session configurations. We follow standard Docker Compose
 		// practice here by letting later session definitions override earlier
 		// session definitions with the same names.
-		for name, configuration := range configuration.Mutagen.Forwarding {
-			forwardingConfiguration[name] = configuration
+		for name, configuration := range configuration.mutagen.Forwarding {
+			sessions.Forwarding[name] = configuration
 		}
-		for name, configuration := range configuration.Mutagen.Synchronization {
-			synchronizationConfiguration[name] = configuration
+		for name, configuration := range configuration.mutagen.Synchronization {
+			sessions.Synchronization[name] = configuration
 		}
 	}
 
@@ -313,7 +310,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	defaultConfigurationForwarding := &forwarding.Configuration{}
 	defaultConfigurationSource := &forwarding.Configuration{}
 	defaultConfigurationDestination := &forwarding.Configuration{}
-	if defaults, ok := forwardingConfiguration["defaults"]; ok {
+	if defaults, ok := sessions.Forwarding["defaults"]; ok {
 		if defaults.Source != "" {
 			return nil, errors.New("source URL not allowed in default forwarding configuration")
 		} else if defaults.Destination != "" {
@@ -331,14 +328,14 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		if err := defaultConfigurationDestination.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid default forwarding destination configuration: %w", err)
 		}
-		delete(forwardingConfiguration, "defaults")
+		delete(sessions.Forwarding, "defaults")
 	}
 
 	// Extract and validate synchronization defaults.
 	defaultConfigurationSynchronization := &synchronization.Configuration{}
 	defaultConfigurationAlpha := &synchronization.Configuration{}
 	defaultConfigurationBeta := &synchronization.Configuration{}
-	if defaults, ok := synchronizationConfiguration["defaults"]; ok {
+	if defaults, ok := sessions.Synchronization["defaults"]; ok {
 		if defaults.Alpha != "" {
 			return nil, errors.New("alpha URL not allowed in default synchronization configuration")
 		} else if defaults.Beta != "" {
@@ -356,7 +353,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		if err := defaultConfigurationBeta.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid default synchronization beta configuration: %w", err)
 		}
-		delete(synchronizationConfiguration, "defaults")
+		delete(sessions.Synchronization, "defaults")
 	}
 
 	// Validate forwarding sessions and convert "network://" URLs to their
@@ -364,7 +361,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// network dependencies for the Mutagen service.
 	forwardingSpecifications := make(map[string]*forwardingsvc.CreationSpecification)
 	networkDependencies := make(map[string]bool)
-	for name, session := range forwardingConfiguration {
+	for name, session := range sessions.Forwarding {
 		// Verify that the name is valid.
 		if err := selection.EnsureNameValid(name); err != nil {
 			return nil, fmt.Errorf("invalid forwarding session name (%s): %w", name, err)
@@ -444,7 +441,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// volume dependencies for the Mutagen service.
 	synchronizationSpecifications := make(map[string]*synchronizationsvc.CreationSpecification)
 	volumeDependencies := make(map[string]bool)
-	for name, session := range synchronizationConfiguration {
+	for name, session := range sessions.Synchronization {
 		// Verify that the name is valid.
 		if err := selection.EnsureNameValid(name); err != nil {
 			return nil, fmt.Errorf("invalid synchronization session name (%s): %v", name, err)
