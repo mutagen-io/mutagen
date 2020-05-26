@@ -4,21 +4,22 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/pkg/compose"
 )
 
 func upMain(_ *cobra.Command, arguments []string) error {
 	// Load project metadata and defer the release of project resources.
-	project, err := loadProject()
+	project, err := compose.LoadProject(rootConfiguration.ProjectFlags, rootConfiguration.DaemonConnectionFlags)
 	if err != nil {
-		return fmt.Errorf("unable to load project metadata: %w", err)
+		return fmt.Errorf("unable to load project: %w", err)
 	}
-	defer project.dispose()
+	defer project.Dispose()
 
 	// Load and print configuration
 	fmt.Println(project)
-	fmt.Println(project.name)
 	fmt.Println(topLevelFlags(true))
-	fmt.Println(project.topLevelFlags())
+	fmt.Println(project.TopLevelFlags())
 
 	// TODO: Implement.
 	fmt.Println("up not yet implemented")

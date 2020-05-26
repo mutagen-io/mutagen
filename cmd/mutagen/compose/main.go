@@ -201,10 +201,8 @@ var RootCommand = &cobra.Command{
 var rootConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
-	// file stores the value(s) of the -f/--file flag(s).
-	file []string
-	// projectName stores the value of the -p/--project-name flag.
-	projectName string
+	// ProjectFlags are the flags that control the Docker Compose project.
+	compose.ProjectFlags
 	// DaemonConnectionFlags are the flags that control the Docker daemon
 	// connection.
 	docker.DaemonConnectionFlags
@@ -219,12 +217,8 @@ var rootConfiguration struct {
 	// skipHostnameCheck indicates the presence of the --skip-hostname-check
 	// flag.
 	skipHostnameCheck bool
-	// projectDirectory stores the value of the --project-directory flag.
-	projectDirectory string
 	// compatibility indicates the presence of the --compatibility flag.
 	compatibility bool
-	// envFile stores the value of the --env-file flag.
-	envFile string
 }
 
 func init() {
@@ -242,8 +236,8 @@ func init() {
 	// Wire up flags. We don't bother specifying usage information since we'll
 	// shell out to Docker Compose if we need to display help information.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "")
-	flags.StringSliceVarP(&rootConfiguration.file, "file", "f", nil, "")
-	flags.StringVarP(&rootConfiguration.projectName, "project-name", "p", "", "")
+	flags.StringSliceVarP(&rootConfiguration.File, "file", "f", nil, "")
+	flags.StringVarP(&rootConfiguration.ProjectName, "project-name", "p", "", "")
 	flags.StringVarP(&rootConfiguration.Context, "context", "c", "", "")
 	flags.BoolVar(&rootConfiguration.verbose, "verbose", false, "")
 	flags.StringVar(&rootConfiguration.logLevel, "log-level", "", "")
@@ -256,9 +250,9 @@ func init() {
 	flags.StringVar(&rootConfiguration.TLSKey, "tlskey", "", "")
 	flags.BoolVar(&rootConfiguration.TLSVerify, "tlsverify", false, "")
 	flags.BoolVar(&rootConfiguration.skipHostnameCheck, "skip-hostname-check", false, "")
-	flags.StringVar(&rootConfiguration.projectDirectory, "project-directory", "", "")
+	flags.StringVar(&rootConfiguration.ProjectDirectory, "project-directory", "", "")
 	flags.BoolVar(&rootConfiguration.compatibility, "compatibility", false, "")
-	flags.StringVar(&rootConfiguration.envFile, "env-file", "", "")
+	flags.StringVar(&rootConfiguration.EnvFile, "env-file", "", "")
 
 	// Register commands.
 	RootCommand.AddCommand(

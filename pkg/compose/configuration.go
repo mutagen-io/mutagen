@@ -14,8 +14,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/configuration/synchronization"
 )
 
-// ForwardingConfiguration encodes a full forwarding session specification.
-type ForwardingConfiguration struct {
+// forwardingConfiguration encodes a full forwarding session specification.
+type forwardingConfiguration struct {
 	// Source is the source URL for the session.
 	Source string `yaml:"source"`
 	// Destination is the destination URL for the session.
@@ -29,9 +29,9 @@ type ForwardingConfiguration struct {
 	ConfigurationDestination forwarding.Configuration `yaml:"configurationDestination"`
 }
 
-// SynchronizationConfiguration encodes a full synchronization session
+// synchronizationConfiguration encodes a full synchronization session
 // specification.
-type SynchronizationConfiguration struct {
+type synchronizationConfiguration struct {
 	// Alpha is the alpha URL for the session.
 	Alpha string `yaml:"alpha"`
 	// Beta is the beta URL for the session.
@@ -44,8 +44,8 @@ type SynchronizationConfiguration struct {
 	ConfigurationBeta synchronization.Configuration `yaml:"configurationBeta"`
 }
 
-// Configuration encodes a subset of a Docker Compose configuration file.
-type Configuration struct {
+// configuration encodes a subset of a Docker Compose configuration file.
+type configuration struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
 	// Services are the services defined in the configuration file.
@@ -60,12 +60,12 @@ type Configuration struct {
 		// "defaults" key is present, it is treated as a template upon which
 		// other configurations are layered, thus keeping syntactic
 		// compatibility with the global Mutagen configuration file.
-		Forwarding map[string]ForwardingConfiguration `yaml:"forward"`
+		Forwarding map[string]forwardingConfiguration `yaml:"forward"`
 		// Synchronization represents the forwarding sessions to be created. If
 		// a "defaults" key is present, it is treated as a template upon which
 		// other configurations are layered, thus keeping syntactic
 		// compatibility with the global Mutagen configuration file.
-		Synchronization map[string]SynchronizationConfiguration `yaml:"sync"`
+		Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
 	} `yaml:"x-mutagen"`
 }
 
@@ -133,11 +133,11 @@ func yamlMapToStructMap(value map[string]yaml.Node) map[string]struct{} {
 	return result
 }
 
-// LoadConfiguration reads, interpolates, and decodes a Docker Compose YAML
+// loadConfiguration reads, interpolates, and decodes a Docker Compose YAML
 // configuration from the specified file. If the file contains multiple YAML
 // documents, then only the first will be read. Interpolation is performed using
 // the specified variable mapping.
-func LoadConfiguration(path string, variables map[string]string) (*Configuration, error) {
+func loadConfiguration(path string, variables map[string]string) (*configuration, error) {
 	// Open the file and defer its closure.
 	file, err := os.Open(path)
 	if err != nil {
@@ -176,7 +176,7 @@ func LoadConfiguration(path string, variables map[string]string) (*Configuration
 	}
 
 	// Convert the configuration fields that don't require further processing.
-	result := &Configuration{
+	result := &configuration{
 		Version:  intermediate.Version,
 		Services: yamlMapToStructMap(intermediate.Services),
 		Volumes:  yamlMapToStructMap(intermediate.Volumes),

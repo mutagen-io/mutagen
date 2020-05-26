@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mutagen-io/mutagen/pkg/compose"
 	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -20,39 +19,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
-
-const (
-	// mutagenServiceName is the name used for the Mutagen service.
-	mutagenServiceName = "mutagen"
-)
-
-// mutagenDockerfileLinux is the Dockerfile template for the Mutagen service
-// when using a Linux-based Docker daemon.
-const mutagenDockerfileLinux = `FROM alpine:latest
-RUN ["mkdir", "/volumes"]
-ENTRYPOINT ["tail", "-f", "/dev/null"]
-`
-
-// mutagenDockerfileWindows is the Dockerfile template for the Mutagen service
-// when using a Windows-based Docker daemon.
-// TODO: Implement this image. We'll likely wnat to use a Windows Server Core
-// base image, but the versioning is more complex and tied to the Docker daemon
-// host. We may need to probe for additional information from the Docker daemon.
-const mutagenDockerfileWindows = ``
-
-// mutagenComposeYAML is the Docker Compose configuration template for the
-// Mutagen service and any reverse forwarding services.
-const mutagenComposeYAML = `version: "{{ .Version }}"
-services:
-  mutagen:
-    build: "{{ .TemporaryDirectory }}/services/mutagen"
-    init: true
-    # TODO: Add network dependencies
-    networks:
-    # TODO: Add volume dependencies
-    volumes:
-  # TODO: Add reverse forwarding services
-`
 
 // normalizeProjectNameReplacer is a regular expression used by
 // normalizeProjectName to remove unsuitable characters.
@@ -72,187 +38,13 @@ func singleContainerName(projectName, serviceName string) string {
 	return fmt.Sprintf("%s_%s_1", strings.TrimLeft(projectName, "-_"), serviceName)
 }
 
-// networkURLPrefix is the lowercase version of the network URL prefix.
-const networkURLPrefix = "network://"
-
-// isNetworkURL checks if raw URL is a Docker Compose network pseudo-URL.
-func isNetworkURL(raw string) bool {
-	return strings.HasPrefix(strings.ToLower(raw), networkURLPrefix)
-}
-
-// isSupportedForwardingProtocol checks if a forwarding endpoint protocol is
-// supported for use with Docker Compose.
-func isSupportedForwardingProtocol(protocol string) bool {
-	switch protocol {
-	case "tcp":
-		return true
-	case "tcp4":
-		return true
-	case "tcp6":
-		return true
-	default:
-		return false
-	}
-}
-
-// parseNetworkURL parses a Docker Compose network pseudo-URL, converting it to
-// a concrete Mutagen Docker URL. It uses the top-level daemon connection flags
-// to determine URL parameters and looks for Docker environment variables in the
-// fully resolved project environment (which may included variables loaded from
-// "dotenv" files). This function also returns the network dependency for the
-// URL. This function must only be called on URLs that have been classified as
-// network URLs by isNetworkURL, otherwise this function may panic.
-func parseNetworkURL(raw string, environment map[string]string, mutagenContainerName string) (*url.URL, string, error) {
-	// Strip off the prefix
-	raw = raw[len(networkURLPrefix):]
-
-	// Find the first colon, which will indicate the end of the network name.
-	var network, endpoint string
-	if colonIndex := strings.IndexByte(raw, ':'); colonIndex < 0 {
-		return nil, "", errors.New("unable to find forwarding endpoint specification")
-	} else if colonIndex == 0 {
-		return nil, "", errors.New("empty network name")
-	} else {
-		network = raw[:colonIndex]
-		endpoint = raw[colonIndex+1:]
-	}
-
-	// Parse the forwarding endpoint URL to ensure that it's valid and supported
-	// for use with Docker Compose.
-	if protocol, _, err := forwardingurl.Parse(endpoint); err != nil {
-		return nil, "", fmt.Errorf("invalid forwarding endpoint URL: %w", err)
-	} else if !isSupportedForwardingProtocol(protocol) {
-		return nil, "", fmt.Errorf("forwarding endpoint protocol (%s) not supported", protocol)
-	}
-
-	// Store any Docker environment variables that we need to preserve. We only
-	// store variables that are actually present, because Docker behavior will
-	// vary depending on whether a variable is unset vs. set but empty. Note
-	// that unlike standard Docker URL parsing, we load these variables from the
-	// project environment (which may include values from "dotenv" files). We
-	// also don't support endpoint-specific variants since those don't make
-	// sense in the context of Docker Compose.
-	urlEnvironment := make(map[string]string)
-	for _, variable := range url.DockerEnvironmentVariables {
-		if value, present := environment[variable]; present {
-			urlEnvironment[variable] = value
-		}
-	}
-
-	// Create a Docker forwarding URL.
-	return &url.URL{
-		Kind:        url.Kind_Forwarding,
-		Protocol:    url.Protocol_Docker,
-		Host:        mutagenContainerName,
-		Path:        endpoint,
-		Environment: urlEnvironment,
-		Parameters:  rootConfiguration.DaemonConnectionFlags.ToURLParameters(),
-	}, network, nil
-}
-
-// isSupportedDaemonOS returns whether or not a Docker daemon OS is supported by
-// Mutagen's Docker Compose integration.
-func isSupportedDaemonOS(daemonOS string) bool {
-	switch daemonOS {
-	case "linux":
-		return true
-	case "windows":
-		// TODO: Enable Windows support once implemented.
-		return false
-	default:
-		return false
-	}
-}
-
-// mountPathForVolumeInMutagenContainer returns the mount path that will be used
-// for a volume inside the Mutagen container. The path will be returned without
-// a trailing slash. The daemon OS must be supported (as indicated by
-// isSupportedDaemonOS) and the volume name non-empty, otherwise this function
-// will panic.
-func mountPathForVolumeInMutagenContainer(daemonOS, volume string) string {
-	// Verify that the volume is non-empty.
-	if volume == "" {
-		panic("empty volume name")
-	}
-
-	// Compute the path based on the daemon OS.
-	switch daemonOS {
-	case "linux":
-		return "/volumes/" + volume
-	case "windows":
-		return `c:\volumes\` + volume
-	default:
-		panic("unsupported daemon OS")
-	}
-}
-
-// volumeURLPrefix is the lowercase version of the volume URL prefix.
-const volumeURLPrefix = "volume://"
-
-// isVolumeURL checks if raw URL is a Docker Compose volume pseudo-URL.
-func isVolumeURL(raw string) bool {
-	return strings.HasPrefix(strings.ToLower(raw), volumeURLPrefix)
-}
-
-// parseVolumeURL parses a Docker Compose volume pseudo-URL, converting it to a
-// concrete Mutagen Docker URL. It uses the top-level daemon connection flags to
-// determine URL parameters and looks for Docker environment variables in the
-// fully resolved project environment (which may included variables loaded from
-// "dotenv" files). This function also returns the volume dependency for the
-// URL. This function must only be called on URLs that have been classified as
-// volume URLs by isVolumeURL, otherwise this function may panic.
-func parseVolumeURL(raw string, environment map[string]string, daemonOS, mutagenContainerName string) (*url.URL, string, error) {
-	// Strip off the prefix
-	raw = raw[len(volumeURLPrefix):]
-
-	// Find the first slash, which will indicate the end of the volume name. If
-	// no slash is found, then we assume that the volume itself is the target
-	// synchronization root.
-	var volume, path string
-	if slashIndex := strings.IndexByte(raw, '/'); slashIndex < 0 {
-		volume = raw
-		path = mountPathForVolumeInMutagenContainer(daemonOS, volume)
-	} else if slashIndex == 0 {
-		return nil, "", errors.New("empty volume name")
-	} else {
-		volume = raw[:slashIndex]
-		path = mountPathForVolumeInMutagenContainer(daemonOS, volume) + raw[slashIndex:]
-	}
-
-	// Store any Docker environment variables that we need to preserve. We only
-	// store variables that are actually present, because Docker behavior will
-	// vary depending on whether a variable is unset vs. set but empty. Note
-	// that unlike standard Docker URL parsing, we load these variables from the
-	// project environment (which may include values from "dotenv" files). We
-	// also don't support endpoint-specific variants since those don't make
-	// sense in the context of Docker Compose.
-	urlEnvironment := make(map[string]string)
-	for _, variable := range url.DockerEnvironmentVariables {
-		if value, present := environment[variable]; present {
-			urlEnvironment[variable] = value
-		}
-	}
-
-	// Create a Docker synchronization URL.
-	return &url.URL{
-		Kind:        url.Kind_Synchronization,
-		Protocol:    url.Protocol_Docker,
-		Host:        mutagenContainerName,
-		Path:        path,
-		Environment: urlEnvironment,
-		Parameters:  rootConfiguration.DaemonConnectionFlags.ToURLParameters(),
-	}, volume, nil
-}
-
-// project encodes metadata for a Mutagen-enhanced Docker Compose project.
-type project struct {
+// Project encodes metadata for a Mutagen-enhanced Docker Compose project.
+type Project struct {
 	// environmentFile is the fully resolved absolute path to the environment
 	// file that would normally be loaded by Docker Compose. This path is not
 	// guaranteed to exist. This value should be passed to Docker Compose
 	// commands using the top-level --env-file flag.
 	environmentFile string
-	// environment is the fully resolved set of project environment variables.
-	environment map[string]string
 	// files are the fully resolved absolute paths to the configuration files
 	// for the project. The base set of files is determined using the -f/--file
 	// command line flag(s), the COMPOSE_FILE and COMPOSE_PATH_SEPARATOR
@@ -270,29 +62,27 @@ type project struct {
 	// value should be passed to Docker Compose commands using the top-level
 	// --project-directory flag.
 	workingDirectory string
-	// name is the fully resolved project name. This value should be passed to
+	// Name is the fully resolved project name. This value should be passed to
 	// Docker Compose commands using the top-level --name flag.
-	name string
-	// forwarding are the forwarding session specifications.
-	forwarding map[string]*forwardingsvc.CreationSpecification
-	// synchronization are the synchronization session specifications.
-	synchronization map[string]*synchronizationsvc.CreationSpecification
-	// daemonMetadata is the target Docker daemon metadata.
-	daemonMetadata *docker.DaemonMetadata
+	Name string
+	// Forwarding are the forwarding session specifications.
+	Forwarding map[string]*forwardingsvc.CreationSpecification
+	// Synchronization are the synchronization session specifications.
+	Synchronization map[string]*synchronizationsvc.CreationSpecification
+	// DaemonMetadata is the target Docker daemon metadata.
+	DaemonMetadata docker.DaemonMetadata
 	// temporaryDirectory is the temorary directory in which generated files are
 	// stored for the project.
 	temporaryDirectory string
 }
 
-// loadProject computes project metadata by emulating Docker Compose's (somewhat
-// complex) project resolution behavior. It also generates temporary files
-// containing Mutagen image and service definitions. Loading this metadata isn't
-// free (though it's not terribly expensive), so it's not done for commands that
-// are simple passthroughs. The logic of this loading is a simplified (but
+// LoadProject computes Docker Compose project metadata, loads project
+// configuration files, and generates temporary files containing Mutagen image
+// and service definitions. The logic of this loading is a simplified (but
 // faithful) emulation of Docker Compose's loading implementation, roughly
 // modeling the logic of the project_from_options function. Callers should
-// invoke dispose on the resulting project if loading is successful.
-func loadProject() (*project, error) {
+// invoke Dispose on the resulting project if loading is successful.
+func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionFlags) (*Project, error) {
 	// Create a temporary directory to store generated project resources.
 	temporaryDirectory, err := ioutil.TempDir("", "io.mutagen.compose.*")
 	if err != nil {
@@ -319,15 +109,15 @@ func loadProject() (*project, error) {
 	// check for absoluteness is required. This code roughly models the logic of
 	// the get_config_from_options and Environment.from_env_file functions in
 	// Docker Compose.
-	environmentFile := rootConfiguration.envFile
+	environmentFile := projectFlags.EnvFile
 	if environmentFile == "" {
 		environmentFile = ".env"
 	}
 	if filepath.IsAbs(environmentFile) {
 		environmentFile = filepath.Clean(environmentFile)
 	} else {
-		if rootConfiguration.projectDirectory != "" {
-			environmentFile = filepath.Join(rootConfiguration.projectDirectory, environmentFile)
+		if projectFlags.ProjectDirectory != "" {
+			environmentFile = filepath.Join(projectFlags.ProjectDirectory, environmentFile)
 		}
 		environmentFile, err = filepath.Abs(environmentFile)
 		if err != nil {
@@ -336,13 +126,13 @@ func loadProject() (*project, error) {
 	}
 
 	// Load/compute the effective environment.
-	environment, err := compose.LoadEnvironment(environmentFile)
+	environment, err := loadEnvironment(environmentFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load/compute environment: %w", err)
 	}
 
 	// Query the Docker daemon metadata.
-	daemonMetadata, err := docker.GetDaemonMetadata(rootConfiguration.DaemonConnectionFlags, environment)
+	daemonMetadata, err := docker.GetDaemonMetadata(daemonFlags, environment)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
 	}
@@ -356,7 +146,7 @@ func loadProject() (*project, error) {
 	// Check if a project directory has been specified. If so, then convert it
 	// to an absolute path. If no project directory was specifed, then it will
 	// be computed later once configuration file paths are known.
-	projectDirectory := rootConfiguration.projectDirectory
+	projectDirectory := projectFlags.ProjectDirectory
 	if projectDirectory != "" {
 		if projectDirectory, err = filepath.Abs(projectDirectory); err != nil {
 			return nil, fmt.Errorf("unable to convert project directory (%s) to absolute path: %w", projectDirectory, err)
@@ -371,8 +161,8 @@ func loadProject() (*project, error) {
 	// that default search behavior should be used). This code roughly models
 	// the logic of the get_config_path_from_options function in Docker Compose.
 	var files []string
-	if len(rootConfiguration.file) > 0 {
-		files = rootConfiguration.file
+	if len(projectFlags.File) > 0 {
+		files = projectFlags.File
 	} else if composeFile := environment["COMPOSE_FILE"]; composeFile != "" {
 		separator, ok := environment["COMPOSE_PATH_SEPARATOR"]
 		if !ok {
@@ -429,7 +219,7 @@ func loadProject() (*project, error) {
 	} else {
 		// Search for a configuration file in the current directory and its
 		// parent directories.
-		path, name, err := compose.FindDefaultConfigurationFileInPathOrParent(".")
+		path, name, err := findDefaultConfigurationFileInPathOrParent(".")
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil, errors.New("unable to identify configuration file in current directory or any parent")
@@ -440,7 +230,7 @@ func loadProject() (*project, error) {
 
 		// Search for an override file in the same directory as the primary
 		// configuration file.
-		if overrideName, err := compose.FindDefaultConfigurationOverrideFileInPath(path); err != nil {
+		if overrideName, err := findDefaultConfigurationOverrideFileInPath(path); err != nil {
 			if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("unable to identify configuration override file: %w", err)
 			}
@@ -458,8 +248,8 @@ func loadProject() (*project, error) {
 	// Determine the project name. This code roughly models the logic of the
 	// get_project_name function in Docker Compose.
 	var projectName string
-	if rootConfiguration.projectName != "" {
-		projectName = normalizeProjectName(rootConfiguration.projectName)
+	if projectFlags.ProjectName != "" {
+		projectName = normalizeProjectName(projectFlags.ProjectName)
 	} else if composeProjectName := environment["COMPOSE_PROJECT_NAME"]; composeProjectName != "" {
 		projectName = normalizeProjectName(composeProjectName)
 	} else if baseName := filepath.Base(projectDirectory); baseName != "" {
@@ -475,11 +265,11 @@ func loadProject() (*project, error) {
 	services := make(map[string]struct{})
 	volumes := make(map[string]struct{})
 	networks := map[string]struct{}{"default": struct{}{}}
-	forwardingConfiguration := make(map[string]compose.ForwardingConfiguration)
-	synchronizationConfiguration := make(map[string]compose.SynchronizationConfiguration)
+	forwardingConfiguration := make(map[string]forwardingConfiguration)
+	synchronizationConfiguration := make(map[string]synchronizationConfiguration)
 	for f, file := range files {
 		// Load the configuration file.
-		configuration, err := compose.LoadConfiguration(file, environment)
+		configuration, err := loadConfiguration(file, environment)
 		if err != nil {
 			return nil, fmt.Errorf("unable to open configuration file (%s): %w", file, err)
 		}
@@ -608,7 +398,7 @@ func loadProject() (*project, error) {
 		if !isNetworkURL(session.Destination) {
 			return nil, errors.New("forwarding destinations should be network URLs")
 		}
-		destinationURL, network, err := parseNetworkURL(session.Destination, environment, mutagenContainerName)
+		destinationURL, network, err := parseNetworkURL(session.Destination, mutagenContainerName, environment, daemonFlags)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse forwarding destination URL (%s): %w", session.Destination, err)
 		}
@@ -679,7 +469,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var alphaURL *url.URL
 		if alphaIsVolume {
-			if a, volume, err := parseVolumeURL(session.Alpha, environment, daemonMetadata.OSType, mutagenContainerName); err != nil {
+			if a, volume, err := parseVolumeURL(session.Alpha, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization alpha URL (%s): %w", session.Alpha, err)
 			} else {
 				alphaURL = a
@@ -703,7 +493,7 @@ func loadProject() (*project, error) {
 		// must be a local URL.
 		var betaURL *url.URL
 		if betaIsVolume {
-			if b, volume, err := parseVolumeURL(session.Beta, environment, daemonMetadata.OSType, mutagenContainerName); err != nil {
+			if b, volume, err := parseVolumeURL(session.Beta, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization beta URL (%s): %w", session.Beta, err)
 			} else {
 				betaURL = b
@@ -766,30 +556,27 @@ func loadProject() (*project, error) {
 
 	// Success.
 	successful = true
-	return &project{
+	return &Project{
 		environmentFile:    environmentFile,
-		environment:        environment,
 		files:              files,
 		workingDirectory:   projectDirectory,
-		name:               projectName,
-		forwarding:         forwardingSpecifications,
-		synchronization:    synchronizationSpecifications,
-		daemonMetadata:     daemonMetadata,
+		Name:               projectName,
+		Forwarding:         forwardingSpecifications,
+		Synchronization:    synchronizationSpecifications,
+		DaemonMetadata:     daemonMetadata,
 		temporaryDirectory: temporaryDirectory,
 	}, nil
 }
 
-// dispose removes any temporary generated project files from disk.
-func (p *project) dispose() error {
+// Dispose removes any temporary generated project files from disk.
+func (p *Project) Dispose() error {
 	return os.RemoveAll(p.temporaryDirectory)
 }
 
-// topLevelFlags returns a slice of top-level project flags (namely -f/--file,
-// -p/--project-name, --project-directory, and --env-file) that should be used
-// in conjunction with those from the global topLevelFlags result (with the
-// global topLevelFlags function being called with excludeProjectFlags set to
-// true).
-func (p *project) topLevelFlags() []string {
+// TopLevelFlags returns a slice of top-level project flags (namely -f/--file,
+// -p/--project-name, --project-directory, and --env-file) with fully resolved
+// values.
+func (p *Project) TopLevelFlags() []string {
 	// Preallocate flag storage.
 	flags := make([]string, 0, 2*len(p.files)+2+2+2)
 
@@ -797,7 +584,7 @@ func (p *project) topLevelFlags() []string {
 	for _, file := range p.files {
 		flags = append(flags, "--file", file)
 	}
-	flags = append(flags, "--project-name", p.name)
+	flags = append(flags, "--project-name", p.Name)
 	flags = append(flags, "--project-directory", p.workingDirectory)
 	flags = append(flags, "--env-file", p.environmentFile)
 

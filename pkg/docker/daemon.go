@@ -31,7 +31,7 @@ type infoResponse struct {
 // OS and identifier via its /info endpoint. The provided connection flags and
 // environment variables are used when executing the docker info command. If
 // environment is nil, then the current process' environment will be used.
-func GetDaemonMetadata(daemonFlags DaemonConnectionFlags, environment map[string]string) (*DaemonMetadata, error) {
+func GetDaemonMetadata(daemonFlags DaemonConnectionFlags, environment map[string]string) (DaemonMetadata, error) {
 	// Set up flags and arguments to dump server information in JSON format.
 	var arguments []string
 	arguments = append(arguments, daemonFlags.ToFlags()...)
@@ -40,7 +40,7 @@ func GetDaemonMetadata(daemonFlags DaemonConnectionFlags, environment map[string
 	// Set up the command.
 	command, err := Command(context.Background(), arguments...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to set up Docker invocation: %w", err)
+		return DaemonMetadata{}, fmt.Errorf("unable to set up Docker invocation: %w", err)
 	}
 
 	// Set the command environment.
@@ -49,20 +49,20 @@ func GetDaemonMetadata(daemonFlags DaemonConnectionFlags, environment map[string
 	// Run the command.
 	output, err := command.Output()
 	if err != nil {
-		return nil, fmt.Errorf("docker info command failed: %w", err)
+		return DaemonMetadata{}, fmt.Errorf("docker info command failed: %w", err)
 	}
 
 	// Perform JSON decoding.
 	var info infoResponse
 	if err := json.Unmarshal(output, &info); err != nil {
-		return nil, fmt.Errorf("unable to decode JSON response: %w", err)
+		return DaemonMetadata{}, fmt.Errorf("unable to decode JSON response: %w", err)
 	}
 
 	// Handle server connection errors.
 	if len(info.ServerErrors) > 0 {
-		return nil, errors.New(info.ServerErrors[0])
+		return DaemonMetadata{}, errors.New(info.ServerErrors[0])
 	}
 
 	// Success.
-	return &info.DaemonMetadata, nil
+	return info.DaemonMetadata, nil
 }
