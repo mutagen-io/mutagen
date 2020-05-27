@@ -250,11 +250,8 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 // Mutagen services. It is designed to be compatible with both 2.x and 3.x
 // Docker Compose formats.
 type generatedServiceConfiguration struct {
-	// Build is the build context for the service.
-	Build string `yaml:"build"`
-	// Init indicates whether or not a Docker init process should be used to
-	// wrap the entry point of the service.
-	Init bool `yaml:"init,omitempty"`
+	// Image is the image for the service.
+	Image string `yaml:"image"`
 	// Networks are the network dependencies for the service.
 	Networks []string `yaml:"networks,omitempty"`
 	// Volumes are the volume dependencies for the service.

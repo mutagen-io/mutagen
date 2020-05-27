@@ -1,28 +1,90 @@
 package compose
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
 )
 
+// ensureMutagenUp ensures that the Mutagen service is running and up-to-date.
+func ensureMutagenUp(topLevelFlags []string) error {
+	// Set up command flags and arguments. We honor certain up command flags
+	// that control output.
+	var arguments []string
+	arguments = append(arguments, topLevelFlags...)
+	arguments = append(arguments, "up", "--detach")
+	if upConfiguration.noColor {
+		arguments = append(arguments, "--no-color")
+	}
+	if upConfiguration.quietPull {
+		arguments = append(arguments, "--quiet-pull")
+	}
+	arguments = append(arguments, compose.MutagenServiceName)
+
+	// Create the command.
+	up, err := compose.Command(context.Background(), arguments...)
+	if err != nil {
+		return fmt.Errorf("unable to set up Docker Compose invocation: %w", err)
+	}
+
+	// Set up the environment. We request that the up command ignore orphaned
+	// containers because we'd prefer to have those handled by the nominal up
+	// command.
+	up.Env = os.Environ()
+	up.Env = append(up.Env, "COMPOSE_IGNORE_ORPHANS=true")
+
+	// Forward input and output streams.
+	up.Stdin = os.Stdin
+	up.Stdout = os.Stdout
+	up.Stderr = os.Stderr
+
+	// Invoke the command.
+	if err := up.Run(); err != nil {
+		return fmt.Errorf("up command failed: %w", err)
+	}
+
+	// Success.
+	return nil
+}
+
 func upMain(_ *cobra.Command, arguments []string) error {
+	// Ensure that the user isn't trying to interact with the Mutagen service
+	// directly.
+	for _, argument := range arguments {
+		if argument == compose.MutagenServiceName {
+			return errors.New("the Mutagen service should not be controlled directly")
+		}
+	}
+
 	// Load project metadata and defer the release of project resources.
-	project, err := compose.LoadProject(rootConfiguration.ProjectFlags, rootConfiguration.DaemonConnectionFlags)
+	project, err := compose.LoadProject(
+		rootConfiguration.ProjectFlags,
+		rootConfiguration.DaemonConnectionFlags,
+	)
 	if err != nil {
 		return fmt.Errorf("unable to load project: %w", err)
 	}
 	defer project.Dispose()
 
-	// Load and print configuration
-	fmt.Println(project)
-	fmt.Println(topLevelFlags(true))
-	fmt.Println(project.TopLevelFlags())
+	// Compute the effective top-level flags that we'll use.
+	topLevelFlags := topLevelFlags(true)
+	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
 
+	// Ensure that the Mutagen service is running and up-to-date.
+	if err := ensureMutagenUp(topLevelFlags); err != nil {
+		return fmt.Errorf("unable to bring up Mutagen service: %w", err)
+	}
+
+	// Handle Mutagen session reconciliation and initial synchronization.
 	// TODO: Implement.
-	fmt.Println("up not yet implemented")
+
+	// Invoke the target command.
+	// TODO: Implement.
 
 	// Success.
 	return nil

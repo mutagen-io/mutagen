@@ -43,7 +43,7 @@ func invoke(topLevelFlags []string, command string, arguments []string, exitOnSu
 		cmd.Fatal(fmt.Errorf("unable to set up Docker Compose invocation: %w", err))
 	}
 
-	// Setup input and output streams.
+	// Forward input and output streams.
 	compose.Stdin = os.Stdin
 	compose.Stdout = os.Stdout
 	compose.Stderr = os.Stderr

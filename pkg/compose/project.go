@@ -19,6 +19,15 @@ import (
 	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
+const (
+	// MutagenServiceName is the name used for the Mutagen service in
+	// Mutagen-enhanced Docker Compose Projects.
+	MutagenServiceName = "mutagen"
+	// mutagenServiceImage is the image to use for the Mutagen service.
+	// TODO: Update this to use public image.
+	mutagenServiceImage = "mutagen-compose-service:latest"
+)
+
 // normalizeProjectNameReplacer is a regular expression used by
 // normalizeProjectName to remove unsuitable characters.
 var normalizeProjectNameReplacer = regexp.MustCompile(`[^-_a-z0-9]`)
@@ -561,16 +570,9 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 	}
 
-	// Generate the Mutagen service build context.
-	mutagenBuildContext := filepath.Join(temporaryDirectory, "mutagen")
-	if err := generateMutagenServiceBuildContext(mutagenBuildContext, daemonMetadata.Platform); err != nil {
-		return nil, fmt.Errorf("unable to generate Mutagen service build context: %w", err)
-	}
-
 	// Generate the Mutagen service configuration.
 	mutagenServiceConfiguration := &generatedServiceConfiguration{
-		Build: mutagenBuildContext,
-		Init:  needMutagenServiceInitForPlatform(daemonMetadata.Platform),
+		Image: mutagenServiceImage,
 	}
 	for network := range networkDependencies {
 		mutagenServiceConfiguration.Networks = append(mutagenServiceConfiguration.Networks,
