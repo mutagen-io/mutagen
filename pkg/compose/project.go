@@ -293,8 +293,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Watch for service name conflicts.
-	if _, ok := services[mutagenServiceName]; ok {
-		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", mutagenServiceName)
+	if _, ok := services[MutagenServiceName]; ok {
+		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", MutagenServiceName)
 	}
 
 	// If no custom networks were defined, then Docker Compose will create a
@@ -304,7 +304,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Compute the name of the Mutagen service container.
-	mutagenContainerName := singleContainerName(projectName, mutagenServiceName)
+	mutagenContainerName := singleContainerName(projectName, MutagenServiceName)
 
 	// Extract default forwarding session parameters.
 	defaultConfigurationForwarding := &forwarding.Configuration{}
@@ -587,7 +587,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	mutagenComposeConfiguration := &generatedComposeConfiguration{
 		Version: version,
 		Services: map[string]*generatedServiceConfiguration{
-			mutagenServiceName: mutagenServiceConfiguration,
+			MutagenServiceName: mutagenServiceConfiguration,
 		},
 	}
 	mutagenComposeConfigurationPath := filepath.Join(temporaryDirectory, "mutagen.yml")

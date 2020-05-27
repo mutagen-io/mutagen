@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	// mutagenServiceName is the name used for the Mutagen service.
-	mutagenServiceName = "mutagen"
+	// MutagenServiceName is the name used for the Mutagen service in
+	// Mutagen-enhanced Docker Compose Projects.
+	MutagenServiceName = "mutagen"
 )
 
 // mutagenLinuxDockerfileTemplate is the Dockerfile template for the Mutagen
