@@ -24,8 +24,7 @@ const (
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenServiceName = "mutagen"
 	// mutagenServiceImage is the image to use for the Mutagen service.
-	// TODO: Update this to use public image.
-	mutagenServiceImage = "mutagen-compose-service:latest"
+	mutagenServiceImage = "mutagenio/mutagen-compose-service:latest"
 )
 
 // normalizeProjectNameReplacer is a regular expression used by
