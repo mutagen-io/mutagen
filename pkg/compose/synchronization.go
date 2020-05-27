@@ -18,23 +18,22 @@ func isVolumeURL(raw string) bool {
 
 // mountPathForVolumeInMutagenContainer returns the mount path that will be used
 // for a volume inside the Mutagen container. The path will be returned without
-// a trailing slash. The daemon OS must be supported (as indicated by
-// isSupportedDaemonOS) and the volume name non-empty, otherwise this function
-// will panic.
-func mountPathForVolumeInMutagenContainer(daemonOS, volume string) string {
+// a trailing slash. The volume must be non-empty or this function will panic.
+// This function should only be called for supported Docker platforms.
+func mountPathForVolumeInMutagenContainer(platform, volume string) string {
 	// Verify that the volume is non-empty.
 	if volume == "" {
 		panic("empty volume name")
 	}
 
 	// Compute the path based on the daemon OS.
-	switch daemonOS {
+	switch platform {
 	case "linux":
 		return "/volumes/" + volume
 	case "windows":
 		return `c:\volumes\` + volume
 	default:
-		panic("unsupported daemon OS")
+		panic("unsupported Docker platform")
 	}
 }
 
@@ -46,7 +45,7 @@ func mountPathForVolumeInMutagenContainer(daemonOS, volume string) string {
 // URL. This function must only be called on URLs that have been classified as
 // volume URLs by isVolumeURL, otherwise this function may panic.
 func parseVolumeURL(
-	raw, daemonOS, mutagenContainerName string,
+	raw, platform, mutagenContainerName string,
 	environment map[string]string,
 	daemonFlags docker.DaemonConnectionFlags,
 ) (*url.URL, string, error) {
@@ -59,12 +58,12 @@ func parseVolumeURL(
 	var volume, path string
 	if slashIndex := strings.IndexByte(raw, '/'); slashIndex < 0 {
 		volume = raw
-		path = mountPathForVolumeInMutagenContainer(daemonOS, volume)
+		path = mountPathForVolumeInMutagenContainer(platform, volume)
 	} else if slashIndex == 0 {
 		return nil, "", errors.New("empty volume name")
 	} else {
 		volume = raw[:slashIndex]
-		path = mountPathForVolumeInMutagenContainer(daemonOS, volume) + raw[slashIndex:]
+		path = mountPathForVolumeInMutagenContainer(platform, volume) + raw[slashIndex:]
 	}
 
 	// Store any Docker environment variables that we need to preserve. We only

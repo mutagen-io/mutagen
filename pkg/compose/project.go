@@ -136,8 +136,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	daemonMetadata, err := docker.GetDaemonMetadata(daemonFlags, environment)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
-	} else if !isSupportedDaemonOS(daemonMetadata.OSType) {
-		return nil, fmt.Errorf("unsupported Docker daemon OS: %s", daemonMetadata.OSType)
+	} else if !isSupportedPlatform(daemonMetadata.OSType) {
+		return nil, fmt.Errorf("unsupported Docker platform: %s", daemonMetadata.OSType)
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
@@ -179,7 +179,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	if len(files) == 1 && files[0] == "-" {
 		// Store the standard input stream to a temporary file.
 		configurationFilePath := filepath.Join(temporaryDirectory, "standard-input.yaml")
-		configurationFile, err := os.Create(configurationFilePath)
+		configurationFile, err := os.OpenFile(configurationFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create file to store standard input configuration: %w", err)
 		}
@@ -550,11 +550,47 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 	}
 
-	// Generate the Mutagen Dockerfile and Docker Compose configuration file.
-	// TODO: Implement.
-	_ = version
-	_ = networkDependencies
-	_ = volumeDependencies
+	// Validate network and volume dependencies.
+	for network := range networkDependencies {
+		if _, defined := networks[network]; !defined {
+			return nil, fmt.Errorf("network (%s) referenced by forwarding session undefined", network)
+		}
+	}
+	for volume := range volumeDependencies {
+		if _, defined := volumes[volume]; !defined {
+			return nil, fmt.Errorf("volume (%s) referenced by synchronization session undefined", volume)
+		}
+	}
+
+	// Generate the Mutagen service build context.
+	mutagenBuildContext := filepath.Join(temporaryDirectory, "mutagen")
+	if err := generateMutagenServiceBuildContext(mutagenBuildContext, daemonMetadata.OSType); err != nil {
+		return nil, fmt.Errorf("unable to generate Mutagen service build context: %w", err)
+	}
+
+	// Generate the Docker Compose configuration file for the Mutagen service
+	// and add it to the list of configuration files.
+	mutagenComposeConfiguration := &mutagenComposeConfiguration{}
+	mutagenComposeConfiguration.Version = version
+	mutagenComposeConfiguration.Services.Mutagen.Build = mutagenBuildContext
+	mutagenComposeConfiguration.Services.Mutagen.Init = needMutagenServiceInitForPlatform(daemonMetadata.OSType)
+	for network := range networkDependencies {
+		mutagenComposeConfiguration.Services.Mutagen.Networks = append(
+			mutagenComposeConfiguration.Services.Mutagen.Networks,
+			network,
+		)
+	}
+	for volume := range volumeDependencies {
+		mutagenComposeConfiguration.Services.Mutagen.Volumes = append(
+			mutagenComposeConfiguration.Services.Mutagen.Volumes,
+			volume+":"+mountPathForVolumeInMutagenContainer(daemonMetadata.OSType, volume),
+		)
+	}
+	mutagenComposeConfigurationPath := filepath.Join(temporaryDirectory, "mutagen.yml")
+	if err := mutagenComposeConfiguration.store(mutagenComposeConfigurationPath); err != nil {
+		return nil, fmt.Errorf("unable to store Docker Compose configuration for Mutagen service: %w", err)
+	}
+	files = append(files, mutagenComposeConfigurationPath)
 
 	// Success.
 	successful = true

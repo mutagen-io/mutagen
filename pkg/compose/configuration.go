@@ -45,7 +45,7 @@ type synchronizationConfiguration struct {
 }
 
 // mutagenConfiguration encodes collections of Mutagen forwarding and
-// synchronization sessions.
+// synchronization sessions found under an x-mutagen extension field.
 type mutagenConfiguration struct {
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
@@ -218,4 +218,51 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 
 	// Success.
 	return result, nil
+}
+
+// mutagenComposeConfiguration represents a Docker Compose configuration file
+// for the Mutagen service.
+type mutagenComposeConfiguration struct {
+	// Version is the Docker Compose configuration file version.
+	Version string `yaml:"version"`
+	// Services are the Docker Compose services
+	Services struct {
+		// Mutagen is the Mutagen service.
+		// TODO: The key for this field really ought to come from the
+		// mutagenServiceName constant. We should at least add a test to enforce
+		// that they match.
+		Mutagen struct {
+			// Build is the build context for the Mutagen service.
+			Build string `yaml:"build"`
+			// Init indicates whether or not a Docker init process should be
+			// used to wrap the Mutagen container entry point.
+			Init bool `yaml:"init,omitempty"`
+			// Networks are the network dependencies for the Mutagen service.
+			Networks []string `yaml:"networks"`
+			// Volumes are the volume dependencies for the Mutagen service.
+			Volumes []string `yaml:"volumes"`
+		} `yaml:"mutagen"`
+	} `yaml:"services"`
+}
+
+// store encodes the configuration to YAML and writes it to the specified path.
+func (c *mutagenComposeConfiguration) store(path string) error {
+	// Open the output file and defer its closure.
+	output, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("unable to open output file: %w", err)
+	}
+	defer output.Close()
+
+	// Create a YAML encoder and defer its closure.
+	encoder := yaml.NewEncoder(output)
+	defer encoder.Close()
+
+	// Perform encoding.
+	if err := encoder.Encode(c); err != nil {
+		return fmt.Errorf("unable to encode configuration: %w", err)
+	}
+
+	// Success.
+	return nil
 }
