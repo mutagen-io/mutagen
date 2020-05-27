@@ -135,8 +135,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	daemonMetadata, err := docker.GetDaemonMetadata(daemonFlags, environment)
 	if err != nil {
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
-	} else if !isSupportedPlatform(daemonMetadata.OSType) {
-		return nil, fmt.Errorf("unsupported Docker platform: %s", daemonMetadata.OSType)
+	} else if !isSupportedPlatform(daemonMetadata.Platform) {
+		return nil, fmt.Errorf("unsupported Docker platform: %s", daemonMetadata.Platform)
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
@@ -465,7 +465,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		// the default URL parsing behavior in that case.
 		var alphaURL *url.URL
 		if alphaIsVolume {
-			if a, volume, err := parseVolumeURL(session.Alpha, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
+			if a, volume, err := parseVolumeURL(session.Alpha, daemonMetadata.Platform, mutagenContainerName, environment, daemonFlags); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization alpha URL (%s): %w", session.Alpha, err)
 			} else {
 				alphaURL = a
@@ -488,7 +488,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		// Parse and validate the beta URL using the same strategy.
 		var betaURL *url.URL
 		if betaIsVolume {
-			if b, volume, err := parseVolumeURL(session.Beta, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
+			if b, volume, err := parseVolumeURL(session.Beta, daemonMetadata.Platform, mutagenContainerName, environment, daemonFlags); err != nil {
 				return nil, fmt.Errorf("unable to parse synchronization beta URL (%s): %w", session.Beta, err)
 			} else {
 				betaURL = b
@@ -557,7 +557,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 	// Generate the Mutagen service build context.
 	mutagenBuildContext := filepath.Join(temporaryDirectory, "mutagen")
-	if err := generateMutagenServiceBuildContext(mutagenBuildContext, daemonMetadata.OSType); err != nil {
+	if err := generateMutagenServiceBuildContext(mutagenBuildContext, daemonMetadata.Platform); err != nil {
 		return nil, fmt.Errorf("unable to generate Mutagen service build context: %w", err)
 	}
 
@@ -566,7 +566,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	mutagenComposeConfiguration := &mutagenComposeConfiguration{}
 	mutagenComposeConfiguration.Version = version
 	mutagenComposeConfiguration.Services.Mutagen.Build = mutagenBuildContext
-	mutagenComposeConfiguration.Services.Mutagen.Init = needMutagenServiceInitForPlatform(daemonMetadata.OSType)
+	mutagenComposeConfiguration.Services.Mutagen.Init = needMutagenServiceInitForPlatform(daemonMetadata.Platform)
 	for network := range networkDependencies {
 		mutagenComposeConfiguration.Services.Mutagen.Networks = append(
 			mutagenComposeConfiguration.Services.Mutagen.Networks,
@@ -576,7 +576,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	for volume := range volumeDependencies {
 		mutagenComposeConfiguration.Services.Mutagen.Volumes = append(
 			mutagenComposeConfiguration.Services.Mutagen.Volumes,
-			volume+":"+mountPathForVolumeInMutagenContainer(daemonMetadata.OSType, volume),
+			volume+":"+mountPathForVolumeInMutagenContainer(daemonMetadata.Platform, volume),
 		)
 	}
 	mutagenComposeConfigurationPath := filepath.Join(temporaryDirectory, "mutagen.yml")

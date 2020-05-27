@@ -11,10 +11,10 @@ import (
 
 // DaemonMetadata encodes Docker daemon metadata.
 type DaemonMetadata struct {
-	// ID is the Docker daemon identifier.
-	ID string `json:"ID"`
-	// OSType is the Docker daemon OS. Its value will be a GOOS value.
-	OSType string `json:"OSType"`
+	// Identifier is the Docker daemon identifier.
+	Identifier string `json:"ID"`
+	// Platform is the Docker daemon OS. Its value will be a GOOS value.
+	Platform string `json:"OSType"`
 }
 
 // infoResponse is a structure that can be used to decode JSONified output from
