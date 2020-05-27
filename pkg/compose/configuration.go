@@ -256,9 +256,9 @@ type generatedServiceConfiguration struct {
 	// wrap the entry point of the service.
 	Init bool `yaml:"init,omitempty"`
 	// Networks are the network dependencies for the service.
-	Networks []string `yaml:"networks"`
+	Networks []string `yaml:"networks,omitempty"`
 	// Volumes are the volume dependencies for the service.
-	Volumes []string `yaml:"volumes"`
+	Volumes []string `yaml:"volumes,omitempty"`
 }
 
 // generatedComposeConfiguration encodes a subset of the Docker Compose
