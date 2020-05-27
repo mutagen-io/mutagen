@@ -26,9 +26,8 @@ import (
 // command is specified to Docker Compose and arguments are ignored (though
 // top-level flags are still included in the Docker Compose invocation). Upon
 // successful invocation, this function will terminate the current process with
-// an exit code of 0 if exitOnSuccess is true, otherwise it will return control
-// to the caller.
-func invoke(topLevelFlags []string, command string, arguments []string, exitOnSuccess bool) {
+// an exit code of 0.
+func invoke(topLevelFlags []string, command string, arguments []string) {
 	// Compute the Docker Compose arguments.
 	composeArguments := make([]string, 0, len(topLevelFlags)+1+len(arguments))
 	composeArguments = append(composeArguments, topLevelFlags...)
@@ -68,9 +67,7 @@ func invoke(topLevelFlags []string, command string, arguments []string, exitOnSu
 	}
 
 	// Success.
-	if exitOnSuccess {
-		os.Exit(0)
-	}
+	os.Exit(0)
 }
 
 // topLevelFlags reconstitutes parsed top-level Docker Compose flags. If
@@ -122,9 +119,9 @@ func handleTopLevelFlags() {
 	// version behavior, even if the -v/--version flag is specified before the
 	// -h/--help flag.
 	if rootConfiguration.help {
-		invoke([]string{"--help"}, "", nil, true)
+		invoke([]string{"--help"}, "", nil)
 	} else if rootConfiguration.version {
-		invoke([]string{"--version"}, "", nil, true)
+		invoke([]string{"--version"}, "", nil)
 	}
 
 	// Enforce that the --skip-hostname-check flag isn't specified. This flag
@@ -158,16 +155,16 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	invoke(topLevelFlags(false), command.CalledAs(), arguments, true)
+	invoke(topLevelFlags(false), command.CalledAs(), arguments)
 }
 
 // commandHelp is a Cobra help function that shells out to Docker Compose to
 // display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
 	if command == RootCommand {
-		invoke([]string{"--help"}, "", nil, true)
+		invoke([]string{"--help"}, "", nil)
 	}
-	invoke(nil, command.CalledAs(), []string{"--help"}, true)
+	invoke(nil, command.CalledAs(), []string{"--help"})
 }
 
 func rootMain(_ *cobra.Command, arguments []string) {
@@ -175,7 +172,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		invoke(nil, "", nil, true)
+		invoke(nil, "", nil)
 	}
 
 	// Handle unknown commands. We can't precisely emulate what Docker Compose
