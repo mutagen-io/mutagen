@@ -76,12 +76,13 @@ type Project struct {
 	temporaryDirectory string
 }
 
-// LoadProject computes Docker Compose project metadata, loads project
-// configuration files, and generates temporary files containing Mutagen image
-// and service definitions. The logic of this loading is a simplified (but
-// faithful) emulation of Docker Compose's loading implementation, roughly
-// modeling the logic of the project_from_options function. Callers should
-// invoke Dispose on the resulting project if loading is successful.
+// LoadProject computes Docker Compose project metadata, loads the project's
+// configuration files, extracts Mutagen session definitions from x-mutagen
+// extensions, and generates temporary files containing Mutagen image and
+// service definitions. The logic of this loading is a simplified (but faithful)
+// emulation of Docker Compose's loading implementation, roughly modeling the
+// logic of the project_from_options function. Callers should invoke Dispose on
+// the resulting project if loading is successful.
 func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionFlags) (*Project, error) {
 	// Create a temporary directory to store generated project resources.
 	temporaryDirectory, err := ioutil.TempDir("", "io.mutagen.compose.*")
@@ -89,7 +90,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("unable to create temporary directory for project resources: %w", err)
 	}
 
-	// Defer removal of the temporary directory in the event that this function
+	// Defer removal of the temporary directory in the event that initialization
 	// is unsuccessful.
 	var successful bool
 	defer func() {
@@ -356,9 +357,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		delete(sessions.Synchronization, "defaults")
 	}
 
-	// Validate forwarding sessions and convert "network://" URLs to their
-	// Docker URL equivalents. We'll also take this opportunity to extract the
-	// network dependencies for the Mutagen service.
+	// Validate forwarding configurations, convert them to session creation
+	// specifications, and extract network dependencies for the Mutagen service.
 	forwardingSpecifications := make(map[string]*forwardingsvc.CreationSpecification)
 	networkDependencies := make(map[string]bool)
 	for name, session := range sessions.Forwarding {
@@ -369,13 +369,18 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 		// Parse and validate the source URL. At the moment, we only allow local
 		// URLs as forwarding sources since this is the primary use case with
-		// Docker Compose. We could support other protocols here, but their
-		// usage (especially raw Docker URLs referencing the containers created
-		// in this project) is likely to be confusing and error-prone. We may
-		// eventually allow network URLs to be sources, but this will require
-		// the injection of additional pseudo-services.
+		// Docker Compose. Supporting reverse forwarding is somewhat ill-defined
+		// and would require the injection of additional services to intercept
+		// traffic (though we may support this in the future). We also avoid
+		// other protocols (such as SSH and Docker) since they're likely to be
+		// confusing and error-prone (especially raw Docker URLs referencing
+		// containers in this project that won't play nicely with container
+		// startup ordering). Finally, we only support TCP-based endpoints since
+		// they constitute the primary use case with Docker Compose and because
+		// other protocols would likely be error-prone and require
+		// project-relative path resolution.
 		if isNetworkURL(session.Source) {
-			return nil, errors.New("network URLs not allowed as forwarding sources")
+			return nil, fmt.Errorf("network URL (%s) not allowed as forwarding source", session.Source)
 		}
 		sourceURL, err := url.Parse(session.Source, url.Kind_Forwarding, true)
 		if err != nil {
@@ -384,16 +389,16 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			return nil, errors.New("only local URLs allowed as forwarding sources")
 		} else if protocol, _, err := forwardingurl.Parse(sourceURL.Path); err != nil {
 			panic("forwarding URL failed to reparse")
-		} else if !isSupportedForwardingProtocol(protocol) {
-			return nil, fmt.Errorf("forwarding source endpoint protocol (%s) not supported", protocol)
+		} else if !isTCPForwardingProtocol(protocol) {
+			return nil, fmt.Errorf("non-TCP-based forwarding endpoint (%s) unsupported", sourceURL.Path)
 		}
 
 		// Parse and validate the destination URL. At the moment, we only allow
-		// network URLs as forwarding destinations since this is the primary use
-		// case with Docker Compose. We could support other protocols here, but
-		// we don't at the moment for the reasons outlined above.
+		// network pseudo-URLs (with TCP-based endpoints) as forwarding
+		// destinations for the reasons outlined above. The parseNetworkURL will
+		// enforce that a TCP-based forwarding endpoint is used.
 		if !isNetworkURL(session.Destination) {
-			return nil, errors.New("forwarding destinations should be network URLs")
+			return nil, fmt.Errorf("forwarding destination (%s) should be a network URL", session.Destination)
 		}
 		destinationURL, network, err := parseNetworkURL(session.Destination, mutagenContainerName, environment, daemonFlags)
 		if err != nil {
@@ -401,21 +406,21 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 		networkDependencies[network] = true
 
-		// Compute configuration.
+		// Compute the session configuration.
 		configuration := session.Configuration.Configuration()
 		if err := configuration.EnsureValid(false); err != nil {
 			return nil, fmt.Errorf("invalid forwarding session configuration for %s: %w", name, err)
 		}
 		configuration = forwarding.MergeConfigurations(defaultConfigurationForwarding, configuration)
 
-		// Compute source-specific configuration.
+		// Compute the source-specific configuration.
 		sourceConfiguration := session.ConfigurationSource.Configuration()
 		if err := sourceConfiguration.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid forwarding session source configuration for %s: %w", name, err)
 		}
 		sourceConfiguration = forwarding.MergeConfigurations(defaultConfigurationSource, sourceConfiguration)
 
-		// Compute destination-specific configuration.
+		// Compute the destination-specific configuration.
 		destinationConfiguration := session.ConfigurationDestination.Configuration()
 		if err := destinationConfiguration.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid forwarding session destination configuration for %s: %w", name, err)
@@ -436,9 +441,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 	}
 
-	// Validate synchronization sessions and convert "volume://" URLs to their
-	// Docker URL equivalents. We'll also take this opportunity to extract the
-	// volume dependencies for the Mutagen service.
+	// Validate synchronization configurations, convert them to session creation
+	// specifications, and extract volume dependencies for the Mutagen service.
 	synchronizationSpecifications := make(map[string]*synchronizationsvc.CreationSpecification)
 	volumeDependencies := make(map[string]bool)
 	for name, session := range sessions.Synchronization {
@@ -447,13 +451,13 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			return nil, fmt.Errorf("invalid synchronization session name (%s): %v", name, err)
 		}
 
-		// Enforce that exactly one of the alpha and beta URLs is a volume URL.
-		// At the moment, we only support synchronization sessions where one of
-		// the URLs is local and one of the URLs is a volume URL. We could
-		// support other combinations here, but their usage (especialy raw
-		// Docker URLs referencing the containers created in this project) is
-		// likely to be confusing and error-prone. We may change this in the
-		// future.
+		// Enforce that exactly one of the session URLs is a volume URL. At the
+		// moment, we only support synchronization sessions where one of the
+		// URLs is local the other is a volume URL. We'll check that the
+		// non-volume URL is local when parsing. We could support other protocol
+		// combinations for synchronization (and we may in the future), but for
+		// now we're focused on supporting the primary Docker Compose use case
+		// and avoiding the confusing and error-prone cases described above.
 		alphaIsVolume := isVolumeURL(session.Alpha)
 		betaIsVolume := isVolumeURL(session.Beta)
 		if !(alphaIsVolume || betaIsVolume) {
@@ -463,7 +467,9 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		}
 
 		// Parse and validate the alpha URL. If it isn't a volume URL, then it
-		// must be a local URL.
+		// must be a local URL. In the case of a local URL, we treat relative
+		// paths as relative to the project directory, so we have to override
+		// the default URL parsing behavior in that case.
 		var alphaURL *url.URL
 		if alphaIsVolume {
 			if a, volume, err := parseVolumeURL(session.Alpha, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
@@ -486,8 +492,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			}
 		}
 
-		// Parse and validate the beta URL. If it isn't a volume URL, then it
-		// must be a local URL.
+		// Parse and validate the beta URL using the same strategy.
 		var betaURL *url.URL
 		if betaIsVolume {
 			if b, volume, err := parseVolumeURL(session.Beta, daemonMetadata.OSType, mutagenContainerName, environment, daemonFlags); err != nil {
@@ -510,21 +515,21 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			}
 		}
 
-		// Compute configuration.
+		// Compute the session configuration.
 		configuration := session.Configuration.Configuration()
 		if err := configuration.EnsureValid(false); err != nil {
 			return nil, fmt.Errorf("invalid synchronization session configuration for %s: %v", name, err)
 		}
 		configuration = synchronization.MergeConfigurations(defaultConfigurationSynchronization, configuration)
 
-		// Compute alpha-specific configuration.
+		// Compute the alpha-specific configuration.
 		alphaConfiguration := session.ConfigurationAlpha.Configuration()
 		if err := alphaConfiguration.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid synchronization session alpha configuration for %s: %v", name, err)
 		}
 		alphaConfiguration = synchronization.MergeConfigurations(defaultConfigurationAlpha, alphaConfiguration)
 
-		// Compute beta-specific configuration.
+		// Compute the beta-specific configuration.
 		betaConfiguration := session.ConfigurationBeta.Configuration()
 		if err := betaConfiguration.EnsureValid(true); err != nil {
 			return nil, fmt.Errorf("invalid synchronization session beta configuration for %s: %v", name, err)

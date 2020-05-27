@@ -18,9 +18,8 @@ func isNetworkURL(raw string) bool {
 	return strings.HasPrefix(strings.ToLower(raw), networkURLPrefix)
 }
 
-// isSupportedForwardingProtocol checks if a forwarding endpoint protocol is
-// supported for use with Docker Compose.
-func isSupportedForwardingProtocol(protocol string) bool {
+// isTCPForwardingProtocol checks if a forwarding protocol is TCP-based.
+func isTCPForwardingProtocol(protocol string) bool {
 	switch protocol {
 	case "tcp":
 		return true
@@ -34,12 +33,12 @@ func isSupportedForwardingProtocol(protocol string) bool {
 }
 
 // parseNetworkURL parses a Docker Compose network pseudo-URL, converting it to
-// a concrete Mutagen Docker URL. It uses the top-level daemon connection flags
-// to determine URL parameters and looks for Docker environment variables in the
-// fully resolved project environment (which may included variables loaded from
-// "dotenv" files). This function also returns the network dependency for the
-// URL. This function must only be called on URLs that have been classified as
-// network URLs by isNetworkURL, otherwise this function may panic.
+// a concrete Mutagen Docker forwarding URL and enforcing that its forwarding
+// endpoint protocol is TCP-based. It looks for Docker environment variables in
+// the specified project environment and uses the specified daemon connection
+// flags to determine URL parameters. This function also returns the network
+// dependency for the URL. This function must only be called on URLs that have
+// been classified as network URLs by isNetworkURL, otherwise it may panic.
 func parseNetworkURL(
 	raw, mutagenContainerName string,
 	environment map[string]string,
@@ -63,8 +62,8 @@ func parseNetworkURL(
 	// for use with Docker Compose.
 	if protocol, _, err := forwardingurl.Parse(endpoint); err != nil {
 		return nil, "", fmt.Errorf("invalid forwarding endpoint URL: %w", err)
-	} else if !isSupportedForwardingProtocol(protocol) {
-		return nil, "", fmt.Errorf("forwarding endpoint protocol (%s) not supported", protocol)
+	} else if !isTCPForwardingProtocol(protocol) {
+		return nil, "", fmt.Errorf("non-TCP-based forwarding endpoint (%s) unsupported", endpoint)
 	}
 
 	// Store any Docker environment variables that we need to preserve. We only
