@@ -3,7 +3,6 @@ package compose
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -178,17 +177,11 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// of the config.find function in Docker Compose.
 	if len(files) == 1 && files[0] == "-" {
 		// Store the standard input stream to a temporary file.
-		configurationFilePath := filepath.Join(temporaryDirectory, "standard-input.yaml")
-		configurationFile, err := os.OpenFile(configurationFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create file to store standard input configuration: %w", err)
+		standardInputPath := filepath.Join(temporaryDirectory, "standard-input.yaml")
+		if err := storeStandardInput(standardInputPath); err != nil {
+			return nil, fmt.Errorf("unable to store configuration from standard input: %w", err)
 		}
-		_, err = io.Copy(configurationFile, os.Stdin)
-		configurationFile.Close()
-		if err != nil {
-			return nil, fmt.Errorf("unable to copy standard input configuration: %w", err)
-		}
-		files = []string{configurationFilePath}
+		files = []string{standardInputPath}
 
 		// If a project directory wasn't explicitly specified, then use the
 		// current working directory.
