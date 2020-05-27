@@ -76,7 +76,7 @@ type Project struct {
 }
 
 // LoadProject computes Docker Compose project metadata, loads the project's
-// configuration files, extracts Mutagen session definitions from x-mutagen
+// configuration files, extracts Mutagen session definitions from "x-mutagen"
 // extensions, and generates temporary files containing Mutagen image and
 // service definitions. The logic of this loading is a simplified (but faithful)
 // emulation of Docker Compose's loading implementation, roughly modeling the
