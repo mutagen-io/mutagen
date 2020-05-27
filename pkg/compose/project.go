@@ -561,27 +561,32 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("unable to generate Mutagen service build context: %w", err)
 	}
 
-	// Generate the Docker Compose configuration file for the Mutagen service
-	// and add it to the list of configuration files.
-	mutagenComposeConfiguration := &mutagenComposeConfiguration{}
-	mutagenComposeConfiguration.Version = version
-	mutagenComposeConfiguration.Services.Mutagen.Build = mutagenBuildContext
-	mutagenComposeConfiguration.Services.Mutagen.Init = needMutagenServiceInitForPlatform(daemonMetadata.Platform)
+	// Generate the Mutagen service configuration.
+	mutagenServiceConfiguration := &generatedServiceConfiguration{
+		Build: mutagenBuildContext,
+		Init:  needMutagenServiceInitForPlatform(daemonMetadata.Platform),
+	}
 	for network := range networkDependencies {
-		mutagenComposeConfiguration.Services.Mutagen.Networks = append(
-			mutagenComposeConfiguration.Services.Mutagen.Networks,
+		mutagenServiceConfiguration.Networks = append(mutagenServiceConfiguration.Networks,
 			network,
 		)
 	}
 	for volume := range volumeDependencies {
-		mutagenComposeConfiguration.Services.Mutagen.Volumes = append(
-			mutagenComposeConfiguration.Services.Mutagen.Volumes,
+		mutagenServiceConfiguration.Volumes = append(mutagenServiceConfiguration.Volumes,
 			volume+":"+mountPathForVolumeInMutagenContainer(daemonMetadata.Platform, volume),
 		)
 	}
+
+	// Generate the Mutagen Docker Compose configuration file.
+	mutagenComposeConfiguration := &generatedComposeConfiguration{
+		Version: version,
+		Services: map[string]*generatedServiceConfiguration{
+			mutagenServiceName: mutagenServiceConfiguration,
+		},
+	}
 	mutagenComposeConfigurationPath := filepath.Join(temporaryDirectory, "mutagen.yml")
 	if err := mutagenComposeConfiguration.store(mutagenComposeConfigurationPath); err != nil {
-		return nil, fmt.Errorf("unable to store Docker Compose configuration for Mutagen service: %w", err)
+		return nil, fmt.Errorf("unable to store Docker Compose configuration for Mutagen service(s): %w", err)
 	}
 	files = append(files, mutagenComposeConfigurationPath)
 

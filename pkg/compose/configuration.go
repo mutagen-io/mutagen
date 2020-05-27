@@ -67,7 +67,7 @@ type synchronizationConfiguration struct {
 }
 
 // mutagenConfiguration encodes collections of Mutagen forwarding and
-// synchronization sessions found under an x-mutagen extension field.
+// synchronization sessions found under an "x-mutagen" extension field.
 type mutagenConfiguration struct {
 	// Forwarding represents the forwarding sessions to be created. If a
 	// "defaults" key is present, it is treated as a template upon which other
@@ -81,7 +81,8 @@ type mutagenConfiguration struct {
 	Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
 }
 
-// configuration encodes a subset of a Docker Compose configuration file.
+// configuration encodes a subset of the Docker Compose configuration file
+// format Mutagen extensions.
 type configuration struct {
 	// version is the configuration file schema version.
 	version string
@@ -91,13 +92,14 @@ type configuration struct {
 	volumes map[string]struct{}
 	// networks are the networks defined in the configuration file.
 	networks map[string]struct{}
-	// mutagen is the Mutagen configuration defined in the configuration file.
+	// mutagen is the Mutagen configuration defined in the configuration file
+	// under the "x-mutagen" extension.
 	mutagen mutagenConfiguration
 }
 
 // intermediateConfiguration is an intermediate configuration structure used for
 // non-strict YAML decoding. It allows configuration loading to separate any
-// top-level x-mutagen YAML configuration for separate strict decoding.
+// top-level "x-mutagen" YAML configuration for separate strict decoding.
 type intermediateConfiguration struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
@@ -192,7 +194,7 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 	}
 
 	// Decode the document into a more concrete structure that will allow us to
-	// separate the x-mutagen specification for further validation. At this
+	// separate the "x-mutagen" specification for further validation. At this
 	// point we still want non-strict decoding because we want to allow for
 	// unknown top-level keys (since we need to play nice with top-level
 	// extension fields).
@@ -209,7 +211,7 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 		networks: yamlMapToStructMap(intermediate.Networks),
 	}
 
-	// If there was no top-level x-mutagen specification, then we're done. For
+	// If there was no top-level "x-mutagen" specification, then we're done. For
 	// some reason, decoding doesn't work if we make the Mutagen field a Node
 	// pointer, it has to be a value. As such, the only way we can check for its
 	// presence is to look at the node kind and look for a non-zero value.
@@ -217,8 +219,8 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 		return result, nil
 	}
 
-	// Extract and re-serialize the interpolated x-mutagen section. We have to
-	// wrap the x-mutagen section in a document node for serialization to work.
+	// Extract and re-serialize the interpolated "x-mutagen" section. We have to
+	// wrap the extracted section in a document node for serialization to work.
 	// TODO: Once go-yaml/yaml#460 is resolved, we won't need to perform this
 	// re-serialization, we'll be able to perform a strict decoding into the
 	// final structure directly from the decoded YAML node. This may be resolved
@@ -228,49 +230,55 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 		Content: []*yaml.Node{&intermediate.Mutagen},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to re-serialize x-mutagen YAML: %w", err)
+		return nil, fmt.Errorf("unable to re-serialize Mutagen YAML: %w", err)
 	}
 
 	// Now re-parse that YAML with strict decoding to ensure that it's correct.
 	decoder = yaml.NewDecoder(bytes.NewReader(mutagenYAML))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&result.mutagen); err != nil {
-		return nil, fmt.Errorf("strict parsing of x-mutagen YAML failed: %w", err)
+		return nil, fmt.Errorf("strict parsing of Mutagen YAML failed: %w", err)
 	}
 
 	// Success.
 	return result, nil
 }
 
-// mutagenComposeConfiguration represents a Docker Compose configuration file
-// for the Mutagen service.
-type mutagenComposeConfiguration struct {
-	// Version is the Docker Compose configuration file version.
-	Version string `yaml:"version"`
-	// Services are the Docker Compose services
-	Services struct {
-		// Mutagen is the Mutagen service.
-		// TODO: The key for this field really ought to come from the
-		// mutagenServiceName constant. We should at least add a test to enforce
-		// that they match.
-		Mutagen struct {
-			// Build is the build context for the Mutagen service.
-			Build string `yaml:"build"`
-			// Init indicates whether or not a Docker init process should be
-			// used to wrap the Mutagen container entry point.
-			Init bool `yaml:"init,omitempty"`
-			// Networks are the network dependencies for the Mutagen service.
-			Networks []string `yaml:"networks"`
-			// Volumes are the volume dependencies for the Mutagen service.
-			Volumes []string `yaml:"volumes"`
-		} `yaml:"mutagen"`
-	} `yaml:"services"`
+// generatedServiceConfiguration encodes a subset of the Docker Compose service
+// configuration format. It is only used for generating Docker Compose service
+// configurations, and thus only encodes those fields needed by generated
+// Mutagen services. It is designed to be compatible with both 2.x and 3.x
+// Docker Compose formats.
+type generatedServiceConfiguration struct {
+	// Build is the build context for the service.
+	Build string `yaml:"build"`
+	// Init indicates whether or not a Docker init process should be used to
+	// wrap the entry point of the service.
+	Init bool `yaml:"init,omitempty"`
+	// Networks are the network dependencies for the service.
+	Networks []string `yaml:"networks"`
+	// Volumes are the volume dependencies for the service.
+	Volumes []string `yaml:"volumes"`
 }
 
-// store encodes the configuration to YAML and writes it to the specified path.
-func (c *mutagenComposeConfiguration) store(path string) error {
+// generatedComposeConfiguration encodes a subset of the Docker Compose
+// configuration format. It is only used for generating configuration files and
+// thus only encodes those fields needed by Mutagen services. It is designed to
+// be compatible with both 2.x and 3.x Docker Compose configuration formats.
+type generatedComposeConfiguration struct {
+	// Version is the Docker Compose configuration file version.
+	Version string `yaml:"version"`
+	// Services are the Docker Compose services.
+	Services map[string]*generatedServiceConfiguration `yaml:"services"`
+}
+
+// store encodes the configuration to YAML and writes it to a file at the
+// specified path. The file is created with user-only permissions and must not
+// already exist. The output file may be created even in the case of failure
+// (for example if an error occurs during YAML encoding).
+func (c *generatedComposeConfiguration) store(path string) error {
 	// Open the output file and defer its closure.
-	output, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	output, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return fmt.Errorf("unable to open output file: %w", err)
 	}
