@@ -17,6 +17,59 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/docker"
 )
 
+// topLevelProjectFlagNames are the names of the top-level flags that control
+// project resolution.
+var topLevelProjectFlagNames = []string{
+	"file",
+	"project-name",
+	"project-directory",
+	"env-file",
+}
+
+// reconstituteFlags reconstitutes a parsed flag set, optionally filtering out
+// specific flag names. It only supports the flag types needed by the compose
+// command and its subcommands.
+func reconstituteFlags(flags *pflag.FlagSet, exclude []string) []string {
+	// Convert the exclusion list to a map.
+	var excludeMap map[string]bool
+	if len(exclude) > 0 {
+		excludeMap = make(map[string]bool, len(exclude))
+		for _, flag := range exclude {
+			excludeMap[flag] = true
+		}
+	}
+
+	// Perform reconstruction.
+	var result []string
+	flags.Visit(func(flag *pflag.Flag) {
+		// Ignore excluded flags.
+		if excludeMap[flag.Name] {
+			return
+		}
+
+		// Handle flags based on type.
+		switch flag.Value.Type() {
+		case "bool":
+			result = append(result, "--"+flag.Name)
+		case "string":
+			result = append(result, "--"+flag.Name, flag.Value.String())
+		case "stringSlice":
+			sliceValue, ok := flag.Value.(pflag.SliceValue)
+			if !ok {
+				panic("stringSlice flag did not have SliceValue type")
+			}
+			for _, value := range sliceValue.GetSlice() {
+				result = append(result, "--"+flag.Name, value)
+			}
+		default:
+			panic("unhandled flag type")
+		}
+	})
+
+	// Done.
+	return result
+}
+
 // invoke invokes Docker Compose with the specified top-level flags, command
 // name, and arguments. It forwards standard input/output/error streams to the
 // child process and terminates the current process with the same exit code as
@@ -70,46 +123,6 @@ func invoke(topLevelFlags []string, command string, arguments []string) {
 	os.Exit(0)
 }
 
-// topLevelFlags reconstitutes parsed top-level Docker Compose flags. If
-// excludeProjectFlags is true, then -f/--file, -p/--project-name,
-// --project-directory, and --env-file flags will be excluded.
-func topLevelFlags(excludeProjectFlags bool) (flags []string) {
-	RootCommand.Flags().Visit(func(flag *pflag.Flag) {
-		// Check for excluded flags.
-		if excludeProjectFlags {
-			switch flag.Name {
-			case "file":
-				return
-			case "project-name":
-				return
-			case "project-directory":
-				return
-			case "env-file":
-				return
-			}
-		}
-
-		// Handle flags based on type.
-		switch flag.Value.Type() {
-		case "bool":
-			flags = append(flags, "--"+flag.Name)
-		case "string":
-			flags = append(flags, "--"+flag.Name, flag.Value.String())
-		case "stringSlice":
-			sliceValue, ok := flag.Value.(pflag.SliceValue)
-			if !ok {
-				panic("stringSlice flag did not have SliceValue type")
-			}
-			for _, value := range sliceValue.GetSlice() {
-				flags = append(flags, "--"+flag.Name, value)
-			}
-		default:
-			panic("unhandled flag type")
-		}
-	})
-	return
-}
-
 // handleTopLevelFlags handles top-level Docker Compose flags. This is necessary
 // to emulate Docker Compose's handling of these flags, which occurs even if a
 // command is specified. If this function returns, then execution can continue
@@ -155,7 +168,7 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	invoke(topLevelFlags(false), command.CalledAs(), arguments)
+	invoke(reconstituteFlags(RootCommand.Flags(), nil), command.CalledAs(), arguments)
 }
 
 // commandHelp is a Cobra help function that shells out to Docker Compose to

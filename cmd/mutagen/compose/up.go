@@ -8,7 +8,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	// "github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	// "github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/compose"
+	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
 // ensureMutagenUp ensures that the Mutagen service is running and up-to-date.
@@ -52,7 +60,140 @@ func ensureMutagenUp(topLevelFlags []string) error {
 	return nil
 }
 
-func upMain(_ *cobra.Command, arguments []string) error {
+// forwardingSessionCurrent determines whether or not an existing forwarding
+// session is equivalent to the specification for its creation.
+func forwardingSessionCurrent(
+	session *forwarding.Session,
+	specification *forwardingsvc.CreationSpecification,
+) bool {
+	// TODO: Figure out URL comparisons and document strategy.
+	return session.Configuration.Equal(specification.Configuration) &&
+		session.ConfigurationSource.Equal(specification.ConfigurationSource) &&
+		session.ConfigurationDestination.Equal(specification.ConfigurationDestination)
+}
+
+// synchronizationSessionCurrent determines whether or not an existing
+// synchronization session is equivalent to the specification for its creation.
+func synchronizationSessionCurrent(
+	session *synchronization.Session,
+	specification *synchronizationsvc.CreationSpecification,
+) bool {
+	// TODO: Figure out URL comparisons and document strategy.
+	return session.Configuration.Equal(specification.Configuration) &&
+		session.ConfigurationAlpha.Equal(specification.ConfigurationAlpha) &&
+		session.ConfigurationBeta.Equal(specification.ConfigurationBeta)
+}
+
+// reconcileSessions handles Mutagen session reconciliation for the project.
+func reconcileSessions(project *compose.Project) error {
+	// Connect to the Mutagen daemon and defer closure of the connection.
+	daemonConnection, err := daemon.CreateClientConnection(true, true)
+	if err != nil {
+		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
+	}
+	defer daemonConnection.Close()
+
+	// Create service clients.
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Create a session selector.
+	selector := project.SessionSelector()
+
+	// Query existing forwarding sessions.
+	forwardingListRequest := &forwardingsvc.ListRequest{Selection: selector}
+	forwardingListResponse, err := forwardingService.List(context.Background(), forwardingListRequest)
+	if err != nil {
+		return fmt.Errorf("forwarding list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
+	} else if err = forwardingListResponse.EnsureValid(); err != nil {
+		return fmt.Errorf("invalid forwarding list response received: %w", err)
+	}
+
+	// Query existing synchronization sessions.
+	synchronizationListRequest := &synchronizationsvc.ListRequest{Selection: selector}
+	synchronizationListResponse, err := synchronizationService.List(context.Background(), synchronizationListRequest)
+	if err != nil {
+		return fmt.Errorf("synchronization list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
+	} else if err = synchronizationListResponse.EnsureValid(); err != nil {
+		return fmt.Errorf("invalid synchronization list response received: %w", err)
+	}
+
+	// Identify orphan forwarding sessions with no corresponding definition and
+	// any duplicate forwarding sessions. At the same time, construct a map from
+	// session name to existing session.
+	var forwardingPruneList []string
+	forwardingNameToSession := make(map[string]*forwarding.Session)
+	for _, state := range forwardingListResponse.SessionStates {
+		if _, defined := project.Forwarding[state.Session.Name]; !defined {
+			forwardingPruneList = append(forwardingPruneList, state.Session.Identifier)
+		} else if _, duplicated := forwardingNameToSession[state.Session.Name]; duplicated {
+			forwardingPruneList = append(forwardingPruneList, state.Session.Identifier)
+		} else {
+			forwardingNameToSession[state.Session.Name] = state.Session
+		}
+	}
+
+	// Identify orphan synchronization sessions with no corresponding definition
+	// and any duplicate synchronization sessions. At the same time, construct a
+	// map from session name to existing session.
+	var synchronizationPruneList []string
+	synchronizationNameToSession := make(map[string]*synchronization.Session)
+	for _, state := range synchronizationListResponse.SessionStates {
+		if _, defined := project.Synchronization[state.Session.Name]; !defined {
+			synchronizationPruneList = append(synchronizationPruneList, state.Session.Identifier)
+		} else if _, duplicated := synchronizationNameToSession[state.Session.Name]; duplicated {
+			synchronizationPruneList = append(synchronizationPruneList, state.Session.Identifier)
+		} else {
+			synchronizationNameToSession[state.Session.Name] = state.Session
+		}
+	}
+
+	// Identify forwarding sessions that need to be created or recreated.
+	var forwardingCreateSpecifications []*forwardingsvc.CreationSpecification
+	for name, specification := range project.Forwarding {
+		if existing, ok := forwardingNameToSession[name]; !ok {
+			forwardingCreateSpecifications = append(forwardingCreateSpecifications, specification)
+		} else if !forwardingSessionCurrent(existing, specification) {
+			forwardingPruneList = append(forwardingPruneList, existing.Identifier)
+			forwardingCreateSpecifications = append(forwardingCreateSpecifications, specification)
+		}
+	}
+
+	// Identify synchronization sessions that need to be created or recreated.
+	var synchronizationCreateSpecifications []*synchronizationsvc.CreationSpecification
+	for name, specification := range project.Synchronization {
+		if existing, ok := synchronizationNameToSession[name]; !ok {
+			synchronizationCreateSpecifications = append(synchronizationCreateSpecifications, specification)
+		} else if !synchronizationSessionCurrent(existing, specification) {
+			synchronizationPruneList = append(synchronizationPruneList, existing.Identifier)
+			synchronizationCreateSpecifications = append(synchronizationCreateSpecifications, specification)
+		}
+	}
+
+	// Prune orphaned and stale forwarding sessions.
+	// TODO: Implement.
+	_ = forwardingPruneList
+
+	// Prune orphaned and stale synchronization sessions.
+	// TODO: Implement.
+	_ = synchronizationPruneList
+
+	// Create forwarding sessions.
+	// TODO: Implement.
+	_ = forwardingCreateSpecifications
+
+	// Create synchronization sessions.
+	// TODO: Implement.
+	_ = synchronizationCreateSpecifications
+
+	// Flush newly created synchronization sessions.
+	// TODO: Implement.
+
+	// Success.
+	return nil
+}
+
+func upMain(command *cobra.Command, arguments []string) error {
 	// Ensure that the user isn't trying to interact with the Mutagen service
 	// directly.
 	for _, argument := range arguments {
@@ -71,8 +212,10 @@ func upMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer project.Dispose()
 
-	// Compute the effective top-level flags that we'll use.
-	topLevelFlags := topLevelFlags(true)
+	// Compute the effective top-level flags that we'll use. We reconstitute
+	// flags from the root command, but filter project-related flags and replace
+	// them with the fully resolve flags from the loaded project.
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
 	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
 
 	// Ensure that the Mutagen service is running and up-to-date.
@@ -80,13 +223,31 @@ func upMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to bring up Mutagen service: %w", err)
 	}
 
-	// Handle Mutagen session reconciliation and initial synchronization.
-	// TODO: Implement.
+	// Handle Mutagen session reconciliation.
+	if err := reconcileSessions(project); err != nil {
+		return fmt.Errorf("unable to reconcile Mutagen sessions: %w", err)
+	}
+
+	// If no services have been explicitly specified, then use a list of all
+	// services defined for the project. We want to avoid having the Mutagen
+	// service targeted by the nominal up command because we don't want the
+	// flags for that command to affect the Mutagen service.
+	if len(arguments) == 0 {
+		if len(project.Services) == 0 {
+			return errors.New("no services defined for project")
+		} else {
+			arguments = project.Services
+		}
+	}
 
 	// Invoke the target command.
-	// TODO: Implement.
+	upArguments := reconstituteFlags(command.Flags(), nil)
+	upArguments = append(upArguments, arguments...)
+	fmt.Println(topLevelFlags, "up", upArguments)
+	// TODO: Activate.
+	// invoke(topLevelFlags, "up", upArguments)
 
-	// Success.
+	// Unreachable.
 	return nil
 }
 

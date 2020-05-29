@@ -6,6 +6,22 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
+// Equal returns whether or not the configuration is equivalent to another. If
+// either configuration is nil (and hence invalid), then this method returns
+// false. This method makes no other checks for validity.
+func (c *Configuration) Equal(other *Configuration) bool {
+	// Ensure that both are non-nil.
+	if c == nil || other == nil {
+		return false
+	}
+
+	// Perform an equivalence check.
+	return c.SocketOverwriteMode == other.SocketOverwriteMode &&
+		c.SocketOwner == other.SocketOwner &&
+		c.SocketGroup == other.SocketGroup &&
+		c.SocketPermissionMode == other.SocketPermissionMode
+}
+
 // EnsureValid ensures that Configuration's invariants are respected. The
 // validation of the configuration depends on whether or not it is
 // endpoint-specific.

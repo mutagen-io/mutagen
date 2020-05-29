@@ -1,3 +1,2 @@
-// Package selection provides the infrastructure for labelling and selecting
-// objects.
+// Package selection provides labeling and selection infrastructure.
 package selection

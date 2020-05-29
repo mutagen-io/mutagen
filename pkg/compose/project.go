@@ -69,15 +69,17 @@ type Project struct {
 	// value should be passed to Docker Compose commands using the top-level
 	// --project-directory flag.
 	workingDirectory string
-	// Name is the fully resolved project name. This value should be passed to
+	// name is the fully resolved project name. This value should be passed to
 	// Docker Compose commands using the top-level --name flag.
-	Name string
+	name string
+	// Services are the names of the non-Mutagen services in the project.
+	Services []string
 	// Forwarding are the forwarding session specifications.
 	Forwarding map[string]*forwardingsvc.CreationSpecification
 	// Synchronization are the synchronization session specifications.
 	Synchronization map[string]*synchronizationsvc.CreationSpecification
-	// DaemonMetadata is the target Docker daemon metadata.
-	DaemonMetadata docker.DaemonMetadata
+	// daemonMetadata is the target Docker daemon metadata.
+	daemonMetadata docker.DaemonMetadata
 	// temporaryDirectory is the temorary directory in which generated files are
 	// stored for the project.
 	temporaryDirectory string
@@ -305,6 +307,12 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", MutagenServiceName)
 	}
 
+	// Extract service names.
+	serviceNames := make([]string, 0, len(services))
+	for name := range services {
+		serviceNames = append(serviceNames, name)
+	}
+
 	// If no custom networks were defined, then Docker Compose will create a
 	// default network. This only occurs if no custom networks are defined.
 	if len(networks) == 0 {
@@ -442,8 +450,9 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			ConfigurationSource:      sourceConfiguration,
 			ConfigurationDestination: destinationConfiguration,
 			Name:                     name,
-			Labels:                   map[string]string{
-				// TODO: Compute and set labels.
+			Labels: map[string]string{
+				projectNameLabel:      projectName,
+				daemonIdentifierLabel: daemonMetadata.Identifier,
 			},
 		}
 	}
@@ -551,8 +560,9 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			ConfigurationAlpha: alphaConfiguration,
 			ConfigurationBeta:  betaConfiguration,
 			Name:               name,
-			Labels:             map[string]string{
-				// TODO: Compute and set labels.
+			Labels: map[string]string{
+				projectNameLabel:      projectName,
+				daemonIdentifierLabel: daemonMetadata.Identifier,
 			},
 		}
 	}
@@ -603,10 +613,11 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		environmentFile:    environmentFile,
 		files:              files,
 		workingDirectory:   projectDirectory,
-		Name:               projectName,
+		name:               projectName,
+		Services:           serviceNames,
 		Forwarding:         forwardingSpecifications,
 		Synchronization:    synchronizationSpecifications,
-		DaemonMetadata:     daemonMetadata,
+		daemonMetadata:     daemonMetadata,
 		temporaryDirectory: temporaryDirectory,
 	}, nil
 }
@@ -627,10 +638,20 @@ func (p *Project) TopLevelFlags() []string {
 	for _, file := range p.files {
 		flags = append(flags, "--file", file)
 	}
-	flags = append(flags, "--project-name", p.Name)
+	flags = append(flags, "--project-name", p.name)
 	flags = append(flags, "--project-directory", p.workingDirectory)
 	flags = append(flags, "--env-file", p.environmentFile)
 
 	// Done.
 	return flags
+}
+
+// SessionSelector returns a Mutagen session selector for the project.
+func (p *Project) SessionSelector() *selection.Selection {
+	return &selection.Selection{
+		LabelSelector: fmt.Sprintf("%s == %s,%s == %s",
+			projectNameLabel, p.name,
+			daemonIdentifierLabel, p.daemonMetadata.Identifier,
+		),
+	}
 }
