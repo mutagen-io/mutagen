@@ -123,7 +123,7 @@ func main() {
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
 
-	// HACK: Modify the root command's help function to hide sync commands.
+	// HACK: Modify the root command help to hide legacy root sync commands.
 	defaultHelpFunction := rootCommand.HelpFunc()
 	rootCommand.SetHelpFunc(func(command *cobra.Command, arguments []string) {
 		if command == rootCommand {
