@@ -9,11 +9,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
-	// "github.com/mutagen-io/mutagen/cmd/mutagen/forward"
-	// "github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/compose"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -97,25 +98,25 @@ func reconcileSessions(project *compose.Project) error {
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
-	// Create a session selection.
-	selection := project.SessionSelection()
+	// Create a session selection for the project.
+	projectSelection := project.SessionSelection()
 
 	// Query existing forwarding sessions.
-	forwardingListRequest := &forwardingsvc.ListRequest{Selection: selection}
+	forwardingListRequest := &forwardingsvc.ListRequest{Selection: projectSelection}
 	forwardingListResponse, err := forwardingService.List(context.Background(), forwardingListRequest)
 	if err != nil {
-		return fmt.Errorf("forwarding list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
+		return fmt.Errorf("forwarding session listing failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
 	} else if err = forwardingListResponse.EnsureValid(); err != nil {
-		return fmt.Errorf("invalid forwarding list response received: %w", err)
+		return fmt.Errorf("invalid forwarding session listing response received: %w", err)
 	}
 
 	// Query existing synchronization sessions.
-	synchronizationListRequest := &synchronizationsvc.ListRequest{Selection: selection}
+	synchronizationListRequest := &synchronizationsvc.ListRequest{Selection: projectSelection}
 	synchronizationListResponse, err := synchronizationService.List(context.Background(), synchronizationListRequest)
 	if err != nil {
-		return fmt.Errorf("synchronization list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
+		return fmt.Errorf("synchronization session listing failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
 	} else if err = synchronizationListResponse.EnsureValid(); err != nil {
-		return fmt.Errorf("invalid synchronization list response received: %w", err)
+		return fmt.Errorf("invalid synchronization session listing response received: %w", err)
 	}
 
 	// Identify orphan forwarding sessions with no corresponding definition, as
@@ -171,23 +172,47 @@ func reconcileSessions(project *compose.Project) error {
 	}
 
 	// Prune orphaned and stale forwarding sessions.
-	// TODO: Implement.
-	_ = forwardingPruneList
+	if len(forwardingPruneList) > 0 {
+		pruneSelection := &selection.Selection{Specifications: forwardingPruneList}
+		if err := forward.TerminateWithSelection(forwardingService, pruneSelection); err != nil {
+			return fmt.Errorf("unable to prune orphaned/duplicate/stale forwarding sessions: %w", err)
+		}
+	}
 
 	// Prune orphaned and stale synchronization sessions.
-	// TODO: Implement.
-	_ = synchronizationPruneList
+	if len(synchronizationPruneList) > 0 {
+		pruneSelection := &selection.Selection{Specifications: synchronizationPruneList}
+		if err := sync.TerminateWithSelection(synchronizationService, pruneSelection); err != nil {
+			return fmt.Errorf("unable to prune orphaned/duplicate/stale synchronization sessions: %w", err)
+		}
+	}
 
 	// Create forwarding sessions.
-	// TODO: Implement.
-	_ = forwardingCreateSpecifications
+	for _, specification := range forwardingCreateSpecifications {
+		fmt.Println("Creating forwarding session", specification.Name)
+		if _, err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
+			return fmt.Errorf("unable to create forwarding session (%s): %w", specification.Name, err)
+		}
+	}
 
 	// Create synchronization sessions.
-	// TODO: Implement.
-	_ = synchronizationCreateSpecifications
+	var sessionsToFlush []string
+	for _, specification := range synchronizationCreateSpecifications {
+		fmt.Println("Creating synchronization session", specification.Name)
+		if s, err := sync.CreateWithSpecification(synchronizationService, specification); err != nil {
+			return fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
+		} else {
+			sessionsToFlush = append(sessionsToFlush, s)
+		}
+	}
 
 	// Flush newly created synchronization sessions.
-	// TODO: Implement.
+	if len(sessionsToFlush) > 0 {
+		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
+		if err := sync.FlushWithSelection(synchronizationService, flushSelection, false); err != nil {
+			return fmt.Errorf("unable to flush synchronization session(s): %w", err)
+		}
+	}
 
 	// Success.
 	return nil
@@ -243,13 +268,7 @@ func upMain(command *cobra.Command, arguments []string) error {
 	// Invoke the target command.
 	upArguments := reconstituteFlags(command.Flags(), nil)
 	upArguments = append(upArguments, arguments...)
-	// TODO: Remove/activate.
-	fmt.Println(topLevelFlags, "up", upArguments)
-	// invoke(topLevelFlags, "up", upArguments)
-
-	// Unreachable.
-	// TODO: Remove? Will Go complain?
-	return nil
+	return invoke(topLevelFlags, "up", upArguments)
 }
 
 var upCommand = &cobra.Command{

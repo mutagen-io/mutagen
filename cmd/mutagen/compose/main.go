@@ -71,16 +71,10 @@ func reconstituteFlags(flags *pflag.FlagSet, exclude []string) []string {
 }
 
 // invoke invokes Docker Compose with the specified top-level flags, command
-// name, and arguments. It forwards standard input/output/error streams to the
-// child process and terminates the current process with the same exit code as
-// the child process. If an error occurs while trying to invoke Docker Compose,
-// then this function will print an error message and terminate the current
-// process with an error exit code. If command is an empty string, then no
-// command is specified to Docker Compose and arguments are ignored (though
-// top-level flags are still included in the Docker Compose invocation). Upon
-// successful invocation, this function will terminate the current process with
-// an exit code of 0.
-func invoke(topLevelFlags []string, command string, arguments []string) {
+// name, and arguments. It forwards the standard input/output/error streams and
+// environment of the current process to Docker Compose. It returns any error
+// that occurred while invoking Docker Compose or the result of os/exec.Cmd.Run.
+func invoke(topLevelFlags []string, command string, arguments []string) error {
 	// Compute the Docker Compose arguments.
 	composeArguments := make([]string, 0, len(topLevelFlags)+1+len(arguments))
 	composeArguments = append(composeArguments, topLevelFlags...)
@@ -92,7 +86,7 @@ func invoke(topLevelFlags []string, command string, arguments []string) {
 	// Set up the Docker Compose commmand.
 	compose, err := compose.Command(context.Background(), composeArguments...)
 	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to set up Docker Compose invocation: %w", err))
+		return fmt.Errorf("unable to set up Docker Compose invocation: %w", err)
 	}
 
 	// Forward input and output streams.
@@ -106,21 +100,39 @@ func invoke(topLevelFlags []string, command string, arguments []string) {
 	// that it is with the Python runtime. In any case, we'll likely need to
 	// forward signals.
 
-	// Run the command.
+	// Run the command and wrap any error that's not an exit error.
 	if err := compose.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if exitCode := exitErr.ExitCode(); exitCode < 1 {
-				os.Exit(1)
-			} else {
-				os.Exit(exitCode)
-			}
-		} else {
-			cmd.Fatal(fmt.Errorf("unable to invoke Docker Compose: %w", err))
+		if _, ok := err.(*exec.ExitError); !ok {
+			return fmt.Errorf("unable to invoke Docker Compose: %w", err)
 		}
+		return err
 	}
 
 	// Success.
-	os.Exit(0)
+	return nil
+}
+
+// invokeAndExit runs invoke with the specified parameters and terminates the
+// current process with a matching exit code (or an error message and error exit
+// code if the Docker Compose command failed to start).
+func invokeAndExit(topLevelFlags []string, command string, arguments []string) {
+	// Run invoke. If there's no error, then we can exit successfully as well.
+	err := invoke(topLevelFlags, command, arguments)
+	if err == nil {
+		os.Exit(0)
+	}
+
+	// Otherwise attempt to extract the exit code. If the exit code is invalid,
+	// then just use a standard error exit code.
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		if exitCode := exitErr.ExitCode(); exitCode >= 1 {
+			os.Exit(exitCode)
+		}
+		os.Exit(1)
+	}
+
+	// At this point, some other error must have occurred.
+	cmd.Fatal(err)
 }
 
 // handleTopLevelFlags handles top-level Docker Compose flags. This is necessary
@@ -132,9 +144,9 @@ func handleTopLevelFlags() {
 	// version behavior, even if the -v/--version flag is specified before the
 	// -h/--help flag.
 	if rootConfiguration.help {
-		invoke([]string{"--help"}, "", nil)
+		invokeAndExit([]string{"--help"}, "", nil)
 	} else if rootConfiguration.version {
-		invoke([]string{"--version"}, "", nil)
+		invokeAndExit([]string{"--version"}, "", nil)
 	}
 
 	// Enforce that the --skip-hostname-check flag isn't specified. This flag
@@ -168,16 +180,17 @@ func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Co
 // command arguments. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	invoke(reconstituteFlags(RootCommand.Flags(), nil), command.CalledAs(), arguments)
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), nil)
+	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
 }
 
 // commandHelp is a Cobra help function that shells out to Docker Compose to
 // display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
 	if command == RootCommand {
-		invoke([]string{"--help"}, "", nil)
+		invokeAndExit([]string{"--help"}, "", nil)
 	}
-	invoke(nil, command.CalledAs(), []string{"--help"})
+	invokeAndExit(nil, command.CalledAs(), []string{"--help"})
 }
 
 func rootMain(_ *cobra.Command, arguments []string) {
@@ -185,7 +198,7 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		invoke(nil, "", nil)
+		invokeAndExit(nil, "", nil)
 	}
 
 	// Handle unknown commands. We can't precisely emulate what Docker Compose

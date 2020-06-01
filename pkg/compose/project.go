@@ -38,6 +38,22 @@ func normalizeProjectName(name string) string {
 	return normalizeProjectNameReplacer.ReplaceAllString(strings.ToLower(name), "")
 }
 
+// daemonIdentifierNormalizers are pairs of matchers and normalization functions
+// that can be used to convert daemon identifiers to a format suitable for use
+// with Mutagen session labels. Since the Docker daemon format isn't guaranteed
+// to be stable, we use regular expressions to ensure that we understand the
+// format. All normalizers in this list should be cognizant of label value
+// character and length restrictions.
+var daemonIdentifierNormalizers = []struct {
+	matcher    *regexp.Regexp
+	normalizer func(string) string
+}{
+	{
+		regexp.MustCompile(`^([A-Z0-9]{4}:){11}[A-Z0-9]{4}$`),
+		func(s string) string { return strings.ReplaceAll(s, ":", "_") },
+	},
+}
+
 // singleContainerName returns the actual container name for a single-container
 // service. It roughly models the logic of the build_container_name function in
 // Docker Compose, though it only supports a subset of that functionality.
@@ -78,8 +94,8 @@ type Project struct {
 	Forwarding map[string]*forwardingsvc.CreationSpecification
 	// Synchronization are the synchronization session specifications.
 	Synchronization map[string]*synchronizationsvc.CreationSpecification
-	// daemonMetadata is the target Docker daemon metadata.
-	daemonMetadata docker.DaemonMetadata
+	// daemonIdentifier is the normalized Docker daemon identifier.
+	daemonIdentifier string
 	// temporaryDirectory is the temorary directory in which generated files are
 	// stored for the project.
 	temporaryDirectory string
@@ -147,6 +163,17 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("unable to query Docker daemon metadata: %w", err)
 	} else if !isSupportedPlatform(daemonMetadata.Platform) {
 		return nil, fmt.Errorf("unsupported Docker platform: %s", daemonMetadata.Platform)
+	}
+
+	// Create a daemon identifier suitable for use with session labels.
+	var daemonIdentifier string
+	for _, pair := range daemonIdentifierNormalizers {
+		if pair.matcher.MatchString(daemonMetadata.Identifier) {
+			daemonIdentifier = pair.normalizer(daemonMetadata.Identifier)
+		}
+	}
+	if daemonIdentifier == "" {
+		return nil, fmt.Errorf("unknown daemon identifier format: %s", daemonMetadata.Identifier)
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
@@ -452,7 +479,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			Name:                     name,
 			Labels: map[string]string{
 				projectNameLabel:      projectName,
-				daemonIdentifierLabel: daemonMetadata.Identifier,
+				daemonIdentifierLabel: daemonIdentifier,
 			},
 		}
 	}
@@ -562,7 +589,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			Name:               name,
 			Labels: map[string]string{
 				projectNameLabel:      projectName,
-				daemonIdentifierLabel: daemonMetadata.Identifier,
+				daemonIdentifierLabel: daemonIdentifier,
 			},
 		}
 	}
@@ -617,7 +644,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		Services:           serviceNames,
 		Forwarding:         forwardingSpecifications,
 		Synchronization:    synchronizationSpecifications,
-		daemonMetadata:     daemonMetadata,
+		daemonIdentifier:   daemonIdentifier,
 		temporaryDirectory: temporaryDirectory,
 	}, nil
 }
@@ -652,7 +679,7 @@ func (p *Project) SessionSelection() *selection.Selection {
 	return &selection.Selection{
 		LabelSelector: fmt.Sprintf("%s == %s,%s == %s",
 			projectNameLabel, p.name,
-			daemonIdentifierLabel, p.daemonMetadata.Identifier,
+			daemonIdentifierLabel, p.daemonIdentifier,
 		),
 	}
 }
