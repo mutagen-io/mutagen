@@ -646,8 +646,9 @@ func (p *Project) TopLevelFlags() []string {
 	return flags
 }
 
-// SessionSelector returns a Mutagen session selector for the project.
-func (p *Project) SessionSelector() *selection.Selection {
+// SessionSelection returns a Mutagen session selection that uses a label
+// selector to identify sessions associated with the project.
+func (p *Project) SessionSelection() *selection.Selection {
 	return &selection.Selection{
 		LabelSelector: fmt.Sprintf("%s == %s,%s == %s",
 			projectNameLabel, p.name,

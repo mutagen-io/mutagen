@@ -97,11 +97,11 @@ func reconcileSessions(project *compose.Project) error {
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
-	// Create a session selector.
-	selector := project.SessionSelector()
+	// Create a session selection.
+	selection := project.SessionSelection()
 
 	// Query existing forwarding sessions.
-	forwardingListRequest := &forwardingsvc.ListRequest{Selection: selector}
+	forwardingListRequest := &forwardingsvc.ListRequest{Selection: selection}
 	forwardingListResponse, err := forwardingService.List(context.Background(), forwardingListRequest)
 	if err != nil {
 		return fmt.Errorf("forwarding list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
@@ -110,7 +110,7 @@ func reconcileSessions(project *compose.Project) error {
 	}
 
 	// Query existing synchronization sessions.
-	synchronizationListRequest := &synchronizationsvc.ListRequest{Selection: selector}
+	synchronizationListRequest := &synchronizationsvc.ListRequest{Selection: selection}
 	synchronizationListResponse, err := synchronizationService.List(context.Background(), synchronizationListRequest)
 	if err != nil {
 		return fmt.Errorf("synchronization list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
