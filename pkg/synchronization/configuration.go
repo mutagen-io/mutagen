@@ -25,9 +25,8 @@ func stringSlicesEqual(first, second []string) bool {
 	return true
 }
 
-// Equal returns whether or not the configuration is equivalent to another. If
-// either configuration is nil (and hence invalid), then this method returns
-// false. This method makes no other checks for validity.
+// Equal returns whether or not the configuration is equivalent to another. The
+// result of this method is only valid if both configurations are valid.
 func (c *Configuration) Equal(other *Configuration) bool {
 	// Ensure that both are non-nil.
 	if c == nil || other == nil {
