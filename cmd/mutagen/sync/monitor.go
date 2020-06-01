@@ -78,7 +78,7 @@ func monitorMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
+	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

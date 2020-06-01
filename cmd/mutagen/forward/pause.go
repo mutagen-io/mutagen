@@ -21,32 +21,16 @@ func PauseWithLabelSelector(labelSelector string) error {
 	return pauseMain(nil, nil)
 }
 
-func pauseMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            pauseConfiguration.all,
-		Specifications: arguments,
-		LabelSelector:  pauseConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
-
-	// Invoke the session pause method. The stream will close when the
-	// associated context is cancelled.
+// PauseWithSelection is an orchestration convenience method invokes pause using
+// the provided service client and session specification.
+func PauseWithSelection(
+	client forwardingsvc.ForwardingClient,
+	selection *selection.Selection,
+) error {
+	// Invoke the pause method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Pause(ctx)
+	stream, err := client.Pause(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
 	}
@@ -80,6 +64,31 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
+}
+
+func pauseMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            pauseConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  pauseConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
+
+	// Perform the pause operation.
+	return PauseWithSelection(sessionService, selection)
 }
 
 var pauseCommand = &cobra.Command{

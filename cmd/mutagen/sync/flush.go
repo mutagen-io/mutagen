@@ -22,39 +22,17 @@ func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
 	return flushMain(nil, nil)
 }
 
-// FlushWithSessionIdentifiers is an orchestration convenience method that
-// invokes the flush command with the specified session identifiers.
-func FlushWithSessionIdentifiers(sessions []string, skipWait bool) error {
-	flushConfiguration.skipWait = skipWait
-	return flushMain(nil, sessions)
-}
-
-func flushMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            flushConfiguration.all,
-		Specifications: arguments,
-		LabelSelector:  flushConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
-	// Invoke the session flush method. The stream will close when the
-	// associated context is cancelled.
+// FlushWithSelection is an orchestration convenience method invokes flush using
+// the provided service client and session specification.
+func FlushWithSelection(
+	client synchronizationsvc.SynchronizationClient,
+	selection *selection.Selection,
+	skipWait bool,
+) error {
+	// Invoke the flush method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Flush(ctx)
+	stream, err := client.Flush(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
 	}
@@ -62,7 +40,7 @@ func flushMain(command *cobra.Command, arguments []string) error {
 	// Send the initial request.
 	request := &synchronizationsvc.FlushRequest{
 		Selection: selection,
-		SkipWait:  flushConfiguration.skipWait,
+		SkipWait:  skipWait,
 	}
 	if err := stream.Send(request); err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send flush request")
@@ -89,6 +67,31 @@ func flushMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
+}
+
+func flushMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            flushConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  flushConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Perform the flush operation.
+	return FlushWithSelection(sessionService, selection, flushConfiguration.skipWait)
 }
 
 var flushCommand = &cobra.Command{

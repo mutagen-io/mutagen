@@ -22,32 +22,16 @@ func ResetWithLabelSelector(labelSelector string) error {
 	return resetMain(nil, nil)
 }
 
-func resetMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            resetConfiguration.all,
-		Specifications: arguments,
-		LabelSelector:  resetConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
-	// Invoke the session reset method. The stream will close when the
-	// associated context is cancelled.
+// ResetWithSelection is an orchestration convenience method invokes reset using
+// the provided service client and session specification.
+func ResetWithSelection(
+	client synchronizationsvc.SynchronizationClient,
+	selection *selection.Selection,
+) error {
+	// Invoke the reset method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Reset(ctx)
+	stream, err := client.Reset(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke reset")
 	}
@@ -89,6 +73,31 @@ func resetMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
+}
+
+func resetMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            resetConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  resetConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Perform the reset operation.
+	return ResetWithSelection(sessionService, selection)
 }
 
 var resetCommand = &cobra.Command{

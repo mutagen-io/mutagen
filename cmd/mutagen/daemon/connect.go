@@ -28,9 +28,9 @@ const (
 	autostartRetryCount = 10
 )
 
-// CreateClientConnection creates a new daemon client connection and optionally
-// verifies that the daemon version matches the current process' version.
-func CreateClientConnection(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
+// Connect creates a new daemon client connection and optionally verifies that
+// the daemon version matches the current process' version.
+func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {

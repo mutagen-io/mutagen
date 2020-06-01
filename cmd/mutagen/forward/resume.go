@@ -22,32 +22,16 @@ func ResumeWithLabelSelector(labelSelector string) error {
 	return resumeMain(nil, nil)
 }
 
-func resumeMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            resumeConfiguration.all,
-		Specifications: arguments,
-		LabelSelector:  resumeConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
-
-	// Invoke the session resume method. The stream will close when the
-	// associated context is cancelled.
+// ResumeWithSelection is an orchestration convenience method invokes resume
+// using the provided service client and session specification.
+func ResumeWithSelection(
+	client forwardingsvc.ForwardingClient,
+	selection *selection.Selection,
+) error {
+	// Invoke the resume method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Resume(ctx)
+	stream, err := client.Resume(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
 	}
@@ -89,6 +73,31 @@ func resumeMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
+}
+
+func resumeMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            resumeConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  resumeConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
+
+	// Perform the resume operation.
+	return ResumeWithSelection(sessionService, selection)
 }
 
 var resumeCommand = &cobra.Command{

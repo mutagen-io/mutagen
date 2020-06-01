@@ -21,32 +21,16 @@ func TerminateWithLabelSelector(labelSelector string) error {
 	return terminateMain(nil, nil)
 }
 
-func terminateMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            terminateConfiguration.all,
-		Specifications: arguments,
-		LabelSelector:  terminateConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
-	// Invoke the session terminate method. The stream will close when the
-	// associated context is cancelled.
+// TerminateWithSelection is an orchestration convenience method invokes
+// terminate using the provided service client and session specification.
+func TerminateWithSelection(
+	client synchronizationsvc.SynchronizationClient,
+	selection *selection.Selection,
+) error {
+	// Invoke the terminate method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := sessionService.Terminate(ctx)
+	stream, err := client.Terminate(ctx)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke terminate")
 	}
@@ -80,6 +64,31 @@ func terminateMain(command *cobra.Command, arguments []string) error {
 			}
 		}
 	}
+}
+
+func terminateMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            terminateConfiguration.all,
+		Specifications: arguments,
+		LabelSelector:  terminateConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Perform the terminate operation.
+	return TerminateWithSelection(sessionService, selection)
 }
 
 var terminateCommand = &cobra.Command{

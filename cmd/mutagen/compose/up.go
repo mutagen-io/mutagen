@@ -87,7 +87,7 @@ func synchronizationSessionCurrent(
 // reconcileSessions handles Mutagen session reconciliation for the project.
 func reconcileSessions(project *compose.Project) error {
 	// Connect to the Mutagen daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
+	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
 		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
 	}
@@ -118,9 +118,9 @@ func reconcileSessions(project *compose.Project) error {
 		return fmt.Errorf("invalid synchronization list response received: %w", err)
 	}
 
-	// Identify orphan forwarding sessions with no corresponding definition and
-	// any duplicate forwarding sessions. At the same time, construct a map from
-	// session name to existing session.
+	// Identify orphan forwarding sessions with no corresponding definition, as
+	// well as any duplicate forwarding sessions. At the same time, construct a
+	// map from session name to existing session.
 	var forwardingPruneList []string
 	forwardingNameToSession := make(map[string]*forwarding.Session)
 	for _, state := range forwardingListResponse.SessionStates {
@@ -133,9 +133,9 @@ func reconcileSessions(project *compose.Project) error {
 		}
 	}
 
-	// Identify orphan synchronization sessions with no corresponding definition
-	// and any duplicate synchronization sessions. At the same time, construct a
-	// map from session name to existing session.
+	// Identify orphan synchronization sessions with no corresponding
+	// definition, as well as any duplicate synchronization sessions. At the
+	// same time, construct a map from session name to existing session.
 	var synchronizationPruneList []string
 	synchronizationNameToSession := make(map[string]*synchronization.Session)
 	for _, state := range synchronizationListResponse.SessionStates {
@@ -243,11 +243,12 @@ func upMain(command *cobra.Command, arguments []string) error {
 	// Invoke the target command.
 	upArguments := reconstituteFlags(command.Flags(), nil)
 	upArguments = append(upArguments, arguments...)
+	// TODO: Remove/activate.
 	fmt.Println(topLevelFlags, "up", upArguments)
-	// TODO: Activate.
 	// invoke(topLevelFlags, "up", upArguments)
 
 	// Unreachable.
+	// TODO: Remove? Will Go complain?
 	return nil
 }
 

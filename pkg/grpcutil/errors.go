@@ -1,7 +1,7 @@
 package grpcutil
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 
 	"google.golang.org/grpc/status"
 )

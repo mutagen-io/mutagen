@@ -26,7 +26,7 @@ func promptMain(arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(false, true)
+	daemonConnection, err := daemon.Connect(false, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}

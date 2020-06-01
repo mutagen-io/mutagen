@@ -366,7 +366,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
+	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}
@@ -410,7 +410,8 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 	// Flush synchronization sessions for which flushing has been requested.
 	if len(sessionsToFlush) > 0 {
-		if err := sync.FlushWithSessionIdentifiers(sessionsToFlush, false); err != nil {
+		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
+		if err := sync.FlushWithSelection(synchronizationService, flushSelection, false); err != nil {
 			return errors.Wrap(err, "unable to flush synchronization session(s)")
 		}
 	}

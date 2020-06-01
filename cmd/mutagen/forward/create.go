@@ -43,19 +43,16 @@ func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Conf
 	return configuration, nil
 }
 
-// CreateWithSpecification is an orchestration convenience method invokes the
-// creation using the provided session specification. Unlike other orchestration
-// methods, it requires provision of a client to avoid creating one for each
-// request.
+// CreateWithSpecification is an orchestration convenience method invokes
+// creation using the provided service client and session specification.
 func CreateWithSpecification(
-	service forwardingsvc.ForwardingClient,
+	client forwardingsvc.ForwardingClient,
 	specification *forwardingsvc.CreationSpecification,
 ) (string, error) {
-	// Invoke the session create method. The stream will close when the
-	// associated context is cancelled.
+	// Invoke the create method and defer closure of the RPC stream.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream, err := service.Create(ctx)
+	stream, err := client.Create(ctx)
 	if err != nil {
 		return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
 	}
@@ -282,7 +279,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	}
 
 	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.CreateClientConnection(true, true)
+	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
 		return errors.Wrap(err, "unable to connect to daemon")
 	}
@@ -291,7 +288,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 	// Create a forwarding service client.
 	service := forwardingsvc.NewForwardingClient(daemonConnection)
 
-	// Perform creation.
+	// Perform the create operation.
 	_, err = CreateWithSpecification(service, specification)
 	return err
 }
