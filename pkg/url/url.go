@@ -21,6 +21,43 @@ func (k Kind) Supported() bool {
 	}
 }
 
+// stringMapsEqual determines whether or not two string maps are equal.
+func stringMapsEqual(first, second map[string]string) bool {
+	// Check that map lengths are equal.
+	if len(first) != len(second) {
+		return false
+	}
+
+	// Compare contents.
+	for key, f := range first {
+		if s, ok := second[key]; !ok || s != f {
+			return false
+		}
+	}
+
+	// The maps are equal.
+	return true
+}
+
+// Equal returns whether or not the URL is equivalent to another. The result of
+// this method is only valid if both URLs are valid.
+func (u *URL) Equal(other *URL) bool {
+	// Ensure that both are non-nil.
+	if u == nil || other == nil {
+		return false
+	}
+
+	// Perform an equivalence check.
+	return u.Kind == other.Kind &&
+		u.Protocol == other.Protocol &&
+		u.User == other.User &&
+		u.Host == other.Host &&
+		u.Port == other.Port &&
+		u.Path == other.Path &&
+		stringMapsEqual(u.Environment, other.Environment) &&
+		stringMapsEqual(u.Parameters, other.Parameters)
+}
+
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
 	// Ensure that the URL is non-nil.

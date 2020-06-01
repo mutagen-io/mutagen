@@ -67,8 +67,9 @@ func forwardingSessionCurrent(
 	session *forwarding.Session,
 	specification *forwardingsvc.CreationSpecification,
 ) bool {
-	// TODO: Figure out URL comparisons and document strategy.
-	return session.Configuration.Equal(specification.Configuration) &&
+	return session.Source.Equal(specification.Source) &&
+		session.Destination.Equal(specification.Destination) &&
+		session.Configuration.Equal(specification.Configuration) &&
 		session.ConfigurationSource.Equal(specification.ConfigurationSource) &&
 		session.ConfigurationDestination.Equal(specification.ConfigurationDestination)
 }
@@ -79,8 +80,9 @@ func synchronizationSessionCurrent(
 	session *synchronization.Session,
 	specification *synchronizationsvc.CreationSpecification,
 ) bool {
-	// TODO: Figure out URL comparisons and document strategy.
-	return session.Configuration.Equal(specification.Configuration) &&
+	return session.Alpha.Equal(specification.Alpha) &&
+		session.Beta.Equal(session.Beta) &&
+		session.Configuration.Equal(specification.Configuration) &&
 		session.ConfigurationAlpha.Equal(specification.ConfigurationAlpha) &&
 		session.ConfigurationBeta.Equal(specification.ConfigurationBeta)
 }
