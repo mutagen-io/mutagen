@@ -1,25 +1,105 @@
 package compose
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	"github.com/mutagen-io/mutagen/pkg/compose"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-func downMain(_ *cobra.Command, arguments []string) {
-	// TODO: Implement.
-	fmt.Println("down not yet implemented")
+// terminateSessions handles Mutagen session termination for the project.
+func terminateSessions(project *compose.Project) error {
+	// Connect to the Mutagen daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
+	}
+	defer daemonConnection.Close()
+
+	// Create service clients.
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Create a session selection for the project.
+	projectSelection := project.SessionSelection()
+
+	// Perform forwarding session termination.
+	if err := forward.TerminateWithSelection(forwardingService, projectSelection); err != nil {
+		return fmt.Errorf("forwarding termination failed: %w", err)
+	}
+
+	// Perform synchronization session termination.
+	if err := sync.TerminateWithSelection(synchronizationService, projectSelection); err != nil {
+		return fmt.Errorf("synchronization termination failed: %w", err)
+	}
+
+	// Success.
+	return nil
+}
+
+func downMain(command *cobra.Command, arguments []string) error {
+	// Ensure that the user isn't trying to interact with the Mutagen service
+	// directly.
+	for _, argument := range arguments {
+		if argument == compose.MutagenServiceName {
+			return errors.New("the Mutagen service should not be controlled directly")
+		}
+	}
+
+	// Load project metadata and defer the release of project resources.
+	project, err := compose.LoadProject(
+		rootConfiguration.ProjectFlags,
+		rootConfiguration.DaemonConnectionFlags,
+	)
+	if err != nil {
+		return fmt.Errorf("unable to load project: %w", err)
+	}
+	defer project.Dispose()
+
+	// Compute the effective top-level flags that we'll use. We reconstitute
+	// flags from the root command, but filter project-related flags and replace
+	// them with the fully resolve flags from the loaded project.
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
+	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
+
+	// If no services have been explicitly specified, then we're going to tear
+	// down the entire project. In that case we need to terminate sessions.
+	if len(arguments) == 0 {
+		if err := terminateSessions(project); err != nil {
+			return fmt.Errorf("unable to terminate Mutagen sessions: %w", err)
+		}
+	}
+
+	// Perform the pass-through operation.
+	downArguments := reconstituteFlags(command.Flags(), nil)
+	downArguments = append(downArguments, arguments...)
+	return invoke(topLevelFlags, "down", downArguments)
 }
 
 var downCommand = &cobra.Command{
 	Use:          "down",
-	Run:          composeEntryPoint(downMain),
+	RunE:         composeEntryPointE(downMain),
 	SilenceUsage: true,
 }
 
 var downConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
+	// rmi stores the value of the --rmi flag.
+	rmi string
+	// volumes indicates the presence of the -v/--volumes flag.
+	volumes bool
+	// removeOrphans indicates the presence of the --remove-orphans flag.
+	removeOrphans bool
+	// timeout stores the value of the -t/--timeout flag.
+	timeout string
 }
 
 func init() {
@@ -33,5 +113,8 @@ func init() {
 
 	// Wire up down command flags.
 	flags.BoolVarP(&downConfiguration.help, "help", "h", false, "")
-	// TODO: Wire up remaining flags.
+	flags.StringVar(&downConfiguration.rmi, "rmi", "", "")
+	flags.BoolVarP(&downConfiguration.volumes, "volumes", "v", false, "")
+	flags.BoolVar(&downConfiguration.removeOrphans, "remove-orphans", false, "")
+	flags.StringVarP(&downConfiguration.timeout, "timeout", "t", "", "")
 }
