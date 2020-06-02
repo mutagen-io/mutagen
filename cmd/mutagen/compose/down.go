@@ -45,15 +45,20 @@ func terminateSessions(project *compose.Project) error {
 }
 
 func downMain(command *cobra.Command, arguments []string) error {
-	// Ensure that the user isn't trying to interact with the Mutagen service
-	// directly.
+	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
 		if argument == compose.MutagenServiceName {
 			return errors.New("the Mutagen service should not be controlled directly")
 		}
 	}
 
-	// Load project metadata and defer the release of project resources.
+	// Load project metadata and defer the release of project resources. We have
+	// to do this even if service names have been explicitly specified (in which
+	// case we don't shut down Mutagen sessions or the Mutagen service) because
+	// down is one of two commands (the other being up) where orphan containers
+	// are identified by Docker Compose, and we don't want the Mutagen service
+	// to be identified as an orphan. We also don't want to disable orphan
+	// detection, since it is a useful feature of this command.
 	project, err := compose.LoadProject(
 		rootConfiguration.ProjectFlags,
 		rootConfiguration.DaemonConnectionFlags,
@@ -63,12 +68,6 @@ func downMain(command *cobra.Command, arguments []string) error {
 	}
 	defer project.Dispose()
 
-	// Compute the effective top-level flags that we'll use. We reconstitute
-	// flags from the root command, but filter project-related flags and replace
-	// them with the fully resolve flags from the loaded project.
-	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
-	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
-
 	// If no services have been explicitly specified, then we're going to tear
 	// down the entire project. In that case we need to terminate sessions.
 	if len(arguments) == 0 {
@@ -77,9 +76,17 @@ func downMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Perform the pass-through operation.
+	// Compute the effective top-level flags that we'll use. We reconstitute
+	// flags from the root command, but filter project-related flags and replace
+	// them with the fully resolve flags from the loaded project.
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
+	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
+
+	// Compute flags and arguments for the command itself.
 	downArguments := reconstituteFlags(command.Flags(), nil)
 	downArguments = append(downArguments, arguments...)
+
+	// Perform the pass-through operation.
 	return invoke(topLevelFlags, "down", downArguments)
 }
 

@@ -221,8 +221,7 @@ func reconcileSessions(project *compose.Project) error {
 }
 
 func upMain(command *cobra.Command, arguments []string) error {
-	// Ensure that the user isn't trying to interact with the Mutagen service
-	// directly.
+	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
 		if argument == compose.MutagenServiceName {
 			return errors.New("the Mutagen service should not be controlled directly")
@@ -267,9 +266,11 @@ func upMain(command *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Invoke the target command.
+	// Compute flags and arguments for the command itself.
 	upArguments := reconstituteFlags(command.Flags(), nil)
 	upArguments = append(upArguments, arguments...)
+
+	// Perform the pass-through operation.
 	return invoke(topLevelFlags, "up", upArguments)
 }
 

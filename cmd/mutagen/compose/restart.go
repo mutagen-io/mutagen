@@ -1,26 +1,21 @@
 package compose
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
-func restartMain(_ *cobra.Command, arguments []string) error {
-	// TODO: Implement.
-	fmt.Println("restart not yet implemented")
-	return nil
-}
-
 var restartCommand = &cobra.Command{
-	Use:          "restart",
-	RunE:         composeEntryPointE(restartMain),
-	SilenceUsage: true,
+	Use:                "restart",
+	Run:                passthrough,
+	SilenceUsage:       true,
+	DisableFlagParsing: true,
 }
 
 var restartConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
+	// timeout stores the value of the -t/--timeout flag.
+	timeout string
 }
 
 func init() {
@@ -34,5 +29,5 @@ func init() {
 
 	// Wire up restart command flags.
 	flags.BoolVarP(&restartConfiguration.help, "help", "h", false, "")
-	// TODO: Wire up remaining flags.
+	flags.StringVarP(&restartConfiguration.timeout, "timeout", "t", "", "")
 }
