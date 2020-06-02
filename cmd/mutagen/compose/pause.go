@@ -6,14 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func pauseMain(_ *cobra.Command, arguments []string) {
+func pauseMain(_ *cobra.Command, arguments []string) error {
 	// TODO: Implement.
 	fmt.Println("pause not yet implemented")
+	return nil
 }
 
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
-	Run:          composeEntryPoint(pauseMain),
+	RunE:         composeEntryPointE(pauseMain),
 	SilenceUsage: true,
 }
 

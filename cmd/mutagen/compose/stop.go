@@ -6,14 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func stopMain(_ *cobra.Command, arguments []string) {
+func stopMain(_ *cobra.Command, arguments []string) error {
 	// TODO: Implement.
 	fmt.Println("stop not yet implemented")
+	return nil
 }
 
 var stopCommand = &cobra.Command{
 	Use:          "stop",
-	Run:          composeEntryPoint(stopMain),
+	RunE:         composeEntryPointE(stopMain),
 	SilenceUsage: true,
 }
 

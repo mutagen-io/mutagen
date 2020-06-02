@@ -6,14 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func restartMain(_ *cobra.Command, arguments []string) {
+func restartMain(_ *cobra.Command, arguments []string) error {
 	// TODO: Implement.
 	fmt.Println("restart not yet implemented")
+	return nil
 }
 
 var restartCommand = &cobra.Command{
 	Use:          "restart",
-	Run:          composeEntryPoint(restartMain),
+	RunE:         composeEntryPointE(restartMain),
 	SilenceUsage: true,
 }
 

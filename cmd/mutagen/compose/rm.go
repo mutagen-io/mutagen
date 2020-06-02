@@ -6,7 +6,7 @@ import (
 
 var rmCommand = &cobra.Command{
 	Use:                "rm",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

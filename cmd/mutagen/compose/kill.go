@@ -6,7 +6,7 @@ import (
 
 var killCommand = &cobra.Command{
 	Use:                "kill",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

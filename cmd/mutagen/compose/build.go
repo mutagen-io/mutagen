@@ -6,7 +6,7 @@ import (
 
 var buildCommand = &cobra.Command{
 	Use:                "build",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

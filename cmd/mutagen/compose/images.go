@@ -6,7 +6,7 @@ import (
 
 var imagesCommand = &cobra.Command{
 	Use:                "images",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

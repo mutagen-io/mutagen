@@ -6,7 +6,7 @@ import (
 
 var eventsCommand = &cobra.Command{
 	Use:                "events",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

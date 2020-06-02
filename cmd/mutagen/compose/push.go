@@ -6,7 +6,7 @@ import (
 
 var pushCommand = &cobra.Command{
 	Use:                "push",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

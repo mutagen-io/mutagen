@@ -6,7 +6,7 @@ import (
 
 var scaleCommand = &cobra.Command{
 	Use:                "scale",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

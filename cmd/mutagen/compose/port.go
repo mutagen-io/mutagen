@@ -6,7 +6,7 @@ import (
 
 var portCommand = &cobra.Command{
 	Use:                "port",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

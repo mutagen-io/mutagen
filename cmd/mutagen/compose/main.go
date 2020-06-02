@@ -157,31 +157,46 @@ func handleTopLevelFlags() {
 	}
 }
 
-// composeEntryPoint adapts a standard Cobra entry point to handle top-level
-// Docker Compose flags.
-func composeEntryPoint(run func(*cobra.Command, []string)) func(*cobra.Command, []string) {
-	return func(command *cobra.Command, arguments []string) {
-		handleTopLevelFlags()
-		run(command, arguments)
-	}
+// passthrough is a generic Cobra handler that will pass handling directly to
+// Docker Compose using the command name, reconstituted top-level flags, and
+// command arguments. This handler will also honor/handle top-level flags that
+// result in termination. In order to use this handler, flag parsing must be
+// disabled for the command.
+func passthrough(command *cobra.Command, arguments []string) {
+	// Handle top-level flags that might result in termination.
+	handleTopLevelFlags()
+
+	// Reconstitute top-level flags and pass control to Docker Compose.
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), nil)
+	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
 }
 
 // composeEntryPointE adapts an error-returning Cobra entry point to handle
-// top-level Docker Compose flags.
+// top-level Docker Compose flags and emulate Docker Compose's exit behavior. It
+// is designed to be used for those handlers that perform additional logic
+// around Docker Compose commands but end their operation with a call to invoke.
 func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(command *cobra.Command, arguments []string) error {
+		// Handle top-level flags that might result in termination.
 		handleTopLevelFlags()
-		return run(command, arguments)
-	}
-}
 
-// passthrough is a generic Cobra handler that will pass handling directly to
-// Docker Compose using the command name, reconstituted top-level flags, and
-// command arguments. In order to use this handler, flag parsing must be
-// disabled for the command.
-func passthrough(command *cobra.Command, arguments []string) {
-	topLevelFlags := reconstituteFlags(RootCommand.Flags(), nil)
-	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
+		// Run the underlying handler.
+		err := run(command, arguments)
+
+		// If there's an exit error, then terminate the current process with the
+		// same exit code.
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if exitCode := exitErr.ExitCode(); exitCode >= 1 {
+					os.Exit(exitCode)
+				}
+				os.Exit(1)
+			}
+		}
+
+		// Otherwise just return the error directly.
+		return err
+	}
 }
 
 // commandHelp is a Cobra help function that shells out to Docker Compose to
@@ -193,7 +208,7 @@ func commandHelp(command *cobra.Command, _ []string) {
 	invokeAndExit(nil, command.CalledAs(), []string{"--help"})
 }
 
-func rootMain(_ *cobra.Command, arguments []string) {
+func rootMain(_ *cobra.Command, arguments []string) error {
 	// If no arguments have been specified, then just print help information,
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
@@ -211,13 +226,13 @@ func rootMain(_ *cobra.Command, arguments []string) {
 	// we do here should be sufficient for every conceivable case. We try to
 	// match what Cobra would do, but also add information that might help users
 	// understand why the command isn't yet known.
-	cmd.Fatal(fmt.Errorf("unknown or unsupported command \"%s\" for \"compose\"", arguments[0]))
+	return fmt.Errorf("unknown or unsupported command: %s", arguments[0])
 }
 
 var RootCommand = &cobra.Command{
 	Use:          "compose",
 	Short:        "Run Docker Compose with Mutagen enhancements",
-	Run:          composeEntryPoint(rootMain),
+	RunE:         composeEntryPointE(rootMain),
 	SilenceUsage: true,
 }
 

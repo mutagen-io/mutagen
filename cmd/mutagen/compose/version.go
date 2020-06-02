@@ -6,7 +6,7 @@ import (
 
 var versionCommand = &cobra.Command{
 	Use:                "version",
-	Run:                composeEntryPoint(passthrough),
+	Run:                passthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }
