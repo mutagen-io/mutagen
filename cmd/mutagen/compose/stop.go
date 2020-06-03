@@ -19,8 +19,8 @@ func stopMain(command *cobra.Command, arguments []string) error {
 
 	// Load project metadata and defer the release of project resources.
 	project, err := compose.LoadProject(
-		rootConfiguration.ProjectFlags,
-		rootConfiguration.DaemonConnectionFlags,
+		composeConfiguration.ProjectFlags,
+		composeConfiguration.DaemonConnectionFlags,
 	)
 	if err != nil {
 		return fmt.Errorf("unable to load project: %w", err)
@@ -38,7 +38,7 @@ func stopMain(command *cobra.Command, arguments []string) error {
 	// Compute the effective top-level flags that we'll use. We reconstitute
 	// flags from the root command, but filter project-related flags and replace
 	// them with the fully resolved flags from the loaded project.
-	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
+	topLevelFlags := reconstituteFlags(composeCommand.Flags(), topLevelProjectFlagNames)
 	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
 
 	// Compute flags and arguments for the command itself.

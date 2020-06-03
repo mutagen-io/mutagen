@@ -30,11 +30,10 @@ func rootMain(command *cobra.Command, arguments []string) error {
 }
 
 var rootCommand = &cobra.Command{
-	Use:              "mutagen",
-	Short:            "Mutagen is a remote development tool built on high-performance synchronization",
-	RunE:             rootMain,
-	SilenceUsage:     true,
-	TraverseChildren: true,
+	Use:          "mutagen",
+	Short:        "Mutagen is a remote development tool built on high-performance synchronization",
+	RunE:         rootMain,
+	SilenceUsage: true,
 }
 
 var rootConfiguration struct {

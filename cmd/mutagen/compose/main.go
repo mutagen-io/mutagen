@@ -143,16 +143,16 @@ func handleTopLevelFlags() {
 	// Handle help and version flags. Help behavior always take precedence over
 	// version behavior, even if the -v/--version flag is specified before the
 	// -h/--help flag.
-	if rootConfiguration.help {
+	if composeConfiguration.help {
 		invokeAndExit([]string{"--help"}, "", nil)
-	} else if rootConfiguration.version {
+	} else if composeConfiguration.version {
 		invokeAndExit([]string{"--version"}, "", nil)
 	}
 
 	// Enforce that the --skip-hostname-check flag isn't specified. This flag
 	// isn't currently supported by Mutagen's Docker transport because it isn't
 	// supported by the Docker CLI.
-	if rootConfiguration.skipHostnameCheck {
+	if composeConfiguration.skipHostnameCheck {
 		cmd.Fatal(errors.New("--skip-hostname-check flag not supported by Mutagen"))
 	}
 }
@@ -167,7 +167,7 @@ func passthrough(command *cobra.Command, arguments []string) {
 	handleTopLevelFlags()
 
 	// Reconstitute top-level flags and pass control to Docker Compose.
-	topLevelFlags := reconstituteFlags(RootCommand.Flags(), nil)
+	topLevelFlags := reconstituteFlags(composeCommand.Flags(), nil)
 	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
 }
 
@@ -202,13 +202,13 @@ func wrapper(run func(*cobra.Command, []string) error) func(*cobra.Command, []st
 // commandHelp is a Cobra help function that shells out to Docker Compose to
 // display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
-	if command == RootCommand {
+	if command == composeCommand {
 		invokeAndExit([]string{"--help"}, "", nil)
 	}
 	invokeAndExit(nil, command.CalledAs(), []string{"--help"})
 }
 
-func rootMain(_ *cobra.Command, arguments []string) error {
+func composeMain(_ *cobra.Command, arguments []string) error {
 	// If no arguments have been specified, then just print help information,
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
@@ -229,14 +229,16 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	return fmt.Errorf("unknown or unsupported command: %s", arguments[0])
 }
 
-var RootCommand = &cobra.Command{
-	Use:          "compose",
-	Short:        "Run Docker Compose with Mutagen enhancements",
-	RunE:         wrapper(rootMain),
-	SilenceUsage: true,
+// composeCommand is the root command of the compose command hierarchy.
+var composeCommand = &cobra.Command{
+	Use:              "compose",
+	Short:            "Run Docker Compose with Mutagen enhancements",
+	RunE:             wrapper(composeMain),
+	SilenceUsage:     true,
+	TraverseChildren: true,
 }
 
-var rootConfiguration struct {
+var composeConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool
 	// ProjectFlags are the flags that control the Docker Compose project.
@@ -260,40 +262,37 @@ var rootConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
-
 	// Avoid Cobra's built-in help functionality that's triggered when the
 	// -h/--help flag is present. We still explicitly register a -h/--help flag
 	// below for shell completion support.
-	RootCommand.SetHelpFunc(commandHelp)
+	composeCommand.SetHelpFunc(commandHelp)
 
 	// Grab a handle for the command line flags.
-	flags := RootCommand.Flags()
+	flags := composeCommand.Flags()
 
 	// Wire up flags. We don't bother specifying usage information since we'll
 	// shell out to Docker Compose if we need to display help information.
-	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "")
-	flags.StringSliceVarP(&rootConfiguration.File, "file", "f", nil, "")
-	flags.StringVarP(&rootConfiguration.ProjectName, "project-name", "p", "", "")
-	flags.StringVarP(&rootConfiguration.Context, "context", "c", "", "")
-	flags.BoolVar(&rootConfiguration.verbose, "verbose", false, "")
-	flags.StringVar(&rootConfiguration.logLevel, "log-level", "", "")
-	flags.BoolVar(&rootConfiguration.noANSI, "no-ansi", false, "")
-	flags.BoolVarP(&rootConfiguration.version, "version", "v", false, "")
-	flags.StringVarP(&rootConfiguration.Host, "host", "H", "", "")
-	flags.BoolVar(&rootConfiguration.TLS, "tls", false, "")
-	flags.StringVar(&rootConfiguration.TLSCACert, "tlscacert", "", "")
-	flags.StringVar(&rootConfiguration.TLSCert, "tlscert", "", "")
-	flags.StringVar(&rootConfiguration.TLSKey, "tlskey", "", "")
-	flags.BoolVar(&rootConfiguration.TLSVerify, "tlsverify", false, "")
-	flags.BoolVar(&rootConfiguration.skipHostnameCheck, "skip-hostname-check", false, "")
-	flags.StringVar(&rootConfiguration.ProjectDirectory, "project-directory", "", "")
-	flags.BoolVar(&rootConfiguration.compatibility, "compatibility", false, "")
-	flags.StringVar(&rootConfiguration.EnvFile, "env-file", "", "")
+	flags.BoolVarP(&composeConfiguration.help, "help", "h", false, "")
+	flags.StringSliceVarP(&composeConfiguration.File, "file", "f", nil, "")
+	flags.StringVarP(&composeConfiguration.ProjectName, "project-name", "p", "", "")
+	flags.StringVarP(&composeConfiguration.Context, "context", "c", "", "")
+	flags.BoolVar(&composeConfiguration.verbose, "verbose", false, "")
+	flags.StringVar(&composeConfiguration.logLevel, "log-level", "", "")
+	flags.BoolVar(&composeConfiguration.noANSI, "no-ansi", false, "")
+	flags.BoolVarP(&composeConfiguration.version, "version", "v", false, "")
+	flags.StringVarP(&composeConfiguration.Host, "host", "H", "", "")
+	flags.BoolVar(&composeConfiguration.TLS, "tls", false, "")
+	flags.StringVar(&composeConfiguration.TLSCACert, "tlscacert", "", "")
+	flags.StringVar(&composeConfiguration.TLSCert, "tlscert", "", "")
+	flags.StringVar(&composeConfiguration.TLSKey, "tlskey", "", "")
+	flags.BoolVar(&composeConfiguration.TLSVerify, "tlsverify", false, "")
+	flags.BoolVar(&composeConfiguration.skipHostnameCheck, "skip-hostname-check", false, "")
+	flags.StringVar(&composeConfiguration.ProjectDirectory, "project-directory", "", "")
+	flags.BoolVar(&composeConfiguration.compatibility, "compatibility", false, "")
+	flags.StringVar(&composeConfiguration.EnvFile, "env-file", "", "")
 
 	// Register commands.
-	RootCommand.AddCommand(
+	composeCommand.AddCommand(
 		buildCommand,
 		configCommand,
 		createCommand,
@@ -335,4 +334,37 @@ func init() {
 	// into the argument list passed to the handler, allowing us to handle
 	// unknown commands more gracefully.
 	flags.SetInterspersed(false)
+}
+
+// rootMain is the entry point for RootCommand. It switches control flow from
+// the Mutagen command hierarchy to the Docker Compose command hierarchy.
+func rootMain(_ *cobra.Command, arguments []string) {
+	// Set the default argument source for the Docker Compose command hierarchy.
+	composeCommand.SetArgs(arguments)
+
+	// Execute the root command of the Docker Compose command hierarchy.
+	if err := composeCommand.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+// RootCommand is an adapter command that shifts control flow from the Mutagen
+// command hierarchy to the Docker Compose command hierarchy. The Docker Compose
+// command hierarchy uses complex Cobra behaviors (such as TraverseChildren,
+// SetInterspersed, and DisableFlagParsing) to emulate Docker Compose behavior,
+// and these behaviors make it better suited to operate as a detached command
+// hierarchy. TraverseChildren in particular has to be applied at the hierarchy
+// root and changes certain behaviors (such as command-not-found errors), so we
+// really want to isolate its effects.
+var RootCommand = &cobra.Command{
+	Use:                composeCommand.Use,
+	Short:              composeCommand.Short,
+	Run:                rootMain,
+	SilenceUsage:       true,
+	DisableFlagParsing: true,
+}
+
+func init() {
+	// Mark the command as experimental.
+	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
 }
