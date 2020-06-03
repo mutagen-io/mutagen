@@ -2,6 +2,7 @@ package compose
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -9,7 +10,8 @@ import (
 )
 
 func runPassthrough(command *cobra.Command, arguments []string) {
-	cmd.Warning("The \"run\" command isn't fully supported by Mutagen")
+	cmd.Warning("The \"run\" command isn't fully supported by Mutagen.")
+	fmt.Fprintln(os.Stderr, "Use \"docker-compose run\" directly to suppress this message.")
 	fmt.Println()
 	passthrough(command, arguments)
 }
