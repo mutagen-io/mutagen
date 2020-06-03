@@ -1,75 +1,13 @@
 package logging
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
-
-// writer is an io.Writer that splits its input stream into lines and writes
-// those lines to an underlying logger.
-type writer struct {
-	// callback is the logging callback.
-	callback func(string)
-	// buffer is any incomplete line fragment left over from a previous write.
-	buffer []byte
-}
-
-// trimCarriageReturn trims any single trailing carriage return from the end of
-// a byte slice.
-func trimCarriageReturn(buffer []byte) []byte {
-	if len(buffer) > 0 && buffer[len(buffer)-1] == '\r' {
-		return buffer[:len(buffer)-1]
-	}
-	return buffer
-}
-
-// Write implements io.Writer.Write.
-func (w *writer) Write(buffer []byte) (int, error) {
-	// Append the data to our internal buffer.
-	w.buffer = append(w.buffer, buffer...)
-
-	// Process all lines in the buffer, tracking the number of bytes that we
-	// process.
-	var processed int
-	remaining := w.buffer
-	for {
-		// Find the index of the next newline character.
-		index := bytes.IndexByte(remaining, '\n')
-		if index == -1 {
-			break
-		}
-
-		// Process the line.
-		w.callback(string(trimCarriageReturn(remaining[:index])))
-
-		// Update the number of bytes that we've processed.
-		processed += index + 1
-
-		// Update the remaining slice.
-		remaining = remaining[index+1:]
-	}
-
-	// If we managed to process bytes, then truncate our internal buffer.
-	if processed > 0 {
-		// Compute the number of leftover bytes.
-		leftover := len(w.buffer) - processed
-
-		// If there are leftover bytes, then shift them to the front of the
-		// buffer.
-		if leftover > 0 {
-			copy(w.buffer[:leftover], w.buffer[processed:])
-		}
-
-		// Truncate the buffer.
-		w.buffer = w.buffer[:leftover]
-	}
-
-	// Done.
-	return len(buffer), nil
-}
 
 // Logger is the main logger type. It has the novel property that it still
 // functions if nil, but it doesn't log anything. It is designed to use the
@@ -193,8 +131,8 @@ func (l *Logger) Writer(level Level) io.Writer {
 	}
 
 	// Create the writer.
-	return &writer{
-		callback: func(s string) {
+	return &stream.LineProcessor{
+		Callback: func(s string) {
 			l.println(level, s)
 		},
 	}
