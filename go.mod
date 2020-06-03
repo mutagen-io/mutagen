@@ -25,7 +25,7 @@ require (
 	github.com/pion/webrtc/v2 v2.1.18
 	github.com/pkg/errors v0.9.1
 	github.com/shibukawa/extstat v0.0.0-20150809151201-4113c04d0977
-	github.com/spf13/cobra v0.0.6-0.20191202130430-b04b5bfc50cb
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5
 	golang.org/x/text v0.3.2
