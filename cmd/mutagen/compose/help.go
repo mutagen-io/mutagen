@@ -4,9 +4,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func helpPassthrough(command *cobra.Command, arguments []string) {
+	enableInvokeCommandNameReplacement()
+	passthrough(command, arguments)
+}
+
 var helpCommand = &cobra.Command{
 	Use:                "help",
-	Run:                passthrough,
+	Run:                helpPassthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }
