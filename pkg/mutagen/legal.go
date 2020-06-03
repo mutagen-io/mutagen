@@ -393,18 +393,6 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-compose-go
-
-https://github.com/compose-spec/compose-go
-
-Copyright 2020 The Compose Specification Authors.
-
-Used under the terms of the Apache License, Version 2.0. A copy of this license
-can be found later in this text or online at
-http://www.apache.org/licenses/LICENSE-2.0.
-
---------------------------------------------------------------------------------
-
 Yamux
 
 https://github.com/hashicorp/yamux
@@ -426,6 +414,51 @@ Copyright (c) 2015 Yoshiki Shibukawa
 
 Used under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
+Go-based ports of code from Docker Compose
+
+https://github.com/docker/compose
+
+Copyright 2014 Docker, Inc.
+
+Used under the terms of the Apache License, Version 2.0. A copy of this license
+can be found later in this text or online at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+
+compose-go
+
+https://github.com/compose-spec/compose-go
+
+Copyright 2020 The Compose Specification Authors.
+
+Used under the terms of the Apache License, Version 2.0. A copy of this license
+can be found later in this text or online at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+
+================================================================================
+Mutagen is compatible with the following third-party software:
+================================================================================
+
+OpenSSH
+
+https://www.openssh.com/
+
+--------------------------------------------------------------------------------
+
+Docker
+
+https://www.docker.com/
+
+--------------------------------------------------------------------------------
+
+Docker Compose
+
+https://github.com/docker/compose
 
 
 ================================================================================
