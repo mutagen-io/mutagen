@@ -62,32 +62,17 @@ func ListWithLabelSelector(labelSelector string, long bool) error {
 	return listMain(nil, nil)
 }
 
-func listMain(command *cobra.Command, arguments []string) error {
-	// Create session selection specification.
-	selection := &selection.Selection{
-		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
-		Specifications: arguments,
-		LabelSelector:  listConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.Connect(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
-
+// ListWithSelection is an orchestration convenience method invokes list using
+// the provided service client and session specification.
+func ListWithSelection(
+	client forwardingsvc.ForwardingClient,
+	selection *selection.Selection,
+) error {
 	// Invoke list.
 	request := &forwardingsvc.ListRequest{
 		Selection: selection,
 	}
-	response, err := sessionService.List(context.Background(), request)
+	response, err := client.List(context.Background(), request)
 	if err != nil {
 		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")
 	} else if err = response.EnsureValid(); err != nil {
@@ -112,6 +97,31 @@ func listMain(command *cobra.Command, arguments []string) error {
 
 	// Success.
 	return nil
+}
+
+func listMain(command *cobra.Command, arguments []string) error {
+	// Create session selection specification.
+	selection := &selection.Selection{
+		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
+		Specifications: arguments,
+		LabelSelector:  listConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid session selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Create a session service client.
+	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
+
+	// Perform the list operation.
+	return ListWithSelection(sessionService, selection)
 }
 
 var listCommand = &cobra.Command{

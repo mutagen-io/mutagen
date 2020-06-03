@@ -1,14 +1,92 @@
 package compose
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+	"github.com/mutagen-io/mutagen/pkg/compose"
+	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
+// listSessions handles Mutagen session listing for the project.
+func listSessions(project *compose.Project) error {
+	// Connect to the Mutagen daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
+	}
+	defer daemonConnection.Close()
+
+	// Create service clients.
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+
+	// Create a session selection for the project.
+	projectSelection := project.SessionSelection()
+
+	// Perform forwarding session listing.
+	fmt.Println("\nForwarding sessions")
+	if err := forward.ListWithSelection(forwardingService, projectSelection); err != nil {
+		return fmt.Errorf("forwarding listing failed: %w", err)
+	}
+
+	// Perform synchronization session listing.
+	fmt.Println("\nSynchronization sessions")
+	if err := sync.ListWithSelection(synchronizationService, projectSelection); err != nil {
+		return fmt.Errorf("synchronization listing failed: %w", err)
+	}
+
+	// Success.
+	return nil
+}
+
+func psMain(command *cobra.Command, arguments []string) error {
+	// Load project metadata and defer the release of project resources.
+	project, err := compose.LoadProject(
+		rootConfiguration.ProjectFlags,
+		rootConfiguration.DaemonConnectionFlags,
+	)
+	if err != nil {
+		return fmt.Errorf("unable to load project: %w", err)
+	}
+	defer project.Dispose()
+
+	// Compute the effective top-level flags that we'll use. We reconstitute
+	// flags from the root command, but filter project-related flags and replace
+	// them with the fully resolved flags from the loaded project.
+	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
+	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
+
+	// Compute flags and arguments for the command itself.
+	psArguments := reconstituteFlags(command.Flags(), nil)
+	psArguments = append(psArguments, arguments...)
+
+	// Perform the pass-through operation.
+	if err := invoke(topLevelFlags, "ps", psArguments); err != nil {
+		return err
+	}
+
+	// If the operation completed successfully and flags/services were
+	// specified, then perform a Mutagen session listing.
+	if len(psArguments) == 0 {
+		if err := listSessions(project); err != nil {
+			return fmt.Errorf("unable to list Mutagen sessions: %w", err)
+		}
+	}
+
+	// Success.
+	return nil
+}
+
 var psCommand = &cobra.Command{
-	Use:                "ps",
-	Run:                passthrough,
-	SilenceUsage:       true,
-	DisableFlagParsing: true,
+	Use:          "ps",
+	RunE:         wrapper(psMain),
+	SilenceUsage: true,
 }
 
 var psConfiguration struct {
