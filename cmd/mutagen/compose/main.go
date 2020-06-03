@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -17,7 +15,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/compose"
 	"github.com/mutagen-io/mutagen/pkg/docker"
-	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 // topLevelProjectFlagNames are the names of the top-level flags that control
@@ -73,40 +70,10 @@ func reconstituteFlags(flags *pflag.FlagSet, exclude []string) []string {
 	return result
 }
 
-// invokeInput is the standard input stream used by invoke.
-var invokeInput io.Reader = os.Stdin
-
-// invokeOutput is the standard output stream used by invoke.
-var invokeOutput io.Writer = os.Stdout
-
-// invokeError is the standard error stream used by invoke.
-var invokeError io.Writer = os.Stderr
-
-// enableInvokeCommandNameReplacement replaces invokeOutput and invokeError with
-// streams that replace "docker-compose" with "mutagen compose" in their output.
-func enableInvokeCommandNameReplacement() {
-	replace := func(s string) string {
-		return strings.ReplaceAll(s, "docker-compose", "mutagen compose")
-	}
-	invokeOutput = &stream.LineProcessor{
-		Callback: func(s string) {
-			fmt.Println(replace(s))
-		},
-	}
-	invokeError = &stream.LineProcessor{
-		Callback: func(s string) {
-			fmt.Fprintln(os.Stderr, replace(s))
-		},
-	}
-}
-
 // invoke invokes Docker Compose with the specified top-level flags, command
-// name, and arguments. It sets the input and output streams of the command to
-// the values specified by invokeInput, invokeOutput, and invokeError (which
-// default to the standard input, output, and error streams of the current
-// process, respectively). It also forward the environment variables from the
-// current process to Docker Compose. It returns any error that occurs while
-// invoking Docker Compose or the result of os/exec.Cmd.Run.
+// name, and arguments. It forwards the standard input/output/error streams and
+// environment of the current process to Docker Compose. It returns any error
+// that occurred while invoking Docker Compose or the result of os/exec.Cmd.Run.
 func invoke(topLevelFlags []string, command string, arguments []string) error {
 	// Compute the Docker Compose arguments.
 	composeArguments := make([]string, 0, len(topLevelFlags)+1+len(arguments))
@@ -123,9 +90,9 @@ func invoke(topLevelFlags []string, command string, arguments []string) error {
 	}
 
 	// Forward input and output streams.
-	compose.Stdin = invokeInput
-	compose.Stdout = invokeOutput
-	compose.Stderr = invokeError
+	compose.Stdin = os.Stdin
+	compose.Stdout = os.Stdout
+	compose.Stderr = os.Stderr
 
 	// TODO: Figure out if there's any signal handling that we need to set up.
 	// Docker Compose has a bunch of internal signal handling at its entry
@@ -175,11 +142,8 @@ func invokeAndExit(topLevelFlags []string, command string, arguments []string) {
 func handleTopLevelFlags() {
 	// Handle help and version flags. Help behavior always take precedence over
 	// version behavior, even if the -v/--version flag is specified before the
-	// -h/--help flag. We don't enable command name replacement for version
-	// printing because we don't want users to confuse Mutagen versions with
-	// Docker Compose versions.
+	// -h/--help flag.
 	if rootConfiguration.help {
-		enableInvokeCommandNameReplacement()
 		invokeAndExit([]string{"--help"}, "", nil)
 	} else if rootConfiguration.version {
 		invokeAndExit([]string{"--version"}, "", nil)
@@ -238,7 +202,6 @@ func wrapper(run func(*cobra.Command, []string) error) func(*cobra.Command, []st
 // commandHelp is a Cobra help function that shells out to Docker Compose to
 // display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
-	enableInvokeCommandNameReplacement()
 	if command == RootCommand {
 		invokeAndExit([]string{"--help"}, "", nil)
 	}
@@ -250,7 +213,6 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 	// but do so in a way that matches the output stream and exit code that
 	// Docker Compose would use.
 	if len(arguments) == 0 {
-		enableInvokeCommandNameReplacement()
 		invokeAndExit(nil, "", nil)
 	}
 
