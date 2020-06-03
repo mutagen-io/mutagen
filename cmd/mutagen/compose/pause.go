@@ -31,11 +31,13 @@ func pauseSessions(project *compose.Project) error {
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session pausing.
+	fmt.Println("Pausing forwarding sessions")
 	if err := forward.PauseWithSelection(forwardingService, projectSelection); err != nil {
 		return fmt.Errorf("forwarding pausing failed: %w", err)
 	}
 
 	// Perform synchronization session pausing.
+	fmt.Println("Pausing synchronization sessions")
 	if err := sync.PauseWithSelection(synchronizationService, projectSelection); err != nil {
 		return fmt.Errorf("synchronization pausing failed: %w", err)
 	}

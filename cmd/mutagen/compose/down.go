@@ -31,11 +31,13 @@ func terminateSessions(project *compose.Project) error {
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session termination.
+	fmt.Println("Terminating forwarding sessions")
 	if err := forward.TerminateWithSelection(forwardingService, projectSelection); err != nil {
 		return fmt.Errorf("forwarding termination failed: %w", err)
 	}
 
 	// Perform synchronization session termination.
+	fmt.Println("Terminating synchronization sessions")
 	if err := sync.TerminateWithSelection(synchronizationService, projectSelection); err != nil {
 		return fmt.Errorf("synchronization termination failed: %w", err)
 	}

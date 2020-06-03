@@ -31,11 +31,13 @@ func resumeSessions(project *compose.Project) error {
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session resumption.
+	fmt.Println("Resuming forwarding sessions")
 	if err := forward.ResumeWithSelection(forwardingService, projectSelection); err != nil {
 		return fmt.Errorf("forwarding resumption failed: %w", err)
 	}
 
 	// Perform synchronization session resumption.
+	fmt.Println("Resuming synchronization sessions")
 	if err := sync.ResumeWithSelection(synchronizationService, projectSelection); err != nil {
 		return fmt.Errorf("synchronization resumption failed: %w", err)
 	}

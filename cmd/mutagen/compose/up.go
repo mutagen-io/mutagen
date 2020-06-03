@@ -191,7 +191,7 @@ func reconcileSessions(project *compose.Project) error {
 
 	// Create forwarding sessions.
 	for _, specification := range forwardingCreateSpecifications {
-		fmt.Println("Creating forwarding session", specification.Name)
+		fmt.Printf("Creating forwarding session \"%s\"\n", specification.Name)
 		if _, err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
 			return fmt.Errorf("unable to create forwarding session (%s): %w", specification.Name, err)
 		}
@@ -200,7 +200,7 @@ func reconcileSessions(project *compose.Project) error {
 	// Create synchronization sessions.
 	var sessionsToFlush []string
 	for _, specification := range synchronizationCreateSpecifications {
-		fmt.Println("Creating synchronization session", specification.Name)
+		fmt.Printf("Creating synchronization session \"%s\"", specification.Name)
 		if s, err := sync.CreateWithSpecification(synchronizationService, specification); err != nil {
 			return fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
 		} else {
@@ -210,6 +210,7 @@ func reconcileSessions(project *compose.Project) error {
 
 	// Flush newly created synchronization sessions.
 	if len(sessionsToFlush) > 0 {
+		fmt.Println("Performing initial synchronization")
 		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
 		if err := sync.FlushWithSelection(synchronizationService, flushSelection, false); err != nil {
 			return fmt.Errorf("unable to flush synchronization session(s): %w", err)
