@@ -2,8 +2,6 @@ package forward
 
 import (
 	"github.com/spf13/cobra"
-
-	"github.com/fatih/color"
 )
 
 // forwardMain is the entry point for the forward command.
@@ -33,9 +31,6 @@ var forwardConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	ForwardCommand.Short = ForwardCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := ForwardCommand.Flags()
 
