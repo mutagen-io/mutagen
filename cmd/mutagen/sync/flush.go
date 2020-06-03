@@ -69,7 +69,7 @@ func FlushWithSelection(
 	}
 }
 
-func flushMain(command *cobra.Command, arguments []string) error {
+func flushMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            flushConfiguration.all,

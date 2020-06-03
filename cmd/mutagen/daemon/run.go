@@ -34,12 +34,7 @@ import (
 	tunnelsynchronizationprotocol "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/tunnel"
 )
 
-func runMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
+func runMain(_ *cobra.Command, _ []string) error {
 	// Attempt to acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
 	if err != nil {
@@ -145,6 +140,7 @@ func runMain(command *cobra.Command, arguments []string) error {
 var runCommand = &cobra.Command{
 	Use:          "run",
 	Short:        "Run the Mutagen daemon",
+	Args:         cmd.DisallowArguments,
 	Hidden:       true,
 	RunE:         runMain,
 	SilenceUsage: true,

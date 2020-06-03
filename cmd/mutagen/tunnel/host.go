@@ -22,7 +22,7 @@ const (
 	hostCredentialsEnvironmentVariable = "MUTAGEN_TUNNEL_HOST_CREDENTIALS"
 )
 
-func hostMain(command *cobra.Command, arguments []string) error {
+func hostMain(_ *cobra.Command, arguments []string) error {
 	// Validate arguments and determine the path to the host credentials file.
 	var hostCredentialsPath string
 	if len(arguments) == 0 {

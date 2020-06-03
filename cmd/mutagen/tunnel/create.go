@@ -21,12 +21,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
-func createMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments")
-	}
-
+func createMain(_ *cobra.Command, _ []string) error {
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
 		return errors.Wrap(err, "invalid tunnel name")
@@ -128,6 +123,7 @@ func createMain(command *cobra.Command, arguments []string) error {
 var createCommand = &cobra.Command{
 	Use:          "create",
 	Short:        "Create and start a new tunnel",
+	Args:         cmd.DisallowArguments,
 	RunE:         createMain,
 	SilenceUsage: true,
 }

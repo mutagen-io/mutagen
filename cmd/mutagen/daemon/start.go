@@ -8,15 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
-func startMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
+func startMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different
 	// start mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStart(); err != nil {
@@ -48,6 +44,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 var startCommand = &cobra.Command{
 	Use:          "start",
 	Short:        "Start the Mutagen daemon if it's not already running",
+	Args:         cmd.DisallowArguments,
 	RunE:         startMain,
 	SilenceUsage: true,
 }

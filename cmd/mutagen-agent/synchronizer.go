@@ -46,7 +46,7 @@ func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	}
 }
 
-func synchronizerMain(command *cobra.Command, arguments []string) error {
+func synchronizerMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
@@ -93,6 +93,7 @@ func synchronizerMain(command *cobra.Command, arguments []string) error {
 var synchronizerCommand = &cobra.Command{
 	Use:          agent.ModeSynchronizer,
 	Short:        "Run the agent in synchronizer mode",
+	Args:         cmd.DisallowArguments,
 	RunE:         synchronizerMain,
 	SilenceUsage: true,
 }

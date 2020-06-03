@@ -66,7 +66,7 @@ func PauseWithSelection(
 	}
 }
 
-func pauseMain(command *cobra.Command, arguments []string) error {
+func pauseMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            pauseConfiguration.all,

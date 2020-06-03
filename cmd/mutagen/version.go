@@ -5,10 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
-func versionMain(command *cobra.Command, arguments []string) error {
+func versionMain(_ *cobra.Command, _ []string) error {
 	// Print version information.
 	fmt.Println(mutagen.Version)
 
@@ -19,6 +20,7 @@ func versionMain(command *cobra.Command, arguments []string) error {
 var versionCommand = &cobra.Command{
 	Use:          "version",
 	Short:        "Show version information",
+	Args:         cmd.DisallowArguments,
 	RunE:         versionMain,
 	SilenceUsage: true,
 }

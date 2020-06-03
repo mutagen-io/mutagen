@@ -66,7 +66,7 @@ func TerminateWithSelection(
 	}
 }
 
-func terminateMain(command *cobra.Command, arguments []string) error {
+func terminateMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            terminateConfiguration.all,

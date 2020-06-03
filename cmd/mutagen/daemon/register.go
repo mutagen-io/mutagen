@@ -1,33 +1,22 @@
 package daemon
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
-func registerMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
-	// Attempt registration.
-	if err := daemon.Register(); err != nil {
-		return err
-	}
-
-	// Success.
-	return nil
+func registerMain(_ *cobra.Command, _ []string) error {
+	return daemon.Register()
 }
 
 var registerCommand = &cobra.Command{
 	Use:          "register",
 	Short:        "Register the Mutagen daemon to start automatically on login",
+	Args:         cmd.DisallowArguments,
 	RunE:         registerMain,
 	SilenceUsage: true,
 }

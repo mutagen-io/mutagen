@@ -15,7 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
-func forwarderMain(command *cobra.Command, arguments []string) error {
+func forwarderMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
@@ -57,6 +57,7 @@ func forwarderMain(command *cobra.Command, arguments []string) error {
 var forwarderCommand = &cobra.Command{
 	Use:          agent.ModeForwarder,
 	Short:        "Run the agent in forwarder mode",
+	Args:         cmd.DisallowArguments,
 	RunE:         forwarderMain,
 	SilenceUsage: true,
 }

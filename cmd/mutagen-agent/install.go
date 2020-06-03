@@ -5,16 +5,18 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/agent"
 )
 
-func installMain(command *cobra.Command, arguments []string) error {
+func installMain(_ *cobra.Command, _ []string) error {
 	return errors.Wrap(agent.Install(), "installation error")
 }
 
 var installCommand = &cobra.Command{
 	Use:          agent.ModeInstall,
 	Short:        "Perform agent installation",
+	Args:         cmd.DisallowArguments,
 	RunE:         installMain,
 	SilenceUsage: true,
 }

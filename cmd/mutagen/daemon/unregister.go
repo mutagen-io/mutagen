@@ -1,33 +1,22 @@
 package daemon
 
 import (
-	"github.com/pkg/errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
-func unregisterMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
-	// Attempt deregistration.
-	if err := daemon.Unregister(); err != nil {
-		return err
-	}
-
-	// Success.
-	return nil
+func unregisterMain(_ *cobra.Command, _ []string) error {
+	return daemon.Unregister()
 }
 
 var unregisterCommand = &cobra.Command{
 	Use:          "unregister",
 	Short:        "Unregister automatic Mutagen daemon start-up",
+	Args:         cmd.DisallowArguments,
 	RunE:         unregisterMain,
 	SilenceUsage: true,
 }

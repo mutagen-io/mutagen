@@ -6,16 +6,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
-func loginMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments")
-	}
-
+func loginMain(_ *cobra.Command, _ []string) error {
 	// Prompt for the API token.
 	apiToken, err := prompting.PromptCommandLineWithResponseMode("Enter API token: ", prompting.ResponseModeMasked)
 	if err != nil {
@@ -41,6 +37,7 @@ func loginMain(command *cobra.Command, arguments []string) error {
 var loginCommand = &cobra.Command{
 	Use:          "login",
 	Short:        "Log in to mutagen.io",
+	Args:         cmd.DisallowArguments,
 	RunE:         loginMain,
 	SilenceUsage: true,
 }

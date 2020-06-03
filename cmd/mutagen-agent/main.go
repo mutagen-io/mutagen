@@ -14,7 +14,7 @@ func init() {
 	log.SetFlags(0)
 }
 
-func rootMain(command *cobra.Command, arguments []string) error {
+func rootMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point

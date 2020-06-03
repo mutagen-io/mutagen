@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
@@ -18,12 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
-func pauseMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) > 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
+func pauseMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -139,6 +135,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
 	Short:        "Pause project sessions",
+	Args:         cmd.DisallowArguments,
 	RunE:         pauseMain,
 	SilenceUsage: true,
 }

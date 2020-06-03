@@ -7,16 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
-func stopMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
+func stopMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different stop
 	// mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStop(); err != nil {
@@ -49,6 +45,7 @@ func stopMain(command *cobra.Command, arguments []string) error {
 var stopCommand = &cobra.Command{
 	Use:          "stop",
 	Short:        "Stop the Mutagen daemon if it's running",
+	Args:         cmd.DisallowArguments,
 	RunE:         stopMain,
 	SilenceUsage: true,
 }

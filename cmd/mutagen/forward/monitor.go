@@ -46,7 +46,7 @@ func computeMonitorStatusLine(state *forwarding.State) string {
 	return status
 }
 
-func monitorMain(command *cobra.Command, arguments []string) error {
+func monitorMain(_ *cobra.Command, arguments []string) error {
 	// Create a session selection specification that will select our initial
 	// batch of sessions. From this batch, we'll determine which session to
 	// monitor based on creation date. In any case, we only allow one

@@ -32,7 +32,7 @@ func printTunnelStatus(state *tunneling.State) {
 	}
 }
 
-func listMain(command *cobra.Command, arguments []string) error {
+func listMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
 		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",

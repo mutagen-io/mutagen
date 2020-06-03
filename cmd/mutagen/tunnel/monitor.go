@@ -46,7 +46,7 @@ func computeMonitorStatusLine(state *tunneling.State) string {
 	return status
 }
 
-func monitorMain(command *cobra.Command, arguments []string) error {
+func monitorMain(_ *cobra.Command, arguments []string) error {
 	// Create a tunnel selection specification that will select our initial
 	// batch of tunnels. From this batch, we'll determine which tunnel to
 	// monitor based on creation date. In any case, we only allow one

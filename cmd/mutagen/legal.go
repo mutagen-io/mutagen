@@ -5,10 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
-func legalMain(command *cobra.Command, arguments []string) error {
+func legalMain(_ *cobra.Command, _ []string) error {
 	// Print legal information.
 	fmt.Println(mutagen.LegalNotice)
 
@@ -19,6 +20,7 @@ func legalMain(command *cobra.Command, arguments []string) error {
 var legalCommand = &cobra.Command{
 	Use:          "legal",
 	Short:        "Show legal information",
+	Args:         cmd.DisallowArguments,
 	RunE:         legalMain,
 	SilenceUsage: true,
 }

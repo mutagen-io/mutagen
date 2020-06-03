@@ -4,14 +4,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/cmd"
 )
 
-func generateMain(command *cobra.Command, arguments []string) error {
-	// Ensure that no arguments have been provided.
-	if len(arguments) > 0 {
-		return errors.New("this command does not accept arguments")
-	}
-
+func generateMain(_ *cobra.Command, _ []string) error {
 	// Ensure that at least one flag has been specified.
 	flagSpecified := generateConfiguration.bashCompletionScript != ""
 	if !flagSpecified {
@@ -32,6 +29,7 @@ func generateMain(command *cobra.Command, arguments []string) error {
 var generateCommand = &cobra.Command{
 	Use:          "generate",
 	Short:        "Generate various files",
+	Args:         cmd.DisallowArguments,
 	Hidden:       true,
 	RunE:         generateMain,
 	SilenceUsage: true,

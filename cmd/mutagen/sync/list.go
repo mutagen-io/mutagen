@@ -168,7 +168,7 @@ func ListWithSelection(
 	return nil
 }
 
-func listMain(command *cobra.Command, arguments []string) error {
+func listMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",

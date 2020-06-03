@@ -75,7 +75,7 @@ func ResumeWithSelection(
 	}
 }
 
-func resumeMain(command *cobra.Command, arguments []string) error {
+func resumeMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            resumeConfiguration.all,

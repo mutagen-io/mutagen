@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
@@ -27,12 +28,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-func startMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) > 0 {
-		return errors.New("unexpected arguments provided")
-	}
-
+func startMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -431,6 +427,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 var startCommand = &cobra.Command{
 	Use:          "start",
 	Short:        "Start project sessions",
+	Args:         cmd.DisallowArguments,
 	RunE:         startMain,
 	SilenceUsage: true,
 }

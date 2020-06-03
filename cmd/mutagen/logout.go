@@ -1,26 +1,20 @@
 package main
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 )
 
-func logoutMain(command *cobra.Command, arguments []string) error {
-	// Validate arguments.
-	if len(arguments) != 0 {
-		return errors.New("unexpected arguments")
-	}
-
-	// Perform the logout.
+func logoutMain(_ *cobra.Command, _ []string) error {
 	return mutagenio.Logout()
 }
 
 var logoutCommand = &cobra.Command{
 	Use:          "logout",
 	Short:        "Log out from mutagen.io",
+	Args:         cmd.DisallowArguments,
 	RunE:         logoutMain,
 	SilenceUsage: true,
 }

@@ -119,7 +119,7 @@ func CreateWithSpecification(
 	}
 }
 
-func createMain(command *cobra.Command, arguments []string) error {
+func createMain(_ *cobra.Command, arguments []string) error {
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
 		return errors.New("invalid number of endpoint URLs provided")

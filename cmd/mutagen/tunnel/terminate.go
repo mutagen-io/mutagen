@@ -14,7 +14,7 @@ import (
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
 
-func terminateMain(command *cobra.Command, arguments []string) error {
+func terminateMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
 		All:            terminateConfiguration.all,

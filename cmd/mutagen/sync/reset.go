@@ -75,7 +75,7 @@ func ResetWithSelection(
 	}
 }
 
-func resetMain(command *cobra.Command, arguments []string) error {
+func resetMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
 		All:            resetConfiguration.all,
