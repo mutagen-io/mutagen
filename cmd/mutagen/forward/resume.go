@@ -16,15 +16,15 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 )
 
-// ResumeWithLabelSelector is an orchestration convenience method invokes the
-// resume command using the specified label selector.
+// ResumeWithLabelSelector is an orchestration convenience method that invokes
+// the resume command using the specified label selector.
 func ResumeWithLabelSelector(labelSelector string) error {
 	resumeConfiguration.labelSelector = labelSelector
 	return resumeMain(nil, nil)
 }
 
-// ResumeWithSelection is an orchestration convenience method invokes resume
-// using the provided service client and session specification.
+// ResumeWithSelection is an orchestration convenience method that invokes
+// resume using the provided service client and session selection.
 func ResumeWithSelection(
 	client forwardingsvc.ForwardingClient,
 	selection *selection.Selection,

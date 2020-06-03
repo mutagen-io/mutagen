@@ -15,15 +15,15 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 )
 
-// TerminateWithLabelSelector is an orchestration convenience method invokes the
-// terminate command using the specified label selector.
+// TerminateWithLabelSelector is an orchestration convenience method that
+// invokes the terminate command using the specified label selector.
 func TerminateWithLabelSelector(labelSelector string) error {
 	terminateConfiguration.labelSelector = labelSelector
 	return terminateMain(nil, nil)
 }
 
-// TerminateWithSelection is an orchestration convenience method invokes
-// terminate using the provided service client and session specification.
+// TerminateWithSelection is an orchestration convenience method that invokes
+// terminate using the provided service client and session selection.
 func TerminateWithSelection(
 	client forwardingsvc.ForwardingClient,
 	selection *selection.Selection,

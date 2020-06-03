@@ -66,8 +66,8 @@ func ListWithLabelSelector(labelSelector string, long bool) error {
 	return listMain(nil, nil)
 }
 
-// ListWithSelection is an orchestration convenience method invokes list using
-// the provided service client and session specification.
+// ListWithSelection is an orchestration convenience method that invokes list
+// using the provided service client and session selection.
 func ListWithSelection(
 	client forwardingsvc.ForwardingClient,
 	selection *selection.Selection,

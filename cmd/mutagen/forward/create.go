@@ -24,8 +24,8 @@ import (
 )
 
 // loadAndValidateGlobalSynchronizationConfiguration loads a YAML-based global
-// configuration, extracts the forwarding component, and converts it to a
-// Protocol Buffers session configuration, and validates it.
+// configuration, extracts the forwarding component, converts it to a Protocol
+// Buffers session configuration, and validates it.
 func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Configuration, error) {
 	// Load the YAML configuration.
 	yamlConfiguration, err := global.LoadConfiguration(path)
@@ -44,7 +44,7 @@ func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Conf
 	return configuration, nil
 }
 
-// CreateWithSpecification is an orchestration convenience method invokes
+// CreateWithSpecification is an orchestration convenience method that invokes
 // creation using the provided service client and session specification.
 func CreateWithSpecification(
 	client forwardingsvc.ForwardingClient,

@@ -16,15 +16,15 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-// ResetWithLabelSelector is an orchestration convenience method invokes the
-// reset command using the specified label selector.
+// ResetWithLabelSelector is an orchestration convenience method that invokes
+// the reset command using the specified label selector.
 func ResetWithLabelSelector(labelSelector string) error {
 	resetConfiguration.labelSelector = labelSelector
 	return resetMain(nil, nil)
 }
 
-// ResetWithSelection is an orchestration convenience method invokes reset using
-// the provided service client and session specification.
+// ResetWithSelection is an orchestration convenience method that invokes reset
+// using the provided service client and session selection.
 func ResetWithSelection(
 	client synchronizationsvc.SynchronizationClient,
 	selection *selection.Selection,

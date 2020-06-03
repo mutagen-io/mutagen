@@ -23,8 +23,8 @@ func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
 	return flushMain(nil, nil)
 }
 
-// FlushWithSelection is an orchestration convenience method invokes flush using
-// the provided service client and session specification.
+// FlushWithSelection is an orchestration convenience method that invokes flush
+// using the provided service client and session selection.
 func FlushWithSelection(
 	client synchronizationsvc.SynchronizationClient,
 	selection *selection.Selection,

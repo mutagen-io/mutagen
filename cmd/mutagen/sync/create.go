@@ -30,7 +30,7 @@ import (
 )
 
 // loadAndValidateGlobalSynchronizationConfiguration loads a YAML-based global
-// configuration, extracts the synchronization component, and converts it to a
+// configuration, extracts the synchronization component, converts it to a
 // Protocol Buffers session configuration, and validates it.
 func loadAndValidateGlobalSynchronizationConfiguration(path string) (*synchronization.Configuration, error) {
 	// Load the YAML configuration.
@@ -71,8 +71,8 @@ func loadAndValidateLegacyTOMLConfiguration(path string) (*synchronization.Confi
 	return configuration, nil
 }
 
-// CreateWithSpecification is an orchestration convenience method invokes create
-// using the provided service client and session specification.
+// CreateWithSpecification is an orchestration convenience method that invokes
+// create using the provided service client and session specification.
 func CreateWithSpecification(
 	client synchronizationsvc.SynchronizationClient,
 	specification *synchronizationsvc.CreationSpecification,
