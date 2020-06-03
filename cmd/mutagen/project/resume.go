@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// resumeMain is the entry point for the resume command.
 func resumeMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -133,6 +134,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// resumeCommand is the resume command.
 var resumeCommand = &cobra.Command{
 	Use:          "resume",
 	Short:        "Resume project sessions",
@@ -141,6 +143,7 @@ var resumeCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// resumeConfiguration stores configuration for the resume command.
 var resumeConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

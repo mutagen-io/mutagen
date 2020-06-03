@@ -9,6 +9,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/compose"
 )
 
+// startMain is the entry point for the start command.
 func startMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -59,12 +60,14 @@ func startMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
+// startCommand is the start command.
 var startCommand = &cobra.Command{
 	Use:          "start",
 	RunE:         wrapper(startMain),
 	SilenceUsage: true,
 }
 
+// startConfiguration stores configuration for the start command.
 var startConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

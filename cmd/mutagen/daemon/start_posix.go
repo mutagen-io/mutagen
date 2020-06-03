@@ -8,6 +8,7 @@ import (
 	"syscall"
 )
 
+// daemonProcessAttributes are the process attributes to use for the daemon.
 var daemonProcessAttributes = &syscall.SysProcAttr{
 	Setsid: true,
 }

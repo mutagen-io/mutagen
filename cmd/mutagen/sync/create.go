@@ -120,6 +120,7 @@ func CreateWithSpecification(
 	}
 }
 
+// createMain is the entry point for the create command.
 func createMain(_ *cobra.Command, arguments []string) error {
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
@@ -511,6 +512,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	return err
 }
 
+// createCommand is the create command.
 var createCommand = &cobra.Command{
 	Use:          "create <alpha> <beta>",
 	Short:        "Create and start a new synchronization session",
@@ -518,6 +520,7 @@ var createCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// createConfiguration stores configuration for the create command.
 var createConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

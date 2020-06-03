@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// rmCommand is the rm command.
 var rmCommand = &cobra.Command{
 	Use:                "rm",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var rmCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// rmConfiguration stores configuration for the rm command.
 var rmConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

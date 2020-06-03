@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// imagesCommand is the images command.
 var imagesCommand = &cobra.Command{
 	Use:                "images",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var imagesCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// imagesConfiguration stores configuration for the images command.
 var imagesConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

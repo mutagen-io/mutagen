@@ -23,6 +23,7 @@ const (
 	hostCredentialsEnvironmentVariable = "MUTAGEN_TUNNEL_HOST_CREDENTIALS"
 )
 
+// hostMain is the entry point for the host command.
 func hostMain(_ *cobra.Command, arguments []string) error {
 	// Validate arguments and determine the path to the host credentials file.
 	var hostCredentialsPath string
@@ -91,6 +92,7 @@ func hostMain(_ *cobra.Command, arguments []string) error {
 	}
 }
 
+// hostCommand is the host command.
 var hostCommand = &cobra.Command{
 	Use:          "host <tunnel-host-credentials-path>",
 	Short:        "Host a tunnel",
@@ -98,6 +100,7 @@ var hostCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// hostConfiguration stores configuration for the host command.
 var hostConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

@@ -11,6 +11,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
+// versionMain is the entry point for the version command.
 func versionMain(_ *cobra.Command, _ []string) error {
 	// Print version information.
 	fmt.Println(mutagen.Version)
@@ -19,6 +20,7 @@ func versionMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// versionCommand is the version command.
 var versionCommand = &cobra.Command{
 	Use:          agent.ModeVersion,
 	Short:        "Show version information",
@@ -27,6 +29,7 @@ var versionCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// versionConfiguration stores configuration for the version command.
 var versionConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

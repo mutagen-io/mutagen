@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// logsCommand is the logs command.
 var logsCommand = &cobra.Command{
 	Use:                "logs",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var logsCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// logsConfiguration stores configuration for the logs command.
 var logsConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

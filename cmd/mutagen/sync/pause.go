@@ -67,6 +67,7 @@ func PauseWithSelection(
 	}
 }
 
+// pauseMain is the entry point for the pause command.
 func pauseMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -92,6 +93,7 @@ func pauseMain(_ *cobra.Command, arguments []string) error {
 	return PauseWithSelection(sessionService, selection)
 }
 
+// pauseCommand is the pause command.
 var pauseCommand = &cobra.Command{
 	Use:          "pause [<session>...]",
 	Short:        "Pause a synchronization session",
@@ -99,6 +101,7 @@ var pauseCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// pauseConfiguration stores configuration for the pause command.
 var pauseConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

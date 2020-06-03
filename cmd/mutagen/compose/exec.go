@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// execCommand is the exec command.
 var execCommand = &cobra.Command{
 	Use:                "exec",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var execCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// execConfiguration stores configuration for the exec command.
 var execConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

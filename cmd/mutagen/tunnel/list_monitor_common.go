@@ -14,6 +14,7 @@ const (
 	emptyLabelValueDescription = "<empty>"
 )
 
+// printTunnel prints the configuration for a tunnel.
 func printTunnel(state *tunneling.State, long bool) {
 	// Print name, if any.
 	if state.Tunnel.Name != "" {

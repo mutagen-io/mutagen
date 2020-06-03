@@ -11,7 +11,8 @@ import (
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/ssh"
 )
 
-func rootMain(command *cobra.Command, _ []string) error {
+// projectMain is the entry point for the project command.
+func projectMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point
@@ -22,34 +23,36 @@ func rootMain(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-var RootCommand = &cobra.Command{
+// ProjectCommand is the project command.
+var ProjectCommand = &cobra.Command{
 	Use:          "project",
 	Short:        "Orchestrate sessions for a project",
-	RunE:         rootMain,
+	RunE:         projectMain,
 	SilenceUsage: true,
 }
 
-var rootConfiguration struct {
+// projectConfiguration stores configuration for the project command.
+var projectConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
 }
 
 func init() {
 	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
+	ProjectCommand.Short = ProjectCommand.Short + color.YellowString(" [Experimental]")
 
 	// Grab a handle for the command line flags.
-	flags := RootCommand.Flags()
+	flags := ProjectCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&projectConfiguration.help, "help", "h", false, "Show help information")
 
 	// Register commands.
-	RootCommand.AddCommand(
+	ProjectCommand.AddCommand(
 		startCommand,
 		runCommand,
 		listCommand,

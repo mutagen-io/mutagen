@@ -47,6 +47,7 @@ func terminateSessions(project *compose.Project) error {
 	return nil
 }
 
+// downMain is the entry point for the down command.
 func downMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -93,12 +94,14 @@ func downMain(command *cobra.Command, arguments []string) error {
 	return invoke(topLevelFlags, "down", downArguments)
 }
 
+// downCommand is the down command.
 var downCommand = &cobra.Command{
 	Use:          "down",
 	RunE:         wrapper(downMain),
 	SilenceUsage: true,
 }
 
+// downConfiguration stores configuration for the down command.
 var downConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

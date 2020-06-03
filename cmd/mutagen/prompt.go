@@ -13,6 +13,7 @@ import (
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
 
+// promptMain is the entry point for prompting.
 func promptMain(arguments []string) error {
 	// Extract prompt.
 	if len(arguments) != 1 {

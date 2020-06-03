@@ -19,6 +19,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
+// computeMonitorStatusLine constructs a monitoring status line for a
+// synchronization session.
 func computeMonitorStatusLine(state *synchronization.State) string {
 	// Build the status line.
 	status := "Status: "
@@ -60,6 +62,7 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 	return status
 }
 
+// monitorMain is the entry point for the monitor command.
 func monitorMain(_ *cobra.Command, arguments []string) error {
 	// Create a session selection specification that will select our initial
 	// batch of sessions. From this batch, we'll determine which session to
@@ -162,6 +165,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	}
 }
 
+// monitorCommand is the monitor command.
 var monitorCommand = &cobra.Command{
 	Use:          "monitor [<session>]",
 	Short:        "Show a dynamic status display for a single session",
@@ -169,6 +173,7 @@ var monitorCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// monitorConfiguration stores configuration for the monitor command.
 var monitorConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

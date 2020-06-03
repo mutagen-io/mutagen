@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// scaleCommand is the scale command.
 var scaleCommand = &cobra.Command{
 	Use:                "scale",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var scaleCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// scaleConfiguration stores configuration for the scale command.
 var scaleConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

@@ -19,6 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// flushMain is the entry point for the flush command.
 func flushMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -105,6 +106,7 @@ func flushMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// flushCommand is the flush command.
 var flushCommand = &cobra.Command{
 	Use:          "flush",
 	Short:        "Flush project synchronization sessions",
@@ -113,6 +115,7 @@ var flushCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// flushConfiguration stores configuration for the flush command.
 var flushConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

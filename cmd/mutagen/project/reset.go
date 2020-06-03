@@ -19,6 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// resetMain is the entry point for the reset command.
 func resetMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -105,6 +106,7 @@ func resetMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// resetCommand is the reset command.
 var resetCommand = &cobra.Command{
 	Use:          "reset",
 	Short:        "Reset project synchronization sessions",
@@ -113,6 +115,7 @@ var resetCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// resetConfiguration stores configuration for the reset command.
 var resetConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

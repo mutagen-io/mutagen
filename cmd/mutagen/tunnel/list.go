@@ -19,6 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
+// printTunnelStatus prints the status of a tunnel.
 func printTunnelStatus(state *tunneling.State) {
 	// Print status.
 	statusString := state.Status.Description()
@@ -33,6 +34,7 @@ func printTunnelStatus(state *tunneling.State) {
 	}
 }
 
+// listMain is the entry point for the list command.
 func listMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
@@ -83,6 +85,7 @@ func listMain(_ *cobra.Command, arguments []string) error {
 	return nil
 }
 
+// listCommand is the list command.
 var listCommand = &cobra.Command{
 	Use:          "list [<tunnel>...]",
 	Short:        "List existing tunnels and their statuses",
@@ -90,6 +93,7 @@ var listCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// listConfiguration stores configuration for the list command.
 var listConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

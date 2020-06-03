@@ -22,6 +22,7 @@ const (
 	emptyLabelValueDescription = "<empty>"
 )
 
+// printEndpoint prints the configuration for a synchronization endpoint.
 func printEndpoint(name string, url *url.URL, configuration *synchronization.Configuration, version synchronization.Version) {
 	// Print the endpoint header.
 	fmt.Println(name, "configuration:")
@@ -102,6 +103,8 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 	fmt.Println("\tDefault file/directory group:", defaultGroupDescription)
 }
 
+// printSession prints the configuration and status of a synchronization
+// session and its endpoints.
 func printSession(state *synchronization.State, long bool) {
 	// Print name, if any.
 	if state.Session.Name != "" {

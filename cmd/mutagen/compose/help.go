@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// helpCommand is the help command.
 var helpCommand = &cobra.Command{
 	Use:                "help",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var helpCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// helpConfiguration stores configuration for the help command.
 var helpConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

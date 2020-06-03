@@ -19,6 +19,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
+// rootMain is the entry point for the root command.
 func rootMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
@@ -30,6 +31,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 	return nil
 }
 
+// rootCommand is the root command.
 var rootCommand = &cobra.Command{
 	Use:          "mutagen",
 	Short:        "Mutagen is a remote development tool built on high-performance synchronization",
@@ -37,6 +39,7 @@ var rootCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// rootConfiguration stores configuration for the root command.
 var rootConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
@@ -66,14 +69,14 @@ func init() {
 	// HACK: Add the sync commands as direct subcommands of the root command for
 	// temporary backward compatibility.
 	commands := []*cobra.Command{
-		sync.RootCommand,
-		forward.RootCommand,
-		project.RootCommand,
+		sync.SyncCommand,
+		forward.ForwardCommand,
+		project.ProjectCommand,
 		compose.RootCommand,
-		tunnel.RootCommand,
+		tunnel.TunnelCommand,
 		loginCommand,
 		logoutCommand,
-		daemon.RootCommand,
+		daemon.DaemonCommand,
 		versionCommand,
 		legalCommand,
 		generateCommand,
@@ -84,7 +87,7 @@ func init() {
 	// HACK: Register the sync subcommands with the sync command after
 	// registering them with the root command so that they have the correct
 	// parent command and thus the correct help output.
-	sync.RootCommand.AddCommand(sync.Commands...)
+	sync.SyncCommand.AddCommand(sync.Commands...)
 
 	// HACK If we're on Windows, enable color support for command usage and
 	// error output by recursively replacing the output streams for Cobra

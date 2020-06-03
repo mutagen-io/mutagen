@@ -70,6 +70,7 @@ func FlushWithSelection(
 	}
 }
 
+// flushMain is the entry point for the flush command.
 func flushMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -95,6 +96,7 @@ func flushMain(_ *cobra.Command, arguments []string) error {
 	return FlushWithSelection(sessionService, selection, flushConfiguration.skipWait)
 }
 
+// flushCommand is the flush command.
 var flushCommand = &cobra.Command{
 	Use:          "flush [<session>...]",
 	Short:        "Force a synchronization cycle",
@@ -102,6 +104,7 @@ var flushCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// flushConfiguration stores configuration for the flush command.
 var flushConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

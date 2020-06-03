@@ -12,6 +12,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
+// loginMain is the entry point for the login command.
 func loginMain(_ *cobra.Command, _ []string) error {
 	// Prompt for the API token.
 	apiToken, err := prompting.PromptCommandLineWithResponseMode("Enter API token: ", prompting.ResponseModeMasked)
@@ -35,6 +36,7 @@ func loginMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// loginCommand is the login command.
 var loginCommand = &cobra.Command{
 	Use:          "login",
 	Short:        "Log in to mutagen.io",
@@ -43,6 +45,7 @@ var loginCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// loginConfiguration stores configuration for the login command.
 var loginConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

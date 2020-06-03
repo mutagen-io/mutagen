@@ -6,7 +6,8 @@ import (
 	"github.com/fatih/color"
 )
 
-func rootMain(command *cobra.Command, _ []string) error {
+// forwardMain is the entry point for the forward command.
+func forwardMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point
@@ -17,34 +18,36 @@ func rootMain(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-var RootCommand = &cobra.Command{
+// ForwardCommand is the forward command.
+var ForwardCommand = &cobra.Command{
 	Use:          "forward",
 	Short:        "Create and manage forwarding sessions",
-	RunE:         rootMain,
+	RunE:         forwardMain,
 	SilenceUsage: true,
 }
 
-var rootConfiguration struct {
+// forwardConfiguration stores configuration for the forward command.
+var forwardConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
 }
 
 func init() {
 	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
+	ForwardCommand.Short = ForwardCommand.Short + color.YellowString(" [Experimental]")
 
 	// Grab a handle for the command line flags.
-	flags := RootCommand.Flags()
+	flags := ForwardCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&forwardConfiguration.help, "help", "h", false, "Show help information")
 
 	// Register commands.
-	RootCommand.AddCommand(
+	ForwardCommand.AddCommand(
 		createCommand,
 		listCommand,
 		monitorCommand,

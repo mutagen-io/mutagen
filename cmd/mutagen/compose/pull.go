@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// pullCommand is the pull command.
 var pullCommand = &cobra.Command{
 	Use:                "pull",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var pullCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// pullConfiguration stores configuration for the pull command.
 var pullConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

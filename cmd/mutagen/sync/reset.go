@@ -76,6 +76,7 @@ func ResetWithSelection(
 	}
 }
 
+// resetMain is the entry point for the reset command.
 func resetMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -101,6 +102,7 @@ func resetMain(_ *cobra.Command, arguments []string) error {
 	return ResetWithSelection(sessionService, selection)
 }
 
+// resetCommand is the reset command.
 var resetCommand = &cobra.Command{
 	Use:          "reset [<session>...]",
 	Short:        "Reset synchronization session history",
@@ -108,6 +110,7 @@ var resetCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// resetConfiguration stores configuration for the reset command.
 var resetConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

@@ -25,6 +25,7 @@ const (
 	housekeepingInterval = 24 * time.Hour
 )
 
+// housekeepRegularly is the entry point for the housekeeping Goroutine.
 func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
@@ -47,6 +48,7 @@ func housekeepRegularly(context context.Context, logger *logging.Logger) {
 	}
 }
 
+// synchronizerMain is the entry point for the synchronizer command.
 func synchronizerMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
@@ -91,6 +93,7 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	}
 }
 
+// synchronizerCommand is the synchronizer command.
 var synchronizerCommand = &cobra.Command{
 	Use:          agent.ModeSynchronizer,
 	Short:        "Run the agent in synchronizer mode",
@@ -99,6 +102,7 @@ var synchronizerCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// synchronizerConfiguration stores configuration for the synchronizer command.
 var synchronizerConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

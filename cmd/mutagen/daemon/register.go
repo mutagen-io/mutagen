@@ -10,10 +10,12 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
+// registerMain is the entry point for the register command.
 func registerMain(_ *cobra.Command, _ []string) error {
 	return daemon.Register()
 }
 
+// registerCommand is the register command.
 var registerCommand = &cobra.Command{
 	Use:          "register",
 	Short:        "Register the Mutagen daemon to start automatically on login",
@@ -22,6 +24,7 @@ var registerCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// registerConfiguration stores configuration for the register command.
 var registerConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

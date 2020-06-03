@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// buildCommand is the build command.
 var buildCommand = &cobra.Command{
 	Use:                "build",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var buildCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// buildConfiguration stores configuration for the build command.
 var buildConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

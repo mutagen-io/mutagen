@@ -9,20 +9,23 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
-func runPassthrough(command *cobra.Command, arguments []string) {
+// runMain is the entry point for the run command.
+func runMain(command *cobra.Command, arguments []string) {
 	cmd.Warning("The \"run\" command isn't fully supported by Mutagen.")
 	fmt.Fprintln(os.Stderr, "Use \"docker-compose run\" directly to suppress this message.")
 	fmt.Println()
 	passthrough(command, arguments)
 }
 
+// runCommand is the run command.
 var runCommand = &cobra.Command{
 	Use:                "run",
-	Run:                runPassthrough,
+	Run:                runMain,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }
 
+// runConfiguration stores configuration for the run command.
 var runConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

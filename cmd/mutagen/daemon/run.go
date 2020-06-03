@@ -35,6 +35,7 @@ import (
 	tunnelsynchronizationprotocol "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/tunnel"
 )
 
+// runMain is the entry point for the run command.
 func runMain(_ *cobra.Command, _ []string) error {
 	// Attempt to acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
@@ -138,6 +139,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 }
 
+// runCommand is the run command.
 var runCommand = &cobra.Command{
 	Use:          "run",
 	Short:        "Run the Mutagen daemon",
@@ -147,6 +149,7 @@ var runCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// runConfiguration stores configuration for the run command.
 var runConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

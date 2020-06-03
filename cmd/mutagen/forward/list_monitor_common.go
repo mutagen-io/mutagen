@@ -15,6 +15,7 @@ const (
 	emptyLabelValueDescription = "<empty>"
 )
 
+// printEndpoint prints the configuration for a forwarding endpoint.
 func printEndpoint(name string, url *url.URL, configuration *forwarding.Configuration, version forwarding.Version) {
 	// Print the endpoint header.
 	fmt.Println(name, "configuration:")
@@ -53,6 +54,8 @@ func printEndpoint(name string, url *url.URL, configuration *forwarding.Configur
 	fmt.Println("\tSocket permission mode:", socketPermissionModeDescription)
 }
 
+// printSession prints the configuration and status of a forwarding session and
+// its endpoints.
 func printSession(state *forwarding.State, long bool) {
 	// Print name, if any.
 	if state.Session.Name != "" {

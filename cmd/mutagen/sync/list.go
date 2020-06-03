@@ -21,6 +21,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
+// formatPath formats a path for display.
 func formatPath(path string) string {
 	if path == "" {
 		return "<root>"
@@ -28,6 +29,7 @@ func formatPath(path string) string {
 	return path
 }
 
+// formatConnectionStatus formats a connection status for display.
 func formatConnectionStatus(connected bool) string {
 	if connected {
 		return "Connected"
@@ -35,6 +37,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
+// printEndpointStatus prints the status of a synchronization endpoint.
 func printEndpointStatus(name string, url *url.URL, connected bool, problems []*core.Problem) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
@@ -57,6 +60,7 @@ func printEndpointStatus(name string, url *url.URL, connected bool, problems []*
 	}
 }
 
+// printSessionStatus prints the status of a synchronization session.
 func printSessionStatus(state *synchronization.State) {
 	// Print status.
 	statusString := state.Status.Description()
@@ -71,7 +75,8 @@ func printSessionStatus(state *synchronization.State) {
 	}
 }
 
-func formatEntryKind(entry *core.Entry) string {
+// formatEntry formats an entry for display.
+func formatEntry(entry *core.Entry) string {
 	if entry == nil {
 		return "<non-existent>"
 	} else if entry.Kind == core.EntryKind_Directory {
@@ -88,6 +93,7 @@ func formatEntryKind(entry *core.Entry) string {
 	}
 }
 
+// printConflicts prints a list of synchronization conflicts.
 func printConflicts(conflicts []*core.Conflict) {
 	// Print the header.
 	color.Red("Conflicts:\n")
@@ -99,8 +105,8 @@ func printConflicts(conflicts []*core.Conflict) {
 			color.Red(
 				"\t(alpha) %s (%s -> %s)\n",
 				formatPath(a.Path),
-				formatEntryKind(a.Old),
-				formatEntryKind(a.New),
+				formatEntry(a.Old),
+				formatEntry(a.New),
 			)
 		}
 
@@ -109,8 +115,8 @@ func printConflicts(conflicts []*core.Conflict) {
 			color.Red(
 				"\t(beta)  %s (%s -> %s)\n",
 				formatPath(b.Path),
-				formatEntryKind(b.Old),
-				formatEntryKind(b.New),
+				formatEntry(b.Old),
+				formatEntry(b.New),
 			)
 		}
 
@@ -169,6 +175,7 @@ func ListWithSelection(
 	return nil
 }
 
+// listMain is the entry point for the list command.
 func listMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -194,6 +201,7 @@ func listMain(_ *cobra.Command, arguments []string) error {
 	return ListWithSelection(sessionService, selection)
 }
 
+// listCommand is the list command.
 var listCommand = &cobra.Command{
 	Use:          "list [<session>...]",
 	Short:        "List existing synchronization sessions and their statuses",
@@ -201,6 +209,7 @@ var listCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// listConfiguration stores configuration for the list command.
 var listConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

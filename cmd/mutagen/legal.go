@@ -10,6 +10,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
+// legalMain is the entry point for the legal command.
 func legalMain(_ *cobra.Command, _ []string) error {
 	// Print legal information.
 	fmt.Println(mutagen.LegalNotice)
@@ -18,6 +19,7 @@ func legalMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// legalCommand is the legal command.
 var legalCommand = &cobra.Command{
 	Use:          "legal",
 	Short:        "Show legal information",
@@ -26,6 +28,7 @@ var legalCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// legalConfiguration stores configuration for the legal command.
 var legalConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

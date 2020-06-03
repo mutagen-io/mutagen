@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// portCommand is the port command.
 var portCommand = &cobra.Command{
 	Use:                "port",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var portCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// portConfiguration stores configuration for the port command.
 var portConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

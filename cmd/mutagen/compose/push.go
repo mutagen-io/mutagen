@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// pushCommand is the push command.
 var pushCommand = &cobra.Command{
 	Use:                "push",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var pushCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// pushConfiguration stores configuration for the push command.
 var pushConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

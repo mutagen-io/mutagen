@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// killCommand is the kill command.
 var killCommand = &cobra.Command{
 	Use:                "kill",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var killCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// killConfiguration stores configuration for the kill command.
 var killConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// createCommand is the create command.
 var createCommand = &cobra.Command{
 	Use:                "create",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var createCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// createConfiguration stores configuration for the create command.
 var createConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

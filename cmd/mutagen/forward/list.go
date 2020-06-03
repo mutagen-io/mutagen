@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
+// formatConnectionStatus formats a connection status for display.
 func formatConnectionStatus(connected bool) string {
 	if connected {
 		return "Connected"
@@ -27,6 +28,7 @@ func formatConnectionStatus(connected bool) string {
 	return "Disconnected"
 }
 
+// printEndpointStatus prints the status of a forwarding endpoint.
 func printEndpointStatus(name string, url *url.URL, connected bool) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
@@ -41,6 +43,7 @@ func printEndpointStatus(name string, url *url.URL, connected bool) {
 	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
 }
 
+// printSessionStatus prints the status of a forwarding session.
 func printSessionStatus(state *forwarding.State) {
 	// Print status.
 	statusString := state.Status.Description()
@@ -100,6 +103,7 @@ func ListWithSelection(
 	return nil
 }
 
+// listMain is the entry point for the list command.
 func listMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -125,6 +129,7 @@ func listMain(_ *cobra.Command, arguments []string) error {
 	return ListWithSelection(sessionService, selection)
 }
 
+// listCommand is the list command.
 var listCommand = &cobra.Command{
 	Use:          "list [<session>...]",
 	Short:        "List existing forwarding sessions and their statuses",
@@ -132,6 +137,7 @@ var listCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// listConfiguration stores configuration for the list command.
 var listConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

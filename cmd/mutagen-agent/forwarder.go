@@ -16,6 +16,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
+// forwarderMain is the entry point for the forwarder command.
 func forwarderMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
@@ -55,6 +56,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	}
 }
 
+// forwarderCommand is the forwarder command.
 var forwarderCommand = &cobra.Command{
 	Use:          agent.ModeForwarder,
 	Short:        "Run the agent in forwarder mode",
@@ -63,6 +65,7 @@ var forwarderCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// forwarderConfiguration stores configuration for the forwarder command.
 var forwarderConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

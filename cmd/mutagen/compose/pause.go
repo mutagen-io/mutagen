@@ -47,6 +47,7 @@ func pauseSessions(project *compose.Project) error {
 	return nil
 }
 
+// pauseMain is the entry point for the pause command.
 func pauseMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -87,12 +88,14 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 	return invoke(topLevelFlags, "pause", pauseArguments)
 }
 
+// pauseCommand is the pause command.
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
 	RunE:         wrapper(pauseMain),
 	SilenceUsage: true,
 }
 
+// pauseConfiguration stores configuration for the pause command.
 var pauseConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

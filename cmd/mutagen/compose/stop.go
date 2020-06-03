@@ -9,6 +9,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/compose"
 )
 
+// stopMain is the entry point for the stop command.
 func stopMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -49,12 +50,14 @@ func stopMain(command *cobra.Command, arguments []string) error {
 	return invoke(topLevelFlags, "stop", stopArguments)
 }
 
+// stopCommand is the stop command.
 var stopCommand = &cobra.Command{
 	Use:          "stop",
 	RunE:         wrapper(stopMain),
 	SilenceUsage: true,
 }
 
+// stopConfiguration stores configuration for the stop command.
 var stopConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

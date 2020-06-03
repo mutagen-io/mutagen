@@ -9,25 +9,31 @@ import (
 	"github.com/pkg/errors"
 )
 
+// stdioAddress is a net.Addr implementation for stdioConnection.
 type stdioAddress struct{}
 
+// Network implements net.Addr.Network.
 func (stdioAddress) Network() string {
 	return "standard input/output"
 }
 
+// String implements net.Addr.String.
 func (stdioAddress) String() string {
 	return "standard input/output"
 }
 
+// stdioConnection is a net.Conn implementation that uses standard input/output.
 type stdioConnection struct {
 	io.Reader
 	io.Writer
 }
 
-func newStdioConnection() *stdioConnection {
+// newStdioConnection creates a new connection that uses standard input/output.
+func newStdioConnection() net.Conn {
 	return &stdioConnection{os.Stdin, os.Stdout}
 }
 
+// Close implements net.Conn.Close.
 func (c *stdioConnection) Close() error {
 	// We can't really close standard input/output, because on many platforms
 	// these can't be unblocked on reads and writes, and they'll actually block
@@ -41,27 +47,27 @@ func (c *stdioConnection) Close() error {
 	return errors.New("closing standard input/output connection not allowed")
 }
 
-// LocalAddr returns the local address for the connection.
+// LocalAddr implements net.Conn.LocalAddr.
 func (c *stdioConnection) LocalAddr() net.Addr {
 	return stdioAddress{}
 }
 
-// RemoteAddr returns the remote address for the connection.
+// RemoteAddr implements net.Conn.RemoteAddr.
 func (c *stdioConnection) RemoteAddr() net.Addr {
 	return stdioAddress{}
 }
 
-// SetDeadline sets the read and write deadlines for the connection.
+// SetDeadline implements net.Conn.SetDeadline.
 func (c *stdioConnection) SetDeadline(_ time.Time) error {
 	return errors.New("deadlines not supported by standard input/output connections")
 }
 
-// SetReadDeadline sets the read deadline for the connection.
+// SetReadDeadline implements net.Conn.SetReadDeadline.
 func (c *stdioConnection) SetReadDeadline(_ time.Time) error {
 	return errors.New("read deadlines not supported by standard input/output connections")
 }
 
-// SetWriteDeadline sets the write deadline for the connection.
+// SetWriteDeadline implements net.Conn.SetWriteDeadline.
 func (c *stdioConnection) SetWriteDeadline(_ time.Time) error {
 	return errors.New("write deadlines not supported by standard input/output connections")
 }

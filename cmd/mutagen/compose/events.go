@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// eventsCommand is the events command.
 var eventsCommand = &cobra.Command{
 	Use:                "events",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var eventsCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// eventsConfiguration stores configuration for the events command.
 var eventsConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

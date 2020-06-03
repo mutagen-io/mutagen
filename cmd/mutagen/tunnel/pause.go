@@ -15,6 +15,7 @@ import (
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
 
+// pauseMain is the entry point for the pause command.
 func pauseMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
@@ -76,6 +77,7 @@ func pauseMain(_ *cobra.Command, arguments []string) error {
 	}
 }
 
+// pauseCommand is the pause command.
 var pauseCommand = &cobra.Command{
 	Use:          "pause [<tunnel>...]",
 	Short:        "Pause a tunnel",
@@ -83,6 +85,7 @@ var pauseCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// pauseConfiguration stores configuration for the pause command.
 var pauseConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

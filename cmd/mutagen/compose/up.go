@@ -222,6 +222,7 @@ func reconcileSessions(project *compose.Project) error {
 	return nil
 }
 
+// upMain is the entry point for the up command.
 func upMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -276,12 +277,14 @@ func upMain(command *cobra.Command, arguments []string) error {
 	return invoke(topLevelFlags, "up", upArguments)
 }
 
+// upCommand is the up command.
 var upCommand = &cobra.Command{
 	Use:          "up",
 	RunE:         wrapper(upMain),
 	SilenceUsage: true,
 }
 
+// upConfiguration stores configuration for the up command.
 var upConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

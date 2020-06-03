@@ -47,6 +47,7 @@ func resumeSessions(project *compose.Project) error {
 	return nil
 }
 
+// unpauseMain is the entry point for the unpause command.
 func unpauseMain(command *cobra.Command, arguments []string) error {
 	// Forbid direct control over the Mutagen service.
 	for _, argument := range arguments {
@@ -97,12 +98,14 @@ func unpauseMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
+// unpauseCommand is the unpause command.
 var unpauseCommand = &cobra.Command{
 	Use:          "unpause",
 	RunE:         wrapper(unpauseMain),
 	SilenceUsage: true,
 }
 
+// unpauseConfiguration stores configuration for the unpause command.
 var unpauseConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

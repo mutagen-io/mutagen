@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// versionCommand is the version command.
 var versionCommand = &cobra.Command{
 	Use:                "version",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var versionCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// versionConfiguration stores configuration for the version command.
 var versionConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

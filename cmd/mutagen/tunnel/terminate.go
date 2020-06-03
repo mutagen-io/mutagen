@@ -15,6 +15,7 @@ import (
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
 
+// terminateMain is the entry point for the terminate command.
 func terminateMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
@@ -76,6 +77,7 @@ func terminateMain(_ *cobra.Command, arguments []string) error {
 	}
 }
 
+// terminateCommand is the terminate command.
 var terminateCommand = &cobra.Command{
 	Use:          "terminate [<tunnel>...]",
 	Short:        "Permanently terminate a tunnel",
@@ -83,6 +85,7 @@ var terminateCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// terminateConfiguration stores configuration for the terminate command.
 var terminateConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

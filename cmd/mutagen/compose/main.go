@@ -209,6 +209,7 @@ func commandHelp(command *cobra.Command, _ []string) {
 	invokeAndExit(nil, command.CalledAs(), []string{"--help"})
 }
 
+// composeMain is the entry point for the compose command.
 func composeMain(_ *cobra.Command, arguments []string) error {
 	// If no arguments have been specified, then just print help information,
 	// but do so in a way that matches the output stream and exit code that
@@ -239,6 +240,7 @@ var composeCommand = &cobra.Command{
 	TraverseChildren: true,
 }
 
+// composeConfiguration stores configuration for the compose command.
 var composeConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

@@ -13,6 +13,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
+// startMain is the entry point for the start command.
 func startMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different
 	// start mechanism, so see if the system should handle it.
@@ -42,6 +43,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// startCommand is the start command.
 var startCommand = &cobra.Command{
 	Use:          "start",
 	Short:        "Start the Mutagen daemon if it's not already running",
@@ -50,6 +52,7 @@ var startCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// startConfiguration stores configuration for the start command.
 var startConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

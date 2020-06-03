@@ -16,6 +16,7 @@ import (
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
 
+// resumeMain is the entry point for the resume command.
 func resumeMain(_ *cobra.Command, arguments []string) error {
 	// Create tunnel selection specification.
 	selection := &selection.Selection{
@@ -85,6 +86,7 @@ func resumeMain(_ *cobra.Command, arguments []string) error {
 	}
 }
 
+// resumeCommand is the resume command.
 var resumeCommand = &cobra.Command{
 	Use:          "resume [<tunnel>...]",
 	Short:        "Resume a paused or disconnected tunnel",
@@ -92,6 +94,7 @@ var resumeCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// resumeConfiguration stores configuration for the resume command.
 var resumeConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

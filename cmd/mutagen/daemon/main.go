@@ -6,7 +6,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
-func rootMain(command *cobra.Command, _ []string) error {
+// daemonMain is the entry point for the daemon command.
+func daemonMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point
@@ -17,28 +18,30 @@ func rootMain(command *cobra.Command, _ []string) error {
 	return nil
 }
 
-var RootCommand = &cobra.Command{
+// DaemonCommand is the daemon command.
+var DaemonCommand = &cobra.Command{
 	Use:          "daemon",
 	Short:        "Control the lifecycle of the Mutagen daemon",
-	RunE:         rootMain,
+	RunE:         daemonMain,
 	SilenceUsage: true,
 }
 
-var rootConfiguration struct {
+// daemonConfiguration stores configuration for the daemon command.
+var daemonConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
 }
 
 func init() {
 	// Grab a handle for the command line flags.
-	flags := RootCommand.Flags()
+	flags := DaemonCommand.Flags()
 
 	// Disable alphabetical sorting of flags in help output.
 	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
-	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+	flags.BoolVarP(&daemonConfiguration.help, "help", "h", false, "Show help information")
 
 	// Compute supported commands. We have to do this in advance since
 	// AddCommand can't be invoked twice.
@@ -55,5 +58,5 @@ func init() {
 	}
 
 	// Register commands.
-	RootCommand.AddCommand(supportedCommands...)
+	DaemonCommand.AddCommand(supportedCommands...)
 }

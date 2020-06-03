@@ -22,6 +22,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
+// createMain is the entry point for the create command.
 func createMain(_ *cobra.Command, _ []string) error {
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
@@ -121,6 +122,7 @@ func createMain(_ *cobra.Command, _ []string) error {
 	}
 }
 
+// createCommand is the create command.
 var createCommand = &cobra.Command{
 	Use:          "create",
 	Short:        "Create and start a new tunnel",
@@ -129,6 +131,7 @@ var createCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// createConfiguration stores configuration for the create command.
 var createConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

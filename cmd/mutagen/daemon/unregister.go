@@ -10,10 +10,12 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 )
 
+// unregisterMain is the entry point for the unregister command.
 func unregisterMain(_ *cobra.Command, _ []string) error {
 	return daemon.Unregister()
 }
 
+// unregisterCommand is the unregister command.
 var unregisterCommand = &cobra.Command{
 	Use:          "unregister",
 	Short:        "Unregister automatic Mutagen daemon start-up",
@@ -22,6 +24,7 @@ var unregisterCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// unregisterConfiguration stores configuration for the unregister command.
 var unregisterConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

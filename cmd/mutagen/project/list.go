@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// listMain is the entry point for the list command.
 func listMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -116,6 +117,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// listCommand is the list command.
 var listCommand = &cobra.Command{
 	Use:          "list",
 	Short:        "List project sessions",
@@ -124,6 +126,7 @@ var listCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// listConfiguration stores configuration for the list command.
 var listConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

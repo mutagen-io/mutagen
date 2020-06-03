@@ -46,6 +46,7 @@ func listSessions(project *compose.Project) error {
 	return nil
 }
 
+// psMain is the entry point for the ps command.
 func psMain(command *cobra.Command, arguments []string) error {
 	// Load project metadata and defer the release of project resources.
 	project, err := compose.LoadProject(
@@ -84,12 +85,14 @@ func psMain(command *cobra.Command, arguments []string) error {
 	return nil
 }
 
+// psCommand is the ps command.
 var psCommand = &cobra.Command{
 	Use:          "ps",
 	RunE:         wrapper(psMain),
 	SilenceUsage: true,
 }
 
+// psConfiguration stores configuration for the ps command.
 var psConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

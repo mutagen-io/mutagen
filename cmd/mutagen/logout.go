@@ -8,10 +8,12 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 )
 
+// logoutMain is the entry point for the logout command.
 func logoutMain(_ *cobra.Command, _ []string) error {
 	return mutagenio.Logout()
 }
 
+// logoutCommand is the logout command.
 var logoutCommand = &cobra.Command{
 	Use:          "logout",
 	Short:        "Log out from mutagen.io",
@@ -20,6 +22,7 @@ var logoutCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// logoutConfiguration stores configuration for the logout command.
 var logoutConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

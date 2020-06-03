@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// pauseMain is the entry point for the pause command.
 func pauseMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -133,6 +134,7 @@ func pauseMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// pauseCommand is the pause command.
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
 	Short:        "Pause project sessions",
@@ -141,6 +143,7 @@ var pauseCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// pauseConfiguration stores configuration for the pause command.
 var pauseConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// topCommand is the top command.
 var topCommand = &cobra.Command{
 	Use:                "top",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var topCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// topConfiguration stores configuration for the top command.
 var topConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

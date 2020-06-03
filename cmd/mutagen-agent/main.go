@@ -14,6 +14,7 @@ func init() {
 	log.SetFlags(0)
 }
 
+// rootMain is the entry point for the root command.
 func rootMain(command *cobra.Command, _ []string) error {
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
@@ -25,6 +26,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 	return nil
 }
 
+// rootCommand is the root command.
 var rootCommand = &cobra.Command{
 	Use:          "mutagen-agent",
 	Short:        "The Mutagen agent should not be invoked by human beings",
@@ -32,6 +34,7 @@ var rootCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// rootConfiguration stores configuration for the root command.
 var rootConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

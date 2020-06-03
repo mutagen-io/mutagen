@@ -13,6 +13,7 @@ import (
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
+// stopMain is the entry point for the stop command.
 func stopMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different stop
 	// mechanism, so see if the system should handle it.
@@ -43,6 +44,7 @@ func stopMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// stopCommand is the stop command.
 var stopCommand = &cobra.Command{
 	Use:          "stop",
 	Short:        "Stop the Mutagen daemon if it's running",
@@ -51,6 +53,7 @@ var stopCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// stopConfiguration stores configuration for the stop command.
 var stopConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

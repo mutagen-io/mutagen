@@ -16,6 +16,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// runMain is the entry point for the run command.
 func runMain(_ *cobra.Command, arguments []string) error {
 	// Validate arguments.
 	var commandName string
@@ -116,6 +117,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	return runInShell(command)
 }
 
+// runCommand is the run command.
 var runCommand = &cobra.Command{
 	Use:          "run <command-name>",
 	Short:        "Run a project command",
@@ -123,6 +125,7 @@ var runCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// runConfiguration stores configuration for the run command.
 var runConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

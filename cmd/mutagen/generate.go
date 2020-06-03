@@ -8,6 +8,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 )
 
+// generateMain is the entry point for the generate command.
 func generateMain(_ *cobra.Command, _ []string) error {
 	// Ensure that at least one flag has been specified.
 	flagSpecified := generateConfiguration.bashCompletionScript != ""
@@ -26,6 +27,7 @@ func generateMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// generateCommand is the generate command.
 var generateCommand = &cobra.Command{
 	Use:          "generate",
 	Short:        "Generate various files",
@@ -35,6 +37,7 @@ var generateCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// generateConfiguration stores configuration for the generate command.
 var generateConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

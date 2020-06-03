@@ -76,6 +76,7 @@ func ResumeWithSelection(
 	}
 }
 
+// resumeMain is the entry point for the resume command.
 func resumeMain(_ *cobra.Command, arguments []string) error {
 	// Create session selection specification.
 	selection := &selection.Selection{
@@ -101,6 +102,7 @@ func resumeMain(_ *cobra.Command, arguments []string) error {
 	return ResumeWithSelection(sessionService, selection)
 }
 
+// resumeCommand is the resume command.
 var resumeCommand = &cobra.Command{
 	Use:          "resume [<session>...]",
 	Short:        "Resume a paused or disconnected synchronization session",
@@ -108,6 +110,7 @@ var resumeCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// resumeConfiguration stores configuration for the resume command.
 var resumeConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

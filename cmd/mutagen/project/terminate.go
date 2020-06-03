@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
+// terminateMain is the entry point for the terminate command.
 func terminateMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -136,6 +137,7 @@ func terminateMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// terminateCommand is the terminate command.
 var terminateCommand = &cobra.Command{
 	Use:          "terminate",
 	Short:        "Terminate project sessions",
@@ -144,6 +146,7 @@ var terminateCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// terminateConfiguration stores configuration for the terminate command.
 var terminateConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool

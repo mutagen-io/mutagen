@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// restartCommand is the restart command.
 var restartCommand = &cobra.Command{
 	Use:                "restart",
 	Run:                passthrough,
@@ -11,6 +12,7 @@ var restartCommand = &cobra.Command{
 	DisableFlagParsing: true,
 }
 
+// restartConfiguration stores configuration for the restart command.
 var restartConfiguration struct {
 	// help indicates the presence of the -h/--help flag.
 	help bool

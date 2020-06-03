@@ -29,6 +29,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
+// startMain is the entry point for the start command.
 func startMain(_ *cobra.Command, _ []string) error {
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
@@ -425,6 +426,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// startCommand is the start command.
 var startCommand = &cobra.Command{
 	Use:          "start",
 	Short:        "Start project sessions",
@@ -433,6 +435,7 @@ var startCommand = &cobra.Command{
 	SilenceUsage: true,
 }
 
+// startConfiguration stores configuration for the start command.
 var startConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
