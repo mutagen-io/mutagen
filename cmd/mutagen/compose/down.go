@@ -80,7 +80,7 @@ func downMain(command *cobra.Command, arguments []string) error {
 
 	// Compute the effective top-level flags that we'll use. We reconstitute
 	// flags from the root command, but filter project-related flags and replace
-	// them with the fully resolve flags from the loaded project.
+	// them with the fully resolved flags from the loaded project.
 	topLevelFlags := reconstituteFlags(RootCommand.Flags(), topLevelProjectFlagNames)
 	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
 
