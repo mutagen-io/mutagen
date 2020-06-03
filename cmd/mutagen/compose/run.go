@@ -1,12 +1,22 @@
 package compose
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/cmd"
 )
+
+func runPassthrough(command *cobra.Command, arguments []string) {
+	cmd.Warning("The \"run\" command isn't fully supported by Mutagen")
+	fmt.Println()
+	passthrough(command, arguments)
+}
 
 var runCommand = &cobra.Command{
 	Use:                "run",
-	Run:                passthrough,
+	Run:                runPassthrough,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
 }

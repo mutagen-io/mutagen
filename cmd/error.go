@@ -3,11 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+
+	"github.com/fatih/color"
 )
 
 // Warning prints a warning message to standard error.
 func Warning(message string) {
-	fmt.Fprintln(os.Stderr, "Warning:", message)
+	fmt.Fprintln(color.Error, color.YellowString("Warning:"), message)
 }
 
 // Error prints an error message to standard error.
