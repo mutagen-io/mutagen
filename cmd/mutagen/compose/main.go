@@ -13,6 +13,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/cmd"
+
 	"github.com/mutagen-io/mutagen/pkg/compose"
 	"github.com/mutagen-io/mutagen/pkg/docker"
 )

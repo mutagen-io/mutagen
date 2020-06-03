@@ -15,6 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
 	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"

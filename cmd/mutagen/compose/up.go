@@ -11,6 +11,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+
 	"github.com/mutagen-io/mutagen/pkg/compose"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"

@@ -8,6 +8,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+
 	"github.com/mutagen-io/mutagen/pkg/compose"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"

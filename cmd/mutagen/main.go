@@ -15,6 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/tunnel"
+
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 

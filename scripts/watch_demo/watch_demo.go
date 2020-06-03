@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd"
+
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
 )
 

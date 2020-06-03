@@ -12,6 +12,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"

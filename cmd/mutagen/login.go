@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+
 	"github.com/mutagen-io/mutagen/pkg/mutagenio"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )

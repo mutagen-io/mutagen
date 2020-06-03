@@ -15,6 +15,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
 	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"

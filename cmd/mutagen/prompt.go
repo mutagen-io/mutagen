@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+
 	promptingpkg "github.com/mutagen-io/mutagen/pkg/prompting"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
