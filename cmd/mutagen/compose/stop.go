@@ -51,7 +51,7 @@ func stopMain(command *cobra.Command, arguments []string) error {
 
 var stopCommand = &cobra.Command{
 	Use:          "stop",
-	RunE:         composeEntryPointE(stopMain),
+	RunE:         wrapper(stopMain),
 	SilenceUsage: true,
 }
 

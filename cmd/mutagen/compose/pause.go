@@ -88,7 +88,7 @@ func pauseMain(command *cobra.Command, arguments []string) error {
 
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
-	RunE:         composeEntryPointE(pauseMain),
+	RunE:         wrapper(pauseMain),
 	SilenceUsage: true,
 }
 

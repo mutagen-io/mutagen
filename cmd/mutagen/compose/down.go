@@ -94,7 +94,7 @@ func downMain(command *cobra.Command, arguments []string) error {
 
 var downCommand = &cobra.Command{
 	Use:          "down",
-	RunE:         composeEntryPointE(downMain),
+	RunE:         wrapper(downMain),
 	SilenceUsage: true,
 }
 

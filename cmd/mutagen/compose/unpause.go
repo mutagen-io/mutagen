@@ -98,7 +98,7 @@ func unpauseMain(command *cobra.Command, arguments []string) error {
 
 var unpauseCommand = &cobra.Command{
 	Use:          "unpause",
-	RunE:         composeEntryPointE(unpauseMain),
+	RunE:         wrapper(unpauseMain),
 	SilenceUsage: true,
 }
 

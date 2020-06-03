@@ -61,7 +61,7 @@ func startMain(command *cobra.Command, arguments []string) error {
 
 var startCommand = &cobra.Command{
 	Use:          "start",
-	RunE:         composeEntryPointE(startMain),
+	RunE:         wrapper(startMain),
 	SilenceUsage: true,
 }
 

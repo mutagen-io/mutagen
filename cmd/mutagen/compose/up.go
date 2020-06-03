@@ -277,7 +277,7 @@ func upMain(command *cobra.Command, arguments []string) error {
 
 var upCommand = &cobra.Command{
 	Use:          "up",
-	RunE:         composeEntryPointE(upMain),
+	RunE:         wrapper(upMain),
 	SilenceUsage: true,
 }
 

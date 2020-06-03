@@ -171,11 +171,11 @@ func passthrough(command *cobra.Command, arguments []string) {
 	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
 }
 
-// composeEntryPointE adapts an error-returning Cobra entry point to handle
-// top-level Docker Compose flags and emulate Docker Compose's exit behavior. It
-// is designed to be used for those handlers that perform additional logic
-// around Docker Compose commands but end their operation with a call to invoke.
-func composeEntryPointE(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+// wrapper adapts an error-returning Cobra entry point to handle top-level
+// Docker Compose flags and emulate Docker Compose's exit behavior. It is
+// designed to be used for those handlers that perform additional logic around
+// Docker Compose commands but end their operation with a call to invoke.
+func wrapper(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(command *cobra.Command, arguments []string) error {
 		// Handle top-level flags that might result in termination.
 		handleTopLevelFlags()
@@ -232,7 +232,7 @@ func rootMain(_ *cobra.Command, arguments []string) error {
 var RootCommand = &cobra.Command{
 	Use:          "compose",
 	Short:        "Run Docker Compose with Mutagen enhancements",
-	RunE:         composeEntryPointE(rootMain),
+	RunE:         wrapper(rootMain),
 	SilenceUsage: true,
 }
 
