@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,6 +30,16 @@ const (
 	autostartRetryCount = 10
 )
 
+// autostartDisabled controls whether or not daemon autostart is disabled for
+// Mutagen. It is set automatically based on the MUTAGEN_DISABLE_AUTOSTART
+// environment variable.
+var autostartDisabled bool
+
+func init() {
+	// Check whether or not autostart should be disabled.
+	autostartDisabled = os.Getenv("MUTAGEN_DISABLE_AUTOSTART") == "1"
+}
+
 // Connect creates a new daemon client connection and optionally verifies that
 // the daemon version matches the current process' version.
 func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
@@ -38,8 +49,8 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 		return nil, errors.Wrap(err, "unable to compute endpoint path")
 	}
 
-	// Check if autostart has been globally disabled.
-	if daemon.AutostartDisabled {
+	// Check if autostart has been disabled by an environment variable.
+	if autostartDisabled {
 		autostart = false
 	}
 
