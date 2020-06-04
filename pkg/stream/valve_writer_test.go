@@ -1,3 +1,3 @@
-package agent
+package stream
 
 // TODO: Implement.

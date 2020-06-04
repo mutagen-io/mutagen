@@ -16,6 +16,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 const (
@@ -98,8 +99,8 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// Wrap the error buffer in a valveWriter and defer the closure of that
 	// writer. This avoids continuing to pipe output into the buffer for the
 	// lifetime of the process.
-	errorWriter := newValveWriter(errorBuffer)
-	defer errorWriter.shut()
+	errorWriter := stream.NewValveWriter(errorBuffer)
+	defer errorWriter.Shut()
 
 	// Redirect the process' standard error output to a tee'd writer that writes
 	// to both our buffer (via the valveWriter) and the logger.
