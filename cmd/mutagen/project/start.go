@@ -130,8 +130,9 @@ func startMain(_ *cobra.Command, _ []string) error {
 			return errors.Wrap(err, "unable to compute path to global configuration file")
 		}
 
-		// Load the configuration. We allow it do not exist, but we don't fall
-		// back to legacy configuration options.
+		// Load the configuration. If it doesn't exist, then check for the
+		// presence of a legacy TOML configuration. If a legacy configuration is
+		// present, then return an error indicating a lack of support.
 		globalConfiguration, err := global.LoadConfiguration(globalConfigurationPath)
 		if err != nil {
 			if os.IsNotExist(err) {
