@@ -84,7 +84,7 @@ func invoke(topLevelFlags []string, command string, arguments []string) error {
 		composeArguments = append(composeArguments, arguments...)
 	}
 
-	// Set up the Docker Compose commmand.
+	// Set up the Docker Compose command.
 	compose, err := compose.Command(context.Background(), composeArguments...)
 	if err != nil {
 		return fmt.Errorf("unable to set up Docker Compose invocation: %w", err)

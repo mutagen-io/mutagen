@@ -177,7 +177,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Check if a project directory has been specified. If so, then convert it
-	// to an absolute path. If no project directory was specifed, then it will
+	// to an absolute path. If no project directory was specified, then it will
 	// be computed later once configuration file paths are known.
 	projectDirectory := projectFlags.ProjectDirectory
 	if projectDirectory != "" {

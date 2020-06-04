@@ -29,7 +29,7 @@ var defaultConfigurationOverrideFileNames = []string{
 // is found, as well as any other error that occurs while traversing the
 // filesystem. The specified path will be converted to an absolute path and
 // cleaned, and thus any resulting path will also be absolute and cleaned. This
-// function rougly models the logic of the find_candidates_in_parent_dirs
+// function roughly models the logic of the find_candidates_in_parent_dirs
 // function in Docker Compose. It's worth noting that
 // find_candidates_in_parent_dirs will allow multiple matches (unlike
 // get_default_override_file) and will just use the first match (while printing
