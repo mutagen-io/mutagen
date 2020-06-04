@@ -1,8 +1,8 @@
 package stream
 
 import (
-	"errors"
 	"bytes"
+	"errors"
 )
 
 const (
@@ -43,9 +43,9 @@ type LineProcessor struct {
 // Write implements io.Writer.Write.
 func (p *LineProcessor) Write(data []byte) (int, error) {
 	// Ensure that storing the data won't exceed buffer size limits.
-	if p.MaximumBufferSize == 0 && len(p.buffer) + len(data) > defaultLineProcessorMaximumBufferSize {
+	if p.MaximumBufferSize == 0 && len(p.buffer)+len(data) > defaultLineProcessorMaximumBufferSize {
 		return 0, ErrMaximumBufferSizeExceeded
-	} else if p.MaximumBufferSize > 0 && len(p.buffer) + len(data) > p.MaximumBufferSize {
+	} else if p.MaximumBufferSize > 0 && len(p.buffer)+len(data) > p.MaximumBufferSize {
 		return 0, ErrMaximumBufferSizeExceeded
 	}
 
