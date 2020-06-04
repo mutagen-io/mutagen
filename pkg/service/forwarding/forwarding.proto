@@ -9,6 +9,7 @@ import "forwarding/configuration.proto";
 import "forwarding/state.proto";
 import "url/url.proto";
 
+// CreationSpecification contains the metadata required for a new session.
 message CreationSpecification {
     // Source is the source endpoint URL for the session.
     url.URL source = 1;
@@ -34,57 +35,80 @@ message CreationSpecification {
     bool paused = 8;
 }
 
+// CreateRequest encodes a request for session creation.
 message CreateRequest {
-    CreationSpecification specification = 1;
-    string response = 2;
+    // Prompter is the prompter identifier to use for creating sessions.
+    string prompter = 1;
+    // Specification is the creation specification.
+    CreationSpecification specification = 2;
 }
 
+// CreateResponse encodes a session creation response.
 message CreateResponse {
+    // Session is the resulting session identifier.
     string session = 1;
-    string message = 2;
-    string prompt = 3;
 }
 
+// ListRequest encodes a request for session metadata.
 message ListRequest {
+    // Selection is the session selection criteria.
     selection.Selection selection = 1;
+    // PreviousStateIndex is the previously seen state index. 0 may be provided
+    // to force an immediate state listing.
     uint64 previousStateIndex = 2;
 }
 
+// ListResponse encodes session metadata.
 message ListResponse {
+    // StateIndex is the state index associated with the session metadata.
     uint64 stateIndex = 1;
+    // SessionStates are the session metadata states.
     repeated forwarding.State sessionStates = 2;
 }
 
+// PauseRequest encodes a request to pause sessions.
 message PauseRequest {
-    selection.Selection selection = 1;
+    // Prompter is the prompter to use for status message updates.
+    string prompter = 1;
+    // Selection is the session selection criteria.
+    selection.Selection selection = 2;
 }
 
-message PauseResponse {
-    string message = 1;
-}
+// PauseResponse indicates completion of pause operation(s).
+message PauseResponse{}
 
+// ResumeRequest encodes a request to resume sessions.
 message ResumeRequest {
-    selection.Selection selection = 1;
-    string response = 2;
+    // Prompter is the prompter identifier to use for resuming sessions.
+    string prompter = 1;
+    // Selection is the session selection criteria.
+    selection.Selection selection = 2;
 }
 
-message ResumeResponse {
-    string message = 1;
-    string prompt = 2;
-}
+// ResumeResponse indicates completion of resume operation(s).
+message ResumeResponse{}
 
+// TerminateRequest encodes a request to terminate sessions.
 message TerminateRequest {
-    selection.Selection selection = 1;
+    // Prompter is the prompter to use for status message updates.
+    string prompter = 1;
+    // Selection is the session selection criteria.
+    selection.Selection selection = 2;
 }
 
-message TerminateResponse {
-    string message = 1;
-}
+// TerminateResponse indicates completion of termination operation(s).
+message TerminateResponse{}
 
+// Forwarding manages the lifecycle of forwarding sessions.
 service Forwarding {
-    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    // Create creates a new session.
+    rpc Create(CreateRequest) returns (CreateResponse) {}
+    // List returns metadata for existing sessions.
     rpc List(ListRequest) returns (ListResponse) {}
-    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
-    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
-    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
+    // Pause pauses sessions.
+    rpc Pause(PauseRequest) returns (PauseResponse) {}
+    // Resume resumes paused or disconnected sessions.
+    rpc Resume(ResumeRequest) returns (ResumeResponse) {}
+    // Terminate terminates sessions.
+    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
 }

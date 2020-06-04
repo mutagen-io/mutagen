@@ -2,10 +2,8 @@ package synchronization
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
-
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
@@ -23,24 +21,15 @@ func NewServer(manager *synchronization.Manager) *Server {
 }
 
 // Create creates a new session.
-func (s *Server) Create(stream Synchronization_CreateServer) error {
-	// Receive and validate the request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid create request")
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&createStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+func (s *Server) Create(ctx context.Context, request *CreateRequest) (*CreateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid create request: %w", err)
 	}
 
 	// Perform creation.
 	session, err := s.manager.Create(
-		stream.Context(),
+		ctx,
 		request.Specification.Alpha,
 		request.Specification.Beta,
 		request.Specification.Configuration,
@@ -49,31 +38,21 @@ func (s *Server) Create(stream Synchronization_CreateServer) error {
 		request.Specification.Name,
 		request.Specification.Labels,
 		request.Specification.Paused,
-		prompter,
+		request.Prompter,
 	)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
 	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&CreateResponse{Session: session}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &CreateResponse{Session: session}, nil
 }
 
 // List queries session status.
 func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse, error) {
 	// Validate the request.
 	if err := request.ensureValid(); err != nil {
-		return nil, errors.Wrap(err, "received invalid list request")
+		return nil, fmt.Errorf("invalid list request: %w", err)
 	}
 
 	// Perform listing.
@@ -90,181 +69,81 @@ func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse,
 }
 
 // Flush flushes sessions.
-func (s *Server) Flush(stream Synchronization_FlushServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid flush request")
+func (s *Server) Flush(ctx context.Context, request *FlushRequest) (*FlushResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid flush request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&flushStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
-	}
-
-	// Perform flush(es).
-	err = s.manager.Flush(stream.Context(), request.Selection, prompter, request.SkipWait)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&FlushResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	// Perform flushing.
+	if err := s.manager.Flush(ctx, request.Selection, request.Prompter, request.SkipWait); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &FlushResponse{}, nil
 }
 
 // Pause pauses sessions.
-func (s *Server) Pause(stream Synchronization_PauseServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid pause request")
+func (s *Server) Pause(ctx context.Context, request *PauseRequest) (*PauseResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid pause request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&pauseStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
-	}
-
-	// Perform pause(s).
-	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&PauseResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	// Perform pausing.
+	if err := s.manager.Pause(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &PauseResponse{}, nil
 }
 
 // Resume resumes sessions.
-func (s *Server) Resume(stream Synchronization_ResumeServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid resume request")
+func (s *Server) Resume(ctx context.Context, request *ResumeRequest) (*ResumeResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid resume request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&resumeStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
-	}
-
-	// Perform resume(s).
-	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&ResumeResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	// Perform resuming.
+	if err := s.manager.Resume(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &ResumeResponse{}, nil
 }
 
 // Reset resets sessions.
-func (s *Server) Reset(stream Synchronization_ResetServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid reset request")
+func (s *Server) Reset(ctx context.Context, request *ResetRequest) (*ResetResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid reset request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&resetStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
-	}
-
-	// Perform reset(s).
-	err = s.manager.Reset(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&ResetResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	// Perform resuming.
+	if err := s.manager.Reset(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &ResetResponse{}, nil
 }
 
 // Terminate terminates sessions.
-func (s *Server) Terminate(stream Synchronization_TerminateServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid terminate request")
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&terminateStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+func (s *Server) Terminate(ctx context.Context, request *TerminateRequest) (*TerminateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid terminate request: %w", err)
 	}
 
 	// Perform termination.
-	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&TerminateResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	if err := s.manager.Terminate(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &TerminateResponse{}, nil
 }

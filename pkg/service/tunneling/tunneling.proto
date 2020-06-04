@@ -9,6 +9,7 @@ import "tunneling/configuration.proto";
 import "tunneling/state.proto";
 import "tunneling/tunnel.proto";
 
+// CreationSpecification contains the metadata required for a new tunnel.
 message CreationSpecification {
     // Configuration is the base tunnel configuration. It is the result of
     // merging the global configuration (unless disabled), any manually
@@ -23,57 +24,75 @@ message CreationSpecification {
     bool paused = 4;
 }
 
+// CreateRequest encodes a request for tunnel creation.
 message CreateRequest {
-    CreationSpecification specification = 1;
-    string response = 2;
+    // Prompter is the prompter identifier to use for creating tunnels.
+    string prompter = 1;
+    // Specification is the creation specification.
+    CreationSpecification specification = 2;
 }
 
+// CreateResponse encodes a session creation response.
 message CreateResponse {
+    // HostCredentials are the tunnel hosting credentials.
     tunneling.TunnelHostCredentials hostCredentials = 1;
-    string message = 2;
-    string prompt = 3;
 }
 
+// ListRequest encodes a request for tunnel metadata.
 message ListRequest {
+    // Selection is the tunnel selection criteria.
     selection.Selection selection = 1;
+    // PreviousStateIndex is the previously seen state index. 0 may be provided
+    // to force an immediate state listing.
     uint64 previousStateIndex = 2;
 }
 
+// ListResponse encodes tunnel metadata.
 message ListResponse {
+    // StateIndex is the state index associated with the tunnel metadata.
     uint64 stateIndex = 1;
+    // TunnelStates are the tunnel metadata states.
     repeated tunneling.State tunnelStates = 2;
 }
 
+// PauseRequest encodes a request to pause tunnels.
 message PauseRequest {
-    selection.Selection selection = 1;
+    // Prompter is the prompter to use for status message updates.
+    string prompter = 1;
+    // Selection is the tunnel selection criteria.
+    selection.Selection selection = 2;
 }
 
-message PauseResponse {
-    string message = 1;
-}
+// PauseResponse indicates completion of pause operation(s).
+message PauseResponse{}
 
+// ResumeRequest encodes a request to resume tunnels.
 message ResumeRequest {
-    selection.Selection selection = 1;
-    string response = 2;
+    // Prompter is the prompter identifier to use for resuming tunnels.
+    string prompter = 1;
+    // Selection is the tunnel selection criteria.
+    selection.Selection selection = 2;
 }
 
-message ResumeResponse {
-    string message = 1;
-    string prompt = 2;
-}
+// ResumeResponse indicates completion of resume operation(s).
+message ResumeResponse{}
 
+// TerminateRequest encodes a request to terminate tunnels.
 message TerminateRequest {
-    selection.Selection selection = 1;
+    // Prompter is the prompter to use for status message updates.
+    string prompter = 1;
+    // Selection is the tunnel selection criteria.
+    selection.Selection selection = 2;
 }
 
-message TerminateResponse {
-    string message = 1;
-}
+// TerminateResponse indicates completion of termination operation(s).
+message TerminateResponse{}
 
+// Tunneling manages the lifecycle of tunnels.
 service Tunneling {
-    rpc Create(stream CreateRequest) returns (stream CreateResponse) {}
+    rpc Create(CreateRequest) returns (CreateResponse) {}
     rpc List(ListRequest) returns (ListResponse) {}
-    rpc Pause(stream PauseRequest) returns (stream PauseResponse) {}
-    rpc Resume(stream ResumeRequest) returns (stream ResumeResponse) {}
-    rpc Terminate(stream TerminateRequest) returns (stream TerminateResponse) {}
+    rpc Pause(PauseRequest) returns (PauseResponse) {}
+    rpc Resume(ResumeRequest) returns (ResumeResponse) {}
+    rpc Terminate(TerminateRequest) returns (TerminateResponse) {}
 }

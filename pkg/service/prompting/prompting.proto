@@ -4,15 +4,50 @@ package prompting;
 
 option go_package = "github.com/mutagen-io/mutagen/pkg/service/prompting";
 
+// HostRequest encodes either an initial request to perform prompt hosting or a
+// follow-up response to a message or prompt.
+message HostRequest {
+    // AllowPrompts indicates whether or not the hoster will allow prompts. If
+    // not, it will only receive message requests. This field may only be set on
+    // the initial request.
+    bool allowPrompts = 1;
+    // Response is the prompt response, if any. On the initial request, this
+    // must be an empty string. When responding to a prompt, it may be any
+    // value. When responding to a message, it must be an empty string.
+    string response = 2;
+}
+
+// HostResponse encodes either an initial response to perform prompt hosting or
+// a follow-up request for messaging or prompting.
+message HostResponse {
+    // Identifier is the prompter identifier. It is only set in the initial
+    // response sent after the initial request.
+    string identifier = 1;
+    // IsPrompt indicates if the response is requesting a prompt (as opposed to
+    // simple message display).
+    bool isPrompt = 2;
+    // Message is the message associated with the prompt or message.
+    string message = 3;
+}
+
+// PromptRequest encodes a request for prompting by a specific prompter.
 message PromptRequest {
+    // Prompter is the prompter identifier.
     string prompter = 1;
+    // Prompt is the prompt to present.
     string prompt = 2;
 }
 
+// PromptResponse encodes the response from a prompter.
 message PromptResponse {
+    // Response is the response returned by the prompter.
     string response = 1;
 }
 
+// Prompting allows clients to host and request prompting.
 service Prompting {
+    // Host allows clients to perform prompt hosting.
+    rpc Host(stream HostRequest) returns (stream HostResponse) {}
+    // Prompt performs prompting using a specific prompter.
     rpc Prompt(PromptRequest) returns (PromptResponse) {}
 }

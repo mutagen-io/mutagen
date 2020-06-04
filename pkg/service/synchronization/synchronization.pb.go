@@ -27,6 +27,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+// CreationSpecification contains the metadata required for a new session.
 type CreationSpecification struct {
 	// Alpha is the alpha endpoint URL for the session.
 	Alpha *url.URL `protobuf:"bytes,1,opt,name=alpha,proto3" json:"alpha,omitempty"`
@@ -135,9 +136,12 @@ func (m *CreationSpecification) GetPaused() bool {
 	return false
 }
 
+// CreateRequest encodes a request for session creation.
 type CreateRequest struct {
-	Specification        *CreationSpecification `protobuf:"bytes,1,opt,name=specification,proto3" json:"specification,omitempty"`
-	Response             string                 `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	// Prompter is the prompter identifier to use for creating sessions.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Specification is the creation specification.
+	Specification        *CreationSpecification `protobuf:"bytes,2,opt,name=specification,proto3" json:"specification,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
@@ -168,6 +172,13 @@ func (m *CreateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CreateRequest proto.InternalMessageInfo
 
+func (m *CreateRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *CreateRequest) GetSpecification() *CreationSpecification {
 	if m != nil {
 		return m.Specification
@@ -175,17 +186,10 @@ func (m *CreateRequest) GetSpecification() *CreationSpecification {
 	return nil
 }
 
-func (m *CreateRequest) GetResponse() string {
-	if m != nil {
-		return m.Response
-	}
-	return ""
-}
-
+// CreateResponse encodes a session creation response.
 type CreateResponse struct {
+	// Session is the resulting session identifier.
 	Session              string   `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
-	Message              string   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Prompt               string   `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -223,26 +227,16 @@ func (m *CreateResponse) GetSession() string {
 	return ""
 }
 
-func (m *CreateResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *CreateResponse) GetPrompt() string {
-	if m != nil {
-		return m.Prompt
-	}
-	return ""
-}
-
+// ListRequest encodes a request for session metadata.
 type ListRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	PreviousStateIndex   uint64               `protobuf:"varint,2,opt,name=previousStateIndex,proto3" json:"previousStateIndex,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	// Selection is the session selection criteria.
+	Selection *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// PreviousStateIndex is the previously seen state index. 0 may be provided
+	// to force an immediate state listing.
+	PreviousStateIndex   uint64   `protobuf:"varint,2,opt,name=previousStateIndex,proto3" json:"previousStateIndex,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListRequest) Reset()         { *m = ListRequest{} }
@@ -284,8 +278,11 @@ func (m *ListRequest) GetPreviousStateIndex() uint64 {
 	return 0
 }
 
+// ListResponse encodes session metadata.
 type ListResponse struct {
-	StateIndex           uint64                   `protobuf:"varint,1,opt,name=stateIndex,proto3" json:"stateIndex,omitempty"`
+	// StateIndex is the state index associated with the session metadata.
+	StateIndex uint64 `protobuf:"varint,1,opt,name=stateIndex,proto3" json:"stateIndex,omitempty"`
+	// SessionStates are the session metadata states.
 	SessionStates        []*synchronization.State `protobuf:"bytes,2,rep,name=sessionStates,proto3" json:"sessionStates,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
 	XXX_unrecognized     []byte                   `json:"-"`
@@ -331,12 +328,17 @@ func (m *ListResponse) GetSessionStates() []*synchronization.State {
 	return nil
 }
 
+// FlushRequest encodes a request to flush sessions.
 type FlushRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	SkipWait             bool                 `protobuf:"varint,2,opt,name=skipWait,proto3" json:"skipWait,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	// Prompter is the prompter to use for status message updates.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the session selection criteria.
+	Selection *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
+	// SkipWait indicates whether or not the operation should avoid blocking.
+	SkipWait             bool     `protobuf:"varint,3,opt,name=skipWait,proto3" json:"skipWait,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *FlushRequest) Reset()         { *m = FlushRequest{} }
@@ -364,6 +366,13 @@ func (m *FlushRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_FlushRequest proto.InternalMessageInfo
 
+func (m *FlushRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *FlushRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -378,8 +387,8 @@ func (m *FlushRequest) GetSkipWait() bool {
 	return false
 }
 
+// FlushResponse indicates completion of flush operation(s).
 type FlushResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -410,15 +419,12 @@ func (m *FlushResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_FlushResponse proto.InternalMessageInfo
 
-func (m *FlushResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
+// PauseRequest encodes a request to pause sessions.
 type PauseRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// Prompter is the prompter to use for status message updates.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the session selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -449,6 +455,13 @@ func (m *PauseRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PauseRequest proto.InternalMessageInfo
 
+func (m *PauseRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *PauseRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -456,8 +469,8 @@ func (m *PauseRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
+// PauseResponse indicates completion of pause operation(s).
 type PauseResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -488,16 +501,12 @@ func (m *PauseResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PauseResponse proto.InternalMessageInfo
 
-func (m *PauseResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
+// ResumeRequest encodes a request to resume sessions.
 type ResumeRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	Response             string               `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	// Prompter is the prompter identifier to use for resuming sessions.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the session selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -528,6 +537,13 @@ func (m *ResumeRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResumeRequest proto.InternalMessageInfo
 
+func (m *ResumeRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *ResumeRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -535,16 +551,8 @@ func (m *ResumeRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
-func (m *ResumeRequest) GetResponse() string {
-	if m != nil {
-		return m.Response
-	}
-	return ""
-}
-
+// ResumeResponse indicates completion of resume operation(s).
 type ResumeResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Prompt               string   `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -575,23 +583,12 @@ func (m *ResumeResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResumeResponse proto.InternalMessageInfo
 
-func (m *ResumeResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *ResumeResponse) GetPrompt() string {
-	if m != nil {
-		return m.Prompt
-	}
-	return ""
-}
-
+// ResetRequest encodes a request to reset sessions.
 type ResetRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	Response             string               `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	// Prompter is the prompter identifier to use for resetting sessions.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the session selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -622,6 +619,13 @@ func (m *ResetRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResetRequest proto.InternalMessageInfo
 
+func (m *ResetRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *ResetRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -629,16 +633,8 @@ func (m *ResetRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
-func (m *ResetRequest) GetResponse() string {
-	if m != nil {
-		return m.Response
-	}
-	return ""
-}
-
+// ResetResponse indicates completion of reset operation(s).
 type ResetResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Prompt               string   `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -669,22 +665,12 @@ func (m *ResetResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResetResponse proto.InternalMessageInfo
 
-func (m *ResetResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *ResetResponse) GetPrompt() string {
-	if m != nil {
-		return m.Prompt
-	}
-	return ""
-}
-
+// TerminateRequest encodes a request to terminate sessions.
 type TerminateRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// Prompter is the prompter to use for status message updates.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the session selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -715,6 +701,13 @@ func (m *TerminateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_TerminateRequest proto.InternalMessageInfo
 
+func (m *TerminateRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *TerminateRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -722,8 +715,8 @@ func (m *TerminateRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
+// TerminateResponse indicates completion of termination operation(s).
 type TerminateResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -754,13 +747,6 @@ func (m *TerminateResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_TerminateResponse proto.InternalMessageInfo
 
-func (m *TerminateResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
 func init() {
 	proto.RegisterType((*CreationSpecification)(nil), "synchronization.CreationSpecification")
 	proto.RegisterMapType((map[string]string)(nil), "synchronization.CreationSpecification.LabelsEntry")
@@ -785,55 +771,52 @@ func init() {
 }
 
 var fileDescriptor_2876ddae139dc773 = []byte{
-	// 754 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0x5b, 0x6f, 0xd3, 0x4a,
-	0x10, 0x3e, 0xce, 0xad, 0xc9, 0x24, 0xe9, 0x65, 0xd5, 0x53, 0xf9, 0xf8, 0x94, 0x10, 0x8c, 0x84,
-	0xc2, 0x43, 0x13, 0x14, 0x5e, 0x28, 0xf0, 0xd2, 0x94, 0x56, 0x02, 0x45, 0x14, 0x6d, 0x40, 0x20,
-	0x84, 0x8a, 0x9c, 0x74, 0x9a, 0x58, 0x75, 0x6c, 0xd7, 0x6b, 0x57, 0x84, 0x1f, 0xc7, 0x2f, 0xe2,
-	0x47, 0x20, 0xaf, 0xbd, 0x89, 0x37, 0x76, 0x68, 0x45, 0xc4, 0xdb, 0xce, 0xed, 0x9b, 0xdb, 0x37,
-	0x96, 0xe1, 0x80, 0xa1, 0x77, 0x63, 0x8e, 0xb0, 0xc3, 0x66, 0xf6, 0x68, 0xe2, 0x39, 0xb6, 0xf9,
-	0xdd, 0xf0, 0x4d, 0xc7, 0x5e, 0x96, 0xdb, 0xae, 0xe7, 0xf8, 0x0e, 0xd9, 0x5a, 0x52, 0x6b, 0xff,
-	0x31, 0xb4, 0x70, 0x14, 0x45, 0x88, 0x57, 0xe4, 0xab, 0x3d, 0x5c, 0x86, 0x1c, 0x39, 0xf6, 0xa5,
-	0x39, 0x0e, 0xbc, 0x04, 0xa0, 0xf6, 0x7f, 0x2a, 0xaf, 0x6f, 0xf8, 0x18, 0x1b, 0xeb, 0x81, 0x67,
-	0x75, 0x02, 0xcf, 0x8a, 0x44, 0xfd, 0x67, 0x1e, 0xfe, 0x3d, 0xf6, 0x90, 0xfb, 0x0d, 0x5c, 0x1c,
-	0x99, 0x97, 0xe6, 0x88, 0x0b, 0xa4, 0x01, 0x45, 0xc3, 0x72, 0x27, 0x86, 0xaa, 0x34, 0x95, 0x56,
-	0xb5, 0x5b, 0x6e, 0x87, 0x41, 0x1f, 0x68, 0x9f, 0x46, 0x6a, 0xb2, 0x0f, 0x85, 0x21, 0xfa, 0x86,
-	0x9a, 0x5b, 0x32, 0x73, 0x2d, 0x79, 0x05, 0x75, 0xa9, 0x34, 0x35, 0xcf, 0xdd, 0x1a, 0xed, 0xe5,
-	0x19, 0x1c, 0x27, 0xbd, 0xa8, 0x1c, 0x44, 0xde, 0x02, 0x91, 0x14, 0x47, 0xbc, 0xa0, 0xc2, 0x9d,
-	0xa0, 0x32, 0x22, 0x49, 0x1f, 0x76, 0x24, 0x6d, 0x2f, 0x6c, 0xa0, 0x78, 0x27, 0xb8, 0x74, 0x20,
-	0x21, 0x50, 0xb0, 0x8d, 0x29, 0xaa, 0xa5, 0xa6, 0xd2, 0xaa, 0x50, 0xfe, 0x26, 0x6f, 0xa0, 0x64,
-	0x19, 0x43, 0xb4, 0x98, 0xba, 0xd1, 0xcc, 0xb7, 0xaa, 0xdd, 0x6e, 0x1a, 0x36, 0x6b, 0xda, 0xed,
-	0x3e, 0x0f, 0x3a, 0xb1, 0x7d, 0x6f, 0x46, 0x63, 0x04, 0xb2, 0x07, 0x25, 0xd7, 0x08, 0x18, 0x5e,
-	0xa8, 0xe5, 0xa6, 0xd2, 0x2a, 0xd3, 0x58, 0xd2, 0x0e, 0xa1, 0x9a, 0x70, 0x27, 0xdb, 0x90, 0xbf,
-	0xc2, 0x19, 0x5f, 0x53, 0x85, 0x86, 0x4f, 0xb2, 0x0b, 0xc5, 0x1b, 0xc3, 0x0a, 0x90, 0xef, 0xa6,
-	0x42, 0x23, 0xe1, 0x79, 0xee, 0x99, 0xa2, 0xcf, 0xa0, 0xce, 0xf3, 0x23, 0xc5, 0xeb, 0x00, 0x99,
-	0x4f, 0xfa, 0x50, 0x67, 0xc9, 0x42, 0xe2, 0x6d, 0x3f, 0xba, 0x5b, 0xd9, 0x54, 0x0e, 0x26, 0x1a,
-	0x94, 0x3d, 0x64, 0xae, 0x63, 0x33, 0x91, 0x7b, 0x2e, 0xeb, 0x5f, 0x60, 0x53, 0xa4, 0x8e, 0x34,
-	0x44, 0x85, 0x0d, 0x86, 0x8c, 0x89, 0xac, 0x15, 0x2a, 0xc4, 0xd0, 0x32, 0x45, 0xc6, 0x8c, 0xb1,
-	0x80, 0x11, 0x22, 0x9f, 0x89, 0xe7, 0x4c, 0x5d, 0x9f, 0x13, 0xaa, 0x42, 0x63, 0x49, 0xbf, 0x86,
-	0x6a, 0xdf, 0x64, 0xbe, 0x68, 0xab, 0x0b, 0x95, 0xf9, 0xe9, 0xc4, 0x2d, 0xed, 0xb6, 0x17, 0xc7,
-	0x34, 0x10, 0x2f, 0xba, 0x70, 0x23, 0x6d, 0x20, 0xae, 0x87, 0x37, 0xa6, 0x13, 0xb0, 0x41, 0x78,
-	0x30, 0xaf, 0xed, 0x0b, 0xfc, 0xc6, 0xf3, 0x17, 0x68, 0x86, 0x45, 0xb7, 0xa0, 0x16, 0xa5, 0x8c,
-	0xdb, 0x69, 0x00, 0xb0, 0x45, 0x9c, 0xc2, 0xe3, 0x12, 0x1a, 0xf2, 0x12, 0xea, 0x71, 0x7f, 0x1c,
-	0x84, 0xa9, 0x39, 0xce, 0x90, 0xbd, 0xd4, 0xa8, 0xb9, 0x99, 0xca, 0xce, 0xfa, 0x39, 0xd4, 0x4e,
-	0xad, 0x80, 0x4d, 0xd6, 0xe9, 0x50, 0x83, 0x32, 0xbb, 0x32, 0xdd, 0x8f, 0x86, 0xe9, 0xf3, 0xbe,
-	0xca, 0x74, 0x2e, 0xeb, 0x8f, 0xa1, 0x1e, 0xe3, 0x2f, 0xb6, 0x23, 0x76, 0xa0, 0x48, 0x3b, 0xd0,
-	0x7b, 0x50, 0x7b, 0x17, 0x32, 0x71, 0x8d, 0x52, 0xc2, 0x74, 0x31, 0xc6, 0xad, 0xe9, 0xbe, 0x42,
-	0x9d, 0x22, 0x0b, 0xa6, 0xb8, 0x66, 0xeb, 0x2b, 0x99, 0xd9, 0x83, 0x4d, 0x91, 0xe0, 0xb6, 0x62,
-	0x12, 0xfc, 0xcb, 0x49, 0xfc, 0x3b, 0x87, 0x1a, 0x45, 0x86, 0xfe, 0xdf, 0xaa, 0xf1, 0x88, 0x0f,
-	0x01, 0xfd, 0x35, 0x4a, 0x3c, 0x85, 0xed, 0xf7, 0xe8, 0x4d, 0x4d, 0x3b, 0x71, 0xfe, 0x7f, 0xb2,
-	0xba, 0x03, 0xd8, 0x49, 0xe0, 0xdc, 0x56, 0x4e, 0xf7, 0x47, 0x01, 0xb6, 0x06, 0x32, 0xc3, 0xc9,
-	0x19, 0x94, 0xa2, 0x6f, 0x01, 0x69, 0x64, 0x7f, 0x68, 0x44, 0x81, 0xda, 0xfd, 0x95, 0xf6, 0x78,
-	0x30, 0xff, 0xb4, 0x94, 0x27, 0x0a, 0x39, 0x81, 0x42, 0x78, 0x8b, 0x64, 0x3f, 0xe5, 0x9e, 0xf8,
-	0x2a, 0x68, 0xf7, 0x56, 0x58, 0x05, 0x14, 0xe9, 0x43, 0x91, 0x1f, 0x01, 0x49, 0x7b, 0x26, 0x8f,
-	0x4f, 0x6b, 0xac, 0x32, 0x4b, 0x45, 0xf5, 0xa1, 0xc8, 0x39, 0x9e, 0x81, 0x96, 0xbc, 0x9f, 0x0c,
-	0x34, 0xe9, 0x34, 0x62, 0xb4, 0x33, 0x28, 0x45, 0x2c, 0xcd, 0x98, 0x99, 0x74, 0x1f, 0x19, 0x33,
-	0x93, 0xe9, 0xbd, 0x28, 0x8f, 0x53, 0x2a, 0xa3, 0xbc, 0x24, 0x95, 0xb5, 0xc6, 0x2a, 0xb3, 0x84,
-	0xf6, 0x09, 0x2a, 0x73, 0x56, 0x90, 0x07, 0xa9, 0x90, 0x65, 0xe6, 0x69, 0xfa, 0xef, 0x5c, 0x92,
-	0xc8, 0xbd, 0x17, 0x9f, 0x0f, 0xc7, 0xa6, 0x3f, 0x09, 0x86, 0xed, 0x91, 0x33, 0xed, 0x4c, 0x03,
-	0xdf, 0x18, 0xa3, 0x7d, 0x60, 0x3a, 0xe2, 0xd9, 0x71, 0xaf, 0xc6, 0x9d, 0x15, 0xbf, 0x5c, 0xc3,
-	0x12, 0xff, 0xcd, 0x79, 0xfa, 0x2b, 0x00, 0x00, 0xff, 0xff, 0xb3, 0xca, 0x6d, 0xfa, 0x94, 0x09,
-	0x00, 0x00,
+	// 714 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xdb, 0x6e, 0xd3, 0x4c,
+	0x10, 0x6e, 0x8e, 0x4d, 0x26, 0x4d, 0x0f, 0xfb, 0xf7, 0xaf, 0x8c, 0x29, 0x21, 0x18, 0x09, 0x45,
+	0x48, 0x75, 0xa4, 0x70, 0x43, 0x81, 0x1b, 0x5a, 0x8a, 0x38, 0x44, 0x08, 0x6d, 0x8a, 0x90, 0xb8,
+	0x00, 0x39, 0xee, 0x34, 0xb1, 0xea, 0xd8, 0xae, 0x77, 0x5d, 0x91, 0x3e, 0x10, 0x4f, 0xc7, 0x43,
+	0x20, 0xaf, 0xd7, 0x89, 0x4f, 0x41, 0x11, 0x52, 0xef, 0x76, 0x76, 0x66, 0xbe, 0x6f, 0x66, 0xe7,
+	0x1b, 0x69, 0xe1, 0x88, 0xa1, 0x7f, 0x63, 0x99, 0xd8, 0x67, 0x73, 0xc7, 0x9c, 0xfa, 0xae, 0x63,
+	0xdd, 0x1a, 0xdc, 0x72, 0x9d, 0xac, 0xad, 0x7b, 0xbe, 0xcb, 0x5d, 0xb2, 0x93, 0xb9, 0x56, 0xef,
+	0x31, 0xb4, 0xd1, 0x8c, 0x32, 0xe2, 0x53, 0x14, 0xab, 0x3e, 0xce, 0x42, 0x9a, 0xae, 0x73, 0x69,
+	0x4d, 0x02, 0x3f, 0x01, 0xa8, 0xde, 0xcf, 0xf1, 0x72, 0x83, 0xa3, 0x74, 0xb6, 0x03, 0xdf, 0xee,
+	0x07, 0xbe, 0x1d, 0x99, 0xda, 0xef, 0x0a, 0xfc, 0x7f, 0xea, 0xa3, 0x88, 0x1b, 0x79, 0x68, 0x5a,
+	0x97, 0x96, 0x29, 0x0c, 0xd2, 0x81, 0x9a, 0x61, 0x7b, 0x53, 0x43, 0x29, 0x75, 0x4b, 0xbd, 0xd6,
+	0xa0, 0xa1, 0x87, 0x49, 0x5f, 0xe8, 0x90, 0x46, 0xd7, 0xe4, 0x10, 0xaa, 0x63, 0xe4, 0x86, 0x52,
+	0xce, 0xb8, 0xc5, 0x2d, 0x79, 0x03, 0xed, 0x54, 0x69, 0x4a, 0x45, 0x84, 0x75, 0xf4, 0xec, 0x1b,
+	0x9c, 0x26, 0xa3, 0x68, 0x3a, 0x89, 0x7c, 0x02, 0x92, 0xba, 0x78, 0x2d, 0x0a, 0xaa, 0xae, 0x05,
+	0x55, 0x90, 0x49, 0x86, 0xb0, 0x97, 0xba, 0x3d, 0x09, 0x1b, 0xa8, 0xad, 0x05, 0x97, 0x4f, 0x24,
+	0x04, 0xaa, 0x8e, 0x31, 0x43, 0xa5, 0xde, 0x2d, 0xf5, 0x9a, 0x54, 0x9c, 0xc9, 0x07, 0xa8, 0xdb,
+	0xc6, 0x18, 0x6d, 0xa6, 0x6c, 0x76, 0x2b, 0xbd, 0xd6, 0x60, 0x90, 0x87, 0x2d, 0x7a, 0x6d, 0x7d,
+	0x28, 0x92, 0xce, 0x1c, 0xee, 0xcf, 0xa9, 0x44, 0x20, 0x07, 0x50, 0xf7, 0x8c, 0x80, 0xe1, 0x85,
+	0xd2, 0xe8, 0x96, 0x7a, 0x0d, 0x2a, 0x2d, 0xf5, 0x18, 0x5a, 0x89, 0x70, 0xb2, 0x0b, 0x95, 0x2b,
+	0x9c, 0x8b, 0x31, 0x35, 0x69, 0x78, 0x24, 0xfb, 0x50, 0xbb, 0x31, 0xec, 0x00, 0xc5, 0x6c, 0x9a,
+	0x34, 0x32, 0x5e, 0x94, 0x9f, 0x97, 0xb4, 0x39, 0xb4, 0x05, 0x3f, 0x52, 0xbc, 0x0e, 0x90, 0x71,
+	0xa2, 0x42, 0xc3, 0xf3, 0xdd, 0x99, 0xc7, 0xd1, 0x97, 0x08, 0x0b, 0x9b, 0x0c, 0xa1, 0xcd, 0x92,
+	0x45, 0xca, 0x51, 0x3f, 0x59, 0xaf, 0x25, 0x9a, 0x4e, 0xd6, 0x9e, 0xc2, 0x76, 0x4c, 0xcd, 0x3c,
+	0xd7, 0x61, 0x48, 0x14, 0xd8, 0x64, 0xc8, 0x58, 0x88, 0x1c, 0x51, 0xc7, 0xa6, 0x76, 0x0d, 0xad,
+	0xa1, 0xc5, 0x78, 0x5c, 0xe4, 0x00, 0x9a, 0x8b, 0x45, 0x90, 0x72, 0xdc, 0xd7, 0x97, 0xab, 0x31,
+	0x8a, 0x4f, 0x74, 0x19, 0x46, 0x74, 0x20, 0x9e, 0x8f, 0x37, 0x96, 0x1b, 0xb0, 0x51, 0x28, 0xff,
+	0xf7, 0xce, 0x05, 0xfe, 0x14, 0x1d, 0x54, 0x69, 0x81, 0x47, 0xb3, 0x61, 0x2b, 0xa2, 0x94, 0xc5,
+	0x75, 0x00, 0xd8, 0x32, 0xaf, 0x24, 0xf2, 0x12, 0x37, 0xe4, 0x15, 0xb4, 0x65, 0xb5, 0x02, 0x84,
+	0x29, 0x65, 0x31, 0xef, 0x83, 0xdc, 0xe3, 0x08, 0x37, 0x4d, 0x07, 0x6b, 0xb7, 0xb0, 0xf5, 0xd6,
+	0x0e, 0xd8, 0x74, 0x9d, 0x31, 0xa4, 0xba, 0x2f, 0xaf, 0xd7, 0xbd, 0x0a, 0x0d, 0x76, 0x65, 0x79,
+	0x5f, 0x0d, 0x8b, 0x8b, 0xcd, 0x6b, 0xd0, 0x85, 0xad, 0xed, 0x40, 0x5b, 0x72, 0x47, 0xad, 0x6a,
+	0xdf, 0x61, 0xeb, 0x73, 0xa8, 0xac, 0x3b, 0x2a, 0x26, 0x24, 0x94, 0xf8, 0x92, 0xf0, 0x07, 0xb4,
+	0x29, 0xb2, 0x60, 0x76, 0x67, 0x8c, 0xbb, 0xb0, 0x1d, 0x13, 0x2c, 0x7b, 0xa4, 0xc8, 0x90, 0xdf,
+	0x61, 0x8f, 0x12, 0x5f, 0x12, 0x8e, 0x61, 0xf7, 0x1c, 0xfd, 0x99, 0xe5, 0xac, 0xb9, 0x6c, 0xff,
+	0x42, 0xfa, 0x1f, 0xec, 0x25, 0x38, 0x22, 0xe2, 0xc1, 0xaf, 0x2a, 0xec, 0x8c, 0xd2, 0x1a, 0x24,
+	0x1f, 0xa1, 0x1e, 0xed, 0x1e, 0xe9, 0x14, 0x2f, 0x6f, 0x5c, 0xa2, 0xfa, 0x70, 0xa5, 0x5f, 0xf6,
+	0xb5, 0x41, 0xce, 0xa0, 0x1a, 0x6e, 0x0a, 0x39, 0xcc, 0x85, 0x26, 0x76, 0x56, 0x7d, 0xb0, 0xc2,
+	0xbb, 0x80, 0x79, 0x07, 0x35, 0x21, 0x43, 0x92, 0x8f, 0x4c, 0xae, 0x86, 0xda, 0x59, 0xe5, 0x4e,
+	0x22, 0x09, 0x7d, 0x15, 0x20, 0x25, 0x75, 0x5d, 0x80, 0x94, 0x96, 0xe5, 0x46, 0xf8, 0x4e, 0x91,
+	0x6e, 0x0a, 0xde, 0x29, 0xa5, 0xd8, 0x82, 0x77, 0xca, 0x08, 0x4e, 0x94, 0x25, 0x24, 0x51, 0x50,
+	0x56, 0x52, 0x8a, 0x6a, 0x67, 0x95, 0x7b, 0x81, 0x74, 0x0e, 0xcd, 0xc5, 0x9c, 0xc9, 0xa3, 0x5c,
+	0x78, 0x56, 0x67, 0xaa, 0xf6, 0xb7, 0x90, 0x18, 0xf5, 0xe4, 0xe5, 0xb7, 0xe3, 0x89, 0xc5, 0xa7,
+	0xc1, 0x58, 0x37, 0xdd, 0x59, 0x7f, 0x16, 0x70, 0x63, 0x82, 0xce, 0x91, 0xe5, 0xc6, 0xc7, 0xbe,
+	0x77, 0x35, 0xe9, 0xaf, 0xf8, 0xca, 0x8c, 0xeb, 0xe2, 0xfb, 0xf0, 0xec, 0x4f, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0xd9, 0xe0, 0x92, 0xf8, 0xec, 0x08, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -848,13 +831,20 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SynchronizationClient interface {
-	Create(ctx context.Context, opts ...grpc.CallOption) (Synchronization_CreateClient, error)
+	// Create creates a new session.
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
+	// List returns metadata for existing sessions.
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	Flush(ctx context.Context, opts ...grpc.CallOption) (Synchronization_FlushClient, error)
-	Pause(ctx context.Context, opts ...grpc.CallOption) (Synchronization_PauseClient, error)
-	Resume(ctx context.Context, opts ...grpc.CallOption) (Synchronization_ResumeClient, error)
-	Reset(ctx context.Context, opts ...grpc.CallOption) (Synchronization_ResetClient, error)
-	Terminate(ctx context.Context, opts ...grpc.CallOption) (Synchronization_TerminateClient, error)
+	// Flush flushes sessions.
+	Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error)
+	// Pause pauses sessions.
+	Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error)
+	// Resume resumes paused or disconnected sessions.
+	Resume(ctx context.Context, in *ResumeRequest, opts ...grpc.CallOption) (*ResumeResponse, error)
+	// Reset resets sessions' histories.
+	Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (*ResetResponse, error)
+	// Terminate terminates sessions.
+	Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error)
 }
 
 type synchronizationClient struct {
@@ -865,35 +855,13 @@ func NewSynchronizationClient(cc grpc.ClientConnInterface) SynchronizationClient
 	return &synchronizationClient{cc}
 }
 
-func (c *synchronizationClient) Create(ctx context.Context, opts ...grpc.CallOption) (Synchronization_CreateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[0], "/synchronization.Synchronization/Create", opts...)
+func (c *synchronizationClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
+	out := new(CreateResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationCreateClient{stream}
-	return x, nil
-}
-
-type Synchronization_CreateClient interface {
-	Send(*CreateRequest) error
-	Recv() (*CreateResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationCreateClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationCreateClient) Send(m *CreateRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationCreateClient) Recv() (*CreateResponse, error) {
-	m := new(CreateResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *synchronizationClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
@@ -905,226 +873,115 @@ func (c *synchronizationClient) List(ctx context.Context, in *ListRequest, opts 
 	return out, nil
 }
 
-func (c *synchronizationClient) Flush(ctx context.Context, opts ...grpc.CallOption) (Synchronization_FlushClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[1], "/synchronization.Synchronization/Flush", opts...)
+func (c *synchronizationClient) Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error) {
+	out := new(FlushResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Flush", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationFlushClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Synchronization_FlushClient interface {
-	Send(*FlushRequest) error
-	Recv() (*FlushResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationFlushClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationFlushClient) Send(m *FlushRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationFlushClient) Recv() (*FlushResponse, error) {
-	m := new(FlushResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *synchronizationClient) Pause(ctx context.Context, opts ...grpc.CallOption) (Synchronization_PauseClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[2], "/synchronization.Synchronization/Pause", opts...)
+func (c *synchronizationClient) Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error) {
+	out := new(PauseResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Pause", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationPauseClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Synchronization_PauseClient interface {
-	Send(*PauseRequest) error
-	Recv() (*PauseResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationPauseClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationPauseClient) Send(m *PauseRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationPauseClient) Recv() (*PauseResponse, error) {
-	m := new(PauseResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *synchronizationClient) Resume(ctx context.Context, opts ...grpc.CallOption) (Synchronization_ResumeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[3], "/synchronization.Synchronization/Resume", opts...)
+func (c *synchronizationClient) Resume(ctx context.Context, in *ResumeRequest, opts ...grpc.CallOption) (*ResumeResponse, error) {
+	out := new(ResumeResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Resume", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationResumeClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Synchronization_ResumeClient interface {
-	Send(*ResumeRequest) error
-	Recv() (*ResumeResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationResumeClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationResumeClient) Send(m *ResumeRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationResumeClient) Recv() (*ResumeResponse, error) {
-	m := new(ResumeResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *synchronizationClient) Reset(ctx context.Context, opts ...grpc.CallOption) (Synchronization_ResetClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[4], "/synchronization.Synchronization/Reset", opts...)
+func (c *synchronizationClient) Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (*ResetResponse, error) {
+	out := new(ResetResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Reset", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationResetClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Synchronization_ResetClient interface {
-	Send(*ResetRequest) error
-	Recv() (*ResetResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationResetClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationResetClient) Send(m *ResetRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationResetClient) Recv() (*ResetResponse, error) {
-	m := new(ResetResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *synchronizationClient) Terminate(ctx context.Context, opts ...grpc.CallOption) (Synchronization_TerminateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Synchronization_serviceDesc.Streams[5], "/synchronization.Synchronization/Terminate", opts...)
+func (c *synchronizationClient) Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error) {
+	out := new(TerminateResponse)
+	err := c.cc.Invoke(ctx, "/synchronization.Synchronization/Terminate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &synchronizationTerminateClient{stream}
-	return x, nil
-}
-
-type Synchronization_TerminateClient interface {
-	Send(*TerminateRequest) error
-	Recv() (*TerminateResponse, error)
-	grpc.ClientStream
-}
-
-type synchronizationTerminateClient struct {
-	grpc.ClientStream
-}
-
-func (x *synchronizationTerminateClient) Send(m *TerminateRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *synchronizationTerminateClient) Recv() (*TerminateResponse, error) {
-	m := new(TerminateResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 // SynchronizationServer is the server API for Synchronization service.
 type SynchronizationServer interface {
-	Create(Synchronization_CreateServer) error
+	// Create creates a new session.
+	Create(context.Context, *CreateRequest) (*CreateResponse, error)
+	// List returns metadata for existing sessions.
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	Flush(Synchronization_FlushServer) error
-	Pause(Synchronization_PauseServer) error
-	Resume(Synchronization_ResumeServer) error
-	Reset(Synchronization_ResetServer) error
-	Terminate(Synchronization_TerminateServer) error
+	// Flush flushes sessions.
+	Flush(context.Context, *FlushRequest) (*FlushResponse, error)
+	// Pause pauses sessions.
+	Pause(context.Context, *PauseRequest) (*PauseResponse, error)
+	// Resume resumes paused or disconnected sessions.
+	Resume(context.Context, *ResumeRequest) (*ResumeResponse, error)
+	// Reset resets sessions' histories.
+	Reset(context.Context, *ResetRequest) (*ResetResponse, error)
+	// Terminate terminates sessions.
+	Terminate(context.Context, *TerminateRequest) (*TerminateResponse, error)
 }
 
 // UnimplementedSynchronizationServer can be embedded to have forward compatible implementations.
 type UnimplementedSynchronizationServer struct {
 }
 
-func (*UnimplementedSynchronizationServer) Create(srv Synchronization_CreateServer) error {
-	return status.Errorf(codes.Unimplemented, "method Create not implemented")
+func (*UnimplementedSynchronizationServer) Create(ctx context.Context, req *CreateRequest) (*CreateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 func (*UnimplementedSynchronizationServer) List(ctx context.Context, req *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (*UnimplementedSynchronizationServer) Flush(srv Synchronization_FlushServer) error {
-	return status.Errorf(codes.Unimplemented, "method Flush not implemented")
+func (*UnimplementedSynchronizationServer) Flush(ctx context.Context, req *FlushRequest) (*FlushResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Flush not implemented")
 }
-func (*UnimplementedSynchronizationServer) Pause(srv Synchronization_PauseServer) error {
-	return status.Errorf(codes.Unimplemented, "method Pause not implemented")
+func (*UnimplementedSynchronizationServer) Pause(ctx context.Context, req *PauseRequest) (*PauseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pause not implemented")
 }
-func (*UnimplementedSynchronizationServer) Resume(srv Synchronization_ResumeServer) error {
-	return status.Errorf(codes.Unimplemented, "method Resume not implemented")
+func (*UnimplementedSynchronizationServer) Resume(ctx context.Context, req *ResumeRequest) (*ResumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Resume not implemented")
 }
-func (*UnimplementedSynchronizationServer) Reset(srv Synchronization_ResetServer) error {
-	return status.Errorf(codes.Unimplemented, "method Reset not implemented")
+func (*UnimplementedSynchronizationServer) Reset(ctx context.Context, req *ResetRequest) (*ResetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Reset not implemented")
 }
-func (*UnimplementedSynchronizationServer) Terminate(srv Synchronization_TerminateServer) error {
-	return status.Errorf(codes.Unimplemented, "method Terminate not implemented")
+func (*UnimplementedSynchronizationServer) Terminate(ctx context.Context, req *TerminateRequest) (*TerminateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterSynchronizationServer(s *grpc.Server, srv SynchronizationServer) {
 	s.RegisterService(&_Synchronization_serviceDesc, srv)
 }
 
-func _Synchronization_Create_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Create(&synchronizationCreateServer{stream})
-}
-
-type Synchronization_CreateServer interface {
-	Send(*CreateResponse) error
-	Recv() (*CreateRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationCreateServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationCreateServer) Send(m *CreateResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationCreateServer) Recv() (*CreateRequest, error) {
-	m := new(CreateRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Create",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Create(ctx, req.(*CreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Synchronization_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1145,134 +1002,94 @@ func _Synchronization_List_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Synchronization_Flush_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Flush(&synchronizationFlushServer{stream})
-}
-
-type Synchronization_FlushServer interface {
-	Send(*FlushResponse) error
-	Recv() (*FlushRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationFlushServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationFlushServer) Send(m *FlushResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationFlushServer) Recv() (*FlushRequest, error) {
-	m := new(FlushRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Flush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FlushRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Flush(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Flush",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Flush(ctx, req.(*FlushRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Synchronization_Pause_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Pause(&synchronizationPauseServer{stream})
-}
-
-type Synchronization_PauseServer interface {
-	Send(*PauseResponse) error
-	Recv() (*PauseRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationPauseServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationPauseServer) Send(m *PauseResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationPauseServer) Recv() (*PauseRequest, error) {
-	m := new(PauseRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Pause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PauseRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Pause(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Pause",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Pause(ctx, req.(*PauseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Synchronization_Resume_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Resume(&synchronizationResumeServer{stream})
-}
-
-type Synchronization_ResumeServer interface {
-	Send(*ResumeResponse) error
-	Recv() (*ResumeRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationResumeServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationResumeServer) Send(m *ResumeResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationResumeServer) Recv() (*ResumeRequest, error) {
-	m := new(ResumeRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Resume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResumeRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Resume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Resume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Resume(ctx, req.(*ResumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Synchronization_Reset_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Reset(&synchronizationResetServer{stream})
-}
-
-type Synchronization_ResetServer interface {
-	Send(*ResetResponse) error
-	Recv() (*ResetRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationResetServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationResetServer) Send(m *ResetResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationResetServer) Recv() (*ResetRequest, error) {
-	m := new(ResetRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Reset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Reset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Reset",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Reset(ctx, req.(*ResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Synchronization_Terminate_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(SynchronizationServer).Terminate(&synchronizationTerminateServer{stream})
-}
-
-type Synchronization_TerminateServer interface {
-	Send(*TerminateResponse) error
-	Recv() (*TerminateRequest, error)
-	grpc.ServerStream
-}
-
-type synchronizationTerminateServer struct {
-	grpc.ServerStream
-}
-
-func (x *synchronizationTerminateServer) Send(m *TerminateResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *synchronizationTerminateServer) Recv() (*TerminateRequest, error) {
-	m := new(TerminateRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Synchronization_Terminate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TerminateRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(SynchronizationServer).Terminate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/synchronization.Synchronization/Terminate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SynchronizationServer).Terminate(ctx, req.(*TerminateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Synchronization_serviceDesc = grpc.ServiceDesc{
@@ -1280,47 +1097,34 @@ var _Synchronization_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*SynchronizationServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Create",
+			Handler:    _Synchronization_Create_Handler,
+		},
+		{
 			MethodName: "List",
 			Handler:    _Synchronization_List_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Create",
-			Handler:       _Synchronization_Create_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Flush",
+			Handler:    _Synchronization_Flush_Handler,
 		},
 		{
-			StreamName:    "Flush",
-			Handler:       _Synchronization_Flush_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Pause",
+			Handler:    _Synchronization_Pause_Handler,
 		},
 		{
-			StreamName:    "Pause",
-			Handler:       _Synchronization_Pause_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Resume",
+			Handler:    _Synchronization_Resume_Handler,
 		},
 		{
-			StreamName:    "Resume",
-			Handler:       _Synchronization_Resume_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Reset",
+			Handler:    _Synchronization_Reset_Handler,
 		},
 		{
-			StreamName:    "Reset",
-			Handler:       _Synchronization_Reset_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
-		},
-		{
-			StreamName:    "Terminate",
-			Handler:       _Synchronization_Terminate_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Terminate",
+			Handler:    _Synchronization_Terminate_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "service/synchronization/synchronization.proto",
 }

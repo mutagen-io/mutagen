@@ -24,8 +24,128 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+// HostRequest encodes either an initial request to perform prompt hosting or a
+// follow-up response to a message or prompt.
+type HostRequest struct {
+	// AllowPrompts indicates whether or not the hoster will allow prompts. If
+	// not, it will only receive message requests. This field may only be set on
+	// the initial request.
+	AllowPrompts bool `protobuf:"varint,1,opt,name=allowPrompts,proto3" json:"allowPrompts,omitempty"`
+	// Response is the prompt response, if any. On the initial request, this
+	// must be an empty string. When responding to a prompt, it may be any
+	// value. When responding to a message, it must be an empty string.
+	Response             string   `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *HostRequest) Reset()         { *m = HostRequest{} }
+func (m *HostRequest) String() string { return proto.CompactTextString(m) }
+func (*HostRequest) ProtoMessage()    {}
+func (*HostRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aed1be0639533e2a, []int{0}
+}
+
+func (m *HostRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_HostRequest.Unmarshal(m, b)
+}
+func (m *HostRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_HostRequest.Marshal(b, m, deterministic)
+}
+func (m *HostRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HostRequest.Merge(m, src)
+}
+func (m *HostRequest) XXX_Size() int {
+	return xxx_messageInfo_HostRequest.Size(m)
+}
+func (m *HostRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_HostRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HostRequest proto.InternalMessageInfo
+
+func (m *HostRequest) GetAllowPrompts() bool {
+	if m != nil {
+		return m.AllowPrompts
+	}
+	return false
+}
+
+func (m *HostRequest) GetResponse() string {
+	if m != nil {
+		return m.Response
+	}
+	return ""
+}
+
+// HostResponse encodes either an initial response to perform prompt hosting or
+// a follow-up request for messaging or prompting.
+type HostResponse struct {
+	// Identifier is the prompter identifier. It is only set in the initial
+	// response sent after the initial request.
+	Identifier string `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	// IsPrompt indicates if the response is requesting a prompt (as opposed to
+	// simple message display).
+	IsPrompt bool `protobuf:"varint,2,opt,name=isPrompt,proto3" json:"isPrompt,omitempty"`
+	// Message is the message associated with the prompt or message.
+	Message              string   `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *HostResponse) Reset()         { *m = HostResponse{} }
+func (m *HostResponse) String() string { return proto.CompactTextString(m) }
+func (*HostResponse) ProtoMessage()    {}
+func (*HostResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aed1be0639533e2a, []int{1}
+}
+
+func (m *HostResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_HostResponse.Unmarshal(m, b)
+}
+func (m *HostResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_HostResponse.Marshal(b, m, deterministic)
+}
+func (m *HostResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HostResponse.Merge(m, src)
+}
+func (m *HostResponse) XXX_Size() int {
+	return xxx_messageInfo_HostResponse.Size(m)
+}
+func (m *HostResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_HostResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HostResponse proto.InternalMessageInfo
+
+func (m *HostResponse) GetIdentifier() string {
+	if m != nil {
+		return m.Identifier
+	}
+	return ""
+}
+
+func (m *HostResponse) GetIsPrompt() bool {
+	if m != nil {
+		return m.IsPrompt
+	}
+	return false
+}
+
+func (m *HostResponse) GetMessage() string {
+	if m != nil {
+		return m.Message
+	}
+	return ""
+}
+
+// PromptRequest encodes a request for prompting by a specific prompter.
 type PromptRequest struct {
-	Prompter             string   `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Prompter is the prompter identifier.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Prompt is the prompt to present.
 	Prompt               string   `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -36,7 +156,7 @@ func (m *PromptRequest) Reset()         { *m = PromptRequest{} }
 func (m *PromptRequest) String() string { return proto.CompactTextString(m) }
 func (*PromptRequest) ProtoMessage()    {}
 func (*PromptRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_aed1be0639533e2a, []int{0}
+	return fileDescriptor_aed1be0639533e2a, []int{2}
 }
 
 func (m *PromptRequest) XXX_Unmarshal(b []byte) error {
@@ -71,7 +191,9 @@ func (m *PromptRequest) GetPrompt() string {
 	return ""
 }
 
+// PromptResponse encodes the response from a prompter.
 type PromptResponse struct {
+	// Response is the response returned by the prompter.
 	Response             string   `protobuf:"bytes,1,opt,name=response,proto3" json:"response,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -82,7 +204,7 @@ func (m *PromptResponse) Reset()         { *m = PromptResponse{} }
 func (m *PromptResponse) String() string { return proto.CompactTextString(m) }
 func (*PromptResponse) ProtoMessage()    {}
 func (*PromptResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_aed1be0639533e2a, []int{1}
+	return fileDescriptor_aed1be0639533e2a, []int{3}
 }
 
 func (m *PromptResponse) XXX_Unmarshal(b []byte) error {
@@ -111,6 +233,8 @@ func (m *PromptResponse) GetResponse() string {
 }
 
 func init() {
+	proto.RegisterType((*HostRequest)(nil), "prompting.HostRequest")
+	proto.RegisterType((*HostResponse)(nil), "prompting.HostResponse")
 	proto.RegisterType((*PromptRequest)(nil), "prompting.PromptRequest")
 	proto.RegisterType((*PromptResponse)(nil), "prompting.PromptResponse")
 }
@@ -118,19 +242,26 @@ func init() {
 func init() { proto.RegisterFile("service/prompting/prompting.proto", fileDescriptor_aed1be0639533e2a) }
 
 var fileDescriptor_aed1be0639533e2a = []byte{
-	// 186 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0x2c, 0x4e, 0x2d, 0x2a,
-	0xcb, 0x4c, 0x4e, 0xd5, 0x2f, 0x28, 0xca, 0xcf, 0x2d, 0x28, 0xc9, 0xcc, 0x4b, 0x47, 0xb0, 0xf4,
-	0x0a, 0x8a, 0xf2, 0x4b, 0xf2, 0x85, 0x38, 0xe1, 0x02, 0x4a, 0xce, 0x5c, 0xbc, 0x01, 0x60, 0x4e,
-	0x50, 0x6a, 0x61, 0x69, 0x6a, 0x71, 0x89, 0x90, 0x14, 0x17, 0x07, 0x44, 0x36, 0xb5, 0x48, 0x82,
-	0x51, 0x81, 0x51, 0x83, 0x33, 0x08, 0xce, 0x17, 0x12, 0xe3, 0x62, 0x83, 0xb0, 0x25, 0x98, 0xc0,
-	0x32, 0x50, 0x9e, 0x92, 0x0e, 0x17, 0x1f, 0xcc, 0x90, 0xe2, 0x82, 0xfc, 0xbc, 0xe2, 0x54, 0x90,
-	0x29, 0x45, 0x50, 0x36, 0xcc, 0x14, 0x18, 0xdf, 0xc8, 0x87, 0x8b, 0x33, 0x00, 0x66, 0xbf, 0x90,
-	0x3d, 0x17, 0x1b, 0x84, 0x23, 0x24, 0xa1, 0x87, 0x70, 0x26, 0x8a, 0x93, 0xa4, 0x24, 0xb1, 0xc8,
-	0x40, 0xcc, 0x52, 0x62, 0x70, 0x32, 0x8d, 0x32, 0x4e, 0xcf, 0x2c, 0xc9, 0x28, 0x4d, 0xd2, 0x4b,
-	0xce, 0xcf, 0xd5, 0xcf, 0x2d, 0x2d, 0x49, 0x4c, 0x4f, 0xcd, 0xd3, 0xcd, 0xcc, 0x87, 0x31, 0xf5,
-	0x0b, 0xb2, 0xd3, 0xf5, 0x31, 0x82, 0x24, 0x89, 0x0d, 0x1c, 0x12, 0xc6, 0x80, 0x00, 0x00, 0x00,
-	0xff, 0xff, 0x1f, 0xb8, 0xfe, 0xcd, 0x2e, 0x01, 0x00, 0x00,
+	// 290 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x52, 0xb1, 0x4e, 0xc3, 0x30,
+	0x10, 0xc5, 0x80, 0x42, 0x72, 0x14, 0x06, 0x0f, 0x25, 0x64, 0x40, 0x25, 0x53, 0x06, 0x48, 0x10,
+	0x15, 0x23, 0x42, 0x82, 0x85, 0x05, 0xa9, 0xf2, 0xc8, 0x96, 0xb6, 0x47, 0xb0, 0x68, 0x62, 0x13,
+	0x3b, 0xf0, 0x11, 0xfc, 0x34, 0x6a, 0x1c, 0x3b, 0x89, 0xda, 0xed, 0xde, 0xf3, 0xf9, 0xdd, 0xbd,
+	0x67, 0xc3, 0xb5, 0xc2, 0xfa, 0x87, 0xaf, 0x30, 0x93, 0xb5, 0x28, 0xa5, 0xe6, 0x55, 0xd1, 0x57,
+	0xa9, 0xac, 0x85, 0x16, 0x34, 0x70, 0x44, 0xfc, 0x06, 0xa7, 0xaf, 0x42, 0x69, 0x86, 0xdf, 0x0d,
+	0x2a, 0x4d, 0x63, 0x98, 0xe4, 0x9b, 0x8d, 0xf8, 0x5d, 0xb4, 0x0d, 0x2a, 0x24, 0x33, 0x92, 0xf8,
+	0x6c, 0xc4, 0xd1, 0x08, 0xfc, 0x1a, 0x95, 0x14, 0x95, 0xc2, 0xf0, 0x70, 0x46, 0x92, 0x80, 0x39,
+	0x1c, 0xaf, 0x61, 0x62, 0xe4, 0x0c, 0xa6, 0x57, 0x00, 0x7c, 0x8d, 0x95, 0xe6, 0x1f, 0x1c, 0xeb,
+	0x56, 0x2d, 0x60, 0x03, 0x66, 0xab, 0xc5, 0x95, 0x11, 0x6e, 0xb5, 0x7c, 0xe6, 0x30, 0x0d, 0xe1,
+	0xa4, 0x44, 0xa5, 0xf2, 0x02, 0xc3, 0xa3, 0xf6, 0xa2, 0x85, 0xf1, 0x0b, 0x9c, 0x99, 0x1e, 0xbb,
+	0x76, 0x04, 0xbe, 0xb1, 0xe4, 0x86, 0x38, 0x4c, 0xa7, 0xe0, 0xc9, 0x7e, 0x40, 0xc0, 0x3a, 0x14,
+	0xdf, 0xc0, 0xb9, 0x15, 0xe9, 0x96, 0x1d, 0x1a, 0x23, 0x63, 0x63, 0xf7, 0x7f, 0x04, 0x82, 0x85,
+	0x4d, 0x8d, 0x3e, 0xc2, 0xf1, 0xd6, 0x26, 0x9d, 0xa6, 0x7d, 0xb4, 0x83, 0x18, 0xa3, 0x8b, 0x1d,
+	0xbe, 0xcb, 0xe7, 0x20, 0x21, 0x77, 0x84, 0x3e, 0x81, 0x67, 0x3d, 0x0e, 0x1a, 0x47, 0x96, 0xa2,
+	0xcb, 0x3d, 0x27, 0x56, 0xe4, 0xf9, 0xe1, 0x7d, 0x5e, 0x70, 0xfd, 0xd9, 0x2c, 0xd3, 0x95, 0x28,
+	0xb3, 0xb2, 0xd1, 0x79, 0x81, 0xd5, 0x2d, 0x17, 0xb6, 0xcc, 0xe4, 0x57, 0x91, 0xed, 0xfc, 0x83,
+	0xa5, 0xd7, 0x3e, 0xff, 0xfc, 0x3f, 0x00, 0x00, 0xff, 0xff, 0x5f, 0xe9, 0xab, 0x32, 0x23, 0x02,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -145,6 +276,9 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type PromptingClient interface {
+	// Host allows clients to perform prompt hosting.
+	Host(ctx context.Context, opts ...grpc.CallOption) (Prompting_HostClient, error)
+	// Prompt performs prompting using a specific prompter.
 	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
 
@@ -154,6 +288,37 @@ type promptingClient struct {
 
 func NewPromptingClient(cc grpc.ClientConnInterface) PromptingClient {
 	return &promptingClient{cc}
+}
+
+func (c *promptingClient) Host(ctx context.Context, opts ...grpc.CallOption) (Prompting_HostClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Prompting_serviceDesc.Streams[0], "/prompting.Prompting/Host", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &promptingHostClient{stream}
+	return x, nil
+}
+
+type Prompting_HostClient interface {
+	Send(*HostRequest) error
+	Recv() (*HostResponse, error)
+	grpc.ClientStream
+}
+
+type promptingHostClient struct {
+	grpc.ClientStream
+}
+
+func (x *promptingHostClient) Send(m *HostRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *promptingHostClient) Recv() (*HostResponse, error) {
+	m := new(HostResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *promptingClient) Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error) {
@@ -167,6 +332,9 @@ func (c *promptingClient) Prompt(ctx context.Context, in *PromptRequest, opts ..
 
 // PromptingServer is the server API for Prompting service.
 type PromptingServer interface {
+	// Host allows clients to perform prompt hosting.
+	Host(Prompting_HostServer) error
+	// Prompt performs prompting using a specific prompter.
 	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 }
 
@@ -174,12 +342,41 @@ type PromptingServer interface {
 type UnimplementedPromptingServer struct {
 }
 
+func (*UnimplementedPromptingServer) Host(srv Prompting_HostServer) error {
+	return status.Errorf(codes.Unimplemented, "method Host not implemented")
+}
 func (*UnimplementedPromptingServer) Prompt(ctx context.Context, req *PromptRequest) (*PromptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prompt not implemented")
 }
 
 func RegisterPromptingServer(s *grpc.Server, srv PromptingServer) {
 	s.RegisterService(&_Prompting_serviceDesc, srv)
+}
+
+func _Prompting_Host_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(PromptingServer).Host(&promptingHostServer{stream})
+}
+
+type Prompting_HostServer interface {
+	Send(*HostResponse) error
+	Recv() (*HostRequest, error)
+	grpc.ServerStream
+}
+
+type promptingHostServer struct {
+	grpc.ServerStream
+}
+
+func (x *promptingHostServer) Send(m *HostResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *promptingHostServer) Recv() (*HostRequest, error) {
+	m := new(HostRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _Prompting_Prompt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -209,6 +406,13 @@ var _Prompting_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Prompting_Prompt_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Host",
+			Handler:       _Prompting_Host_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "service/prompting/prompting.proto",
 }

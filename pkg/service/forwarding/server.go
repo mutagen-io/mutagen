@@ -2,11 +2,9 @@ package forwarding
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // Server provides an implementation of the Forwarding service.
@@ -23,24 +21,15 @@ func NewServer(manager *forwarding.Manager) *Server {
 }
 
 // Create creates a new session.
-func (s *Server) Create(stream Forwarding_CreateServer) error {
-	// Receive and validate the request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid create request")
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&createStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+func (s *Server) Create(ctx context.Context, request *CreateRequest) (*CreateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid create request: %w", err)
 	}
 
 	// Perform creation.
 	session, err := s.manager.Create(
-		stream.Context(),
+		ctx,
 		request.Specification.Source,
 		request.Specification.Destination,
 		request.Specification.Configuration,
@@ -49,31 +38,21 @@ func (s *Server) Create(stream Forwarding_CreateServer) error {
 		request.Specification.Name,
 		request.Specification.Labels,
 		request.Specification.Paused,
-		prompter,
+		request.Prompter,
 	)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
 	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&CreateResponse{Session: session}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &CreateResponse{Session: session}, nil
 }
 
 // List lists existing sessions.
 func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse, error) {
 	// Validate the request.
 	if err := request.ensureValid(); err != nil {
-		return nil, errors.Wrap(err, "received invalid list request")
+		return nil, fmt.Errorf("invalid list request: %w", err)
 	}
 
 	// Perform listing.
@@ -90,109 +69,49 @@ func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse,
 }
 
 // Pause pauses existing sessions.
-func (s *Server) Pause(stream Forwarding_PauseServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid pause request")
+func (s *Server) Pause(ctx context.Context, request *PauseRequest) (*PauseResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid pause request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&pauseStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
-	}
-
-	// Perform termination.
-	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&PauseResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	// Perform pausing.
+	if err := s.manager.Pause(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &PauseResponse{}, nil
 }
 
 // Resume resumes existing sessions.
-func (s *Server) Resume(stream Forwarding_ResumeServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid resume request")
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&resumeStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+func (s *Server) Resume(ctx context.Context, request *ResumeRequest) (*ResumeResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid resume request: %w", err)
 	}
 
 	// Perform resuming.
-	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&ResumeResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	if err := s.manager.Resume(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &ResumeResponse{}, nil
 }
 
 // Terminate terminates existing sessions.
-func (s *Server) Terminate(stream Forwarding_TerminateServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return errors.Wrap(err, "unable to receive request")
-	} else if err = request.ensureValid(true); err != nil {
-		return errors.Wrap(err, "received invalid terminate request")
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&terminateStreamPrompter{stream})
-	if err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+func (s *Server) Terminate(ctx context.Context, request *TerminateRequest) (*TerminateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid terminate request: %w", err)
 	}
 
 	// Perform termination.
-	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&TerminateResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send response")
+	if err := s.manager.Terminate(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &TerminateResponse{}, nil
 }

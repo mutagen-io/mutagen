@@ -26,6 +26,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+// CreationSpecification contains the metadata required for a new tunnel.
 type CreationSpecification struct {
 	// Configuration is the base tunnel configuration. It is the result of
 	// merging the global configuration (unless disabled), any manually
@@ -96,9 +97,12 @@ func (m *CreationSpecification) GetPaused() bool {
 	return false
 }
 
+// CreateRequest encodes a request for tunnel creation.
 type CreateRequest struct {
-	Specification        *CreationSpecification `protobuf:"bytes,1,opt,name=specification,proto3" json:"specification,omitempty"`
-	Response             string                 `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	// Prompter is the prompter identifier to use for creating tunnels.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Specification is the creation specification.
+	Specification        *CreationSpecification `protobuf:"bytes,2,opt,name=specification,proto3" json:"specification,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
@@ -129,6 +133,13 @@ func (m *CreateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CreateRequest proto.InternalMessageInfo
 
+func (m *CreateRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *CreateRequest) GetSpecification() *CreationSpecification {
 	if m != nil {
 		return m.Specification
@@ -136,17 +147,10 @@ func (m *CreateRequest) GetSpecification() *CreationSpecification {
 	return nil
 }
 
-func (m *CreateRequest) GetResponse() string {
-	if m != nil {
-		return m.Response
-	}
-	return ""
-}
-
+// CreateResponse encodes a session creation response.
 type CreateResponse struct {
+	// HostCredentials are the tunnel hosting credentials.
 	HostCredentials      *tunneling.TunnelHostCredentials `protobuf:"bytes,1,opt,name=hostCredentials,proto3" json:"hostCredentials,omitempty"`
-	Message              string                           `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Prompt               string                           `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
 	XXX_unrecognized     []byte                           `json:"-"`
 	XXX_sizecache        int32                            `json:"-"`
@@ -184,26 +188,16 @@ func (m *CreateResponse) GetHostCredentials() *tunneling.TunnelHostCredentials {
 	return nil
 }
 
-func (m *CreateResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *CreateResponse) GetPrompt() string {
-	if m != nil {
-		return m.Prompt
-	}
-	return ""
-}
-
+// ListRequest encodes a request for tunnel metadata.
 type ListRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	PreviousStateIndex   uint64               `protobuf:"varint,2,opt,name=previousStateIndex,proto3" json:"previousStateIndex,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	// Selection is the tunnel selection criteria.
+	Selection *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// PreviousStateIndex is the previously seen state index. 0 may be provided
+	// to force an immediate state listing.
+	PreviousStateIndex   uint64   `protobuf:"varint,2,opt,name=previousStateIndex,proto3" json:"previousStateIndex,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListRequest) Reset()         { *m = ListRequest{} }
@@ -245,8 +239,11 @@ func (m *ListRequest) GetPreviousStateIndex() uint64 {
 	return 0
 }
 
+// ListResponse encodes tunnel metadata.
 type ListResponse struct {
-	StateIndex           uint64             `protobuf:"varint,1,opt,name=stateIndex,proto3" json:"stateIndex,omitempty"`
+	// StateIndex is the state index associated with the tunnel metadata.
+	StateIndex uint64 `protobuf:"varint,1,opt,name=stateIndex,proto3" json:"stateIndex,omitempty"`
+	// TunnelStates are the tunnel metadata states.
 	TunnelStates         []*tunneling.State `protobuf:"bytes,2,rep,name=tunnelStates,proto3" json:"tunnelStates,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
@@ -292,8 +289,12 @@ func (m *ListResponse) GetTunnelStates() []*tunneling.State {
 	return nil
 }
 
+// PauseRequest encodes a request to pause tunnels.
 type PauseRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// Prompter is the prompter to use for status message updates.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the tunnel selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -324,6 +325,13 @@ func (m *PauseRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PauseRequest proto.InternalMessageInfo
 
+func (m *PauseRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *PauseRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -331,8 +339,8 @@ func (m *PauseRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
+// PauseResponse indicates completion of pause operation(s).
 type PauseResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -363,16 +371,12 @@ func (m *PauseResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PauseResponse proto.InternalMessageInfo
 
-func (m *PauseResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
+// ResumeRequest encodes a request to resume tunnels.
 type ResumeRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
-	Response             string               `protobuf:"bytes,2,opt,name=response,proto3" json:"response,omitempty"`
+	// Prompter is the prompter identifier to use for resuming tunnels.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the tunnel selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -403,6 +407,13 @@ func (m *ResumeRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResumeRequest proto.InternalMessageInfo
 
+func (m *ResumeRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *ResumeRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -410,16 +421,8 @@ func (m *ResumeRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
-func (m *ResumeRequest) GetResponse() string {
-	if m != nil {
-		return m.Response
-	}
-	return ""
-}
-
+// ResumeResponse indicates completion of resume operation(s).
 type ResumeResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	Prompt               string   `protobuf:"bytes,2,opt,name=prompt,proto3" json:"prompt,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -450,22 +453,12 @@ func (m *ResumeResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ResumeResponse proto.InternalMessageInfo
 
-func (m *ResumeResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
-func (m *ResumeResponse) GetPrompt() string {
-	if m != nil {
-		return m.Prompt
-	}
-	return ""
-}
-
+// TerminateRequest encodes a request to terminate tunnels.
 type TerminateRequest struct {
-	Selection            *selection.Selection `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
+	// Prompter is the prompter to use for status message updates.
+	Prompter string `protobuf:"bytes,1,opt,name=prompter,proto3" json:"prompter,omitempty"`
+	// Selection is the tunnel selection criteria.
+	Selection            *selection.Selection `protobuf:"bytes,2,opt,name=selection,proto3" json:"selection,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -496,6 +489,13 @@ func (m *TerminateRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_TerminateRequest proto.InternalMessageInfo
 
+func (m *TerminateRequest) GetPrompter() string {
+	if m != nil {
+		return m.Prompter
+	}
+	return ""
+}
+
 func (m *TerminateRequest) GetSelection() *selection.Selection {
 	if m != nil {
 		return m.Selection
@@ -503,8 +503,8 @@ func (m *TerminateRequest) GetSelection() *selection.Selection {
 	return nil
 }
 
+// TerminateResponse indicates completion of termination operation(s).
 type TerminateResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -535,13 +535,6 @@ func (m *TerminateResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_TerminateResponse proto.InternalMessageInfo
 
-func (m *TerminateResponse) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
-
 func init() {
 	proto.RegisterType((*CreationSpecification)(nil), "tunneling.CreationSpecification")
 	proto.RegisterMapType((map[string]string)(nil), "tunneling.CreationSpecification.LabelsEntry")
@@ -560,46 +553,45 @@ func init() {
 func init() { proto.RegisterFile("service/tunneling/tunneling.proto", fileDescriptor_4e41fdc941b0f342) }
 
 var fileDescriptor_4e41fdc941b0f342 = []byte{
-	// 622 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x55, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0xc5, 0x49, 0x1a, 0x9a, 0x49, 0x53, 0xca, 0xaa, 0x2d, 0xae, 0xf9, 0x50, 0xf0, 0x29, 0x48,
-	0x34, 0x41, 0x29, 0x48, 0x94, 0x03, 0x42, 0x0d, 0x54, 0x80, 0x7a, 0x40, 0xdb, 0x9e, 0xb8, 0x20,
-	0xd7, 0x99, 0xba, 0xab, 0xda, 0x6b, 0xd7, 0xbb, 0xae, 0xe8, 0x9d, 0x33, 0xbf, 0x91, 0x9f, 0x82,
-	0xb2, 0xf6, 0xc6, 0xbb, 0x69, 0x44, 0x25, 0x7a, 0x9b, 0xef, 0xf7, 0x76, 0xe6, 0x59, 0x86, 0xe7,
-	0x02, 0xf3, 0x2b, 0x16, 0xe2, 0x48, 0x16, 0x9c, 0x63, 0xcc, 0x78, 0x54, 0x5b, 0xc3, 0x2c, 0x4f,
-	0x65, 0x4a, 0x3a, 0xf3, 0x80, 0xb7, 0x23, 0x30, 0xc6, 0x50, 0xb2, 0x94, 0x8f, 0xe6, 0x56, 0x59,
-	0xe5, 0x3d, 0xad, 0x07, 0x84, 0x29, 0x3f, 0x63, 0x51, 0x91, 0x07, 0x46, 0x7a, 0xab, 0x4e, 0x0b,
-	0x19, 0x48, 0xac, 0xc2, 0xdb, 0x8b, 0xb0, 0x65, 0xdc, 0xff, 0xd5, 0x80, 0xad, 0x49, 0x8e, 0x6a,
-	0xc2, 0x71, 0x86, 0x21, 0x3b, 0x63, 0xa1, 0x72, 0xc8, 0x7b, 0xe8, 0x59, 0xf3, 0x5d, 0xa7, 0xef,
-	0x0c, 0xba, 0x63, 0x77, 0x58, 0xd3, 0x9e, 0x98, 0x79, 0x6a, 0x97, 0x13, 0x02, 0x2d, 0x1e, 0x24,
-	0xe8, 0x36, 0xfa, 0xce, 0xa0, 0x43, 0x95, 0x4d, 0x3e, 0x42, 0x3b, 0x0e, 0x4e, 0x31, 0x16, 0x6e,
-	0xb3, 0xdf, 0x1c, 0x74, 0xc7, 0x2f, 0xcd, 0x61, 0xcb, 0x58, 0x0c, 0x8f, 0x54, 0xf9, 0x27, 0x2e,
-	0xf3, 0x6b, 0x5a, 0xf5, 0x92, 0x6d, 0x68, 0x67, 0x41, 0x21, 0x70, 0xea, 0xb6, 0xfa, 0xce, 0x60,
-	0x95, 0x56, 0x9e, 0xb7, 0x0f, 0x5d, 0xa3, 0x9c, 0x6c, 0x40, 0xf3, 0x02, 0xaf, 0x15, 0xed, 0x0e,
-	0x9d, 0x99, 0x64, 0x13, 0x56, 0xae, 0x82, 0xb8, 0xd0, 0x9c, 0x4a, 0xe7, 0x5d, 0xe3, 0xad, 0xe3,
-	0x0b, 0xe8, 0x29, 0x7c, 0xa4, 0x78, 0x59, 0xa0, 0x90, 0xe4, 0x10, 0x7a, 0xc2, 0x24, 0x52, 0xbd,
-	0xbe, 0x7f, 0x1b, 0x61, 0x6a, 0xb7, 0x11, 0x0f, 0x56, 0x73, 0x14, 0x59, 0xca, 0x85, 0x46, 0x9d,
-	0xfb, 0xfe, 0x6f, 0x07, 0xd6, 0x35, 0x6a, 0x19, 0x22, 0x5f, 0xe1, 0xc1, 0x79, 0x2a, 0xe4, 0x24,
-	0xc7, 0x29, 0x72, 0xc9, 0x82, 0x58, 0x2c, 0x01, 0x3e, 0x51, 0xd6, 0x67, 0xbb, 0x8e, 0x2e, 0x36,
-	0x12, 0x17, 0xee, 0x27, 0x28, 0x44, 0x10, 0x69, 0x64, 0xed, 0xaa, 0x05, 0xe6, 0x69, 0x92, 0x49,
-	0xb7, 0xa9, 0x12, 0x95, 0xe7, 0x5f, 0x42, 0xf7, 0x88, 0x09, 0xa9, 0x77, 0x30, 0x86, 0xce, 0x5c,
-	0x7c, 0x15, 0x8d, 0xcd, 0x61, 0x2d, 0xc7, 0x63, 0x6d, 0xd1, 0xba, 0x8c, 0x0c, 0x81, 0x64, 0x39,
-	0x5e, 0xb1, 0xb4, 0x10, 0xc7, 0x33, 0xf9, 0x7d, 0xe1, 0x53, 0xfc, 0xa9, 0xf0, 0x5b, 0x74, 0x49,
-	0xc6, 0x9f, 0xc2, 0x5a, 0x09, 0x59, 0x2d, 0xe0, 0x19, 0x80, 0xa8, 0xfb, 0x1c, 0xd5, 0x67, 0x44,
-	0xc8, 0x6b, 0x58, 0x2b, 0x17, 0xa1, 0x66, 0x08, 0xb7, 0xa1, 0x74, 0xb4, 0x61, 0x6c, 0x47, 0x25,
-	0xa8, 0x55, 0xe5, 0x1f, 0xc0, 0xda, 0xb7, 0x99, 0x46, 0xee, 0xf0, 0x32, 0xff, 0x05, 0xf4, 0xaa,
-	0x19, 0x15, 0x55, 0x63, 0xbf, 0x8e, 0xb5, 0x5f, 0xff, 0x07, 0xf4, 0x28, 0x8a, 0x22, 0xb9, 0x0b,
-	0xde, 0x3f, 0x95, 0x73, 0x00, 0xeb, 0x1a, 0xe0, 0x36, 0x32, 0xc6, 0xb1, 0x1b, 0xd6, 0xb1, 0x0f,
-	0x61, 0xe3, 0x04, 0xf3, 0x84, 0x71, 0x43, 0xf5, 0xff, 0xb3, 0x97, 0x5d, 0x78, 0x68, 0xcc, 0xb9,
-	0x8d, 0xce, 0xf8, 0x4f, 0x03, 0x3a, 0x27, 0xfa, 0x58, 0x64, 0x02, 0xed, 0xf2, 0x0b, 0x20, 0xee,
-	0xe2, 0x97, 0xa5, 0x49, 0x79, 0x3b, 0x4b, 0x32, 0xd5, 0x1e, 0xee, 0x0d, 0x9c, 0x57, 0x0e, 0xd9,
-	0x87, 0xd6, 0x4c, 0x43, 0x64, 0xdb, 0x28, 0x34, 0x74, 0xec, 0x3d, 0xba, 0x11, 0xd7, 0xed, 0xe4,
-	0x03, 0xac, 0xa8, 0xa3, 0x12, 0xb3, 0xc6, 0x94, 0x8a, 0xe7, 0xde, 0x4c, 0x58, 0xe0, 0x13, 0x68,
-	0x97, 0xa7, 0xb0, 0x5e, 0x60, 0x9d, 0xdf, 0x7a, 0x81, 0x7d, 0xb7, 0x6a, 0xc8, 0x11, 0x74, 0xe6,
-	0x3b, 0x24, 0x8f, 0xcd, 0x4f, 0x7d, 0xe1, 0x42, 0xde, 0x93, 0xe5, 0x49, 0x73, 0xda, 0xc1, 0x9b,
-	0xef, 0x7b, 0x11, 0x93, 0xe7, 0xc5, 0xe9, 0x30, 0x4c, 0x93, 0x51, 0x52, 0xc8, 0x20, 0x42, 0xbe,
-	0xcb, 0x52, 0x6d, 0x8e, 0xb2, 0x8b, 0x68, 0x74, 0xe3, 0x77, 0x74, 0xda, 0x56, 0x7f, 0x84, 0xbd,
-	0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0xa7, 0x49, 0xe7, 0x86, 0xaa, 0x06, 0x00, 0x00,
+	// 594 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0x4b, 0x6f, 0xd3, 0x40,
+	0x10, 0xae, 0xdd, 0x34, 0xaa, 0x27, 0x4d, 0x1b, 0x96, 0xb6, 0xb8, 0xe6, 0xa1, 0xe0, 0x53, 0x0e,
+	0xe0, 0x48, 0x29, 0x48, 0x14, 0x21, 0x2a, 0x51, 0x40, 0x05, 0xf5, 0x80, 0xb6, 0x3d, 0x21, 0x04,
+	0x72, 0x9c, 0x69, 0xba, 0xaa, 0xbd, 0x76, 0xbd, 0xeb, 0x8a, 0xde, 0xf9, 0x81, 0xfc, 0x24, 0x94,
+	0xf5, 0x6b, 0x9d, 0x44, 0x22, 0x42, 0xe2, 0x36, 0x3b, 0x8f, 0xef, 0x9b, 0x6f, 0x66, 0x12, 0xc3,
+	0x53, 0x81, 0xe9, 0x2d, 0x0b, 0x70, 0x28, 0x33, 0xce, 0x31, 0x64, 0x7c, 0x5a, 0x5b, 0x5e, 0x92,
+	0xc6, 0x32, 0x26, 0x56, 0xe5, 0x70, 0x0e, 0x04, 0x86, 0x18, 0x48, 0x16, 0xf3, 0x61, 0x65, 0xe5,
+	0x59, 0xce, 0xe3, 0x1a, 0x20, 0x88, 0xf9, 0x25, 0x9b, 0x66, 0xa9, 0xaf, 0x85, 0xf7, 0xea, 0xb0,
+	0x90, 0xbe, 0xc4, 0xc2, 0xbd, 0x3f, 0x4f, 0x9b, 0xfb, 0xdd, 0x5f, 0x26, 0xec, 0x9d, 0xa4, 0xa8,
+	0x10, 0xce, 0x13, 0x0c, 0xd8, 0x25, 0x0b, 0xd4, 0x83, 0xbc, 0x85, 0x6e, 0x03, 0xdf, 0x36, 0xfa,
+	0xc6, 0xa0, 0x33, 0xb2, 0xbd, 0xba, 0xed, 0x13, 0x3d, 0x4e, 0x9b, 0xe9, 0x84, 0x40, 0x8b, 0xfb,
+	0x11, 0xda, 0x66, 0xdf, 0x18, 0x58, 0x54, 0xd9, 0xe4, 0x3d, 0xb4, 0x43, 0x7f, 0x8c, 0xa1, 0xb0,
+	0xd7, 0xfb, 0xeb, 0x83, 0xce, 0xe8, 0x99, 0x0e, 0xb6, 0xac, 0x0b, 0xef, 0x4c, 0xa5, 0x7f, 0xe0,
+	0x32, 0xbd, 0xa3, 0x45, 0x2d, 0xd9, 0x87, 0x76, 0xe2, 0x67, 0x02, 0x27, 0x76, 0xab, 0x6f, 0x0c,
+	0x36, 0x69, 0xf1, 0x72, 0x8e, 0xa0, 0xa3, 0xa5, 0x93, 0x1e, 0xac, 0x5f, 0xe3, 0x9d, 0x6a, 0xdb,
+	0xa2, 0x33, 0x93, 0xec, 0xc2, 0xc6, 0xad, 0x1f, 0x66, 0x65, 0x4f, 0xf9, 0xe3, 0xb5, 0xf9, 0xca,
+	0x70, 0x05, 0x74, 0x15, 0x3f, 0x52, 0xbc, 0xc9, 0x50, 0x48, 0xe2, 0xc0, 0x66, 0x92, 0xc6, 0x51,
+	0x22, 0x31, 0x2d, 0x10, 0xaa, 0x37, 0xf9, 0x08, 0x5d, 0xa1, 0x37, 0xa9, 0xe0, 0x3a, 0xa3, 0xfe,
+	0xdf, 0xc4, 0xd0, 0x66, 0x99, 0xfb, 0x0d, 0xb6, 0x4b, 0x52, 0x91, 0xc4, 0x5c, 0x20, 0xf9, 0x0c,
+	0x3b, 0x57, 0xb1, 0x90, 0x27, 0x29, 0x4e, 0x90, 0x4b, 0xe6, 0x87, 0xa2, 0x98, 0xba, 0x8e, 0x7d,
+	0xa1, 0xac, 0xd3, 0x66, 0x1e, 0x9d, 0x2f, 0x74, 0x6f, 0xa0, 0x73, 0xc6, 0x84, 0x2c, 0x05, 0x8d,
+	0xc0, 0xaa, 0x2e, 0xa9, 0x00, 0xdd, 0xf5, 0xea, 0xdb, 0x3a, 0x2f, 0x2d, 0x5a, 0xa7, 0x11, 0x0f,
+	0x48, 0x92, 0xe2, 0x2d, 0x8b, 0x33, 0x71, 0x3e, 0xbb, 0xa5, 0x4f, 0x7c, 0x82, 0x3f, 0x95, 0xda,
+	0x16, 0x5d, 0x12, 0x71, 0x27, 0xb0, 0x95, 0x53, 0x16, 0x72, 0x9e, 0x00, 0x88, 0xba, 0xce, 0x50,
+	0x75, 0x9a, 0x87, 0xbc, 0x80, 0xad, 0x5c, 0x96, 0xc2, 0x10, 0xb6, 0xa9, 0x8e, 0xa2, 0xa7, 0x69,
+	0x55, 0x01, 0xda, 0xc8, 0x72, 0xbf, 0xc3, 0xd6, 0x97, 0xd9, 0xc2, 0x57, 0x59, 0x55, 0x43, 0xb5,
+	0xb9, 0x92, 0x6a, 0x77, 0x07, 0xba, 0x05, 0x7e, 0x2e, 0xc3, 0xfd, 0x01, 0x5d, 0x8a, 0x22, 0x8b,
+	0xfe, 0x1b, 0x63, 0x0f, 0xb6, 0x4b, 0x82, 0x82, 0x72, 0x0c, 0xbd, 0x0b, 0x4c, 0x23, 0xc6, 0x57,
+	0x3c, 0xc9, 0x7f, 0x61, 0xbd, 0x0f, 0xf7, 0x34, 0x8e, 0x9c, 0x78, 0xf4, 0xdb, 0x04, 0xeb, 0xa2,
+	0x1c, 0x3f, 0x39, 0x86, 0x76, 0x7e, 0xa1, 0xc4, 0x9e, 0x3f, 0xee, 0xb2, 0x2d, 0xe7, 0x60, 0x49,
+	0xa4, 0x50, 0xb1, 0x46, 0x8e, 0xa0, 0x35, 0xbb, 0x08, 0xb2, 0xaf, 0x25, 0x69, 0x57, 0xe9, 0x3c,
+	0x58, 0xf0, 0x57, 0xa5, 0x6f, 0x60, 0x43, 0xad, 0x81, 0xe8, 0x39, 0xfa, 0xe2, 0x1d, 0x7b, 0x31,
+	0x50, 0x55, 0x1f, 0x43, 0x3b, 0x1f, 0x69, 0xa3, 0xf3, 0xc6, 0x1a, 0x1b, 0x9d, 0xcf, 0xcd, 0x7f,
+	0x8d, 0x9c, 0x82, 0x55, 0x4d, 0x87, 0x3c, 0xd4, 0x7f, 0x7e, 0x73, 0x7b, 0x71, 0x1e, 0x2d, 0x0f,
+	0x96, 0x48, 0xef, 0x5e, 0x7e, 0x3d, 0x9c, 0x32, 0x79, 0x95, 0x8d, 0xbd, 0x20, 0x8e, 0x86, 0x51,
+	0x26, 0xfd, 0x29, 0xf2, 0xe7, 0x2c, 0x2e, 0xcd, 0x61, 0x72, 0x3d, 0x1d, 0x2e, 0x7c, 0x1d, 0xc6,
+	0x6d, 0xf5, 0x07, 0x7d, 0xf8, 0x27, 0x00, 0x00, 0xff, 0xff, 0xc9, 0xf0, 0x49, 0xa0, 0x39, 0x06,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -614,11 +606,11 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TunnelingClient interface {
-	Create(ctx context.Context, opts ...grpc.CallOption) (Tunneling_CreateClient, error)
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	Pause(ctx context.Context, opts ...grpc.CallOption) (Tunneling_PauseClient, error)
-	Resume(ctx context.Context, opts ...grpc.CallOption) (Tunneling_ResumeClient, error)
-	Terminate(ctx context.Context, opts ...grpc.CallOption) (Tunneling_TerminateClient, error)
+	Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error)
+	Resume(ctx context.Context, in *ResumeRequest, opts ...grpc.CallOption) (*ResumeResponse, error)
+	Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error)
 }
 
 type tunnelingClient struct {
@@ -629,35 +621,13 @@ func NewTunnelingClient(cc grpc.ClientConnInterface) TunnelingClient {
 	return &tunnelingClient{cc}
 }
 
-func (c *tunnelingClient) Create(ctx context.Context, opts ...grpc.CallOption) (Tunneling_CreateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Tunneling_serviceDesc.Streams[0], "/tunneling.Tunneling/Create", opts...)
+func (c *tunnelingClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
+	out := new(CreateResponse)
+	err := c.cc.Invoke(ctx, "/tunneling.Tunneling/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &tunnelingCreateClient{stream}
-	return x, nil
-}
-
-type Tunneling_CreateClient interface {
-	Send(*CreateRequest) error
-	Recv() (*CreateResponse, error)
-	grpc.ClientStream
-}
-
-type tunnelingCreateClient struct {
-	grpc.ClientStream
-}
-
-func (x *tunnelingCreateClient) Send(m *CreateRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *tunnelingCreateClient) Recv() (*CreateResponse, error) {
-	m := new(CreateResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *tunnelingClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
@@ -669,156 +639,82 @@ func (c *tunnelingClient) List(ctx context.Context, in *ListRequest, opts ...grp
 	return out, nil
 }
 
-func (c *tunnelingClient) Pause(ctx context.Context, opts ...grpc.CallOption) (Tunneling_PauseClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Tunneling_serviceDesc.Streams[1], "/tunneling.Tunneling/Pause", opts...)
+func (c *tunnelingClient) Pause(ctx context.Context, in *PauseRequest, opts ...grpc.CallOption) (*PauseResponse, error) {
+	out := new(PauseResponse)
+	err := c.cc.Invoke(ctx, "/tunneling.Tunneling/Pause", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &tunnelingPauseClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Tunneling_PauseClient interface {
-	Send(*PauseRequest) error
-	Recv() (*PauseResponse, error)
-	grpc.ClientStream
-}
-
-type tunnelingPauseClient struct {
-	grpc.ClientStream
-}
-
-func (x *tunnelingPauseClient) Send(m *PauseRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *tunnelingPauseClient) Recv() (*PauseResponse, error) {
-	m := new(PauseResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *tunnelingClient) Resume(ctx context.Context, opts ...grpc.CallOption) (Tunneling_ResumeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Tunneling_serviceDesc.Streams[2], "/tunneling.Tunneling/Resume", opts...)
+func (c *tunnelingClient) Resume(ctx context.Context, in *ResumeRequest, opts ...grpc.CallOption) (*ResumeResponse, error) {
+	out := new(ResumeResponse)
+	err := c.cc.Invoke(ctx, "/tunneling.Tunneling/Resume", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &tunnelingResumeClient{stream}
-	return x, nil
+	return out, nil
 }
 
-type Tunneling_ResumeClient interface {
-	Send(*ResumeRequest) error
-	Recv() (*ResumeResponse, error)
-	grpc.ClientStream
-}
-
-type tunnelingResumeClient struct {
-	grpc.ClientStream
-}
-
-func (x *tunnelingResumeClient) Send(m *ResumeRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *tunnelingResumeClient) Recv() (*ResumeResponse, error) {
-	m := new(ResumeResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *tunnelingClient) Terminate(ctx context.Context, opts ...grpc.CallOption) (Tunneling_TerminateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Tunneling_serviceDesc.Streams[3], "/tunneling.Tunneling/Terminate", opts...)
+func (c *tunnelingClient) Terminate(ctx context.Context, in *TerminateRequest, opts ...grpc.CallOption) (*TerminateResponse, error) {
+	out := new(TerminateResponse)
+	err := c.cc.Invoke(ctx, "/tunneling.Tunneling/Terminate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &tunnelingTerminateClient{stream}
-	return x, nil
-}
-
-type Tunneling_TerminateClient interface {
-	Send(*TerminateRequest) error
-	Recv() (*TerminateResponse, error)
-	grpc.ClientStream
-}
-
-type tunnelingTerminateClient struct {
-	grpc.ClientStream
-}
-
-func (x *tunnelingTerminateClient) Send(m *TerminateRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *tunnelingTerminateClient) Recv() (*TerminateResponse, error) {
-	m := new(TerminateResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 // TunnelingServer is the server API for Tunneling service.
 type TunnelingServer interface {
-	Create(Tunneling_CreateServer) error
+	Create(context.Context, *CreateRequest) (*CreateResponse, error)
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	Pause(Tunneling_PauseServer) error
-	Resume(Tunneling_ResumeServer) error
-	Terminate(Tunneling_TerminateServer) error
+	Pause(context.Context, *PauseRequest) (*PauseResponse, error)
+	Resume(context.Context, *ResumeRequest) (*ResumeResponse, error)
+	Terminate(context.Context, *TerminateRequest) (*TerminateResponse, error)
 }
 
 // UnimplementedTunnelingServer can be embedded to have forward compatible implementations.
 type UnimplementedTunnelingServer struct {
 }
 
-func (*UnimplementedTunnelingServer) Create(srv Tunneling_CreateServer) error {
-	return status.Errorf(codes.Unimplemented, "method Create not implemented")
+func (*UnimplementedTunnelingServer) Create(ctx context.Context, req *CreateRequest) (*CreateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 func (*UnimplementedTunnelingServer) List(ctx context.Context, req *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (*UnimplementedTunnelingServer) Pause(srv Tunneling_PauseServer) error {
-	return status.Errorf(codes.Unimplemented, "method Pause not implemented")
+func (*UnimplementedTunnelingServer) Pause(ctx context.Context, req *PauseRequest) (*PauseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pause not implemented")
 }
-func (*UnimplementedTunnelingServer) Resume(srv Tunneling_ResumeServer) error {
-	return status.Errorf(codes.Unimplemented, "method Resume not implemented")
+func (*UnimplementedTunnelingServer) Resume(ctx context.Context, req *ResumeRequest) (*ResumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Resume not implemented")
 }
-func (*UnimplementedTunnelingServer) Terminate(srv Tunneling_TerminateServer) error {
-	return status.Errorf(codes.Unimplemented, "method Terminate not implemented")
+func (*UnimplementedTunnelingServer) Terminate(ctx context.Context, req *TerminateRequest) (*TerminateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Terminate not implemented")
 }
 
 func RegisterTunnelingServer(s *grpc.Server, srv TunnelingServer) {
 	s.RegisterService(&_Tunneling_serviceDesc, srv)
 }
 
-func _Tunneling_Create_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(TunnelingServer).Create(&tunnelingCreateServer{stream})
-}
-
-type Tunneling_CreateServer interface {
-	Send(*CreateResponse) error
-	Recv() (*CreateRequest, error)
-	grpc.ServerStream
-}
-
-type tunnelingCreateServer struct {
-	grpc.ServerStream
-}
-
-func (x *tunnelingCreateServer) Send(m *CreateResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *tunnelingCreateServer) Recv() (*CreateRequest, error) {
-	m := new(CreateRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Tunneling_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(TunnelingServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tunneling.Tunneling/Create",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TunnelingServer).Create(ctx, req.(*CreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Tunneling_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -839,82 +735,58 @@ func _Tunneling_List_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Tunneling_Pause_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(TunnelingServer).Pause(&tunnelingPauseServer{stream})
-}
-
-type Tunneling_PauseServer interface {
-	Send(*PauseResponse) error
-	Recv() (*PauseRequest, error)
-	grpc.ServerStream
-}
-
-type tunnelingPauseServer struct {
-	grpc.ServerStream
-}
-
-func (x *tunnelingPauseServer) Send(m *PauseResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *tunnelingPauseServer) Recv() (*PauseRequest, error) {
-	m := new(PauseRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Tunneling_Pause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PauseRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(TunnelingServer).Pause(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tunneling.Tunneling/Pause",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TunnelingServer).Pause(ctx, req.(*PauseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Tunneling_Resume_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(TunnelingServer).Resume(&tunnelingResumeServer{stream})
-}
-
-type Tunneling_ResumeServer interface {
-	Send(*ResumeResponse) error
-	Recv() (*ResumeRequest, error)
-	grpc.ServerStream
-}
-
-type tunnelingResumeServer struct {
-	grpc.ServerStream
-}
-
-func (x *tunnelingResumeServer) Send(m *ResumeResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *tunnelingResumeServer) Recv() (*ResumeRequest, error) {
-	m := new(ResumeRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Tunneling_Resume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResumeRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(TunnelingServer).Resume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tunneling.Tunneling/Resume",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TunnelingServer).Resume(ctx, req.(*ResumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Tunneling_Terminate_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(TunnelingServer).Terminate(&tunnelingTerminateServer{stream})
-}
-
-type Tunneling_TerminateServer interface {
-	Send(*TerminateResponse) error
-	Recv() (*TerminateRequest, error)
-	grpc.ServerStream
-}
-
-type tunnelingTerminateServer struct {
-	grpc.ServerStream
-}
-
-func (x *tunnelingTerminateServer) Send(m *TerminateResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *tunnelingTerminateServer) Recv() (*TerminateRequest, error) {
-	m := new(TerminateRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Tunneling_Terminate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TerminateRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(TunnelingServer).Terminate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tunneling.Tunneling/Terminate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TunnelingServer).Terminate(ctx, req.(*TerminateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Tunneling_serviceDesc = grpc.ServiceDesc{
@@ -922,35 +794,26 @@ var _Tunneling_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*TunnelingServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Create",
+			Handler:    _Tunneling_Create_Handler,
+		},
+		{
 			MethodName: "List",
 			Handler:    _Tunneling_List_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Create",
-			Handler:       _Tunneling_Create_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Pause",
+			Handler:    _Tunneling_Pause_Handler,
 		},
 		{
-			StreamName:    "Pause",
-			Handler:       _Tunneling_Pause_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Resume",
+			Handler:    _Tunneling_Resume_Handler,
 		},
 		{
-			StreamName:    "Resume",
-			Handler:       _Tunneling_Resume_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
-		},
-		{
-			StreamName:    "Terminate",
-			Handler:       _Tunneling_Terminate_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Terminate",
+			Handler:    _Tunneling_Terminate_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "service/tunneling/tunneling.proto",
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
 
@@ -22,46 +21,27 @@ func NewServer(manager *tunneling.Manager) *Server {
 }
 
 // Create creates a new tunnel.
-func (s *Server) Create(stream Tunneling_CreateServer) error {
-	// Receive and validate the request.
-	request, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("unable to receive request: %w", err)
-	} else if err = request.ensureValid(true); err != nil {
-		return fmt.Errorf("received invalid create request: %w", err)
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&createStreamPrompter{stream})
-	if err != nil {
-		return fmt.Errorf("unable to register prompter: %w", err)
+func (s *Server) Create(ctx context.Context, request *CreateRequest) (*CreateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid create request: %w", err)
 	}
 
 	// Perform creation.
 	hostCredentials, err := s.manager.Create(
-		stream.Context(),
+		ctx,
 		request.Specification.Configuration,
 		request.Specification.Name,
 		request.Specification.Labels,
 		request.Specification.Paused,
-		prompter,
+		request.Prompter,
 	)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
 	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&CreateResponse{HostCredentials: hostCredentials}); err != nil {
-		return fmt.Errorf("unable to send response: %w", err)
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &CreateResponse{HostCredentials: hostCredentials}, nil
 }
 
 // List lists existing tunnels.
@@ -85,109 +65,49 @@ func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse,
 }
 
 // Pause pauses existing tunnels.
-func (s *Server) Pause(stream Tunneling_PauseServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("unable to receive request: %w", err)
-	} else if err = request.ensureValid(true); err != nil {
-		return fmt.Errorf("received invalid pause request: %w", err)
+func (s *Server) Pause(ctx context.Context, request *PauseRequest) (*PauseResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid pause request: %w", err)
 	}
 
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&pauseStreamPrompter{stream})
-	if err != nil {
-		return fmt.Errorf("unable to register prompter: %w", err)
-	}
-
-	// Perform termination.
-	err = s.manager.Pause(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&PauseResponse{}); err != nil {
-		return fmt.Errorf("unable to send response: %w", err)
+	// Perform pausing.
+	if err := s.manager.Pause(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &PauseResponse{}, nil
 }
 
 // Resume resumes existing tunnels.
-func (s *Server) Resume(stream Tunneling_ResumeServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("unable to receive request: %w", err)
-	} else if err = request.ensureValid(true); err != nil {
-		return fmt.Errorf("received invalid resume request: %w", err)
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&resumeStreamPrompter{stream})
-	if err != nil {
-		return fmt.Errorf("unable to register prompter: %w", err)
+func (s *Server) Resume(ctx context.Context, request *ResumeRequest) (*ResumeResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid resume request: %w", err)
 	}
 
 	// Perform resuming.
-	err = s.manager.Resume(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&ResumeResponse{}); err != nil {
-		return fmt.Errorf("unable to send response: %w", err)
+	if err := s.manager.Resume(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &ResumeResponse{}, nil
 }
 
 // Terminate terminates existing tunnels.
-func (s *Server) Terminate(stream Tunneling_TerminateServer) error {
-	// Receive the first request.
-	request, err := stream.Recv()
-	if err != nil {
-		return fmt.Errorf("unable to receive request: %w", err)
-	} else if err = request.ensureValid(true); err != nil {
-		return fmt.Errorf("received invalid terminate request: %w", err)
-	}
-
-	// Wrap the stream in a prompter and register it with the prompt server.
-	prompter, err := prompting.RegisterPrompter(&terminateStreamPrompter{stream})
-	if err != nil {
-		return fmt.Errorf("unable to register prompter: %w", err)
+func (s *Server) Terminate(ctx context.Context, request *TerminateRequest) (*TerminateResponse, error) {
+	// Validate the request.
+	if err := request.ensureValid(); err != nil {
+		return nil, fmt.Errorf("invalid terminate request: %w", err)
 	}
 
 	// Perform termination.
-	err = s.manager.Terminate(stream.Context(), request.Selection, prompter)
-
-	// Unregister the prompter.
-	prompting.UnregisterPrompter(prompter)
-
-	// Handle any errors.
-	if err != nil {
-		return err
-	}
-
-	// Signal completion.
-	if err := stream.Send(&TerminateResponse{}); err != nil {
-		return fmt.Errorf("unable to send response: %w", err)
+	if err := s.manager.Terminate(ctx, request.Selection, request.Prompter); err != nil {
+		return nil, err
 	}
 
 	// Success.
-	return nil
+	return &TerminateResponse{}, nil
 }

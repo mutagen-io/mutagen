@@ -14,9 +14,8 @@ var registryLock sync.RWMutex
 // registry is the global prompter registry.
 var registry = make(map[string]chan Prompter)
 
-// RegisterPrompter registers a prompter with the global registry. It generates
-// a unique identifier for the prompter that can be used when requesting
-// prompting.
+// RegisterPrompter registers a prompter with the global registry. It
+// automatically generates a unique identifier for the prompter.
 func RegisterPrompter(prompter Prompter) (string, error) {
 	// Generate a unique identifier for this prompter.
 	identifier, err := identifier.New(identifier.PrefixPrompter)
@@ -24,7 +23,19 @@ func RegisterPrompter(prompter Prompter) (string, error) {
 		return "", errors.Wrap(err, "unable to generate prompter identifier")
 	}
 
-	// Create and populate a channel ("holder") for passing the prompter around.
+	// Perform registration.
+	if err := RegisterPrompterWithIdentifier(identifier, prompter); err != nil {
+		return "", err
+	}
+
+	// Success.
+	return identifier, nil
+}
+
+// RegisterPrompterWithIdentifier registers a prompter with the global registry
+// using the specified identifier.
+func RegisterPrompterWithIdentifier(identifier string, prompter Prompter) error {
+	// Create and populate a "holder" (channel) for passing the prompter around.
 	holder := make(chan Prompter, 1)
 	holder <- prompter
 
@@ -32,11 +43,18 @@ func RegisterPrompter(prompter Prompter) (string, error) {
 	registryLock.Lock()
 	defer registryLock.Unlock()
 
+	// Check for identifier collisions. This won't be a problem with our
+	// internally generated identifiers, but since this method accepts arbitrary
+	// identifiers, we want to be sure to avoid collisions.
+	if _, ok := registry[identifier]; ok {
+		return errors.New("identifier collision")
+	}
+
 	// Register the holder.
 	registry[identifier] = holder
 
 	// Success.
-	return identifier, nil
+	return nil
 }
 
 // UnregisterPrompter unregisters a prompter from the global registry. If the
