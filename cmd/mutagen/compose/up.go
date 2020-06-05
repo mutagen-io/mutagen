@@ -177,7 +177,7 @@ func reconcileSessions(project *compose.Project) error {
 	// Prune orphaned and stale forwarding sessions.
 	if len(forwardingPruneList) > 0 {
 		pruneSelection := &selection.Selection{Specifications: forwardingPruneList}
-		if err := forward.TerminateWithSelection(forwardingService, pruneSelection); err != nil {
+		if err := forward.TerminateWithSelection(daemonConnection, pruneSelection); err != nil {
 			return fmt.Errorf("unable to prune orphaned/duplicate/stale forwarding sessions: %w", err)
 		}
 	}
@@ -185,7 +185,7 @@ func reconcileSessions(project *compose.Project) error {
 	// Prune orphaned and stale synchronization sessions.
 	if len(synchronizationPruneList) > 0 {
 		pruneSelection := &selection.Selection{Specifications: synchronizationPruneList}
-		if err := sync.TerminateWithSelection(synchronizationService, pruneSelection); err != nil {
+		if err := sync.TerminateWithSelection(daemonConnection, pruneSelection); err != nil {
 			return fmt.Errorf("unable to prune orphaned/duplicate/stale synchronization sessions: %w", err)
 		}
 	}
@@ -193,7 +193,7 @@ func reconcileSessions(project *compose.Project) error {
 	// Create forwarding sessions.
 	for _, specification := range forwardingCreateSpecifications {
 		fmt.Printf("Creating forwarding session \"%s\"\n", specification.Name)
-		if _, err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
+		if _, err := forward.CreateWithSpecification(daemonConnection, specification); err != nil {
 			return fmt.Errorf("unable to create forwarding session (%s): %w", specification.Name, err)
 		}
 	}
@@ -202,7 +202,7 @@ func reconcileSessions(project *compose.Project) error {
 	var sessionsToFlush []string
 	for _, specification := range synchronizationCreateSpecifications {
 		fmt.Printf("Creating synchronization session \"%s\"", specification.Name)
-		if s, err := sync.CreateWithSpecification(synchronizationService, specification); err != nil {
+		if s, err := sync.CreateWithSpecification(daemonConnection, specification); err != nil {
 			return fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
 		} else {
 			sessionsToFlush = append(sessionsToFlush, s)
@@ -213,7 +213,7 @@ func reconcileSessions(project *compose.Project) error {
 	if len(sessionsToFlush) > 0 {
 		fmt.Println("Performing initial synchronization")
 		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
-		if err := sync.FlushWithSelection(synchronizationService, flushSelection, false); err != nil {
+		if err := sync.FlushWithSelection(daemonConnection, flushSelection, false); err != nil {
 			return fmt.Errorf("unable to flush synchronization session(s): %w", err)
 		}
 	}

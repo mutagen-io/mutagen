@@ -11,6 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/dustin/go-humanize"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -21,8 +23,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
@@ -71,53 +73,57 @@ func loadAndValidateLegacyTOMLConfiguration(path string) (*synchronization.Confi
 	return configuration, nil
 }
 
-// CreateWithSpecification is an orchestration convenience method that invokes
-// create using the provided service client and session specification.
+// CreateWithSpecification is an orchestration convenience method that performs
+// a create operation using the provided daemon connection and session
+// specification.
 func CreateWithSpecification(
-	client synchronizationsvc.SynchronizationClient,
+	daemonConnection *grpc.ClientConn,
 	specification *synchronizationsvc.CreationSpecification,
 ) (string, error) {
-	// Invoke the create method and defer closure of the RPC stream.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.Create(ctx)
-	if err != nil {
-		return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
-	}
-
-	// Send the initial request.
-	request := &synchronizationsvc.CreateRequest{Specification: specification}
-	if err := stream.Send(request); err != nil {
-		return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
-	}
-
-	// Create a status line printer and defer a break.
+	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
-	defer statusLinePrinter.BreakIfNonEmpty()
 
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return "", errors.Wrap(err, "invalid create response received")
-		} else if response.Session != "" {
-			statusLinePrinter.Print(fmt.Sprintf("Created session %s", response.Session))
-			return response.Session, nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvc.CreateRequest{}); err != nil {
-				return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return "", errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&synchronizationsvc.CreateRequest{Response: response}); err != nil {
-				return "", errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
+	// Initiate prompt hosting.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, true,
+	)
+	if err != nil {
+		promptingCancel()
+		return "", errors.Wrap(err, "unable to initiate prompting")
 	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the create operation.
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+	request := &synchronizationsvc.CreateRequest{
+		Prompter:      prompter,
+		Specification: specification,
+	}
+	response, err := synchronizationService.Create(context.Background(), request)
+	if err != nil {
+		return "", grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return "", errors.Wrap(err, "invalid create response received")
+	}
+
+	// Success.
+	successful = true
+	return response.Session, nil
 }
 
 // createMain is the entry point for the create command.
@@ -504,12 +510,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a synchronization service client.
-	service := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Perform the create operation.
-	_, err = CreateWithSpecification(service, specification)
-	return err
+	identifier, err := CreateWithSpecification(daemonConnection, specification)
+	if err != nil {
+		return err
+	}
+
+	// Print the session identifier.
+	fmt.Println("Created session", identifier)
+
+	// Success.
+	return nil
 }
 
 // createCommand is the create command.

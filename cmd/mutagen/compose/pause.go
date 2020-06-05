@@ -11,8 +11,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
-	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
 // pauseSessions handles Mutagen session pausing for the project.
@@ -24,22 +22,18 @@ func pauseSessions(project *compose.Project) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create service clients.
-	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
-	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Create a session selection for the project.
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session pausing.
 	fmt.Println("Pausing forwarding sessions")
-	if err := forward.PauseWithSelection(forwardingService, projectSelection); err != nil {
+	if err := forward.PauseWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("forwarding pausing failed: %w", err)
 	}
 
 	// Perform synchronization session pausing.
 	fmt.Println("Pausing synchronization sessions")
-	if err := sync.PauseWithSelection(synchronizationService, projectSelection); err != nil {
+	if err := sync.PauseWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("synchronization pausing failed: %w", err)
 	}
 

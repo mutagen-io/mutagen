@@ -7,13 +7,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
 
 // ResumeWithLabelSelector is an orchestration convenience method that invokes
@@ -23,57 +25,56 @@ func ResumeWithLabelSelector(labelSelector string) error {
 	return resumeMain(nil, nil)
 }
 
-// ResumeWithSelection is an orchestration convenience method that invokes
-// resume using the provided service client and session selection.
+// ResumeWithSelection is an orchestration convenience method that performs a
+// resume operation using the provided daemon connection and session selection.
 func ResumeWithSelection(
-	client forwardingsvc.ForwardingClient,
+	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
 ) error {
-	// Invoke the resume method and defer closure of the RPC stream.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.Resume(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
-	}
-
-	// Send the initial request.
-	request := &forwardingsvc.ResumeRequest{
-		Selection: selection,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send resume request")
-	}
-
 	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
 
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "resume failed")
-		} else if err = response.EnsureValid(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(err, "invalid resume response received")
-		} else if response.Message == "" && response.Prompt == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&forwardingsvc.ResumeRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&forwardingsvc.ResumeRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
+	// Initiate prompt hosting.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, true,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
 	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the resume operation.
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
+	request := &forwardingsvc.ResumeRequest{
+		Prompter:  prompter,
+		Selection: selection,
+	}
+	response, err := forwardingService.Resume(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid resume response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
 }
 
 // resumeMain is the entry point for the resume command.
@@ -95,11 +96,8 @@ func resumeMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
-
 	// Perform the resume operation.
-	return ResumeWithSelection(sessionService, selection)
+	return ResumeWithSelection(daemonConnection, selection)
 }
 
 // resumeCommand is the resume command.

@@ -10,6 +10,8 @@ import (
 
 	"github.com/fatih/color"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -34,35 +36,20 @@ func printTunnelStatus(state *tunneling.State) {
 	}
 }
 
-// listMain is the entry point for the list command.
-func listMain(_ *cobra.Command, arguments []string) error {
-	// Create tunnel selection specification.
-	selection := &selection.Selection{
-		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
-		Specifications: arguments,
-		LabelSelector:  listConfiguration.labelSelector,
-	}
-	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid tunnel selection specification")
-	}
-
-	// Connect to the daemon and defer closure of the connection.
-	daemonConnection, err := daemon.Connect(true, true)
-	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
-	}
-	defer daemonConnection.Close()
-
-	// Create a tunneling service client.
+// listWithSelection performs a list operation using the provided daemon
+// connection and session selection and then prints status information.
+func listWithSelection(
+	daemonConnection *grpc.ClientConn,
+	selection *selection.Selection,
+) error {
+	// Perform the list operation.
 	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
-
-	// Invoke list.
 	request := &tunnelingsvc.ListRequest{
 		Selection: selection,
 	}
 	response, err := tunnelingService.List(context.Background(), request)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")
+		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid list response received")
 	}
@@ -83,6 +70,29 @@ func listMain(_ *cobra.Command, arguments []string) error {
 
 	// Success.
 	return nil
+}
+
+// listMain is the entry point for the list command.
+func listMain(_ *cobra.Command, arguments []string) error {
+	// Create tunnel selection specification.
+	selection := &selection.Selection{
+		All:            len(arguments) == 0 && listConfiguration.labelSelector == "",
+		Specifications: arguments,
+		LabelSelector:  listConfiguration.labelSelector,
+	}
+	if err := selection.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid tunnel selection specification")
+	}
+
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Perform the list operation and print status information.
+	return listWithSelection(daemonConnection, selection)
 }
 
 // listCommand is the list command.

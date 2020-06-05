@@ -108,7 +108,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 			PreviousStateIndex: previousStateIndex,
 		}
 
-		// Invoke list.
+		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
 			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")

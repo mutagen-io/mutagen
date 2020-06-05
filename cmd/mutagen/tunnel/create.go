@@ -10,17 +10,73 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/golang/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 	"github.com/mutagen-io/mutagen/pkg/tunneling"
 )
+
+// createWithSpecification performs a create operation using the provided daemon
+// connection and tunnel specification. It returns the resulting tunnel hosting
+// credentials and any error that occurred.
+func createWithSpecification(
+	daemonConnection *grpc.ClientConn,
+	specification *tunnelingsvc.CreationSpecification,
+) (*tunneling.TunnelHostCredentials, error) {
+	// Create a status line printer. We have to use standard error as our status
+	// output stream because we write tunnel host parameters to standard output.
+	statusLinePrinter := &cmd.StatusLinePrinter{UseStandardError: true}
+
+	// Initiate prompt hosting. We only support messaging in tunnel operations.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
+	)
+	if err != nil {
+		promptingCancel()
+		return nil, errors.Wrap(err, "unable to initiate prompting")
+	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the create operation.
+	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
+	request := &tunnelingsvc.CreateRequest{
+		Prompter:      prompter,
+		Specification: specification,
+	}
+	response, err := tunnelingService.Create(context.Background(), request)
+	if err != nil {
+		return nil, grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return nil, errors.Wrap(err, "invalid create response received")
+	}
+
+	// Success.
+	successful = true
+	return response.HostCredentials, nil
+}
 
 // createMain is the entry point for the create command.
 func createMain(_ *cobra.Command, _ []string) error {
@@ -67,59 +123,25 @@ func createMain(_ *cobra.Command, _ []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a tunneling service client.
-	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
-
-	// Invoke the tunnel create method. The stream will close when the
-	// associated context is cancelled.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := tunnelingService.Create(ctx)
+	// Perform the create operation.
+	hostCredentials, err := createWithSpecification(daemonConnection, specification)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke create")
+		return err
 	}
 
-	// Send the initial request.
-	request := &tunnelingsvc.CreateRequest{Specification: specification}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send create request")
+	// Print the tunnel identifier to standard error.
+	fmt.Fprintln(os.Stderr, "Created tunnel", hostCredentials.Identifier)
+
+	// Write the tunnel host credentials to standard output.
+	encodedHostCredentials, err := proto.Marshal(hostCredentials)
+	if err != nil {
+		return errors.Wrap(err, "unable to encode host parameters")
+	} else if _, err := os.Stdout.Write(encodedHostCredentials); err != nil {
+		return errors.Wrap(err, "unable to write encoded host parameters")
 	}
 
-	// Create a status line printer and defer a break. We have to use standard
-	// error as our status output stream because we write tunnel host parameters
-	// to standard output.
-	statusLinePrinter := &cmd.StatusLinePrinter{UseStandardError: true}
-	defer statusLinePrinter.BreakIfNonEmpty()
-
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "create failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid create response received")
-		} else if response.HostCredentials != nil {
-			statusLinePrinter.Print(fmt.Sprintf("Created tunnel %s", response.HostCredentials.Identifier))
-			encodedHostCredentials, err := proto.Marshal(response.HostCredentials)
-			if err != nil {
-				return errors.Wrap(err, "unable to encode host parameters")
-			} else if _, err := os.Stdout.Write(encodedHostCredentials); err != nil {
-				return errors.Wrap(err, "unable to write encoded host parameters")
-			}
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&tunnelingsvc.CreateRequest{}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&tunnelingsvc.CreateRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
-	}
+	// Success.
+	return nil
 }
 
 // createCommand is the create command.

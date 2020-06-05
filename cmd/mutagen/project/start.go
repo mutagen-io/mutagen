@@ -384,19 +384,17 @@ func startMain(_ *cobra.Command, _ []string) error {
 	}
 
 	// Create forwarding sessions.
-	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	for _, specification := range forwardingSpecifications {
-		if _, err := forward.CreateWithSpecification(forwardingService, specification); err != nil {
+		if _, err := forward.CreateWithSpecification(daemonConnection, specification); err != nil {
 			return errors.Errorf("unable to create forwarding session (%s): %v", specification.Name, err)
 		}
 	}
 
 	// Create synchronization sessions and track those that we should flush.
-	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 	var sessionsToFlush []string
 	for s, specification := range synchronizationSpecifications {
 		// Perform session creation.
-		session, err := sync.CreateWithSpecification(synchronizationService, specification)
+		session, err := sync.CreateWithSpecification(daemonConnection, specification)
 		if err != nil {
 			return errors.Errorf("unable to create synchronization session (%s): %v", specification.Name, err)
 		}
@@ -410,7 +408,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// Flush synchronization sessions for which flushing has been requested.
 	if len(sessionsToFlush) > 0 {
 		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
-		if err := sync.FlushWithSelection(synchronizationService, flushSelection, false); err != nil {
+		if err := sync.FlushWithSelection(daemonConnection, flushSelection, false); err != nil {
 			return errors.Wrap(err, "unable to flush synchronization session(s)")
 		}
 	}

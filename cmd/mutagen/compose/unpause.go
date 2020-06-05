@@ -11,8 +11,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
-	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
 // resumeSessions handles Mutagen session resuming for the project.
@@ -24,22 +22,18 @@ func resumeSessions(project *compose.Project) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create service clients.
-	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
-	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Create a session selection for the project.
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session resumption.
 	fmt.Println("Resuming forwarding sessions")
-	if err := forward.ResumeWithSelection(forwardingService, projectSelection); err != nil {
+	if err := forward.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("forwarding resumption failed: %w", err)
 	}
 
 	// Perform synchronization session resumption.
 	fmt.Println("Resuming synchronization sessions")
-	if err := sync.ResumeWithSelection(synchronizationService, projectSelection); err != nil {
+	if err := sync.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("synchronization resumption failed: %w", err)
 	}
 

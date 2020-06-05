@@ -11,8 +11,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
-	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
 // terminateSessions handles Mutagen session termination for the project.
@@ -24,22 +22,18 @@ func terminateSessions(project *compose.Project) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create service clients.
-	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
-	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Create a session selection for the project.
 	projectSelection := project.SessionSelection()
 
 	// Perform forwarding session termination.
 	fmt.Println("Terminating forwarding sessions")
-	if err := forward.TerminateWithSelection(forwardingService, projectSelection); err != nil {
+	if err := forward.TerminateWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("forwarding termination failed: %w", err)
 	}
 
 	// Perform synchronization session termination.
 	fmt.Println("Terminating synchronization sessions")
-	if err := sync.TerminateWithSelection(synchronizationService, projectSelection); err != nil {
+	if err := sync.TerminateWithSelection(daemonConnection, projectSelection); err != nil {
 		return fmt.Errorf("synchronization termination failed: %w", err)
 	}
 

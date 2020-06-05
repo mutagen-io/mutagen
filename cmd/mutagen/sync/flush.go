@@ -7,11 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
@@ -23,51 +26,58 @@ func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
 	return flushMain(nil, nil)
 }
 
-// FlushWithSelection is an orchestration convenience method that invokes flush
-// using the provided service client and session selection.
+// FlushWithSelection is an orchestration convenience method that performs a
+// flush operation using the provided daemon connection and session selection.
 func FlushWithSelection(
-	client synchronizationsvc.SynchronizationClient,
+	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
 	skipWait bool,
 ) error {
-	// Invoke the flush method and defer closure of the RPC stream.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.Flush(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke flush")
-	}
-
-	// Send the initial request.
-	request := &synchronizationsvc.FlushRequest{
-		Selection: selection,
-		SkipWait:  skipWait,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send flush request")
-	}
-
 	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
 
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "flush failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid flush response received")
-		} else if response.Message == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvc.FlushRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		}
+	// Initiate prompt hosting. We only support messaging in flush operations.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
 	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the flush operation.
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+	request := &synchronizationsvc.FlushRequest{
+		Prompter:  prompter,
+		Selection: selection,
+		SkipWait:  skipWait,
+	}
+	response, err := synchronizationService.Flush(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid flush response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
 }
 
 // flushMain is the entry point for the flush command.
@@ -89,11 +99,8 @@ func flushMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Perform the flush operation.
-	return FlushWithSelection(sessionService, selection, flushConfiguration.skipWait)
+	return FlushWithSelection(daemonConnection, selection, flushConfiguration.skipWait)
 }
 
 // flushCommand is the flush command.

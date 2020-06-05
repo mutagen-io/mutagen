@@ -7,14 +7,68 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
+
+// resumeWithSelection performs a resume operation using the provided daemon
+// connection and tunnel selection.
+func resumeWithSelection(
+	daemonConnection *grpc.ClientConn,
+	selection *selection.Selection,
+) error {
+	// Create a status line printer.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+
+	// Initiate prompt hosting. We only support messaging in tunnel operations.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
+	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the resume operation.
+	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
+	request := &tunnelingsvc.ResumeRequest{
+		Prompter:  prompter,
+		Selection: selection,
+	}
+	response, err := tunnelingService.Resume(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid resume response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
+}
 
 // resumeMain is the entry point for the resume command.
 func resumeMain(_ *cobra.Command, arguments []string) error {
@@ -35,55 +89,8 @@ func resumeMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a tunneling service client.
-	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
-
-	// Invoke the tunnel resume method. The stream will close when the
-	// associated context is cancelled.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := tunnelingService.Resume(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke resume")
-	}
-
-	// Send the initial request.
-	request := &tunnelingsvc.ResumeRequest{
-		Selection: selection,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send resume request")
-	}
-
-	// Create a status line printer.
-	statusLinePrinter := &cmd.StatusLinePrinter{}
-
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "resume failed")
-		} else if err = response.EnsureValid(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(err, "invalid resume response received")
-		} else if response.Message == "" && response.Prompt == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&tunnelingsvc.ResumeRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&tunnelingsvc.ResumeRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
-	}
+	// Perform the resume operation.
+	return resumeWithSelection(daemonConnection, selection)
 }
 
 // resumeCommand is the resume command.

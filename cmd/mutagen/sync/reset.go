@@ -7,12 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
-	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
@@ -23,57 +25,56 @@ func ResetWithLabelSelector(labelSelector string) error {
 	return resetMain(nil, nil)
 }
 
-// ResetWithSelection is an orchestration convenience method that invokes reset
-// using the provided service client and session selection.
+// ResetWithSelection is an orchestration convenience method that performs a
+// reset operation using the provided daemon connection and session selection.
 func ResetWithSelection(
-	client synchronizationsvc.SynchronizationClient,
+	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
 ) error {
-	// Invoke the reset method and defer closure of the RPC stream.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.Reset(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke reset")
-	}
-
-	// Send the initial request.
-	request := &synchronizationsvc.ResetRequest{
-		Selection: selection,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send reset request")
-	}
-
 	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
 
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "reset failed")
-		} else if err = response.EnsureValid(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(err, "invalid reset response received")
-		} else if response.Message == "" && response.Prompt == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvc.ResetRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		} else if response.Prompt != "" {
-			statusLinePrinter.BreakIfNonEmpty()
-			if response, err := prompting.PromptCommandLine(response.Prompt); err != nil {
-				return errors.Wrap(err, "unable to perform prompting")
-			} else if err = stream.Send(&synchronizationsvc.ResetRequest{Response: response}); err != nil {
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send prompt response")
-			}
-		}
+	// Initiate prompt hosting.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, true,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
 	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the reset operation.
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+	request := &synchronizationsvc.ResetRequest{
+		Prompter:  prompter,
+		Selection: selection,
+	}
+	response, err := synchronizationService.Reset(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid reset response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
 }
 
 // resetMain is the entry point for the reset command.
@@ -95,11 +96,8 @@ func resetMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Perform the reset operation.
-	return ResetWithSelection(sessionService, selection)
+	return ResetWithSelection(daemonConnection, selection)
 }
 
 // resetCommand is the reset command.

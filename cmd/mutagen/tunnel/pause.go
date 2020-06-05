@@ -7,13 +7,68 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 )
+
+// pauseWithSelection performs a pause operation using the provided daemon
+// connection and tunnel selection.
+func pauseWithSelection(
+	daemonConnection *grpc.ClientConn,
+	selection *selection.Selection,
+) error {
+	// Create a status line printer.
+	statusLinePrinter := &cmd.StatusLinePrinter{}
+
+	// Initiate prompt hosting. We only support messaging in tunnel operations.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
+	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the pause operation.
+	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
+	request := &tunnelingsvc.PauseRequest{
+		Prompter:  prompter,
+		Selection: selection,
+	}
+	response, err := tunnelingService.Pause(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid pause response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
+}
 
 // pauseMain is the entry point for the pause command.
 func pauseMain(_ *cobra.Command, arguments []string) error {
@@ -34,47 +89,8 @@ func pauseMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a tunneling service client.
-	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
-
-	// Invoke the tunnel pause method. The stream will close when the
-	// associated context is cancelled.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := tunnelingService.Pause(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
-	}
-
-	// Send the initial request.
-	request := &tunnelingsvc.PauseRequest{
-		Selection: selection,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
-	}
-
-	// Create a status line printer.
-	statusLinePrinter := &cmd.StatusLinePrinter{}
-
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid pause response received")
-		} else if response.Message == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&tunnelingsvc.PauseRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		}
-	}
+	// Perform the pause operation.
+	return pauseWithSelection(daemonConnection, selection)
 }
 
 // pauseCommand is the pause command.

@@ -7,11 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
+	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
@@ -22,49 +25,56 @@ func PauseWithLabelSelector(labelSelector string) error {
 	return pauseMain(nil, nil)
 }
 
-// PauseWithSelection is an orchestration convenience method that invokes pause
-// using the provided service client and session selection.
+// PauseWithSelection is an orchestration convenience method that performs a
+// pause operation using the provided service client and session selection.
 func PauseWithSelection(
-	client synchronizationsvc.SynchronizationClient,
+	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
 ) error {
-	// Invoke the pause method and defer closure of the RPC stream.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	stream, err := client.Pause(ctx)
-	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to invoke pause")
-	}
-
-	// Send the initial request.
-	request := &synchronizationsvc.PauseRequest{
-		Selection: selection,
-	}
-	if err := stream.Send(request); err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send pause request")
-	}
-
 	// Create a status line printer.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
 
-	// Receive and process responses until we're done.
-	for {
-		if response, err := stream.Recv(); err != nil {
-			statusLinePrinter.BreakIfNonEmpty()
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "pause failed")
-		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid pause response received")
-		} else if response.Message == "" {
-			statusLinePrinter.Clear()
-			return nil
-		} else if response.Message != "" {
-			statusLinePrinter.Print(response.Message)
-			if err := stream.Send(&synchronizationsvc.PauseRequest{}); err != nil {
-				statusLinePrinter.BreakIfNonEmpty()
-				return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "unable to send message response")
-			}
-		}
+	// Initiate prompt hosting. We only support messaging in pause operations.
+	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
+	promptingCtx, promptingCancel := context.WithCancel(context.Background())
+	prompter, promptingErrors, err := promptingsvc.Host(
+		promptingCtx, promptingService,
+		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
+	)
+	if err != nil {
+		promptingCancel()
+		return errors.Wrap(err, "unable to initiate prompting")
 	}
+
+	// Defer prompting termination and output cleanup. If the operation was
+	// successful, then we'll clear output, otherwise we'll move to a new line.
+	var successful bool
+	defer func() {
+		promptingCancel()
+		<-promptingErrors
+		if successful {
+			statusLinePrinter.Clear()
+		} else {
+			statusLinePrinter.BreakIfNonEmpty()
+		}
+	}()
+
+	// Perform the pause operation.
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+	request := &synchronizationsvc.PauseRequest{
+		Prompter:  prompter,
+		Selection: selection,
+	}
+	response, err := synchronizationService.Pause(context.Background(), request)
+	if err != nil {
+		return grpcutil.PeelAwayRPCErrorLayer(err)
+	} else if err = response.EnsureValid(); err != nil {
+		return errors.Wrap(err, "invalid pause response received")
+	}
+
+	// Success.
+	successful = true
+	return nil
 }
 
 // pauseMain is the entry point for the pause command.
@@ -86,11 +96,8 @@ func pauseMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
-
 	// Perform the pause operation.
-	return PauseWithSelection(sessionService, selection)
+	return PauseWithSelection(daemonConnection, selection)
 }
 
 // pauseCommand is the pause command.

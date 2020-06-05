@@ -10,6 +10,8 @@ import (
 
 	"github.com/fatih/color"
 
+	"google.golang.org/grpc"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -66,19 +68,22 @@ func ListWithLabelSelector(labelSelector string, long bool) error {
 	return listMain(nil, nil)
 }
 
-// ListWithSelection is an orchestration convenience method that invokes list
-// using the provided service client and session selection.
+// ListWithSelection is an orchestration convenience method that performs a list
+// operation using the provided daemon connection and session selection and then
+// prints status information.
 func ListWithSelection(
-	client forwardingsvc.ForwardingClient,
+	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
+	long bool,
 ) error {
-	// Invoke list.
+	// Perform the list operation.
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	request := &forwardingsvc.ListRequest{
 		Selection: selection,
 	}
-	response, err := client.List(context.Background(), request)
+	response, err := forwardingService.List(context.Background(), request)
 	if err != nil {
-		return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")
+		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		return errors.Wrap(err, "invalid list response received")
 	}
@@ -87,7 +92,7 @@ func ListWithSelection(
 	if len(response.SessionStates) > 0 {
 		for _, state := range response.SessionStates {
 			fmt.Println(cmd.DelimiterLine)
-			printSession(state, listConfiguration.long)
+			printSession(state, long)
 			printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
 			printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
 			printSessionStatus(state)
@@ -122,11 +127,8 @@ func listMain(_ *cobra.Command, arguments []string) error {
 	}
 	defer daemonConnection.Close()
 
-	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
-
-	// Perform the list operation.
-	return ListWithSelection(sessionService, selection)
+	// Perform the list operation and print status information.
+	return ListWithSelection(daemonConnection, selection, listConfiguration.long)
 }
 
 // listCommand is the list command.
