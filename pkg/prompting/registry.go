@@ -1,9 +1,9 @@
 package prompting
 
 import (
+	"errors"
+	"fmt"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 )
@@ -20,7 +20,7 @@ func RegisterPrompter(prompter Prompter) (string, error) {
 	// Generate a unique identifier for this prompter.
 	identifier, err := identifier.New(identifier.PrefixPrompter)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to generate prompter identifier")
+		return "", fmt.Errorf("unable to generate prompter identifier: %w", err)
 	}
 
 	// Perform registration.
@@ -35,6 +35,11 @@ func RegisterPrompter(prompter Prompter) (string, error) {
 // RegisterPrompterWithIdentifier registers a prompter with the global registry
 // using the specified identifier.
 func RegisterPrompterWithIdentifier(identifier string, prompter Prompter) error {
+	// Enforce that the identifier is non-empty.
+	if identifier == "" {
+		return errors.New("empty identifier")
+	}
+
 	// Create and populate a "holder" (channel) for passing the prompter around.
 	holder := make(chan Prompter, 1)
 	holder <- prompter
@@ -109,7 +114,7 @@ func Message(identifier, message string) error {
 
 	// Handle errors.
 	if err != nil {
-		errors.Wrap(err, "unable to message")
+		fmt.Errorf("unable to message: %w", err)
 	}
 
 	// Success.
@@ -141,7 +146,7 @@ func Prompt(identifier, prompt string) (string, error) {
 
 	// Handle errors.
 	if err != nil {
-		return "", errors.Wrap(err, "unable to prompt")
+		return "", fmt.Errorf("unable to prompt: %w", err)
 	}
 
 	// Success.
