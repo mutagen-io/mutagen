@@ -6,10 +6,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/compose"
 )
 
 // generateMain is the entry point for the generate command.
 func generateMain(_ *cobra.Command, _ []string) error {
+	// HACK: Remove the adapter command used to keep the Docker Compose command
+	// hierarchy separate and replace it with the actual Docker Compose command
+	// hierarchy for the purposes of completion script generation.
+	rootCommand.RemoveCommand(compose.RootCommand)
+	rootCommand.AddCommand(compose.ComposeCommand)
+
 	// Ensure that at least one flag has been specified.
 	flagSpecified := generateConfiguration.bashCompletionScript != ""
 	if !flagSpecified {

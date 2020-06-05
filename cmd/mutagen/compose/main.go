@@ -168,7 +168,7 @@ func passthrough(command *cobra.Command, arguments []string) {
 	handleTopLevelFlags()
 
 	// Reconstitute top-level flags and pass control to Docker Compose.
-	topLevelFlags := reconstituteFlags(composeCommand.Flags(), nil)
+	topLevelFlags := reconstituteFlags(ComposeCommand.Flags(), nil)
 	invokeAndExit(topLevelFlags, command.CalledAs(), arguments)
 }
 
@@ -203,7 +203,7 @@ func wrapper(run func(*cobra.Command, []string) error) func(*cobra.Command, []st
 // commandHelp is a Cobra help function that shells out to Docker Compose to
 // display help information for Docker Compose commands.
 func commandHelp(command *cobra.Command, _ []string) {
-	if command == composeCommand {
+	if command == ComposeCommand {
 		invokeAndExit([]string{"--help"}, "", nil)
 	}
 	invokeAndExit(nil, command.CalledAs(), []string{"--help"})
@@ -231,8 +231,8 @@ func composeMain(_ *cobra.Command, arguments []string) error {
 	return fmt.Errorf("unknown or unsupported command: %s", arguments[0])
 }
 
-// composeCommand is the root command of the compose command hierarchy.
-var composeCommand = &cobra.Command{
+// ComposeCommand is the root command of the compose command hierarchy.
+var ComposeCommand = &cobra.Command{
 	Use:              "compose",
 	Short:            "Run Docker Compose with Mutagen enhancements",
 	RunE:             wrapper(composeMain),
@@ -268,10 +268,10 @@ func init() {
 	// Avoid Cobra's built-in help functionality that's triggered when the
 	// -h/--help flag is present. We still explicitly register a -h/--help flag
 	// below for shell completion support.
-	composeCommand.SetHelpFunc(commandHelp)
+	ComposeCommand.SetHelpFunc(commandHelp)
 
 	// Grab a handle for the command line flags.
-	flags := composeCommand.Flags()
+	flags := ComposeCommand.Flags()
 
 	// Wire up flags. We don't bother specifying usage information since we'll
 	// shell out to Docker Compose if we need to display help information.
@@ -295,7 +295,7 @@ func init() {
 	flags.StringVar(&composeConfiguration.EnvFile, "env-file", "", "")
 
 	// Register commands.
-	composeCommand.AddCommand(
+	ComposeCommand.AddCommand(
 		buildCommand,
 		configCommand,
 		createCommand,
@@ -343,10 +343,10 @@ func init() {
 // the Mutagen command hierarchy to the Docker Compose command hierarchy.
 func rootMain(_ *cobra.Command, arguments []string) {
 	// Set the default argument source for the Docker Compose command hierarchy.
-	composeCommand.SetArgs(arguments)
+	ComposeCommand.SetArgs(arguments)
 
 	// Execute the root command of the Docker Compose command hierarchy.
-	if err := composeCommand.Execute(); err != nil {
+	if err := ComposeCommand.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -360,8 +360,8 @@ func rootMain(_ *cobra.Command, arguments []string) {
 // root and changes certain behaviors (such as command-not-found errors), so we
 // really want to isolate its effects.
 var RootCommand = &cobra.Command{
-	Use:                composeCommand.Use,
-	Short:              composeCommand.Short,
+	Use:                ComposeCommand.Use,
+	Short:              ComposeCommand.Short,
 	Run:                rootMain,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,

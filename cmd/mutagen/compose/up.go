@@ -244,7 +244,7 @@ func upMain(command *cobra.Command, arguments []string) error {
 	// Compute the effective top-level flags that we'll use. We reconstitute
 	// flags from the root command, but filter project-related flags and replace
 	// them with the fully resolved flags from the loaded project.
-	topLevelFlags := reconstituteFlags(composeCommand.Flags(), topLevelProjectFlagNames)
+	topLevelFlags := reconstituteFlags(ComposeCommand.Flags(), topLevelProjectFlagNames)
 	topLevelFlags = append(topLevelFlags, project.TopLevelFlags()...)
 
 	// Ensure that the Mutagen service is running and up-to-date.
