@@ -11,6 +11,8 @@ type streamPrompter struct {
 	allowPrompts bool
 	// stream is the underlying Prompting_HostServer stream.
 	stream Prompting_HostServer
+	// errored indicates whether or not the stream has encountered an error.
+	errored bool
 }
 
 // sendReceive performs a send/receive cycle by sending a HostResponse and
@@ -39,21 +41,40 @@ func (p *streamPrompter) sendReceive(response *HostResponse) (*HostRequest, erro
 
 // Message implements the Message method of Prompter.
 func (p *streamPrompter) Message(message string) error {
-	_, err := p.sendReceive(&HostResponse{Message: message})
-	return err
+	// Check if a previous transmission error has occurred.
+	if p.errored {
+		return errors.New("prompter encountered previous error")
+	}
+
+	// Otherwise perform the messaging operation.
+	if _, err := p.sendReceive(&HostResponse{Message: message}); err != nil {
+		p.errored = true
+		return err
+	}
+
+	// Success.
+	return nil
 }
 
 // Prompt implements the Prompt method of Prompter.
 func (p *streamPrompter) Prompt(prompt string) (string, error) {
+	// Check if a previous transmission error has occurred.
+	if p.errored {
+		return "", errors.New("prompter encountered previous error")
+	}
+
 	// Check whether or not prompts are supported by this client.
 	if !p.allowPrompts {
 		return "", errors.New("prompter only supports messaging")
 	}
 
 	// Perform the exchange.
-	if response, err := p.sendReceive(&HostResponse{IsPrompt: true, Message: prompt}); err != nil {
+	response, err := p.sendReceive(&HostResponse{IsPrompt: true, Message: prompt})
+	if err != nil {
+		p.errored = true
 		return "", err
-	} else {
-		return response.Response, nil
 	}
+
+	// Success.
+	return response.Response, nil
 }
