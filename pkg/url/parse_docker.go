@@ -18,6 +18,7 @@ var DockerEnvironmentVariables = []string{
 	"DOCKER_TLS_VERIFY",
 	"DOCKER_CERT_PATH",
 	"DOCKER_CONTEXT",
+	"DOCKER_API_VERSION",
 }
 
 // isDockerURL checks whether or not a URL is a Docker URL. It requires the
