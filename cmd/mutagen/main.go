@@ -126,6 +126,15 @@ func main() {
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
 
+	// HACK: If we are performing command line completion, then remove the
+	// adapter command used to keep the Docker Compose command hierarchy
+	// separate and replace it with the actual Docker Compose command hierarchy
+	// so that completions work properly.
+	if cmd.PerformingShellCompletion {
+		rootCommand.RemoveCommand(compose.RootCommand)
+		rootCommand.AddCommand(compose.ComposeCommand)
+	}
+
 	// HACK: Modify the root command help to hide legacy root sync commands.
 	defaultHelpFunction := rootCommand.HelpFunc()
 	rootCommand.SetHelpFunc(func(command *cobra.Command, arguments []string) {
