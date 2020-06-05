@@ -201,7 +201,7 @@ func reconcileSessions(project *compose.Project) error {
 	// Create synchronization sessions.
 	var sessionsToFlush []string
 	for _, specification := range synchronizationCreateSpecifications {
-		fmt.Printf("Creating synchronization session \"%s\"", specification.Name)
+		fmt.Printf("Creating synchronization session \"%s\"\n", specification.Name)
 		if s, err := sync.CreateWithSpecification(daemonConnection, specification); err != nil {
 			return fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
 		} else {
