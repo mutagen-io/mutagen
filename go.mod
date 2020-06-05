@@ -15,7 +15,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
-	github.com/hectane/go-acl v0.0.0-20190227043046-e28f47eff0c4
+	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/joho/godotenv v1.3.0
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
