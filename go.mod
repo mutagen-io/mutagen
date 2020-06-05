@@ -33,6 +33,5 @@ require (
 	google.golang.org/protobuf v1.23.0
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200603094226-e3079894b1e8
-	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
-	k8s.io/klog v0.3.0 // indirect
+	k8s.io/apimachinery v0.18.3
 )
