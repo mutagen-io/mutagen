@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -11,22 +11,37 @@ import (
 
 // generateMain is the entry point for the generate command.
 func generateMain(_ *cobra.Command, _ []string) error {
-	// HACK: Remove the adapter command used to keep the Docker Compose command
-	// hierarchy separate and replace it with the actual Docker Compose command
-	// hierarchy for the purposes of completion script generation.
+	// HACK: Remove the adapter command that we use to keep the Docker Compose
+	// command hierarchy separate and replace it with the actual Docker Compose
+	// command hierarchy for the purposes of completion script generation.
 	rootCommand.RemoveCommand(compose.RootCommand)
 	rootCommand.AddCommand(compose.ComposeCommand)
 
-	// Ensure that at least one flag has been specified.
-	flagSpecified := generateConfiguration.bashCompletionScript != ""
-	if !flagSpecified {
-		return errors.New("no flags specified")
-	}
-
-	// Generate bash completion script, if requested.
+	// Generate a Bash completion script, if requested.
 	if generateConfiguration.bashCompletionScript != "" {
 		if err := rootCommand.GenBashCompletionFile(generateConfiguration.bashCompletionScript); err != nil {
-			return errors.Wrap(err, "unable to generate bash completion script")
+			return fmt.Errorf("unable to generate Bash completion script: %w", err)
+		}
+	}
+
+	// Generate a fish completion script, if requested.
+	if generateConfiguration.fishCompletionScript != "" {
+		if err := rootCommand.GenFishCompletionFile(generateConfiguration.fishCompletionScript, true); err != nil {
+			return fmt.Errorf("unable to generate fish completion script: %w", err)
+		}
+	}
+
+	// Generate a PowerShell completion script, if requested.
+	if generateConfiguration.powerShellCompletionScript != "" {
+		if err := rootCommand.GenPowerShellCompletionFile(generateConfiguration.powerShellCompletionScript); err != nil {
+			return fmt.Errorf("unable to generate PowerShell completion script: %w", err)
+		}
+	}
+
+	// Generate a Zsh completion script, if requested.
+	if generateConfiguration.zshCompletionScript != "" {
+		if err := rootCommand.GenZshCompletionFile(generateConfiguration.zshCompletionScript); err != nil {
+			return fmt.Errorf("unable to generate Zsh completion script: %w", err)
 		}
 	}
 
@@ -49,8 +64,17 @@ var generateConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
 	// bashCompletionScript indicates the path, if any, at which to generate the
-	// bash completion script.
+	// Bash completion script.
 	bashCompletionScript string
+	// fishCompletionScript indicates the path, if any, at which to generate the
+	// fish completion script.
+	fishCompletionScript string
+	// powerShellCompletionScript indicates the path, if any, at which to
+	// generate the PowerShell completion script.
+	powerShellCompletionScript string
+	// zshCompletionScript indicates the path, if any, at which to generate the
+	// Zsh completion script.
+	zshCompletionScript string
 }
 
 func init() {
@@ -65,5 +89,8 @@ func init() {
 	flags.BoolVarP(&generateConfiguration.help, "help", "h", false, "Show help information")
 
 	// Wire up file generation flags.
-	flags.StringVar(&generateConfiguration.bashCompletionScript, "bash-completion-script", "", "Generate bash completion script")
+	flags.StringVar(&generateConfiguration.bashCompletionScript, "bash-completion-script", "", "Specify the Bash completion script output path")
+	flags.StringVar(&generateConfiguration.fishCompletionScript, "fish-completion-script", "", "Specify the fish completion script output path")
+	flags.StringVar(&generateConfiguration.powerShellCompletionScript, "powershell-completion-script", "", "Specify the PowerShell completion script output path")
+	flags.StringVar(&generateConfiguration.zshCompletionScript, "zsh-completion-script", "", "Specify the Zsh completion script output path")
 }

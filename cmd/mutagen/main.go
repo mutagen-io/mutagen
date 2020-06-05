@@ -126,8 +126,8 @@ func main() {
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
 
-	// HACK: If we are performing command line completion, then remove the
-	// adapter command used to keep the Docker Compose command hierarchy
+	// HACK: If we're performing command line completion, then remove the
+	// adapter command that we use to keep the Docker Compose command hierarchy
 	// separate and replace it with the actual Docker Compose command hierarchy
 	// so that completions work properly.
 	if cmd.PerformingShellCompletion {
