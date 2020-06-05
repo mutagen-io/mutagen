@@ -21,6 +21,9 @@ const (
 	// DockerCertPathEnvironmentVariable is the name of the DOCKER_CERT_PATH
 	// environment variable.
 	DockerCertPathEnvironmentVariable = "DOCKER_CERT_PATH"
+	// DockerAPIVersionEnvironmentVariable is the name of the DOCKER_API_VERSION
+	// environment variable.
+	DockerAPIVersionEnvironmentVariable = "DOCKER_API_VERSION"
 )
 
 // DockerEnvironmentVariables is a list of Docker environment variables that
@@ -29,6 +32,7 @@ var DockerEnvironmentVariables = []string{
 	DockerHostEnvironmentVariable,
 	DockerTLSVerifyEnvironmentVariable,
 	DockerCertPathEnvironmentVariable,
+	DockerAPIVersionEnvironmentVariable,
 }
 
 // isDockerURL checks whether or not a URL is a Docker URL. It requires the
