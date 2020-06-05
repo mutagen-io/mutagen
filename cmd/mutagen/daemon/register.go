@@ -3,8 +3,6 @@ package daemon
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/daemon"
@@ -18,7 +16,7 @@ func registerMain(_ *cobra.Command, _ []string) error {
 // registerCommand is the register command.
 var registerCommand = &cobra.Command{
 	Use:          "register",
-	Short:        "Register the Mutagen daemon to start automatically on login",
+	Short:        "Register the Mutagen daemon to start automatically on login [Experimental]",
 	Args:         cmd.DisallowArguments,
 	RunE:         registerMain,
 	SilenceUsage: true,
@@ -31,9 +29,6 @@ var registerConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	registerCommand.Short = registerCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := registerCommand.Flags()
 

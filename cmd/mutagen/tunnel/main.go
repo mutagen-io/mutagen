@@ -2,8 +2,6 @@ package tunnel
 
 import (
 	"github.com/spf13/cobra"
-
-	"github.com/fatih/color"
 )
 
 // tunnelMain is the entry point for the tunnel command.
@@ -21,7 +19,7 @@ func tunnelMain(command *cobra.Command, _ []string) error {
 // TunnelCommand is the tunnel command.
 var TunnelCommand = &cobra.Command{
 	Use:          "tunnel",
-	Short:        "Create and manage tunnels",
+	Short:        "Create and manage tunnels [Experimental]",
 	RunE:         tunnelMain,
 	SilenceUsage: true,
 }
@@ -33,9 +31,6 @@ var tunnelConfiguration struct {
 }
 
 func init() {
-	// Mark the command as experimental.
-	TunnelCommand.Short = TunnelCommand.Short + color.YellowString(" [Experimental]")
-
 	// Grab a handle for the command line flags.
 	flags := TunnelCommand.Flags()
 

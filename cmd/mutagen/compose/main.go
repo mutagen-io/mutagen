@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/compose"
@@ -234,7 +232,7 @@ func composeMain(_ *cobra.Command, arguments []string) error {
 // ComposeCommand is the root command of the compose command hierarchy.
 var ComposeCommand = &cobra.Command{
 	Use:              "compose",
-	Short:            "Run Docker Compose with Mutagen enhancements",
+	Short:            "Run Docker Compose with Mutagen enhancements [Experimental]",
 	RunE:             wrapper(composeMain),
 	SilenceUsage:     true,
 	TraverseChildren: true,
@@ -365,9 +363,4 @@ var RootCommand = &cobra.Command{
 	Run:                rootMain,
 	SilenceUsage:       true,
 	DisableFlagParsing: true,
-}
-
-func init() {
-	// Mark the command as experimental.
-	RootCommand.Short = RootCommand.Short + color.YellowString(" [Experimental]")
 }
