@@ -19,7 +19,7 @@ func syncMain(command *cobra.Command, arguments []string) error {
 // SyncCommand is the sync command.
 var SyncCommand = &cobra.Command{
 	Use:          "sync",
-	Short:        "Create and manage synchronization sessions",
+	Short:        "Create and manage file synchronization sessions",
 	RunE:         syncMain,
 	SilenceUsage: true,
 }

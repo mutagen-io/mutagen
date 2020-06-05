@@ -26,7 +26,7 @@ func projectMain(command *cobra.Command, _ []string) error {
 // ProjectCommand is the project command.
 var ProjectCommand = &cobra.Command{
 	Use:          "project",
-	Short:        "Orchestrate sessions for a project",
+	Short:        "Orchestrate sessions for a Mutagen project",
 	RunE:         projectMain,
 	SilenceUsage: true,
 }

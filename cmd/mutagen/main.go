@@ -34,7 +34,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 // rootCommand is the root command.
 var rootCommand = &cobra.Command{
 	Use:          "mutagen",
-	Short:        "Mutagen is a remote development tool built on high-performance synchronization",
+	Short:        "Mutagen is a remote development tool built on fast file synchronization",
 	RunE:         rootMain,
 	SilenceUsage: true,
 }

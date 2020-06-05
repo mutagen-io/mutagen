@@ -19,7 +19,7 @@ func forwardMain(command *cobra.Command, _ []string) error {
 // ForwardCommand is the forward command.
 var ForwardCommand = &cobra.Command{
 	Use:          "forward",
-	Short:        "Create and manage forwarding sessions",
+	Short:        "Create and manage network forwarding sessions",
 	RunE:         forwardMain,
 	SilenceUsage: true,
 }
