@@ -195,11 +195,23 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-Go support for Protocol Buffers
+Go support for Protocol Buffers (Legacy)
 
 https://github.com/golang/protobuf
 
 Copyright 2010 The Go Authors.  All rights reserved.
+
+Used under the terms of the 3-Clause BSD License (Google version). A copy of
+this license can be found later in this text and a templated version can be
+found online at https://opensource.org/licenses/BSD-3-Clause.
+
+--------------------------------------------------------------------------------
+
+Go support for Protocol Buffers
+
+https://github.com/protocolbuffers/protobuf-go
+
+Copyright (c) 2018 The Go Authors. All rights reserved.
 
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
 this license can be found later in this text and a templated version can be

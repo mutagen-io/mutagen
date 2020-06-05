@@ -12,7 +12,7 @@ require (
 	github.com/eknkc/basex v1.0.0
 	github.com/fatih/color v1.9.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
 	github.com/hectane/go-acl v0.0.0-20190227043046-e28f47eff0c4
