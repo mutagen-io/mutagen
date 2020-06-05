@@ -49,7 +49,7 @@ func Host(
 		return "", nil, fmt.Errorf("unable to receive initialization response: %w", err)
 	} else if err = response.EnsureValid(true, allowPrompts); err != nil {
 		cancel()
-		return "", nil, fmt.Errorf("invalid initialization response: %w", err)
+		return "", nil, fmt.Errorf("invalid initialization response received: %w", err)
 	} else {
 		identifier = response.Identifier
 	}
