@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+
+	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
 // StatusLinePrinter provides printing facilities for dynamically updating
@@ -82,4 +84,44 @@ func (p *StatusLinePrinter) BreakIfNonEmpty() {
 		// Update our non-empty status.
 		p.nonEmpty = false
 	}
+}
+
+// StatusLinePrompter adapts a StatusLinePrinter to act as a Mutagen prompter.
+// The printer will be used to perform messaging and PromptCommandLine will be
+// used to perform prompting.
+type StatusLinePrompter struct {
+	// Printer is the underlying printer.
+	Printer *StatusLinePrinter
+}
+
+// Message implements prompting.Prompter.Message.
+func (p *StatusLinePrompter) Message(message string) error {
+	// Print the message.
+	p.Printer.Print(message)
+
+	// Success.
+	return nil
+}
+
+// Prompt implements prompting.Prompter.Prompt.
+func (p *StatusLinePrompter) Prompt(message string) (string, error) {
+	// If there's any existing content in the printer, then keep it in place and
+	// start a new line of output. We do this (as opposed to clearing the line)
+	// because that content most likely provides some context for the prompt.
+	//
+	// HACK: This is somewhat of a heuristic that relies on knowledge of how
+	// Mutagen's internal prompting/messaging works in practice.
+	p.Printer.BreakIfNonEmpty()
+
+	// Perform command line prompting.
+	//
+	// TODO: Should we respect the printer's UseStandardError field here?
+	// Unfortunately the gopass package doesn't provide a mechanism to specify
+	// its output stream. But in practice the UseStandardError field is only
+	// used for tunnel-creation-related output, so if we remove tunnels, then we
+	// can probably remove UseStandardError. Although, if we want to support
+	// formatted data output, then we'll probably want to keep daemon autostart
+	// notices on standard error. For now it's not a problem - we don't prompt
+	// in cases where we need standard error for output (we only message).
+	return prompting.PromptCommandLine(message)
 }

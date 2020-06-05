@@ -1,3 +1,2 @@
-// Package cmd contains various facilities for the command line portion of
-// Mutagen.
+// Package cmd contains utilities for command line tools.
 package cmd
