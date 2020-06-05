@@ -253,7 +253,7 @@ func TestFormatDocker(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker://container/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+		expected:          "docker://container/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=|DOCKER_API_VERSION=",
 	}
 	test.run(t)
 }
@@ -270,7 +270,7 @@ func TestFormatForwardingDocker(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker://container:tcp4:localhost:8080|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=",
+		expected:          "docker://container:tcp4:localhost:8080|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=|DOCKER_CERT_PATH=|DOCKER_API_VERSION=",
 	}
 	test.run(t)
 }
@@ -288,7 +288,7 @@ func TestFormatDockerWithUsernameAndHomeRelativePath(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker://user@container/~/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
+		expected:          "docker://user@container/~/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=|DOCKER_API_VERSION=",
 	}
 	test.run(t)
 }
@@ -306,7 +306,7 @@ func TestFormatDockerWithUsernameAndUserRelativePath(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          "docker://user@container/~otheruser/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=",
+		expected:          "docker://user@container/~otheruser/test/path/to/the file|DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=|DOCKER_API_VERSION=",
 	}
 	test.run(t)
 }
@@ -323,7 +323,7 @@ func TestFormatDockerWithWindowsPathPath(t *testing.T) {
 			},
 		},
 		environmentPrefix: "|",
-		expected:          `docker://container/C:\A\Windows\File Path |DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=`,
+		expected:          `docker://container/C:\A\Windows\File Path |DOCKER_HOST=unix:///path/to/docker.sock|DOCKER_TLS_VERIFY=true|DOCKER_CERT_PATH=|DOCKER_API_VERSION=`,
 	}
 	test.run(t)
 }
