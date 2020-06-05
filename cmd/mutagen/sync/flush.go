@@ -18,14 +18,6 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-// FlushWithLabelSelector is an orchestration convenience method that invokes
-// the flush command using the specified label selector.
-func FlushWithLabelSelector(labelSelector string, skipWait bool) error {
-	flushConfiguration.labelSelector = labelSelector
-	flushConfiguration.skipWait = skipWait
-	return flushMain(nil, nil)
-}
-
 // FlushWithSelection is an orchestration convenience method that performs a
 // flush operation using the provided daemon connection and session selection.
 func FlushWithSelection(

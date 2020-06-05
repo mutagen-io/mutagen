@@ -12,12 +12,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
+	"github.com/mutagen-io/mutagen/pkg/selection"
 )
 
 // pauseMain is the entry point for the pause command.
@@ -109,16 +111,25 @@ func pauseMain(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Compute the label selector that we're going to use to pause sessions.
-	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Compute the selection that we're going to use to pause sessions.
+	selection := &selection.Selection{
+		LabelSelector: fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier),
+	}
 
 	// Pause forwarding sessions.
-	if err := forward.PauseWithLabelSelector(labelSelector); err != nil {
+	if err := forward.PauseWithSelection(daemonConnection, selection); err != nil {
 		return errors.Wrap(err, "unable to pause forwarding session(s)")
 	}
 
 	// Pause synchronization sessions.
-	if err := sync.PauseWithLabelSelector(labelSelector); err != nil {
+	if err := sync.PauseWithSelection(daemonConnection, selection); err != nil {
 		return errors.Wrap(err, "unable to pause synchronization session(s)")
 	}
 

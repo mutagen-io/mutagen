@@ -18,13 +18,6 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-// PauseWithLabelSelector is an orchestration convenience method that invokes
-// the pause command using the specified label selector.
-func PauseWithLabelSelector(labelSelector string) error {
-	pauseConfiguration.labelSelector = labelSelector
-	return pauseMain(nil, nil)
-}
-
 // PauseWithSelection is an orchestration convenience method that performs a
 // pause operation using the provided service client and session selection.
 func PauseWithSelection(

@@ -12,11 +12,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
+	"github.com/mutagen-io/mutagen/pkg/selection"
 )
 
 // resetMain is the entry point for the reset command.
@@ -94,11 +96,20 @@ func resetMain(_ *cobra.Command, _ []string) error {
 		return errors.New("invalid project identifier found in project lock")
 	}
 
-	// Compute the label selector that we're going to use to reset sessions.
-	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Compute the selection that we're going to use to reset sessions.
+	selection := &selection.Selection{
+		LabelSelector: fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier),
+	}
 
 	// Reset synchronization sessions.
-	if err := sync.ResetWithLabelSelector(labelSelector); err != nil {
+	if err := sync.ResetWithSelection(daemonConnection, selection); err != nil {
 		return errors.Wrap(err, "unable to reset synchronization session(s)")
 	}
 

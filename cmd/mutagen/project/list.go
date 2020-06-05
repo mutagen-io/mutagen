@@ -12,12 +12,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
+	"github.com/mutagen-io/mutagen/pkg/selection"
 )
 
 // listMain is the entry point for the list command.
@@ -95,12 +97,21 @@ func listMain(_ *cobra.Command, _ []string) error {
 		return errors.New("invalid project identifier found in project lock")
 	}
 
-	// Compute the label selector that we're going to use to list sessions.
-	labelSelector := fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier)
+	// Connect to the daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return errors.Wrap(err, "unable to connect to daemon")
+	}
+	defer daemonConnection.Close()
+
+	// Compute the selection that we're going to use to list sessions.
+	selection := &selection.Selection{
+		LabelSelector: fmt.Sprintf("%s=%s", project.LabelKey, projectIdentifier),
+	}
 
 	// List forwarding sessions.
 	fmt.Println("Forwarding sessions:")
-	if err := forward.ListWithLabelSelector(labelSelector, listConfiguration.long); err != nil {
+	if err := forward.ListWithSelection(daemonConnection, selection, listConfiguration.long); err != nil {
 		return errors.Wrap(err, "unable to list forwarding session(s)")
 	}
 
@@ -109,7 +120,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 
 	// List synchronization sessions.
 	fmt.Println("Synchronization sessions:")
-	if err := sync.ListWithLabelSelector(labelSelector, listConfiguration.long); err != nil {
+	if err := sync.ListWithSelection(daemonConnection, selection, listConfiguration.long); err != nil {
 		return errors.Wrap(err, "unable to list synchronization session(s)")
 	}
 

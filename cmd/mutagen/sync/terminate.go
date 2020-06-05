@@ -18,13 +18,6 @@ import (
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 )
 
-// TerminateWithLabelSelector is an orchestration convenience method that
-// invokes the terminate command using the specified label selector.
-func TerminateWithLabelSelector(labelSelector string) error {
-	terminateConfiguration.labelSelector = labelSelector
-	return terminateMain(nil, nil)
-}
-
 // TerminateWithSelection is an orchestration convenience method that performs a
 // terminate operation using the provided daemon connection and session
 // selection.

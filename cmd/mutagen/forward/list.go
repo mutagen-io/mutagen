@@ -60,14 +60,6 @@ func printSessionStatus(state *forwarding.State) {
 	}
 }
 
-// ListWithLabelSelector is an orchestration convenience method that invokes the
-// list command using the specified label selector.
-func ListWithLabelSelector(labelSelector string, long bool) error {
-	listConfiguration.long = long
-	listConfiguration.labelSelector = labelSelector
-	return listMain(nil, nil)
-}
-
 // ListWithSelection is an orchestration convenience method that performs a list
 // operation using the provided daemon connection and session selection and then
 // prints status information.

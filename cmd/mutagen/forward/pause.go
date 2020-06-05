@@ -18,13 +18,6 @@ import (
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
 
-// PauseWithLabelSelector is an orchestration convenience method that invokes
-// the pause command using the specified label selector.
-func PauseWithLabelSelector(labelSelector string) error {
-	pauseConfiguration.labelSelector = labelSelector
-	return pauseMain(nil, nil)
-}
-
 // PauseWithSelection is an orchestration convenience method that performs a
 // pause operation using the provided daemon connection and session selection.
 func PauseWithSelection(

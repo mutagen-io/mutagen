@@ -18,13 +18,6 @@ import (
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 )
 
-// ResumeWithLabelSelector is an orchestration convenience method that invokes
-// the resume command using the specified label selector.
-func ResumeWithLabelSelector(labelSelector string) error {
-	resumeConfiguration.labelSelector = labelSelector
-	return resumeMain(nil, nil)
-}
-
 // ResumeWithSelection is an orchestration convenience method that performs a
 // resume operation using the provided daemon connection and session selection.
 func ResumeWithSelection(
