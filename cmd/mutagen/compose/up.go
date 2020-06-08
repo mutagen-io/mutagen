@@ -42,9 +42,8 @@ func ensureMutagenUp(topLevelFlags []string) error {
 		return fmt.Errorf("unable to set up Docker Compose invocation: %w", err)
 	}
 
-	// Set up the environment. We request that the up command ignore orphaned
-	// containers because we'd prefer to have those handled by the nominal up
-	// command.
+	// Set up the environment. We ignore orphaned containers because we want
+	// those to be handled by the nominal up command.
 	up.Env = os.Environ()
 	up.Env = append(up.Env, "COMPOSE_IGNORE_ORPHANS=true")
 
