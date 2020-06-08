@@ -40,7 +40,10 @@ func formatConnectionStatus(connected bool) string {
 }
 
 // printEndpointStatus prints the status of a synchronization endpoint.
-func printEndpointStatus(name string, url *url.URL, connected bool, problems []*core.Problem) {
+func printEndpointStatus(
+	name string, url *url.URL, connected bool,
+	problems []*core.Problem, truncatedProblems uint64,
+) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -58,6 +61,9 @@ func printEndpointStatus(name string, url *url.URL, connected bool, problems []*
 		color.Red("\tProblems:\n")
 		for _, p := range problems {
 			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
+		}
+		if truncatedProblems > 0 {
+			color.Red(fmt.Sprintf("\t\t...+%d more...\n", truncatedProblems))
 		}
 	}
 }
@@ -96,7 +102,7 @@ func formatEntry(entry *core.Entry) string {
 }
 
 // printConflicts prints a list of synchronization conflicts.
-func printConflicts(conflicts []*core.Conflict) {
+func printConflicts(conflicts []*core.Conflict, truncatedConflicts uint64) {
 	// Print the header.
 	color.Red("Conflicts:\n")
 
@@ -122,10 +128,16 @@ func printConflicts(conflicts []*core.Conflict) {
 			)
 		}
 
-		// If we're not on the last conflict, print a newline.
-		if i < len(conflicts)-1 {
+		// If we're not on the last conflict, or if there are truncated
+		// conflicts, then print a newline.
+		if i < len(conflicts)-1 || truncatedConflicts > 0 {
 			fmt.Println()
 		}
+	}
+
+	// Print truncated conflicts.
+	if truncatedConflicts > 0 {
+		color.Red(fmt.Sprintf("\t...+%d more...\n", truncatedConflicts))
 	}
 }
 
@@ -154,11 +166,17 @@ func ListWithSelection(
 		for _, state := range response.SessionStates {
 			fmt.Println(cmd.DelimiterLine)
 			printSession(state, long)
-			printEndpointStatus("Alpha", state.Session.Alpha, state.AlphaConnected, state.AlphaProblems)
-			printEndpointStatus("Beta", state.Session.Beta, state.BetaConnected, state.BetaProblems)
+			printEndpointStatus(
+				"Alpha", state.Session.Alpha, state.AlphaConnected,
+				state.AlphaProblems, state.TruncatedAlphaProblems,
+			)
+			printEndpointStatus(
+				"Beta", state.Session.Beta, state.BetaConnected,
+				state.BetaProblems, state.TruncatedBetaProblems,
+			)
 			printSessionStatus(state)
 			if len(state.Conflicts) > 0 {
-				printConflicts(state.Conflicts)
+				printConflicts(state.Conflicts, state.TruncatedConflicts)
 			}
 		}
 		fmt.Println(cmd.DelimiterLine)

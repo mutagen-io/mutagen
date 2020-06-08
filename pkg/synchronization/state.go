@@ -83,6 +83,16 @@ func (s *State) EnsureValid() error {
 		}
 	}
 
+	// Ensure that conflict and problem truncations have only occurred in cases
+	// where the corresponding list(s) are non-empty.
+	if s.TruncatedConflicts > 0 && len(s.Conflicts) == 0 {
+		return errors.New("truncated conflicts reported with no conflicts reported")
+	} else if s.TruncatedAlphaProblems > 0 && len(s.AlphaProblems) == 0 {
+		return errors.New("truncated alpha problems reported with no alpha problems reported")
+	} else if s.TruncatedBetaProblems > 0 && len(s.BetaProblems) == 0 {
+		return errors.New("truncated beta problems reported with no beta problems reported")
+	}
+
 	// Success.
 	return nil
 }

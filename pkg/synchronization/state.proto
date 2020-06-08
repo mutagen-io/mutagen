@@ -37,4 +37,7 @@ message State {
     repeated core.Conflict conflicts = 8;
     repeated core.Problem alphaProblems = 9;
     repeated core.Problem betaProblems = 10;
+    uint64 truncatedConflicts = 11;
+    uint64 truncatedAlphaProblems = 12;
+    uint64 truncatedBetaProblems = 13;
 }

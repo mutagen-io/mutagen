@@ -7,6 +7,15 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 )
 
+const (
+	// maximumConflicts is the maximum number of conflicts that will be reported
+	// for a single session before conflict list truncation.
+	maximumConflicts = 10
+	// maximumProblems is the maximum number of problems that will be reported
+	// for a single endpoint before conflict list truncation.
+	maximumProblems = 10
+)
+
 // Server provides an implementation of the Synchronization service.
 type Server struct {
 	// manager is the underlying session manager.
@@ -59,6 +68,29 @@ func (s *Server) List(ctx context.Context, request *ListRequest) (*ListResponse,
 	stateIndex, states, err := s.manager.List(ctx, request.Selection, request.PreviousStateIndex)
 	if err != nil {
 		return nil, err
+	}
+
+	// Perform truncation of excessively long conflict and problem lists. This
+	// is necessary to handle pathological cases where significant numbers of
+	// conflicts and/or problems (sometimes tens of thousands) are reported. In
+	// these cases the response might exceed gRPC message size limitations,
+	// making it impossible to determine the nature of the underlying issue(s).
+	// It's worth noting that the slicing/reassignment operations here are safe,
+	// even though the underlying memory is shared between multiple state
+	// instances, because we're only mutating the value-based slice header.
+	for _, state := range states {
+		if len(state.Conflicts) > maximumConflicts {
+			state.TruncatedConflicts = uint64(len(state.Conflicts) - maximumConflicts)
+			state.Conflicts = state.Conflicts[:maximumConflicts]
+		}
+		if len(state.AlphaProblems) > maximumProblems {
+			state.TruncatedAlphaProblems = uint64(len(state.AlphaProblems) - maximumProblems)
+			state.AlphaProblems = state.AlphaProblems[:maximumProblems]
+		}
+		if len(state.BetaProblems) > maximumProblems {
+			state.TruncatedBetaProblems = uint64(len(state.BetaProblems) - maximumProblems)
+			state.BetaProblems = state.BetaProblems[:maximumProblems]
+		}
 	}
 
 	// Success.
