@@ -24,14 +24,11 @@ func pauseWithSelection(
 	daemonConnection *grpc.ClientConn,
 	selection *selection.Selection,
 ) error {
-	// Create a status line printer.
+	// Initiate command line messaging.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
-
-	// Initiate prompt hosting. We only support messaging in tunnel operations.
-	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
 	promptingCtx, promptingCancel := context.WithCancel(context.Background())
 	prompter, promptingErrors, err := promptingsvc.Host(
-		promptingCtx, promptingService,
+		promptingCtx, promptingsvc.NewPromptingClient(daemonConnection),
 		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
 	)
 	if err != nil {
@@ -39,34 +36,25 @@ func pauseWithSelection(
 		return errors.Wrap(err, "unable to initiate prompting")
 	}
 
-	// Defer prompting termination and output cleanup. If the operation was
-	// successful, then we'll clear output, otherwise we'll move to a new line.
-	var successful bool
-	defer func() {
-		promptingCancel()
-		<-promptingErrors
-		if successful {
-			statusLinePrinter.Clear()
-		} else {
-			statusLinePrinter.BreakIfNonEmpty()
-		}
-	}()
-
-	// Perform the pause operation.
+	// Perform the pause operation, cancel prompting, and handle errors.
 	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
 	request := &tunnelingsvc.PauseRequest{
 		Prompter:  prompter,
 		Selection: selection,
 	}
 	response, err := tunnelingService.Pause(context.Background(), request)
+	promptingCancel()
+	<-promptingErrors
 	if err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return errors.Wrap(err, "invalid pause response received")
 	}
 
 	// Success.
-	successful = true
+	statusLinePrinter.Clear()
 	return nil
 }
 

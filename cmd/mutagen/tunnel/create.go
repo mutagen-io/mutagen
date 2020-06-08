@@ -31,15 +31,12 @@ func createWithSpecification(
 	daemonConnection *grpc.ClientConn,
 	specification *tunnelingsvc.CreationSpecification,
 ) (*tunneling.TunnelHostCredentials, error) {
-	// Create a status line printer. We have to use standard error as our status
-	// output stream because we write tunnel host parameters to standard output.
+	// Initiate command line messaging. We use standard error as our status
+	// output stream since we write tunnel host parameters to standard output.
 	statusLinePrinter := &cmd.StatusLinePrinter{UseStandardError: true}
-
-	// Initiate prompt hosting. We only support messaging in tunnel operations.
-	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
 	promptingCtx, promptingCancel := context.WithCancel(context.Background())
 	prompter, promptingErrors, err := promptingsvc.Host(
-		promptingCtx, promptingService,
+		promptingCtx, promptingsvc.NewPromptingClient(daemonConnection),
 		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, false,
 	)
 	if err != nil {
@@ -47,34 +44,25 @@ func createWithSpecification(
 		return nil, errors.Wrap(err, "unable to initiate prompting")
 	}
 
-	// Defer prompting termination and output cleanup. If the operation was
-	// successful, then we'll clear output, otherwise we'll move to a new line.
-	var successful bool
-	defer func() {
-		promptingCancel()
-		<-promptingErrors
-		if successful {
-			statusLinePrinter.Clear()
-		} else {
-			statusLinePrinter.BreakIfNonEmpty()
-		}
-	}()
-
-	// Perform the create operation.
+	// Perform the create operation, cancel prompting, and handle errors.
 	tunnelingService := tunnelingsvc.NewTunnelingClient(daemonConnection)
 	request := &tunnelingsvc.CreateRequest{
 		Prompter:      prompter,
 		Specification: specification,
 	}
 	response, err := tunnelingService.Create(context.Background(), request)
+	promptingCancel()
+	<-promptingErrors
 	if err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return nil, grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return nil, errors.Wrap(err, "invalid create response received")
 	}
 
 	// Success.
-	successful = true
+	statusLinePrinter.Clear()
 	return response.HostCredentials, nil
 }
 

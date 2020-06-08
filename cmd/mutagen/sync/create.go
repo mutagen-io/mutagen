@@ -80,14 +80,11 @@ func CreateWithSpecification(
 	daemonConnection *grpc.ClientConn,
 	specification *synchronizationsvc.CreationSpecification,
 ) (string, error) {
-	// Create a status line printer.
+	// Initiate command line prompting.
 	statusLinePrinter := &cmd.StatusLinePrinter{}
-
-	// Initiate prompt hosting.
-	promptingService := promptingsvc.NewPromptingClient(daemonConnection)
 	promptingCtx, promptingCancel := context.WithCancel(context.Background())
 	prompter, promptingErrors, err := promptingsvc.Host(
-		promptingCtx, promptingService,
+		promptingCtx, promptingsvc.NewPromptingClient(daemonConnection),
 		&cmd.StatusLinePrompter{Printer: statusLinePrinter}, true,
 	)
 	if err != nil {
@@ -95,34 +92,25 @@ func CreateWithSpecification(
 		return "", errors.Wrap(err, "unable to initiate prompting")
 	}
 
-	// Defer prompting termination and output cleanup. If the operation was
-	// successful, then we'll clear output, otherwise we'll move to a new line.
-	var successful bool
-	defer func() {
-		promptingCancel()
-		<-promptingErrors
-		if successful {
-			statusLinePrinter.Clear()
-		} else {
-			statusLinePrinter.BreakIfNonEmpty()
-		}
-	}()
-
-	// Perform the create operation.
+	// Perform the create operation, cancel prompting, and handle errors.
 	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 	request := &synchronizationsvc.CreateRequest{
 		Prompter:      prompter,
 		Specification: specification,
 	}
 	response, err := synchronizationService.Create(context.Background(), request)
+	promptingCancel()
+	<-promptingErrors
 	if err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return "", grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
+		statusLinePrinter.BreakIfNonEmpty()
 		return "", errors.Wrap(err, "invalid create response received")
 	}
 
 	// Success.
-	successful = true
+	statusLinePrinter.Clear()
 	return response.Session, nil
 }
 
