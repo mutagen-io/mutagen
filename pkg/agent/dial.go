@@ -67,7 +67,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	}, pathSeparator)
 
 	// Compute the command to invoke.
-	command := fmt.Sprintf("%s %s", agentInvocationPath, mode)
+	command := fmt.Sprintf("%s %s 2>/tmp/mutagen-agent.log", agentInvocationPath, mode)
 
 	// Create an agent process.
 	message := "Connecting to agent (POSIX)..."
