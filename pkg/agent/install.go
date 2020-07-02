@@ -106,6 +106,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	} else {
 		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}
+	logger.Debugf("install command: %s", installCommand)
 	if err := run(transport, installCommand); err != nil {
 		return errors.Wrap(err, "unable to invoke agent installation")
 	}

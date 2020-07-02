@@ -81,6 +81,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	if err != nil {
 		return nil, false, false, errors.Wrap(err, "unable to create agent command")
 	}
+	logger.Debugf("executing %s",  strings.Join(agentProcess.Args, " "))
 
 	// Create a connection that wraps the process' standard input/output. We
 	// set a non-zero kill delay so that, if there's a handshake failure, the
@@ -147,6 +148,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 					strings.TrimSpace(errorOutput),
 				)
 			}
+			logger.Debugf("run %s, process state: %+v", command, agentProcess.ProcessState)
 			return nil, false, false, errors.Wrap(err, "unable to classify agent handshake error")
 		}
 
