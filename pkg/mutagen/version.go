@@ -99,7 +99,11 @@ func ClientVersionHandshake(connection net.Conn) error {
 	// implementation from that version.
 	versionMatch := serverMajor == VersionMajor && serverMinor == VersionMinor
 	if !versionMatch {
-		return errors.New("version mismatch")
+		return fmt.Errorf(
+			"version mismatch (server major %x, minor %x) (local major %x, minor %x)",
+			serverMajor, serverMinor,
+			VersionMajor, VersionMinor,
+		)
 	}
 
 	// Success.
