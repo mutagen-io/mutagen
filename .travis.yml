@@ -26,8 +26,7 @@ matrix:
         - MUTAGEN_TEST_DOCKER_CONTAINER_NAME=mutagentester
         - MUTAGEN_TEST_DOCKER_USERNAME=george
 
-# Require use of sudo on POSIX platforms. We need this to set up SSH and/or use
-# Docker.
+# Require use of sudo on POSIX platforms. We need this to set up SSH.
 sudo: required
 
 # Require the use of Docker on Linux.
@@ -120,10 +119,10 @@ deploy:
     file: build/release/*
     on:
       repo: mutagen-io/mutagen
-      condition: '"$TRAVIS_OS_NAME" == "osx"'
+      condition: $TRAVIS_OS_NAME = osx
       tags: true
 
 # Send notifications.
 notifications:
   email:
-    - jacob@mutagen.io
+    - bot@mutagen.io
