@@ -1,3 +1,3 @@
 package closewrite
 
-// TODO: Implement tests.
+// TODO: Implement.

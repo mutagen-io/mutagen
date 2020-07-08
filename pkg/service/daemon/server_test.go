@@ -1,3 +1,3 @@
-package mutagenio
+package daemon
 
 // TODO: Implement.

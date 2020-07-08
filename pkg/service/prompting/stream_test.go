@@ -1,3 +1,3 @@
-package mutagenio
+package prompting
 
 // TODO: Implement.

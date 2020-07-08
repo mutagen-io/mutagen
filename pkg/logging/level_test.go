@@ -1,3 +1,3 @@
 package logging
 
-// TODO: Implement tests.
+// TODO: Implement.
