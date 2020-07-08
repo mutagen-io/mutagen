@@ -23,8 +23,8 @@ const (
 	// MutagenServiceName is the name used for the Mutagen service in
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenServiceName = "mutagen"
-	// mutagenServiceImage is the image to use for the Mutagen service.
-	mutagenServiceImage = "mutagenio/mutagen-compose-service:latest"
+	// mutagenSidecarImage is the Mutagen sidecar container image.
+	mutagenSidecarImage = "mutagenio/sidecar:latest"
 )
 
 // normalizeProjectNameReplacer is a regular expression used by
@@ -608,7 +608,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 	// Generate the Mutagen service configuration.
 	mutagenServiceConfiguration := &generatedServiceConfiguration{
-		Image: mutagenServiceImage,
+		Image: mutagenSidecarImage,
 	}
 	for network := range networkDependencies {
 		mutagenServiceConfiguration.Networks = append(mutagenServiceConfiguration.Networks,
