@@ -92,7 +92,7 @@ func ListWithSelection(
 		fmt.Println(cmd.DelimiterLine)
 	} else {
 		fmt.Println(cmd.DelimiterLine)
-		fmt.Println("No sessions found")
+		fmt.Println("No forwarding sessions found")
 		fmt.Println(cmd.DelimiterLine)
 	}
 
