@@ -32,6 +32,6 @@ require (
 	google.golang.org/grpc v1.29.1
 	google.golang.org/protobuf v1.23.0
 	gopkg.in/yaml.v2 v2.3.0
-	gopkg.in/yaml.v3 v3.0.0-20200603094226-e3079894b1e8
+	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/apimachinery v0.18.3
 )
