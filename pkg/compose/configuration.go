@@ -217,11 +217,8 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 		networks: yamlMapToStructMap(intermediate.Networks),
 	}
 
-	// If there was no top-level "x-mutagen" specification, then we're done. For
-	// some reason, decoding doesn't work if we make the Mutagen field a Node
-	// pointer, it has to be a value. As such, the only way we can check for its
-	// presence is to look at the node kind and look for a non-zero value.
-	if intermediate.Mutagen.Kind == yaml.Kind(0) {
+	// If there was no top-level "x-mutagen" specification, then we're done.
+	if intermediate.Mutagen.IsZero() {
 		return result, nil
 	}
 
