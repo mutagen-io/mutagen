@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/mutagen-io/mutagen/pkg/compose/internal/configuration"
 	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -291,13 +292,13 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	services := make(map[string]bool)
 	volumes := make(map[string]bool)
 	networks := map[string]bool{"default": true}
-	sessions := mutagenConfiguration{
-		Forwarding:      make(map[string]forwardingConfiguration),
-		Synchronization: make(map[string]synchronizationConfiguration),
+	sessions := configuration.MutagenConfiguration{
+		Forwarding:      make(map[string]configuration.ForwardingConfiguration),
+		Synchronization: make(map[string]configuration.SynchronizationConfiguration),
 	}
 	for f, file := range files {
 		// Load the configuration file.
-		configuration, err := loadConfiguration(file, environment)
+		configuration, err := configuration.Load(file, environment)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load configuration file (%s): %w", file, err)
 		}
@@ -325,10 +326,10 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		// Store session configurations. We follow standard Docker Compose
 		// practice here by letting later session definitions override earlier
 		// session definitions with the same names.
-		for name, configuration := range configuration.mutagen.Forwarding {
+		for name, configuration := range configuration.Mutagen.Forwarding {
 			sessions.Forwarding[name] = configuration
 		}
-		for name, configuration := range configuration.mutagen.Synchronization {
+		for name, configuration := range configuration.Mutagen.Synchronization {
 			sessions.Synchronization[name] = configuration
 		}
 	}
@@ -605,7 +606,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Generate the Mutagen service configuration.
-	mutagenServiceConfiguration := &generatedServiceConfiguration{
+	mutagenServiceConfiguration := &configuration.GeneratedServiceConfiguration{
 		Image: mutagenSidecarImage,
 	}
 	for network := range networkDependencies {
@@ -620,14 +621,14 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Generate the Mutagen Docker Compose configuration file.
-	mutagenComposeConfiguration := &generatedComposeConfiguration{
+	mutagenComposeConfiguration := &configuration.GeneratedComposeConfiguration{
 		Version: version,
-		Services: map[string]*generatedServiceConfiguration{
+		Services: map[string]*configuration.GeneratedServiceConfiguration{
 			MutagenServiceName: mutagenServiceConfiguration,
 		},
 	}
 	mutagenComposeConfigurationPath := filepath.Join(temporaryDirectory, "mutagen.yml")
-	if err := mutagenComposeConfiguration.store(mutagenComposeConfigurationPath); err != nil {
+	if err := mutagenComposeConfiguration.Store(mutagenComposeConfigurationPath); err != nil {
 		return nil, fmt.Errorf("unable to store Docker Compose configuration for Mutagen service(s): %w", err)
 	}
 	files = append(files, mutagenComposeConfigurationPath)

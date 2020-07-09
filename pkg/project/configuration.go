@@ -6,7 +6,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 )
 
-// ForwardingConfiguration encodes a full forwarding session specification.
+// ForwardingConfiguration encodes a forwarding session specification.
 type ForwardingConfiguration struct {
 	// Source is the source URL for the session.
 	Source string `yaml:"source"`
@@ -77,8 +77,7 @@ func (b *FlushOnCreateBehavior) UnmarshalYAML(unmarshal func(interface{}) error)
 	return nil
 }
 
-// SynchronizationConfiguration encodes a full synchronization session
-// specification.
+// SynchronizationConfiguration encodes a synchronization session specification.
 type SynchronizationConfiguration struct {
 	// Alpha is the alpha URL for the session.
 	Alpha string `yaml:"alpha"`

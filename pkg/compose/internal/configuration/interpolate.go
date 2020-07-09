@@ -1,4 +1,4 @@
-package compose
+package configuration
 
 import (
 	"errors"
@@ -9,10 +9,9 @@ import (
 	"github.com/compose-spec/compose-go/template"
 )
 
-// interpolateYAML performs recursive interpolation on a raw YAML hierarchy
-// using the specified mapping. It only performs interpolation on scalar value
-// nodes, not keys.
-func interpolateYAML(node *yaml.Node, mapping template.Mapping) error {
+// interpolate performs recursive interpolation on a raw YAML hierarchy using
+// the specified mapping. It only performs interpolation on scalar value nodes, not keys.
+func interpolate(node *yaml.Node, mapping template.Mapping) error {
 	// Handle interpolation based on the node type.
 	switch node.Kind {
 	case yaml.DocumentNode:
@@ -25,7 +24,7 @@ func interpolateYAML(node *yaml.Node, mapping template.Mapping) error {
 		fallthrough
 	case yaml.SequenceNode:
 		for _, child := range node.Content {
-			if err := interpolateYAML(child, mapping); err != nil {
+			if err := interpolate(child, mapping); err != nil {
 				return err
 			}
 		}
@@ -34,7 +33,7 @@ func interpolateYAML(node *yaml.Node, mapping template.Mapping) error {
 			return errors.New("mapping node with unbalanced key/value count")
 		}
 		for i := 1; i < len(node.Content); i += 2 {
-			if err := interpolateYAML(node.Content[i], mapping); err != nil {
+			if err := interpolate(node.Content[i], mapping); err != nil {
 				return err
 			}
 		}
