@@ -2,39 +2,14 @@ package compose
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/compose-spec/compose-go/template"
-
 	"github.com/mutagen-io/mutagen/pkg/configuration/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/configuration/synchronization"
 )
-
-// storeStandardInput reads the entirety of the standard input stream into a
-// file at the specified path. The file is created with user-only permissions
-// and must not already exist. The output file may be created even in the case
-// of failure (for example if an error occurs during standard input copying).
-func storeStandardInput(target string) error {
-	// Create the file and defer its closure.
-	file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return fmt.Errorf("unable to open output file: %w", err)
-	}
-	defer file.Close()
-
-	// Copy contents.
-	if _, err := io.Copy(file, os.Stdin); err != nil {
-		return err
-	}
-
-	// Success.
-	return nil
-}
 
 // forwardingConfiguration encodes a full forwarding session specification.
 type forwardingConfiguration struct {
@@ -81,90 +56,22 @@ type mutagenConfiguration struct {
 	Synchronization map[string]synchronizationConfiguration `yaml:"sync"`
 }
 
-// configuration encodes a subset of the Docker Compose configuration file
-// format Mutagen extensions.
+// configuration represents a single Docker Compose configuration file.
 type configuration struct {
-	// version is the configuration file schema version.
-	version string
-	// services are the services defined in the configuration file.
-	services map[string]struct{}
-	// volumes are the volumes defined in the configuration file.
-	volumes map[string]struct{}
-	// networks are the networks defined in the configuration file.
-	networks map[string]struct{}
-	// mutagen is the Mutagen configuration defined in the configuration file
-	// under the "x-mutagen" extension.
-	mutagen mutagenConfiguration
-}
-
-// intermediateConfiguration is an intermediate configuration structure used for
-// non-strict YAML decoding. It allows configuration loading to separate any
-// top-level "x-mutagen" YAML configuration for separate strict decoding.
-type intermediateConfiguration struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
-	// Services are the services defined in the configuration file.
+	// Services are the services defined in the file.
 	Services map[string]yaml.Node `yaml:"services"`
-	// Volumes are the volumes defined in the configuration file.
+	// Volumes are the volumes defined in the file.
 	Volumes map[string]yaml.Node `yaml:"volumes"`
-	// Networks are the networks defined in the configuration file.
+	// Networks are the networks defined in the file.
 	Networks map[string]yaml.Node `yaml:"networks"`
-	// Mutagen is the Mutagen configuration defined in the configuration file.
-	Mutagen yaml.Node `yaml:"x-mutagen"`
-}
-
-// interpolateNode performs recursive interpolation on a raw YAML hierarchy
-// using the specified mapping. It only performs interpolation on scalar value
-// nodes, not keys.
-func interpolateNode(node *yaml.Node, mapping template.Mapping) error {
-	// Handle interpolation based on the node type.
-	switch node.Kind {
-	case yaml.DocumentNode:
-		// Somewhat counterintuitively, document nodes aren't structured like
-		// mapping nodes. Instead, they are basically sequence nodes containing
-		// either no content nodes (in the case of an empty document) or a
-		// single mapping content node containing the root document content.
-		// This is why we fall through to the sequence node handling as opposed
-		// to the mapping node handling.
-		fallthrough
-	case yaml.SequenceNode:
-		for _, child := range node.Content {
-			if err := interpolateNode(child, mapping); err != nil {
-				return err
-			}
-		}
-	case yaml.MappingNode:
-		if len(node.Content)%2 != 0 {
-			return errors.New("mapping node with unbalanced key/value count")
-		}
-		for i := 1; i < len(node.Content); i += 2 {
-			if err := interpolateNode(node.Content[i], mapping); err != nil {
-				return err
-			}
-		}
-	case yaml.ScalarNode:
-		var err error
-		if node.Value, err = template.Substitute(node.Value, mapping); err != nil {
-			return fmt.Errorf("unable to interpolate value (%s): %w", node.Value, err)
-		}
-	case yaml.AliasNode:
-	default:
-		return errors.New("unknown YAML node kind")
-	}
-
-	// Success.
-	return nil
-}
-
-// yamlMapToStructMap is a conversion utility function that replaces the generic
-// YAML nodes in intermediate representation nodes with empty structs. This is
-// simply for the sake of keeping the API surface cleaner.
-func yamlMapToStructMap(value map[string]yaml.Node) map[string]struct{} {
-	result := make(map[string]struct{}, len(value))
-	for key := range value {
-		result[key] = struct{}{}
-	}
-	return result
+	// XMutagen is the raw Mutagen configuration defined in the file.
+	XMutagen yaml.Node `yaml:"x-mutagen"`
+	// mutagen is the is the fully decoded Mutagen configuration derived from
+	// the raw Mutagen configuration. The session specifications in this
+	// configuration are not validated by loadConfiguration.
+	mutagen mutagenConfiguration
 }
 
 // loadConfiguration reads, interpolates, and decodes a Docker Compose YAML
@@ -185,52 +92,41 @@ func loadConfiguration(path string, variables map[string]string) (*configuration
 	// Perform a generic decoding operation.
 	var root yaml.Node
 	if err := decoder.Decode(&root); err != nil {
-		return nil, fmt.Errorf("unable to decode YAML: %w", err)
+		return nil, fmt.Errorf("unable to parse YAML: %w", err)
 	}
 
-	// Create the interpolation mapping.
+	// Perform interpolation.
 	mapping := func(key string) (string, bool) {
 		value, ok := variables[key]
 		return value, ok
 	}
-
-	// Perform interpolation.
-	if err := interpolateNode(&root, mapping); err != nil {
+	if err := interpolateYAML(&root, mapping); err != nil {
 		return nil, fmt.Errorf("variable interpolation failed: %w", err)
 	}
 
-	// Decode the document into a more concrete structure that will allow us to
-	// separate the "x-mutagen" specification for further validation. At this
-	// point we still want non-strict decoding because we want to allow for
-	// unknown top-level keys (since we need to play nice with top-level
-	// extension fields).
-	var intermediate intermediateConfiguration
-	if err := root.Decode(&intermediate); err != nil {
-		return nil, fmt.Errorf("unable to destructure configuration file: %w", err)
-	}
-
-	// Convert the configuration fields that don't require further processing.
-	result := &configuration{
-		version:  intermediate.Version,
-		services: yamlMapToStructMap(intermediate.Services),
-		volumes:  yamlMapToStructMap(intermediate.Volumes),
-		networks: yamlMapToStructMap(intermediate.Networks),
+	// Decode the document into a more concrete configuration structure so that
+	// we can extract and validate the Mutagen configuration.
+	result := &configuration{}
+	if err := root.Decode(result); err != nil {
+		return nil, fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
 	// If there was no top-level "x-mutagen" specification, then we're done.
-	if intermediate.Mutagen.IsZero() {
+	if result.XMutagen.IsZero() {
 		return result, nil
 	}
 
-	// Extract and re-serialize the interpolated "x-mutagen" section. We have to
-	// wrap the extracted section in a document node for serialization to work.
+	// Extract and re-serialize the interpolated "x-mutagen" section so that we
+	// can perform strict decoding. We have to wrap the extracted section in a
+	// document node for serialization to work.
+	//
 	// TODO: Once go-yaml/yaml#460 is resolved, we won't need to perform this
-	// re-serialization, we'll be able to perform a strict decoding into the
-	// final structure directly from the decoded YAML node. This may be resolved
-	// by go-yaml/yaml#557.
+	// re-serialization since we'll be able to perform a strict decoding into
+	// the final structure directly from the decoded YAML node. This may be
+	// implemented by go-yaml/yaml#557.
 	mutagenYAML, err := yaml.Marshal(&yaml.Node{
 		Kind:    yaml.DocumentNode,
-		Content: []*yaml.Node{&intermediate.Mutagen},
+		Content: []*yaml.Node{&result.XMutagen},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to re-serialize Mutagen YAML: %w", err)

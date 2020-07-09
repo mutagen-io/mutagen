@@ -288,9 +288,9 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// first file, recording service, volume, and network names, and storing
 	// Mutagen session configurations.
 	var version string
-	services := make(map[string]struct{})
-	volumes := make(map[string]struct{})
-	networks := make(map[string]struct{})
+	services := make(map[string]bool)
+	volumes := make(map[string]bool)
+	networks := make(map[string]bool)
 	sessions := mutagenConfiguration{
 		Forwarding:      make(map[string]forwardingConfiguration),
 		Synchronization: make(map[string]synchronizationConfiguration),
@@ -304,18 +304,18 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 		// Store the version if this is the first configuration file.
 		if f == 0 {
-			version = configuration.version
+			version = configuration.Version
 		}
 
 		// Store services, volumes, and networks.
-		for name, service := range configuration.services {
-			services[name] = service
+		for name := range configuration.Services {
+			services[name] = true
 		}
-		for name, volume := range configuration.volumes {
-			volumes[name] = volume
+		for name := range configuration.Volumes {
+			volumes[name] = true
 		}
-		for name, network := range configuration.networks {
-			networks[name] = network
+		for name := range configuration.Networks {
+			networks[name] = true
 		}
 
 		// Store session configurations. We follow standard Docker Compose
@@ -330,7 +330,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	}
 
 	// Watch for service name conflicts.
-	if _, ok := services[MutagenServiceName]; ok {
+	if services[MutagenServiceName] {
 		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", MutagenServiceName)
 	}
 
@@ -343,7 +343,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// If no custom networks were defined, then Docker Compose will create a
 	// default network. This only occurs if no custom networks are defined.
 	if len(networks) == 0 {
-		networks["default"] = struct{}{}
+		networks["default"] = true
 	}
 
 	// Compute the name of the Mutagen service container.
