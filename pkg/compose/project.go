@@ -596,12 +596,12 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 	// Validate network and volume dependencies.
 	for network := range networkDependencies {
-		if _, defined := networks[network]; !defined {
+		if !networks[network] {
 			return nil, fmt.Errorf("network (%s) referenced by forwarding session undefined", network)
 		}
 	}
 	for volume := range volumeDependencies {
-		if _, defined := volumes[volume]; !defined {
+		if !volumes[volume] {
 			return nil, fmt.Errorf("volume (%s) referenced by synchronization session undefined", volume)
 		}
 	}
