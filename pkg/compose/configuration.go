@@ -61,11 +61,11 @@ type configuration struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
 	// Services are the services defined in the file.
-	Services map[string]yaml.Node `yaml:"services"`
+	Services map[string]struct{} `yaml:"services"`
 	// Volumes are the volumes defined in the file.
-	Volumes map[string]yaml.Node `yaml:"volumes"`
+	Volumes map[string]struct{} `yaml:"volumes"`
 	// Networks are the networks defined in the file.
-	Networks map[string]yaml.Node `yaml:"networks"`
+	Networks map[string]struct{} `yaml:"networks"`
 	// XMutagen is the raw Mutagen configuration defined in the file.
 	XMutagen yaml.Node `yaml:"x-mutagen"`
 	// mutagen is the is the fully decoded Mutagen configuration derived from
@@ -77,7 +77,10 @@ type configuration struct {
 // loadConfiguration reads, interpolates, and decodes a Docker Compose YAML
 // configuration from the specified file. If the file contains multiple YAML
 // documents, then only the first will be read. Interpolation is performed using
-// the specified variable mapping.
+// the specified variable mapping. The only validation performed by this
+// function is on the YAML syntax and the keys provided as part of the x-mutagen
+// configuration. No validation is performed on Docker Compose fields or Mutagen
+// session specifications.
 func loadConfiguration(path string, variables map[string]string) (*configuration, error) {
 	// Open the file and defer its closure.
 	file, err := os.Open(path)

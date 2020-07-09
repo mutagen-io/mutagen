@@ -290,7 +290,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	var version string
 	services := make(map[string]bool)
 	volumes := make(map[string]bool)
-	networks := make(map[string]bool)
+	networks := map[string]bool{"default": true}
 	sessions := mutagenConfiguration{
 		Forwarding:      make(map[string]forwardingConfiguration),
 		Synchronization: make(map[string]synchronizationConfiguration),
@@ -307,7 +307,7 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			version = configuration.Version
 		}
 
-		// Store services, volumes, and networks.
+		// Record the service, volume, and network names defined in the file.
 		for name := range configuration.Services {
 			services[name] = true
 		}
@@ -334,16 +334,10 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", MutagenServiceName)
 	}
 
-	// Extract service names.
+	// Convert the set of service names to a list.
 	serviceNames := make([]string, 0, len(services))
 	for name := range services {
 		serviceNames = append(serviceNames, name)
-	}
-
-	// If no custom networks were defined, then Docker Compose will create a
-	// default network. This only occurs if no custom networks are defined.
-	if len(networks) == 0 {
-		networks["default"] = true
 	}
 
 	// Compute the name of the Mutagen service container.
@@ -597,12 +591,12 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	// Validate network and volume dependencies.
 	for network := range networkDependencies {
 		if !networks[network] {
-			return nil, fmt.Errorf("network (%s) referenced by forwarding session undefined", network)
+			return nil, fmt.Errorf("undefined network (%s) referenced by forwarding session", network)
 		}
 	}
 	for volume := range volumeDependencies {
 		if !volumes[volume] {
-			return nil, fmt.Errorf("volume (%s) referenced by synchronization session undefined", volume)
+			return nil, fmt.Errorf("undefined volume (%s) referenced by synchronization session", volume)
 		}
 	}
 

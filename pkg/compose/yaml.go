@@ -17,7 +17,7 @@ func interpolateYAML(node *yaml.Node, mapping template.Mapping) error {
 	switch node.Kind {
 	case yaml.DocumentNode:
 		// Somewhat counterintuitively, document nodes aren't structured like
-		// mapping nodes. Instead, they are basically sequence nodes containing
+		// mapping nodes. Instead, they're basically sequence nodes containing
 		// either no content nodes (in the case of an empty document) or a
 		// single mapping content node containing the root document content.
 		// This is why we fall through to the sequence node handling as opposed
