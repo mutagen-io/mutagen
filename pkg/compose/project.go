@@ -302,7 +302,11 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 			return nil, fmt.Errorf("unable to load configuration file (%s): %w", file, err)
 		}
 
-		// Store the version if this is the first configuration file.
+		// Store the version if this is the first configuration file. We don't
+		// bother validating the version since the only decent check we can do
+		// is for emptiness. Docker Compose will validate it once it loads
+		// files, and our generated file will come last anyway, so it won't be
+		// the source of any validation errors that arise.
 		if f == 0 {
 			version = configuration.Version
 		}
