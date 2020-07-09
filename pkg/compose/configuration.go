@@ -120,6 +120,12 @@ func interpolateNode(node *yaml.Node, mapping template.Mapping) error {
 	// Handle interpolation based on the node type.
 	switch node.Kind {
 	case yaml.DocumentNode:
+		// Somewhat counterintuitively, document nodes aren't structured like
+		// mapping nodes. Instead, they are basically sequence nodes containing
+		// either no content nodes (in the case of an empty document) or a
+		// single mapping content node containing the root document content.
+		// This is why we fall through to the sequence node handling as opposed
+		// to the mapping node handling.
 		fallthrough
 	case yaml.SequenceNode:
 		for _, child := range node.Content {
