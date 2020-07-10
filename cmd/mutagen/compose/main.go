@@ -115,6 +115,10 @@ func invoke(topLevelFlags []string, command string, arguments []string) error {
 	// to result in a wonky console state, though we could handle it using the
 	// same notification channel. We also don't handle CTRL_C_BREAK events since
 	// Docker Compose doesn't handle them and they don't have a POSIX analog.
+	//
+	// Here is some additional information on Windows CTRL-C handling, since it
+	// isn't as easy to find as the corresponding POSIX documentation:
+	// https://docs.microsoft.com/en-us/windows/console/ctrl-c-and-ctrl-break-signals
 	interrupts := make(chan os.Signal, 1)
 	signal.Notify(interrupts, syscall.SIGINT)
 	defer func() {
