@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -93,11 +95,36 @@ func invoke(topLevelFlags []string, command string, arguments []string) error {
 	compose.Stdout = os.Stdout
 	compose.Stderr = os.Stderr
 
-	// TODO: Figure out if there's any signal handling that we need to set up.
-	// Docker Compose has a bunch of internal signal handling at its entry
-	// point, but this may not be necessary with the Go runtime in the same way
-	// that it is with the Python runtime. In any case, we'll likely need to
-	// forward signals.
+	// Suspend the effects of interrupt signals until after the Docker Compose
+	// process has terminated. When a SIGINT signal is generated on POSIX, it's
+	// sent to all processes in the foreground process group, meaning that both
+	// Mutagen and Docker Compose will receive the signal. The situation is
+	// similar on Windows, where a CTRL_C_EVENT will be sent to all foreground
+	// processes attached to a console (and which both the Go runtime and the
+	// Python runtime will translate to a faux SIGINT signal). Thus, whenever we
+	// see SIGINT, Docker Compose will see it as well. Docker Compose registers
+	// signal handlers to perform shutdown operations when it receives SIGINT
+	// (or SIGTERM), meaning that it can continue to print output to the console
+	// even after receiving SIGINT (and typically does in the case of the "up"
+	// command). In order to ensure that all Docker Compose output has finished
+	// by the time we exit on a SIGINT, we defer handling of SIGINT until after
+	// the Docker Compose process has exited. This stops Docker Compose from
+	// printing output in a way that might flow over the next command line
+	// prompt. We don't bother handling SIGTERM since it indicates a more
+	// general termination request, isn't supported on Windows, and isn't likely
+	// to result in a wonky console state, though we could handle it using the
+	// same notification channel. We also don't handle CTRL_C_BREAK events since
+	// Docker Compose doesn't handle them and they don't have a POSIX analog.
+	interrupts := make(chan os.Signal, 1)
+	signal.Notify(interrupts, syscall.SIGINT)
+	defer func() {
+		signal.Stop(interrupts)
+		select {
+		case <-interrupts:
+			os.Exit(1)
+		default:
+		}
+	}()
 
 	// Run the command and wrap any error that's not an exit error.
 	if err := compose.Run(); err != nil {
