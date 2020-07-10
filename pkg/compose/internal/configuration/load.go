@@ -58,16 +58,28 @@ type MutagenConfiguration struct {
 // intermediate is an intermediate configuration representation used for loading
 // Docker Compose configuration files. It is necessary to allow for strict
 // decoding of the "x-mutagen" section while using flexible decoding for all
-// other sections of the file.
+// other sections of the file. It is also necessary in order to avoid exposing
+// yaml.Node types in this package's API. We have to use yaml.Node types for our
+// map value types because the yaml package won't decode key-only map entries
+// into a map[string]struct{} type (it will just ignore them). Since key-only
+// map entries are common in Docker Compose volume and network definitions, we
+// use yaml.Node value types to allow for indication of this absence while still
+// capturing volume and network names.
 type intermediate struct {
 	// Version is the configuration file schema version.
 	Version string `yaml:"version"`
-	// Services are the services defined in the file.
-	Services map[string]struct{} `yaml:"services"`
-	// Volumes are the volumes defined in the file.
-	Volumes map[string]struct{} `yaml:"volumes"`
-	// Networks are the networks defined in the file.
-	Networks map[string]struct{} `yaml:"networks"`
+	// Services are the services defined in the file. See the struct comments to
+	// understand why we use a yaml.Node type for the map value. This is less
+	// essential for the "services" section since service definitions should
+	// have non-empty contents, but using yaml.Node is more consistent with the
+	// Volumes and Networks fields below and enables future decoding.
+	Services map[string]yaml.Node `yaml:"services"`
+	// Volumes are the volumes defined in the file. See the struct comments to
+	// understand why we use a yaml.Node type for the map value.
+	Volumes map[string]yaml.Node `yaml:"volumes"`
+	// Networks are the networks defined in the file. See the struct comments to
+	// understand why we use a yaml.Node type for the map value.
+	Networks map[string]yaml.Node `yaml:"networks"`
 	// XMutagen is the raw Mutagen configuration defined in the file.
 	XMutagen yaml.Node `yaml:"x-mutagen"`
 }
@@ -86,6 +98,24 @@ type Configuration struct {
 	// Mutagen is the Mutagen session configuration found in the file. The
 	// session specifications in this field are not validated by Load.
 	Mutagen MutagenConfiguration
+}
+
+// yamlMapToEmptyStructMap converts a map of string-to-yaml.Node to a map of
+// string-to-empty-struct. It preserves the distinction between nil and empty.
+func yamlMapToEmptyStructMap(source map[string]yaml.Node) map[string]struct{} {
+	// Handle the nil case.
+	if source == nil {
+		return nil
+	}
+
+	// Handle the non-nil (but potentially empty) case.
+	result := make(map[string]struct{}, len(source))
+	for key := range source {
+		result[key] = struct{}{}
+	}
+
+	// Done.
+	return result
 }
 
 // Load reads, interpolates, and decodes a Docker Compose YAML configuration
@@ -128,12 +158,14 @@ func Load(path string, variables map[string]string) (*Configuration, error) {
 		return nil, fmt.Errorf("unable to parse configuration file: %w", err)
 	}
 
-	// Create the result structure, excluding the Mutagen configuration.
+	// Create the resulting configuration, excluding the Mutagen configuration.
+	// We convert our maps to avoid exposing yaml.Node types in the package API.
+	// See the comments for intermediate to understand why we use yaml.Node.
 	result := &Configuration{
 		Version:  decoded.Version,
-		Services: decoded.Services,
-		Volumes:  decoded.Volumes,
-		Networks: decoded.Networks,
+		Services: yamlMapToEmptyStructMap(decoded.Services),
+		Volumes:  yamlMapToEmptyStructMap(decoded.Volumes),
+		Networks: yamlMapToEmptyStructMap(decoded.Networks),
 	}
 
 	// If there was no top-level "x-mutagen" specification, then we're done.
