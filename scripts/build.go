@@ -125,10 +125,7 @@ func (t Target) goEnv() ([]string, error) {
 	// good to disable cgo when building agent binaries during testing is that
 	// the release agent binaries will also have cgo disabled (except on macOS),
 	// and we'll want to faithfully recreate that.
-	//
-	// TODO: If we ever decide to build for iOS, we should set the corresponding
-	// flags for that platform.
-	if t.GOOS == "darwin" && t.GOARCH == "amd64" {
+	if t.GOOS == "darwin" {
 		result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 		result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 	} else {
@@ -157,7 +154,7 @@ func (t Target) IsCrossTarget() bool {
 // an agent binary included in the agent bundle in slim and release-slim modes.
 func (t Target) IncludeAgentInSlimBuildModes() bool {
 	return !t.IsCrossTarget() ||
-		(t.GOOS == "darwin" && t.GOARCH == "amd64") ||
+		(t.GOOS == "darwin") ||
 		(t.GOOS == "windows" && t.GOARCH == "amd64") ||
 		(t.GOOS == "linux" && (t.GOARCH == "amd64" || t.GOARCH == "arm")) ||
 		(t.GOOS == "freebsd" && t.GOARCH == "amd64")
@@ -167,7 +164,7 @@ func (t Target) IncludeAgentInSlimBuildModes() bool {
 // a release bundle built in release-slim mode.
 func (t Target) BuildBundleInReleaseSlimMode() bool {
 	return !t.IsCrossTarget() ||
-		(t.GOOS == "darwin" && t.GOARCH == "amd64") ||
+		(t.GOOS == "darwin") ||
 		(t.GOOS == "windows" && t.GOARCH == "amd64") ||
 		(t.GOOS == "linux" && t.GOARCH == "amd64")
 }
@@ -223,33 +220,18 @@ var targets = []Target{
 	// {"android", "amd64"},
 	// {"android", "arm"},
 	// {"android", "arm64"},
-	// We disable darwin/386 since it isn't supported by Apple, it hasn't been
-	// needed since Mac OS X Snow Leopard, and it isn't well-supported by Go.
-	// {"darwin", "386"},
 	{"darwin", "amd64"},
-	// We disable support for darwin/arm since it's only supported on older iOS
-	// versions that aren't supported by Apple and wouldn't make sense for
-	// normal Mutagen usage. As with Android, it might have made sense to use as
-	// an endpoint for certain development scenarios, but given that 32-bit ARM
-	// support is discontinued, this port will never make sense to enable. Apple
-	// is also far less supportive of third-party SSH servers on iOS.
-	// {"darwin", "arm"},
 	// TODO: Enable darwin/arm64 once the Apple Silicon transition for macOS is
-	// underway. It's unclear how Go will handle support for Apple's new chips
-	// and the distinction between macOS and iOS. It's also unclear if there's a
-	// scenario where we'd ever want to support iOS (since it might make sense
-	// as an endpoint in certain development scenarios or via a Mutagen app). In
-	// any case, we currently have trouble building for darwin/arm64 due to
-	// golang/go#16445. The resolution on that issue makes sense, though (oddly)
-	// darwin/arm compiles fine. According to https://golang.org/cmd/cgo/, cgo
-	// is automatically disabled when cross-compiling, so it's not clear if cgo
-	// is being disabled for darwin/arm (and not for darwin/arm64) or if the
-	// cross-compiling toolchain environment is just broken for darwin/arm64. In
-	// either case, there's something that needs to be fixed, and I think we're
-	// better off waiting for Go's answer to the Apple Silicon transition. Note
-	// that we'll also need to update the -mmacosx-version-min flags above.
-	// We'll also probably want to update IncludeAgentInSlimBuildModes and
-	// BuildBundleInReleaseSlimMode to include darwin/arm64.
+	// underway. Based on the discussion in golang/go#38485, it seems like
+	// GOOS=darwin is going to be reclaimed exclusively for macOS, with a new
+	// GOOS=ios tag being added for iOS. It's unclear how universal binaries
+	// will fit into that, but we should use them if possible (and hopefully
+	// doing so will be as simple as a hybrid GOARCH value). It's worth noting
+	// that darwin/arm64 doesn't currently compile due to golang/go#16445,
+	// though I don't know if the answer there makes complete sense since
+	// darwin/arm compiles just fine. In any case, I think we're best off
+	// waiting for Go's answer to the Apple Silicon transition before sinking
+	// any additional effort into making this port work.
 	// {"darwin", "arm64"},
 	{"dragonfly", "amd64"},
 	{"freebsd", "386"},
