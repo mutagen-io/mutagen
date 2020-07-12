@@ -257,11 +257,13 @@ var targets = []Target{
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
 	{"netbsd", "arm"},
-	{"netbsd", "arm64"},
+	// TODO: Enable netbsd/arm64 once golang/go#34036 is resolved.
+	// {"netbsd", "arm64"},
 	{"openbsd", "386"},
 	{"openbsd", "amd64"},
 	{"openbsd", "arm"},
-	{"openbsd", "arm64"},
+	// TODO: Enable openbsd/arm64 once golang/go#34035 is resolved.
+	// {"openbsd", "arm64"},
 	// We disable support for Plan 9 because it's missing too many system calls
 	// and other APIs necessary for Mutagen to build. It might make sense to
 	// support Plan 9 as an endpoint for certain development scenarios, but it
