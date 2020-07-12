@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -48,8 +47,6 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// readlink and its ilk. Since ELOOP still sort of makes sense (we've
 	// encountered too many symbolic links at the path leaf), we return it
 	// unmodified.
-	//
-	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
 	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
 	if allowSymbolicLinkLeaf {
 		flags &^= unix.O_NOFOLLOW
@@ -59,7 +56,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		if d, err := unix.Open(path, flags, 0); err == nil {
 			descriptor = d
 			break
-		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
+		} else if err == unix.EINTR {
 			continue
 		} else {
 			return nil, nil, err

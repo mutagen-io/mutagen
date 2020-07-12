@@ -37,6 +37,25 @@ func ensureValidName(name string) error {
 	return nil
 }
 
+// openatIgnoreEINTR is a wrapper around unix.Openat that ignores EINTR errors
+// and returns on the first successful call or first non-EINTR error. In the
+// case of an error, it returns a file descriptor of -1 along with the error.
+// This wrapper is necessary to avoid excessive EINTR errors that previously
+// existed on Darwin (see golang/go#11180) and were exacerbated on all platforms
+// in Go 1.14 due to its new goroutine preemption mechanism (see the Go 1.14
+// release notes, as well as (e.g.) golang/go#38836 and golang/go#39237).
+func openatIgnoreEINTR(dirfd int, path string, flags int, mode uint32) (int, error) {
+	for {
+		if result, err := unix.Openat(dirfd, path, flags, mode); err == nil {
+			return result, nil
+		} else if err == unix.EINTR {
+			continue
+		} else {
+			return -1, err
+		}
+	}
+}
+
 // Directory represents a directory on disk and provides race-free operations on
 // the directory's contents. All of its operations avoid the traversal of
 // symbolic links.
@@ -113,7 +132,7 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 
 		// Attempt to open the file. Note that we needn't specify O_NOFOLLOW
 		// here since we're enforcing that the file doesn't already exist.
-		descriptor, err := unix.Openat(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
+		descriptor, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
 		if err != nil {
 			if os.IsExist(err) {
 				continue
@@ -172,12 +191,11 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	// HACK: On Linux, the AT_SYMLINK_NOFOLLOW flag is not supported by fchmodat
 	// and will result in an ENOTSUP error, so we have to use a workaround that
 	// opens a file and then uses fchmod in order to avoid setting permissions
-	// across a symbolic link. Fortunately, because we're on Linux, we don't
-	// need the looping construct used above to avoid golang/go#11180.
+	// across a symbolic link.
 	mode &= ModePermissionsMask
 	if mode != 0 {
 		if runtime.GOOS == "linux" {
-			if f, err := unix.Openat(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
+			if f, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
 				return errors.Wrap(err, "unable to open file")
 			} else if err = unix.Fchmod(f, uint32(mode)); err != nil {
 				unix.Close(f)
@@ -219,18 +237,9 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	// platforms)), and there was a race condition between opening files and
 	// manually setting close-on-exec behavior, but nowadays all of the "real"
 	// POSIX platforms support this flag.
-	//
-	// HACK: We use the same looping construct as Go to avoid golang/go#11180.
-	var descriptor int
-	for {
-		if d, err := unix.Openat(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
-			descriptor = d
-			break
-		} else if runtime.GOOS == "darwin" && err == unix.EINTR {
-			continue
-		} else {
-			return -1, nil, err
-		}
+	descriptor, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, nil, err
 	}
 
 	// Verify that we've ended up with the expected file type. This keeps parity
