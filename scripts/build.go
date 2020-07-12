@@ -213,31 +213,54 @@ func (t Target) Build(url, output string) error {
 // Unfortunately there's no automated way to construct this list, but that's
 // fine since we have to manually groom it anyway.
 var targets = []Target{
-	// We completely disable Android because it doesn't provide a useful shell
-	// or SSH server.
+	// TODO: Enable aix/ppc64 once we've fixed readlinkat support.
+	// {"aix", "ppc64"},
+	// We disable support for Android since it doesn't make sense for normal
+	// Mutagen usage and it doesn't have a build-in SSH server. However, it
+	// might make sense to support as an endpoint for certain development
+	// scenarios. There are third-party Android SSH server solutions available.
+	// {"android", "386"},
+	// {"android", "amd64"},
 	// {"android", "arm"},
-	// We completely disable darwin/386 because Go only supports macOS 10.7+,
-	// which is always able to run amd64 binaries.
+	// {"android", "arm64"},
+	// We disable darwin/386 since it isn't supported by Apple, it hasn't been
+	// needed since Mac OS X Snow Leopard, and it isn't well-supported by Go.
 	// {"darwin", "386"},
 	{"darwin", "amd64"},
-	// We completely disble darwin/arm and darwin/arm64 because no ARM-based
-	// Darwin platforms (iOS, watchOS, tvOS) provide a useful shell or SSH
-	// server.
+	// We disable support for darwin/arm since it's only supported on older iOS
+	// versions that aren't supported by Apple and wouldn't make sense for
+	// normal Mutagen usage. As with Android, it might have made sense to use as
+	// an endpoint for certain development scenarios, but given that 32-bit ARM
+	// support is discontinued, this port will never make sense to enable. Apple
+	// is also far less supportive of third-party SSH servers on iOS.
 	// {"darwin", "arm"},
-	// TODO: Figure out why darwin/arm64 doesn't compile in any case anyway.
-	// We're seeing this issue: https://github.com/golang/go/issues/16445. The
-	// "resolution" there makes sense, except that darwin/arm compiles fine.
-	// According to https://golang.org/cmd/cgo/, CGO is automatically disabled
-	// when cross-compiling. It's not clear if CGO is being disabled for
-	// darwin/arm (and not for darwin/arm64) or if the environment is just
-	// broken for darwin/arm64. In either case, there's some bug that needs to
-	// be fixed. Either CGO needs to be disabled automatically in both cases for
-	// consistency, or the cross-compilation environment needs to be fixed.
+	// TODO: Enable darwin/arm64 once the Apple Silicon transition for macOS is
+	// underway. It's unclear how Go will handle support for Apple's new chips
+	// and the distinction between macOS and iOS. It's also unclear if there's a
+	// scenario where we'd ever want to support iOS (since it might make sense
+	// as an endpoint in certain development scenarios or via a Mutagen app). In
+	// any case, we currently have trouble building for darwin/arm64 due to
+	// golang/go#16445. The resolution on that issue makes sense, though (oddly)
+	// darwin/arm compiles fine. According to https://golang.org/cmd/cgo/, cgo
+	// is automatically disabled when cross-compiling, so it's not clear if cgo
+	// is being disabled for darwin/arm (and not for darwin/arm64) or if the
+	// cross-compiling toolchain environment is just broken for darwin/arm64. In
+	// either case, there's something that needs to be fixed, and I think we're
+	// better off waiting for Go's answer to the Apple Silicon transition. Note
+	// that we'll also need to update the -mmacosx-version-min flags above.
+	// We'll also probably want to update IncludeAgentInSlimBuildModes and
+	// BuildBundleInReleaseSlimMode to include darwin/arm64.
 	// {"darwin", "arm64"},
 	{"dragonfly", "amd64"},
 	{"freebsd", "386"},
 	{"freebsd", "amd64"},
 	{"freebsd", "arm"},
+	{"freebsd", "arm64"},
+	// TODO: Enable illumos/amd64 once we've shimmed the necessary system calls.
+	// {"illumos", "amd64"},
+	// We disable support for WebAssembly since it doesn't make sense as a
+	// target platform, either for normal Mutagen usage or as an endpoint.
+	// {"js", "wasm"},
 	{"linux", "386"},
 	{"linux", "amd64"},
 	{"linux", "arm"},
@@ -248,25 +271,22 @@ var targets = []Target{
 	{"linux", "mipsle"},
 	{"linux", "mips64"},
 	{"linux", "mips64le"},
-	// TODO: This combination is valid but not listed on the "Installing Go from
-	// source" page. Perhaps we should open a pull request to change that?
 	{"linux", "s390x"},
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
 	{"netbsd", "arm"},
+	{"netbsd", "arm64"},
 	{"openbsd", "386"},
 	{"openbsd", "amd64"},
 	{"openbsd", "arm"},
-	// We completely disable Plan 9 because it is just missing too many
-	// facilities for Mutagen to build easily, even just the agent component.
-	// TODO: We might be able to get Plan 9 functioning as an agent, but it's
-	// going to take some serious playing around with source file layouts and
-	// build tags. To get started looking into this, look for the !plan9 build
-	// tag and see where the gaps are. Most of the problems revolve around the
-	// syscall package, but none of that is necessary for the agent, so it can
-	// probably be built.
+	{"openbsd", "arm64"},
+	// We disable support for Plan 9 because it's missing too many system calls
+	// and other APIs necessary for Mutagen to build. It might make sense to
+	// support Plan 9 as an endpoint for certain development scenarios, but it
+	// will take a significant amount of work just to build the Mutagen agent.
 	// {"plan9", "386"},
 	// {"plan9", "amd64"},
+	// {"plan9", "arm"},
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
