@@ -312,6 +312,8 @@ func (w *Watcher) removeWatch(pathname string) error {
 	if err != nil {
 		return err
 	}
+	// We need the volume and index but not the handle itself.
+	syscall.CloseHandle(ino.handle)
 	watch := w.watches.get(ino)
 	if watch == nil {
 		return fmt.Errorf("can't remove non-existent watch for: %s", pathname)
