@@ -95,7 +95,7 @@ type watch struct {
 	mask   uint64            // Directory itself is being watched with these notify flags
 	names  map[string]uint64 // Map of names being watched and their notify flags
 	rename string            // Remembers the old name while renaming a file
-	buf    [16384]byte
+	buf    [65536]byte       // Maximum before we hit network packet limits
 }
 
 type indexMap map[uint64]*watch
