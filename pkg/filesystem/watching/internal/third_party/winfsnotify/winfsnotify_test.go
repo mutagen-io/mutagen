@@ -50,7 +50,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -165,4 +167,52 @@ func TestNotifyClose(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error on Watch() after Close(), got nil")
 	}
+}
+
+func TestWatchLongPath(t *testing.T) {
+	dir, err := ioutil.TempDir("", "watch-extended-path")
+	if err != nil {
+		t.Fatalf("TempDir failed: %s", err)
+	}
+	defer os.RemoveAll(dir)
+	// Create a path longer than syscall.MAX_PATH*2
+	path := dir
+	for {
+		if len(path) > syscall.MAX_PATH*2 {
+			break
+		}
+		path = filepath.Join(path, "another-dir")
+	}
+	err = os.MkdirAll(path, 0755)
+	if err != nil {
+		t.Fatalf("MkdirAll(%s) failed: %s", path, err)
+	}
+
+	watcher, err := NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() failed: %s", err)
+	}
+
+	// Receive errors on the error channel on a separate goroutine
+	var wg sync.WaitGroup
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		defer wg.Done()
+		for err := range watcher.Error {
+			t.Fatalf("error received: %s", err)
+		}
+	}()
+	defer watcher.Close()
+
+	err = watcher.AddWatch(dir, FS_ALL_EVENTS)
+	if err != nil {
+		t.Fatalf("Watcher.Watch() failed: %s", err)
+	}
+	newFile := filepath.Join(path, "new-file")
+	err = ioutil.WriteFile(newFile, []byte("test"), 0644)
+	if err != nil {
+		t.Fatalf("WriteFile failed: %s", err)
+	}
+	expect(t, watcher.Event, newFile, FS_CREATE)
 }
