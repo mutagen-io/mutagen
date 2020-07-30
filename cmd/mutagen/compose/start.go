@@ -6,8 +6,40 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+
 	"github.com/mutagen-io/mutagen/pkg/compose"
 )
+
+// resumeSessions handles Mutagen session resuming for the project.
+func resumeSessions(project *compose.Project) error {
+	// Connect to the Mutagen daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
+	}
+	defer daemonConnection.Close()
+
+	// Create a session selection for the project.
+	projectSelection := project.SessionSelection()
+
+	// Perform forwarding session resumption.
+	fmt.Println("Resuming forwarding sessions")
+	if err := forward.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("forwarding resumption failed: %w", err)
+	}
+
+	// Perform synchronization session resumption.
+	fmt.Println("Resuming synchronization sessions")
+	if err := sync.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("synchronization resumption failed: %w", err)
+	}
+
+	// Success.
+	return nil
+}
 
 // startMain is the entry point for the start command.
 func startMain(command *cobra.Command, arguments []string) error {

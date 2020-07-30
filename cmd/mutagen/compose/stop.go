@@ -6,8 +6,40 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
+
 	"github.com/mutagen-io/mutagen/pkg/compose"
 )
+
+// pauseSessions handles Mutagen session pausing for the project.
+func pauseSessions(project *compose.Project) error {
+	// Connect to the Mutagen daemon and defer closure of the connection.
+	daemonConnection, err := daemon.Connect(true, true)
+	if err != nil {
+		return fmt.Errorf("unable to connect to Mutagen daemon: %w", err)
+	}
+	defer daemonConnection.Close()
+
+	// Create a session selection for the project.
+	projectSelection := project.SessionSelection()
+
+	// Perform forwarding session pausing.
+	fmt.Println("Pausing forwarding sessions")
+	if err := forward.PauseWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("forwarding pausing failed: %w", err)
+	}
+
+	// Perform synchronization session pausing.
+	fmt.Println("Pausing synchronization sessions")
+	if err := sync.PauseWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("synchronization pausing failed: %w", err)
+	}
+
+	// Success.
+	return nil
+}
 
 // stopMain is the entry point for the stop command.
 func stopMain(command *cobra.Command, arguments []string) error {
