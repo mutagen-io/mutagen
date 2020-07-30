@@ -1,0 +1,58 @@
+# Set up the Mutagen service and code volume before creating sessions.
+beforeCreate:
+  - docker-compose up --build --detach mutagen
+
+# Set up the main services after creating sessions. At this point, sessions will
+# have been established and code pushed to the shared volume.
+afterCreate:
+  - docker-compose up --build --detach
+  - docker-compose exec frontend /wait-for-initial-build.sh
+
+# Pause services after pausing sessions.
+afterPause:
+  - docker-compose stop
+
+# Resume services before resume sessions.
+beforeResume:
+  - docker-compose start
+
+# Tear down all services and remove the code volume after terminating sessions.
+afterTerminate:
+  - docker-compose down --rmi=local --volumes
+
+# Define common utility commands.
+commands:
+  database: docker-compose exec database psql -U messagessvc -d messagesdb
+  logs: docker-compose logs --follow
+
+# Forward local traffic to the web and API servers.
+forward:
+  api:
+    source: "tcp:localhost:8081"
+    destination: "docker://web-go-mutagen:tcp:api:8081"
+  web:
+    source: "tcp:localhost:8080"
+    destination: "docker://web-go-mutagen:tcp:web:8080"
+
+# Synchronize code to the shared Docker volume via the Mutagen service.
+sync:
+  defaults:
+    flushOnCreate: true
+    ignore:
+      vcs: true
+  code:
+    alpha: "."
+    beta: "docker://web-go-mutagen/code"
+    mode: "two-way-resolved"
+    ignore:
+      paths:
+        - "/*"
+        - "!/api/"
+        - "/api/*"
+        - "!/api/{entrypoint.sh,go.mod,go.sum,server.go}"
+        - "!/frontend/"
+        - "/frontend/*"
+        - "!/frontend/{entrypoint.sh,gulpfile.js,index.html,package*.json}"
+        - "!/web/"
+        - "/web/*"
+        - "!/web/{entrypoint.sh,go.mod,go.sum,server.go}"

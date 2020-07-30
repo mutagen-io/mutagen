@@ -1,0 +1,42 @@
+# Set the Docker Compose file format.
+version: "3.7"
+
+# Create a volume to store and share synchronized code.
+volumes:
+  code:
+
+# Define the service(s) that constitute the remote environment.
+services:
+  jupyter:
+    build: ./jupyter
+    stop_grace_period: 0s
+    volumes:
+      - code:/code
+
+# Set up Mutagen synchronization and forwarding. We configure synchronization to
+# use UID 1000 and GID 100 for creating files, since these IDs correspond to
+# jovyan and users, respectively, inside the jupyter container. We target a
+# subdirectory of the code volume because we can't control the ownership of the
+# volume itself.
+x-mutagen:
+  sync:
+    analysis:
+      alpha: "."
+      beta: "volume://code/data-science"
+      mode: "two-way-safe"
+      ignore:
+        vcs: true
+        paths:
+          - "/*"
+          - "!/*.ipynb"
+          - "!/analysis/"
+          - "*.py[cod]"
+          - "__pycache__"
+      configurationBeta:
+        permissions:
+          defaultOwner: "id:1000"
+          defaultGroup: "id:100"
+  forward:
+    jupyter:
+      source: "tcp:localhost:8888"
+      destination: "network://default:tcp:jupyter:8888"

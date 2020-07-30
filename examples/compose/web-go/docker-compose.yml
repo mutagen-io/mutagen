@@ -1,0 +1,69 @@
+# Set the Docker Compose file format.
+version: "3.7"
+
+# Create a volume to store and share synchronized code.
+volumes:
+  code:
+
+# Define the services (containers) that make up the project. For those services
+# with an entry point not designed to function as PID 1, we tell Docker to use
+# its own init process.
+services:
+  database:
+    build: ./database
+    environment:
+      POSTGRES_DB: "messagesdb"
+      POSTGRES_USER: "messagessvc"
+      POSTGRES_PASSWORD: "InSeCUr3Dem0PasS"
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: "postgres://messagessvc:InSeCUr3Dem0PasS@database:5432/messagesdb?sslmode=disable"
+      SERVER_BIND: ":8081"
+      CORS_ORIGIN: "http://localhost:8080"
+    volumes:
+      - code:/code
+  frontend:
+    build: ./frontend
+    init: true
+    environment:
+      OUTPUT_PATH: "/code/build"
+    volumes:
+      - code:/code
+  web:
+    build: ./web
+    environment:
+      SERVER_ROOT: "/code/build"
+      SERVER_BIND: ":8080"
+    volumes:
+      - code:/code
+
+# Set up Mutagen synchronization and forwarding.
+x-mutagen:
+  sync:
+    defaults:
+      ignore:
+        vcs: true
+    code:
+      alpha: "."
+      beta: "volume://code"
+      mode: "two-way-resolved"
+      ignore:
+        paths:
+          - "/*"
+          - "!/api/"
+          - "/api/*"
+          - "!/api/{entrypoint.sh,go.mod,go.sum,server.go}"
+          - "!/frontend/"
+          - "/frontend/*"
+          - "!/frontend/{entrypoint.sh,gulpfile.js,index.html,package*.json}"
+          - "!/web/"
+          - "/web/*"
+          - "!/web/{entrypoint.sh,go.mod,go.sum,server.go}"
+  forward:
+    api:
+      source: "tcp:localhost:8081"
+      destination: "network://default:tcp:api:8081"
+    web:
+      source: "tcp:localhost:8080"
+      destination: "network://default:tcp:web:8080"

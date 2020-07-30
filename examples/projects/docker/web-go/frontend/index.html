@@ -1,0 +1,118 @@
+<!DOCTYPE HTML>
+<html lang="en" class="h-100">
+    <head>
+        <!-- Set page title -->
+        <title>Message demo</title>
+
+        <!-- Set encoding -->
+        <meta charset="utf-8">
+
+        <!-- Disable shrink-to-fit on mobile -->
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <!-- JavaScript imports -->
+        <script src="jquery.min.js"></script>
+        <script src="popper.min.js"></script>
+        <script src="bootstrap.min.js"></script>
+
+        <!-- CSS imports -->
+        <link rel="stylesheet" href="bootstrap.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <div class="row mt-5">
+                <div class="col offset-md-2 col-md-8 offset-lg-3 col-lg-6">
+                    <h2 class="text-center mb-4">Super Advanced Message Board</h2>
+                    <div class="card">
+                        <div class="card-header">
+                            <ul class="nav nav-tabs card-header-tabs">
+                                <li class="nav-item">
+                                    <a id="write-tab-link" class="nav-link active" data-toggle="tab" href="#write-tab" role="tab" aria-controls="write-tab" aria-selected="true">Write message</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a id="read-tab-link" class="nav-link" data-toggle="tab" href="#read-tab" role="tab" aria-controls="read-tab" aria-selected="false">Recent messages</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div id="messages-tab-content" class="tab-content">
+                                <div id="write-tab" class="tab-pane fade show active" role="tabpanel" aria-labelledby="write-tab-link">
+                                    <h5>Write a message</h5>
+                                    <form id="write-form" method="POST" action="http://localhost:8081/api/messages" accept-charset="UTF-8">
+                                        <div class="form-group">
+                                            <label for="name">Name</label>
+                                            <input id="name" name="name" type="text" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="message">Message</label>
+                                            <input id="message" name="message" type="text" class="form-control" required>
+                                        </div>
+                                        <input class="btn btn-primary" type="submit" value="Submit">
+                                    </form>
+                                    <script type="text/javascript">
+                                        $("#write-form").submit(function(e) {
+                                            // Grab the form object and its target URL.
+                                            var form = $(this);
+
+                                            // Prevent the default submission.
+                                            e.preventDefault();
+
+                                            // Submit the form using AJAX and
+                                            // display the result from the API.
+                                            $.ajax({
+                                                type: "POST",
+                                                url: form.attr("action"),
+                                                data: form.serialize(),
+                                                complete: function(result) {
+                                                    alert(result.responseText);
+                                                }
+                                            });
+                                        });
+                                    </script>
+                                </div>
+                                <div id="read-tab" class="tab-pane fade" role="tabpanel" aria-labelledby="read-tab-link">
+                                    <h5>Recent messages</h5>
+                                    <ul id="messages">
+                                    </ul>
+                                    <script type="text/javascript">
+                                        // Load recent messages when we switch
+                                        // to the recent messages tab.
+                                        $('#read-tab-link').on('shown.bs.tab', function(e) {
+                                            // Grab the message list.
+                                            var messageList = $("#messages");
+
+                                            // Clear any previously rendered
+                                            // messages.
+                                            messageList.empty();
+
+                                            // Load new messages.
+                                            $.ajax({
+                                                type: "GET",
+                                                url: "http://localhost:8081/api/messages",
+                                                complete: function(result) {
+                                                    if (result.status == 200) {
+                                                        for (var i = 0; i < result.responseJSON.length; i++) {
+                                                            var message = result.responseJSON[i];
+                                                            messageList.append(
+                                                                "<li class=\"mt-2\"><strong>" + message.name +
+                                                                ":</strong> " + message.message +
+                                                                "<span class=\"text-muted\"><br />@ " +
+                                                                message.time + "</span></li>"
+                                                            );
+                                                        }
+                                                    } else {
+                                                        alert(result.responseText);
+                                                    }
+                                                }
+                                            });
+                                        });
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,35 @@
+# Set up the Docker Compose services before creating sessions.
+beforeCreate:
+  - docker-compose up --build --detach
+
+# Tear down the Docker Compose services after terminating sessions.
+afterTerminate:
+  - docker-compose down --rmi=local --volumes
+
+# Define common utility commands.
+commands:
+  ipython: docker-compose exec jupyter ipython
+
+# Forward local traffic to the Jupyter notebook server.
+forward:
+  jupyter:
+    source: "tcp:localhost:8888"
+    destination: "docker://data-science:tcp:localhost:8888"
+
+# Synchronize analysis code and Jupyter notebooks with the container.
+sync:
+  defaults:
+    ignore:
+      vcs: true
+  code:
+    alpha: "analysis"
+    beta: "docker://data-science/home/jovyan/data-science/analysis"
+    mode: "one-way-safe"
+  notebooks:
+    alpha: "."
+    beta: "docker://data-science/home/jovyan/data-science"
+    mode: "two-way-safe"
+    ignore:
+      paths:
+        - '*'
+        - '!*.ipynb'

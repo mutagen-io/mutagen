@@ -1,0 +1,9 @@
+# Set the Docker Compose file format.
+version: "3.7"
+
+# Define the service(s) that constitute the remote environment.
+services:
+  jupyter:
+    build: ./containers/jupyter
+    container_name: data-science
+    stop_grace_period: 0s
