@@ -55,6 +55,6 @@ message URL {
     // historical reasons.
     // Parameters are internal transport parameters. These are set for URLs
     // generated internally that require additional metadata. Parameters are not
-    // requires and their behavior is dependent on the transport implementation.
+    // required and their behavior is dependent on the transport implementation.
     map<string, string> parameters = 8;
 }
