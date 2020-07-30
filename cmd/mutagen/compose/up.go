@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -19,6 +20,12 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+)
+
+const (
+	// mutagenScalePrefix is the prefix that would be used to scale the Mutagen
+	// service in a --scale flag.
+	mutagenScalePrefix = compose.MutagenServiceName + "="
 )
 
 // ensureMutagenUp ensures that the Mutagen service is running and up-to-date.
@@ -243,6 +250,11 @@ func upMain(command *cobra.Command, arguments []string) error {
 	for _, argument := range arguments {
 		if argument == compose.MutagenServiceName {
 			return errors.New("the Mutagen service should not be controlled directly")
+		}
+	}
+	for _, scaling := range upConfiguration.scale {
+		if strings.HasPrefix(scaling, mutagenScalePrefix) {
+			return errors.New("the Mutagen service cannot be scaled")
 		}
 	}
 
