@@ -175,6 +175,7 @@ func reconcileSessions(project *compose.Project) error {
 
 	// Prune orphaned and stale forwarding sessions.
 	if len(forwardingPruneList) > 0 {
+		fmt.Println("Pruning forwarding sessions")
 		pruneSelection := &selection.Selection{Specifications: forwardingPruneList}
 		if err := forward.TerminateWithSelection(daemonConnection, pruneSelection); err != nil {
 			return fmt.Errorf("unable to prune orphaned/duplicate/stale forwarding sessions: %w", err)
@@ -183,10 +184,25 @@ func reconcileSessions(project *compose.Project) error {
 
 	// Prune orphaned and stale synchronization sessions.
 	if len(synchronizationPruneList) > 0 {
+		fmt.Println("Pruning synchronization sessions")
 		pruneSelection := &selection.Selection{Specifications: synchronizationPruneList}
 		if err := sync.TerminateWithSelection(daemonConnection, pruneSelection); err != nil {
 			return fmt.Errorf("unable to prune orphaned/duplicate/stale synchronization sessions: %w", err)
 		}
+	}
+
+	// Ensure that all existing sessions are unpaused and connected. This is a
+	// no-op for sessions that are already running and connected. We want to do
+	// this in case the Mutagen service is being restarted after a system
+	// shutdown or stop operation, in which case sessions may be waiting to
+	// reconnect or paused, respectively.
+	fmt.Println("Resuming existing forwarding sessions")
+	if err := forward.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("forwarding resumption failed: %w", err)
+	}
+	fmt.Println("Resuming existing synchronization sessions")
+	if err := sync.ResumeWithSelection(daemonConnection, projectSelection); err != nil {
+		return fmt.Errorf("synchronization resumption failed: %w", err)
 	}
 
 	// Create forwarding sessions.
@@ -198,20 +214,20 @@ func reconcileSessions(project *compose.Project) error {
 	}
 
 	// Create synchronization sessions.
-	var sessionsToFlush []string
+	var newSynchronizationSessions []string
 	for _, specification := range synchronizationCreateSpecifications {
 		fmt.Printf("Creating synchronization session \"%s\"\n", specification.Name)
 		if s, err := sync.CreateWithSpecification(daemonConnection, specification); err != nil {
 			return fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
 		} else {
-			sessionsToFlush = append(sessionsToFlush, s)
+			newSynchronizationSessions = append(newSynchronizationSessions, s)
 		}
 	}
 
 	// Flush newly created synchronization sessions.
-	if len(sessionsToFlush) > 0 {
+	if len(newSynchronizationSessions) > 0 {
 		fmt.Println("Performing initial synchronization")
-		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
+		flushSelection := &selection.Selection{Specifications: newSynchronizationSessions}
 		if err := sync.FlushWithSelection(daemonConnection, flushSelection, false); err != nil {
 			return fmt.Errorf("unable to flush synchronization session(s): %w", err)
 		}
