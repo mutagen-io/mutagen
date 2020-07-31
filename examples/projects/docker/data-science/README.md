@@ -44,7 +44,7 @@ forwarding.
 
 Once the environment is running, you can access the Jupyter notebook server at
 [http://localhost:8888](http://localhost:8888). The password for the notebook
-is `mutagen`. For more information on changing the password, please see the
+server is `mutagen`. For information on changing the password, please see the
 [Jupyter documentation](https://jupyter-docker-stacks.readthedocs.io/en/latest/using/common.html#notebook-options),
 as well as the `jupyter` container definition in the `containers` directory.
 

@@ -14,6 +14,10 @@ where the project is running.
 ## Usage
 
 This example behaves like any other Composed-based project—you'll just need to
-replace any `docker-compose` command with `mutagen compose`. For more
+replace any `docker-compose` command with `mutagen compose`. Once the project is
+running, you can access the Jupyter notebook server that it creates at
+[http://localhost:8888](http://localhost:8888). The password for the notebook
+server is `mutagen`. Once the notebook server is running, try making changes to
+the analysis code and then reloading it in the remote notebook. For more
 information, check out the
 [documentation](https://mutagen.io/documentation/orchestration/compose).
