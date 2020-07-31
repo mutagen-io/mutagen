@@ -7,7 +7,7 @@ it can also be run locally, e.g. via
 [Mutagen's support for Docker Compose](https://mutagen.io/documentation/orchestration/compose)
 to synchronize code from the local filesystem to a shared container volume and
 to forward network traffic to the containerized Jupyter notebook server,
-allowing you to edit code and access the environment locally regardless of
+allowing you to edit code and access the environment locally, regardless of
 where the project is running.
 
 
@@ -15,5 +15,5 @@ where the project is running.
 
 This example behaves like any other Composed-based project—you'll just need to
 replace any `docker-compose` command with `mutagen compose`. For more
-information and setup, please see the
+information, check out the
 [documentation](https://mutagen.io/documentation/orchestration/compose).

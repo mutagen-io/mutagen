@@ -7,7 +7,7 @@ application designed to be developed and run on a cloud-based container host
 [Mutagen's support for Docker Compose](https://mutagen.io/documentation/orchestration/compose)
 to synchronize code from the local filesystem to a shared container volume and
 to forward network traffic to the various containerized services, allowing you
-to edit code and access the application locally regardless of where the project
+to edit code and access the application locally, regardless of where the project
 is running.
 
 
@@ -15,5 +15,5 @@ is running.
 
 This example behaves like any other Composed-based project—you'll just need to
 replace any `docker-compose` command with `mutagen compose`. For more
-information and setup, please see the
+information, check out the
 [documentation](https://mutagen.io/documentation/orchestration/compose).
