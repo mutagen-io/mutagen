@@ -4,7 +4,9 @@ import (
 	"io"
 	"net"
 	"os/exec"
+	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -138,15 +140,36 @@ func (c *Connection) Close() error {
 	case <-time.After(killDelay):
 	}
 
-	// Issue a kill request.
-	// HACK: We don't handle errors here, because there's not much we can do
+	// Send a termination signal to the process. On Windows, we use the Kill
+	// method since it has to use TerminateProcess to signal termination. On
+	// POSIX, we use the Signal method with SIGTERM, because the Kill method
+	// sends SIGKILL and this can lead to zombie processes when the SIGKILL
+	// isn't (or (probably) can't be) forwarded to child processes. This was the
+	// cause of mutagen-io/mutagen#223. SIGTERM is also a more idiomatic way of
+	// doing this, though it does come at the cost of (a) relying on processes
+	// not ignoring it and (b) requiring processes to perform proper signal
+	// forwarding all the way down the process tree.
+	//
+	// TODO: We might be able to solve issue (b) by using killpg instead, and we
+	// could solve both issues with killpg and SIGKILL, though there's no
+	// guarantee that child processes aren't spawning off separate process
+	// groups anyway. We might also want to switch to grouping processes as jobs
+	// on Windows and performing similar group termination, though that's quite
+	// complicated. We don't want to end up implementing init just to handle
+	// child processes.
+	//
+	// NOTE: We don't handle errors here, because there's not much we can do
 	// with the information. We need to guarantee that, by the time this method
 	// returns, the process is no longer running. That will be enforced by our
-	// indefinite wait in the return statement, but it's possible that the kill
-	// signal could fail, and that the process could run indefinitely. That's
-	// highly unlikely though, and it's safer to block indefinitely in that case
-	// than to return with an error that might not be checked.
-	c.process.Process.Kill()
+	// indefinite wait in the return statement, but it's possible that the
+	// termination signal could fail, and that the process could run
+	// indefinitely. That's highly unlikely though, and it's safer to block
+	// indefinitely in that case than to return with the process still running.
+	if runtime.GOOS == "windows" {
+		c.process.Process.Kill()
+	} else {
+		c.process.Process.Signal(syscall.SIGTERM)
+	}
 
 	// Wait for the wait operation to complete.
 	return errors.Wrap(<-waitResults, "process wait failed")
