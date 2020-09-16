@@ -49,8 +49,8 @@ Mutagen is built and tested on Windows, macOS, and Linux, and it's available for
 | :---------------------------------: | :-------------------------------------: | :---------------------------------: | :---------------------------------------: |
 | [![Tests][tests-badge]][tests-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link] | [![License][license-badge]][license-link] |
 
-[tests-badge]: https://travis-ci.org/mutagen-io/mutagen.svg?branch=master "Test status"
-[tests-link]:  https://travis-ci.org/mutagen-io/mutagen "Test status"
+[tests-badge]: https://api.travis-ci.com/mutagen-io/mutagen.svg?branch=master "Test status"
+[tests-link]: https://travis-ci.com/github/mutagen-io/mutagen/builds "Test status"
 [cov-badge]: https://codecov.io/gh/mutagen-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
 [cov-link]: https://codecov.io/gh/mutagen-io/mutagen/tree/master/pkg "Code coverage status"
 [rc-badge]: https://goreportcard.com/badge/github.com/mutagen-io/mutagen "Report card status"
