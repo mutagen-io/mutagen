@@ -252,11 +252,10 @@ func (r *reconciler) handleDisagreementUnidirectional(path string, ancestor, alp
 	// that they aren't contents at a lower level of a directory hierarchy that
 	// alpha has deleted).
 	//
-	// Finally, since the ancestor is
-	// updated with Apply, the Old value will be ignored anyway (since it
-	// doesn't need to be transitioned away like on-disk contents do during
-	// a transition), so we just set it to nil, rather than the old contents
-	// of the ancestor.
+	// Finally, since the ancestor is updated with Apply, the Old value will be
+	// ignored anyway (since it doesn't need to be transitioned away like
+	// on-disk contents do during a transition), so we just set it to nil,
+	// rather than the old contents of the ancestor.
 	ancestorOrBetaNonDirectory := ancestor == nil ||
 		ancestor.Kind != EntryKind_Directory ||
 		beta == nil ||
