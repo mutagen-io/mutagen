@@ -16,6 +16,7 @@ const (
 // detached processes.
 func DetachedProcessAttributes() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
-		CreationFlags: DETACHED_PROCESS,
+		// CreationFlags: DETACHED_PROCESS,
+		HideWindow: true,
 	}
 }
