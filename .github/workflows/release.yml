@@ -1,0 +1,26 @@
+# Set the workflow name.
+name: Release
+
+# Execute the workflow on release publication.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Define the workflow job.
+jobs:
+  release:
+    name: Release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - run: go version
+      - run: scripts/ci/build.sh
+      - uses: alexellis/upload-assets@0.2.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_paths: '["build/release/*"]'

@@ -1,0 +1,64 @@
+# Set the workflow name.
+name: CI
+
+# Execute the workflow on pushes and pull requests.
+on: [push, pull_request]
+
+# Define the workflow jobs.
+jobs:
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - run: go version
+      - run: scripts/ci/setup_ssh.sh
+      - run: scripts/ci/setup_partitions_darwin.sh
+      - run: scripts/ci/test.sh
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+      - run: scripts/ci/build.sh
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - run: docker version
+      - run: go version
+      - run: scripts/ci/setup_ssh.sh
+      - run: scripts/ci/setup_docker.sh
+      - run: scripts/ci/test.sh
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+      - run: scripts/ci/test_386.sh
+      - run: scripts/ci/build.sh
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - run: docker version
+      - run: go version
+      - run: scripts/ci/setup_docker.sh
+        shell: bash
+      - run: diskpart /s scripts\ci\setup_partitions_windows.txt
+      - run: scripts/ci/test.sh
+        shell: bash
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+      - run: scripts/ci/test_386.sh
+        shell: bash
+      - run: scripts/ci/build.sh
+        shell: bash

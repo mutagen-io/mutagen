@@ -1,25 +1,40 @@
 #!/bin/bash
 
-# SSH installation/activation based on the OS.
-if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    sudo systemsetup -f -setremotelogin on || exit $?
-elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    sudo apt-get -qq install openssh-client openssh-server || exit $?
-    sudo service ssh restart || exit $?
+# Exit immediately on failure.
+set -e
+
+# Determine the operating system.
+MUTAGEN_OS_NAME="$(go env GOOS)"
+
+# Verify that the platform is supported and that its SSH server is enabled.
+if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
+    sudo systemsetup -f -setremotelogin on
+elif [[ "${MUTAGEN_OS_NAME}" == "linux" ]]; then
+    sudo apt-get -qq install openssh-client openssh-server
+    sudo service ssh restart
 else
-    # TODO: Eventually it would be nice to support Windows.
-    echo "SSH not supported on Windows" 1>&2
+    # TODO: We should be able to support Windows 10 via its OpenSSH server.
+    echo "SSH server CI setup not supported on this platform" 1>&2
     exit 1
 fi
 
-# Ensure our SSH configuration directory exists.
-mkdir -p ~/.ssh || exit $?
+# Ensure that home directory permissions are acceptable to sshd.
+chmod 755 ~
 
-# Generate an SSH key in quiet mode without a password.
-ssh-keygen -q -t rsa -b 4096 -N "" -f ~/.ssh/id_rsa || exit $?
+# Ensure our SSH configuration directory exists and has the correct permissions.
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
 
-# Add the key to our list of authorized keys.
-cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys || exit $?
+# Generate an SSH key in quiet mode without a password. We don't need to set
+# permissions explicitly since ssh-keygen will set them correctly.
+ssh-keygen -q -t ed25519 -C "ci@localhost" -N "" -f ~/.ssh/id_ed25519
 
-# Add localhost to our list of known hosts (so we're not prompted).
-ssh-keyscan -t rsa localhost >> ~/.ssh/known_hosts || exit $?
+# Add the key to our list of authorized keys and ensure that the authorized keys
+# file has the correct permissions.
+cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# Add localhost to our list of known hosts (so we're not prompted) and ensure
+# that the known hosts file has the correct permissions.
+ssh-keyscan -t ed25519 localhost >> ~/.ssh/known_hosts
+chmod 644 ~/.ssh/known_hosts

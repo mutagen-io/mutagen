@@ -1,0 +1,6 @@
+create vdisk file=D:\a\mutagen\mutagen\fat32image.vhdx maximum=50 type=fixed
+attach vdisk
+create partition primary
+format quick fs=fat32 label=FAT32ROOT
+assign letter=v
+exit

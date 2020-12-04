@@ -1,33 +1,33 @@
 #!/bin/bash
 
-# Compute the executable extension for this platform.
-EXE_EXT=""
-if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-    EXE_EXT=".exe"
+# Exit immediately on failure.
+set -e
+
+# Determine the operating system.
+MUTAGEN_OS_NAME="$(go env GOOS)"
+
+# Verify that the platform is supported and compute the executable extension.
+if [[ "${MUTAGEN_OS_NAME}" == "linux" ]]; then
+    MUTAGEN_EXE_EXT=""
+elif [[ "${MUTAGEN_OS_NAME}" == "windows" ]]; then
+    MUTAGEN_EXE_EXT=".exe"
+else
+    # TODO: We might eventually be able to support macOS if Docker for Mac (or
+    # something similar) is available on the CI system we're using.
+    echo "Docker CI setup not supported on this platform" 1>&2
+    exit 1
 fi
 
 # Build the HTTP demo server that will serve as the Dockerfile entry point. We
-# have to disable cgo because to avoid creating dependencies on host libraries
-# that might not exist inside the container.
+# disable cgo to avoid creating dependencies on host libraries (such as glibc on
+# Linux) that might not exist inside the container.
 CGO_ENABLED=0 go build \
     -mod=readonly \
-    -o "scripts/ci/docker/${TRAVIS_OS_NAME}/httpdemo${EXE_EXT}" \
+    -o "scripts/ci/docker/${MUTAGEN_OS_NAME}/httpdemo${MUTAGEN_EXE_EXT}" \
     github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
-# Print the Docker version.
-docker version
-
 # Build our image.
-docker image build \
-    --pull \
-    --tag "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" \
-    "scripts/ci/docker/${TRAVIS_OS_NAME}" || exit $?
-
-# Remove the generated executable.
-rm "scripts/ci/docker/${TRAVIS_OS_NAME}/httpdemo${EXE_EXT}"
+docker image build --pull --tag mutagentest "scripts/ci/docker/${MUTAGEN_OS_NAME}"
 
 # Start a container.
-docker container run \
-    --name "${MUTAGEN_TEST_DOCKER_CONTAINER_NAME}" \
-    --detach \
-    "${MUTAGEN_TEST_DOCKER_IMAGE_NAME}" || exit $?
+docker container run --name mutagentester --detach mutagentest
