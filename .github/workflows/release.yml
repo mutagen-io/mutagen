@@ -1,11 +1,13 @@
 # Set the workflow name.
 name: Release
 
-# Execute the workflow on release publication.
+# Execute the workflow whenever a tag is pushed. Release publication also
+# generates a tag push event, so this covers both standard releases as well as
+# one-off testing tags for which we might want release artifacts.
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
 
 # Define the workflow job.
 jobs:
