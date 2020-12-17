@@ -1,3 +1,0 @@
-package webrtcutil
-
-// TODO: Implement.

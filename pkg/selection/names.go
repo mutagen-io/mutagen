@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// EnsureNameValid ensures that a name is valid for use as a session or tunnel
-// name. Empty names are treated as valid.
+// EnsureNameValid ensures that a name is valid for use as a session name. Empty
+// names are treated as valid.
 func EnsureNameValid(name string) error {
 	// Loop over the string and ensure that its characters are allowed. We allow
 	// letters, numbers, and dashses, but we require that the identifier starts

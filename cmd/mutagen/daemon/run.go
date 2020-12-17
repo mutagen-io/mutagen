@@ -21,18 +21,14 @@ import (
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
-	tunnelingsvc "github.com/mutagen-io/mutagen/pkg/service/tunneling"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
-	"github.com/mutagen-io/mutagen/pkg/tunneling"
 
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/docker"
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/local"
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/ssh"
-	tunnelforwardingprotocol "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/tunnel"
 	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/docker"
 	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/local"
 	_ "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/ssh"
-	tunnelsynchronizationprotocol "github.com/mutagen-io/mutagen/pkg/synchronization/protocols/tunnel"
 )
 
 // runMain is the entry point for the run command.
@@ -49,18 +45,6 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// smoothly, not mid-initialization.
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
-
-	// Create a tunnel manager and defer its shutdown.
-	tunnelManager, err := tunneling.NewManager(logging.RootLogger.Sublogger("tunneling"))
-	if err != nil {
-		return errors.Wrap(err, "unable to create tunnel manager")
-	}
-	defer tunnelManager.Shutdown()
-
-	// Register the tunnel manager as a forwarding and synchronization protocol
-	// handler.
-	tunnelforwardingprotocol.RegisterManager(tunnelManager)
-	tunnelsynchronizationprotocol.RegisterManager(tunnelManager)
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
@@ -91,10 +75,6 @@ func runMain(_ *cobra.Command, _ []string) error {
 
 	// Create and register the prompt server.
 	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())
-
-	// Create and register the tunneling server.
-	tunnelingServer := tunnelingsvc.NewServer(tunnelManager)
-	tunnelingsvc.RegisterTunnelingServer(server, tunnelingServer)
 
 	// Create and register the forwarding server.
 	forwardingServer := forwardingsvc.NewServer(forwardingManager)
