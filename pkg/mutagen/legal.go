@@ -177,24 +177,6 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
-Pion project packages, including datachannel, dtls, ice, logging, mdns, rtcp,
-rtp, sctp, sdp, srtp, stun, transport, turn, and webrtc packages.
-
-https://github.com/pion
-
-The stun and turn packages include the following copyright statement:
-
-Copyright 2018 Pion LLC
-
-All other packages include the following copyright statement:
-
-Copyright (c) 2018
-
-Used under the terms of the MIT License. A copy of this license can be found
-later in this text or online at https://opensource.org/licenses/MIT.
-
---------------------------------------------------------------------------------
-
 Go support for Protocol Buffers (Legacy)
 
 https://github.com/golang/protobuf
@@ -292,17 +274,6 @@ Copyright (c) 2009,2014 Google Inc. All rights reserved.
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
 this license can be found later in this text and a templated version can be
 found online at https://opensource.org/licenses/BSD-3-Clause.
-
---------------------------------------------------------------------------------
-
-jwt-go
-
-https://github.com/dgrijalva/jwt-go
-
-Copyright (c) 2012 Dave Grijalva
-
-Used under the terms of the MIT License. A copy of this license can be found
-later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 

@@ -115,13 +115,12 @@ func (p *StatusLinePrompter) Prompt(message string) (string, error) {
 
 	// Perform command line prompting.
 	//
-	// TODO: Should we respect the printer's UseStandardError field here?
-	// Unfortunately the gopass package doesn't provide a mechanism to specify
-	// its output stream. But in practice the UseStandardError field is only
-	// used for tunnel-creation-related output, so if we remove tunnels, then we
-	// can probably remove UseStandardError. Although, if we want to support
-	// formatted data output, then we'll probably want to keep daemon autostart
-	// notices on standard error. For now it's not a problem - we don't prompt
-	// in cases where we need standard error for output (we only message).
+	// TODO: Should we respect the printer's UseStandardError field here? The
+	// gopass package (used by the prompting package) doesn't provide a way to
+	// specify its output stream, so there's not a trivial way to implement it,
+	// but in practice the UseStandardError field is only used for daemon
+	// auto-start output to avoid corrupting output streams in formatted list
+	// and monitor commands (which won't generate prompts), so there's no case
+	// at the moment where ignoring the UseStandardError setting causes issues.
 	return prompting.PromptCommandLine(message)
 }

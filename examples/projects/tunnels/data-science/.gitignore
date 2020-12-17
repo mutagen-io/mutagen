@@ -1,5 +1,0 @@
-# Ignore tunnel credentials.
-*.tunn
-
-# Ignore project lock files.
-*.lock

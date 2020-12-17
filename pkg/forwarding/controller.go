@@ -99,12 +99,9 @@ func newSession(
 	mergedSourceConfiguration := MergeConfigurations(configuration, configurationSource)
 	mergedDestinationConfiguration := MergeConfigurations(configuration, configurationDestination)
 
-	// If the session isn't being created paused, then try to connect to any
-	// endpoints not using the tunnel protocol. The tunnel protocol is the one
-	// case where we want to allow asynchronous connectivity (since it doesn't
-	// require user input but also isn't guaranteed to connect immediately). If
-	// we connect to endpoints here and don't hand them off to the runloop
-	// below, then defer their shutdown.
+	// If the session isn't being created paused, then try to connect to the
+	// endpoints. Before doing so, set up a deferred handler that will shut down
+	// any endpoints that aren't handed off to the run loop due to errors.
 	var sourceEndpoint, destinationEndpoint Endpoint
 	defer func() {
 		if sourceEndpoint != nil {
@@ -116,7 +113,7 @@ func newSession(
 			destinationEndpoint = nil
 		}
 	}()
-	if !paused && source.Protocol != url.Protocol_Tunnel {
+	if !paused {
 		logger.Info("Connecting to source endpoint")
 		sourceEndpoint, err = connect(
 			ctx,
@@ -132,8 +129,6 @@ func newSession(
 			logger.Info("Source connection failure:", err)
 			return nil, errors.Wrap(err, "unable to connect to source")
 		}
-	}
-	if !paused && destination.Protocol != url.Protocol_Tunnel {
 		logger.Info("Connecting to destination endpoint")
 		destinationEndpoint, err = connect(
 			ctx,

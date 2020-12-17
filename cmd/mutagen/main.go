@@ -14,7 +14,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
-	"github.com/mutagen-io/mutagen/cmd/mutagen/tunnel"
 
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
@@ -73,9 +72,6 @@ func init() {
 		forward.ForwardCommand,
 		project.ProjectCommand,
 		compose.RootCommand,
-		tunnel.TunnelCommand,
-		loginCommand,
-		logoutCommand,
 		daemon.DaemonCommand,
 		versionCommand,
 		legalCommand,
