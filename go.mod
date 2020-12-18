@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/bmatcuk/doublestar v1.1.1
-	github.com/compose-spec/compose-go v0.0.0-20200518130854-7c515c977fb5
 	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/basex v1.0.0
 	github.com/fatih/color v1.9.0
@@ -15,7 +14,6 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
-	github.com/joho/godotenv v1.3.0
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
@@ -31,6 +29,5 @@ require (
 	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.3.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/apimachinery v0.18.3
 )
