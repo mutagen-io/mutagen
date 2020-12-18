@@ -52,8 +52,10 @@ message URL {
     // a required component and its contents and their behavior depend on the
     // transport implementation.
     map<string, string> environment = 6;
+
     // Field 7 is already used above for the kind field. It is out of order for
     // historical reasons.
+
     // Parameters are internal transport parameters. These are set for URLs
     // generated internally that require additional metadata. Parameters are not
     // required and their behavior is dependent on the transport implementation.
