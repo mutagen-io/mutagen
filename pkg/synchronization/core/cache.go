@@ -2,8 +2,8 @@ package core
 
 import (
 	"bytes"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // EnsureValid ensures that Cache's invariants are respected.
@@ -24,6 +24,8 @@ func (c *Cache) EnsureValid() error {
 			return errors.New("nil cache entry detected")
 		} else if e.ModificationTime == nil {
 			return errors.New("cache entry will nil modification time detected")
+		} else if err := e.ModificationTime.CheckValid(); err != nil {
+			return fmt.Errorf("cache entry modification time invalid: %w", err)
 		}
 	}
 

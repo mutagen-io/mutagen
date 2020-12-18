@@ -11,8 +11,8 @@ require (
 	github.com/eknkc/basex v1.0.0
 	github.com/fatih/color v1.9.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
-	github.com/golang/protobuf v1.4.2
-	github.com/google/uuid v1.1.1
+	github.com/golang/protobuf v1.4.3
+	github.com/google/uuid v1.1.2
 	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/joho/godotenv v1.3.0
@@ -27,8 +27,8 @@ require (
 	golang.org/x/net v0.0.0-20200501053045-e0ff5e5a1de5 // indirect
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.29.1
-	google.golang.org/protobuf v1.23.0
+	google.golang.org/grpc v1.34.0
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776

@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -100,11 +100,10 @@ func newSession(
 	// Set the session version.
 	version := Version_Version1
 
-	// Compute the creation time and convert it to Protocol Buffers format.
-	creationTime := time.Now()
-	creationTimeProto, err := ptypes.TimestampProto(creationTime)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to convert creation time format")
+	// Compute the creation time and check that it's valid for Protocol Buffers.
+	creationTime := timestamppb.Now()
+	if err := creationTime.CheckValid(); err != nil {
+		return nil, errors.Wrap(err, "unable to record creation time")
 	}
 
 	// Compute merged endpoint configurations.
@@ -115,6 +114,7 @@ func newSession(
 	// endpoints. Before doing so, set up a deferred handler that will shut down
 	// any endpoints that aren't handed off to the run loop due to errors.
 	var alphaEndpoint, betaEndpoint Endpoint
+	var err error
 	defer func() {
 		if alphaEndpoint != nil {
 			alphaEndpoint.Shutdown()
@@ -162,7 +162,7 @@ func newSession(
 	session := &Session{
 		Identifier:           identifier,
 		Version:              version,
-		CreationTime:         creationTimeProto,
+		CreationTime:         creationTime,
 		CreatingVersionMajor: mutagen.VersionMajor,
 		CreatingVersionMinor: mutagen.VersionMinor,
 		CreatingVersionPatch: mutagen.VersionPatch,
