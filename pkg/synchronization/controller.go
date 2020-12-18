@@ -210,9 +210,9 @@ func newSession(
 		},
 	}
 
-	// If the session isn't being created pre-paused, then start a
-	// synchronization loop and mark the endpoints as handed off to that loop so
-	// that we don't defer their shutdown.
+	// If the session isn't being created paused, then start a synchronization
+	// loop and mark the endpoints as handed off to that loop so that we don't
+	// defer their shutdown.
 	if !paused {
 		logger.Info("Starting synchronization loop")
 		ctx, cancel := context.WithCancel(context.Background())
