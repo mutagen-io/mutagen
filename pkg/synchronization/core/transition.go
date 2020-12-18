@@ -13,8 +13,6 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
@@ -258,12 +256,6 @@ func (t *transitioner) ensureExpectedFile(parent *filesystem.Directory, name, pa
 		return errors.Wrap(err, "unable to grab file statistics")
 	}
 
-	// Convert the timestamp to Protocol Buffers format.
-	modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
-	if err != nil {
-		return errors.Wrap(err, "unable to convert modification time format")
-	}
-
 	// Instead of comparing directly against the expected entry, compare the
 	// current metadata with that in the cache. If that matches, compare the
 	// cached digest with that of the entry. This allows us to avoid recomputing
@@ -284,8 +276,7 @@ func (t *transitioner) ensureExpectedFile(parent *filesystem.Directory, name, pa
 	// hence the Executability property value would be unchanged as well if we
 	// were able to compute and compare it directly.
 	match := metadata.Mode == filesystem.Mode(cached.Mode) &&
-		modificationTimeProto.Seconds == cached.ModificationTime.Seconds &&
-		modificationTimeProto.Nanos == cached.ModificationTime.Nanos &&
+		metadata.ModificationTime.Equal(cached.ModificationTime.AsTime()) &&
 		metadata.Size == cached.Size &&
 		metadata.FileID == cached.FileID &&
 		bytes.Equal(cached.Digest, expected.Digest)

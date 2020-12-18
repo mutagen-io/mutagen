@@ -10,11 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"time"
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
@@ -145,19 +144,6 @@ func (s *scanner) file(
 	// Try to find cached data for this path.
 	cached, cacheHit := s.cache.Entries[path]
 
-	// Convert the timestamp for this cache entry (if there is one) to Go
-	// format. We go this way (instead of converting the metadata timestamp to
-	// Protocol Buffers format) because it avoids allocation (unlike the other
-	// direction).
-	var cachedModificationTime time.Time
-	var err error
-	if cacheHit {
-		cachedModificationTime, err = ptypes.Timestamp(cached.ModificationTime)
-		if err != nil {
-			return nil, fmt.Errorf("unable to convert cached modification time (%s): %w", path, err)
-		}
-	}
-
 	// Check if we can reuse the cached digest (in order to avoid recomputation)
 	// and the cache entry itself (in order to avoid allocation). In order for
 	// the cached digest to be considered valid, we require that type,
@@ -168,14 +154,16 @@ func (s *scanner) file(
 	// detected during transition operations (where the cache is also used).
 	cacheContentMatch := cacheHit &&
 		(metadata.Mode&filesystem.ModeTypeMask) == (filesystem.Mode(cached.Mode)&filesystem.ModeTypeMask) &&
-		metadata.ModificationTime.Equal(cachedModificationTime) &&
+		metadata.ModificationTime.Equal(cached.ModificationTime.AsTime()) &&
 		metadata.Size == cached.Size &&
 		metadata.FileID == cached.FileID
-	cacheEntryReusable := cacheContentMatch && filesystem.Mode(cached.Mode) == metadata.Mode
+	cacheEntryReusable := cacheContentMatch &&
+		metadata.Mode == filesystem.Mode(cached.Mode)
 
 	// Compute the digest, either by pulling it from the cache or computing it
 	// from the on-disk contents.
 	var digest []byte
+	var err error
 	if cacheContentMatch {
 		digest = cached.Digest
 	} else {
@@ -220,15 +208,15 @@ func (s *scanner) file(
 		s.newCache.Entries[path] = cached
 	} else {
 		// Convert the new modification time to Protocol Buffers format.
-		modificationTimeProto, err := ptypes.TimestampProto(metadata.ModificationTime)
-		if err != nil {
+		modificationTime := timestamppb.New(metadata.ModificationTime)
+		if err := modificationTime.CheckValid(); err != nil {
 			return nil, fmt.Errorf("unable to convert file modification time (%s): %w", path, err)
 		}
 
 		// Create the new cache entry.
 		s.newCache.Entries[path] = &CacheEntry{
 			Mode:             uint32(metadata.Mode),
-			ModificationTime: modificationTimeProto,
+			ModificationTime: modificationTime,
 			Size:             metadata.Size,
 			FileID:           metadata.FileID,
 			Digest:           digest,

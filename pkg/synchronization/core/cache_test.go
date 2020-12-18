@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestCacheNilInvalid(t *testing.T) {
@@ -40,7 +40,7 @@ func TestCacheValid(t *testing.T) {
 	cache := &Cache{Entries: make(map[string]*CacheEntry)}
 	cache.Entries["name"] = &CacheEntry{
 		Mode:             0600,
-		ModificationTime: ptypes.TimestampNow(),
+		ModificationTime: timestamppb.Now(),
 		Size:             100,
 		Digest:           []byte{0, 1, 2, 3, 4, 5, 6},
 	}
