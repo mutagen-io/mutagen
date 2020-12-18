@@ -201,9 +201,7 @@ func (s *scanner) file(
 		digest = s.hasher.Sum(nil)
 	}
 
-	// Add an entry to the new cache. We check to see if we can re-use the
-	// existing cache entry to avoid allocating. We've already performed most of
-	// this check above - we now just need to verify that all mode bits match.
+	// Add an entry to the new cache.
 	if cacheEntryReusable {
 		s.newCache.Entries[path] = cached
 	} else {

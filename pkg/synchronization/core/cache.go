@@ -23,7 +23,7 @@ func (c *Cache) EnsureValid() error {
 		if e == nil {
 			return errors.New("nil cache entry detected")
 		} else if e.ModificationTime == nil {
-			return errors.New("cache entry will nil modification time detected")
+			return errors.New("cache entry with nil modification time detected")
 		} else if err := e.ModificationTime.CheckValid(); err != nil {
 			return fmt.Errorf("cache entry modification time invalid: %w", err)
 		}
