@@ -41,7 +41,10 @@ func pauseMain(_ *cobra.Command, _ []string) error {
 	}
 
 	// Compute the lock path.
-	lockPath := project.LockfilePath(configurationFileName)
+	lockPath, err := project.LockfilePath(configurationFileName)
+	if err != nil {
+		return errors.Wrap(err, "unable to retrieve project lock file path")
+	}
 
 	// Track whether or not we should remove the lock file on return.
 	var removeLockFileOnReturn bool

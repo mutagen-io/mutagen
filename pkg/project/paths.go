@@ -1,5 +1,11 @@
 package project
 
+import (
+	"crypto/sha1"
+	"fmt"
+	"path/filepath"
+)
+
 const (
 	// DefaultConfigurationFileName is the name of the Mutagen project
 	// configuration file.
@@ -9,6 +15,12 @@ const (
 	LockFileExtension = ".lock"
 )
 
-func LockfilePath(configPath string) string {
-	return configPath + LockFileExtension
+func LockfilePath(configPath string) (string, error) {
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return "", err
+	}
+
+	absConfigPathHash := fmt.Sprintf("%x", sha1.Sum([]byte(absConfigPath)))
+	return absConfigPathHash + LockFileExtension, nil
 }
