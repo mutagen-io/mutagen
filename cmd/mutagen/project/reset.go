@@ -40,7 +40,7 @@ func resetMain(_ *cobra.Command, _ []string) error {
 	}
 
 	// Compute the lock path.
-	lockPath := configurationFileName + project.LockFileExtension
+	lockPath := project.LockfilePath(configurationFileName)
 
 	// Track whether or not we should remove the lock file on return.
 	var removeLockFileOnReturn bool

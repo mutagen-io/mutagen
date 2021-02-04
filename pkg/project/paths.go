@@ -8,3 +8,7 @@ const (
 	// order to compute the corresponding lock file.
 	LockFileExtension = ".lock"
 )
+
+func LockfilePath(configPath string) string {
+	return configPath + LockFileExtension
+}
