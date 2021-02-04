@@ -14,6 +14,10 @@ const (
 	// inside the user's home directory.
 	MutagenDataDirectoryName = ".mutagen"
 
+	// MutagenProjectLockDirectoryName is the name of the global Mutagen
+	// containing project-level lock files.
+	MutagenProjectLockDirectoryName = "project-locks"
+
 	// MutagenDataDirectoryDevelopmentName is the name of the global Mutagen
 	// data directory inside the user's home directory for development builds of
 	// Mutagen.

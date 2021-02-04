@@ -3,7 +3,12 @@ package project
 import (
 	"crypto/sha1"
 	"fmt"
+	"github.com/pkg/errors"
 	"path/filepath"
+
+	"os"
+
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 const (
@@ -21,6 +26,25 @@ func LockfilePath(configPath string) (string, error) {
 		return "", err
 	}
 
+	homeDirectory, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	projectLockDir := filepath.Join(homeDirectory, filesystem.MutagenDataDirectoryName, filesystem.MutagenProjectLockDirectoryName)
+	fileInfo, err := os.Stat(projectLockDir)
+
+	if os.IsNotExist(err) {
+		err := os.Mkdir(projectLockDir, 0700)
+		if err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	} else if !fileInfo.IsDir() {
+		return "", errors.New("project lock dir is not a directory")
+	}
+
 	absConfigPathHash := fmt.Sprintf("%x", sha1.Sum([]byte(absConfigPath)))
-	return absConfigPathHash + LockFileExtension, nil
+	return filepath.Join(homeDirectory, filesystem.MutagenDataDirectoryName, filesystem.MutagenProjectLockDirectoryName, absConfigPathHash + LockFileExtension), nil
 }
