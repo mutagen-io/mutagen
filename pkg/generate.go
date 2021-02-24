@@ -1,6 +1,6 @@
 // +build generate
 
-//go:generate go build -mod=readonly github.com/golang/protobuf/protoc-gen-go
+//go:generate go build github.com/golang/protobuf/protoc-gen-go
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. filesystem/behavior/probe_mode.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. forwarding/configuration.proto forwarding/session.proto forwarding/socket_overwrite_mode.proto forwarding/state.proto forwarding/version.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. forwarding/endpoint/remote/protocol.proto

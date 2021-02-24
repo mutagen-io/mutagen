@@ -22,7 +22,6 @@ fi
 # disable cgo to avoid creating dependencies on host libraries (such as glibc on
 # Linux) that might not exist inside the container.
 CGO_ENABLED=0 go build \
-    -mod=readonly \
     -o "scripts/ci/docker/${MUTAGEN_OS_NAME}/httpdemo${MUTAGEN_EXE_EXT}" \
     github.com/mutagen-io/mutagen/pkg/integration/fixtures/httpdemo
 
