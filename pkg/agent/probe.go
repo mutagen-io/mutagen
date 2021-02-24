@@ -50,12 +50,14 @@ var unameMToGOARCH = map[string]string{
 	"armv7l":   "arm",
 	"armv8l":   "arm64",
 	"aarch64":  "arm64",
+	"arm64":    "arm64",
 	"mips":     "mips",
 	"mipsel":   "mipsle",
 	"mips64":   "mips64",
 	"mips64el": "mips64le",
 	"ppc64":    "ppc64",
 	"ppc64le":  "ppc64le",
+	"riscv64":  "riscv64",
 	"s390x":    "s390x",
 	// TODO: Add any more obscure uname -m variations that we might encounter.
 }
