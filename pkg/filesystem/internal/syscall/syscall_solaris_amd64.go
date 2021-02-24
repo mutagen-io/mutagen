@@ -39,7 +39,8 @@ var (
 func Symlinkat(target string, directory int, path string) error {
 	// Extract a raw pointer to the target path bytes.
 	var targetBytes *byte
-	targetBytes, err := unix.BytePtrFromString(target)
+	var err error
+	targetBytes, err = unix.BytePtrFromString(target)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,8 @@ func Symlinkat(target string, directory int, path string) error {
 func Readlinkat(directory int, path string, buffer []byte) (int, error) {
 	// Extract a raw pointer to the path bytes.
 	var pathBytes *byte
-	pathBytes, err := unix.BytePtrFromString(path)
+	var err error
+	pathBytes, err = unix.BytePtrFromString(path)
 	if err != nil {
 		return 0, err
 	}
