@@ -50,7 +50,7 @@ const (
 
 	// minimumMacOSVersion is the minimum version of macOS that we'll support
 	// (currently pegged to the oldest version of macOS that Go supports).
-	minimumMacOSVersion = "10.11"
+	minimumMacOSVersion = "10.12"
 
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will

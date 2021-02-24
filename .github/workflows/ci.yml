@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6'
+          go-version: '^1.16'
       - run: go version
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_partitions_darwin.sh
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6'
+          go-version: '^1.16'
       - run: docker version
       - run: go version
       - run: scripts/ci/setup_ssh.sh
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.6'
+          go-version: '^1.16'
       - run: docker version
       - run: go version
       - run: scripts/ci/setup_docker.sh
