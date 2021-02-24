@@ -55,10 +55,10 @@ const (
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will
 	// enable software-based floating point. For our use case, this is totally
-	// fine, because we don't have any numeric code, and the resulting binary
-	// bloat is very minimal. This won't apply for arm64, which always has
-	// hardware-based floating point support. For more information, see:
-	// https://github.com/golang/go/wiki/GoArm.
+	// fine, because we don't have any floating-point-heavy code, and the
+	// resulting binary bloat is very minimal. This won't apply for arm64, which
+	// always has hardware-based floating point support. For more information,
+	// see: https://github.com/golang/go/wiki/GoArm.
 	minimumARMSupport = "5"
 )
 
@@ -210,39 +210,55 @@ func (t Target) Build(url, output string) error {
 // Unfortunately there's no automated way to construct this list, but that's
 // fine since we have to manually groom it anyway.
 var targets = []Target{
+	// Define AIX targets.
 	// TODO: Enable aix/ppc64 once we've fixed readlinkat support.
 	// {"aix", "ppc64"},
-	// We disable support for Android since it doesn't make sense for normal
-	// Mutagen usage and it doesn't have a build-in SSH server. However, it
-	// might make sense to support as an endpoint for certain development
-	// scenarios. There are third-party Android SSH server solutions available.
+
+	// Define Android targets. We disable support for Android since it doesn't
+	// have a clearly defined use case as a target platform, though there might
+	// be certain development scenarios where it would make sense as an endpoint
+	// (via a third-party SSH server on the device).
 	// {"android", "386"},
 	// {"android", "amd64"},
 	// {"android", "arm"},
 	// {"android", "arm64"},
+
+	// Define macOS targets.
 	{"darwin", "amd64"},
-	// TODO: Enable darwin/arm64 once the Apple Silicon transition for macOS is
-	// underway. Based on the discussion in golang/go#38485, it seems like
-	// GOOS=darwin is going to be reclaimed exclusively for macOS, with a new
-	// GOOS=ios tag being added for iOS. It's unclear how universal binaries
-	// will fit into that, but we should use them if possible (and hopefully
-	// doing so will be as simple as a hybrid GOARCH value). It's worth noting
-	// that darwin/arm64 doesn't currently compile due to golang/go#16445,
-	// though I don't know if the answer there makes complete sense since
-	// darwin/arm compiles just fine. In any case, I think we're best off
-	// waiting for Go's answer to the Apple Silicon transition before sinking
-	// any additional effort into making this port work.
-	// {"darwin", "arm64"},
+	{"darwin", "arm64"},
+
+	// Define DragonFlyBSD targets.
 	{"dragonfly", "amd64"},
+
+	// Define FreeBSD targets.
 	{"freebsd", "386"},
 	{"freebsd", "amd64"},
 	{"freebsd", "arm"},
+	// TODO: The freebsd/arm64 port was added in Go 1.14, but for some reason
+	// isn't documented at https://golang.org/doc/install/source. Submit a pull
+	// request to add it to the Go documentation.
 	{"freebsd", "arm64"},
+
+	// Define illumos targets.
 	// TODO: Enable illumos/amd64 once we've shimmed the necessary system calls.
+	// We'll probably need to explicitly exclude the shimmed Solaris system
+	// calls from the illumos build because the "illumos" build tag implies the
+	// "solaris" build tag and I doubt the system call ABIs are compatible.
 	// {"illumos", "amd64"},
-	// We disable support for WebAssembly since it doesn't make sense as a
-	// target platform, either for normal Mutagen usage or as an endpoint.
+
+	// Define WebAssembly targets. We disable support for WebAssembly since it
+	// doesn't make sense as a target platform.
 	// {"js", "wasm"},
+
+	// Define iOS/iPadOS/watchOS/tvOS targets. We disable support for these
+	// since they don't make sense as target platforms.
+	// TODO: The ios/amd64 port was added in Go 1.16, but for some reason isn't
+	// documented at https://golang.org/doc/install/source. Submit a pull
+	// request to add it to the Go documentation.
+	// {"ios", "amd64"},
+	// {"ios", "arm64"},
+
+	// Define Linux targets.
 	{"linux", "386"},
 	{"linux", "amd64"},
 	{"linux", "arm"},
@@ -253,27 +269,46 @@ var targets = []Target{
 	{"linux", "mipsle"},
 	{"linux", "mips64"},
 	{"linux", "mips64le"},
+	{"linux", "riscv64"},
 	{"linux", "s390x"},
+
+	// Define NetBSD targets.
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
 	{"netbsd", "arm"},
-	// TODO: Enable netbsd/arm64 once golang/go#34036 is resolved.
-	// {"netbsd", "arm64"},
+	// TODO: The netbsd/arm64 port was added in Go 1.16, but for some reason
+	// isn't documented at https://golang.org/doc/install/source. Submit a pull
+	// request to add it to the Go documentation.
+	{"netbsd", "arm64"},
+
+	// Define OpenBSD targets.
 	{"openbsd", "386"},
 	{"openbsd", "amd64"},
 	{"openbsd", "arm"},
-	// TODO: Enable openbsd/arm64 once golang/go#34035 is resolved.
-	// {"openbsd", "arm64"},
-	// We disable support for Plan 9 because it's missing too many system calls
-	// and other APIs necessary for Mutagen to build. It might make sense to
-	// support Plan 9 as an endpoint for certain development scenarios, but it
-	// will take a significant amount of work just to build the Mutagen agent.
+	{"openbsd", "arm64"},
+	// TODO: The openbsd/mips64 port was added in Go 1.16, but for some reason
+	// isn't documented at https://golang.org/doc/install/source. Submit a pull
+	// request to add it to the Go documentation.
+	{"openbsd", "mips64"},
+
+	// Define Plan 9 targets. We disable support for Plan 9 because it's missing
+	// too many system calls and other APIs necessary for Mutagen to build. It
+	// might make sense to support Plan 9 as an endpoint for certain development
+	// scenarios, but it will take a significant amount of work just to get the
+	// Mutagen agent to build.
 	// {"plan9", "386"},
 	// {"plan9", "amd64"},
 	// {"plan9", "arm"},
+
+	// Define Solaris targets.
 	{"solaris", "amd64"},
+
+	// Define Windows targets.
 	{"windows", "386"},
 	{"windows", "amd64"},
+	// TODO: The windows/arm port was added in Go 1.12, but for some reason
+	// isn't documented at https://golang.org/doc/install/source. Submit a pull
+	// request to add it to the Go documentation.
 	{"windows", "arm"},
 }
 
