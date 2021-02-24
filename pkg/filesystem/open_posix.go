@@ -51,22 +51,15 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	if allowSymbolicLinkLeaf {
 		flags &^= unix.O_NOFOLLOW
 	}
-	var descriptor int
-	for {
-		if d, err := unix.Open(path, flags, 0); err == nil {
-			descriptor = d
-			break
-		} else if err == unix.EINTR {
-			continue
-		} else {
-			return nil, nil, err
-		}
+	descriptor, err := openatRetryingOnEINTR(unix.AT_FDCWD, path, flags, 0)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Grab metadata for the file.
 	var rawMetadata unix.Stat_t
-	if err := unix.Fstat(descriptor, &rawMetadata); err != nil {
-		unix.Close(descriptor)
+	if err := fstatRetryingOnEINTR(descriptor, &rawMetadata); err != nil {
+		closeConsideringEINTR(descriptor)
 		return nil, nil, errors.Wrap(err, "unable to query file metadata")
 	}
 
@@ -93,7 +86,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	case ModeTypeFile:
 		return file, metadata, nil
 	default:
-		unix.Close(descriptor)
+		closeConsideringEINTR(descriptor)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 }

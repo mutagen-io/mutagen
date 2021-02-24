@@ -37,25 +37,6 @@ func ensureValidName(name string) error {
 	return nil
 }
 
-// openatIgnoreEINTR is a wrapper around unix.Openat that ignores EINTR errors
-// and returns on the first successful call or first non-EINTR error. In the
-// case of an error, it returns a file descriptor of -1 along with the error.
-// This wrapper is necessary to avoid excessive EINTR errors that previously
-// existed on Darwin (see golang/go#11180) and were exacerbated on all platforms
-// in Go 1.14 due to its new goroutine preemption mechanism (see the Go 1.14
-// release notes, as well as (e.g.) golang/go#38836 and golang/go#39237).
-func openatIgnoreEINTR(dirfd int, path string, flags int, mode uint32) (int, error) {
-	for {
-		if result, err := unix.Openat(dirfd, path, flags, mode); err == nil {
-			return result, nil
-		} else if err == unix.EINTR {
-			continue
-		} else {
-			return -1, err
-		}
-	}
-}
-
 // Directory represents a directory on disk and provides race-free operations on
 // the directory's contents. All of its operations avoid the traversal of
 // symbolic links.
@@ -95,7 +76,7 @@ func (d *Directory) CreateDirectory(name string) error {
 	}
 
 	// Create the directory.
-	return unix.Mkdirat(d.descriptor, name, 0700)
+	return mkdiratRetryingOnEINTR(d.descriptor, name, 0700)
 }
 
 // maximumTemporaryFileRetries is the maximum number of retries that we'll
@@ -130,9 +111,9 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 		// Compute the next potential name.
 		name := prefix + strconv.Itoa(i) + suffix
 
-		// Attempt to open the file. Note that we needn't specify O_NOFOLLOW
-		// here since we're enforcing that the file doesn't already exist.
-		descriptor, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
+		// Open the file. Note that we needn't specify O_NOFOLLOW here since
+		// we're enforcing that the file doesn't already exist.
+		descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
 		if err != nil {
 			if os.IsExist(err) {
 				continue
@@ -162,7 +143,7 @@ func (d *Directory) CreateSymbolicLink(name, target string) error {
 	}
 
 	// Create the symbolic link.
-	return fssyscall.Symlinkat(target, d.descriptor, name)
+	return symlinkatRetryingOnEINTR(target, d.descriptor, name)
 }
 
 // SetPermissions sets the permissions on the content within the directory
@@ -181,7 +162,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 
 	// Set ownership information, if specified.
 	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
-		if err := unix.Fchownat(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		if err := fchownatRetryingOnEINTR(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 			return errors.Wrap(err, "unable to set ownership information")
 		}
 	}
@@ -195,16 +176,16 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	mode &= ModePermissionsMask
 	if mode != 0 {
 		if runtime.GOOS == "linux" {
-			if f, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
+			if f, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
 				return errors.Wrap(err, "unable to open file")
-			} else if err = unix.Fchmod(f, uint32(mode)); err != nil {
-				unix.Close(f)
+			} else if err = fchmodRetryingOnEINTR(f, uint32(mode)); err != nil {
+				closeConsideringEINTR(f)
 				return errors.Wrap(err, "unable to set permission bits on file")
-			} else if err = unix.Close(f); err != nil {
+			} else if err = closeConsideringEINTR(f); err != nil {
 				return errors.Wrap(err, "unable to close file")
 			}
 		} else {
-			if err := unix.Fchmodat(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
+			if err := fchmodatRetryingOnEINTR(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
 				return errors.Wrap(err, "unable to set permission bits")
 			}
 		}
@@ -237,7 +218,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	// platforms)), and there was a race condition between opening files and
 	// manually setting close-on-exec behavior, but nowadays all of the "real"
 	// POSIX platforms support this flag.
-	descriptor, err := openatIgnoreEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return -1, nil, err
 	}
@@ -255,11 +236,11 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 		expectedType = ModeTypeDirectory
 	}
 	var metadata unix.Stat_t
-	if err := unix.Fstat(descriptor, &metadata); err != nil {
-		unix.Close(descriptor)
+	if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
+		closeConsideringEINTR(descriptor)
 		return -1, nil, errors.Wrap(err, "unable to query file metadata")
 	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
-		unix.Close(descriptor)
+		closeConsideringEINTR(descriptor)
 		return -1, nil, errors.New("path is not of the expected type")
 	}
 
@@ -303,7 +284,7 @@ func (d *Directory) ReadContentNames() ([]string, error) {
 
 	// Seek the directory back to the beginning since the Readdirnames operation
 	// will have exhausted its "content".
-	if offset, err := unix.Seek(d.descriptor, 0, 0); err != nil {
+	if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
 		return nil, errors.Wrap(err, "unable to reset directory read pointer")
 	} else if offset != 0 {
 		return nil, errors.New("directory offset is non-zero after seek operation")
@@ -338,7 +319,7 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 
 	// Query metadata.
 	var metadata unix.Stat_t
-	if err := unix.Fstatat(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	if err := fstatatRetryingOnEINTR(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
 		return nil, err
 	}
 
@@ -419,22 +400,15 @@ func (d *Directory) ReadSymbolicLink(name string) (string, error) {
 		// Allocate a buffer.
 		buffer := make([]byte, size)
 
-		// Attempt to read the symbolic link target while ignoring interrupts.
-		var count int
-		var err error
-		for {
-			count, err = fssyscall.Readlinkat(d.descriptor, name, buffer)
-			if err != unix.EINTR {
-				break
-			}
-		}
+		// Read the symbolic link target.
+		count, err := readlinkatRetryingOnEINTR(d.descriptor, name, buffer)
 
 		// Handle errors. If we see ERANGE on AIX systems, it's an indication
 		// that the buffer size is too small.
 		if runtime.GOOS == "aix" && err == unix.ERANGE {
 			continue
 		} else if err != nil {
-			return "", &os.PathError{Op: "readlinkat", Path: name, Err: err}
+			return "", err
 		}
 
 		// Verify that the count is sane. We diverge from the os.Readlink
@@ -462,7 +436,7 @@ func (d *Directory) RemoveDirectory(name string) error {
 	}
 
 	// Remove the directory.
-	return unix.Unlinkat(d.descriptor, name, fssyscall.AT_REMOVEDIR)
+	return unlinkatRetryingOnEINTR(d.descriptor, name, fssyscall.AT_REMOVEDIR)
 }
 
 // RemoveFile deletes a file with the specified name inside the directory.
@@ -473,7 +447,7 @@ func (d *Directory) RemoveFile(name string) error {
 	}
 
 	// Remove the file.
-	return unix.Unlinkat(d.descriptor, name, 0)
+	return unlinkatRetryingOnEINTR(d.descriptor, name, 0)
 }
 
 // RemoveSymbolicLink deletes a symbolic link with the specified name inside the
@@ -521,7 +495,7 @@ func Rename(
 	}
 
 	// Perform an atomic rename.
-	return unix.Renameat(
+	return renameatRetryingOnEINTR(
 		sourceDescriptor, sourceNameOrPath,
 		targetDescriptor, targetNameOrPath,
 	)

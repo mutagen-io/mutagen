@@ -478,7 +478,7 @@ func (d *Directory) RemoveFile(name string) error {
 		return errors.Wrap(err, "unable to convert path to UTF-16")
 	}
 
-	// Remove the directory.
+	// Remove the file.
 	return windows.DeleteFile(path16)
 }
 
