@@ -236,11 +236,15 @@ var targets = []Target{
 	// request to add it to the Go documentation.
 	{"freebsd", "arm64"},
 
-	// Define illumos targets.
-	// TODO: Enable illumos/amd64 once we've shimmed the necessary system calls.
-	// We'll probably need to explicitly exclude the shimmed Solaris system
-	// calls from the illumos build because the "illumos" build tag implies the
-	// "solaris" build tag and I doubt the system call ABIs are compatible.
+	// Define illumos targets. We disable explicit support for illumos because
+	// it's already effectively supported by our Solaris target. illumos is (at
+	// least for Mutagen's purposes) an ABI-compatible superset of Solaris, so
+	// there's no need for a separate build. Within the Go toolchain, runtime,
+	// and standard library, most of illumos' support is provided by the Solaris
+	// port. The "illumos" target even implies the "solaris" build constraint.
+	// As such, the Solaris binaries should work fine for illumos distributions.
+	// Also, the uname command on illumos returns the same kernel name ("SunOS")
+	// as Solaris, so our probing wouldn't be able to identify illumos anyway.
 	// {"illumos", "amd64"},
 
 	// Define WebAssembly targets. We disable support for WebAssembly since it
