@@ -18,13 +18,13 @@ require (
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/joho/godotenv v1.3.0
 	github.com/mattn/go-isatty v0.0.12
+	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
 	github.com/pion/datachannel v1.4.17
 	github.com/pion/logging v0.2.2
 	github.com/pion/webrtc/v2 v2.2.14
 	github.com/pkg/errors v0.9.1
-	github.com/shibukawa/extstat v0.0.0-20150809151201-4113c04d0977
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7 // indirect

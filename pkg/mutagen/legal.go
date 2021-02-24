@@ -422,6 +422,8 @@ extstat
 
 https://github.com/shibukawa/extstat
 
+Forked and modified at https://github.com/mutagen-io/extstat.
+
 Copyright (c) 2015 Yoshiki Shibukawa
 
 Used under the terms of the MIT License. A copy of this license can be found

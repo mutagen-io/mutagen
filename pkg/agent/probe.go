@@ -16,14 +16,14 @@ import (
 // (their value depends on the POSIX environment and its version, the system
 // architecture, and the NT kernel version).
 var unameSToGOOS = map[string]string{
-	"Linux":     "linux",
+	"AIX":       "aix",
 	"Darwin":    "darwin",
+	"DragonFly": "dragonfly",
 	"FreeBSD":   "freebsd",
+	"Linux":     "linux",
 	"NetBSD":    "netbsd",
 	"OpenBSD":   "openbsd",
-	"DragonFly": "dragonfly",
 	"SunOS":     "solaris",
-	"Plan9":     "plan9",
 	// TODO: Add more obscure uname -s values as necessary, e.g.
 	// debian/kFreeBSD, which returns "GNU/kFreeBSD".
 }
@@ -99,19 +99,23 @@ func probePOSIX(transport Transport) (string, string, error) {
 	unameS := unameSM[0]
 	unameM := unameSM[1]
 
-	// Translate GOOS.
+	// Translate GOOS. Windows POSIX systems typically include their NT version
+	// number in their uname -s output, so we have to handle those specially.
 	var goos string
+	var ok bool
 	if unameSIsWindowsPosix(unameS) {
 		goos = "windows"
-	} else if g, ok := unameSToGOOS[unameS]; ok {
-		goos = g
-	} else {
+	} else if goos, ok = unameSToGOOS[unameS]; !ok {
 		return "", "", errors.New("unknown platform")
 	}
 
-	// Translate GOARCH.
-	goarch, ok := unameMToGOARCH[unameM]
-	if !ok {
+	// Translate GOARCH. On AIX systems, uname -m returns the machine's serial
+	// number, but modern AIX only runs on 64-bit PowerPC anyway (and that's
+	// all we support), so we set the architecture directly.
+	var goarch string
+	if goos == "aix" {
+		goarch = "ppc64"
+	} else if goarch, ok = unameMToGOARCH[unameM]; !ok {
 		return "", "", errors.New("unknown architecture")
 	}
 

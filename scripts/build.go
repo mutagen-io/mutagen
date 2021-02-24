@@ -208,8 +208,7 @@ func (t Target) Build(url, output string) error {
 // fine since we have to manually groom it anyway.
 var targets = []Target{
 	// Define AIX targets.
-	// TODO: Enable aix/ppc64 once we've fixed readlinkat support.
-	// {"aix", "ppc64"},
+	{"aix", "ppc64"},
 
 	// Define Android targets. We disable support for Android since it doesn't
 	// have a clearly defined use case as a target platform, though there might

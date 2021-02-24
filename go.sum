@@ -152,6 +152,8 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJ
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
+github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8 h1:NEBqH/oVnWBunxdrdy1vlyGior8smhC6jZjxlWSG2BU=
+github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8/go.mod h1:ZHGnLARFvfv0lUb6FsAS+LJHt9CFemt7K+mWfkw8nVA=
 github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434 h1:PYeqqury0vVzjjUVO6dwtfA2HXOaPYgDclSgKX8u0gs=
 github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434/go.mod h1:kmTyqetTEgYl9KF5JlHLKL6LXnhs2/oK5100pcMZRn8=
 github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7 h1:0PaUmAw6e54jseSG0ob2U9P1p6p+Sppw3sanphmM4LY=
@@ -220,8 +222,6 @@ github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40T
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sclevine/agouti v3.0.0+incompatible/go.mod h1:b4WX9W9L1sfQKXeJf1mUTLZKJ48R1S7H23Ji7oFO5Bw=
-github.com/shibukawa/extstat v0.0.0-20150809151201-4113c04d0977 h1:cEE3neBlZxh+ds+2VuDACYThLItkno77/J60BD+Sxqs=
-github.com/shibukawa/extstat v0.0.0-20150809151201-4113c04d0977/go.mod h1:EFpZPgUVlppqVONWE2YaIHJBjOIMoBQkUO2x0z9ETKc=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=

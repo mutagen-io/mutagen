@@ -412,33 +412,35 @@ func (d *Directory) ReadSymbolicLink(name string) (string, error) {
 	}
 
 	// Loop until we encounter a condition where we successfully read the
-	// symbolic link and don't fill our buffer. Unfortunately this is the only
-	// way to approach the problem because readlink and its ilk don't provide
-	// any mechanism for determining the untruncated length of the symbolic
-	// link.
-	// TODO: Should we put an upper-bound on this size? The os.Readlink
-	// implementation doesn't, and I can't imagine that most OS symbolic link
-	// implementations would allow for anything crazy, but maybe it's worth
-	// thinking about.
+	// symbolic link and with buffer space to spare. This is the only way to
+	// approach the problem because readlink and its ilk don't provide any
+	// mechanism for determining the untruncated length of the symbolic link.
 	for size := readlinkInitialBufferSize; ; size *= 2 {
 		// Allocate a buffer.
 		buffer := make([]byte, size)
 
-		// Attempt to read the symbolic link target.
-		// TODO: On AIX systems, readlinkat can specify ERANGE in errno to
-		// indicate inadequate buffer space. Watch for this error and continue
-		// growing the buffer in that case. See the os.Readlink implementation
-		// (for Go 1.12+) for an example of how this is handled.
-		count, err := fssyscall.Readlinkat(d.descriptor, name, buffer)
-		if err != nil {
-			return "", &os.PathError{
-				Op:   "readlinkat",
-				Path: name,
-				Err:  err,
+		// Attempt to read the symbolic link target while ignoring interrupts.
+		var count int
+		var err error
+		for {
+			count, err = fssyscall.Readlinkat(d.descriptor, name, buffer)
+			if err != unix.EINTR {
+				break
 			}
 		}
 
-		// Verify that the count is sane.
+		// Handle errors. If we see ERANGE on AIX systems, it's an indication
+		// that the buffer size is too small.
+		if runtime.GOOS == "aix" && err == unix.ERANGE {
+			continue
+		} else if err != nil {
+			return "", &os.PathError{Op: "readlinkat", Path: name, Err: err}
+		}
+
+		// Verify that the count is sane. We diverge from the os.Readlink
+		// implementation here (which just sets this value to 0 if negative),
+		// because POSIX specifically says a return value of -1 is indicative of
+		// an error.
 		if count < 0 {
 			return "", errors.New("unknown readlinkat failure occurred")
 		}

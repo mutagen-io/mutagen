@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/shibukawa/extstat"
+	"github.com/mutagen-io/extstat"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
