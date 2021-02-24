@@ -98,9 +98,6 @@ func (t Target) goEnv() ([]string, error) {
 	// Duplicate the existing environment.
 	result := os.Environ()
 
-	// Force use of Go modules.
-	result = append(result, "GO111MODULE=on")
-
 	// Override GOOS/GOARCH.
 	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
 	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
