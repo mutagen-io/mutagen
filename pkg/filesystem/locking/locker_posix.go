@@ -80,28 +80,24 @@ func (l *Locker) Unlock() error {
 		Len:    0,
 	}
 
-	// Attempt to perform unlocking, retrying if EINTR is encountered. According
-	// to the POSIX standard, EINTR should only be expected in blocking cases
-	// (i.e. when using F_SETLKW), but Linux allows it to be received in certain
-	// cases when using F_SETLK. Given that Go's runtime preemption can also
-	// cause spurious interrupts, it's best to handle EINTR in all cases.
+	// Attempt to perform unlocking. Unlike the locking case, we don't retry if
+	// EINTR is encountered because we don't have any information about the
+	// state of the lock in that case (POSIX doesn't even allow for EINTR when
+	// using F_SETLK and the Linux documentation only covers the locking case).
+	// If the lock was successfully unlocked and we retry due to EINTR, then we
+	// might end up in a race condition with other code trying to acquire the
+	// lock. This is the same issue as with calls to close returning EINTR, in
+	// which case the Go standard library and runtime (and Mutagen) don't retry
+	// the operation because it's safer to err on the side of failure.
 	//
-	// One thing worth considering here is the fact that neither POSIX nor Linux
-	// makes any guarantees about the state of the lock if EINTR is received. In
-	// theory, the lock could be unlocked, in which case continuing to retry
-	// unlocking could lead to a race condition with other code that's locking
-	// the same file (because fcntl locks are based on the underlying file and
-	// not a particular file descriptor within a process). In fact, the Go
-	// standard library and runtime do a similar thing with calls to close,
-	// intentionally not handling EINTR from close due to a lack of information
-	// about the state of the file descriptor and the desire to avoid a race
-	// condition if that file descriptor is reused. In reality though, EINTR
-	// here is exceedingly unlikely, and the usage of this code within Mutagen
-	// is quite limited, with file unlocking only occurring right before a
-	// process exits. So, for now, we'll just keep this consistent with the
-	// locking case, but this EINTR behavior might be worth revisiting if it
-	// becomes a problem.
-	if err := fcntlFlockRetryingOnEINTR(l.file.Fd(), unix.F_SETLK, &unlockSpec); err != nil {
+	// In any case, this isn't ever going to be an issue for Mutagen in practice
+	// because (a) EINTR is exceedingly unlikely here, (b) this code is only
+	// used in Mutagen right before a process exits (usually in a defer that
+	// ignores errors), and (c) Mutagen already has to be careful to avoid
+	// multiple code paths managing locks on the same file (because POSIX
+	// releases all fcntl locks for a file if any file descriptor for that lock
+	// in the process is closed).
+	if err := unix.FcntlFlock(l.file.Fd(), unix.F_SETLK, &unlockSpec); err != nil {
 		return err
 	}
 
