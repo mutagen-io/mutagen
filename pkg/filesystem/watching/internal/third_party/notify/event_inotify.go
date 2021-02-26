@@ -1,7 +1,7 @@
 // Subset of https://github.com/rjeczalik/notify extracted and modified to
 // expose watcher functionality directly. Originally extracted from the
 // following revision:
-// https://github.com/rjeczalik/notify/tree/52ae50d8490436622a8941bd70c3dbe0acdd4bbf
+// https://github.com/rjeczalik/notify/tree/e2a77dcc14cf6732bfa4c361554f27dc696d5d79
 //
 // The original code license:
 //
