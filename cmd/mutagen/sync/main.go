@@ -41,7 +41,15 @@ func init() {
 	// still implement its logic automatically.
 	flags.BoolVarP(&syncConfiguration.help, "help", "h", false, "Show help information")
 
-	// HACK: In order for the sync commands to have the correct parent, we have
-	// to add them to the sync command after we add them to the root command.
-	// Thus, we add them in the top-level init function.
+	// Register commands.
+	SyncCommand.AddCommand(
+		createCommand,
+		listCommand,
+		monitorCommand,
+		flushCommand,
+		pauseCommand,
+		resumeCommand,
+		resetCommand,
+		terminateCommand,
+	)
 }

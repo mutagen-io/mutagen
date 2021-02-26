@@ -64,9 +64,7 @@ func init() {
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
 
 	// Register commands.
-	// HACK: Add the sync commands as direct subcommands of the root command for
-	// temporary backward compatibility.
-	commands := []*cobra.Command{
+	rootCommand.AddCommand(
 		sync.SyncCommand,
 		forward.ForwardCommand,
 		project.ProjectCommand,
@@ -74,14 +72,7 @@ func init() {
 		versionCommand,
 		legalCommand,
 		generateCommand,
-	}
-	commands = append(commands, sync.Commands...)
-	rootCommand.AddCommand(commands...)
-
-	// HACK: Register the sync subcommands with the sync command after
-	// registering them with the root command so that they have the correct
-	// parent command and thus the correct help output.
-	sync.SyncCommand.AddCommand(sync.Commands...)
+	)
 
 	// HACK If we're on Windows, enable color support for command usage and
 	// error output by recursively replacing the output streams for Cobra
@@ -119,17 +110,6 @@ func main() {
 	// Handle terminal compatibility issues. If this call returns, it means that
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
-
-	// HACK: Modify the root command help to hide legacy root sync commands.
-	defaultHelpFunction := rootCommand.HelpFunc()
-	rootCommand.SetHelpFunc(func(command *cobra.Command, arguments []string) {
-		if command == rootCommand {
-			for _, command := range sync.Commands {
-				command.Hidden = true
-			}
-		}
-		defaultHelpFunction(command, arguments)
-	})
 
 	// Execute the root command.
 	if err := rootCommand.Execute(); err != nil {

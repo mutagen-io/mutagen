@@ -6,16 +6,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
-	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 )
 
 // generateMain is the entry point for the generate command.
 func generateMain(_ *cobra.Command, _ []string) error {
-	// HACK: Exclude legacy root sync commands from autocompletion.
-	for _, command := range sync.Commands {
-		rootCommand.RemoveCommand(command)
-	}
-
 	// Generate a Bash completion script, if requested.
 	if generateConfiguration.bashCompletionScript != "" {
 		if err := rootCommand.GenBashCompletionFile(generateConfiguration.bashCompletionScript); err != nil {
