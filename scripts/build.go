@@ -166,14 +166,6 @@ func (t Target) BuildBundleInReleaseSlimMode() bool {
 		(t.GOOS == "linux" && t.GOARCH == "amd64")
 }
 
-// IsContainerTarget indicates whether or not a target is used for containers.
-// It doesn't mean that the target is used exclusively for containers, but it
-// means that individual CLI and agent release bundles should be generated for
-// the target (in addition to the standard release bundles).
-func (t Target) IsContainerTarget() bool {
-	return t.GOOS == "linux" && t.GOARCH == "amd64"
-}
-
 // Build executes a module-aware build of the specified package URL, storing the
 // output of the build at the specified path.
 func (t Target) Build(url, output string) error {
@@ -619,44 +611,6 @@ func build() error {
 				return errors.Wrap(err, "unable to add agent bundle to release bundle")
 			} else if err = releaseBundle.Close(); err != nil {
 				return errors.Wrap(err, "unable to finalize release bundle")
-			}
-
-			// If this is a container platform, then build individual CLI and
-			// agent archives.
-			if target.IsContainerTarget() {
-				// Update status.
-				log.Println("Building archives for", target)
-
-				// Compute additional paths.
-				agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
-				agentArchivePath := filepath.Join(
-					releaseBuildSubdirectoryPath,
-					fmt.Sprintf("agent_%s_v%s.tar.gz", target.Name(), mutagen.Version),
-				)
-				cliArchivePath := filepath.Join(
-					releaseBuildSubdirectoryPath,
-					fmt.Sprintf("cli_%s_v%s.tar.gz", target.Name(), mutagen.Version),
-				)
-
-				// Build the agent archive.
-				if agentArchive, err := NewArchiveBuilder(agentArchivePath); err != nil {
-					return errors.Wrap(err, "unable to create agent archive")
-				} else if err = agentArchive.Add(target.ExecutableName(agentBaseName), agentBuildPath, 0755); err != nil {
-					agentArchive.Close()
-					return errors.Wrap(err, "unable to add agent to agent archive")
-				} else if err = agentArchive.Close(); err != nil {
-					return errors.Wrap(err, "unable to finalize agent archive")
-				}
-
-				// Build the CLI archive.
-				if cliArchive, err := NewArchiveBuilder(cliArchivePath); err != nil {
-					return errors.Wrap(err, "unable to create CLI archive")
-				} else if err = cliArchive.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0755); err != nil {
-					cliArchive.Close()
-					return errors.Wrap(err, "unable to add CLI to CLI archive")
-				} else if err = cliArchive.Close(); err != nil {
-					return errors.Wrap(err, "unable to finalize CLI archive")
-				}
 			}
 		}
 	}
