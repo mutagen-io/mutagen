@@ -133,10 +133,8 @@ func TestNotifyEvents(t *testing.T) {
 	}
 
 	// Check for errors
-	select {
-	case err := <-watcher.Error:
+	if err := <-watcher.Error; err != nil {
 		t.Fatalf("error received: %s", err)
-	default:
 	}
 }
 
