@@ -3,10 +3,14 @@
 package filesystem
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/binary"
+	"math/rand"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -79,9 +83,23 @@ func (d *Directory) CreateDirectory(name string) error {
 	return mkdiratRetryingOnEINTR(d.descriptor, name, 0700)
 }
 
-// maximumTemporaryFileRetries is the maximum number of retries that we'll
-// perform when trying to find an available temporary file name.
-const maximumTemporaryFileRetries = 256
+// createTemporaryFilePRNGLock serializes access to createTemporaryFilePRNG.
+var createTemporaryFilePRNGLock sync.Mutex
+
+// createTemporaryFilePRNG provides pseudorandom numbers for filenames in
+// Directory.CreateTemporaryFile.
+var createTemporaryFilePRNG *rand.Rand
+
+func init() {
+	// Read random data to compute a seed for the pseudorandom number generator.
+	var seedBytes [8]byte
+	if _, err := cryptorand.Read(seedBytes[:]); err != nil {
+		panic("unable to read random bytes for seed")
+	}
+
+	// Initialize the pseudorandom number generator.
+	createTemporaryFilePRNG = rand.New(rand.NewSource(int64(binary.BigEndian.Uint64(seedBytes[:]))))
+}
 
 // CreateTemporaryFile creates a new temporary file using the specified name
 // pattern inside the directory. Pattern behavior follows that of os.CreateTemp.
@@ -101,23 +119,23 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 		prefix = pattern
 	}
 
-	// Iterate until we can find a free file name. We take a slightly simpler
-	// approach than the os.CreateTemp implementation and skip the user of a
-	// random number generator.
-	// TODO: Is it worth going through the trouble of using a random number
-	// generator for this?
-	for i := 0; i < maximumTemporaryFileRetries; i++ {
-		// Compute the next potential name.
-		name := prefix + strconv.Itoa(i) + suffix
+	// Iterate until we can find a free file name.
+	try := 0
+	for {
+		// Compute the next potential name using a pseudorandom component.
+		createTemporaryFilePRNGLock.Lock()
+		random := createTemporaryFilePRNG.Int()
+		createTemporaryFilePRNGLock.Unlock()
+		name := prefix + strconv.Itoa(random) + suffix
 
 		// Open the file. Note that we needn't specify O_NOFOLLOW here since
 		// we're enforcing that the file doesn't already exist.
 		descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
-		if err != nil {
-			if os.IsExist(err) {
+		if os.IsExist(err) {
+			if try++; try < 10000 {
 				continue
 			}
-			return "", nil, errors.Wrap(err, "unable to create file")
+			return "", nil, errors.New("exhausted potential file names")
 		}
 
 		// Wrap up the descriptor in a file object.
@@ -126,9 +144,6 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 		// Success.
 		return name, file, nil
 	}
-
-	// At this point, we've exhausted our maximum number of retries.
-	return "", nil, errors.New("exhausted potential file names")
 }
 
 // CreateSymbolicLink creates a new symbolic link with the specified name and
