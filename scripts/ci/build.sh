@@ -31,3 +31,7 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
 else
     go run scripts/build.go --mode=slim
 fi
+
+# Build test scripts to ensure that they are maintained as core packages evolve.
+go build ./scripts/scan_bench
+go build ./scripts/watch_demo
