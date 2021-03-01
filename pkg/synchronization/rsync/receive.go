@@ -64,7 +64,7 @@ type emptyReadSeekCloser struct {
 
 // newEmptyReadSeekCloser constructs a new empty readSeekCloser.
 func newEmptyReadSeekCloser() readSeekCloser {
-	return &emptyReadSeekCloser{bytes.NewReader(nil)}
+	return &emptyReadSeekCloser{&bytes.Reader{}}
 }
 
 // Close implements io.Closer for emptyReadSeekCloser.
