@@ -43,13 +43,12 @@ var forwardingManager *forwarding.Manager
 // at the API level (as opposed to the gRPC or command line level).
 var synchronizationManager *synchronization.Manager
 
-// testMainInternal is the internal testing entry point, needed so that shutdown
-// operations can be deferred (since TestMain will invoke os.Exit). It copies
-// the mutagen executable to a well-known path, sets up the agent bundle to work
-// during testing, sets up a functionally complete daemon instance for testing,
-// runs integration tests, and finally tears down all of the aforementioned
-// infrastructure.
-func testMainInternal(m *testing.M) (int, error) {
+// TestMain is the entry point for integration tests. It replaces the default
+// test entry point so that it can copy the mutagen executable to a well-known
+// path, set up the agent bundle to work during testing, set up a functionally
+// complete daemon instance for testing, and tear down all of the aforementioned
+// infrastructure after running tests.
+func TestMain(m *testing.M) {
 	// Disable logging.
 	log.SetOutput(ioutil.Discard)
 
@@ -59,22 +58,21 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to acquire daemon lock")
+		cmd.Fatal(errors.Wrap(err, "unable to acquire daemon lock"))
 	}
 	defer lock.Release()
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err = forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to create forwarding session manager")
+		cmd.Fatal(errors.Wrap(err, "unable to create forwarding session manager"))
 	}
 	defer forwardingManager.Shutdown()
 
-	// Create a session manager and defer its shutdown. Note that we assign to
-	// the global instance here.
+	// Create a session manager and defer its shutdown.
 	synchronizationManager, err = synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to create synchronization session manager")
+		cmd.Fatal(errors.Wrap(err, "unable to create synchronization session manager"))
 	}
 	defer synchronizationManager.Shutdown()
 
@@ -105,7 +103,7 @@ func testMainInternal(m *testing.M) (int, error) {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to compute endpoint path")
+		cmd.Fatal(errors.Wrap(err, "unable to compute endpoint path"))
 	}
 
 	// Create the daemon listener and defer its closure. Since we hold the
@@ -114,7 +112,7 @@ func testMainInternal(m *testing.M) (int, error) {
 	os.Remove(endpoint)
 	listener, err := ipc.NewListener(endpoint)
 	if err != nil {
-		return -1, errors.Wrap(err, "unable to create daemon listener")
+		cmd.Fatal(errors.Wrap(err, "unable to create daemon listener"))
 	}
 	defer listener.Close()
 
@@ -124,19 +122,5 @@ func testMainInternal(m *testing.M) (int, error) {
 	go server.Serve(listener)
 
 	// Run tests.
-	return m.Run(), nil
-}
-
-// TestMain is the entry point for integration tests (overriding the default
-// generated entry point).
-func TestMain(m *testing.M) {
-	// Invoke the internal entry point. If there's an error, print it out before
-	// exiting.
-	result, err := testMainInternal(m)
-	if err != nil {
-		cmd.Error(err)
-	}
-
-	// Exit with the result.
-	os.Exit(result)
+	m.Run()
 }

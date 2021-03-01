@@ -1,16 +1,15 @@
 package agent
 
 import (
-	"os"
 	"testing"
 )
 
-// TestMain is the entry point for integration tests (overriding the default
-// generated entry point).
+// TestMain is the entry point for integration tests. It replaces the default
+// test entry point so that it can override the agent bundle location.
 func TestMain(m *testing.M) {
 	// Override the expected bundle location.
 	ExpectedBundleLocation = BundleLocationBuildDirectory
 
 	// Run tests.
-	os.Exit(m.Run())
+	m.Run()
 }
