@@ -17,6 +17,7 @@ jobs:
       - run: go version
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_partitions_darwin.sh
+      - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
       - uses: codecov/codecov-action@v1
         with:
@@ -39,6 +40,7 @@ jobs:
       - run: go version
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_docker.sh
+      - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
       - uses: codecov/codecov-action@v1
         with:
@@ -58,6 +60,8 @@ jobs:
       - run: scripts/ci/setup_docker.sh
         shell: bash
       - run: diskpart /s scripts\ci\setup_partitions_windows.txt
+      - run: scripts/ci/analyze.sh
+        shell: bash
       - run: scripts/ci/test.sh
         shell: bash
       - uses: codecov/codecov-action@v1
