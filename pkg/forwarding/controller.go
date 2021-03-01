@@ -264,7 +264,7 @@ func (c *controller) currentState() *State {
 	defer c.stateLock.UnlockWithoutNotify()
 
 	// Perform a (pseudo) deep copy of the state.
-	return c.state.Copy()
+	return c.state.copy()
 }
 
 // resume attempts to reconnect and resume the session if it isn't currently

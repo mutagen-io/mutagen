@@ -302,7 +302,7 @@ func (c *controller) currentState() *State {
 	defer c.stateLock.UnlockWithoutNotify()
 
 	// Perform a (pseudo) deep copy of the state.
-	return c.state.Copy()
+	return c.state.copy()
 }
 
 // flush attempts to force a synchronization cycle for the session. If wait is

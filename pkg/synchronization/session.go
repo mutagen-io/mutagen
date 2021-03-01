@@ -76,3 +76,23 @@ func (s *Session) EnsureValid() error {
 	// Success.
 	return nil
 }
+
+// copy creates a shallow copy of the session, deep-copying any mutable members.
+func (s *Session) copy() *Session {
+	return &Session{
+		Identifier:           s.Identifier,
+		Version:              s.Version,
+		CreationTime:         s.CreationTime,
+		CreatingVersionMajor: s.CreatingVersionMajor,
+		CreatingVersionMinor: s.CreatingVersionMinor,
+		CreatingVersionPatch: s.CreatingVersionPatch,
+		Alpha:                s.Alpha,
+		Beta:                 s.Beta,
+		Configuration:        s.Configuration,
+		ConfigurationAlpha:   s.ConfigurationAlpha,
+		ConfigurationBeta:    s.ConfigurationBeta,
+		Name:                 s.Name,
+		Labels:               s.Labels,
+		Paused:               s.Paused,
+	}
+}

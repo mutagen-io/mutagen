@@ -46,22 +46,15 @@ func (s *State) EnsureValid() error {
 	return nil
 }
 
-// Copy creates a copy of the state, deep-copying those members which are
-// mutable.
-func (s *State) Copy() *State {
-	// Create a shallow copy of the state.
-	result := &State{}
-	*result = *s
-
-	// Create a shallow copy of the Session member, if present.
-	if s.Session != nil {
-		result.Session = &Session{}
-		*result.Session = *s.Session
+// copy creates a shallow copy of the state, deep-copying any mutable members.
+func (s *State) copy() *State {
+	return &State{
+		Session:              s.Session.copy(),
+		Status:               s.Status,
+		SourceConnected:      s.SourceConnected,
+		DestinationConnected: s.DestinationConnected,
+		LastError:            s.LastError,
+		OpenConnections:      s.OpenConnections,
+		TotalConnections:     s.TotalConnections,
 	}
-
-	// All other composite members are either immutable values or considered to
-	// be immutable, so we don't need to copy them.
-
-	// Done.
-	return result
 }
