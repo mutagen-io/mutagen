@@ -3,7 +3,6 @@ package ipc
 import (
 	"context"
 	"encoding/gob"
-	"os"
 	"path/filepath"
 	"testing"
 )

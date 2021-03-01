@@ -124,7 +124,7 @@ func TestSynchronizationBothRootsNil(t *testing.T) {
 	t.Parallel()
 
 	// Calculate alpha and beta paths.
-	directory = t.TempDir()
+	directory := t.TempDir()
 	alphaRoot := filepath.Join(directory, "alpha")
 	betaRoot := filepath.Join(directory, "beta")
 

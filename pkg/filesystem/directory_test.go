@@ -50,7 +50,7 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 // TestNonEmptyDirectoryRemovalFailure tests that removal of a non-empty
 // directory results in failure.
 func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
-	// Create a directory handle for a temporary directory (that will be removed
+	// Create a handle for a temporary directory (that will be removed
 	// automatically) and defer its closure.
 	directory, _, err := OpenDirectory(t.TempDir(), false)
 	if err != nil {
@@ -82,9 +82,11 @@ func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
 // TestDirectorySymbolicLinkRemoval tests that removal of symbolic links that
 // point to directories works as expected.
 func TestDirectorySymbolicLinkRemoval(t *testing.T) {
-	// Create a directory handle for a temporary directory (that will be removed
-	// automatically) and defer its closure.
-	directory, _, err := OpenDirectory(t.TempDir(), false)
+	// Create a temporary directory (that will be automatically removed).
+	temporaryDirectoryPath := t.TempDir()
+
+	// Create a handle for the temporary directory and defer its closure.
+	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
 	if err != nil {
 		t.Fatal("unable to open directory handle:", err)
 	}
