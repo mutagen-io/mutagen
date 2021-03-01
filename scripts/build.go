@@ -174,7 +174,7 @@ func (t Target) Build(url, output string) error {
 	// binary size and only disables debugging (stack traces are still intact).
 	// For more information, see:
 	// https://blog.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick
-	builder := exec.Command("go", "build", "-o", output, "-ldflags=-s -w", url)
+	builder := exec.Command("go", "build", "-o", output, "-trimpath", "-ldflags=-s -w", url)
 
 	// Set the environment.
 	environment, err := t.goEnv()
