@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -123,14 +123,8 @@ func TestSynchronizationBothRootsNil(t *testing.T) {
 	// Allow this test to run in parallel.
 	t.Parallel()
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Calculate alpha and beta paths.
+	directory = t.TempDir()
 	alphaRoot := filepath.Join(directory, "alpha")
 	betaRoot := filepath.Join(directory, "beta")
 
@@ -165,16 +159,9 @@ func TestSynchronizationGOROOTSrcToBeta(t *testing.T) {
 	// Allow the test to run in parallel.
 	t.Parallel()
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Calculate alpha and beta paths.
 	alphaRoot := sourceRoot
-	betaRoot := filepath.Join(directory, "beta")
+	betaRoot := filepath.Join(t.TempDir(), "beta")
 
 	// Compute alpha and beta URLs.
 	alphaURL := &url.URL{Path: alphaRoot}
@@ -207,15 +194,8 @@ func TestSynchronizationGOROOTSrcToAlpha(t *testing.T) {
 	// Allow the test to run in parallel.
 	t.Parallel()
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Calculate alpha and beta paths.
-	alphaRoot := filepath.Join(directory, "alpha")
+	alphaRoot := filepath.Join(t.TempDir(), "alpha")
 	betaRoot := sourceRoot
 
 	// Compute alpha and beta URLs.
@@ -249,16 +229,9 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 	// Allow the test to run in parallel.
 	t.Parallel()
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Calculate alpha and beta paths.
 	alphaRoot := sourceRoot
-	betaRoot := filepath.Join(directory, "beta")
+	betaRoot := filepath.Join(t.TempDir(), "beta")
 
 	// Compute alpha and beta URLs. We use a special protocol with a custom
 	// handler to indicate an in-memory connection.
@@ -300,16 +273,9 @@ func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 	// Allow the test to run in parallel.
 	t.Parallel()
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_end_to_end")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Calculate alpha and beta paths.
 	alphaRoot := sourceRoot
-	betaRoot := filepath.Join(directory, "beta")
+	betaRoot := filepath.Join(t.TempDir(), "beta")
 
 	// Compute alpha and beta URLs.
 	alphaURL := &url.URL{Path: alphaRoot}
@@ -493,7 +459,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		defer response.Body.Close()
 
 		// Read the full body.
-		message, err := ioutil.ReadAll(response.Body)
+		message, err := io.ReadAll(response.Body)
 		if err != nil {
 			return errors.Wrap(err, "unable to read response body")
 		}

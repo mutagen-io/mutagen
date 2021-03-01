@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -18,10 +17,9 @@ const (
 // intermediate temporary file that is swapped in place using a rename
 // operation.
 func WriteFileAtomic(path string, data []byte, permissions os.FileMode) error {
-	// Create a temporary file. The ioutil module already uses secure
-	// permissions for creating the temporary file, so we don't need to specify
-	// any.
-	temporary, err := ioutil.TempFile(filepath.Dir(path), atomicWriteTemporaryNamePrefix)
+	// Create a temporary file. The os package already uses secure permissions
+	// for creating temporary files, so we don't need to change them.
+	temporary, err := os.CreateTemp(filepath.Dir(path), atomicWriteTemporaryNamePrefix)
 	if err != nil {
 		return errors.Wrap(err, "unable to create temporary file")
 	}

@@ -84,9 +84,8 @@ func (d *Directory) CreateDirectory(name string) error {
 const maximumTemporaryFileRetries = 256
 
 // CreateTemporaryFile creates a new temporary file using the specified name
-// pattern inside the directory. Pattern behavior follows that of
-// io/ioutil.TempFile. The file will be created with user-only read/write
-// permissions.
+// pattern inside the directory. Pattern behavior follows that of os.CreateTemp.
+// The file will be created with user-only read/write permissions.
 func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, error) {
 	// Verify that the name is valid. This should still be a sensible operation
 	// for pattern specifications.
@@ -103,8 +102,8 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 	}
 
 	// Iterate until we can find a free file name. We take a slightly simpler
-	// approach than the io/ioutil.TempFile implementation and skip the user of
-	// a random number generator.
+	// approach than the os.CreateTemp implementation and skip the user of a
+	// random number generator.
 	// TODO: Is it worth going through the trouble of using a random number
 	// generator for this?
 	for i := 0; i < maximumTemporaryFileRetries; i++ {

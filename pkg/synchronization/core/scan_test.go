@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -336,17 +335,10 @@ func TestScanSubfileNotIgnoredOnRootSpecification(t *testing.T) {
 }
 
 func TestScanSymlinkRoot(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	parent, err := ioutil.TempDir("", "mutagen_simulated")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(parent)
-
 	// Compute the symlink path.
-	root := filepath.Join(parent, "root")
+	root := filepath.Join(t.TempDir(), "root")
 
-	// Create a symlink inside the parent.
+	// Create a relative symbolic link.
 	if err := os.Symlink("relative", root); err != nil {
 		t.Fatal("unable to create symlink:", err)
 	}

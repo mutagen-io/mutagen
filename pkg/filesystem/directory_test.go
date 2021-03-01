@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,7 +25,7 @@ func TestDirectoryContentsNotExist(t *testing.T) {
 
 func TestDirectoryContentsFile(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_filesystem")
+	file, err := os.CreateTemp("", "mutagen_filesystem")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {
@@ -51,16 +50,9 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 // TestNonEmptyDirectoryRemovalFailure tests that removal of a non-empty
 // directory results in failure.
 func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	temporaryDirectoryPath, err := ioutil.TempDir("", "mutagen_filesystem_test")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(temporaryDirectoryPath)
-
-	// Create a directory handle for this temporary directory and defer its
-	// closure.
-	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
+	// Create a directory handle for a temporary directory (that will be removed
+	// automatically) and defer its closure.
+	directory, _, err := OpenDirectory(t.TempDir(), false)
 	if err != nil {
 		t.Fatal("unable to open directory handle:", err)
 	}
@@ -90,16 +82,9 @@ func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
 // TestDirectorySymbolicLinkRemoval tests that removal of symbolic links that
 // point to directories works as expected.
 func TestDirectorySymbolicLinkRemoval(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	temporaryDirectoryPath, err := ioutil.TempDir("", "mutagen_filesystem_test")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(temporaryDirectoryPath)
-
-	// Create a directory handle for this temporary directory and defer its
-	// closure.
-	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
+	// Create a directory handle for a temporary directory (that will be removed
+	// automatically) and defer its closure.
+	directory, _, err := OpenDirectory(t.TempDir(), false)
 	if err != nil {
 		t.Fatal("unable to open directory handle:", err)
 	}

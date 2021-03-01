@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/signal"
 	"time"
@@ -56,7 +56,7 @@ func ignoreCachesIntersectionEqual(first, second core.IgnoreCache) bool {
 func main() {
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
-	flagSet.SetOutput(ioutil.Discard)
+	flagSet.SetOutput(io.Discard)
 	var ignores []string
 	var enableProfile bool
 	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
@@ -372,7 +372,7 @@ func main() {
 
 	// Write the serialized snapshot to disk.
 	start = time.Now()
-	if err = ioutil.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {
+	if err = os.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to write snapshot"))
 	}
 	stop = time.Now()
@@ -380,7 +380,7 @@ func main() {
 
 	// Read the serialized snapshot from disk.
 	start = time.Now()
-	if _, err = ioutil.ReadFile(snapshotFile); err != nil {
+	if _, err = os.ReadFile(snapshotFile); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to read snapshot"))
 	}
 	stop = time.Now()
@@ -452,7 +452,7 @@ func main() {
 
 	// Write the serialized cache to disk.
 	start = time.Now()
-	if err = ioutil.WriteFile(cacheFile, serializedCache, 0600); err != nil {
+	if err = os.WriteFile(cacheFile, serializedCache, 0600); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to write cache"))
 	}
 	stop = time.Now()
@@ -460,7 +460,7 @@ func main() {
 
 	// Read the serialized cache from disk.
 	start = time.Now()
-	if _, err = ioutil.ReadFile(cacheFile); err != nil {
+	if _, err = os.ReadFile(cacheFile); err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to read cache"))
 	}
 	stop = time.Now()

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"hash"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -101,7 +100,7 @@ type testProvider struct {
 // content map.
 func newTestProvider(contentMap map[string][]byte, hasher hash.Hash) (*testProvider, error) {
 	// Create a temporary directory for serving files.
-	servingRoot, err := ioutil.TempDir("", "mutagen_provide_root")
+	servingRoot, err := os.MkdirTemp("", "mutagen_provide_root")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create serving directory")
 	}
@@ -130,7 +129,7 @@ func (p *testProvider) Provide(path string, digest []byte) (string, error) {
 	}
 
 	// Create a temporary file in the serving root.
-	temporaryFile, err := ioutil.TempFile(p.servingRoot, "mutagen_provide")
+	temporaryFile, err := os.CreateTemp(p.servingRoot, "mutagen_provide")
 	if err != nil {
 		return "", errors.Wrap(err, "unable to create temporary file")
 	}
@@ -157,7 +156,7 @@ func (p *testProvider) finalize() error {
 // into individual node creations to stress-test Transition.
 func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, decompose bool) (string, string, error) {
 	// Create temporary directory to act as the parent of our root.
-	parent, err := ioutil.TempDir(temporaryDirectory, "mutagen_simulated")
+	parent, err := os.MkdirTemp(temporaryDirectory, "mutagen_simulated")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to create temporary root parent")
 	}
@@ -560,7 +559,7 @@ func TestTransitionCaseConflict(t *testing.T) {
 func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
 	// Create a modifier function that will modify subcontent.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(filepath.Join(root, "file"), testFile3Contents, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, "file"), testFile3Contents, 0600); err != nil {
 			return nil, errors.Wrap(err, "unable to modify file content")
 		}
 		return expected, nil
@@ -575,7 +574,7 @@ func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
 func TestTransitionFailRemoveModifiedRootFile(t *testing.T) {
 	// Create a modifier function that will modify the root.
 	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := ioutil.WriteFile(root, testFile3Contents, 0600); err != nil {
+		if err := os.WriteFile(root, testFile3Contents, 0600); err != nil {
 			return nil, errors.Wrap(err, "unable to modify file content")
 		}
 		return expected, nil
@@ -711,7 +710,7 @@ func TestTransitionFailRemoveUnknownContent(t *testing.T) {
 func TestTransitionFailOnParentPathIsFile(t *testing.T) {
 	// Create a temporary file and defer its removal.
 	var parent string
-	if file, err := ioutil.TempFile("", "mutagen_simulated"); err != nil {
+	if file, err := os.CreateTemp("", "mutagen_simulated"); err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)

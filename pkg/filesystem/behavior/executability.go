@@ -1,7 +1,6 @@
 package behavior
 
 import (
-	"io/ioutil"
 	"os"
 	"runtime"
 
@@ -42,7 +41,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 	}
 
 	// Create a temporary file.
-	file, err := ioutil.TempFile(path, executabilityProbeFileNamePrefix)
+	file, err := os.CreateTemp(path, executabilityProbeFileNamePrefix)
 	if err != nil {
 		return false, true, errors.Wrap(err, "unable to create test file")
 	}

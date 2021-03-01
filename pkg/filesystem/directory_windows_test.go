@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -12,12 +11,8 @@ import (
 // TestDirectoryLongPaths tests a variety of Directory operations on directory
 // and file names that exceed the default Windows path length limit.
 func TestDirectoryLongPaths(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	temporaryDirectoryPath, err := ioutil.TempDir("", "parent")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(temporaryDirectoryPath)
+	// Create a temporary directory (that will be automatically removed).
+	temporaryDirectoryPath := t.TempDir()
 
 	// Create a directory in the temporary directory with a name that will
 	// exceed the Windows path length limit.

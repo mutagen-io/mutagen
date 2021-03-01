@@ -1,7 +1,6 @@
 package synchronization
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -68,7 +67,7 @@ var expectedConfiguration = &synchronization.Configuration{
 // TestLoadConfiguration tests loading a YAML-based session configuration.
 func TestLoadConfiguration(t *testing.T) {
 	// Write a valid configuration to a temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_configuration")
+	file, err := os.CreateTemp("", "mutagen_configuration")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if _, err = file.Write([]byte(testYAMLConfiguration)); err != nil {

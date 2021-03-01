@@ -3,7 +3,6 @@ package local
 import (
 	"hash"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -186,7 +185,7 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	}
 
 	// Create a temporary storage file in the staging root.
-	storage, err := ioutil.TempFile(s.root, "staging")
+	storage, err := os.CreateTemp(s.root, "staging")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create temporary storage file")
 	}

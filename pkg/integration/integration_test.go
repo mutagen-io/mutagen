@@ -1,7 +1,7 @@
 package integration
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"testing"
@@ -50,7 +50,7 @@ var synchronizationManager *synchronization.Manager
 // infrastructure after running tests.
 func TestMain(m *testing.M) {
 	// Disable logging.
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	// Override the expected agent bundle location.
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory

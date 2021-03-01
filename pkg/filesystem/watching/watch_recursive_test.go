@@ -2,7 +2,6 @@ package watching
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,12 +29,8 @@ func TestRecursiveWatchCycle(t *testing.T) {
 		t.Skip()
 	}
 
-	// Create a temporary directory and defer its removal.
-	directory, err := ioutil.TempDir("", "mutagen_filesystem_watch")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
+	// Create a temporary directory (that will be automatically removed).
+	directory := t.TempDir()
 
 	// Create a cancellable watch context and defer its cancellation.
 	watchContext, watchCancel := context.WithCancel(context.Background())

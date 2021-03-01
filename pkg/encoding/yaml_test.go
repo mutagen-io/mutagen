@@ -1,7 +1,6 @@
 package encoding
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -31,7 +30,7 @@ section:
 // succeeds.
 func TestLoadAndUnmarshalYAML(t *testing.T) {
 	// Write the test YAML to a temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if _, err = file.Write([]byte(testMessageYAMLString)); err != nil {

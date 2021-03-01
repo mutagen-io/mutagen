@@ -1,7 +1,6 @@
 package filesystem
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,9 +94,8 @@ func (d *Directory) CreateDirectory(name string) error {
 }
 
 // CreateTemporaryFile creates a new temporary file using the specified name
-// pattern inside the directory. Pattern behavior follows that of
-// io/ioutil.TempFile. The file will be created with user-only read/write
-// permissions.
+// pattern inside the directory. Pattern behavior follows that of os.CreateTemp.
+// The file will be created with user-only read/write permissions.
 func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, error) {
 	// Verify that the name is valid. This should still be a sensible operation
 	// for pattern specifications.
@@ -105,8 +103,8 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, e
 		return "", nil, err
 	}
 
-	// Create the temporary file using the standard io/ioutil implementation.
-	file, err := ioutil.TempFile(d.file.Name(), pattern)
+	// Create the temporary file using the standard os implementation.
+	file, err := os.CreateTemp(d.file.Name(), pattern)
 	if err != nil {
 		return "", nil, err
 	}

@@ -1,7 +1,6 @@
 package ssh
 
 import (
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -19,15 +18,8 @@ func TestCopy(t *testing.T) {
 		t.Skip()
 	}
 
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_ssh_copy")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Compute source path.
-	source := filepath.Join(directory, "source")
+	source := filepath.Join(t.TempDir(), "source")
 
 	// Create contents.
 	contents := []byte{0, 1, 2, 3, 4, 5, 6}
@@ -56,7 +48,7 @@ func TestCopy(t *testing.T) {
 	// directory. For testing, however, we don't want to copy into the home
 	// directory, and since we know our Copy implementation can support
 	// arbitrary remote paths, we use one.
-	destination := filepath.Join(directory, "destination")
+	destination := filepath.Join(t.TempDir(), "destination")
 
 	// Copy the file.
 	if err := transport.Copy(source, destination); err != nil {

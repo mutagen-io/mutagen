@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 // cycle.
 func TestProtocolBuffersCycle(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {

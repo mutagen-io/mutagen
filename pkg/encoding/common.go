@@ -1,7 +1,6 @@
 package encoding
 
 import (
-	"io/ioutil"
 	"os"
 
 	"github.com/pkg/errors"
@@ -15,7 +14,7 @@ import (
 // to decode the data.
 func LoadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 	// Grab the file contents.
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return err

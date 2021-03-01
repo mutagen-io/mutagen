@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -45,15 +44,8 @@ func TestExecutableForPlatform(t *testing.T) {
 // TestExecutableForPlatformWithOutputPath tests that ExecutableForPlatform
 // functions correctly when an output path is specified.
 func TestExecutableForPlatformWithOutputPath(t *testing.T) {
-	// Create a temporary directory and defer its removal.
-	temporaryDirectory, err := ioutil.TempDir("", "mutagen_bundle_test")
-	if err != nil {
-		t.Fatal("unable to create temporary directory")
-	}
-	defer os.RemoveAll(temporaryDirectory)
-
 	// Compute the output path.
-	outputPath := filepath.Join(temporaryDirectory, "agent_output")
+	outputPath := filepath.Join(t.TempDir(), "agent_output")
 
 	// Perform executable extraction.
 	executable, err := ExecutableForPlatform(runtime.GOOS, runtime.GOARCH, outputPath)

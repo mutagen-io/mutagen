@@ -2,7 +2,6 @@ package locking
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -25,15 +24,7 @@ const (
 
 // TestLockerFailOnDirectory tests that a locker creation fails for a directory.
 func TestLockerFailOnDirectory(t *testing.T) {
-	// Create a temporary directory and defer its removal.
-	directory, err := ioutil.TempDir("", "mutagen_filesystem_lock")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
-	// Ensure that locker creation fails.
-	if _, err := NewLocker(directory, 0600); err == nil {
+	if _, err := NewLocker(t.TempDir(), 0600); err == nil {
 		t.Fatal("creating a locker on a directory path succeeded")
 	}
 }
@@ -41,7 +32,7 @@ func TestLockerFailOnDirectory(t *testing.T) {
 // TestLockerCycle tests the lifecycle of a Locker.
 func TestLockerCycle(t *testing.T) {
 	// Create a temporary file and defer its removal.
-	lockfile, err := ioutil.TempFile("", "mutagen_filesystem_lock")
+	lockfile, err := os.CreateTemp("", "mutagen_filesystem_lock")
 	if err != nil {
 		t.Fatal("unable to create temporary lock file:", err)
 	} else if err = lockfile.Close(); err != nil {
@@ -86,7 +77,7 @@ func TestLockDuplicateFail(t *testing.T) {
 	}
 
 	// Create a temporary file and defer its removal.
-	lockfile, err := ioutil.TempFile("", "mutagen_filesystem_lock")
+	lockfile, err := os.CreateTemp("", "mutagen_filesystem_lock")
 	if err != nil {
 		t.Fatal("unable to create temporary lock file:", err)
 	} else if err = lockfile.Close(); err != nil {

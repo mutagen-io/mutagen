@@ -1,7 +1,6 @@
 package behavior
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -40,7 +39,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 	}
 
 	// Create and close a temporary file using the composed filename.
-	file, err := ioutil.TempFile(path, composedFileNamePrefix)
+	file, err := os.CreateTemp(path, composedFileNamePrefix)
 	if err != nil {
 		return false, true, errors.Wrap(err, "unable to create test file")
 	} else if err = file.Close(); err != nil {

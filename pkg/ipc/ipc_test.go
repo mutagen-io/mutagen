@@ -3,7 +3,6 @@ package ipc
 import (
 	"context"
 	"encoding/gob"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,15 +11,8 @@ import (
 // TestDialContextNoEndpoint tests that DialContext fails if there is no
 // endpoint at the specified path.
 func TestDialTimeoutNoEndpoint(t *testing.T) {
-	// Create a temporary directory and defer its removal.
-	temporaryDirectory, err := ioutil.TempDir("", "mutagen_ipc_test")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(temporaryDirectory)
-
 	// Compute the IPC endpoint path.
-	endpoint := filepath.Join(temporaryDirectory, "test.sock")
+	endpoint := filepath.Join(t.TempDir(), "test.sock")
 
 	// Attempt to dial the listener and ensure that doing so fails.
 	if c, err := DialContext(context.Background(), endpoint); err == nil {
@@ -46,15 +38,8 @@ func TestIPC(t *testing.T) {
 	// Create a test message.
 	expected := testIPCMessage{"George", 67}
 
-	// Create a temporary directory and defer its removal.
-	temporaryDirectory, err := ioutil.TempDir("", "mutagen_ipc_test")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(temporaryDirectory)
-
 	// Compute the IPC endpoint path.
-	endpoint := filepath.Join(temporaryDirectory, "test.sock")
+	endpoint := filepath.Join(t.TempDir(), "test.sock")
 
 	// Create a listener and defer its closure.
 	listener, err := NewListener(endpoint)

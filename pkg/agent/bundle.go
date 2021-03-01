@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -138,7 +137,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	if outputPath != "" {
 		file, err = os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	} else {
-		file, err = ioutil.TempFile("", process.ExecutableName(BaseName+".*", goos))
+		file, err = os.CreateTemp("", process.ExecutableName(BaseName+".*", goos))
 	}
 	if err != nil {
 		return "", fmt.Errorf("unable to create output file: %w", err)

@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -52,7 +51,7 @@ func TestLoadAndUnmarshalDirectory(t *testing.T) {
 // unmarshaling callback fails.
 func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {
@@ -74,7 +73,7 @@ func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
 // TestLoadAndUnmarshal tests that loading and unmarshaling succeed.
 func TestLoadAndUnmarshal(t *testing.T) {
 	// Write the test JSON to a temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if _, err = file.Write([]byte(testMessageJSONString)); err != nil {
@@ -108,7 +107,7 @@ func TestLoadAndUnmarshal(t *testing.T) {
 // callback fails.
 func TestMarshalAndSaveMarshalFail(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {
@@ -127,22 +126,15 @@ func TestMarshalAndSaveMarshalFail(t *testing.T) {
 	}
 }
 
-// TestMarshalAndSaveInvalidPath tests that saving to an invalid path fails.
-func TestMarshalAndSaveInvalidPath(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_encoding")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
+// TestMarshalAndSaveOverDirectory tests that saving over a directory fails.
+func TestMarshalAndSaveOverDirectory(t *testing.T) {
 	// Create a marshaling function.
 	marshal := func() ([]byte, error) {
 		return []byte{0}, nil
 	}
 
-	// Attempt to marshal and save using an invalid path.
-	if MarshalAndSave(directory, marshal) == nil {
+	// Attempt to marshal and save over a directory.
+	if MarshalAndSave(t.TempDir(), marshal) == nil {
 		t.Error("expected MarshalAndSave to return an error")
 	}
 }
@@ -150,7 +142,7 @@ func TestMarshalAndSaveInvalidPath(t *testing.T) {
 // TestMarshalAndSave tests that marshaling and saving succeed.
 func TestMarshalAndSave(t *testing.T) {
 	// Create an empty temporary file and defer its cleanup.
-	file, err := ioutil.TempFile("", "mutagen_encoding")
+	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
 		t.Fatal("unable to create temporary file:", err)
 	} else if err = file.Close(); err != nil {
@@ -172,7 +164,7 @@ func TestMarshalAndSave(t *testing.T) {
 	// Read the contents of the file and ensure they match what's expected.
 	// TODO: Are we relying too much on the implementation details of the JSON
 	// encoder here?
-	contents, err := ioutil.ReadFile(file.Name())
+	contents, err := os.ReadFile(file.Name())
 	if err != nil {
 		t.Fatal("unable to read saved contents:", err)
 	} else if string(contents) != testMessageJSONString {

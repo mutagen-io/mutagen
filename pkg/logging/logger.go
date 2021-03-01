@@ -3,7 +3,6 @@ package logging
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 
 	"github.com/mutagen-io/mutagen/pkg/stream"
@@ -127,7 +126,7 @@ func (l *Logger) Writer(level Level) io.Writer {
 	// requested level, then we can just discard input since it won't be logged
 	// anyway. This saves us the overhead of scanning lines.
 	if l == nil || currentLevel < level {
-		return ioutil.Discard
+		return io.Discard
 	}
 
 	// Create the writer.

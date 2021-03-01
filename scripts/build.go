@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -452,7 +451,7 @@ default mode is 'local'.
 func build() error {
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
-	flagSet.SetOutput(ioutil.Discard)
+	flagSet.SetOutput(io.Discard)
 	var mode string
 	flagSet.StringVarP(&mode, "mode", "m", "local", "specify the build mode")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {

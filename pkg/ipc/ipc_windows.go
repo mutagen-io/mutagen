@@ -3,7 +3,6 @@ package ipc
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -19,7 +18,7 @@ import (
 // provided context expires.
 func DialContext(context context.Context, path string) (net.Conn, error) {
 	// Read the pipe name.
-	pipeNameBytes, err := ioutil.ReadFile(path)
+	pipeNameBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to read pipe name")
 	}

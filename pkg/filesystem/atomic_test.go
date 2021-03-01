@@ -2,7 +2,6 @@ package filesystem
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,15 +14,8 @@ func TestWriteFileAtomicNonExistentDirectory(t *testing.T) {
 }
 
 func TestWriteFileAtomic(t *testing.T) {
-	// Create a temporary directory and defer its cleanup.
-	directory, err := ioutil.TempDir("", "mutagen_write_file_atomic")
-	if err != nil {
-		t.Fatal("unable to create temporary directory:", err)
-	}
-	defer os.RemoveAll(directory)
-
 	// Compute the target path.
-	target := filepath.Join(directory, "file")
+	target := filepath.Join(t.TempDir(), "file")
 
 	// Create contents.
 	contents := []byte{0, 1, 2, 3, 4, 5, 6}
@@ -34,7 +26,7 @@ func TestWriteFileAtomic(t *testing.T) {
 	}
 
 	// Read the contents back and ensure they match what's expected.
-	if data, err := ioutil.ReadFile(target); err != nil {
+	if data, err := os.ReadFile(target); err != nil {
 		t.Fatal("unable to read back file:", err)
 	} else if !bytes.Equal(data, contents) {
 		t.Error("file contents did not match expected")
