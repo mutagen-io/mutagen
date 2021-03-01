@@ -114,7 +114,7 @@ func Message(identifier, message string) error {
 
 	// Handle errors.
 	if err != nil {
-		fmt.Errorf("unable to message: %w", err)
+		return fmt.Errorf("unable to message: %w", err)
 	}
 
 	// Success.
