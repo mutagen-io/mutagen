@@ -50,20 +50,13 @@ type Sinker interface {
 	Sink(path string) (io.WriteCloser, error)
 }
 
-// readSeekCloser is the union of io.Reader, io.Seeker, and io.Closer.
-type readSeekCloser interface {
-	io.Reader
-	io.Seeker
-	io.Closer
-}
-
-// emptyReadSeekCloser is an implementation of readSeekCloser that is empty.
+// emptyReadSeekCloser is an implementation of io.ReadSeekCloser that is empty.
 type emptyReadSeekCloser struct {
 	*bytes.Reader
 }
 
-// newEmptyReadSeekCloser constructs a new empty readSeekCloser.
-func newEmptyReadSeekCloser() readSeekCloser {
+// newEmptyReadSeekCloser constructs a new empty io.ReadSeekCloser.
+func newEmptyReadSeekCloser() io.ReadSeekCloser {
 	return &emptyReadSeekCloser{&bytes.Reader{}}
 }
 
@@ -98,7 +91,7 @@ type receiver struct {
 	burning bool
 	// base is the base for the current file. It should be non-nil if and only
 	// if target is non-nil. It should be nil if burning.
-	base readSeekCloser
+	base io.ReadSeekCloser
 	// target is the destination for the current file. It should be non-nil if
 	// and only if base is non-nil. It should be nil if burning.
 	target io.WriteCloser
