@@ -3,7 +3,6 @@ module github.com/mutagen-io/mutagen
 go 1.15
 
 require (
-	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/dustin/go-humanize v1.0.0

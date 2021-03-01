@@ -19,11 +19,6 @@ const (
 	// Mutagen.
 	MutagenDataDirectoryDevelopmentName = ".mutagen-dev"
 
-	// MutagenLegacyGlobalSynchronizationConfigurationName is the name of the
-	// legacy global Mutagen synchronization configuration file inside the
-	// user's home directory.
-	MutagenLegacyGlobalSynchronizationConfigurationName = ".mutagen.toml"
-
 	// MutagenGlobalConfigurationName is the name of the global Mutagen
 	// configuration file inside the user's home directory.
 	MutagenGlobalConfigurationName = ".mutagen.yml"

@@ -17,7 +17,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
-	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
@@ -130,23 +129,10 @@ func startMain(_ *cobra.Command, _ []string) error {
 			return errors.Wrap(err, "unable to compute path to global configuration file")
 		}
 
-		// Load the configuration. If it doesn't exist, then check for the
-		// presence of a legacy TOML configuration. If a legacy configuration is
-		// present, then return an error indicating a lack of support.
+		// Attempt to load and validate the file. We allow it to not exist.
 		globalConfiguration, err := global.LoadConfiguration(globalConfigurationPath)
 		if err != nil {
-			if os.IsNotExist(err) {
-				// Compute the path to the global configuration file.
-				legacyGlobalConfigurationPath, err := legacy.ConfigurationPath()
-				if err != nil {
-					return errors.Wrap(err, "unable to compute path to legacy global configuration file")
-				}
-
-				// Error out if it exists, we don't fall back to it.
-				if _, err := os.Stat(legacyGlobalConfigurationPath); err == nil {
-					return errors.Wrap(err, "project infrastructure doesn't support legacy global TOML configuration")
-				}
-			} else {
+			if !os.IsNotExist(err) {
 				return errors.Wrap(err, "unable to load global configuration")
 			}
 		} else {

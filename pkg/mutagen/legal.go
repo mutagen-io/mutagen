@@ -214,17 +214,6 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-toml
-
-https://github.com/BurntSushi/toml
-
-Copyright (c) 2013 TOML authors
-
-Used under the terms of the MIT License. A copy of this license can be found
-later in this text or online at https://opensource.org/licenses/MIT.
-
---------------------------------------------------------------------------------
-
 yaml
 
 https://github.com/go-yaml/yaml

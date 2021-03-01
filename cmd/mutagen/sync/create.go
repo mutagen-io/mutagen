@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,7 +18,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/configuration/global"
-	"github.com/mutagen-io/mutagen/pkg/configuration/legacy"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
@@ -44,27 +42,6 @@ func loadAndValidateGlobalSynchronizationConfiguration(path string) (*synchroniz
 	// Convert the YAML configuration to a Protocol Buffers representation and
 	// validate it.
 	configuration := yamlConfiguration.Synchronization.Defaults.Configuration()
-	if err := configuration.EnsureValid(false); err != nil {
-		return nil, errors.Wrap(err, "invalid configuration")
-	}
-
-	// Success.
-	return configuration, nil
-}
-
-// loadAndValidateLegacyTOMLConfiguration loads a legacy TOML-based
-// configuration, converts it to a Protocol Buffers session configuration, and
-// validates it.
-func loadAndValidateLegacyTOMLConfiguration(path string) (*synchronization.Configuration, error) {
-	// Load the TOML configuration.
-	tomlConfiguration, err := legacy.LoadConfiguration(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert the TOML configuration to a Protocol Buffers representation and
-	// validate it.
-	configuration := tomlConfiguration.Configuration()
 	if err := configuration.EnsureValid(false); err != nil {
 		return nil, errors.Wrap(err, "invalid configuration")
 	}
@@ -154,13 +131,12 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		labels[key] = value
 	}
 
-	// Create a default session configuration which will form the basis of our
+	// Create a default session configuration that will form the basis of our
 	// cumulative configuration.
 	configuration := &synchronization.Configuration{}
 
-	// Unless disabled, load configuration from the global configuration file
-	// and merge it into our cumulative configuration.
-	var globalConfigurationNonExistent bool
+	// Unless disabled, attempt to load configuration from the global
+	// configuration file and merge it into our cumulative configuration.
 	if !createConfiguration.noGlobalConfiguration {
 		// Compute the path to the global configuration file.
 		globalConfigurationPath, err := global.ConfigurationPath()
@@ -174,53 +150,18 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			if !os.IsNotExist(err) {
 				return errors.Wrap(err, "unable to load global configuration")
 			}
-			globalConfigurationNonExistent = true
 		} else {
 			configuration = synchronization.MergeConfigurations(configuration, globalConfiguration)
-		}
-	}
-
-	// If we tried to load the global configuration and it didn't exist, then
-	// try to load the legacy global configuration.
-	if globalConfigurationNonExistent {
-		// Compute the path to the global configuration file.
-		legacyGlobalConfigurationPath, err := legacy.ConfigurationPath()
-		if err != nil {
-			return errors.Wrap(err, "unable to compute path to legacy global configuration file")
-		}
-
-		// Attempt to load the file. We don't require that the legacy global
-		// configuration exist, but if it does (and since the YAML-based global
-		// configuration file didn't exist), then we warn the user about its
-		// deprecation.
-		globalConfiguration, err := loadAndValidateLegacyTOMLConfiguration(legacyGlobalConfigurationPath)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return errors.Wrap(err, "unable to load legacy global configuration")
-			}
-		} else {
-			configuration = synchronization.MergeConfigurations(configuration, globalConfiguration)
-			cmd.Warning("TOML-based global configuration files are deprecated, please migrate to YAML")
 		}
 	}
 
 	// If a configuration file has been specified, then load it and merge it
-	// into our cumulative configuration. We handle its loading based on the
-	// extension, warning if a legacy TOML configuration file is used.
+	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
-		if filepath.Ext(createConfiguration.configurationFile) == ".toml" {
-			cmd.Warning("TOML-based configuration files are deprecated, please migrate to YAML")
-			if c, err := loadAndValidateLegacyTOMLConfiguration(createConfiguration.configurationFile); err != nil {
-				return errors.Wrap(err, "unable to load legacy configuration file")
-			} else {
-				configuration = synchronization.MergeConfigurations(configuration, c)
-			}
+		if c, err := loadAndValidateGlobalSynchronizationConfiguration(createConfiguration.configurationFile); err != nil {
+			return errors.Wrap(err, "unable to load configuration file")
 		} else {
-			if c, err := loadAndValidateGlobalSynchronizationConfiguration(createConfiguration.configurationFile); err != nil {
-				return errors.Wrap(err, "unable to load configuration file")
-			} else {
-				configuration = synchronization.MergeConfigurations(configuration, c)
-			}
+			configuration = synchronization.MergeConfigurations(configuration, c)
 		}
 	}
 

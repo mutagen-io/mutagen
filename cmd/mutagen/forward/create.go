@@ -127,7 +127,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		labels[key] = value
 	}
 
-	// Create a default session configuration which will form the basis of our
+	// Create a default session configuration that will form the basis of our
 	// cumulative configuration.
 	configuration := &forwarding.Configuration{}
 
