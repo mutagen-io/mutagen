@@ -91,13 +91,6 @@ func TestNotifyEvents(t *testing.T) {
 		t.Fatalf("Watcher.Watch() failed: %s", err)
 	}
 
-	// Receive errors on the error channel on a separate goroutine
-	go func() {
-		for err := range watcher.Error {
-			t.Fatalf("error received: %s", err)
-		}
-	}()
-
 	// Create a file
 	file, err := os.Create(testFile)
 	if err != nil {
@@ -137,6 +130,13 @@ func TestNotifyEvents(t *testing.T) {
 
 	if err = watcher.Close(); err != nil {
 		t.Fatalf("failed to close watcher: %s", err)
+	}
+
+	// Check for errors
+	select {
+	case err := <-watcher.Error:
+		t.Fatalf("error received: %s", err)
+	default:
 	}
 }
 

@@ -125,7 +125,7 @@ func NewWatcher() (*Watcher, error) {
 		watches: make(watchMap),
 		input:   make(chan *input, 1),
 		Event:   make(chan *Event, 50),
-		Error:   make(chan error),
+		Error:   make(chan error, 1),
 		quit:    make(chan chan<- error, 1),
 	}
 	go w.readEvents()
