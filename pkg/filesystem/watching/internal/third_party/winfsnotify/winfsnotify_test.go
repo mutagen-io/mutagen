@@ -152,7 +152,7 @@ func TestNotifyClose(t *testing.T) {
 		t.Fatal("double Close() test failed: second Close() call didn't return")
 	}
 
-	err = watcher.Watch(t.TempDir())
+	err := watcher.Watch(t.TempDir())
 	if err == nil {
 		t.Fatal("expected error on Watch() after Close(), got nil")
 	}
