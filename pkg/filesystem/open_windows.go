@@ -4,15 +4,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"unsafe"
 
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
-
-	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
@@ -47,9 +44,9 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// other threads or processes to delete or rename the file while open,
 	// avoids symbolic link traversal (at the path leaf), and has suitable
 	// semantics for both files and directories.
-	flags := uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_BACKUP_SEMANTICS | windows.FILE_FLAG_OPEN_REPARSE_POINT)
-	if allowSymbolicLinkLeaf {
-		flags = uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_BACKUP_SEMANTICS)
+	flags := uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_BACKUP_SEMANTICS)
+	if !allowSymbolicLinkLeaf {
+		flags |= windows.FILE_FLAG_OPEN_REPARSE_POINT
 	}
 	handle, err := windows.CreateFile(
 		path16,
@@ -67,26 +64,19 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return nil, nil, errors.Wrap(err, "unable to open path")
 	}
 
-	// Query attribute metadata.
-	var attributes fssyscall.FileAttributeTagInfo
-	if err := windows.GetFileInformationByHandleEx(
-		handle,
-		windows.FileAttributeTagInfo,
-		(*byte)(unsafe.Pointer(&attributes)),
-		uint32(unsafe.Sizeof(attributes)),
-	); err != nil {
+	// Query file handle metadata.
+	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
+	if err != nil {
 		windows.CloseHandle(handle)
-		return nil, nil, errors.Wrap(err, "unable to query attribute metadata")
+		return nil, nil, errors.Wrap(err, "unable to query file handle metadata")
 	}
 
-	// Verify that the attribute metadata doesn't indicate a symbolic link.
-	if attributes.IsSymbolicLink() {
+	// Verify that we're not dealing with a symbolic link. If we are allowing
+	// symbolic links, then they should have been resolved by CreateFile.
+	if isSymbolicLink {
 		windows.CloseHandle(handle)
 		return nil, nil, ErrUnsupportedOpenType
 	}
-
-	// Determine whether or not this is a directory.
-	isDirectory := attributes.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0
 
 	// Handle os.File creation based on type.
 	var file *os.File
@@ -100,9 +90,13 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		file = os.NewFile(uintptr(handle), path)
 	}
 
-	// Grab pre-converted metadata via the os.File object. For directories, this
-	// is path-based under the hood, but it's fine since we're already holding
-	// the directory handle open.
+	// Grab filesystem metadata via the os.File object. For directories, this is
+	// path-based under the hood, but it's fine since we're already holding the
+	// directory handle open. Unfortunately we can't easily fold this into our
+	// earlier metadata query on Windows because the mode conversion logic in
+	// the standard library (whose mode values we re-use on Windows) is quite
+	// complex. Fortunately this code is not on the hot path, so we don't incur
+	// too much penalty from the duplicate query operation.
 	fileMetadata, err := file.Stat()
 	if err != nil {
 		if isDirectory {

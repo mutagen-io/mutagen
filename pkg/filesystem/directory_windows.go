@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"unsafe"
 
 	"github.com/pkg/errors"
 
@@ -14,8 +13,6 @@ import (
 	aclapi "github.com/hectane/go-acl/api"
 
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
-
-	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // ensureValidName verifies that the provided name does not reference the
@@ -246,26 +243,21 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 		return "", 0, errors.Wrap(err, "unable to open path")
 	}
 
-	// Query attribute metadata.
-	var attributes fssyscall.FileAttributeTagInfo
-	if err := windows.GetFileInformationByHandleEx(
-		handle,
-		windows.FileAttributeTagInfo,
-		(*byte)(unsafe.Pointer(&attributes)),
-		uint32(unsafe.Sizeof(attributes)),
-	); err != nil {
+	// Query file handle metadata.
+	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
+	if err != nil {
 		windows.CloseHandle(handle)
-		return "", 0, errors.Wrap(err, "unable to query attribute metadata")
+		return "", 0, errors.Wrap(err, "unable to query file handle metadata")
 	}
 
-	// Verify that the attribute metadata doesn't indicate a symbolic link.
-	if attributes.IsSymbolicLink() {
+	// Verify that we're not dealing with a symbolic link.
+	if isSymbolicLink {
 		windows.CloseHandle(handle)
 		return "", 0, errors.New("path pointed to symbolic link")
 	}
 
 	// Verify that the handle corresponds to a directory (if requested).
-	if wantDirectory && attributes.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY == 0 {
+	if wantDirectory && !isDirectory {
 		windows.CloseHandle(handle)
 		return "", 0, errors.New("path pointed to non-directory location")
 	}
