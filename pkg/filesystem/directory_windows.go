@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/pkg/errors"
 
@@ -13,6 +14,8 @@ import (
 	aclapi "github.com/hectane/go-acl/api"
 
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
+
+	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // ensureValidName verifies that the provided name does not reference the
@@ -243,27 +246,26 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 		return "", 0, errors.Wrap(err, "unable to open path")
 	}
 
-	// Query file metadata.
-	var metadata windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(handle, &metadata); err != nil {
+	// Query attribute metadata.
+	var attributes fssyscall.FileAttributeTagInfo
+	if err := windows.GetFileInformationByHandleEx(
+		handle,
+		windows.FileAttributeTagInfo,
+		(*byte)(unsafe.Pointer(&attributes)),
+		uint32(unsafe.Sizeof(attributes)),
+	); err != nil {
 		windows.CloseHandle(handle)
-		return "", 0, errors.Wrap(err, "unable to query file metadata")
+		return "", 0, errors.Wrap(err, "unable to query attribute metadata")
 	}
 
-	// Verify that the handle does not represent a symbolic link and that the
-	// type coincides with what we want. Note that FILE_ATTRIBUTE_REPARSE_POINT
-	// can be or'd with FILE_ATTRIBUTE_DIRECTORY (since symbolic links are
-	// "typed" on Windows), so we have to explicitly exclude reparse points
-	// before checking types.
-	//
-	// TODO: Are there additional attributes upon which we should reject here?
-	// The Go os.File implementation doesn't seem to for normal os.Open
-	// operations, so I guess we don't need to either, but we should keep the
-	// option in mind.
-	if metadata.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+	// Verify that the attribute metadata doesn't indicate a symbolic link.
+	if attributes.IsSymbolicLink() {
 		windows.CloseHandle(handle)
 		return "", 0, errors.New("path pointed to symbolic link")
-	} else if wantDirectory && metadata.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY == 0 {
+	}
+
+	// Verify that the handle corresponds to a directory (if requested).
+	if wantDirectory && attributes.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY == 0 {
 		windows.CloseHandle(handle)
 		return "", 0, errors.New("path pointed to non-directory location")
 	}

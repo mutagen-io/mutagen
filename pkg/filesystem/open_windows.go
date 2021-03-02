@@ -4,12 +4,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"unsafe"
 
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
+
+	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // Open opens a filesystem path for traversal and operations. It will return
@@ -64,32 +67,26 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return nil, nil, errors.Wrap(err, "unable to open path")
 	}
 
-	// Query raw file metadata.
-	var rawMetadata windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(handle, &rawMetadata); err != nil {
+	// Query attribute metadata.
+	var attributes fssyscall.FileAttributeTagInfo
+	if err := windows.GetFileInformationByHandleEx(
+		handle,
+		windows.FileAttributeTagInfo,
+		(*byte)(unsafe.Pointer(&attributes)),
+		uint32(unsafe.Sizeof(attributes)),
+	); err != nil {
 		windows.CloseHandle(handle)
-		return nil, nil, errors.Wrap(err, "unable to query file metadata")
+		return nil, nil, errors.Wrap(err, "unable to query attribute metadata")
 	}
 
-	// Verify that the handle does not represent a symbolic link. Even if we
-	// allow symbolic links in the leaf position of the path, we should not end
-	// up with one (it should resolve).
-	//
-	// Note that FILE_ATTRIBUTE_REPARSE_POINT can be or'd with
-	// FILE_ATTRIBUTE_DIRECTORY (since symbolic links are "typed" on Windows),
-	// so we have to explicitly exclude reparse points before checking types.
-	//
-	// TODO: Are there additional attributes upon which we should reject here?
-	// The Go os.File implementation doesn't seem to for normal os.Open
-	// operations, so I guess we don't need to either, but we should keep the
-	// option in mind.
-	if rawMetadata.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+	// Verify that the attribute metadata doesn't indicate a symbolic link.
+	if attributes.IsSymbolicLink() {
 		windows.CloseHandle(handle)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 
 	// Determine whether or not this is a directory.
-	isDirectory := rawMetadata.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0
+	isDirectory := attributes.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0
 
 	// Handle os.File creation based on type.
 	var file *os.File
