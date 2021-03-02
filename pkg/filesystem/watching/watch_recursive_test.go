@@ -32,6 +32,19 @@ func TestRecursiveWatchCycle(t *testing.T) {
 	// Create a temporary directory (that will be automatically removed).
 	directory := t.TempDir()
 
+	// Create a channel that will track completion of the watching Goroutine. We
+	// need to do this to ensure that all file descriptors/handles referencing
+	// the temporary directory are closed, otherwise its automated removal may
+	// fail (which will cause the test to fail). Note that this wait operation
+	// needs to come after the watch is cancelled, and thus be registered before
+	// that defer. This is part of the reason that we don't use the watchErrors
+	// channel for this monitoring (in addition to the fact that we have to poll
+	// it elsewhere and it's simply cleaner to track termination separately).
+	watchingDone := make(chan struct{})
+	defer func() {
+		<-watchingDone
+	}()
+
 	// Create a cancellable watch context and defer its cancellation.
 	watchContext, watchCancel := context.WithCancel(context.Background())
 	defer watchCancel()
@@ -40,10 +53,12 @@ func TestRecursiveWatchCycle(t *testing.T) {
 	// to make sure it's large enough to handle anything we might generate.
 	events := make(chan string, 50)
 
-	// Start watching in a separate Goroutine, watching for errors.
+	// Start watching in a separate Goroutine, monitoring for errors and closing
+	// the completion tracking channel when done.
 	watchErrors := make(chan error, 1)
 	go func() {
 		watchErrors <- WatchRecursive(watchContext, directory, events)
+		close(watchingDone)
 	}()
 
 	// Wait for the initial strobe event which indicates watch initialization.
