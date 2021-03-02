@@ -98,6 +98,16 @@ type endpoint struct {
 	// workerCancel cancels any background worker Goroutines for the endpoint.
 	// This field is static and safe for concurrent invocation.
 	workerCancel context.CancelFunc
+	// saveCacheDone is closed when the cache saving Goroutine has completed. It
+	// will never have values written to it and will only be closed, so a read
+	// that returns indicates closure. This field is static and safe for
+	// concurrent reads.
+	saveCacheDone <-chan struct{}
+	// watchDone is closed when the watching Goroutine has completed. It will
+	// never have values written to it and will only be closed, so a read that
+	// returns indicates closure. This field is static and safe for concurrent
+	// reads.
+	watchDone <-chan struct{}
 	// pollEvents is the channel used to inform a call to Poll that there are
 	// filesystem modifications (and thus it can return). It is a buffered
 	// channel with a capacity of one. Senders should always perform a
@@ -337,6 +347,10 @@ func NewEndpoint(
 	// Goroutines will operate.
 	workerContext, workerCancel := context.WithCancel(context.Background())
 
+	// Create channels to monitor background worker Goroutine completion.
+	saveCacheDone := make(chan struct{})
+	watchDone := make(chan struct{})
+
 	// Create the endpoint.
 	endpoint := &endpoint{
 		logger:                             logger,
@@ -352,6 +366,8 @@ func NewEndpoint(
 		defaultOwnership:                   defaultOwnership,
 		watchIsRecursive:                   watchIsRecursive,
 		workerCancel:                       workerCancel,
+		saveCacheDone:                      saveCacheDone,
+		watchDone:                          watchDone,
 		pollEvents:                         make(chan struct{}, 1),
 		recursiveWatchRetryEstablish:       make(chan struct{}),
 		recursiveWatchReenableAcceleration: make(chan struct{}, 1),
@@ -366,8 +382,11 @@ func NewEndpoint(
 		),
 	}
 
-	// Start the cache saving Goroutine.
-	go endpoint.saveCacheRegularly(workerContext, cachePath)
+	// Start the cache saving Goroutine and monitor for its completion.
+	go func() {
+		endpoint.saveCacheRegularly(workerContext, cachePath)
+		close(saveCacheDone)
+	}()
 
 	// Compute the effective watch polling interval.
 	watchPollingInterval := configuration.WatchPollingInterval
@@ -375,21 +394,31 @@ func NewEndpoint(
 		watchPollingInterval = version.DefaultWatchPollingInterval()
 	}
 
-	// Start the appropriate watching mechanism.
+	// Start the appropriate watching mechanism and monitor for its completion.
 	if watchMode == synchronization.WatchMode_WatchModePortable {
 		if watching.RecursiveWatchingSupported {
-			go endpoint.watchRecursive(workerContext, watchPollingInterval)
+			go func() {
+				endpoint.watchRecursive(workerContext, watchPollingInterval)
+				close(watchDone)
+			}()
 		} else {
-			go endpoint.watchPoll(
-				workerContext,
-				watchPollingInterval,
-				watching.NonRecursiveWatchingSupported,
-			)
+			go func() {
+				endpoint.watchPoll(
+					workerContext,
+					watchPollingInterval,
+					watching.NonRecursiveWatchingSupported,
+				)
+				close(watchDone)
+			}()
 		}
 	} else if watchMode == synchronization.WatchMode_WatchModeForcePoll {
-		go endpoint.watchPoll(workerContext, watchPollingInterval, false)
+		go func() {
+			endpoint.watchPoll(workerContext, watchPollingInterval, false)
+			close(watchDone)
+		}()
 	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
 		// Don't start any watcher.
+		close(watchDone)
 	} else {
 		panic("unhandled watch mode")
 	}
@@ -499,6 +528,9 @@ WatchEstablishment:
 			// Log cancellation.
 			logger.Debug("Cancelled during initialization")
 
+			// Wait for the watching Goroutine to finish.
+			<-watchErrors
+
 			// Terminate watching.
 			return
 		case err := <-watchErrors:
@@ -562,6 +594,9 @@ WatchEstablishment:
 			case <-ctx.Done():
 				// Log cancellation.
 				logger.Debug("Cancelled")
+
+				// Wait for the watching Goroutine to finish.
+				<-watchErrors
 
 				// Terminate watching.
 				return
@@ -1315,14 +1350,12 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 
 // Shutdown implements the Shutdown method for local endpoints.
 func (e *endpoint) Shutdown() error {
-	// Mark background worker Goroutines for termination. We don't wait for
-	// their termination since it will be almost instant and there's not any
-	// important reason to synchronize their shutdown. The worst case scenario
-	// resulting from their continued execution after a return from this
-	// function would be one cache write occurring after the creation of a new
-	// endpoint using the same cache path, but this is extremely unlikely and
-	// not problematic if it does occur.
+	// Signal background worker Goroutines to terminate.
 	e.workerCancel()
+
+	// Wait for background worker Goroutines to terminate.
+	<-e.saveCacheDone
+	<-e.watchDone
 
 	// Done.
 	return nil
