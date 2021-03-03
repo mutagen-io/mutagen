@@ -25,7 +25,8 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
-// ReceivingStatus encodes that status of an rsync receiver.
+// ReceivingStatus encodes that status of an rsync receiver. It should be
+// considered immutable.
 type ReceiverStatus struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

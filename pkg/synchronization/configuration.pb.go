@@ -29,7 +29,8 @@ const _ = proto.ProtoPackageIsVersion4
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
-// options, and for storing a merged configuration inside sessions.
+// options, and for storing a merged configuration inside sessions. It should be
+// considered immutable.
 type Configuration struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

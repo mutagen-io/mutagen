@@ -97,7 +97,7 @@ func (s *State) EnsureValid() error {
 	return nil
 }
 
-// copy creates a shallow copy of the state, deep-copying any mutable members.
+// copy creates a static copy of the state, deep-copying any mutable members.
 func (s *State) copy() *State {
 	return &State{
 		Session:                         s.Session.copy(),

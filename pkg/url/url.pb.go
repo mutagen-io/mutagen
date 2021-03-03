@@ -127,7 +127,7 @@ func (Protocol) EnumDescriptor() ([]byte, []int) {
 	return file_url_url_proto_rawDescGZIP(), []int{1}
 }
 
-// URL represents a pointer to a resource.
+// URL represents a pointer to a resource. It should be considered immutable.
 type URL struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -14,7 +14,8 @@ import "synchronization/core/symlink_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
-// options, and for storing a merged configuration inside sessions.
+// options, and for storing a merged configuration inside sessions. It should be
+// considered immutable.
 message Configuration {
     // Synchronization parameters (fields 11-20).
     // NOTE: These run from field indices 11-20 (rather than 1-10, which are

@@ -27,6 +27,10 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// Session represents a forwarding session configuration and persistent state.
+// It is mutable within the context of the daemon, so it should be accessed and
+// modified in a synchronized fashion. Outside of the daemon (e.g. when returned
+// via the API), it should be considered immutable.
 type Session struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

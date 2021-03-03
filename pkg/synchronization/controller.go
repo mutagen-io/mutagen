@@ -301,7 +301,7 @@ func (c *controller) currentState() *State {
 	c.stateLock.Lock()
 	defer c.stateLock.UnlockWithoutNotify()
 
-	// Perform a (pseudo) deep copy of the state.
+	// Create a static copy of the state.
 	return c.state.copy()
 }
 

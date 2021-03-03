@@ -31,7 +31,7 @@ enum Protocol {
     Docker = 11;
 }
 
-// URL represents a pointer to a resource.
+// URL represents a pointer to a resource. It should be considered immutable.
 message URL {
     // Kind indicates the URL kind.
     // NOTE: This field number is out of order for historical reasons.

@@ -8,7 +8,8 @@ import "forwarding/socket_overwrite_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
-// options, and for storing a merged configuration inside sessions.
+// options, and for storing a merged configuration inside sessions. It should be
+// considered immutable.
 message Configuration {
     // Fields 1-20 are reserved for core forwarding configuration parameters.
 

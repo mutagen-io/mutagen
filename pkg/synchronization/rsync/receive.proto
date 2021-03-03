@@ -4,7 +4,8 @@ package rsync;
 
 option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/rsync";
 
-// ReceivingStatus encodes that status of an rsync receiver.
+// ReceivingStatus encodes that status of an rsync receiver. It should be
+// considered immutable.
 message ReceiverStatus {
     // Path is the path currently being received.
     string path = 1;

@@ -109,6 +109,10 @@ func (Status) EnumDescriptor() ([]byte, []int) {
 	return file_synchronization_state_proto_rawDescGZIP(), []int{0}
 }
 
+// State encodes the current state of a forwarding session. It is mutable within
+// the context of the daemon, so it should be accessed and modified in a
+// synchronized fashion. Outside of the daemon (e.g. when returned via the API),
+// it should be considered immutable.
 type State struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

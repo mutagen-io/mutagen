@@ -10,6 +10,10 @@ import "synchronization/configuration.proto";
 import "synchronization/version.proto";
 import "url/url.proto";
 
+// Session represents a synchronization session configuration and persistent
+// state. It is mutable within the context of the daemon, so it should be
+// accessed and modified in a synchronized fashion. Outside of the daemon (e.g.
+// when returned via the API), it should be considered immutable.
 message Session {
     // The identifier, version, creationTime, and creatingVersion* fields are
     // considered the "header" fields for all session versions. A message
