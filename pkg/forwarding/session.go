@@ -1,7 +1,8 @@
 package forwarding
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -32,44 +33,44 @@ func (s *Session) EnsureValid() error {
 
 	// Ensure that the source URL is valid and is a forwarding URL.
 	if err := s.Source.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid source URL")
+		return fmt.Errorf("invalid source URL: %w", err)
 	} else if s.Source.Kind != url.Kind_Forwarding {
 		return errors.New("source URL is not a forwarding URL")
 	}
 
 	// Ensure that the destination URL is valid and is a forwarding URL.
 	if err := s.Destination.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid destination URL")
+		return fmt.Errorf("invalid destination URL: %w", err)
 	} else if s.Destination.Kind != url.Kind_Forwarding {
 		return errors.New("destination URL is not a forwarding URL")
 	}
 
 	// Ensure that the configuration is valid.
 	if err := s.Configuration.EnsureValid(false); err != nil {
-		return errors.Wrap(err, "invalid configuration")
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Ensure that the source-specific configuration is valid.
 	if err := s.ConfigurationSource.EnsureValid(true); err != nil {
-		return errors.Wrap(err, "invalid source-specific configuration")
+		return fmt.Errorf("invalid source-specific configuration: %w", err)
 	}
 
 	// Ensure that the destination-specific configuration is valid.
 	if err := s.ConfigurationDestination.EnsureValid(true); err != nil {
-		return errors.Wrap(err, "invalid destination-specific configuration")
+		return fmt.Errorf("invalid destination-specific configuration: %w", err)
 	}
 
 	// Validate the session name.
 	if err := selection.EnsureNameValid(s.Name); err != nil {
-		return errors.Wrap(err, "invalid session name")
+		return fmt.Errorf("invalid session name: %w", err)
 	}
 
 	// Ensure that labels are valid.
 	for k, v := range s.Labels {
 		if err := selection.EnsureLabelKeyValid(k); err != nil {
-			return errors.Wrap(err, "invalid label key")
+			return fmt.Errorf("invalid label key: %w", err)
 		} else if err = selection.EnsureLabelValueValid(v); err != nil {
-			return errors.Wrap(err, "invalid label value")
+			return fmt.Errorf("invalid label value: %w", err)
 		}
 	}
 

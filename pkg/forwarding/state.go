@@ -1,7 +1,8 @@
 package forwarding
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // Description returns a human-readable description of the session status.
@@ -34,7 +35,7 @@ func (s *State) EnsureValid() error {
 
 	// Ensure the session is valid.
 	if err := s.Session.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session")
+		return fmt.Errorf("invalid session: %w", err)
 	}
 
 	// Ensure that the connection counts are sane.

@@ -6,21 +6,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-// Equal returns whether or not the configuration is equivalent to another. The
-// result of this method is only valid if both configurations are valid.
-func (c *Configuration) Equal(other *Configuration) bool {
-	// Ensure that both are non-nil.
-	if c == nil || other == nil {
-		return false
-	}
-
-	// Perform an equivalence check.
-	return c.SocketOverwriteMode == other.SocketOverwriteMode &&
-		c.SocketOwner == other.SocketOwner &&
-		c.SocketGroup == other.SocketGroup &&
-		c.SocketPermissionMode == other.SocketPermissionMode
-}
-
 // EnsureValid ensures that Configuration's invariants are respected. The
 // validation of the configuration depends on whether or not it is
 // endpoint-specific.
@@ -55,6 +40,21 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 
 	// Success.
 	return nil
+}
+
+// Equal returns whether or not the configuration is equivalent to another. The
+// result of this method is only valid if both configurations are valid.
+func (c *Configuration) Equal(other *Configuration) bool {
+	// Ensure that both are non-nil.
+	if c == nil || other == nil {
+		return false
+	}
+
+	// Perform an equivalence check.
+	return c.SocketOverwriteMode == other.SocketOverwriteMode &&
+		c.SocketOwner == other.SocketOwner &&
+		c.SocketGroup == other.SocketGroup &&
+		c.SocketPermissionMode == other.SocketPermissionMode
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both
