@@ -1,4 +1,4 @@
-package utility
+package comparison
 
 // StringSlicesEqual determines whether or not two string slices are equal. It
 // does not consider nilness when comparing zero-length slices.

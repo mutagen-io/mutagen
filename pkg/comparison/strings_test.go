@@ -1,4 +1,4 @@
-package utility
+package comparison
 
 import (
 	"testing"

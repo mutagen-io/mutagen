@@ -6,8 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/utility"
 )
 
 // EnsureValid ensures that URL's invariants are respected.
@@ -142,6 +142,6 @@ func (u *URL) Equal(other *URL) bool {
 		u.Host == other.Host &&
 		u.Port == other.Port &&
 		u.Path == other.Path &&
-		utility.StringMapsEqual(u.Environment, other.Environment) &&
-		utility.StringMapsEqual(u.Parameters, other.Parameters)
+		comparison.StringMapsEqual(u.Environment, other.Environment) &&
+		comparison.StringMapsEqual(u.Parameters, other.Parameters)
 }
