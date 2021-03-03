@@ -7,56 +7,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/utility"
 )
-
-// Supported returns whether or not a URL kind is supported.
-func (k Kind) Supported() bool {
-	switch k {
-	case Kind_Synchronization:
-		return true
-	case Kind_Forwarding:
-		return true
-	default:
-		return false
-	}
-}
-
-// stringMapsEqual determines whether or not two string maps are equal.
-func stringMapsEqual(first, second map[string]string) bool {
-	// Check that map lengths are equal.
-	if len(first) != len(second) {
-		return false
-	}
-
-	// Compare contents.
-	for key, f := range first {
-		if s, ok := second[key]; !ok || s != f {
-			return false
-		}
-	}
-
-	// The maps are equal.
-	return true
-}
-
-// Equal returns whether or not the URL is equivalent to another. The result of
-// this method is only valid if both URLs are valid.
-func (u *URL) Equal(other *URL) bool {
-	// Ensure that both are non-nil.
-	if u == nil || other == nil {
-		return false
-	}
-
-	// Perform an equivalence check.
-	return u.Kind == other.Kind &&
-		u.Protocol == other.Protocol &&
-		u.User == other.User &&
-		u.Host == other.Host &&
-		u.Port == other.Port &&
-		u.Path == other.Path &&
-		stringMapsEqual(u.Environment, other.Environment) &&
-		stringMapsEqual(u.Parameters, other.Parameters)
-}
 
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
@@ -161,4 +113,35 @@ func (u *URL) EnsureValid() error {
 
 	// Success.
 	return nil
+}
+
+// Supported returns whether or not a URL kind is supported.
+func (k Kind) Supported() bool {
+	switch k {
+	case Kind_Synchronization:
+		return true
+	case Kind_Forwarding:
+		return true
+	default:
+		return false
+	}
+}
+
+// Equal returns whether or not the URL is equivalent to another. The result of
+// this method is only valid if both URLs are valid.
+func (u *URL) Equal(other *URL) bool {
+	// Ensure that both are non-nil.
+	if u == nil || other == nil {
+		return false
+	}
+
+	// Perform an equivalence check.
+	return u.Kind == other.Kind &&
+		u.Protocol == other.Protocol &&
+		u.User == other.User &&
+		u.Host == other.Host &&
+		u.Port == other.Port &&
+		u.Path == other.Path &&
+		utility.StringMapsEqual(u.Environment, other.Environment) &&
+		utility.StringMapsEqual(u.Parameters, other.Parameters)
 }
