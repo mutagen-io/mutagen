@@ -1,757 +1,804 @@
 package core
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"hash"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
-	"github.com/pkg/errors"
-
-	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 )
 
-const (
-	// defaultFilePermissionMode is the default file permission mode to use in
-	// transition-based tests.
-	defaultFilePermissionMode = filesystem.ModePermissionUserRead | filesystem.ModePermissionUserWrite |
-		filesystem.ModePermissionGroupRead |
-		filesystem.ModePermissionOthersRead
-	// defaultDirectoryPermissionMode is the default directory permission mode
-	// to use in transition-based tests.
-	defaultDirectoryPermissionMode = filesystem.ModePermissionUserRead | filesystem.ModePermissionUserWrite | filesystem.ModePermissionUserExecute |
-		filesystem.ModePermissionGroupRead | filesystem.ModePermissionGroupExecute |
-		filesystem.ModePermissionOthersRead | filesystem.ModePermissionOthersExecute
-)
-
-// testEntryDecomposer provides the implementation for testDecomposeEntry.
-type testEntryDecomposer struct {
-	// creation records whether or not the decomposition is for a creation
-	// transition (as opposed to a removal transition).
-	creation bool
-	// transitions is the accumulated list of decomposed transitions.
-	transitions []*Change
-}
-
-// decompose decomposes an entry recursively and records associated transitions.
-func (d *testEntryDecomposer) decompose(path string, entry *Entry) {
-	// If the entry is non-existent, then there are no transitions.
-	if entry == nil {
-		return
-	}
-
-	// Create a shallow copy of the entry.
-	shallowEntry := entry.copySlim()
-
-	// If this is a creation decomposition, add this entry before processing any
-	// contents.
-	if d.creation {
-		d.transitions = append(d.transitions, &Change{Path: path, New: shallowEntry})
-	}
-
-	// If this is a directory, handle its contents.
-	if entry.Kind == EntryKind_Directory {
-		for name, entry := range entry.Contents {
-			d.decompose(pathJoin(path, name), entry)
+// testingDecomposeEntryIntoCreationChanges generates a list of creation changes
+// from a single entry for the purposes of stress-testing Transition.
+func testingDecomposeEntryIntoCreationChanges(entry *Entry) (changes []*Change) {
+	entry.walk("", func(p string, e *Entry) {
+		if e == nil {
+			return
 		}
-	}
-
-	// If this is a removal decomposition, add this entry after processing any
-	// contents.
-	if !d.creation {
-		d.transitions = append(d.transitions, &Change{Path: path, Old: shallowEntry})
-	}
+		changes = append(changes, &Change{Path: p, New: e.Copy(false)})
+	}, false)
+	return
 }
 
-// testDecomposeEntry decomposes an entry into a sequence of transitions that
-// can more granularly test Transition. Instead of calling Transition with a
-// single change for creation/removal, testDecomposeEntry allows one to
-// decompose an Entry into a single transition per node. It can perform
-// decomposition for both creation and removal transitions.
-func testDecomposeEntry(path string, entry *Entry, creation bool) []*Change {
-	// Create a decomposer for creations.
-	decomposer := &testEntryDecomposer{creation: creation}
-
-	// Have it perform decomposition.
-	decomposer.decompose(path, entry)
-
-	// Return the relevant transitions.
-	return decomposer.transitions
+// testingDecomposeEntryIntoRemovalChanges generates a list of removal changes
+// from a single entry for the purposes of stress-testing Transition.
+func testingDecomposeEntryIntoRemovalChanges(entry *Entry) (changes []*Change) {
+	entry.walk("", func(p string, e *Entry) {
+		if e == nil {
+			return
+		}
+		changes = append(changes, &Change{Path: p, Old: e.Copy(false)})
+	}, true)
+	return
 }
 
-// testProvider is an implementation of the Provider interfaces for tests. It
-// loads file data from a content map.
-type testProvider struct {
-	// servingRoot is the temporary directory where "staged" files are served
-	// from.
-	servingRoot string
-	// contentMap is a map from path to file content.
-	contentMap map[string][]byte
-	// hasher is the hasher to use when verifying content.
-	hasher hash.Hash
+// testingEntryWildcard is a special entry value that we use for wildcard
+// matches in decomposed tests where we don't have ordering enforced.
+var testingEntryWildcard = &Entry{Kind: -1}
+
+// testingNWildcardEntries generates a slice of n testingEntryWildcard entries.
+func testingNWildcardEntries(n uint) []*Entry {
+	result := make([]*Entry, int(n))
+	for i := 0; i < len(result); i++ {
+		result[i] = testingEntryWildcard
+	}
+	return result
 }
 
-// newTestProvider creates a new instance of testProvider with the specified
-// content map.
-func newTestProvider(contentMap map[string][]byte, hasher hash.Hash) (*testProvider, error) {
-	// Create a temporary directory for serving files.
-	servingRoot, err := os.MkdirTemp("", "mutagen_provide_root")
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create serving directory")
+// TestTransition tests Transition.
+func TestTransition(t *testing.T) {
+	// Create contexts to use for tests.
+	background := context.Background()
+	cancelled, cancel := context.WithCancel(background)
+	cancel()
+
+	// Define test cases.
+	tests := []struct {
+		// description is a human readable description of the test case.
+		description string
+		// skip is a callback that can be used to skip a test on a particular
+		// filesystem (or based on other runtime criteria).
+		skip func(testingFilesystem) bool
+		// baseline is the baseline content to create on disk.
+		baseline *Entry
+		// baselineContentMap is the content map for baseline.
+		baselineContentMap testingContentMap
+		// tweak is an optional callback that can be used to perform additional
+		// tweaks to generated on-disk content. For more information about the
+		// role of tweak, see the tweak member in testingContentManager.
+		tweak func(string) error
+		// retweak is an additional optional callback that can be used to
+		// perform additional on-disk content modifications. Unlike tweak, it is
+		// run between the time of the baseline scan (used to generate a scan
+		// cache) and the transition operation, allowing for content and issues
+		// that aren't accounted for in the baseline scan cache.
+		retweak func(string) error
+		// untweak is an optional callback that can be used to fix content for
+		// successful removal by os.RemoveAll. For more information about the
+		// role of untweak, see the untweak member in testingContentManager.
+		untweak func(string) error
+		// context is the context in which the operation should be performed.
+		context context.Context
+		// transitions are the transitions to apply
+		transitions []*Change
+		// transitionsContentMap is the content map necessary to perform the
+		// operations specified in transitions.
+		transitionsContentMap testingContentMap
+		// symbolicLinkMode is the symbolic link mode to use for the test.
+		symbolicLinkMode SymlinkMode
+		// expectedResults are the expected result entries.
+		expectedResults []*Entry
+		// expectedProblems are the expected problems. Their order is not
+		// important since they'll be compared with testingProblemListsEqual.
+		expectedProblems []*Problem
+		// expectMissingFiles indicates whether or not files are expected to be
+		// missing from the provider.
+		expectMissingFiles bool
+	}{
+		// Test creation.
+		{
+			"file root creation",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tF1}},
+			tF1ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			nil,
+			false,
+		},
+		{
+			"directory root creation",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tD1}},
+			tD1ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tD1},
+			nil,
+			false,
+		},
+		{
+			"complex directory root creation",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tDM}},
+			tDMContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tDM},
+			nil,
+			false,
+		},
+		{
+			"decomposed complex directory root creation",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			nil, nil,
+			nil, nil, nil,
+			background,
+			testingDecomposeEntryIntoCreationChanges(tDM),
+			tDMContentMap,
+			SymlinkMode_SymlinkModePortable,
+			testingNWildcardEntries(uint(tDM.Count())),
+			nil,
+			false,
+		},
+
+		// Test removal.
+		{
+			"file root removal",
+			nil,
+			tF1, tF1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: tF1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			nil,
+			false,
+		},
+		{
+			"directory root removal",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: tD1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			nil,
+			false,
+		},
+		{
+			"complex directory root removal",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: tDM}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			nil,
+			false,
+		},
+		{
+			"decomposed complex directory root removal",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil, nil, nil,
+			background,
+			testingDecomposeEntryIntoRemovalChanges(tDM),
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			testingNWildcardEntries(uint(tDM.Count())),
+			nil,
+			false,
+		},
+
+		// Test file swapping.
+		{
+			"file root swapping",
+			nil,
+			tF1, tF1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: tF1, New: tF2}},
+			tF2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF2},
+			nil,
+			false,
+		},
+		{
+			"file content swapping",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "file", Old: tF1, New: tF2}},
+			tD2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF2},
+			nil,
+			false,
+		},
+		{
+			"file swap to executable",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "file", Old: tF1, New: executable(tF1)}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{executable(tF1)},
+			nil,
+			false,
+		},
+		{
+			"file swap to non-executable",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			nested("file", executable(tF1)), tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "file", Old: executable(tF1), New: tF1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			nil,
+			false,
+		},
+		{
+			"inaccessible directory root",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tD1, tD1ContentMap,
+			nil,
+			func(root string) error {
+				return os.Chmod(root, 0300)
+			},
+			func(root string) error {
+				return os.Chmod(root, 0700)
+			},
+			background,
+			[]*Change{{Path: "file", Old: tF1, New: tF2}},
+			tD2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			[]*Problem{{Path: "file", Error: "*"}},
+			false,
+		},
+
+		// Test traversal problems.
+		{
+			"file root traversal",
+			nil,
+			tF1, tF1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "subpath", New: tF2}},
+			tF2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Path: "subpath", Error: "*"}},
+			false,
+		},
+		{
+			"subdirectory inaccessible",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil,
+			func(root string) error {
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0300)
+			},
+			func(root string) error {
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
+			},
+			background,
+			[]*Change{{Path: "populated subdir/thing.txt", New: tF2}},
+			testingContentMap{"populated subdir/thing.txt": []byte(tF2Content)},
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Path: "populated subdir/thing.txt", Error: "*"}},
+			false,
+		},
+		{
+			"casing invalid",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "FILE", Old: tF1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			[]*Problem{{Path: "FILE", Error: "*"}},
+			false,
+		},
+		{
+			"parent casing invalid",
+			nil,
+			nested("subdir", tD1), testingContentMap{"subdir/file": []byte(tF1Content)},
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "SUBdir/file", Old: tF1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			[]*Problem{{Path: "SUBdir/file", Error: "*"}},
+			false,
+		},
+
+		// Test creation problems.
+		{
+			"invalid root type creation",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: &Entry{Kind: -1}}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+		{
+			"invalid content type creation",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: nested("child", &Entry{Kind: -1})}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tD0},
+			[]*Problem{{Path: "child", Error: "*"}},
+			false,
+		},
+		{
+			"root already exists on file root creation",
+			nil,
+			tF1, tF1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tF2}},
+			tF2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+		{
+			"root already exists on directory root creation",
+			nil,
+			tF1, tF1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tDM}},
+			tDMContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+		{
+			"symbolic link creation over existing content",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			tD1, tD1ContentMap,
+			nil,
+			func(root string) error {
+				return os.Symlink("file", filepath.Join(root, "link"))
+			},
+			nil,
+			background,
+			[]*Change{{Path: "link", New: tSR}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Path: "link", Error: "*"}},
+			false,
+		},
+
+		// Test removal problems.
+		{
+			"invalid root type removal",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: &Entry{Kind: -1}}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{{Kind: -1}},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+		{
+			"invalid content type removal",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Old: nested("file", &Entry{Kind: -1})}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nested("file", &Entry{Kind: -1})},
+			[]*Problem{{Path: "file", Error: "*"}},
+			false,
+		},
+		{
+			"modified root file removal",
+			nil,
+			tF1, tF1ContentMap,
+			nil,
+			func(root string) error {
+				soon := time.Now().Add(10 * time.Second)
+				return os.Chtimes(root, soon, soon)
+			},
+			nil,
+			background,
+			[]*Change{{Old: tF1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+		{
+			"assorted directory content removal issues",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil,
+			func(root string) error {
+				if err := os.Mkdir(filepath.Join(root, "extra_content"), 0700); err != nil {
+					return err
+				}
+				if err := os.Remove(filepath.Join(root, "file link")); err != nil {
+					return err
+				}
+				if err := os.Symlink("executable file", filepath.Join(root, "file link")); err != nil {
+					return err
+				}
+				soon := time.Now().Add(10 * time.Second)
+				if err := os.Chtimes(filepath.Join(root, "executable file"), soon, soon); err != nil {
+					return err
+				}
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0300)
+			},
+			func(root string) error {
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
+			},
+			background,
+			[]*Change{{Old: tDM}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{{
+				Contents: map[string]*Entry{
+					"executable file":  tF3E,
+					"file link":        tSR,
+					"populated subdir": tD1,
+				},
+			}},
+			[]*Problem{
+				{Path: "extra_content", Error: "*"},
+				{Path: "executable file", Error: "*"},
+				{Path: "file link", Error: "*"},
+				{Path: "populated subdir", Error: "*"},
+			},
+			false,
+		},
+		{
+			"symbolic link removal with symbolic links ignored",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "file link", Old: tSR}},
+			tDMContentMap,
+			SymlinkMode_SymlinkModeIgnore,
+			[]*Entry{tSR},
+			[]*Problem{{Path: "file link", Error: "*"}},
+			false,
+		},
+		{
+			"symbolic link removal with modified symbolic link target",
+			func(f testingFilesystem) bool {
+				return f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil,
+			func(root string) error {
+				if err := os.Remove(filepath.Join(root, "file link")); err != nil {
+					return err
+				}
+				return os.Symlink("executable file", filepath.Join(root, "file link"))
+			},
+			nil,
+			background,
+			[]*Change{{Path: "file link", Old: tSR}},
+			tDMContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tSR},
+			[]*Problem{{Path: "file link", Error: "*"}},
+			false,
+		},
+		{
+			"symbolic link removal with modified (to (invalid) absolute) symbolic link target",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil,
+			func(root string) error {
+				if err := os.Remove(filepath.Join(root, "file link")); err != nil {
+					return err
+				}
+				return os.Symlink("/", filepath.Join(root, "file link"))
+			},
+			nil,
+			background,
+			[]*Change{{Path: "file link", Old: tSR}},
+			tDMContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tSR},
+			[]*Problem{{Path: "file link", Error: "*"}},
+			false,
+		},
+		{
+			"inaccessible directory removal",
+			func(f testingFilesystem) bool {
+				return runtime.GOOS == "windows" || f.name == "FAT32"
+			},
+			tDM, tDMContentMap,
+			nil,
+			func(root string) error {
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0300)
+			},
+			func(root string) error {
+				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
+			},
+			background,
+			[]*Change{{Path: "populated subdir", Old: tD1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tD1},
+			[]*Problem{{Path: "populated subdir", Error: "*"}},
+			false,
+		},
+
+		// Test file swapping problems.
+		{
+			"file root swapping on modified root",
+			nil,
+			tF1, tF1ContentMap,
+			nil,
+			func(root string) error {
+				soon := time.Now().Add(10 * time.Second)
+				return os.Chtimes(root, soon, soon)
+			},
+			nil,
+			background,
+			[]*Change{{Old: tF1, New: tF2}},
+			tF2ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tF1},
+			[]*Problem{{Error: "*"}},
+			false,
+		},
+
+		// Test with a cancelled context.
+		{
+			"cancelled context",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			cancelled,
+			[]*Change{{Old: tD1, New: tF1}},
+			tF1ContentMap,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tD1},
+			[]*Problem{{Error: errTransitionCancelled.Error()}},
+			false,
+		},
+
+		// Test missing provider files.
+		{
+			"provider missing files",
+			nil,
+			nil, nil,
+			nil, nil, nil,
+			background,
+			[]*Change{{New: tD1}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{tD0},
+			[]*Problem{{Path: "file", Error: "*"}},
+			true,
+		},
+
+		// Test symbolic link creation problems.
+		{
+			"disallowed symbolic link",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "link", New: &Entry{Kind: EntryKind_SymbolicLink, Target: "file"}}},
+			nil,
+			SymlinkMode_SymlinkModeIgnore,
+			[]*Entry{nil},
+			[]*Problem{{Path: "link", Error: "*"}},
+			false,
+		},
+		{
+			"invalid absolute symbolic link",
+			nil,
+			tD1, tD1ContentMap,
+			nil, nil, nil,
+			background,
+			[]*Change{{Path: "link", New: &Entry{Kind: EntryKind_SymbolicLink, Target: "/file"}}},
+			nil,
+			SymlinkMode_SymlinkModePortable,
+			[]*Entry{nil},
+			[]*Problem{{Path: "link", Error: "*"}},
+			false,
+		},
 	}
 
-	// Create the test provider.
-	return &testProvider{
-		servingRoot: servingRoot,
-		contentMap:  contentMap,
-		hasher:      hasher,
-	}, nil
-}
+	// Create a hasher that we can use for testing.
+	hasher := newTestingHasher()
 
-// Provide implements the Provider interface for testProvider.
-func (p *testProvider) Provide(path string, digest []byte) (string, error) {
-	// Grab the content for this path.
-	content, ok := p.contentMap[path]
-	if !ok {
-		return "", errors.New("unable to find content for path")
-	}
+	// Create a temporary directory that transition content providers can use
+	// for staging. We'll put this on the OS temporary directory so that we test
+	// same-device staging for the OS filesystem and cross-device staging for
+	// test filesystems.
+	transitionStagingStorage := t.TempDir()
 
-	// Ensure it matches the requested hash.
-	p.hasher.Reset()
-	p.hasher.Write(content)
-	if !bytes.Equal(p.hasher.Sum(nil), digest) {
-		return "", errors.New("requested entry digest does not match expected")
-	}
-
-	// Create a temporary file in the serving root.
-	temporaryFile, err := os.CreateTemp(p.servingRoot, "mutagen_provide")
-	if err != nil {
-		return "", errors.Wrap(err, "unable to create temporary file")
-	}
-
-	// Write content.
-	_, err = temporaryFile.Write(content)
-	temporaryFile.Close()
-	if err != nil {
-		os.Remove(temporaryFile.Name())
-		return "", errors.Wrap(err, "unable to write file contents")
-	}
-
-	// Success.
-	return temporaryFile.Name(), nil
-}
-
-// finalize removes the temporary serving directory underlying the testProvider.
-func (p *testProvider) finalize() error {
-	return os.RemoveAll(p.servingRoot)
-}
-
-// testTransitionCreate creates test content on disk using Transition based on
-// the specified entry and content map. It can optionally decompose the entry
-// into individual node creations to stress-test Transition.
-func testTransitionCreate(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, decompose bool) (string, string, error) {
-	// Create temporary directory to act as the parent of our root.
-	parent, err := os.MkdirTemp(temporaryDirectory, "mutagen_simulated")
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to create temporary root parent")
-	}
-
-	// Determine whether or not we need to recompose Unicode when transitioning
-	// inside this directory.
-	recomposeUnicode, _, err := behavior.DecomposesUnicodeByPath(parent, behavior.ProbeMode_ProbeModeProbe)
-	if err != nil {
-		os.RemoveAll(parent)
-		return "", "", errors.Wrap(err, "unable to determine Unicode decomposition behavior")
-	}
-
-	// Compute the path to the root.
-	root := filepath.Join(parent, "root")
-
-	// Set up the creation transitions.
-	var transitions []*Change
-	if decompose {
-		transitions = testDecomposeEntry("", entry, true)
-	} else {
-		transitions = []*Change{{New: entry}}
-	}
-
-	// Create a provider and ensure its cleanup.
-	provider, err := newTestProvider(contentMap, newTestHasher())
-	if err != nil {
-		os.RemoveAll(parent)
-		return "", "", errors.Wrap(err, "unable to create test provider")
-	}
-	defer provider.finalize()
-
-	// Perform the creation transition. For this particular transition
-	// operation, we operate in POSIX raw symbolic link handling, because we
-	// want to be able to create symbolic links for testing that would be
-	// invalid under portable mode.
-	if entries, problems, providerMissingFiles := Transition(
-		context.Background(),
-		root,
-		transitions,
-		nil,
-		SymlinkMode_SymlinkModePOSIXRaw,
-		defaultFilePermissionMode,
-		defaultDirectoryPermissionMode,
-		nil,
-		recomposeUnicode,
-		provider,
-	); len(problems) != 0 {
-		os.RemoveAll(parent)
-		return "", "", errors.New("problems occurred during creation transition")
-	} else if len(entries) != len(transitions) {
-		os.RemoveAll(parent)
-		return "", "", errors.New("unexpected number of entries returned from creation transition")
-	} else if providerMissingFiles {
-		os.RemoveAll(parent)
-		return "", "", errors.New("provider indicated missing files")
-	} else {
-		for e, entry := range entries {
-			if !entry.Equal(transitions[e].New) {
-				os.RemoveAll(parent)
-				return "", "", errors.New("created entry does not match expected")
+	// Process test cases for every filesystem.
+	for _, filesystem := range testingFilesystems {
+		for _, test := range tests {
+			// Check if this test is skipped on this platform or filesystem.
+			if test.skip != nil && test.skip(filesystem) {
+				continue
 			}
-		}
-	}
 
-	// Success.
-	return root, parent, nil
-}
-
-// testTransitionRemove removes test content from disk using Transition based on
-// the specified entry. It can optionally decompose the entry into individual
-// node removals to stress-test Transition.
-func testTransitionRemove(root string, expected *Entry, cache *Cache, symlinkMode SymlinkMode, decompose bool) error {
-	// Set up the removal transitions.
-	var transitions []*Change
-	if decompose {
-		transitions = testDecomposeEntry("", expected, false)
-	} else {
-		transitions = []*Change{{Old: expected}}
-	}
-
-	// If we're expecting to remove a directory, then determine the necessary
-	// Unicode recomposition behavior.
-	var recomposeUnicode bool
-	if expected != nil && expected.Kind == EntryKind_Directory {
-		if r, _, err := behavior.DecomposesUnicodeByPath(root, behavior.ProbeMode_ProbeModeProbe); err != nil {
-			return errors.Wrap(err, "unable to determine Unicode decomposition behavior")
-		} else {
-			recomposeUnicode = r
-		}
-	}
-
-	// Perform the removal transition.
-	if entries, problems, _ := Transition(
-		context.Background(),
-		root,
-		transitions,
-		cache,
-		symlinkMode,
-		defaultFilePermissionMode,
-		defaultDirectoryPermissionMode,
-		nil,
-		recomposeUnicode,
-		nil,
-	); len(problems) != 0 {
-		return errors.New("problems occurred during removal transition")
-	} else if len(entries) != len(transitions) {
-		return errors.New("unexpected number of entries returned from removal transition")
-	} else {
-		for _, entry := range entries {
-			if entry != nil {
-				return errors.New("post-removal entry non-nil")
+			// Generate content for this test. We'll use storage on the target
+			// filesystem for this staging so that we also get same-device
+			// staging tests for test filesystems.
+			generator := &testingContentManager{
+				storage:            filesystem.storage,
+				baseline:           test.baseline,
+				baselineContentMap: test.baselineContentMap,
+				tweak:              test.tweak,
+				untweak:            test.untweak,
 			}
-		}
-	}
-
-	// Success.
-	return nil
-}
-
-type testContentModifier func(string, *Entry) (*Entry, error)
-
-func testTransitionCycle(temporaryDirectory string, entry *Entry, contentMap map[string][]byte, decompose bool, modifier testContentModifier) error {
-	// Create test content on disk and defer its removal. This will exercise
-	// the creation portion of Transition.
-	root, parent, err := testTransitionCreate(temporaryDirectory, entry, contentMap, decompose)
-	if err != nil {
-		return errors.Wrap(err, "unable to create test content")
-	}
-	defer os.RemoveAll(parent)
-
-	// Compute the expected entry.
-	expected := entry
-
-	// If a modifier has been specified, allow it to modify the disk contents
-	// and expected result.
-	if modifier != nil {
-		if e, err := modifier(root, expected.Copy()); err != nil {
-			return errors.Wrap(err, "modifier failed")
-		} else {
-			expected = e
-		}
-	}
-
-	// Perform a scan.
-	snapshot, preservesExecutability, _, cache, _, err := Scan(
-		context.Background(),
-		root,
-		nil,
-		nil,
-		newTestHasher(),
-		nil,
-		nil,
-		nil,
-		behavior.ProbeMode_ProbeModeProbe,
-		SymlinkMode_SymlinkModePortable,
-	)
-	if !preservesExecutability {
-		snapshot = PropagateExecutability(nil, expected, snapshot)
-	}
-	if err != nil {
-		return errors.Wrap(err, "unable to perform scan")
-	} else if cache == nil {
-		return errors.New("nil cache returned")
-	} else if modifier == nil && !snapshot.Equal(expected) {
-		return errors.New("snapshot not equal to expected")
-	}
-
-	// Remove the test content. This will exercise the removal portion of
-	// Transition.
-	if err := testTransitionRemove(root, expected, cache, SymlinkMode_SymlinkModePortable, decompose); err != nil {
-		return errors.Wrap(err, "unable to remove test content")
-	}
-
-	// Success.
-	return nil
-}
-
-func testTransitionCycleWithPermutations(entry *Entry, contentMap map[string][]byte, modifier testContentModifier, expectFailure bool) error {
-	// Loop over decomposition cases.
-	for _, decompose := range []bool{false, true} {
-		// Compute the composition case name.
-		caseName := "composed"
-		if decompose {
-			caseName = "decomposed"
-		}
-
-		// Loop over temporary directories.
-		for _, temporaryDirectory := range testingTemporaryDirectories() {
-			err := testTransitionCycle(temporaryDirectory.path, entry, contentMap, decompose, modifier)
-			if expectFailure && err == nil {
-				return errors.Errorf("transition cycle succeeded unexpectedly in %s case for %s temporary directory", caseName, temporaryDirectory.name)
-			} else if !expectFailure && err != nil {
-				return errors.Wrap(err, fmt.Sprintf("transition cycle failed in %s case for %s temporary directory", caseName, temporaryDirectory.name))
+			root, err := generator.generate()
+			if err != nil {
+				t.Errorf("%s: unable to generate test content on %s filesystem: %v",
+					test.description, filesystem.name, err,
+				)
+				continue
 			}
+
+			// Define a cleanup function that will report errors.
+			cleanup := func() {
+				if err := generator.remove(); err != nil {
+					t.Errorf("%s: unable to remove test content on %s filesystem: %v",
+						test.description, filesystem.name, err,
+					)
+				}
+			}
+
+			// Perform a scan to extract a filesystem cache and filesystem
+			// behavior for the root.
+			_, _, recomposeUnicode, cache, _, err := Scan(
+				background,
+				root,
+				nil, nil,
+				hasher,
+				nil,
+				nil, nil,
+				behavior.ProbeMode_ProbeModeProbe,
+				test.symbolicLinkMode,
+			)
+			if err != nil {
+				t.Errorf("%s: unable to perform scan of baseline on %s filesystem: %v",
+					test.description, filesystem.name, err,
+				)
+				cleanup()
+				continue
+			}
+
+			// Perform retweaking operations, if necessary.
+			if test.retweak != nil {
+				if err := test.retweak(root); err != nil {
+					t.Errorf("%s: unable to retweak root on %s filesystem: %v",
+						test.description, filesystem.name, err,
+					)
+				}
+			}
+
+			// Perform the transition operation.
+			provider := &testingProvider{
+				storage:    transitionStagingStorage,
+				contentMap: test.transitionsContentMap,
+				hasher:     newTestingHasher(),
+			}
+			results, problems, missingFiles := Transition(
+				test.context,
+				root,
+				test.transitions,
+				cache,
+				test.symbolicLinkMode,
+				0600,
+				0700,
+				nil,
+				recomposeUnicode,
+				provider,
+			)
+
+			// Check results.
+			if len(results) != len(test.expectedResults) {
+				t.Errorf("%s: length of results does not match expected on %s filesystem: %d != %d",
+					test.description, filesystem.name, len(results), len(test.expectedResults),
+				)
+			} else {
+				for r, result := range results {
+					if test.expectedResults[r] != testingEntryWildcard && !result.Equal(test.expectedResults[r], true) {
+						t.Errorf("%s: result %d does not match expected on %s filesystem",
+							test.description, r, filesystem.name,
+						)
+					}
+				}
+			}
+
+			// Check problems.
+			if !testingProblemListsEqual(problems, test.expectedProblems) {
+				t.Errorf("%s: problems do not match expected on %s filesystem", test.description, filesystem.name)
+			}
+
+			// Check missing file status.
+			if missingFiles && !test.expectMissingFiles {
+				t.Errorf("%s: unexpectedly missing staged files with %s filesystem", test.description, filesystem.name)
+			} else if !missingFiles && test.expectMissingFiles {
+				t.Errorf("%s: unexpectedly not missing staged files with %s filesystem", test.description, filesystem.name)
+			}
+
+			// Perform cleanup.
+			cleanup()
 		}
-	}
-
-	// Success.
-	return nil
-}
-
-func TestTransitionNilRoot(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testNilEntry, nil, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFile1Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testFile1Entry, testFile1ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFile2Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testFile2Entry, testFile2ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFile3Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testFile3Entry, testFile3ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionDirectory1Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionDirectory2Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testDirectory2Entry, testDirectory2ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionDirectory3Root(t *testing.T) {
-	if err := testTransitionCycleWithPermutations(testDirectory3Entry, testDirectory3ContentMap, nil, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionSwapFile(t *testing.T) {
-	// Create a modifier function that will modify the case of a subpath and
-	// attempt an additional create transition.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, _, err := Scan(
-			context.Background(),
-			root,
-			nil,
-			nil,
-			newTestHasher(),
-			nil,
-			nil,
-			nil,
-			behavior.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkModePortable,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to perform scan")
-		} else if cache == nil {
-			return nil, errors.New("nil cache returned")
-		}
-
-		// Attempt to switch the content of a file.
-		transitions := []*Change{{
-			Path: "file",
-			Old:  testFile1Entry,
-			New:  testFile2Entry,
-		}}
-
-		// Set up a custom content map for this.
-		contentMap := map[string][]byte{
-			"file": testFile2Contents,
-		}
-
-		// Create a provider and ensure its cleanup.
-		provider, err := newTestProvider(contentMap, newTestHasher())
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to create creation provider")
-		}
-		defer provider.finalize()
-
-		// Perform the swap transition, ensure that it succeeds, and update the
-		// expected contents.
-		if entries, problems, providerMissingFiles := Transition(
-			context.Background(),
-			root,
-			transitions,
-			cache,
-			SymlinkMode_SymlinkModePortable,
-			defaultFilePermissionMode,
-			defaultDirectoryPermissionMode,
-			nil,
-			recomposeUnicode,
-			provider,
-		); len(problems) != 0 {
-			return nil, errors.New("file swap transition failed")
-		} else if providerMissingFiles {
-			return nil, errors.New("provider indicated missing files")
-		} else if len(entries) != 1 {
-			return nil, errors.New("unexpected number of entries returned from swap transition")
-		} else if !entries[0].Equal(testFile2Entry) {
-			return nil, errors.New("file swap transition returned incorrect new file")
-		} else {
-			expected.Contents["file"] = entries[0]
-		}
-
-		// Success.
-		return expected, nil
-	}
-
-	// Ensure that the whole cycle succeeds.
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionSwapFileOnlyExecutableChange(t *testing.T) {
-	// Create a modifier function that will modify the case of a subpath and
-	// attempt an additional create transition.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, _, err := Scan(
-			context.Background(),
-			root,
-			nil,
-			nil,
-			newTestHasher(),
-			nil,
-			nil,
-			nil,
-			behavior.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkModePortable,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to perform scan")
-		} else if cache == nil {
-			return nil, errors.New("nil cache returned")
-		}
-
-		// Create a copy of the current entry and mark it as executable.
-		executableEntry := testFile1Entry.Copy()
-		executableEntry.Executable = true
-
-		// Attempt to switch the content of a file.
-		transitions := []*Change{{
-			Path: "file",
-			Old:  testFile1Entry,
-			New:  executableEntry,
-		}}
-
-		// Perform the swap transition with a nil provider (since it shouldn't
-		// be used), ensure that it succeeds, and update the expected contents.
-		if entries, problems, _ := Transition(
-			context.Background(),
-			root,
-			transitions,
-			cache,
-			SymlinkMode_SymlinkModePortable,
-			defaultFilePermissionMode,
-			defaultDirectoryPermissionMode,
-			nil,
-			recomposeUnicode,
-			nil,
-		); len(problems) != 0 {
-			return nil, errors.New("file swap transition failed")
-		} else if len(entries) != 1 {
-			return nil, errors.New("unexpected number of entries returned from swap transition")
-		} else if !entries[0].Equal(executableEntry) {
-			return nil, errors.New("file swap transition returned incorrect new file")
-		} else {
-			expected.Contents["file"] = entries[0]
-		}
-
-		// Success.
-		return expected, nil
-	}
-
-	// Ensure that the whole cycle succeeds.
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionCaseConflict(t *testing.T) {
-	// Determine whether or not we expect case conflicts.
-	// HACK: We actually ought to be determining this based on the filesystem
-	// being used, but it's a sufficient test mechanism for now.
-	expectCaseConflict := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
-
-	// Check for case conflicts.
-	if err := testTransitionCycleWithPermutations(testDirectoryWithCaseConflict, testDirectoryWithCaseConflictContentMap, nil, expectCaseConflict); err != nil {
-		t.Error("case conflict behavior not as expected:", err)
-	}
-}
-
-func TestTransitionFailRemoveModifiedSubcontent(t *testing.T) {
-	// Create a modifier function that will modify subcontent.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := os.WriteFile(filepath.Join(root, "file"), testFile3Contents, 0600); err != nil {
-			return nil, errors.Wrap(err, "unable to modify file content")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFailRemoveModifiedRootFile(t *testing.T) {
-	// Create a modifier function that will modify the root.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := os.WriteFile(root, testFile3Contents, 0600); err != nil {
-			return nil, errors.Wrap(err, "unable to modify file content")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleWithPermutations(testFile1Entry, testFile1ContentMap, modifier, true); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFailCreateInvalidPathCase(t *testing.T) {
-	// Create a modifier function that will modify the case of a subpath and
-	// attempt an additional create transition.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		// Perform a scan to grab Unicode recomposition behavior and a cache.
-		_, _, recomposeUnicode, cache, _, err := Scan(
-			context.Background(),
-			root,
-			nil,
-			nil,
-			newTestHasher(),
-			nil,
-			nil,
-			nil,
-			behavior.ProbeMode_ProbeModeProbe,
-			SymlinkMode_SymlinkModePortable,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to perform scan")
-		} else if cache == nil {
-			return nil, errors.New("nil cache returned")
-		}
-
-		// Change the directory case.
-		if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
-		}
-		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to different case name")
-		}
-
-		// Attempt to create content inside the directory.
-		transitions := []*Change{{Path: "directory/new", New: testFile1Entry}}
-
-		// Set up a custom content map for this.
-		contentMap := map[string][]byte{
-			"directory/new": testFile1Contents,
-		}
-
-		// Create a provider and ensure its cleanup.
-		provider, err := newTestProvider(contentMap, newTestHasher())
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to create creation provider")
-		}
-		defer provider.finalize()
-
-		// Perform the create transition and ensure that it fails (with an error
-		// other than missing files).
-		if entries, problems, providerMissingFiles := Transition(
-			context.Background(),
-			root,
-			transitions,
-			cache,
-			SymlinkMode_SymlinkModePortable,
-			defaultFilePermissionMode,
-			defaultDirectoryPermissionMode,
-			nil,
-			recomposeUnicode,
-			provider,
-		); len(problems) == 0 {
-			return nil, errors.New("transition succeeded unexpectedly")
-		} else if providerMissingFiles {
-			return nil, errors.New("provider indicated missing files")
-		} else if len(entries) != 1 {
-			return nil, errors.New("unexpected number of entries returned from creation transition")
-		} else if entries[0] != nil {
-			return nil, errors.New("failed creation transition returned non-nil entry")
-		}
-
-		// Change the directory case back to normal.
-		if err := os.Rename(filepath.Join(root, "DiRecTory"), filepath.Join(root, "directory-temp")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
-		}
-		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "directory")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to original name")
-		}
-
-		// Success.
-		return expected, nil
-	}
-
-	// Ensure that the whole cycle succeeds (since our create will have failed
-	// and we will have returned the directory to normal).
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, false); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFailRemoveInvalidPathCase(t *testing.T) {
-	// Create a modifier function that will modify the case of a subpath.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := os.Rename(filepath.Join(root, "directory"), filepath.Join(root, "directory-temp")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to temporary name")
-		}
-		if err := os.Rename(filepath.Join(root, "directory-temp"), filepath.Join(root, "DiRecTory")); err != nil {
-			return nil, errors.Wrap(err, "unable to rename directory to different case name")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFailRemoveUnknownContent(t *testing.T) {
-	// Create a modifier function that will create unknown content.
-	modifier := func(root string, expected *Entry) (*Entry, error) {
-		if err := filesystem.WriteFileAtomic(filepath.Join(root, "new test file"), []byte{0}, 0600); err != nil {
-			return nil, errors.Wrap(err, "unable to create unknown content")
-		}
-		return expected, nil
-	}
-
-	// Test that the removal fails.
-	if err := testTransitionCycleWithPermutations(testDirectory1Entry, testDirectory1ContentMap, modifier, true); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestTransitionFailOnParentPathIsFile(t *testing.T) {
-	// Create a temporary file and defer its removal.
-	var parent string
-	if file, err := os.CreateTemp("", "mutagen_simulated"); err != nil {
-		t.Fatal("unable to create temporary file:", err)
-	} else if err = file.Close(); err != nil {
-		t.Fatal("unable to close temporary file:", err)
-	} else {
-		parent = file.Name()
-	}
-	defer os.Remove(parent)
-
-	// Compute the path to the root.
-	root := filepath.Join(parent, "root")
-
-	// Set up the creation transitions.
-	transitions := []*Change{{New: testDirectory1Entry}}
-
-	// Create a provider and ensure its cleanup.
-	provider, err := newTestProvider(testDirectory1ContentMap, newTestHasher())
-	if err != nil {
-		t.Fatal("unable to create test provider:", err)
-	}
-	defer provider.finalize()
-
-	// Perform the creation transition and ensure that it encounters a problem
-	// (other than missing files).
-	if entries, problems, providerMissingFiles := Transition(
-		context.Background(),
-		root,
-		transitions,
-		nil,
-		SymlinkMode_SymlinkModePortable,
-		defaultFilePermissionMode,
-		defaultDirectoryPermissionMode,
-		nil,
-		false,
-		provider,
-	); len(problems) != 1 {
-		t.Error("transition succeeded unexpectedly")
-	} else if providerMissingFiles {
-		t.Error("provider indicated missing files")
-	} else if len(entries) != 1 {
-		t.Error("transition returned invalid number of entries")
-	} else if entries[0] != nil {
-		t.Error("failed creation transition returned non-nil entry")
 	}
 }

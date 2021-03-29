@@ -932,7 +932,7 @@ func (e *endpoint) watchPoll(
 		e.scanLock.Unlock()
 
 		// Check for modifications.
-		modified := !snapshot.Equal(previousSnapshot) ||
+		modified := !snapshot.Equal(previousSnapshot, true) ||
 			preservesExecutability != previousPreservesExecutability ||
 			decomposesUnicode != previousDecomposesUnicode
 
@@ -1174,8 +1174,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// can find (and stage) any files locally, which indicates that a file has
 	// been copied or renamed.
 	//
-	// If we manage to handle all files, then we can abort the staging
-	// operation.
+	// If we manage to handle all files, then we can abort staging.
 	filteredPaths := paths[:0]
 	for p, path := range paths {
 		digest := digests[p]

@@ -240,7 +240,7 @@ func (m *Manager) List(_ context.Context, selection *selection.Selection, previo
 		return 0, nil, errors.Wrap(err, "unable to locate requested sessions")
 	}
 
-	// Extract the state from each controller.
+	// Create a static snapshot of the state from each controller.
 	states := make([]*State, len(controllers))
 	for i, controller := range controllers {
 		states[i] = controller.currentState()

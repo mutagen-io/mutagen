@@ -11,7 +11,23 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/state"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/url"
+)
+
+const (
+	// maximumListConflicts is the maximum number of conflicts that will be
+	// reported by Manager.List for a single session before conflict list
+	// truncation for that session.
+	maximumListConflicts = 10
+	// maximumListScanProblems is the maximum number of scan problems that will
+	// be reported by Manager.List for a single endpoint in a session before
+	// scan problem list truncation for that endpoint.
+	maximumListScanProblems = 10
+	// maximumListTransitionProblems is the maximum number of transition
+	// problems that will be reported by Manager.List for a single endpoint in a
+	// session before transition problem list truncation for that endpoint.
+	maximumListTransitionProblems = 10
 )
 
 // Manager provides synchronization session management facilities. Its methods
@@ -223,7 +239,10 @@ func (m *Manager) Create(
 	return controller.session.Identifier, nil
 }
 
-// List requests a state snapshot for the specified sessions.
+// List requests a state snapshot for the specified sessions. Session states
+// will be ordered by creation time, from oldest to newest. Problem and conflict
+// lists will sorted by path and truncated to reasonable lengths, and conflicts
+// will be converted to their slim variants.
 func (m *Manager) List(_ context.Context, selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
 	// TODO: Figure out if we can use the provided context to preempt this wait.
@@ -241,10 +260,75 @@ func (m *Manager) List(_ context.Context, selection *selection.Selection, previo
 		return 0, nil, errors.Wrap(err, "unable to locate requested sessions")
 	}
 
-	// Extract the state from each controller.
+	// Create a static snapshot of the state from each controller, then perform
+	// additional deep copying of problem and conflict lists, sort these lists
+	// based on path, truncate them if they're too long, and convert conflicts
+	// to their slim representation.
+	//
+	// HACK: We're relying a lot on understanding the internals of currentState
+	// and its call stack. It promises a static snapshot of the state, but we
+	// don't really know what that means, or that we can modify the top level of
+	// that snapshot, at least not from the method documentation. Since that
+	// code exists within this package, it's sort of acceptable abstraction
+	// breaking. If we could better enforce field access for Protocol Buffers
+	// message types, then we could probably avoid these sorts of hacks, but in
+	// Go it's a balance between performance, code bloat, and enforcement of
+	// invariants. We could push the copying that we do here into State.copy,
+	// but that would probably be worse because it would involve some lower
+	// level part of the stack knowing about the behavior of some higher level
+	// part of the stack (which is arguably worse than the opposite situation
+	// that we have here).
 	states := make([]*State, len(controllers))
 	for i, controller := range controllers {
-		states[i] = controller.currentState()
+		// Create the state snapshot.
+		state := controller.currentState()
+
+		// Sort and (potentially) truncate alpha scan problems.
+		state.AlphaScanProblems = core.CopyProblems(state.AlphaScanProblems)
+		core.SortProblems(state.AlphaScanProblems)
+		if len(state.AlphaScanProblems) > maximumListScanProblems {
+			state.ExcludedAlphaScanProblems = uint64(len(state.AlphaScanProblems) - maximumListScanProblems)
+			state.AlphaScanProblems = state.AlphaScanProblems[:maximumListScanProblems]
+		}
+
+		// Sort and (potentially) truncate beta scan problems.
+		state.BetaScanProblems = core.CopyProblems(state.BetaScanProblems)
+		core.SortProblems(state.BetaScanProblems)
+		if len(state.BetaScanProblems) > maximumListScanProblems {
+			state.ExcludedBetaScanProblems = uint64(len(state.BetaScanProblems) - maximumListScanProblems)
+			state.BetaScanProblems = state.BetaScanProblems[:maximumListScanProblems]
+		}
+
+		// Sort and (potentially) truncate conflicts, then convert them to their
+		// slim representations.
+		state.Conflicts = core.CopyConflicts(state.Conflicts)
+		core.SortConflicts(state.Conflicts)
+		if len(state.Conflicts) > maximumListConflicts {
+			state.ExcludedConflicts = uint64(len(state.Conflicts) - maximumListConflicts)
+			state.Conflicts = state.Conflicts[:maximumListConflicts]
+		}
+		for c, conflict := range state.Conflicts {
+			state.Conflicts[c] = conflict.Slim()
+		}
+
+		// Sort and (potentially) truncate alpha transition problems.
+		state.AlphaTransitionProblems = core.CopyProblems(state.AlphaTransitionProblems)
+		core.SortProblems(state.AlphaTransitionProblems)
+		if len(state.AlphaTransitionProblems) > maximumListTransitionProblems {
+			state.ExcludedAlphaTransitionProblems = uint64(len(state.AlphaTransitionProblems) - maximumListTransitionProblems)
+			state.AlphaTransitionProblems = state.AlphaTransitionProblems[:maximumListTransitionProblems]
+		}
+
+		// Sort and (potentially) truncate beta transition problems.
+		state.BetaTransitionProblems = core.CopyProblems(state.BetaTransitionProblems)
+		core.SortProblems(state.BetaTransitionProblems)
+		if len(state.BetaTransitionProblems) > maximumListTransitionProblems {
+			state.ExcludedBetaTransitionProblems = uint64(len(state.BetaTransitionProblems) - maximumListTransitionProblems)
+			state.BetaTransitionProblems = state.BetaTransitionProblems[:maximumListTransitionProblems]
+		}
+
+		// Store the state snapshot.
+		states[i] = state
 	}
 
 	// Sort session states by session creation time.

@@ -31,8 +31,13 @@ type waitingSynchronizationEndpoint struct {
 
 // Shutdown implements synchronization.Endpoint.Shutdown.
 func (w *waitingSynchronizationEndpoint) Shutdown() error {
+	// Shutdown on the underlying endpoint.
 	result := w.Endpoint.Shutdown()
+
+	// Perform the wait operation.
 	w.wait()
+
+	// Done.
 	return result
 }
 

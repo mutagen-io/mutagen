@@ -4,11 +4,36 @@ import (
 	"testing"
 )
 
-// TestSynchronizationModeUnmarshal tests that unmarshaling from a string
-// specification succeeeds for SynchronizationMode.
-func TestSynchronizationModeUnmarshal(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
+// TestSynchronizationModeIsDefault tests SynchronizationMode.IsDefault.
+func TestSynchronizationModeIsDefault(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		value    SynchronizationMode
+		expected bool
+	}{
+		{SynchronizationMode_SynchronizationModeDefault - 1, false},
+		{SynchronizationMode_SynchronizationModeDefault, true},
+		{SynchronizationMode_SynchronizationModeTwoWaySafe, false},
+		{SynchronizationMode_SynchronizationModeTwoWayResolved, false},
+		{SynchronizationMode_SynchronizationModeOneWaySafe, false},
+		{SynchronizationMode_SynchronizationModeOneWayReplica, false},
+		{SynchronizationMode_SynchronizationModeOneWayReplica + 1, false},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if result := test.value.IsDefault(); result && !test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as default", i)
+		} else if !result && test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as non-default", i)
+		}
+	}
+}
+
+// TestSynchronizationModeUnmarshalText tests SynchronizationMode.UnmarshalText.
+func TestSynchronizationModeUnmarshalText(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
 		text          string
 		expectedMode  SynchronizationMode
 		expectFailure bool
@@ -22,19 +47,19 @@ func TestSynchronizationModeUnmarshal(t *testing.T) {
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
+	for _, test := range tests {
 		var mode SynchronizationMode
-		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
-			if !testCase.expectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
+		if err := mode.UnmarshalText([]byte(test.text)); err != nil {
+			if !test.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", test.text, err)
 			}
-		} else if testCase.expectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
-		} else if mode != testCase.expectedMode {
+		} else if test.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", test.text)
+		} else if mode != test.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.expectedMode,
+				test.expectedMode,
 			)
 		}
 	}

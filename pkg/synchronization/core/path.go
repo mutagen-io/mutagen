@@ -87,3 +87,60 @@ func PathBase(path string) string {
 	// Extract the base name.
 	return path[lastSlashIndex+1:]
 }
+
+// pathLess performs a sort comparison between two root-relative synchronization
+// paths. It returns true if first comes before second in DFS traversal.
+func pathLess(first, second string) bool {
+	// Handle trivial cases first.
+	if first == second {
+		return false
+	} else if first == "" {
+		return true
+	} else if second == "" {
+		return false
+	}
+
+	// Compare the path components. We work hard to avoid allocations here since
+	// this is a comparison function for sorting algorithms.
+	for {
+		// Extract the front path component from the first path.
+		firstFirstSlashIndex := strings.IndexByte(first, '/')
+		var firstFrontComponent string
+		if firstFirstSlashIndex == -1 {
+			firstFrontComponent = first
+		} else {
+			firstFrontComponent = first[:firstFirstSlashIndex]
+		}
+
+		// Extract the front path component from the second path.
+		secondFirstSlashIndex := strings.IndexByte(second, '/')
+		var secondFrontComponent string
+		if secondFirstSlashIndex == -1 {
+			secondFrontComponent = second
+		} else {
+			secondFrontComponent = second[:secondFirstSlashIndex]
+		}
+
+		// Compare the front path components.
+		if firstFrontComponent < secondFrontComponent {
+			return true
+		} else if secondFrontComponent < firstFrontComponent {
+			return false
+		}
+
+		// The front path components are equal. If either path has no remaining
+		// components, then the comparison is complete, otherwise we move ahead
+		// to the next path components. Note that we don't have to consider the
+		// case where firstFirstSlashIndex and secondFirstSlashIndex are both -1
+		// (with front components also equal) because that would mean the
+		// strings were entirely equal, which we handle above.
+		if firstFirstSlashIndex == -1 {
+			return true
+		} else if secondFirstSlashIndex == -1 {
+			return false
+		} else {
+			first = first[firstFirstSlashIndex+1:]
+			second = second[secondFirstSlashIndex+1:]
+		}
+	}
+}

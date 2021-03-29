@@ -24,7 +24,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string, allowConflicts, allowProblems bool) error {
+func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string, allowScanProblems, allowConflicts, allowTransitionProblems bool) error {
 	// Create a session selection specification.
 	selection := &selection.Selection{
 		Specifications: []string{sessionId},
@@ -41,17 +41,19 @@ func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string
 		} else if len(states) != 1 {
 			return errors.New("invalid number of session states returned")
 		} else if states[0].SuccessfulSynchronizationCycles > 0 {
-			if !allowProblems && (len(states[0].AlphaProblems) > 0 || len(states[0].BetaProblems) > 0) {
-				return errors.New("problems detected (and disallowed)")
+			if !allowScanProblems && (len(states[0].AlphaScanProblems) > 0 || len(states[0].BetaScanProblems) > 0) {
+				return errors.New("scan problems detected (and disallowed)")
 			} else if !allowConflicts && len(states[0].Conflicts) > 0 {
 				return errors.New("conflicts detected (and disallowed)")
+			} else if !allowTransitionProblems && (len(states[0].AlphaTransitionProblems) > 0 || len(states[0].BetaTransitionProblems) > 0) {
+				return errors.New("transition problems detected (and disallowed)")
 			}
 			return nil
 		}
 	}
 }
 
-func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowConflicts, allowProblems bool) error {
+func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowScanProblems, allowConflicts, allowTransitionProblems bool) error {
 	// Create a session.
 	sessionId, err := synchronizationManager.Create(
 		ctx,
@@ -71,7 +73,7 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 	// Wait for the session to have at least one successful synchronization
 	// cycle.
 	// TODO: Should we add a timeout on this?
-	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowConflicts, allowProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for successful synchronization")
 	}
 
@@ -99,7 +101,7 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 
 	// Wait for the session to have at least one additional synchronization
 	// cycle.
-	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowConflicts, allowProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for additional synchronization")
 	}
 
@@ -136,7 +138,7 @@ func TestSynchronizationBothRootsNil(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -171,7 +173,7 @@ func TestSynchronizationGOROOTSrcToBeta(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -206,7 +208,7 @@ func TestSynchronizationGOROOTSrcToAlpha(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -245,7 +247,7 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -289,7 +291,7 @@ func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }
@@ -386,7 +388,7 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 	configuration := &synchronization.Configuration{}
 
 	// Test the session lifecycle.
-	if err := testSessionLifecycle(context.Background(), prompter, alphaURL, betaURL, configuration, false, false); err != nil {
+	if err := testSessionLifecycle(context.Background(), prompter, alphaURL, betaURL, configuration, false, false, false); err != nil {
 		t.Fatal("session lifecycle test failed:", err)
 	}
 }

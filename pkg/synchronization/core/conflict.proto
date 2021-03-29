@@ -6,7 +6,20 @@ option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
 
 import "synchronization/core/change.proto";
 
+// Conflict encodes conflicting changes on alpha and beta that prevent
+// synchronization of a particular path. Conflict objects should be considered
+// immutable and must not be modified.
 message Conflict {
-    repeated Change alphaChanges = 1;
-    repeated Change betaChanges = 2;
+    // Root is the root path for the conflict (relative to the synchronization
+    // root). While this can (in theory) be computed based on the change lists
+    // contained within the conflict, doing so relies on those change lists
+    // being constructed and ordered in a particular manner that's not possible
+    // to enforce. Additionally, conflicts are often sorted by their root path,
+    // and dynamically computing it on every sort comparison operation would be
+    // prohibitively expensive.
+    string root = 1;
+    // AlphaChanges are the relevant changes on alpha.
+    repeated Change alphaChanges = 2;
+    // BetaChanges are the relevant changes on beta.
+    repeated Change betaChanges = 3;
 }

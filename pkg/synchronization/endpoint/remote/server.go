@@ -303,7 +303,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 				Error:    err.Error(),
 				TryAgain: tryAgain,
 			}
-		} else if err = buffer.Marshal(&core.Archive{Root: snapshot}); err != nil {
+		} else if err = buffer.Marshal(&core.Archive{Content: snapshot}); err != nil {
 			response = &ScanResponse{
 				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
 			}
@@ -452,7 +452,7 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 			// encode nil pointers in the result array.
 			wrappedResults := make([]*core.Archive, len(results))
 			for r, result := range results {
-				wrappedResults[r] = &core.Archive{Root: result}
+				wrappedResults[r] = &core.Archive{Content: result}
 			}
 			response = &TransitionResponse{
 				Results:            wrappedResults,

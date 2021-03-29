@@ -33,7 +33,11 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		}
 
 		// Add a problems flag if there are problems.
-		if len(state.AlphaProblems) > 0 || len(state.BetaProblems) > 0 {
+		haveProblems := len(state.AlphaScanProblems) > 0 ||
+			len(state.BetaScanProblems) > 0 ||
+			len(state.AlphaTransitionProblems) > 0 ||
+			len(state.BetaTransitionProblems) > 0
+		if haveProblems {
 			status += color.RedString("[Problems] ")
 		}
 

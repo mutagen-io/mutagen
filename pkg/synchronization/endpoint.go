@@ -14,10 +14,10 @@ import (
 // should be considered failed and no more of its methods (other than Shutdown)
 // should be invoked.
 type Endpoint interface {
-	// Poll performs a one-shot poll for filesystem modifications in the
-	// endpoint's root. It blocks until an event occurs, the provided context is
-	// cancelled, or an error occurs. In the first two cases it returns nil. The
-	// provided context is guaranteed to be cancelled eventually.
+	// Poll performs a one-shot polling operation for filesystem modifications
+	// in the endpoint's root. It blocks until either an event occurs, the
+	// provided context is cancelled, or an error occurs. In the first two cases
+	// it returns nil and in the latter case it returns the error that occurred.
 	Poll(ctx context.Context) error
 
 	// Scan performs a scan of the endpoint's synchronization root. It allows
@@ -28,26 +28,29 @@ type Endpoint interface {
 	// might be available on the endpoint. The function returns the scan result,
 	// a boolean indicating whether or not the synchronization root preserves
 	// POSIX executability bits, any error that occurred while trying to create
-	// the scan, and a boolean indicating whether or not to re-try the scan (in
-	// the event of an error).
+	// the scan, and a boolean indicating whether or not to re-try the scan if
+	// an error occured. Any non-fatal problems encountered during the scan can
+	// be extracted from the resulting entry.
 	Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
 
-	// Stage performs staging on the endpoint. It accepts a list of file paths
-	// and a separate list of desired digests corresponding to those paths. For
-	// performance reasons, the paths should be passed in depth-first traversal
-	// order. This method will filter the list based on what it already has
-	// staged from previously interrupted stagings and what can be staged from
-	// local contents (e.g. in cases of renames and copies), and then return a
-	// list of paths, their signatures, and a receiver to receive them. The
-	// returned path list must maintain relative ordering for its filtered
-	// paths, again for performance reasons. If the list of paths is empty, then
-	// all paths were either already staged or able to be staged from local
-	// data, and the receiver will be nil. Otherwise, the receiver will be
-	// non-nil and must be finalized (i.e. transmitted to) before subsequent
-	// methods can be invoked on the endpoint. This method is allowed to modify
-	// the argument slices. If the receiver fails, the endpoint should be
-	// considered contaminated and not used (though shutdown can and should
-	// still be invoked).
+	// Stage performs file staging on the endpoint. It accepts a list of file
+	// paths and a separate list of desired digests corresponding to those
+	// paths. If these lists do not have the same length, this method should
+	// return an error. For optimal performance, the paths should be passed in
+	// depth-first traversal order. This method will filter the list of required
+	// paths based on what is already available from previously interrupted
+	// staging operations and what can be staged directly from the endpoint
+	// filesystem (e.g. in cases of renames and copies), and then return a list
+	// of paths, their respective signatures, and a receiver to receive them.
+	// The returned path list should maintain depth-first traversal ordering for
+	// its filtered paths, again for performance reasons. If the list of paths
+	// is empty (and the error non-nil), then all paths were either already
+	// staged or able to be staged from the endpoint filesystem, and the
+	// receiver must be nil. Otherwise, the receiver must be non-nil and must be
+	// finalized (i.e. transmitted to) before subsequent methods can be invoked
+	// on the endpoint. This method is allowed to modify the provided argument
+	// slices. If the returned receiver fails, the endpoint should be considered
+	// tainted and not used (though shutdown can and should still be invoked).
 	Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error)
 
 	// Supply transmits files in a streaming fashion using the rsync algorithm
@@ -55,8 +58,10 @@ type Endpoint interface {
 	Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error
 
 	// Transition performs the specified transitions on the endpoint. It returns
-	// a list of successfully applied changes and a list of problems that
-	// occurred while applying transitions.
+	// the respective results of the specified change operations, a list of
+	// non-fatal problems encountered during the transition operation, a boolean
+	// indicating whether or not the endpoint was missing staged files, and any
+	// error occurred while trying to perform the transition operation.
 	// TODO: Should we consider pre-emptability for transition? It could
 	// probably be done by just checking for cancellation during each transition
 	// path and reporting "cancelled" for problems arising after that, but

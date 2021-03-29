@@ -1,18 +1,22 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
-func (a *Archive) EnsureValid() error {
+// EnsureValid ensures that Archive's invariants are respected. If
+// synchronizable is true, then unsynchronizable content in the archive will be
+// considered invalid.
+func (a *Archive) EnsureValid(synchronizable bool) error {
 	// A nil archive is not valid.
 	if a == nil {
 		return errors.New("nil archive")
 	}
 
-	// Ensure that the archive root is valid.
-	if err := a.Root.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid archive root")
+	// Ensure that the archive content is valid.
+	if err := a.Content.EnsureValid(synchronizable); err != nil {
+		return fmt.Errorf("invalid archive content: %w", err)
 	}
 
 	// Success.

@@ -1,7 +1,8 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -32,44 +33,44 @@ func (s *Session) EnsureValid() error {
 
 	// Ensure that the alpha URL is valid and is a synchronization URL.
 	if err := s.Alpha.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid alpha URL")
+		return fmt.Errorf("invalid alpha URL: %w", err)
 	} else if s.Alpha.Kind != url.Kind_Synchronization {
 		return errors.New("alpha URL is not a synchronization URL")
 	}
 
 	// Ensure that the beta URL is valid and is a synchronization URL.
 	if err := s.Beta.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid beta URL")
+		return fmt.Errorf("invalid beta URL: %w", err)
 	} else if s.Beta.Kind != url.Kind_Synchronization {
 		return errors.New("beta URL is not a synchronization URL")
 	}
 
 	// Ensure that the configuration is valid.
 	if err := s.Configuration.EnsureValid(false); err != nil {
-		return errors.Wrap(err, "invalid configuration")
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Ensure that the alpha-specific configuration is valid.
 	if err := s.ConfigurationAlpha.EnsureValid(true); err != nil {
-		return errors.Wrap(err, "invalid alpha-specific configuration")
+		return fmt.Errorf("invalid alpha-specific configuration: %w", err)
 	}
 
 	// Ensure that the beta-specific configuration is valid.
 	if err := s.ConfigurationBeta.EnsureValid(true); err != nil {
-		return errors.Wrap(err, "invalid beta-specific configuration")
+		return fmt.Errorf("invalid beta-specific configuration: %w", err)
 	}
 
 	// Validate the session name.
 	if err := selection.EnsureNameValid(s.Name); err != nil {
-		return errors.Wrap(err, "invalid session name")
+		return fmt.Errorf("invalid session name: %w", err)
 	}
 
 	// Ensure that labels are valid.
 	for k, v := range s.Labels {
 		if err := selection.EnsureLabelKeyValid(k); err != nil {
-			return errors.Wrap(err, "invalid label key")
+			return fmt.Errorf("invalid label key: %w", err)
 		} else if err = selection.EnsureLabelValueValid(v); err != nil {
-			return errors.Wrap(err, "invalid label value")
+			return fmt.Errorf("invalid label value: %w", err)
 		}
 	}
 

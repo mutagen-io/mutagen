@@ -6,36 +6,69 @@ option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
 
 // EntryKind encodes the type of entry represented by an Entry object.
 enum EntryKind {
-    // EntryKind_Directory represents a directory entry.
+    // EntryKind_Directory indicates a directory.
     Directory = 0;
-    // EntryKind_File represents a file entry.
+    // EntryKind_File indicates a regular file.
     File = 1;
-    // EntryKind_Symlink represents a symlink entry.
-    Symlink = 2;
+    // EntryKind_SymbolicLink indicates a symbolic link.
+    SymbolicLink = 2;
+
+    // Values 3-99 are reserved for future synchronizable entry types.
+
+    // EntryKind_Untracked indicates content (or the root of content) that is
+    // intentionally excluded from synchronization by Mutagen. This includes
+    // explicitly ignored content, content that is ignored due to settings (such
+    // as symbolic links in the "ignore" symlink mode), as well as content types
+    // that Mutagen doesn't understand and/or have a way to propagate (such as
+    // FIFOs and Unix domain sockets). This type of entry is not synchronizable.
+    Untracked = 100;
+    // EntryKind_Problematic indicates content (or the root of content) that
+    // would normally be synchronized, but which is currently inaccessible to
+    // scanning. This includes (but is not limited to) content that is modified
+    // concurrently with scanning, content that is inaccessible due to
+    // permissions, content that can't be read due to filesystem errors, content
+    // that cannot be properly encoded given the current settings (such as
+    // absolute symbolic links found when using the "portable" symlink mode),
+    // and content that Mutagen cannot scan or watch reliably (such as
+    // directories that are also mount points). This type of entry is not
+    // synchronizable.
+    Problematic = 101;
+
+    // Values 102 - 199 are reserved for future unsynchronizable entry types.
 }
 
-// Entry represents a filesystem node (e.g. a directory, a file, or a symlink).
+// Entry encodes a filesystem entry (e.g. a directory, a file, or a symlink). A
+// nil Entry represents an absence of content. An zero-value Entry represents an
+// empty Directory. Entry objects should be considered immutable and must not be
+// modified.
 message Entry {
     // Kind encodes the type of filesystem entry being represented.
     EntryKind kind = 1;
 
     // Fields 2-4 are reserved for future common entry data.
 
-    // Contents represents a directory entry's contents.
+    // Contents represents a directory entry's contents. It must only be non-nil
+    // for directory entries.
     map<string, Entry> contents = 5;
 
     // Fields 6-7 are reserved for future directory entry data.
 
-    // Digest represents the hash of a file entry's contents.
+    // Digest represents the hash of a file entry's contents. It must only be
+    // non-nil for file entries.
     bytes digest = 8;
-
     // Executable indicates whether or not a file entry is marked as executable.
+    // It must only be set (if appropriate) for file entries.
     bool executable = 9;
 
     // Fields 10-11 are reserved for future file entry data.
 
-    // Target is the symlink target for symlink entries.
+    // Target is the symbolic link target for symbolic link entries. It must be
+    // non-empty if and only if the entry is a symbolic link.
     string target = 12;
 
-    // Fields 13-14 are reserved for future symlink entry data.
+    // Fields 13-14 are reserved for future symbolic link entry data.
+
+    // Problem indicates the relevant error for problematic content. It must be
+    // non-empty if and only if the entry represents problematic content.
+    string problem = 15;
 }

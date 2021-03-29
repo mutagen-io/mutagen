@@ -42,7 +42,8 @@ func formatConnectionStatus(connected bool) string {
 // printEndpointStatus prints the status of a synchronization endpoint.
 func printEndpointStatus(
 	name string, url *url.URL, connected bool,
-	problems []*core.Problem, truncatedProblems uint64,
+	scanProblems []*core.Problem, excludedScanProblems uint64,
+	transitionProblems []*core.Problem, excludedTransitionProblems uint64,
 ) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
@@ -56,14 +57,25 @@ func printEndpointStatus(
 	// Print connection status.
 	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
 
-	// Print problems, if any.
-	if len(problems) > 0 {
-		color.Red("\tProblems:\n")
-		for _, p := range problems {
+	// Print scan problems, if any.
+	if len(scanProblems) > 0 {
+		color.Red("\tScan problems:\n")
+		for _, p := range scanProblems {
 			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
 		}
-		if truncatedProblems > 0 {
-			color.Red(fmt.Sprintf("\t\t...+%d more...\n", truncatedProblems))
+		if excludedScanProblems > 0 {
+			color.Red(fmt.Sprintf("\t\t...+%d more...\n", excludedScanProblems))
+		}
+	}
+
+	// Print transition problems, if any.
+	if len(transitionProblems) > 0 {
+		color.Red("\tTransition problems:\n")
+		for _, p := range transitionProblems {
+			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
+		}
+		if excludedTransitionProblems > 0 {
+			color.Red(fmt.Sprintf("\t\t...+%d more...\n", excludedTransitionProblems))
 		}
 	}
 }
@@ -94,15 +106,19 @@ func formatEntry(entry *core.Entry) string {
 			return fmt.Sprintf("Executable File (%x)", entry.Digest)
 		}
 		return fmt.Sprintf("File (%x)", entry.Digest)
-	} else if entry.Kind == core.EntryKind_Symlink {
+	} else if entry.Kind == core.EntryKind_SymbolicLink {
 		return fmt.Sprintf("Symbolic Link (%s)", entry.Target)
+	} else if entry.Kind == core.EntryKind_Untracked {
+		return "Untracked content"
+	} else if entry.Kind == core.EntryKind_Problematic {
+		return fmt.Sprintf("Problematic content (%s)", entry.Problem)
 	} else {
 		return "<unknown>"
 	}
 }
 
 // printConflicts prints a list of synchronization conflicts.
-func printConflicts(conflicts []*core.Conflict, truncatedConflicts uint64) {
+func printConflicts(conflicts []*core.Conflict, excludedConflicts uint64) {
 	// Print the header.
 	color.Red("Conflicts:\n")
 
@@ -128,16 +144,16 @@ func printConflicts(conflicts []*core.Conflict, truncatedConflicts uint64) {
 			)
 		}
 
-		// If we're not on the last conflict, or if there are truncated
-		// conflicts, then print a newline.
-		if i < len(conflicts)-1 || truncatedConflicts > 0 {
+		// If we're not on the last conflict, or if there are conflicts that
+		// have been excluded, then print a newline.
+		if i < len(conflicts)-1 || excludedConflicts > 0 {
 			fmt.Println()
 		}
 	}
 
-	// Print truncated conflicts.
-	if truncatedConflicts > 0 {
-		color.Red(fmt.Sprintf("\t...+%d more...\n", truncatedConflicts))
+	// Print excluded conflicts.
+	if excludedConflicts > 0 {
+		color.Red(fmt.Sprintf("\t...+%d more...\n", excludedConflicts))
 	}
 }
 
@@ -168,15 +184,17 @@ func ListWithSelection(
 			printSession(state, long)
 			printEndpointStatus(
 				"Alpha", state.Session.Alpha, state.AlphaConnected,
-				state.AlphaProblems, state.TruncatedAlphaProblems,
+				state.AlphaScanProblems, state.ExcludedAlphaScanProblems,
+				state.AlphaTransitionProblems, state.ExcludedAlphaTransitionProblems,
 			)
 			printEndpointStatus(
 				"Beta", state.Session.Beta, state.BetaConnected,
-				state.BetaProblems, state.TruncatedBetaProblems,
+				state.BetaScanProblems, state.ExcludedBetaScanProblems,
+				state.BetaTransitionProblems, state.ExcludedBetaTransitionProblems,
 			)
 			printSessionStatus(state)
 			if len(state.Conflicts) > 0 {
-				printConflicts(state.Conflicts, state.TruncatedConflicts)
+				printConflicts(state.Conflicts, state.ExcludedConflicts)
 			}
 		}
 		fmt.Println(cmd.DelimiterLine)

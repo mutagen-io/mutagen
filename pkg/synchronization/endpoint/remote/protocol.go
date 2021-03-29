@@ -244,9 +244,10 @@ func (r *TransitionRequest) ensureValid() error {
 		return errors.New("nil transition request")
 	}
 
-	// Ensure that each change is valid.
+	// Ensure that each change is valid. Each should contain only synchronizable
+	// content.
 	for _, change := range r.Transitions {
-		if err := change.EnsureValid(); err != nil {
+		if err := change.EnsureValid(true); err != nil {
 			return errors.Wrap(err, "invalid transition")
 		}
 	}
@@ -279,9 +280,10 @@ func (r *TransitionResponse) ensureValid(expectedCount int) error {
 		return errors.New("unexpected number of results returned")
 	}
 
-	// Validate that each result is a valid archive specification.
+	// Validate that each result is a valid archive. Each should contain only
+	// synchronizable content.
 	for _, result := range r.Results {
-		if err := result.EnsureValid(); err != nil {
+		if err := result.EnsureValid(true); err != nil {
 			return errors.Wrap(err, "invalid result returned")
 		}
 	}

@@ -3,54 +3,10 @@ package synchronization
 import (
 	"github.com/pkg/errors"
 
+	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
-
-// stringSlicesEqual determines whether or not two string slices are equal.
-func stringSlicesEqual(first, second []string) bool {
-	// Check that slice lengths are equal.
-	if len(first) != len(second) {
-		return false
-	}
-
-	// Compare contents.
-	for i, f := range first {
-		if second[i] != f {
-			return false
-		}
-	}
-
-	// The slices are equal.
-	return true
-}
-
-// Equal returns whether or not the configuration is equivalent to another. The
-// result of this method is only valid if both configurations are valid.
-func (c *Configuration) Equal(other *Configuration) bool {
-	// Ensure that both are non-nil.
-	if c == nil || other == nil {
-		return false
-	}
-
-	// Perform an equivalence check.
-	return c.SynchronizationMode == other.SynchronizationMode &&
-		c.MaximumEntryCount == other.MaximumEntryCount &&
-		c.MaximumStagingFileSize == other.MaximumStagingFileSize &&
-		c.ProbeMode == other.ProbeMode &&
-		c.ScanMode == other.ScanMode &&
-		c.StageMode == other.StageMode &&
-		c.SymlinkMode == other.SymlinkMode &&
-		c.WatchMode == other.WatchMode &&
-		c.WatchPollingInterval == other.WatchPollingInterval &&
-		stringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
-		stringSlicesEqual(c.Ignores, other.Ignores) &&
-		c.IgnoreVCSMode == other.IgnoreVCSMode &&
-		c.DefaultFileMode == other.DefaultFileMode &&
-		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
-		c.DefaultOwner == other.DefaultOwner &&
-		c.DefaultGroup == other.DefaultGroup
-}
 
 // EnsureValid ensures that Configuration's invariants are respected. The
 // validation of the configuration depends on whether or not it is
@@ -178,6 +134,33 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 
 	// Success.
 	return nil
+}
+
+// Equal returns whether or not the configuration is equivalent to another. The
+// result of this method is only valid if both configurations are valid.
+func (c *Configuration) Equal(other *Configuration) bool {
+	// Ensure that both are non-nil.
+	if c == nil || other == nil {
+		return false
+	}
+
+	// Perform an equivalence check.
+	return c.SynchronizationMode == other.SynchronizationMode &&
+		c.MaximumEntryCount == other.MaximumEntryCount &&
+		c.MaximumStagingFileSize == other.MaximumStagingFileSize &&
+		c.ProbeMode == other.ProbeMode &&
+		c.ScanMode == other.ScanMode &&
+		c.StageMode == other.StageMode &&
+		c.SymlinkMode == other.SymlinkMode &&
+		c.WatchMode == other.WatchMode &&
+		c.WatchPollingInterval == other.WatchPollingInterval &&
+		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
+		comparison.StringSlicesEqual(c.Ignores, other.Ignores) &&
+		c.IgnoreVCSMode == other.IgnoreVCSMode &&
+		c.DefaultFileMode == other.DefaultFileMode &&
+		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
+		c.DefaultOwner == other.DefaultOwner &&
+		c.DefaultGroup == other.DefaultGroup
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both

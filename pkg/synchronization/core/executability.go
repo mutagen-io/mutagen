@@ -123,7 +123,7 @@ func propagateExecutabilityRecursive(ancestor, source, target *Entry) {
 // precedent over ancestor.
 func PropagateExecutability(ancestor, source, target *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := target.Copy()
+	result := target.Copy(true)
 
 	// Perform propagation.
 	propagateExecutabilityRecursive(ancestor, source, result)

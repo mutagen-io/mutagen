@@ -12,7 +12,7 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     export MUTAGEN_TEST_FAT32_ROOT="/Volumes/FAT32ROOT"
     export MUTAGEN_TEST_HFS_ROOT="/Volumes/HFSRoot"
     export MUTAGEN_TEST_APFS_ROOT="/Volumes/APFSRoot"
-    export MUTAGEN_TEST_FAT32_SUBROOT="/Volumes/APFSRoot/FAT32SUB"
+    export MUTAGEN_TEST_SUBFS_ROOT="${MUTAGEN_TEST_APFS_ROOT}/HFSSub"
 elif [[ "${MUTAGEN_OS_NAME}" == "linux" ]]; then
     export MUTAGEN_TEST_SSH="true"
     export MUTAGEN_TEST_DOCKER="true"

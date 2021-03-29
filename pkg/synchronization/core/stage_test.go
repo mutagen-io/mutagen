@@ -1,80 +1,57 @@
 package core
 
 import (
+	"bytes"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/comparison"
 )
 
-func TestTransitionDependenciesEmtpy(t *testing.T) {
-	if paths, digests, err := TransitionDependencies(nil); err != nil {
-		t.Error("transition dependency finding failed for no transitions:", err)
-	} else if len(paths) != 0 {
-		t.Error("unexpected number of paths for no transitions")
-	} else if len(digests) != len(paths) {
-		t.Error("digest count does not match path count")
+// TestTransitionDependencies tests TransitionDependencies.
+func TestTransitionDependencies(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		transitions     []*Change
+		expectedPaths   []string
+		expectedDigests [][]byte
+	}{
+		{nil, nil, nil},
+		{[]*Change{{New: nil}}, nil, nil},
+		{[]*Change{{New: tD0}}, nil, nil},
+		{[]*Change{{New: tSA}}, nil, nil},
+		{[]*Change{{New: tU}}, nil, nil},
+		{[]*Change{{New: tP1}}, nil, nil},
+		{[]*Change{{New: tF1}}, []string{""}, [][]byte{tF1.Digest}},
+		{[]*Change{{New: tD1}}, []string{"file"}, [][]byte{tF1.Digest}},
+		{[]*Change{{Old: tF3, New: tF3E}}, nil, nil},
+		{[]*Change{{Old: tF3E, New: tF3}}, nil, nil},
 	}
-}
 
-func TestTransitionDependenciesInvalid(t *testing.T) {
-	root := testDirectory1Entry.Copy()
-	root.Contents["directory"].Contents["subfile"].Kind = (EntryKind_Symlink + 1)
-	transitions := []*Change{
-		{
-			Path: "",
-			New:  root,
-		},
-	}
-	if _, _, err := TransitionDependencies(transitions); err == nil {
-		t.Error("transition dependency finding succeeded for invalid transition")
-	}
-}
+	// Process test cases.
+	for i, test := range tests {
+		// Compute transition dependencies and perform basic validation.
+		paths, digests := TransitionDependencies(test.transitions)
+		if len(paths) != len(digests) {
+			t.Errorf("test index %d: path and digest counts differ: %d != %d",
+				i, len(paths), len(digests),
+			)
+		}
 
-func TestTransitionDependenciesNewNil(t *testing.T) {
-	transitions := []*Change{
-		{
-			Path: "",
-			New:  nil,
-		},
-	}
-	if paths, digests, err := TransitionDependencies(transitions); err != nil {
-		t.Error("transition dependency finding failed:", err)
-	} else if len(paths) != 0 {
-		t.Error("unexpected number of paths")
-	} else if len(digests) != len(paths) {
-		t.Error("digest count does not match path count")
-	}
-}
+		// Validate that paths match expected.
+		if !comparison.StringSlicesEqual(paths, test.expectedPaths) {
+			t.Errorf("test index %d: paths do not match expected", i)
+		}
 
-func TestTransitionDependenciesNewNonNil(t *testing.T) {
-	transitions := []*Change{
-		{
-			Path: "",
-			New:  testDirectory1Entry,
-		},
-	}
-	if paths, digests, err := TransitionDependencies(transitions); err != nil {
-		t.Error("transition dependency finding failed:", err)
-	} else if len(paths) != 4 {
-		t.Error("unexpected number of paths")
-	} else if len(digests) != len(paths) {
-		t.Error("digest count does not match path count")
-	}
-}
-
-func TestTransitionDependenciesOnlyExecutableBitChange(t *testing.T) {
-	old := testFile2Entry.Copy()
-	old.Executable = false
-	transitions := []*Change{
-		{
-			Path: "",
-			Old:  old,
-			New:  testFile2Entry,
-		},
-	}
-	if paths, digests, err := TransitionDependencies(transitions); err != nil {
-		t.Error("transition dependency finding failed:", err)
-	} else if len(paths) != 0 {
-		t.Error("unexpected number of entries")
-	} else if len(digests) != len(paths) {
-		t.Error("digest count does not match path count")
+		// Validate that digest match expected.
+		if len(digests) != len(test.expectedDigests) {
+			t.Errorf("test index %d: digests do not match expected", i)
+		} else {
+			for d, digest := range digests {
+				if !bytes.Equal(digest, test.expectedDigests[d]) {
+					t.Errorf("test index %d: digests do not match expected", i)
+					break
+				}
+			}
+		}
 	}
 }

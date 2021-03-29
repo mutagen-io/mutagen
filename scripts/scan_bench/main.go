@@ -168,7 +168,7 @@ func main() {
 	fmt.Println("Warm scan took", stop.Sub(start))
 
 	// Compare the warm scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot) {
+	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
 		cmd.Fatal(errors.Errorf(
@@ -225,7 +225,7 @@ func main() {
 	fmt.Println("Accelerated scan (with re-check paths) took", stop.Sub(start))
 
 	// Compare the accelerated scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot) {
+	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
 		cmd.Fatal(errors.Errorf(
@@ -280,7 +280,7 @@ func main() {
 	fmt.Println("Accelerated scan (without re-check paths) took", stop.Sub(start))
 
 	// Compare the accelerated scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot) {
+	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
 		cmd.Fatal(errors.Errorf(
@@ -302,7 +302,7 @@ func main() {
 
 	// Validate the snapshot.
 	start = time.Now()
-	if err := snapshot.EnsureValid(); err != nil {
+	if err := snapshot.EnsureValid(false); err != nil {
 		cmd.Fatal(errors.Wrap(err, "snapshot invalid"))
 	}
 	stop = time.Now()
@@ -316,7 +316,7 @@ func main() {
 
 	// Perform a deep copy of the snapshot.
 	start = time.Now()
-	snapshot.Copy()
+	snapshot.Copy(true)
 	stop = time.Now()
 	fmt.Println("Snapshot copying took", stop.Sub(start))
 
@@ -364,7 +364,7 @@ func main() {
 
 	// Validate the deserialized snapshot.
 	start = time.Now()
-	if err = deserializedSnapshot.EnsureValid(); err != nil {
+	if err = deserializedSnapshot.EnsureValid(false); err != nil {
 		cmd.Fatal(errors.Wrap(err, "deserialized snapshot invalid"))
 	}
 	stop = time.Now()
@@ -401,7 +401,7 @@ func main() {
 	// Print whether or not snapshots are equivalent.
 	fmt.Println(
 		"Original/deserialized snapshots equivalent?",
-		deserializedSnapshot.Equal(snapshot),
+		deserializedSnapshot.Equal(snapshot, true),
 	)
 
 	// Checksum it.

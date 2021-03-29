@@ -174,7 +174,7 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	} else {
 		buffer := proto.NewBuffer(nil)
 		buffer.SetDeterministic(true)
-		if err := buffer.Marshal(&core.Archive{Root: ancestor}); err != nil {
+		if err := buffer.Marshal(&core.Archive{Content: ancestor}); err != nil {
 			return nil, false, errors.Wrap(err, "unable to marshal ancestor"), false
 		}
 		baseBytes = buffer.Bytes()
@@ -264,10 +264,14 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
 		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot"), false
 	}
-	snapshot := archive.Root
+	snapshot := archive.Content
 
-	// Ensure that the snapshot is valid since it came over the network.
-	if err = snapshot.EnsureValid(); err != nil {
+	// Ensure that the snapshot is valid since it came over the network. Ideally
+	// we'd want this validation to be performed by the ensureValid method of
+	// ScanResponse, but because this method requires rsync-based patching and
+	// Protocol Buffers decoding before it actually has the underlying response,
+	// we can't perform this validation into ScanResponse.ensureValid.
+	if err = snapshot.EnsureValid(false); err != nil {
 		return nil, false, errors.Wrap(err, "invalid snapshot received"), false
 	}
 
@@ -433,7 +437,7 @@ func (e *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	// HACK: Extract the wrapped results.
 	results := make([]*core.Entry, len(response.Results))
 	for r, result := range response.Results {
-		results[r] = result.Root
+		results[r] = result.Content
 	}
 
 	// Success.

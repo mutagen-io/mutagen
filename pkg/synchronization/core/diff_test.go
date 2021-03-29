@@ -4,62 +4,28 @@ import (
 	"testing"
 )
 
-func TestDiffInternalCreationIdentity(t *testing.T) {
-	if changes := diff("", nil, testDirectory1Entry); len(changes) != 1 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
-	} else if changes[0].Path != "" {
-		t.Error("unexpected change path:", changes[0].Path, "!=", "")
-	} else if changes[0].Old != nil {
-		t.Error("unexpected old entry")
-	} else if changes[0].New != testDirectory1Entry {
-		t.Error("unexpected new entry")
+// TestDiff tests Diff.
+func TestDiff(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		path     string
+		base     *Entry
+		target   *Entry
+		expected []*Change
+	}{
+		{"", tN, tN, nil},
+		{"", tN, tF1, []*Change{{New: tF1}}},
+		{"", tD0, tD1, []*Change{{Path: "file", New: tF1}}},
+		{"", tD1, tD0, []*Change{{Path: "file", Old: tF1}}},
+		{"sub", tN, tF1, []*Change{{Path: "sub", New: tF1}}},
+		{"sub", tD0, tD1, []*Change{{Path: "sub/file", New: tF1}}},
+		{"sub", tD1, tD0, []*Change{{Path: "sub/file", Old: tF1}}},
 	}
-}
 
-func TestDiffInternalDeletionIdentity(t *testing.T) {
-	if changes := diff("", testDirectory1Entry, nil); len(changes) != 1 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
-	} else if changes[0].Path != "" {
-		t.Error("unexpected change path:", changes[0].Path, "!=", "")
-	} else if changes[0].Old != testDirectory1Entry {
-		t.Error("unexpected old entry")
-	} else if changes[0].New != nil {
-		t.Error("unexpected new entry")
-	}
-}
-
-func TestDiffInternalFileToDirectory(t *testing.T) {
-	if changes := diff("", testFile1Entry, testDirectory1Entry); len(changes) != 1 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
-	} else if changes[0].Path != "" {
-		t.Error("unexpected change path:", changes[0].Path, "!=", "")
-	} else if changes[0].Old != testFile1Entry {
-		t.Error("unexpected old entry")
-	} else if changes[0].New != testDirectory1Entry {
-		t.Error("unexpected new entry")
-	}
-}
-
-func TestDiffInternalDirectoryToFile(t *testing.T) {
-	if changes := diff("", testDirectory1Entry, testFile1Entry); len(changes) != 1 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 1)
-	} else if changes[0].Path != "" {
-		t.Error("unexpected change path:", changes[0].Path, "!=", "")
-	} else if changes[0].Old != testDirectory1Entry {
-		t.Error("unexpected old entry")
-	} else if changes[0].New != testFile1Entry {
-		t.Error("unexpected new entry")
-	}
-}
-
-func TestDiffInternalDirectories(t *testing.T) {
-	if changes := diff("", testDirectory1Entry, testDirectory2Entry); len(changes) != 8 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 8)
-	}
-}
-
-func TestDiffDirectories(t *testing.T) {
-	if changes := Diff(testDirectory1Entry, testDirectory2Entry); len(changes) != 8 {
-		t.Fatal("unexpected number of changes:", len(changes), "!=", 8)
+	// Process test cases.
+	for i, test := range tests {
+		if delta := diff(test.path, test.base, test.target); !testingChangeListsEqual(delta, test.expected) {
+			t.Errorf("test index %d: diff result does not match expected", i)
+		}
 	}
 }

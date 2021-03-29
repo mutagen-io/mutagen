@@ -10,7 +10,11 @@ import (
 func oneEndpointEmptiedRoot(ancestor, alpha, beta *core.Entry) bool {
 	// Check that all three entries are directories. If not, then this check
 	// doesn't apply.
-	if !(ancestor.IsDirectory() && alpha.IsDirectory() && beta.IsDirectory()) {
+	if ancestor == nil || ancestor.Kind != core.EntryKind_Directory {
+		return false
+	} else if alpha == nil || alpha.Kind != core.EntryKind_Directory {
+		return false
+	} else if beta == nil || beta.Kind != core.EntryKind_Directory {
 		return false
 	}
 

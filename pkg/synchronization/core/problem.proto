@@ -4,7 +4,13 @@ package core;
 
 option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
 
+// Problem indicates an issue or error encountered at some stage of a
+// synchronization cycle. Problem objects should be considered immutable and
+// must not be modified.
 message Problem {
+    // Path is the path at which the problem occurred (relative to the
+    // synchronization root).
     string path = 1;
+    // Error is a human-readable summary of the problem.
     string error = 2;
 }

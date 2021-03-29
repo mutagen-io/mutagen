@@ -7,102 +7,92 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func TestArchiveEmptyDifferentEmptyDirectory(t *testing.T) {
-	// Serialize an archive with a nil root. It should be an empty byte
-	// sequence.
-	emptyArchive := &Archive{}
-	emptyArchiveBytes, err := proto.Marshal(emptyArchive)
-	if err != nil {
-		t.Fatal("unable to marshal empty archive:", err)
+// TestArchiveEnsureValid tests Archive.EnsureValid.
+func TestArchiveEnsureValid(t *testing.T) {
+	// Ensure that a nil archive is considered invalid in all cases.
+	var archive *Archive
+	if archive.EnsureValid(false) == nil {
+		t.Error("nil archive incorrectly classified as valid (without synchronizability requirement)")
 	}
-	if len(emptyArchiveBytes) > 0 {
-		t.Error("empty archive serialized to non-empty bytes")
-	}
-
-	// Serialize an archive with an empty directory at the root.
-	archiveEmptyDirectory := &Archive{Root: &Entry{Kind: EntryKind_Directory}}
-	archiveEmptyDirectoryBytes, err := proto.Marshal(archiveEmptyDirectory)
-	if err != nil {
-		t.Fatal("unable to marshal archive with empty directory:", err)
+	if archive.EnsureValid(true) == nil {
+		t.Error("nil archive incorrectly classified as valid (when requiring synchronizability)")
 	}
 
-	// Ensure they differ.
-	if bytes.Equal(emptyArchiveBytes, archiveEmptyDirectoryBytes) {
-		t.Error("empty archive and archive with empty directory serialize the same")
+	// Process test cases.
+	for i, test := range entryEnsureValidTestCases {
+		// Compute a description for the test in case we need it.
+		description := "without synchronizability requirement"
+		if test.synchronizable {
+			description = "when requiring synchronizability"
+		}
+
+		// Check validity.
+		archive := &Archive{Content: test.entry}
+		err := archive.EnsureValid(test.synchronizable)
+		valid := err == nil
+		if valid != test.expected {
+			if valid {
+				t.Errorf("test index %d: entry incorrectly classified as valid (%s)", i, description)
+			} else {
+				t.Errorf("test index %d: entry incorrectly classified as invalid (%s): %v", i, description, err)
+			}
+		}
 	}
 }
 
+// TestArchiveNilEmptyContentDistinction tests that archive serialization can
+// distinguish between a nil root entry and an empty root directory.
+func TestArchiveNilEmptyContentDistinction(t *testing.T) {
+	// Serialize an archive with a nil root and verify that it encodes to an
+	// empty buffer.
+	nilContentArchive := &Archive{}
+	nilArchiveBytes, err := proto.Marshal(nilContentArchive)
+	if err != nil {
+		t.Fatal("unable to marshal archive with nil root entry:", err)
+	}
+	if len(nilArchiveBytes) > 0 {
+		t.Error("archive with nil root entry serialized to non-empty bytes")
+	}
+
+	// Serialize an archive with an empty directory at the root.
+	emptyContentArchive := &Archive{Content: &Entry{}}
+	emptyContentArchiveBytes, err := proto.Marshal(emptyContentArchive)
+	if err != nil {
+		t.Fatal("unable to marshal archive with empty root directory:", err)
+	}
+
+	// Ensure that the results differ.
+	if bytes.Equal(nilArchiveBytes, emptyContentArchiveBytes) {
+		t.Error("archive with nil root and archive with empty root serialize the same")
+	}
+}
+
+// TestArchiveConsistentSerialization tests that Protocol Buffers' deterministic
+// marshalling behaves correctly with Archive. This is really a test of Protocol
+// Buffers' implementation, but it's so performance-critical for us that it
+// warrants a test to serve as a canary.
 func TestArchiveConsistentSerialization(t *testing.T) {
-	// Create two entries. Although not strictly necessary, make them distinct
-	// values.
-	firstEntry := testDirectory1Entry
-	secondEntry := firstEntry.Copy()
+	// Create two entries, one of which is a deep copy of the other. We could
+	// also just serialize the same entry twice, but this is more rigorous.
+	firstEntry := tDM
+	secondEntry := firstEntry.Copy(true)
 
 	// Serialize the first entry.
 	firstBuffer := proto.NewBuffer(nil)
 	firstBuffer.SetDeterministic(true)
-	if err := firstBuffer.Marshal(&Archive{Root: firstEntry}); err != nil {
+	if err := firstBuffer.Marshal(&Archive{Content: firstEntry}); err != nil {
 		t.Fatal("unable to marshal first entry:", err)
 	}
 
 	// Serialize the second entry.
 	secondBuffer := proto.NewBuffer(nil)
 	secondBuffer.SetDeterministic(true)
-	if err := secondBuffer.Marshal(&Archive{Root: secondEntry}); err != nil {
+	if err := secondBuffer.Marshal(&Archive{Content: secondEntry}); err != nil {
 		t.Fatal("unable to marshal second entry:", err)
 	}
 
 	// Ensure that they're equal.
 	if !bytes.Equal(firstBuffer.Bytes(), secondBuffer.Bytes()) {
 		t.Error("marshalling is not consistent")
-	}
-}
-
-func TestArchiveNilInvalid(t *testing.T) {
-	// Create a test archive.
-	var archive *Archive
-
-	// Check validity.
-	if archive.EnsureValid() == nil {
-		t.Error("nil archive considered valid")
-	}
-}
-
-func TestArchiveInvalidRootInvalid(t *testing.T) {
-	// Create a test archive.
-	archive := &Archive{
-		Root: &Entry{
-			Kind:   EntryKind_Directory,
-			Digest: []byte{0, 1, 2, 3},
-		},
-	}
-
-	// Check validity.
-	if archive.EnsureValid() == nil {
-		t.Error("archive with invalid root considered valid")
-	}
-}
-
-func TestArchiveNilRootValid(t *testing.T) {
-	// Create a test archive.
-	archive := &Archive{}
-
-	// Check validity.
-	if err := archive.EnsureValid(); err != nil {
-		t.Error("archive with nil root considered invalid:", err)
-	}
-}
-
-func TestArchiveNonNilRootValid(t *testing.T) {
-	// Create a test archive.
-	archive := &Archive{
-		Root: &Entry{
-			Kind: EntryKind_Directory,
-		},
-	}
-
-	// Check validity.
-	if err := archive.EnsureValid(); err != nil {
-		t.Error("archive with nil root considered invalid:", err)
 	}
 }

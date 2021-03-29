@@ -167,12 +167,17 @@ func (s *scanner) file(
 	if cacheContentMatch {
 		digest = cached.Digest
 	} else {
-		// Open the file if it's not open already. If we do open it, then defer
-		// its closure.
+		// If the file is not yet opened, then open it and defer its closure.
 		if file == nil {
 			file, err = parent.OpenFile(metadata.Name)
 			if err != nil {
-				return nil, fmt.Errorf("unable to open file (%s): %w", path, err)
+				if os.IsNotExist(err) {
+					return nil, err
+				}
+				return &Entry{
+					Kind:    EntryKind_Problematic,
+					Problem: fmt.Errorf("unable to open file: %w", err).Error(),
+				}, nil
 			}
 			defer file.Close()
 		}
@@ -192,9 +197,15 @@ func (s *scanner) file(
 			if err == errWritePreempted {
 				return nil, errScanCancelled
 			}
-			return nil, fmt.Errorf("unable to hash file contents (%s): %w", path, err)
+			return &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: fmt.Errorf("unable to hash file contents: %w", err).Error(),
+			}, nil
 		} else if uint64(copied) != metadata.Size {
-			return nil, fmt.Errorf("hashed size mismatch (%s): %d != %d", path, copied, metadata.Size)
+			return &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: fmt.Sprintf("hashed size mismatch: %d != %d", copied, metadata.Size),
+			}, nil
 		}
 
 		// Compute the digest.
@@ -208,7 +219,10 @@ func (s *scanner) file(
 		// Convert the new modification time to Protocol Buffers format.
 		modificationTime := timestamppb.New(metadata.ModificationTime)
 		if err := modificationTime.CheckValid(); err != nil {
-			return nil, fmt.Errorf("unable to convert file modification time (%s): %w", path, err)
+			return &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: fmt.Errorf("unable to convert file modification time: %w", err).Error(),
+			}, nil
 		}
 
 		// Create the new cache entry.
@@ -239,7 +253,13 @@ func (s *scanner) symbolicLink(
 	// Read the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read symbolic link target (%s): %w", path, err)
+		if os.IsNotExist(err) {
+			return nil, err
+		}
+		return &Entry{
+			Kind:    EntryKind_Problematic,
+			Problem: fmt.Errorf("unable to read symbolic link target: %w", err).Error(),
+		}, nil
 	}
 
 	// If requested, enforce that the link is portable, otherwise just ensure
@@ -247,15 +267,21 @@ func (s *scanner) symbolicLink(
 	if enforcePortable {
 		target, err = normalizeSymlinkAndEnsurePortable(path, target)
 		if err != nil {
-			return nil, fmt.Errorf("invalid symbolic link (%s): %w", path, err)
+			return &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: fmt.Errorf("invalid symbolic link: %w", err).Error(),
+			}, nil
 		}
 	} else if target == "" {
-		return nil, fmt.Errorf("symbolic link target is empty (%s)", path)
+		return &Entry{
+			Kind:    EntryKind_Problematic,
+			Problem: "symbolic link target is empty",
+		}, nil
 	}
 
 	// Success.
 	return &Entry{
-		Kind:   EntryKind_Symlink,
+		Kind:   EntryKind_SymbolicLink,
 		Target: target,
 	}, nil
 }
@@ -283,13 +309,22 @@ func (s *scanner) directory(
 	// potentially change executability preservation or Unicode decomposition
 	// behavior).
 	if metadata.DeviceID != s.deviceID {
-		return nil, fmt.Errorf("scan crossed filesystem boundary (%s)", path)
+		return &Entry{
+			Kind:    EntryKind_Problematic,
+			Problem: "scan crossed filesystem boundary",
+		}, nil
 	}
 
 	// If the directory is not yet opened, then open it and defer its closure.
 	if directory == nil {
 		if d, err := parent.OpenDirectory(metadata.Name); err != nil {
-			return nil, fmt.Errorf("unable to open directory (%s): %w", path, err)
+			if os.IsNotExist(err) {
+				return nil, err
+			}
+			return &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: fmt.Errorf("unable to open directory: %w", err).Error(),
+			}, nil
 		} else {
 			directory = d
 			defer directory.Close()
@@ -299,7 +334,10 @@ func (s *scanner) directory(
 	// Read directory contents.
 	directoryContents, err := directory.ReadContents()
 	if err != nil {
-		return nil, fmt.Errorf("unable to read directory contents (%s): %w", path, err)
+		return &Entry{
+			Kind:    EntryKind_Problematic,
+			Problem: fmt.Errorf("unable to read directory contents: %w", err).Error(),
+		}, nil
 	}
 
 	// RACE: There is technically a race condition here between the listing of
@@ -326,7 +364,9 @@ func (s *scanner) directory(
 		// Extract the content name.
 		contentName := contentMetadata.Name
 
-		// If this is an intermediate temporary file, then ignore it.
+		// If this is an intermediate temporary file, then ignore it. We avoid
+		// recording these files, even as untracked entries, because we know
+		// that they're ephemeral.
 		if filesystem.IsTemporaryFileName(contentName) {
 			continue
 		}
@@ -339,7 +379,8 @@ func (s *scanner) directory(
 		// Compute the content path.
 		contentPath := pathJoin(path, contentName)
 
-		// Compute the kind for this content, skipping if unsupported.
+		// Compute the kind for this content, recording an untracked entry if
+		// the content type isn't supported.
 		var contentKind EntryKind
 		switch contentMetadata.Mode & filesystem.ModeTypeMask {
 		case filesystem.ModeTypeDirectory:
@@ -347,13 +388,14 @@ func (s *scanner) directory(
 		case filesystem.ModeTypeFile:
 			contentKind = EntryKind_File
 		case filesystem.ModeTypeSymbolicLink:
-			contentKind = EntryKind_Symlink
+			contentKind = EntryKind_SymbolicLink
 		default:
+			contents[contentName] = &Entry{Kind: EntryKind_Untracked}
 			continue
 		}
 
 		// Determine whether or not this path is ignored and update the new
-		// ignore cache.
+		// ignore cache. If the path is ignored, then record an untracked entry.
 		contentIsDirectory := contentKind == EntryKind_Directory
 		ignoreCacheKey := IgnoreCacheKey{contentPath, contentIsDirectory}
 		ignored, ok := s.ignoreCache[ignoreCacheKey]
@@ -362,6 +404,7 @@ func (s *scanner) directory(
 		}
 		s.newIgnoreCache[ignoreCacheKey] = ignored
 		if ignored {
+			contents[contentName] = &Entry{Kind: EntryKind_Untracked}
 			continue
 		}
 
@@ -391,11 +434,11 @@ func (s *scanner) directory(
 		var err error
 		if contentKind == EntryKind_File {
 			entry, err = s.file(contentPath, directory, contentMetadata, nil)
-		} else if contentKind == EntryKind_Symlink {
+		} else if contentKind == EntryKind_SymbolicLink {
 			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
 				entry, err = s.symbolicLink(contentPath, directory, contentName, true)
 			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
-				continue
+				entry = &Entry{Kind: EntryKind_Untracked}
 			} else if s.symlinkMode == SymlinkMode_SymlinkModePOSIXRaw {
 				entry, err = s.symbolicLink(contentPath, directory, contentName, false)
 			} else {
@@ -407,12 +450,17 @@ func (s *scanner) directory(
 			panic("unhandled entry kind")
 		}
 
-		// Watch for errors and add the entry.
+		// Watch for errors from the handling function. If the error is due to
+		// the content no longer existing, then we just treat the content as if
+		// it had never existed.
 		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			return nil, err
 		}
 
-		// Add the content.
+		// Record the content.
 		contents[contentName] = entry
 	}
 
@@ -510,7 +558,9 @@ func Scan(
 			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 
-		// If we used probe files, update the cache.
+		// If we used probe files, then update the behavior cache. Probe files
+		// are never used on Windows, so we're safe to use the device ID (which
+		// is always 0 on Windows) as a cache key.
 		if usedProbeFiles {
 			behaviorCache.Lock()
 			behaviorCache.decomposesUnicode[metadata.DeviceID] = decomposesUnicode
@@ -559,10 +609,11 @@ func Scan(
 			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 
-		// If we used probe files, update the behavior cache. We're okay to
-		// cache by device ID here (even though it's the file's device ID) since
-		// we know the parent directory will have the same device ID as the file
-		// within it.
+		// If we used probe files, then update the behavior cache. Probe files
+		// are never used on Windows, so we're safe to use the device ID (which
+		// is always 0 on Windows) as a cache key. Moreover, we're okay to use
+		// the file's device ID, because we know the parent directory will have
+		// the same device ID (since files can't be filesystem roots).
 		if usedProbeFiles {
 			behaviorCache.Lock()
 			behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
@@ -668,18 +719,13 @@ func Scan(
 	}
 
 	// If we have a baseline, then backfill the ignore and digest caches to
-	// include entries for paths that exist in our result but which we may not
+	// include entries for paths that exist in our result, but which we may not
 	// have explicitly visited.
 	//
-	// In the case of the ignore cache, we just add false entries for each path
-	// that we see in the result since (a) these are the only paths that we'd be
-	// able to propagate from the old ignore cache anyway and (b) we know their
-	// ignore cache value would be false (since they aren't ignored). Obviously
-	// we miss out on any true entries in the ignore cache (from previously
-	// ignored content), but this is generally fine because (a) the bulk of the
-	// ignore cache is non-ignored content anyway (because most ignored content
-	// is ignored as the result of a single parent path) and (b) these single
-	// missing paths will be cheap enough to re-process later.
+	// For the ignore cache, we just add false entries for every synchronizable
+	// entry that we see in the scan result (since we know they aren't ignored).
+	// This obviously doesn't transfer true entries, but those are typically far
+	// fewer in number that false entries and will be cheap enough to recompute.
 	//
 	// In the case of the digest cache, we have to ensure correct propagation
 	// from the old cache to the new in the case of entries that we didn't
@@ -696,8 +742,15 @@ func Scan(
 
 		// Perform propagation.
 		result.walk("", func(path string, entry *Entry) {
-			// Create an ignore cache entry for this path.
-			newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+			// Create an ignore cache entry for this path. We can't record
+			// anything for unsynchronizable content because we don't know
+			// whether or not it's a directory. We probably could if we used
+			// more granular unsynchronizable content kinds that also included
+			// type information, but the microscopic performance gains wouldn't
+			// be worth the additional complexity.
+			if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
+				newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+			}
 
 			// Propagate digest cache entries.
 			if entry.Kind == EntryKind_File {
@@ -709,7 +762,7 @@ func Scan(
 					}
 				}
 			}
-		})
+		}, false)
 
 		// Abort if we encountered missing cache entries.
 		if missingCacheEntries {

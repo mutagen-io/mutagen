@@ -4,514 +4,438 @@ import (
 	"testing"
 )
 
-func TestEntryNilValid(t *testing.T) {
-	if err := testNilEntry.EnsureValid(); err != nil {
-		t.Fatal("nil entry considered invalid:", err)
-	}
+func init() {
+	// Enable wildcard problem matching for tests.
+	entryEqualWildcardProblemMatch = true
 }
 
-func TestEntryDirectoryExecutableInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind:       EntryKind_Directory,
-		Executable: true,
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with executability set considered valid")
-	}
+// entryEnsureValidTestCases are test cases shared between TestEntryEnsureValid,
+// TestArchiveEnsureValid, and TestChangeEnsureValid.
+var entryEnsureValidTestCases = []struct {
+	entry          *Entry
+	synchronizable bool
+	expected       bool
+}{
+	// Test synchronizable content.
+	{tN, false, true},
+	{tN, true, true},
+	{tF1, false, true},
+	{tF1, true, true},
+	{tF3E, false, true},
+	{tF3E, true, true},
+	{tSR, false, true},
+	{tSR, true, true},
+	{tSA, false, true},
+	{tSA, true, true},
+	{tD0, false, true},
+	{tD0, true, true},
+	{tD1, false, true},
+	{tD1, true, true},
+	{tD3E, false, true},
+	{tD3E, true, true},
+	{tDCC, false, true},
+	{tDCC, true, true},
+	{tDSR, false, true},
+	{tDSR, true, true},
+	{tDSA, false, true},
+	{tDSA, true, true},
+	{tDM, false, true},
+	{tDM, true, true},
+
+	// Test unsynchronizable content.
+	{tU, false, true},
+	{tU, true, false},
+	{tP1, false, true},
+	{tP1, true, false},
+	{tDU, false, true},
+	{tDU, true, false},
+	{tDP1, false, true},
+	{tDP1, true, false},
+
+	// Test invalid content.
+	{tIDDE, false, false},
+	{tIDDE, true, false},
+	{tIDD, false, false},
+	{tIDD, true, false},
+	{tIDE, false, false},
+	{tIDE, true, false},
+	{tIDT, false, false},
+	{tIDT, true, false},
+	{tIDP, false, false},
+	{tIDP, true, false},
+	{tIDCE, false, false},
+	{tIDCE, true, false},
+	{tIDCD, false, false},
+	{tIDCD, true, false},
+	{tIDCDD, false, false},
+	{tIDCDD, true, false},
+	{tIDCS, false, false},
+	{tIDCS, true, false},
+	{tIDCN, false, false},
+	{tIDCN, true, false},
+	{tIFCE, false, false},
+	{tIFCE, true, false},
+	{tIFC, false, false},
+	{tIFC, true, false},
+	{tIFT, false, false},
+	{tIFT, true, false},
+	{tIFP, false, false},
+	{tIFP, true, false},
+	{tIFDN, false, false},
+	{tIFDN, true, false},
+	{tIFDE, false, false},
+	{tIFDE, true, false},
+	{tISCE, false, false},
+	{tISCE, true, false},
+	{tISC, false, false},
+	{tISC, true, false},
+	{tISDE, false, false},
+	{tISDE, true, false},
+	{tISD, false, false},
+	{tISD, true, false},
+	{tISE, false, false},
+	{tISE, true, false},
+	{tISP, false, false},
+	{tISP, true, false},
+	{tISTE, false, false},
+	{tISTE, true, false},
+	{tIUCE, false, false},
+	{tIUCE, true, false},
+	{tIUC, false, false},
+	{tIUC, true, false},
+	{tIUDE, false, false},
+	{tIUDE, true, false},
+	{tIUD, false, false},
+	{tIUD, true, false},
+	{tIUE, false, false},
+	{tIUE, true, false},
+	{tIUT, false, false},
+	{tIUT, true, false},
+	{tIUP, false, false},
+	{tIUP, true, false},
+	{tIPCE, false, false},
+	{tIPCE, true, false},
+	{tIPC, false, false},
+	{tIPC, true, false},
+	{tIPDE, false, false},
+	{tIPDE, true, false},
+	{tIPD, false, false},
+	{tIPD, true, false},
+	{tIPE, false, false},
+	{tIPE, true, false},
+	{tIPT, false, false},
+	{tIPT, true, false},
+	{tIPPE, false, false},
+	{tIPPE, true, false},
+	{tII, false, false},
+	{tII, true, false},
 }
 
-func TestEntryDirectoryDigestInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind:   EntryKind_Directory,
-		Digest: []byte{0},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with digest set considered valid")
-	}
-}
-
-func TestEntryDirectoryTargetInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind:   EntryKind_Directory,
-		Target: "file",
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with target set considered valid")
-	}
-}
-
-func TestEntryDirectoryEmptyContentNameInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			"": testFile1Entry,
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with empty content name considered valid")
-	}
-}
-
-func TestEntryDirectoryContentNameWithDotInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			".": testFile1Entry,
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with empty content name considered valid")
-	}
-}
-
-func TestEntryDirectoryContentNameWithDotDotInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			"..": testFile1Entry,
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with empty content name considered valid")
-	}
-}
-
-func TestEntryDirectoryContentNameWithPathSeparatorInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			"na/me": testFile1Entry,
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with path separator in content name considered valid")
-	}
-}
-
-func TestEntryDirectoryNilContentInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			"file": nil,
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with nil content considered valid")
-	}
-}
-
-func TestEntryDirectoryInvalidContentInvalid(t *testing.T) {
-	directory := &Entry{
-		Kind: EntryKind_Directory,
-		Contents: map[string]*Entry{
-			"file": {Kind: EntryKind_File},
-		},
-	}
-	if directory.EnsureValid() == nil {
-		t.Fatal("directory with invalid content considered valid")
-	}
-}
-
-func TestEntryDirectoryValid(t *testing.T) {
-	if err := testDirectory1Entry.EnsureValid(); err != nil {
-		t.Fatal("valid directory considered invalid:", err)
-	}
-}
-
-func TestEntryFileContentsInvalid(t *testing.T) {
-	file := &Entry{
-		Kind: EntryKind_File,
-		Contents: map[string]*Entry{
-			"file": testFile1Entry,
-		},
-	}
-	if file.EnsureValid() == nil {
-		t.Fatal("file with directory content considered valid")
-	}
-}
-
-func TestEntryFileTargetInvalid(t *testing.T) {
-	file := &Entry{
-		Kind:   EntryKind_File,
-		Digest: []byte{0},
-		Target: "file",
-	}
-	if file.EnsureValid() == nil {
-		t.Fatal("file with target set considered valid")
-	}
-}
-
-func TestEntryFileNilDigestInvalid(t *testing.T) {
-	file := &Entry{
-		Kind: EntryKind_File,
-	}
-	if file.EnsureValid() == nil {
-		t.Fatal("file with nil digest considered valid")
-	}
-}
-
-func TestEntryFileEmptyDigestInvalid(t *testing.T) {
-	file := &Entry{
-		Kind:   EntryKind_File,
-		Digest: []byte{},
-	}
-	if file.EnsureValid() == nil {
-		t.Fatal("file with empty digest considered valid")
-	}
-}
-
-func TestEntryFileValid(t *testing.T) {
-	if err := testFile1Entry.EnsureValid(); err != nil {
-		t.Fatal("valid file considered invalid:", err)
-	}
-}
-
-func TestEntrySymlinkExecutableInvalid(t *testing.T) {
-	symlink := &Entry{
-		Kind:       EntryKind_Symlink,
-		Target:     "file",
-		Executable: true,
-	}
-	if symlink.EnsureValid() == nil {
-		t.Fatal("symlink with executability set considered valid")
-	}
-}
-
-func TestEntrySymlinkDigestInvalid(t *testing.T) {
-	symlink := &Entry{
-		Kind:   EntryKind_Symlink,
-		Target: "file",
-		Digest: []byte{0},
-	}
-	if symlink.EnsureValid() == nil {
-		t.Fatal("symlink with digest set considered valid")
-	}
-}
-
-func TestEntrySymlinkContentsInvalid(t *testing.T) {
-	symlink := &Entry{
-		Kind:   EntryKind_Symlink,
-		Target: "file",
-		Contents: map[string]*Entry{
-			"file": testFile1Entry,
-		},
-	}
-	if symlink.EnsureValid() == nil {
-		t.Fatal("symlink with directory content considered valid")
-	}
-}
-
-func TestEntrySymlinkTargetEmptyInvalid(t *testing.T) {
-	symlink := &Entry{
-		Kind:   EntryKind_Symlink,
-		Target: "",
-	}
-	if symlink.EnsureValid() == nil {
-		t.Fatal("symlink with empty target considered valid")
-	}
-}
-
-func TestEntrySymlinkValid(t *testing.T) {
-	if err := testSymlinkEntry.EnsureValid(); err != nil {
-		t.Fatal("valid symlink considered invalid:", err)
-	}
-}
-
-func TestEntryInvalidKindInvalid(t *testing.T) {
-	entry := &Entry{Kind: (EntryKind_Symlink + 1)}
-	if entry.EnsureValid() == nil {
-		t.Fatal("entry with invalid kind considered valid")
-	}
-}
-
-func TestIsDirectory(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		entry             *Entry
-		expectIsDirectory bool
-	}{
-		{testNilEntry, false},
-		{testFile1Entry, false},
-		{testSymlinkEntry, false},
-		{testDirectory1Entry, true},
-	}
-
+// TestEntryEnsureValid tests Entry.EnsureValid.
+func TestEntryEnsureValid(t *testing.T) {
 	// Process test cases.
-	for _, testCase := range testCases {
-		isDirectory := testCase.entry.IsDirectory()
-		if isDirectory && !testCase.expectIsDirectory {
-			t.Error("test case incorrectly classified as directory")
-		} else if !isDirectory && testCase.expectIsDirectory {
-			t.Error("test case not correctly classified as directory")
-		}
-	}
-}
-
-func TestEntryWalk(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		entry            *Entry
-		expectedContents map[string]*Entry
-	}{
-		{nil, map[string]*Entry{"": nil}},
-		{testFile1Entry, map[string]*Entry{"": testFile1Entry}},
-		{testDirectoryWithCaseConflict, map[string]*Entry{
-			"":         testDirectoryWithCaseConflict,
-			"FileName": testFile1Entry,
-			"FILENAME": testFile3Entry,
-		}},
-		{testDirectory3Entry, map[string]*Entry{
-			"":                                   testDirectory3Entry,
-			"empty dir\xc3\xa9ctory":             testDirectory3Entry.Contents["empty dir\xc3\xa9ctory"],
-			"empty dir\xc3\xa9ctory/new subfile": testFile3Entry,
-			"renamed directory":                  testDirectory3Entry.Contents["renamed directory"],
-			"renamed directory/subdirectory":     testDirectory3Entry.Contents["renamed directory"].Contents["subdirectory"],
-			"renamed directory/subfile":          testFile3Entry,
-			"renamed directory/another symlink":  testDirectory3Entry.Contents["renamed directory"].Contents["another symlink"],
-			"executable file":                    testFile2Entry,
-			"new symlink":                        testDirectory3Entry.Contents["new symlink"],
-		}},
-	}
-
-	// Process test cases.
-	for _, testCase := range testCases {
-		// Perform walking to extract contents.
-		contents := make(map[string]*Entry)
-		testCase.entry.walk("", func(path string, entry *Entry) {
-			contents[path] = entry
-		})
-
-		// Compare content lengths.
-		if len(contents) != len(testCase.expectedContents) {
-			t.Error(
-				"content length does not match expected:",
-				len(contents),
-				"!=",
-				len(testCase.expectedContents),
-			)
-			continue
+	for i, test := range entryEnsureValidTestCases {
+		// Compute a description for the test in case we need it.
+		description := "without synchronizability requirement"
+		if test.synchronizable {
+			description = "when requiring synchronizability"
 		}
 
-		// Compare contents.
-		for path, expectedEntry := range testCase.expectedContents {
-			if entry, ok := contents[path]; !ok {
-				t.Error("unable to find expected content path")
-			} else if !entry.Equal(expectedEntry) {
-				t.Error("content entry not equal to expected")
+		// Check validity.
+		err := test.entry.EnsureValid(test.synchronizable)
+		valid := err == nil
+		if valid != test.expected {
+			if valid {
+				t.Errorf("test index %d: entry incorrectly classified as valid (%s)", i, description)
+			} else {
+				t.Errorf("test index %d: entry incorrectly classified as invalid (%s): %v", i, description, err)
 			}
 		}
 	}
 }
 
-func TestEntryCountNil(t *testing.T) {
-	if count := testNilEntry.Count(); count != 0 {
-		t.Error("zero-entry hierarchy reported incorrect count:", count)
+// testEntryWalkVisit encodes a visit operation from Entry.walk.
+type testEntryWalkVisit struct {
+	// path is the visited path.
+	path string
+	// entry is the visited entry.
+	entry *Entry
+}
+
+// TestEntryWalk tests Entry.walk.
+func TestEntryWalk(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		path     string
+		entry    *Entry
+		reverse  bool
+		expected []testEntryWalkVisit
+	}{
+		{"", tN, false, []testEntryWalkVisit{{"", tN}}},
+		{"", tF1, false, []testEntryWalkVisit{{"", tF1}}},
+		{"", tSR, false, []testEntryWalkVisit{{"", tSR}}},
+		{"", tD0, false, []testEntryWalkVisit{{"", tD0}}},
+		{"", tD1, false, []testEntryWalkVisit{{"", tD0}, {"file", tF1}}},
+		{"", tD1, true, []testEntryWalkVisit{{"file", tF1}, {"", tD0}}},
+		{"base", tD1, false, []testEntryWalkVisit{{"base", tD0}, {"base/file", tF1}}},
+		{"base", tD1, true, []testEntryWalkVisit{{"base/file", tF1}, {"base", tD0}}},
+		{
+			"",
+			nested("child", tD1),
+			false,
+			[]testEntryWalkVisit{{"", tD0}, {"child", tD0}, {"child/file", tF1}},
+		},
+		{"", tU, false, []testEntryWalkVisit{{"", tU}}},
+		{"", tP1, false, []testEntryWalkVisit{{"", tP1}}},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		// Perform walking and record visits.
+		var visits []testEntryWalkVisit
+		test.entry.walk(test.path, func(path string, entry *Entry) {
+			visits = append(visits, testEntryWalkVisit{path, entry.Copy(false)})
+		}, test.reverse)
+
+		// Verify that the number of visits was correct.
+		if len(visits) != len(test.expected) {
+			t.Errorf("test index %d: visit count did not match expected: %d != %d",
+				i, len(visits), len(test.expected),
+			)
+		}
+
+		// Verify that the visits match what was expected.
+		for v, visit := range visits {
+			expectedVisit := test.expected[v]
+			if visit.path != expectedVisit.path {
+				t.Errorf("test index %d, visit index %d: visit path did not match expected: %s != %s",
+					i, v, visit.path, expectedVisit.path,
+				)
+			}
+			if !visit.entry.Equal(expectedVisit.entry, true) {
+				t.Errorf("test index %d, visit index %d: visit entry did not match expected", i, v)
+			}
+		}
 	}
 }
 
-func TestEntryCountSingle(t *testing.T) {
-	if count := testFile1Entry.Count(); count != 1 {
-		t.Error("single-entry hierarchy reported incorrect count:", count)
+// TestEntryCount tests Entry.Count.
+func TestEntryCount(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		entry    *Entry
+		expected uint64
+	}{
+		{tN, 0},
+		{tF1, 1},
+		{tSR, 1},
+		{tD0, 1},
+		{tD1, 2},
+		{tDSR, 3},
+		{tDCC, 3},
+		{tU, 0},
+		{tP1, 0},
+		{tDU, 1},
+		{tDP1, 1},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if count := test.entry.Count(); count != test.expected {
+			t.Errorf("test index %d: count did not match expected: %d != %d", i, count, test.expected)
+		}
 	}
 }
 
-func TestEntryCountHierarchy(t *testing.T) {
-	if count := testDirectory1Entry.Count(); count != 11 {
-		t.Error("multi-entry hierarchy reported incorrect count:", count, "!=", 11)
+// TestEntryEqual tests Entry.Equal.
+func TestEntryEqual(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		first    *Entry
+		second   *Entry
+		deep     bool
+		expected bool
+	}{
+		{tN, tN, false, true},
+		{tN, tN, true, true},
+		{tN, tF1, false, false},
+		{tN, tF1, true, false},
+		{tF1, tF1, false, true},
+		{tF1, tF1, true, true},
+		{tF1, tF2, false, false},
+		{tF1, tF2, true, false},
+		{tF1, tD0, false, false},
+		{tF1, tD0, true, false},
+		{tSR, tSR, false, true},
+		{tSR, tSR, true, true},
+		{tSR, tSA, false, false},
+		{tSR, tSA, true, false},
+		{tD1, tD1, false, true},
+		{tD1, tD1, true, true},
+		{tD1, tD2, false, true},
+		{tD1, tD2, true, false},
+		{tD1, tDCC, false, true},
+		{tD1, tDCC, true, false},
+		{tF1, tU, false, false},
+		{tF1, tU, true, false},
+		{tF1, tP1, false, false},
+		{tF1, tP1, true, false},
+		{tU, tU, false, true},
+		{tU, tU, true, true},
+		{tP1, tP1, false, true},
+		{tP1, tP1, true, true},
+		{tDU, tDU, false, true},
+		{tDU, tDU, true, true},
+		{tDP1, tDP1, false, true},
+		{tDP1, tDP1, true, true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		// Compute a description for the test in case we need it.
+		description := "shallow"
+		if test.deep {
+			description = "deep"
+		}
+
+		// Check equivalence.
+		equal := test.first.Equal(test.second, test.deep)
+		if equal != test.expected {
+			if equal {
+				t.Errorf("test index %d: entries incorrectly classified as equal (%s)", i, description)
+			} else {
+				t.Errorf("test index %d: entries incorrectly classified as unequal (%s)", i, description)
+			}
+		}
+
+		// Check that equivalence (or non-equivalence) is symmetric
+		reverseEqual := test.second.Equal(test.first, test.deep)
+		if reverseEqual != equal {
+			t.Errorf("test index %d: (%s) entry equivalence not symmetric: %t != %t",
+				i, description, reverseEqual, equal,
+			)
+		}
 	}
 }
 
-func TestEntryNilNilEqualShallow(t *testing.T) {
-	if !testNilEntry.equalShallow(testNilEntry) {
-		t.Error("two nil entries not considered shallow equal")
+// TestEntryCopy tests Entry.copy.
+func TestEntryCopy(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		entry    *Entry
+		deep     bool
+		expected *Entry
+	}{
+		{tN, false, tN},
+		{tN, true, tN},
+		{tF1, false, tF1},
+		{tF1, true, tF1},
+		{tF3E, false, tF3E},
+		{tF3E, true, tF3E},
+		{tSA, false, tSA},
+		{tSA, true, tSA},
+		{tD0, false, tD0},
+		{tD0, true, tD0},
+		{tD1, false, tD0},
+		{tD1, true, tD1},
+		{tU, false, tU},
+		{tU, true, tU},
+		{tP1, false, tP1},
+		{tP1, true, tP1},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		// Compute a description for the test in case we need it.
+		description := "shallow"
+		if test.deep {
+			description = "deep"
+		}
+
+		// Perform copying and verify that the result matches what's expected.
+		result := test.entry.Copy(test.deep)
+		if !result.Equal(test.expected, true) {
+			t.Errorf("test index %d: (%s) copy result does not match expected", i, description)
+		}
 	}
 }
 
-func TestEntryNilNonNilNotEqualShallow(t *testing.T) {
-	if testNilEntry.equalShallow(testFile1Entry) {
-		t.Error("nil and non-nil entries considered shallow equal")
+// TestEntryUnsynchronizable tests Entry.unsynchronizable.
+func TestEntryUnsynchronizable(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		entry    *Entry
+		expected bool
+	}{
+		{tN, false},
+		{tF1, false},
+		{tSR, false},
+		{tD0, false},
+		{tD1, false},
+		{tU, true},
+		{tP1, true},
+		{tDU, true},
+		{tDP1, true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if unsynchronizable := test.entry.unsynchronizable(); unsynchronizable != test.expected {
+			t.Errorf("test index %d: unsynchronizability does not match expected: %t != %t",
+				i, unsynchronizable, test.expected,
+			)
+		}
 	}
 }
 
-func TestEntrySameDirectoryEqualShallow(t *testing.T) {
-	if !testDirectory1Entry.equalShallow(testDirectory1Entry) {
-		t.Error("identical directories not considered shallow equal")
+// TestEntrySynchronizable tests Entry.synchronizable.
+func TestEntrySynchronizable(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		entry    *Entry
+		expected *Entry
+	}{
+		{tN, tN},
+		{tF1, tF1},
+		{tSR, tSR},
+		{tD0, tD0},
+		{tD1, tD1},
+		{tU, tN},
+		{tP1, tN},
+		{tDU, tD0},
+		{tDP1, tD0},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if synchronizable := test.entry.synchronizable(); !synchronizable.Equal(test.expected, true) {
+			t.Errorf("test index %d: synchronizable subentry does not match expected", i)
+		}
 	}
 }
 
-func TestEntrySameFileEqualShallow(t *testing.T) {
-	if !testFile1Entry.equalShallow(testFile1Entry) {
-		t.Error("identical files not considered shallow equal")
+// TestEntryProblems tests Entry.Problems.
+func TestEntryProblems(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		entry    *Entry
+		expected []*Problem
+	}{
+		{tN, nil},
+		{tF1, nil},
+		{tSR, nil},
+		{tD0, nil},
+		{tD1, nil},
+		{tU, nil},
+		{tP1, []*Problem{{Error: tP1.Problem}}},
+		{tDU, nil},
+		{tDP1, []*Problem{{Path: "problematic", Error: tP1.Problem}}},
 	}
-}
 
-func TestEntrySameSymlinkEqualShallow(t *testing.T) {
-	if !testSymlinkEntry.equalShallow(testSymlinkEntry) {
-		t.Error("identical symlinks not considered shallow equal")
-	}
-}
-
-func TestEntrySymlinkFileNotEqualShallow(t *testing.T) {
-	if testSymlinkEntry.equalShallow(testFile1Entry) {
-		t.Error("symlink and file considered shallow equal")
-	}
-}
-
-func TestDifferentDirectoriesEqualShallow(t *testing.T) {
-	if !testDirectory1Entry.equalShallow(testDirectory2Entry) {
-		t.Error("different directories not considered shallow equal")
-	}
-}
-
-func TestEntryNilNilEqual(t *testing.T) {
-	if !testNilEntry.Equal(testNilEntry) {
-		t.Error("two nil entries not considered equal")
-	}
-}
-
-func TestEntryEmptyDirectoriesEqual(t *testing.T) {
-	emptyDirectory := &Entry{
-		Kind:     EntryKind_Directory,
-		Contents: make(map[string]*Entry),
-	}
-	emptyDirectoryNilContent := &Entry{
-		Kind: EntryKind_Directory,
-	}
-	if !emptyDirectory.Equal(emptyDirectoryNilContent) {
-		t.Error("two nil entries not considered equal (empty-to-nil)")
-	}
-	if !emptyDirectoryNilContent.Equal(emptyDirectory) {
-		t.Error("two nil entries not considered equal (nil-to-empty)")
-	}
-	if !emptyDirectoryNilContent.Equal(emptyDirectoryNilContent) {
-		t.Error("two nil entries not considered equal (nil-to-nil)")
-	}
-	if !emptyDirectory.Equal(emptyDirectory) {
-		t.Error("two nil entries not considered equal (empty-to-empty)")
-	}
-}
-
-func TestEntrySameDirectoryEqual(t *testing.T) {
-	if !testDirectory1Entry.Equal(testDirectory1Entry) {
-		t.Error("identical directories not considered equal")
-	}
-}
-
-func TestEntrySameFileEqual(t *testing.T) {
-	if !testFile1Entry.Equal(testFile1Entry) {
-		t.Error("identical files not considered equal")
-	}
-}
-
-func TestEntrySameSymlinkEqual(t *testing.T) {
-	if !testSymlinkEntry.Equal(testSymlinkEntry) {
-		t.Error("identical symlinks not considered equal")
-	}
-}
-
-func TestEntrySymlinkFileNotEqual(t *testing.T) {
-	if testSymlinkEntry.Equal(testFile1Entry) {
-		t.Error("symlink and file considered shallow equal")
-	}
-}
-
-func TestDifferentDirectoriesNotEqual(t *testing.T) {
-	if testDirectory1Entry.Equal(testDirectory2Entry) {
-		t.Error("directories 1 and 2 considered equal")
-	}
-	if testDirectory1Entry.Equal(testDirectory3Entry) {
-		t.Error("directories 1 and 3 considered equal")
-	}
-	if testDirectory2Entry.Equal(testDirectory3Entry) {
-		t.Error("directories 2 and 3 considered equal")
-	}
-}
-
-func TestEntryNilCopyShallow(t *testing.T) {
-	if testNilEntry.copySlim() != nil {
-		t.Error("shallow copy of nil entry non-nil")
-	}
-}
-
-func TestEntryDirectoryCopyShallow(t *testing.T) {
-	directory := testDirectory1Entry.copySlim()
-	if directory == nil {
-		t.Error("shallow copy of directory returned nil")
-	}
-	if directory.Contents != nil {
-		t.Error("shallow copy of directory has non-nil contents")
-	}
-	if !directory.equalShallow(testDirectory1Entry) {
-		t.Error("shallow copy of directory not considered shallow equal to original")
-	}
-}
-
-func TestEntryFileCopyShallow(t *testing.T) {
-	file := testFile1Entry.copySlim()
-	if file == nil {
-		t.Error("shallow copy of file returned nil")
-	}
-	if !file.equalShallow(testFile1Entry) {
-		t.Error("shallow copy of file not considered shallow equal to original")
-	}
-}
-
-func TestEntrySymlinkCopyShallow(t *testing.T) {
-	symlink := testSymlinkEntry.copySlim()
-	if symlink == nil {
-		t.Error("shallow copy of symlink returned nil")
-	}
-	if !symlink.equalShallow(testSymlinkEntry) {
-		t.Error("shallow copy of symlink not considered shallow equal to original")
-	}
-}
-
-func TestEntryNilCopy(t *testing.T) {
-	if testNilEntry.Copy() != nil {
-		t.Error("copy of nil entry non-nil")
-	}
-}
-
-func TestEmptyDirectoryCopy(t *testing.T) {
-	emptyDirectory := &Entry{Kind: EntryKind_Directory, Contents: make(map[string]*Entry)}
-	directory := emptyDirectory.Copy()
-	if directory == nil {
-		t.Error("copy of empty directory returned nil")
-	}
-	if directory.Contents != nil {
-		t.Error("copy of empty directory has non-nil contents")
-	}
-	if !directory.Equal(emptyDirectory) {
-		t.Error("copy of empty directory not considered equal to original")
-	}
-}
-
-func TestEntryDirectoryCopy(t *testing.T) {
-	directory := testDirectory1Entry.Copy()
-	if directory == nil {
-		t.Error("copy of directory returned nil")
-	}
-	if !directory.Equal(testDirectory1Entry) {
-		t.Error("copy of directory not considered equal to original")
-	}
-}
-
-func TestEntryFileCopy(t *testing.T) {
-	file := testFile1Entry.Copy()
-	if file == nil {
-		t.Error("copy of file returned nil")
-	}
-	if !file.Equal(testFile1Entry) {
-		t.Error("copy of file not considered equal to original")
-	}
-}
-
-func TestEntrySymlinkCopy(t *testing.T) {
-	symlink := testSymlinkEntry.Copy()
-	if symlink == nil {
-		t.Error("copy of symlink returned nil")
-	}
-	if !symlink.Equal(testSymlinkEntry) {
-		t.Error("copy of symlink not considered equal to original")
+	// Process test cases.
+	for i, test := range tests {
+		if problems := test.entry.Problems(); !testingProblemListsEqual(problems, test.expected) {
+			t.Errorf("test index %d: entry problems do not match expected", i)
+		}
 	}
 }

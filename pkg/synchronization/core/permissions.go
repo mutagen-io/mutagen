@@ -1,40 +1,39 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 
-	fs "github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-const (
-	// allReadWritePermissionMask is a union of the user, group, and others read
-	// and write permission bits.
-	allReadWritePermissionMask = fs.ModePermissionUserRead | fs.ModePermissionUserWrite |
-		fs.ModePermissionGroupRead | fs.ModePermissionGroupWrite |
-		fs.ModePermissionOthersRead | fs.ModePermissionOthersWrite
-
-	// allExecutePermissionMask is a union of the user, group, and others
-	// executable permission bits.
-	allExecutePermissionMask = fs.ModePermissionUserExecute |
-		fs.ModePermissionGroupExecute |
-		fs.ModePermissionOthersExecute
-)
+// anyExecutableBitSet returns true if any executable bit is set on the file,
+// false otherwise.
+func anyExecutableBitSet(mode filesystem.Mode) bool {
+	return mode&(filesystem.ModePermissionUserExecute|
+		filesystem.ModePermissionGroupExecute|
+		filesystem.ModePermissionOthersExecute) != 0
+}
 
 // EnsureDefaultFileModeValid validates that a user-provided default file mode
 // is valid in the context of "portable" permission propagation. In particular,
 // it enforces that the mode is non-0 and that no executable bits are set (since
 // these should be regulated by the synchronization algorithm).
-func EnsureDefaultFileModeValid(mode fs.Mode) error {
-	// Verify that only valid bits are set. Executability is excluded since it
-	// is controlled by Mutagen.
-	if (mode & allReadWritePermissionMask) != mode {
-		return errors.New("executability bits detected in file mode")
-	}
-
+func EnsureDefaultFileModeValid(mode filesystem.Mode) error {
 	// Verify that the mode is non-zero. This should never be the case, because
 	// we treat a zero-value mode as unspecified.
 	if mode == 0 {
 		return errors.New("zero-value file permission mode specified")
+	}
+
+	// Verify that only permission bits are set.
+	if (mode & filesystem.ModePermissionsMask) != mode {
+		return errors.New("non-permission bits detected in file mode")
+	}
+
+	// Verify that no executability bits are set since they're controlled by
+	// Mutagen when propagating executability.
+	if anyExecutableBitSet(mode) {
+		return errors.New("executability bits detected in file mode")
 	}
 
 	// Success.
@@ -44,44 +43,41 @@ func EnsureDefaultFileModeValid(mode fs.Mode) error {
 // EnsureDefaultDirectoryModeValid validates that a user-provided default
 // directory mode is valid in the context of Mutagen's synchronization
 // algorithms.
-func EnsureDefaultDirectoryModeValid(mode fs.Mode) error {
-	// Verify that only base permissions are set.
-	if (mode & fs.ModePermissionsMask) != mode {
-		return errors.New("non-permission bits detected in directory mode")
-	}
-
+func EnsureDefaultDirectoryModeValid(mode filesystem.Mode) error {
 	// Verify that the mode is non-zero. This should never be the case, because
 	// we treat a zero-value mode as unspecified.
 	if mode == 0 {
 		return errors.New("zero-value directory permission mode specified")
 	}
 
+	// Verify that only permission bits are set.
+	if (mode & filesystem.ModePermissionsMask) != mode {
+		return errors.New("non-permission bits detected in directory mode")
+	}
+
 	// Success.
 	return nil
 }
 
-// anyExecutableBitSet returns true if any executable bit is set on the file,
-// false otherwise.
-func anyExecutableBitSet(mode fs.Mode) bool {
-	return (mode & allExecutePermissionMask) != 0
-}
-
 // markExecutableForReaders sets the executable bit for the mode for any case
-// where the corresponding read bit is set.
-func markExecutableForReaders(mode fs.Mode) fs.Mode {
+// where the corresponding read bit is set. It's worth noting that we implement
+// this function as three separate checks (rather than a mask with a bit shift
+// that's or'ed into the result) because we don't want to assume anything about
+// the layout of permission bits.
+func markExecutableForReaders(mode filesystem.Mode) filesystem.Mode {
 	// Set the user executable bit if necessary.
-	if (mode & fs.ModePermissionUserRead) != 0 {
-		mode |= fs.ModePermissionUserExecute
+	if (mode & filesystem.ModePermissionUserRead) != 0 {
+		mode |= filesystem.ModePermissionUserExecute
 	}
 
 	// Set the group executable bit if necessary.
-	if (mode & fs.ModePermissionGroupRead) != 0 {
-		mode |= fs.ModePermissionGroupExecute
+	if (mode & filesystem.ModePermissionGroupRead) != 0 {
+		mode |= filesystem.ModePermissionGroupExecute
 	}
 
 	// Set the others executable bit if necessary.
-	if (mode & fs.ModePermissionOthersRead) != 0 {
-		mode |= fs.ModePermissionOthersExecute
+	if (mode & filesystem.ModePermissionOthersRead) != 0 {
+		mode |= filesystem.ModePermissionOthersExecute
 	}
 
 	// Done.

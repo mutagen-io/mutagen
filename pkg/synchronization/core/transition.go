@@ -81,7 +81,7 @@ type transitioner struct {
 	recomposeUnicode bool
 	// provider is the staged file provider.
 	provider Provider
-	// problems are the problems currently being tracked.
+	// problems are the problems encountered during transition operations.
 	problems []*Problem
 	// providerMissingFiles indicates that the staged file provider returned an
 	// os.IsNotExist error for at least one file that was expected to be staged.
@@ -451,7 +451,7 @@ ContentLoop:
 				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove file"))
 				continue
 			}
-		} else if entry.Kind == EntryKind_Symlink {
+		} else if entry.Kind == EntryKind_SymbolicLink {
 			if err = t.removeSymbolicLink(directory, contentName, contentPath, entry); err != nil {
 				contentRemovalFailed = true
 				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove symbolic link"))
@@ -535,7 +535,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 	// Handle removal based on type.
 	if entry.Kind == EntryKind_Directory {
 		// Create a copy of entry for mutation.
-		entryCopy := entry.Copy()
+		entryCopy := entry.Copy(true)
 
 		// Attempt to reduce it.
 		if !t.removeDirectory(parent, name, path, entryCopy) {
@@ -546,7 +546,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove file"))
 			return entry
 		}
-	} else if entry.Kind == EntryKind_Symlink {
+	} else if entry.Kind == EntryKind_SymbolicLink {
 		if err := t.removeSymbolicLink(parent, name, path, entry); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to remove symlink"))
 			return entry
@@ -819,7 +819,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 
 	// Create a shallow copy of the target that we'll populate as we create its
 	// contents.
-	created := target.copySlim()
+	created := target.Copy(false)
 
 	// RACE: There is a race condition here between the directory creation and
 	// the permission setting and the creation of the directory's contents that
@@ -881,7 +881,7 @@ ContentLoop:
 			} else {
 				created.Contents[name] = entry
 			}
-		} else if entry.Kind == EntryKind_Symlink {
+		} else if entry.Kind == EntryKind_SymbolicLink {
 			if err := t.createSymbolicLink(directory, name, contentPath, entry); err != nil {
 				t.recordProblem(contentPath, errors.Wrap(err, "unable to create symbolic link"))
 			} else {
@@ -924,7 +924,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 		} else {
 			return target
 		}
-	} else if target.Kind == EntryKind_Symlink {
+	} else if target.Kind == EntryKind_SymbolicLink {
 		if err := t.createSymbolicLink(parent, name, path, target); err != nil {
 			t.recordProblem(path, errors.Wrap(err, "unable to create symlink"))
 			return nil
@@ -1007,7 +1007,8 @@ func Transition(
 
 		// Reduce whatever we expect to see on disk to nil (remove it). If we
 		// don't expect to see anything (t.Old == nil), this is a no-op. If this
-		// fails, record the reduced entry and continue to the next transition.
+		// fails, then record the reduced entry and continue to the next
+		// transition.
 		if r := transitioner.remove(t.Path, t.Old); r != nil {
 			results = append(results, r)
 			continue
@@ -1015,7 +1016,7 @@ func Transition(
 
 		// At this point, we should have nil on disk. Transition to whatever the
 		// new entry is (or at least as much of it as we can create). If the new
-		// entry is nil, this is a no-op.
+		// entry is nil, then this is a no-op.
 		results = append(results, transitioner.create(t.Path, t.New))
 	}
 

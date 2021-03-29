@@ -4,103 +4,144 @@ import (
 	"testing"
 )
 
-func TestChangeCopySlim(t *testing.T) {
-	// Create a sample change.
-	change := &Change{
-		Path: "test",
-		Old:  nil,
-		New:  testDirectory2Entry,
-	}
-
-	// Create a slim copy.
-	slim := change.copySlim()
-
-	// Check validity.
-	if err := slim.EnsureValid(); err != nil {
-		t.Fatal("slim copy of change is invalid:", err)
-	}
-
-	// Check path.
-	if slim.Path != "test" {
-		t.Error("slim copy of change has differing path")
-	}
-
-	// Check old entry.
-	if !slim.Old.Equal(nil) {
-		t.Error("slim copy of change has incorrect old entry")
-	}
-
-	// Check new entry.
-	if !slim.New.Equal(testEmptyDirectory) {
-		t.Error("slim copy of change has incorrect new entry")
-	}
-}
-
-func TestChangeNilInvalid(t *testing.T) {
+// TestChangeEnsureValid tests Change.EnsureValid.
+func TestChangeEnsureValid(t *testing.T) {
+	// Ensure that a nil change is considered invalid in all cases.
 	var change *Change
-	if change.EnsureValid() == nil {
-		t.Error("nil change considered valid")
+	if change.EnsureValid(false) == nil {
+		t.Error("nil change incorrectly classified as valid (without synchronizability requirement)")
 	}
-}
-
-func TestChangeValid(t *testing.T) {
-	change := &Change{New: testSymlinkEntry}
-	if err := change.EnsureValid(); err != nil {
-		t.Error("valid change considered invalid:", err)
-	}
-}
-
-// TestIsRootDeletion tests that Change.IsRootDeletion behaves as expected.
-func TestIsRootDeletion(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		change               *Change
-		expectIsRootDeletion bool
-	}{
-		{&Change{New: testDirectory1Entry}, false},
-		{&Change{Old: testFile1Entry, New: testDirectory1Entry}, false},
-		{&Change{}, false},
-		{&Change{Old: testFile1Entry, New: testFile1Entry}, false},
-		{&Change{Old: testFile1Entry}, true},
-		{&Change{Old: testDirectory1Entry}, true},
+	if change.EnsureValid(true) == nil {
+		t.Error("nil change incorrectly classified as valid (when requiring synchronizability)")
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
-		isRootDeletion := testCase.change.IsRootDeletion()
-		if isRootDeletion && !testCase.expectIsRootDeletion {
-			t.Error("test case incorrectly classified as root deletion")
-		} else if !isRootDeletion && testCase.expectIsRootDeletion {
-			t.Error("test case not correctly classified as root deletion")
+	for i, test := range entryEnsureValidTestCases {
+		// Compute a description for the test in case we need it.
+		description := "without synchronizability requirement"
+		if test.synchronizable {
+			description = "when requiring synchronizability"
+		}
+
+		// Check validity in the case of deletion.
+		deletion := &Change{Old: test.entry}
+		err := deletion.EnsureValid(test.synchronizable)
+		valid := err == nil
+		if valid != test.expected {
+			if valid {
+				t.Errorf("test index %d: deletion change incorrectly classified as valid (%s)", i, description)
+			} else {
+				t.Errorf("test index %d: deletion change incorrectly classified as invalid (%s): %v", i, description, err)
+			}
+		}
+
+		// Check validity in the case of creation.
+		creation := &Change{New: test.entry}
+		err = creation.EnsureValid(test.synchronizable)
+		valid = err == nil
+		if valid != test.expected {
+			if valid {
+				t.Errorf("test index %d: creation change incorrectly classified as valid (%s)", i, description)
+			} else {
+				t.Errorf("test index %d: creation change incorrectly classified as invalid (%s): %v", i, description, err)
+			}
 		}
 	}
 }
 
-// TestIsRootTypeChange tests that Change.IsRootTypeChange behaves as expected.
-func TestIsRootTypeChange(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		change                 *Change
-		expectIsRootTypeChange bool
+// TestChangeSlim tests Change.slim.
+func TestChangeSlim(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		change   *Change
+		expected *Change
 	}{
-		{&Change{}, false},
-		{&Change{Old: testFile1Entry}, false},
-		{&Change{Old: testDirectory1Entry}, false},
-		{&Change{Old: testFile1Entry, New: testFile1Entry}, false},
-		{&Change{Old: testDirectory1Entry, New: testDirectory1Entry}, false},
-		{&Change{Old: testFile1Entry, New: testFile2Entry}, false},
-		{&Change{Old: testDirectory1Entry, New: testDirectory2Entry}, false},
-		{&Change{Old: testFile1Entry, New: testDirectory1Entry}, true},
-		{&Change{Old: testDirectory1Entry, New: testFile1Entry}, true},
+		{&Change{}, &Change{}},
+		{&Change{Path: "content", Old: tF1}, &Change{Path: "content", Old: tF1}},
+		{&Change{Path: "content", New: tF1}, &Change{Path: "content", New: tF1}},
+		{&Change{Path: "content", Old: tD1}, &Change{Path: "content", Old: tD0}},
+		{&Change{Path: "content", New: tD1}, &Change{Path: "content", New: tD0}},
+		{&Change{Old: tSA, New: tD1}, &Change{Old: tSA, New: tD0}},
+		{&Change{Old: tD1, New: tSA}, &Change{Old: tD0, New: tSA}},
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
-		isRootTypeChange := testCase.change.IsRootTypeChange()
-		if isRootTypeChange && !testCase.expectIsRootTypeChange {
-			t.Error("test case incorrectly classified as root type change")
-		} else if !isRootTypeChange && testCase.expectIsRootTypeChange {
-			t.Error("test case not correctly classified as root type change")
+	for i, test := range tests {
+		// Compute the slim version of the change and ensure that it's non-nil.
+		slim := test.change.slim()
+		if slim == nil {
+			t.Errorf("test index %d: slimmed change is nil", i)
+			continue
+		}
+
+		// Verify that the path matches what's expected.
+		if slim.Path != test.expected.Path {
+			t.Errorf("test index %d: old value does not match expected", i)
+		}
+
+		// Verify that the old value matches what's expected.
+		if !slim.Old.Equal(test.expected.Old, true) {
+			t.Errorf("test index %d: old value does not match expected", i)
+		}
+
+		// Verify that the new value matches what's expected.
+		if !slim.New.Equal(test.expected.New, true) {
+			t.Errorf("test index %d: new value does not match expected", i)
+		}
+	}
+}
+
+// TestIsRootDeletion tests Change.IsRootDeletion.
+func TestIsRootDeletion(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		change   *Change
+		expected bool
+	}{
+		{&Change{New: tD1}, false},
+		{&Change{Old: tF1, New: tD1}, false},
+		{&Change{}, false},
+		{&Change{Old: tF1, New: tF1}, false},
+		{&Change{Old: tF1}, true},
+		{&Change{Old: tD1}, true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		isRootDeletion := test.change.IsRootDeletion()
+		if isRootDeletion && !test.expected {
+			t.Errorf("test index %d: incorrectly classified as root deletion", i)
+		} else if !isRootDeletion && test.expected {
+			t.Errorf("test index %d: not correctly classified as root deletion", i)
+		}
+	}
+}
+
+// TestIsRootTypeChange tests Change.IsRootTypeChange.
+func TestIsRootTypeChange(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		change   *Change
+		expected bool
+	}{
+		{&Change{}, false},
+		{&Change{Old: tF1}, false},
+		{&Change{Old: tD1}, false},
+		{&Change{Old: tF1, New: tF1}, false},
+		{&Change{Old: tD1, New: tD1}, false},
+		{&Change{Old: tF1, New: tF2}, false},
+		{&Change{Old: tD1, New: tD2}, false},
+		{&Change{Old: tF1, New: tD1}, true},
+		{&Change{Old: tD1, New: tF1}, true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		isRootTypeChange := test.change.IsRootTypeChange()
+		if isRootTypeChange && !test.expected {
+			t.Errorf("test index %d: incorrectly classified as root type change", i)
+		} else if !isRootTypeChange && test.expected {
+			t.Errorf("test index %d: not correctly classified as root type change", i)
 		}
 	}
 }

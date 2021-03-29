@@ -4,1130 +4,977 @@ import (
 	"testing"
 )
 
-// changeListsEqual determines whether or not two lists of changes are
-// equivalent. The change lists do not need to be in the same order, but they do
-// need to be structurally equivalent - i.e. not composed differently.
-func changeListsEqual(actualChanges, expectedChanges []*Change) bool {
-	// Verify that the number of changes is the same in each case.
-	if len(actualChanges) != len(expectedChanges) {
-		return false
-	}
-
-	// Index expected changes by path, because ordering is not guaranteed.
-	pathToExpectedChange := make(map[string]*Change, len(expectedChanges))
-	for _, expected := range expectedChanges {
-		pathToExpectedChange[expected.Path] = expected
-	}
-
-	// Verify that they are equal.
-	for _, actual := range actualChanges {
-		// Look for the corresponding expected change. This also validates path
-		// equivalence.
-		expected, ok := pathToExpectedChange[actual.Path]
-		if !ok {
-			return false
-		}
-
-		// Verify that the old values match.
-		if !actual.Old.Equal(expected.Old) {
-			return false
-		}
-
-		// Verify that the new values match.
-		if !actual.New.Equal(expected.New) {
-			return false
-		}
-	}
-
-	// At this point, the changes lists must be equivalent.
-	return true
+// allModes is shorthand for all synchronization modes.
+var allModes = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWaySafe,
+	SynchronizationMode_SynchronizationModeTwoWayResolved,
+	SynchronizationMode_SynchronizationModeOneWaySafe,
+	SynchronizationMode_SynchronizationModeOneWayReplica,
 }
 
-// conflictListsEqual determines whether or not two lists of conflicts are
-// equivalent. The conflict lists do not need to be in the same order.
-func conflictListsEqual(actualConflicts, expectedConflicts []*Conflict) bool {
-	// Verify that the number of conflicts is the same in each case.
-	if len(actualConflicts) != len(expectedConflicts) {
-		return false
-	}
-
-	// Index expected conflicts by root path, because ordering is not
-	// guaranteed.
-	pathToExpectedConflict := make(map[string]*Conflict, len(expectedConflicts))
-	for _, expected := range expectedConflicts {
-		pathToExpectedConflict[expected.Root()] = expected
-	}
-
-	// Verify that they are equal.
-	for _, actual := range actualConflicts {
-		// Look for the corresponding expected change. This also validates
-		// conflict root equivalence.
-		expected, ok := pathToExpectedConflict[actual.Root()]
-		if !ok {
-			return false
-		}
-
-		// Verify that alpha changes are equal.
-		if !changeListsEqual(actual.AlphaChanges, expected.AlphaChanges) {
-			return false
-		}
-
-		// Verify that beta changes are equal.
-		if !changeListsEqual(actual.BetaChanges, expected.BetaChanges) {
-			return false
-		}
-	}
-
-	// At this point, the changes lists must be equivalent.
-	return true
+// twoWayModes is shorthand for all bidirectional synchronization modes.
+var twoWayModes = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWaySafe,
+	SynchronizationMode_SynchronizationModeTwoWayResolved,
 }
 
-// reconcileTestCase is a utility type for reconciliation tests.
-type reconcileTestCase struct {
-	// ancestor is the ancestor contents for reconciliation.
-	ancestor *Entry
-	// alpha is the alpha contents for reconciliation.
-	alpha *Entry
-	// beta is the beta contents for reconciliation.
-	beta *Entry
-	// synchronizationModes are the synchronization modes for which the test
-	// case should apply.
-	synchronizationModes []SynchronizationMode
-	// expectedAncestorChanges are the expected ancestor changes.
-	expectedAncestorChanges []*Change
-	// expectedAlphaChanges are the expected alpha changes.
-	expectedAlphaChanges []*Change
-	// expectedBetaChanges are the expected beta changes.
-	expectedBetaChanges []*Change
-	// expectedConflicts are the expected conflicts.
-	expectedConflicts []*Conflict
+// oneWayModes is shorthand for all unidirectional synchronization modes.
+var oneWayModes = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeOneWaySafe,
+	SynchronizationMode_SynchronizationModeOneWayReplica,
 }
 
-// run invokes the test case in the specified testing context.
-func (c *reconcileTestCase) run(t *testing.T) {
-	// Mark this as a helper function.
-	t.Helper()
-
-	// Run in each of the specified conflict resolution modes.
-	for _, synchronizationMode := range c.synchronizationModes {
-		// Perform reconciliation.
-		ancestorChanges, alphaChanges, betaChanges, conflicts := Reconcile(
-			c.ancestor, c.alpha, c.beta,
-			synchronizationMode,
-		)
-
-		// Check that ancestor changes are what we expect.
-		if !changeListsEqual(ancestorChanges, c.expectedAncestorChanges) {
-			t.Error(
-				"ancestor changes do not match expected:",
-				ancestorChanges, "!=", c.expectedAncestorChanges,
-				"using", synchronizationMode,
-			)
-		}
-
-		// Check that alpha changes are what we expect.
-		if !changeListsEqual(alphaChanges, c.expectedAlphaChanges) {
-			t.Error(
-				"alpha changes do not match expected:",
-				alphaChanges, "!=", c.expectedAlphaChanges,
-				"using", synchronizationMode,
-			)
-		}
-
-		// Check that beta changes are what we expect.
-		if !changeListsEqual(betaChanges, c.expectedBetaChanges) {
-			t.Error(
-				"beta changes do not match expected:",
-				betaChanges, "!=", c.expectedBetaChanges,
-				"using", synchronizationMode,
-			)
-		}
-
-		// Check that conflicts are what we expect.
-		if !conflictListsEqual(conflicts, c.expectedConflicts) {
-			t.Error(
-				"conflicts do not match expected:",
-				conflicts, "!=", c.expectedConflicts,
-				"using", synchronizationMode,
-			)
-		}
-	}
+// safeModes is shorthand for all safe synchronization modes.
+var safeModes = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWaySafe,
+	SynchronizationMode_SynchronizationModeOneWaySafe,
 }
 
+// resolvedModes is shorthand for all resolved synchronization modes.
+var resolvedModes = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWayResolved,
+	SynchronizationMode_SynchronizationModeOneWayReplica,
+}
+
+// twoWaySafeMode is shorthand for only the two-way-safe mode.
+var twoWaySafeMode = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWaySafe,
+}
+
+// twoWayResolvedMode is shorthand for only the two-way-resolved mode.
+var twoWayResolvedMode = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeTwoWayResolved,
+}
+
+// oneWaySafeMode is shorthand for only the one-way-safe mode.
+var oneWaySafeMode = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeOneWaySafe,
+}
+
+// oneWayReplicaMode is shorthand for only the one-way-replica mode.
+var oneWayReplicaMode = []SynchronizationMode{
+	SynchronizationMode_SynchronizationModeOneWayReplica,
+}
+
+// TestNonDeletionChangesOnly tests nonDeletionChangesOnly.
 func TestNonDeletionChangesOnly(t *testing.T) {
-	changes := []*Change{
+	// Set up test cases.
+	var testCases = []struct {
+		unfiltered []*Change
+		expected   []*Change
+	}{
+		{nil, nil},
+		{[]*Change{}, []*Change{}},
+		{[]*Change{{New: tF1}}, []*Change{{New: tF1}}},
+		{[]*Change{{Old: tF1, New: tF2}}, []*Change{{Old: tF1, New: tF2}}},
+		{[]*Change{{Old: tF1}}, []*Change{}},
+		{[]*Change{{Path: "changed", Old: tF1, New: tF2}, {Path: "removed", Old: tD1}}, []*Change{{Path: "changed", Old: tF1, New: tF2}}},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		if filtered := nonDeletionChangesOnly(testCase.unfiltered); !testingChangeListsEqual(filtered, testCase.expected) {
+			t.Errorf("filtered changes don't match expected: %v != %v", filtered, testCase.expected)
+		}
+	}
+}
+
+// TestReconcile tests Reconcile.
+func TestReconcile(t *testing.T) {
+	// Set up test cases.
+	var tests = []struct {
+		// description is a human readable description of the test case.
+		description string
+		// modes are the synchronization modes for which the test case should apply.
+		modes []SynchronizationMode
+		// ancestor is the root ancestor entry.
+		ancestor *Entry
+		// alpha is the root alpha entry.
+		alpha *Entry
+		// beta is the root beta entry.
+		beta *Entry
+		// expectedAncestorChanges are the expected ancestor changes.
+		expectedAncestorChanges []*Change
+		// expectedAlphaChanges are the expected alpha changes.
+		expectedAlphaChanges []*Change
+		// expectedBetaChanges are the expected beta changes.
+		expectedBetaChanges []*Change
+		// expectedConflicts are the expected conflicts.
+		expectedConflicts []*Conflict
+	}{
+		// Test cases where alpha and beta (and potentially the ancestor) agree.
 		{
-			Path: "file",
-			New:  testFile1Entry,
+			description: "all nil",
+			modes:       allModes,
 		},
 		{
-			Path: "directory",
-			Old:  testDirectory1Entry,
+			description: "all same file",
+			modes:       allModes,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tF1,
 		},
-	}
-	nonDeletionChanges := nonDeletionChangesOnly(changes)
-	if len(nonDeletionChanges) != 1 {
-		t.Fatal("more non-deletion changes than expected")
-	} else if nonDeletionChanges[0].Path != "file" {
-		t.Fatal("non-deletion change has unexpected path")
-	}
-}
-
-func TestReconcileAllNil(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    nil,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
+		{
+			description: "all same relative symbolic link",
+			modes:       allModes,
+			ancestor:    tSR,
+			alpha:       tSR,
+			beta:        tSR,
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileDirectoryNothingChanged(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    testDirectory1Entry,
-		beta:     testDirectory1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
+		{
+			description: "all same absolute symbolic link",
+			modes:       allModes,
+			ancestor:    tSA,
+			alpha:       tSA,
+			beta:        tSA,
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileFileNothingChanged(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
+		{
+			description: "all same empty directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tD0,
+			beta:        tD0,
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaModifiedRoot(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile2Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
+		{
+			description: "all same directory",
+			modes:       allModes,
+			ancestor:    tD1,
+			alpha:       tD1,
+			beta:        tD1,
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testFile1Entry, New: testFile2Entry},
+		{
+			description:             "both created same file",
+			modes:                   allModes,
+			alpha:                   tF1,
+			beta:                    tF1,
+			expectedAncestorChanges: []*Change{{New: tF1}},
 		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaModifiedRootBidirectional(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     testFile2Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
+		{
+			description:             "both created same relative symbolic link",
+			modes:                   allModes,
+			alpha:                   tSR,
+			beta:                    tSR,
+			expectedAncestorChanges: []*Change{{New: tSR}},
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{Old: testFile1Entry, New: testFile2Entry},
+		{
+			description:             "both created same absolute symbolic link",
+			modes:                   allModes,
+			alpha:                   tSA,
+			beta:                    tSA,
+			expectedAncestorChanges: []*Change{{New: tSA}},
 		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaModifiedRootOneWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     testFile2Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
+		{
+			description:             "both created same empty directory",
+			modes:                   allModes,
+			alpha:                   tD0,
+			beta:                    tD0,
+			expectedAncestorChanges: []*Change{{New: tD0}},
 		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts: []*Conflict{
-			{
-				AlphaChanges: []*Change{
-					{
-						Old: testFile1Entry,
-						New: testFile1Entry,
-					},
-				},
-				BetaChanges: []*Change{
-					{
-						Old: testFile1Entry,
-						New: testFile2Entry,
-					},
-				},
+		{
+			description: "both created same directory",
+			modes:       allModes,
+			alpha:       tD1,
+			beta:        tD1,
+			expectedAncestorChanges: []*Change{
+				{New: tD0},
+				{Path: "file", New: tF1},
 			},
 		},
+		{
+			description:             "both created same file in directory",
+			modes:                   allModes,
+			ancestor:                tD0,
+			alpha:                   tD1,
+			beta:                    tD1,
+			expectedAncestorChanges: []*Change{{Path: "file", New: tF1}},
+		},
+		{
+			description:             "both created same relative symbolic link in directory",
+			modes:                   allModes,
+			ancestor:                tD1,
+			alpha:                   tDSR,
+			beta:                    tDSR,
+			expectedAncestorChanges: []*Change{{Path: "symlink", New: tSR}},
+		},
+		{
+			description:             "both created same absolute symbolic link in directory",
+			modes:                   allModes,
+			ancestor:                tD0,
+			alpha:                   tDSA,
+			beta:                    tDSA,
+			expectedAncestorChanges: []*Change{{Path: "symlink", New: tSA}},
+		},
+		{
+			description:             "both deleted file",
+			modes:                   allModes,
+			ancestor:                tF1,
+			expectedAncestorChanges: []*Change{{}},
+		},
+		{
+			description:             "both deleted file in directory",
+			modes:                   allModes,
+			ancestor:                tD1,
+			alpha:                   tD0,
+			beta:                    tD0,
+			expectedAncestorChanges: []*Change{{Path: "file"}},
+		},
+		{
+			description:             "both deleted relative symbolic link in directory",
+			modes:                   allModes,
+			ancestor:                tDSR,
+			alpha:                   tD1,
+			beta:                    tD1,
+			expectedAncestorChanges: []*Change{{Path: "symlink"}},
+		},
+		{
+			description:             "both deleted absolute symbolic link in directory",
+			modes:                   allModes,
+			ancestor:                tDSA,
+			alpha:                   tD0,
+			beta:                    tD0,
+			expectedAncestorChanges: []*Change{{Path: "symlink"}},
+		},
+		{
+			description:             "both deleted empty directory",
+			modes:                   allModes,
+			ancestor:                tD0,
+			expectedAncestorChanges: []*Change{{}},
+		},
+		{
+			description:             "both deleted directory",
+			modes:                   allModes,
+			ancestor:                tD1,
+			expectedAncestorChanges: []*Change{{}},
+		},
+
+		// Test cases where both sides are either nil or untracked.
+		{
+			description: "beta created untracked",
+			modes:       allModes,
+			beta:        tU,
+		},
+		{
+			description: "alpha created untracked",
+			modes:       allModes,
+			alpha:       tU,
+		},
+		{
+			description: "both created untracked",
+			modes:       allModes,
+			alpha:       tU,
+			beta:        tU,
+		},
+		{
+			description:             "alpha deleted file and beta created untracked",
+			modes:                   allModes,
+			ancestor:                tF1,
+			beta:                    tU,
+			expectedAncestorChanges: []*Change{{}},
+		},
+		{
+			description:             "alpha created untracked and beta deleted file",
+			modes:                   allModes,
+			ancestor:                tF1,
+			alpha:                   tU,
+			expectedAncestorChanges: []*Change{{}},
+		},
+		{
+			description:             "both deleted directory and created untracked",
+			modes:                   allModes,
+			ancestor:                tD1,
+			alpha:                   tU,
+			beta:                    tU,
+			expectedAncestorChanges: []*Change{{}},
+		},
+
+		// Test cases where one or both sides is problematic.
+		{
+			description: "alpha problematic others nil",
+			modes:       allModes,
+			alpha:       tP1,
+		},
+		{
+			description: "alpha problematic ancestor file",
+			modes:       allModes,
+			ancestor:    tF1,
+			alpha:       tP1,
+		},
+		{
+			description: "alpha problematic ancestor empty directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tP1,
+		},
+		{
+			description: "alpha problematic others file",
+			modes:       allModes,
+			ancestor:    tF1,
+			alpha:       tP1,
+			beta:        tF1,
+		},
+		{
+			description: "beta problematic others nil",
+			modes:       allModes,
+			beta:        tP1,
+		},
+		{
+			description: "beta problematic ancestor file",
+			modes:       allModes,
+			ancestor:    tF1,
+			beta:        tP1,
+		},
+		{
+			description: "beta problematic others file",
+			modes:       allModes,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tP1,
+		},
+		{
+			description: "beta problematic ancestor empty directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			beta:        tP1,
+		},
+		{
+			description: "both problematic ancestor nil",
+			modes:       allModes,
+			alpha:       tP1,
+			beta:        tP1,
+		},
+		{
+			description: "both problematic ancestor file",
+			modes:       allModes,
+			ancestor:    tF1,
+			alpha:       tP1,
+			beta:        tP1,
+		},
+		{
+			description: "both problematic ancestor directory",
+			modes:       allModes,
+			ancestor:    tD1,
+			alpha:       tP1,
+			beta:        tP1,
+		},
+
+		// Test cases where only alpha has modified content.
+		{
+			description:         "alpha created file",
+			modes:               allModes,
+			alpha:               tF1,
+			expectedBetaChanges: []*Change{{New: tF1}},
+		},
+		{
+			description:         "alpha created empty directory",
+			modes:               allModes,
+			alpha:               tD0,
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description:         "alpha created directory",
+			modes:               allModes,
+			alpha:               tD1,
+			expectedBetaChanges: []*Change{{New: tD1}},
+		},
+		{
+			description:         "alpha created file in existing directory",
+			modes:               allModes,
+			ancestor:            tD0,
+			alpha:               tD1,
+			beta:                tD0,
+			expectedBetaChanges: []*Change{{Path: "file", New: tF1}},
+		},
+		{
+			description:         "alpha modified file",
+			modes:               allModes,
+			ancestor:            tF1,
+			alpha:               tF2,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1, New: tF2}},
+		},
+		{
+			description:         "alpha replaced file with directory",
+			modes:               allModes,
+			ancestor:            tF1,
+			alpha:               tD1,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1, New: tD1}},
+		},
+		{
+			description:         "alpha deleted file",
+			modes:               allModes,
+			ancestor:            tF1,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description:         "alpha deleted directory",
+			modes:               allModes,
+			ancestor:            tD1,
+			beta:                tD1,
+			expectedBetaChanges: []*Change{{Old: tD1}},
+		},
+
+		// Test cases where only beta has modified content.
+		{
+			description:          "beta created file (bidirectional)",
+			modes:                twoWayModes,
+			beta:                 tF1,
+			expectedAlphaChanges: []*Change{{New: tF1}},
+		},
+		{
+			description: "beta created file (one-way-safe)",
+			modes:       oneWaySafeMode,
+			beta:        tF1,
+		},
+		{
+			description:         "beta created file (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description:          "beta created empty directory (bidirectional)",
+			modes:                twoWayModes,
+			beta:                 tD0,
+			expectedAlphaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description: "beta created empty directory (one-way-safe)",
+			modes:       oneWaySafeMode,
+			beta:        tD0,
+		},
+		{
+			description:         "beta created empty directory (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			beta:                tD0,
+			expectedBetaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description:          "beta created directory (bidirectional)",
+			modes:                twoWayModes,
+			beta:                 tD1,
+			expectedAlphaChanges: []*Change{{New: tD1}},
+		},
+		{
+			description: "beta created directory (one-way-safe)",
+			modes:       oneWaySafeMode,
+			beta:        tD1,
+		},
+		{
+			description:         "beta created directory (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			beta:                tD1,
+			expectedBetaChanges: []*Change{{Old: tD1}},
+		},
+		{
+			description:          "beta created file in existing directory (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tD0,
+			alpha:                tD0,
+			beta:                 tD1,
+			expectedAlphaChanges: []*Change{{Path: "file", New: tF1}},
+		},
+		{
+			description: "beta created file in existing directory (one-way-safe)",
+			modes:       oneWaySafeMode,
+			ancestor:    tD0,
+			alpha:       tD0,
+			beta:        tD1,
+		},
+		{
+			description:         "beta created file in existing directory (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			ancestor:            tD0,
+			alpha:               tD0,
+			beta:                tD1,
+			expectedBetaChanges: []*Change{{Path: "file", Old: tF1}},
+		},
+		{
+			description:          "beta modified file (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			alpha:                tF1,
+			beta:                 tF2,
+			expectedAlphaChanges: []*Change{{Old: tF1, New: tF2}},
+		},
+		{
+			description: "beta modified file (one-way-safe)",
+			modes:       oneWaySafeMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{Old: tF1, New: tF2}},
+			}},
+		},
+		{
+			description:         "beta modified file (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			ancestor:            tF1,
+			alpha:               tF1,
+			beta:                tF2,
+			expectedBetaChanges: []*Change{{Old: tF2, New: tF1}},
+		},
+		{
+			description:          "beta replaced file with directory (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			alpha:                tF1,
+			beta:                 tD1,
+			expectedAlphaChanges: []*Change{{Old: tF1, New: tD1}},
+		},
+		{
+			description: "beta replaced file with directory (one-way-safe)",
+			modes:       oneWaySafeMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tD1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{Old: tF1, New: tD1}},
+			}},
+		},
+		{
+			description:         "beta replaced file with directory (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			ancestor:            tF1,
+			alpha:               tF1,
+			beta:                tD1,
+			expectedBetaChanges: []*Change{{Old: tD1, New: tF1}},
+		},
+		{
+			description:          "beta deleted file (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			alpha:                tF1,
+			expectedAlphaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description:         "beta deleted file (unidirectional)",
+			modes:               oneWayModes,
+			ancestor:            tF1,
+			alpha:               tF1,
+			expectedBetaChanges: []*Change{{New: tF1}},
+		},
+		{
+			description:          "beta deleted directory (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tD1,
+			alpha:                tD1,
+			expectedAlphaChanges: []*Change{{Old: tD1}},
+		},
+		{
+			description:         "beta deleted directory (unidirectional)",
+			modes:               oneWayModes,
+			ancestor:            tD1,
+			alpha:               tD1,
+			expectedBetaChanges: []*Change{{New: tD1}},
+		},
+
+		// Test cases where both sides have modified content.
+		{
+			description: "both created different file (safe)",
+			modes:       safeModes,
+			alpha:       tF1,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{New: tF2}},
+			}},
+		},
+		{
+			description:         "both created different file (resolved)",
+			modes:               resolvedModes,
+			alpha:               tF1,
+			beta:                tF2,
+			expectedBetaChanges: []*Change{{Old: tF2, New: tF1}},
+		},
+		{
+			description: "alpha created file beta created directory (safe)",
+			modes:       safeModes,
+			alpha:       tF1,
+			beta:        tD1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{New: tD1}},
+			}},
+		},
+		{
+			description:         "alpha created file beta created directory (resolved)",
+			modes:               resolvedModes,
+			alpha:               tF1,
+			beta:                tD1,
+			expectedBetaChanges: []*Change{{Old: tD1, New: tF1}},
+		},
+		{
+			description:             "both created directory alpha created file in directory",
+			modes:                   allModes,
+			alpha:                   tD1,
+			beta:                    tD0,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+			expectedBetaChanges:     []*Change{{Path: "file", New: tF1}},
+		},
+		{
+			description:             "both created directory beta created file in directory (bidirectional)",
+			modes:                   twoWayModes,
+			alpha:                   tD0,
+			beta:                    tD1,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+			expectedAlphaChanges:    []*Change{{Path: "file", New: tF1}},
+		},
+		{
+			description:             "both created directory beta created file in directory (one-way-safe)",
+			modes:                   oneWaySafeMode,
+			alpha:                   tD0,
+			beta:                    tD1,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+		},
+		{
+			description:             "both created directory beta created file in directory (one-way-replica)",
+			modes:                   oneWayReplicaMode,
+			alpha:                   tD0,
+			beta:                    tD1,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+			expectedBetaChanges:     []*Change{{Path: "file", Old: tF1}},
+		},
+		{
+			description:             "both created directory with different file (safe)",
+			modes:                   safeModes,
+			alpha:                   tD1,
+			beta:                    tD2,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+			expectedConflicts: []*Conflict{{
+				Root:         "file",
+				AlphaChanges: []*Change{{Path: "file", New: tF1}},
+				BetaChanges:  []*Change{{Path: "file", New: tF2}},
+			}},
+		},
+		{
+			description:             "both created directory with different file (resolved)",
+			modes:                   resolvedModes,
+			alpha:                   tD1,
+			beta:                    tD2,
+			expectedAncestorChanges: []*Change{{New: tD0}},
+			expectedBetaChanges:     []*Change{{Path: "file", Old: tF2, New: tF1}},
+		},
+		{
+			description:         "alpha modified file beta deleted",
+			modes:               allModes,
+			ancestor:            tF1,
+			alpha:               tF2,
+			expectedBetaChanges: []*Change{{New: tF2}},
+		},
+		{
+			description:          "beta modified file alpha deleted (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			beta:                 tF2,
+			expectedAlphaChanges: []*Change{{New: tF2}},
+		},
+		{
+			description:             "beta modified file alpha deleted (one-way-safe)",
+			modes:                   oneWaySafeMode,
+			ancestor:                tF1,
+			beta:                    tF2,
+			expectedAncestorChanges: []*Change{{}},
+		},
+		{
+			description:         "beta modified file alpha deleted (one-way-replica)",
+			modes:               oneWayReplicaMode,
+			ancestor:            tF1,
+			beta:                tF2,
+			expectedBetaChanges: []*Change{{Old: tF2}},
+		},
+		{
+			description:         "alpha deleted all, beta deleted part of directory",
+			modes:               allModes,
+			ancestor:            tD1,
+			beta:                tD0,
+			expectedBetaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description:          "alpha deleted part, beta deleted all of directory (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tD1,
+			alpha:                tD0,
+			expectedAlphaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description:         "alpha deleted part, beta deleted all of directory (unidirectional)",
+			modes:               oneWayModes,
+			ancestor:            tD1,
+			alpha:               tD0,
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+
+		// Test cases with a combination of synchronizable and unsynchronizable
+		// content, including cases with modified content.
+		{
+			description: "alpha created untracked, beta created file (safe)",
+			modes:       safeModes,
+			alpha:       tU,
+			beta:        tF1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tU}},
+				BetaChanges:  []*Change{{New: tF1}},
+			}},
+		},
+		{
+			description:         "alpha created untracked, beta created file (resolved)",
+			modes:               resolvedModes,
+			alpha:               tU,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description: "alpha problematic in existing directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tDP1,
+			beta:        tD0,
+		},
+		{
+			description: "alpha created untracked in existing directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tDU,
+			beta:        tD0,
+		},
+		{
+			description:         "alpha created directory with problematic",
+			modes:               allModes,
+			alpha:               tDP1,
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description:         "alpha created directory with untracked",
+			modes:               allModes,
+			alpha:               tDU,
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description: "alpha created file, beta created untracked",
+			modes:       allModes,
+			alpha:       tF1,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{New: tU}},
+			}},
+		},
+		{
+			description: "alpha created file, beta directory with untracked (safe)",
+			modes:       safeModes,
+			alpha:       tF1,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{New: tDU}},
+			}},
+		},
+		{
+			description: "alpha created file, beta directory with untracked (resolved)",
+			modes:       resolvedModes,
+			alpha:       tF1,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+
+		{
+			description: "alpha created file, beta created untracked",
+			modes:       allModes,
+			alpha:       tF1,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tF1}},
+				BetaChanges:  []*Change{{New: tU}},
+			}},
+		},
+		{
+			description: "beta problematic in existing directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tD0,
+			beta:        tDP1,
+		},
+		{
+			description: "beta created untracked in existing directory",
+			modes:       allModes,
+			ancestor:    tD0,
+			alpha:       tDU,
+			beta:        tD0,
+		},
+		{
+			description:          "beta created directory with problematic (bidirectional)",
+			modes:                twoWayModes,
+			beta:                 tDP1,
+			expectedAlphaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description: "beta created directory with problematic (one-way-safe)",
+			modes:       oneWaySafeMode,
+			beta:        tDP1,
+		},
+		{
+			description: "beta created directory with problematic (one-way-replica)",
+			modes:       oneWayReplicaMode,
+			beta:        tDP1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{}},
+				BetaChanges:  []*Change{{Path: "problematic", New: tP1}},
+			}},
+		},
+		{
+			description:          "beta created directory with untracked (bidirectional)",
+			modes:                twoWayModes,
+			beta:                 tDU,
+			expectedAlphaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description: "beta created directory with untracked (one-way-safe)",
+			modes:       oneWaySafeMode,
+			beta:        tDU,
+		},
+		{
+			description: "beta created directory with untracked (one-way-replica)",
+			modes:       oneWayReplicaMode,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+		{
+			description: "alpha created untracked, beta created file (safe)",
+			modes:       safeModes,
+			alpha:       tU,
+			beta:        tF1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{New: tU}},
+				BetaChanges:  []*Change{{New: tF1}},
+			}},
+		},
+		{
+			description:         "alpha created untracked, beta created file (resolved)",
+			modes:               resolvedModes,
+			alpha:               tU,
+			beta:                tF1,
+			expectedBetaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description:          "beta replaced file with untracked (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			alpha:                tF1,
+			beta:                 tU,
+			expectedAlphaChanges: []*Change{{Old: tF1}},
+		},
+		{
+			description: "beta replaced file with untracked (one-way-safe)",
+			modes:       oneWaySafeMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{Old: tF1, New: tU}},
+			}},
+		},
+		{
+			description: "beta replaced file with untracked (one-way-replica)",
+			modes:       oneWayReplicaMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{New: tU}},
+			}},
+		},
+		{
+			description:          "beta replaced file with directory containing untracked (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tF1,
+			alpha:                tF1,
+			beta:                 tDU,
+			expectedAlphaChanges: []*Change{{Old: tF1, New: tD0}},
+		},
+		{
+			description: "beta replaced file with directory containing untracked (one-way-safe)",
+			modes:       oneWaySafeMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{Old: tF1, New: tDU}},
+			}},
+		},
+		{
+			description: "beta replaced file with directory containing untracked (one-way-replica)",
+			modes:       oneWayReplicaMode,
+			ancestor:    tF1,
+			alpha:       tF1,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
 	}
 
-	// Run the test case.
-	testCase.run(t)
+	// Process test cases.
+	for _, test := range tests {
+		// Test each mode.
+		for _, mode := range test.modes {
+			// Perform reconciliation.
+			ancestorChanges, alphaChanges, betaChanges, conflicts := Reconcile(
+				test.ancestor, test.alpha, test.beta, mode,
+			)
+
+			// Verify the ancestor changes.
+			if !testingChangeListsEqual(ancestorChanges, test.expectedAncestorChanges) {
+				t.Errorf("%s: ancestor changes do not match expected in %s mode: %v != %v",
+					test.description, mode.Description(), ancestorChanges, test.expectedAncestorChanges,
+				)
+			}
+
+			// Verify the alpha changes.
+			if !testingChangeListsEqual(alphaChanges, test.expectedAlphaChanges) {
+				t.Errorf("%s: alpha changes do not match expected in %s mode: %v != %v",
+					test.description, mode.Description(), alphaChanges, test.expectedAlphaChanges,
+				)
+			}
+
+			// Verify the beta changes.
+			if !testingChangeListsEqual(betaChanges, test.expectedBetaChanges) {
+				t.Errorf("%s: beta changes do not match expected in %s mode: %v != %v",
+					test.description, mode.Description(), betaChanges, test.expectedBetaChanges,
+				)
+			}
+
+			// Verify the conflicts.
+			if !testingConflictListsEqual(conflicts, test.expectedConflicts) {
+				t.Errorf("%s: conflicts do not match expected in %s mode: %v != %v",
+					test.description, mode.Description(), conflicts, test.expectedConflicts,
+				)
+			}
+		}
+	}
 }
 
-func TestReconcileBetaModifiedRootOneWayReplica(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     testFile2Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testFile2Entry, New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRoot(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaDeletedRootBidirectional(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{Old: testFile1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaDeletedRootUnidirectional(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testFile1Entry,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothDeletedRoot(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    nil,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: []*Change{
-			{},
-		},
-		expectedAlphaChanges: nil,
-		expectedBetaChanges:  nil,
-		expectedConflicts:    nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaCreatedRoot(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testFile1Entry,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaCreatedRootBidirectional(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaCreatedRootOneWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaCreatedRootOneWayReplica(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedSameFile(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testFile1Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedAlphaChanges: nil,
-		expectedBetaChanges:  nil,
-		expectedConflicts:    nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedSameDirectory(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testDirectory1Entry,
-		beta:     testDirectory1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: testDecomposeEntry("", testDirectory1Entry, true),
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedPartiallyMatchingContentsTwoWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: &Entry{},
-		alpha: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"alpha":     testFile1Entry,
-				"different": testFile1Entry,
-			},
-		},
-		beta: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"beta":      testFile2Entry,
-				"different": testDirectory3Entry,
-			},
-		},
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-		},
-		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
-		expectedAlphaChanges: []*Change{
-			{Path: "beta", New: testFile2Entry},
-		},
-		expectedBetaChanges: []*Change{
-			{Path: "alpha", New: testFile1Entry},
-		},
-		expectedConflicts: []*Conflict{
-			{
-				AlphaChanges: []*Change{
-					{
-						Path: "different",
-						New:  testFile1Entry,
-					},
-				},
-				BetaChanges: []*Change{
-					{
-						Path: "different",
-						New:  testDirectory3Entry,
-					},
-				},
-			},
-		},
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedPartiallyMatchingContentsTwoWayResolved(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: &Entry{},
-		alpha: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"alpha":     testFile1Entry,
-				"different": testFile1Entry,
-			},
-		},
-		beta: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"beta":      testFile2Entry,
-				"different": testDirectory3Entry,
-			},
-		},
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-		},
-		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
-		expectedAlphaChanges: []*Change{
-			{Path: "beta", New: testFile2Entry},
-		},
-		expectedBetaChanges: []*Change{
-			{Path: "alpha", New: testFile1Entry},
-			{Path: "different", Old: testDirectory3Entry, New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedPartiallyMatchingContentsOneWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: &Entry{},
-		alpha: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"alpha":     testFile1Entry,
-				"different": testFile1Entry,
-			},
-		},
-		beta: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"beta":      testFile2Entry,
-				"different": testDirectory3Entry,
-			},
-		},
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Path: "alpha", New: testFile1Entry},
-		},
-		expectedConflicts: []*Conflict{
-			{
-				AlphaChanges: []*Change{
-					{
-						Path: "different",
-						New:  testFile1Entry,
-					},
-				},
-				BetaChanges: []*Change{
-					{
-						Path: "different",
-						New:  testDirectory3Entry,
-					},
-				},
-			},
-		},
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedPartiallyMatchingContentsOneWayReplica(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: &Entry{},
-		alpha: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"alpha":     testFile1Entry,
-				"different": testFile1Entry,
-			},
-		},
-		beta: &Entry{
-			Contents: map[string]*Entry{
-				"same":      testDirectory1Entry,
-				"beta":      testFile2Entry,
-				"different": testDirectory3Entry,
-			},
-		},
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: testDecomposeEntry("same", testDirectory1Entry, true),
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Path: "alpha", New: testFile1Entry},
-			{Path: "beta", Old: testFile2Entry},
-			{Path: "different", Old: testDirectory3Entry, New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedDifferentTypesSafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testDirectory1Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts: []*Conflict{
-			{
-				AlphaChanges: []*Change{
-					{New: testDirectory1Entry},
-				},
-				BetaChanges: []*Change{
-					{New: testFile1Entry},
-				},
-			},
-		},
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBothCreatedDifferentTypesOverwrite(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: nil,
-		alpha:    testDirectory1Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{
-				Old: testFile1Entry,
-				New: testDirectory1Entry,
-			},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedFileTwoWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedFileUnsafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedFileOneWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    nil,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: []*Change{
-			{},
-		},
-		expectedAlphaChanges: nil,
-		expectedBetaChanges:  nil,
-		expectedConflicts:    nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaCreatedFileBetaDeletedRoot(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory1Entry,
-		alpha:    testFile1Entry,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{New: testFile1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedDirectoryTwoWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    nil,
-		beta:     testDirectory1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{New: testDirectory1Entry},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedDirectoryUnsafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    nil,
-		beta:     testDirectory1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{Old: testDirectory1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaDeletedRootBetaCreatedDirectoryOneWaySafe(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    nil,
-		beta:     testDirectory1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: []*Change{
-			{},
-		},
-		expectedAlphaChanges: nil,
-		expectedBetaChanges:  nil,
-		expectedConflicts:    nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaCreatedDirectoryBetaDeletedRootNonBetaWinsAll(t *testing.T) {
-	// Set up the test case.
-	testCase := reconcileTestCase{
-		ancestor: testFile1Entry,
-		alpha:    testDirectory1Entry,
-		beta:     nil,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{New: testDirectory1Entry},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaPartiallyDeletedDirectory(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory3Entry,
-		beta:     testDirectory2Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     diff("", testDirectory2Entry, testDirectory3Entry),
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaPartiallyDeletedDirectoryBidirectional(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory2Entry,
-		beta:     testDirectory3Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    diff("", testDirectory2Entry, testDirectory3Entry),
-		expectedBetaChanges:     nil,
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileBetaPartiallyDeletedDirectoryUnidirectional(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory2Entry,
-		beta:     testDirectory3Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     diff("", testDirectory3Entry, testDirectory2Entry),
-		expectedConflicts:       nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaReplacedDirectoryBetaPartiallyDeletedDirectory(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testFile1Entry,
-		beta:     testDirectory3Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{
-				Old: testDirectory3Entry,
-				New: testFile1Entry,
-			},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectoryTwoWaySafe(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory3Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges: []*Change{
-			{
-				Old: testDirectory3Entry,
-				New: testFile1Entry,
-			},
-		},
-		expectedBetaChanges: nil,
-		expectedConflicts:   nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectoryUnsafe(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory3Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeTwoWayResolved,
-			SynchronizationMode_SynchronizationModeOneWayReplica,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges: []*Change{
-			{
-				Old: testFile1Entry,
-				New: testDirectory3Entry,
-			},
-		},
-		expectedConflicts: nil,
-	}
-
-	// Run the test case.
-	testCase.run(t)
-}
-
-func TestReconcileAlphaPartiallyDeletedDirectoryBetaReplacedDirectoryOneWaySafe(t *testing.T) {
-	// Set up the test case. Worth noting here is that testDirectory3Entry is a
-	// subtree of testDirectory2Entry.
-	testCase := reconcileTestCase{
-		ancestor: testDirectory2Entry,
-		alpha:    testDirectory3Entry,
-		beta:     testFile1Entry,
-		synchronizationModes: []SynchronizationMode{
-			SynchronizationMode_SynchronizationModeOneWaySafe,
-		},
-		expectedAncestorChanges: nil,
-		expectedAlphaChanges:    nil,
-		expectedBetaChanges:     nil,
-		expectedConflicts: []*Conflict{
-			{
-				AlphaChanges: diff("", testDirectory2Entry, testDirectory3Entry),
-				BetaChanges:  diff("", testDirectory2Entry, testFile1Entry),
-			},
-		},
-	}
-
-	// Run the test case.
-	testCase.run(t)
+// TestReconcilePanicWithInvalidSynchronizationMode tests that Reconcile panics
+// when provided with disagreeing contents and an invalid synchronization mode.
+func TestReconcilePanicWithInvalidSynchronizationMode(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("Reconcile did not panic with invalid synchronization mode")
+		}
+	}()
+	Reconcile(nil, tF1, nil, SynchronizationMode(-1))
 }

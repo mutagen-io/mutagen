@@ -1,53 +1,69 @@
 package core
 
 import (
+	"math"
 	"testing"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestCacheNilInvalid(t *testing.T) {
-	var cache *Cache
-	if cache.EnsureValid() == nil {
-		t.Error("nil cache considered valid")
+// testInvalidProtocolBuffersTimestamp is an invalid Protocol Buffers timestamp.
+var testInvalidProtocolBuffersTimestamp = &timestamppb.Timestamp{
+	Seconds: math.MinInt64,
+}
+
+// TestCacheEnsureValid tests Cache.EnsureValid.
+func TestCacheEnsureValid(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		cache    *Cache
+		expected bool
+	}{
+		{nil, false},
+		{&Cache{Entries: map[string]*CacheEntry{"name": nil}}, false},
+		{&Cache{Entries: map[string]*CacheEntry{"name": {}}}, false},
+		{&Cache{}, true},
+		{&Cache{Entries: map[string]*CacheEntry{
+			"": {
+				Mode:             0600,
+				ModificationTime: timestamppb.Now(),
+				Size:             uint64(len(tF1Content)),
+				Digest:           tF1.Digest,
+			},
+		}}, true},
+		{&Cache{Entries: map[string]*CacheEntry{
+			"file": {
+				Mode:             0600,
+				ModificationTime: timestamppb.Now(),
+				Size:             uint64(len(tF1Content)),
+				Digest:           tF1.Digest,
+			},
+		}}, true},
+		{&Cache{Entries: map[string]*CacheEntry{
+			"file": {
+				Mode:             0600,
+				ModificationTime: testInvalidProtocolBuffersTimestamp,
+				Size:             uint64(len(tF1Content)),
+				Digest:           tF1.Digest,
+			},
+		}}, false},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		err := test.cache.EnsureValid()
+		valid := err == nil
+		if valid != test.expected {
+			if valid {
+				t.Errorf("test index %d: cache incorrectly classified as valid", i)
+			} else {
+				t.Errorf("test index %d: cache incorrectly classified as invalid: %v", i, err)
+			}
+		}
 	}
 }
 
-func TestCacheNilEntryInvalid(t *testing.T) {
-	cache := &Cache{Entries: make(map[string]*CacheEntry)}
-	cache.Entries["name"] = nil
-	if cache.EnsureValid() == nil {
-		t.Error("cache containing nil entry considered valid")
-	}
-}
+// TODO: Implement TestCacheEqual. This is purely an internal testing method,
+// but it's worth testing for completeness.
 
-func TestCacheEntryNilTimeInvalid(t *testing.T) {
-	cache := &Cache{Entries: make(map[string]*CacheEntry)}
-	cache.Entries["name"] = &CacheEntry{}
-	if cache.EnsureValid() == nil {
-		t.Error("cache containing entry with nil timestamp considered valid")
-	}
-}
-
-func TestCacheEmptyValid(t *testing.T) {
-	cache := &Cache{Entries: make(map[string]*CacheEntry)}
-	if err := cache.EnsureValid(); err != nil {
-		t.Error("empty cache failed validation:", err)
-	}
-}
-
-func TestCacheValid(t *testing.T) {
-	cache := &Cache{Entries: make(map[string]*CacheEntry)}
-	cache.Entries["name"] = &CacheEntry{
-		Mode:             0600,
-		ModificationTime: timestamppb.Now(),
-		Size:             100,
-		Digest:           []byte{0, 1, 2, 3, 4, 5, 6},
-	}
-	if err := cache.EnsureValid(); err != nil {
-		t.Error("valid cache failed validation:", err)
-	}
-}
-
-// TODO: Add tests for Cache.Equal, even though this is an internal testing
-// method.
+// TODO: Implement TestReverseLookupMap.

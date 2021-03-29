@@ -9,7 +9,7 @@ type differ struct {
 // diff is the recursive diff entry point.
 func (d *differ) diff(path string, base, target *Entry) {
 	// If the nodes at this path aren't equal, then do a complete replacement.
-	if !target.equalShallow(base) {
+	if !target.Equal(base, false) {
 		d.changes = append(d.changes, &Change{
 			Path: path,
 			Old:  base,
@@ -26,8 +26,9 @@ func (d *differ) diff(path string, base, target *Entry) {
 	}
 }
 
-// diff performs a diff operation from the base to the target entry (with both
-// rooted at path), generating a list of changes.
+// diff performs a diff operation between a base and target entry (treating both
+// as rooted at the specified path) and generates a list of changes that, if
+// applied to base, would transform it into target.
 func diff(path string, base, target *Entry) []*Change {
 	// Create the differ.
 	d := &differ{}
@@ -39,8 +40,8 @@ func diff(path string, base, target *Entry) []*Change {
 	return d.changes
 }
 
-// Diff performs a diff operation from the base to the target entry, generating
-// a list of changes.
+// Diff performs a diff operation between a base and target entry and generates
+// a list of changes that, if applied to base, would transform it into target.
 func Diff(base, target *Entry) []*Change {
 	return diff("", base, target)
 }

@@ -4,11 +4,35 @@ import (
 	"testing"
 )
 
-// TestSymlinkModeUnmarshal tests that unmarshaling from a string specification
-// succeeeds for SymlinkMode.
-func TestSymlinkModeUnmarshal(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
+// TestSymlinkModeIsDefault tests SymlinkMode.IsDefault.
+func TestSymlinkModeIsDefault(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		value    SymlinkMode
+		expected bool
+	}{
+		{SymlinkMode_SymlinkModeDefault - 1, false},
+		{SymlinkMode_SymlinkModeDefault, true},
+		{SymlinkMode_SymlinkModeIgnore, false},
+		{SymlinkMode_SymlinkModePortable, false},
+		{SymlinkMode_SymlinkModePOSIXRaw, false},
+		{SymlinkMode_SymlinkModePOSIXRaw + 1, false},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if result := test.value.IsDefault(); result && !test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as default", i)
+		} else if !result && test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as non-default", i)
+		}
+	}
+}
+
+// TestSymlinkModeUnmarshalText tests SymlinkMode.UnmarshalText.
+func TestSymlinkModeUnmarshalText(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
 		text          string
 		expectedMode  SymlinkMode
 		expectFailure bool
@@ -21,19 +45,19 @@ func TestSymlinkModeUnmarshal(t *testing.T) {
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
+	for _, test := range tests {
 		var mode SymlinkMode
-		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
-			if !testCase.expectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
+		if err := mode.UnmarshalText([]byte(test.text)); err != nil {
+			if !test.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", test.text, err)
 			}
-		} else if testCase.expectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
-		} else if mode != testCase.expectedMode {
+		} else if test.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", test.text)
+		} else if mode != test.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.expectedMode,
+				test.expectedMode,
 			)
 		}
 	}

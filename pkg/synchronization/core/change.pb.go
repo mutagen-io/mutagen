@@ -25,14 +25,22 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// Change encodes a change to an entry hierarchy. Change objects should be
+// considered immutable and must not be modified.
 type Change struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Path is the path of the root of the change (relative to the
+	// synchronization root).
 	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	Old  *Entry `protobuf:"bytes,2,opt,name=old,proto3" json:"old,omitempty"`
-	New  *Entry `protobuf:"bytes,3,opt,name=new,proto3" json:"new,omitempty"`
+	// Old represents the old filesystem hierarchy at the change path. It may be
+	// nil if no content previously existed.
+	Old *Entry `protobuf:"bytes,2,opt,name=old,proto3" json:"old,omitempty"`
+	// New represents the new filesystem hierarchy at the change path. It may be
+	// nil if content has been deleted.
+	New *Entry `protobuf:"bytes,3,opt,name=new,proto3" json:"new,omitempty"`
 }
 
 func (x *Change) Reset() {

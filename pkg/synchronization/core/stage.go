@@ -2,8 +2,6 @@ package core
 
 import (
 	"bytes"
-
-	"github.com/pkg/errors"
 )
 
 // stagingPathFinder recursively identifies paths/entries that need be staged in
@@ -17,47 +15,32 @@ type stagingPathFinder struct {
 }
 
 // find recursively searches for file entries that need staging.
-func (f *stagingPathFinder) find(path string, entry *Entry) error {
-	// If the entry is non-existent, nothing needs to be staged.
+func (f *stagingPathFinder) find(path string, entry *Entry) {
 	if entry == nil {
-		return nil
-	}
-
-	// Handle based on type.
-	if entry.Kind == EntryKind_Directory {
+		return
+	} else if entry.Kind == EntryKind_Directory {
 		for name, entry := range entry.Contents {
-			if err := f.find(pathJoin(path, name), entry); err != nil {
-				return err
-			}
+			f.find(pathJoin(path, name), entry)
 		}
 	} else if entry.Kind == EntryKind_File {
 		f.paths = append(f.paths, path)
 		f.digests = append(f.digests, entry.Digest)
-	} else if entry.Kind == EntryKind_Symlink {
-		return nil
-	} else {
-		return errors.New("unknown entry type encountered")
 	}
-
-	// Success.
-	return nil
 }
 
 // TransitionDependencies analyzes a list of transitions and determines the file
 // paths (and their corresponding digests) that will need to be provided in
 // order to apply the transitions using Transition. It will return these paths
 // in depth-first traversal order.
-func TransitionDependencies(transitions []*Change) ([]string, [][]byte, error) {
+func TransitionDependencies(transitions []*Change) ([]string, [][]byte) {
 	// Create a path finder.
 	finder := &stagingPathFinder{}
 
 	// Have it find paths for all the transitions.
 	for _, t := range transitions {
 		// If this is a file-to-file transition and only the executability bit
-		// is changing, then we don't need to stage, because transition will
-		// just modify the target on disk. We only need to watch for these cases
-		// when they exist at transition roots (they can't be deeper down in
-		// trees).
+		// is changing, then we don't need to stage, because Transition will
+		// just modify the target on disk.
 		fileToFileSameContents := t.Old != nil && t.New != nil &&
 			t.Old.Kind == EntryKind_File && t.New.Kind == EntryKind_File &&
 			bytes.Equal(t.Old.Digest, t.New.Digest)
@@ -66,11 +49,9 @@ func TransitionDependencies(transitions []*Change) ([]string, [][]byte, error) {
 		}
 
 		// Otherwise we need to perform a full scan.
-		if err := finder.find(t.Path, t.New); err != nil {
-			return nil, nil, errors.Wrap(err, "unable to find staging paths")
-		}
+		finder.find(t.Path, t.New)
 	}
 
 	// Success.
-	return finder.paths, finder.digests, nil
+	return finder.paths, finder.digests
 }

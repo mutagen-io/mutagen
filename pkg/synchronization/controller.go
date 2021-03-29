@@ -293,7 +293,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	return controller, nil
 }
 
-// currentState creates a snapshot of the current session state.
+// currentState creates a static snapshot of the current session state.
 func (c *controller) currentState() *State {
 	// Lock the session state and defer its release. It's very important that we
 	// unlock without a notification here, otherwise we'd trigger an infinite
@@ -788,14 +788,15 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 	}()
 
-	// Load the archive and extract the ancestor.
+	// Load the archive and extract the ancestor. We enforce that the archive
+	// contains only synchronizable content.
 	archive := &core.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
 		return errors.Wrap(err, "unable to load archive")
-	} else if err = archive.Root.EnsureValid(); err != nil {
+	} else if err = archive.EnsureValid(true); err != nil {
 		return errors.Wrap(err, "invalid archive found on disk")
 	}
-	ancestor := archive.Root
+	ancestor := archive.Content
 
 	// Compute the effective synchronization mode.
 	synchronizationMode := c.session.Configuration.SynchronizationMode
@@ -1012,17 +1013,18 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 		skippingPollingDueToScanError = false
 
-		// Clear the last error (if any) after a successful scan. Since scan
-		// errors are the only non-terminal errors, and since we know that we've
-		// cleared any other terminal error at the entry to this loop, we know
-		// that what we're covering up here can only be a scan error.
+		// Now that we've had a successful scan, clear the last error (if any),
+		// record scan problems (if any), and update the status to reconciling.
+		// We know that it's okay to clear the error here (if there is one)
+		// because we know that it originated from scan (since all other errors
+		// are terminal and any previous terminal error would have been cleared
+		// at the start of this function).
 		c.stateLock.Lock()
-		if c.state.LastError != "" {
-			c.state.LastError = ""
-			c.stateLock.Unlock()
-		} else {
-			c.stateLock.UnlockWithoutNotify()
-		}
+		c.state.LastError = ""
+		c.state.AlphaScanProblems = αSnapshot.Problems()
+		c.state.BetaScanProblems = βSnapshot.Problems()
+		c.state.Status = Status_Reconciling
+		c.stateLock.Unlock()
 
 		// If one side preserves executability and the other does not, then
 		// propagate executability from the preserving side to the
@@ -1032,11 +1034,6 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		} else if βPreservesExecutability && !αPreservesExecutability {
 			αSnapshot = core.PropagateExecutability(ancestor, βSnapshot, αSnapshot)
 		}
-
-		// Update status to reconciling.
-		c.stateLock.Lock()
-		c.state.Status = Status_Reconciling
-		c.stateLock.Unlock()
 
 		// Check if the root is a directory that's been emptied (by deleting a
 		// non-trivial amount of content) on one endpoint (but not both). This
@@ -1061,17 +1058,9 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			synchronizationMode,
 		)
 
-		// Create a slim copy of the conflicts so that we don't need to hold
-		// the full-size versions in memory or send them over the wire.
-		var slimConflicts []*core.Conflict
-		if len(conflicts) > 0 {
-			slimConflicts = make([]*core.Conflict, len(conflicts))
-			for c, conflict := range conflicts {
-				slimConflicts[c] = conflict.CopySlim()
-			}
-		}
+		// Store conflicts that arose during reconciliation.
 		c.stateLock.Lock()
-		c.state.Conflicts = slimConflicts
+		c.state.Conflicts = conflicts
 		c.stateLock.Unlock()
 
 		// Check if a root deletion operation is being propagated. This can be
@@ -1112,9 +1101,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
-		if paths, digests, err := core.TransitionDependencies(αTransitions); err != nil {
-			return errors.Wrap(err, "unable to determine paths for staging on alpha")
-		} else if len(paths) > 0 {
+		if paths, digests := core.TransitionDependencies(αTransitions); len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := alpha.Stage(paths, digests)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on alpha")
@@ -1135,9 +1122,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
-		if paths, digests, err := core.TransitionDependencies(βTransitions); err != nil {
-			return errors.Wrap(err, "unable to determine paths for staging on beta")
-		} else if len(paths) > 0 {
+		if paths, digests := core.TransitionDependencies(βTransitions); len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := beta.Stage(paths, digests)
 			if err != nil {
 				return errors.Wrap(err, "unable to begin staging on beta")
@@ -1197,13 +1182,13 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 		transitionDone.Wait()
 
-		// Record problems and then combine changes and propagate them to the
-		// ancestor. Even if there were transition errors, this code is still
-		// valid.
+		// Record transition problems, then combine changes and propagate them
+		// to the ancestor. Even if there were transition problems, this code is
+		// still valid.
 		c.stateLock.Lock()
 		c.state.Status = Status_Saving
-		c.state.AlphaProblems = αProblems
-		c.state.BetaProblems = βProblems
+		c.state.AlphaTransitionProblems = αProblems
+		c.state.BetaTransitionProblems = βProblems
 		c.stateLock.Unlock()
 		ancestorChanges = append(ancestorChanges, αChanges...)
 		ancestorChanges = append(ancestorChanges, βChanges...)
@@ -1222,12 +1207,12 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// disk, the session is toast. This safety check ensures that even if we
 		// put out a broken release, or encounter some bizarre real world merge
 		// case that we didn't consider, things can be fixed.
-		if err := ancestor.EnsureValid(); err != nil {
+		if err := ancestor.EnsureValid(true); err != nil {
 			return errors.Wrap(err, "new ancestor is invalid")
 		}
 
 		// Save the ancestor.
-		archive.Root = ancestor
+		archive.Content = ancestor
 		if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
 			return errors.Wrap(err, "unable to save ancestor")
 		}

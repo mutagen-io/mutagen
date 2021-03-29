@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// stripExecutabilityRecursive is used by stripExecutability for recursion.
 func stripExecutabilityRecursive(snapshot *Entry) {
 	// If the entry is nil, then there's nothing to strip.
 	if snapshot == nil {
@@ -20,9 +21,11 @@ func stripExecutabilityRecursive(snapshot *Entry) {
 	}
 }
 
+// stripExecutability creates a deep copy of an entry with executability
+// information removed.
 func stripExecutability(snapshot *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := snapshot.Copy()
+	result := snapshot.Copy(true)
 
 	// Perform stripping.
 	stripExecutabilityRecursive(result)
@@ -31,43 +34,61 @@ func stripExecutability(snapshot *Entry) *Entry {
 	return result
 }
 
-func TestExecutabilityPropagateNil(t *testing.T) {
-	if PropagateExecutability(testDirectory1Entry, testDirectory1Entry, nil) != nil {
-		t.Fatal("executability propagation to nil entry did not return nil")
+// TestPropagateExecutability tests PropagateExecutability.
+func TestPropagateExecutability(t *testing.T) {
+	// Test propagation to a nil target.
+	if PropagateExecutability(tDMU, tDMU, nil) != nil {
+		t.Error("executability propagation to nil entry did not return nil")
 	}
-}
 
-func TestExecutabilityPropagationCycle(t *testing.T) {
 	// Create a copy of the test directory entry with executability stripped and
 	// ensure that it differs.
-	stripped := stripExecutability(testDirectory1Entry)
-	if stripped == testDirectory1Entry {
+	stripped := stripExecutability(tDMU)
+	if stripped == tDMU {
 		t.Fatal("executability stripping did not make entry copy")
-	} else if stripped.Equal(testDirectory1Entry) {
-		t.Fatal("stripped directory entry considered equal to original")
+	} else if stripped.Equal(tDMU, true) {
+		t.Error("stripped directory entry considered equal to original")
 	}
 
-	// Propagate executability from a nil ancestor/source.
+	// Propagate executability from a nil ancestor/source. This should have no
+	// effect on the executability-stripped contents.
 	fixed := PropagateExecutability(nil, nil, stripped)
 	if fixed == stripped {
 		t.Fatal("executability propagation did not make entry copy")
-	} else if !fixed.Equal(stripped) {
-		t.Fatal("executability propagation from nil ancestor/source made changes to entry")
+	} else if !fixed.Equal(stripped, true) {
+		t.Error("executability propagation from nil ancestor/source made changes to entry")
 	}
 
-	// Propagate executability from a real ancestor.
-	fixed = PropagateExecutability(testDirectory1Entry, nil, stripped)
+	// Propagate from an ancestor and ensure that executability is restored.
+	stripped = stripExecutability(tDMU)
+	fixed = PropagateExecutability(tDMU, nil, stripped)
 	if fixed == stripped {
 		t.Fatal("executability propagation did not make entry copy")
-	} else if !fixed.Equal(testDirectory1Entry) {
-		t.Fatal("executability propagation from ancestor incorrect")
+	} else if !fixed.Equal(tDMU, true) {
+		t.Error("executability propagation from ancestor incorrect")
 	}
 
-	// Propagate executability from a real source.
-	fixed = PropagateExecutability(nil, testDirectory1Entry, stripped)
+	// Propagate from a preserving source and ensure that executability is
+	// restored.
+	stripped = stripExecutability(tDMU)
+	fixed = PropagateExecutability(nil, tDMU, stripped)
 	if fixed == stripped {
 		t.Fatal("executability propagation did not make entry copy")
-	} else if !fixed.Equal(testDirectory1Entry) {
-		t.Fatal("executability propagation from source incorrect")
+	} else if !fixed.Equal(tDMU, true) {
+		t.Error("executability propagation from source incorrect")
+	}
+
+	// Propagate from a preserving source and ancestor in the case where the
+	// non-preserving side has modified the file.
+	//
+	// HACK: We know that stripExecutability generates a deep copy of its input
+	// value, so we can modify it here.
+	stripped = stripExecutability(tDMU)
+	stripped.Contents["executable file"] = tF2
+	fixed = PropagateExecutability(tDMU, tDMU, stripped)
+	expected := tF2.Copy(false)
+	expected.Executable = true
+	if !fixed.Contents["executable file"].Equal(expected, true) {
+		t.Error("executability propagation from ancestor and source incorrect")
 	}
 }

@@ -1,7 +1,8 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // Description returns a human-readable description of the session status.
@@ -54,50 +55,68 @@ func (s *State) EnsureValid() error {
 
 	// Ensure the session is valid.
 	if err := s.Session.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session")
+		return fmt.Errorf("invalid session: %w", err)
 	}
 
 	// Ensure the staging status is valid.
 	if err := s.StagingStatus.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid staging status")
+		return fmt.Errorf("invalid staging status: %w", err)
+	}
+
+	// Ensure that all of alpha's scan problem are valid.
+	for _, p := range s.AlphaScanProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid alpha scan problem detected: %w", err)
+		}
+	}
+
+	// Ensure that all of beta's scan problem are valid.
+	for _, p := range s.BetaScanProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid beta scan problem detected: %w", err)
+		}
 	}
 
 	// Ensure that all conflicts are valid.
 	for _, c := range s.Conflicts {
 		if err := c.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid conflict detected")
+			return fmt.Errorf("invalid conflict detected: %w", err)
 		}
 	}
 
-	// Ensure that all of alpha's problem are valid.
-	for _, c := range s.AlphaProblems {
-		if err := c.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid alpha problem detected")
+	// Ensure that all of alpha's transition problem are valid.
+	for _, p := range s.AlphaTransitionProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid alpha transition problem detected: %w", err)
 		}
 	}
 
-	// Ensure that all of beta's problem are valid.
-	for _, c := range s.BetaProblems {
-		if err := c.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid beta problem detected")
+	// Ensure that all of beta's transition problem are valid.
+	for _, p := range s.BetaTransitionProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid beta transition problem detected: %w", err)
 		}
 	}
 
-	// Ensure that conflict and problem truncations have only occurred in cases
-	// where the corresponding list(s) are non-empty.
-	if s.TruncatedConflicts > 0 && len(s.Conflicts) == 0 {
-		return errors.New("truncated conflicts reported with no conflicts reported")
-	} else if s.TruncatedAlphaProblems > 0 && len(s.AlphaProblems) == 0 {
-		return errors.New("truncated alpha problems reported with no alpha problems reported")
-	} else if s.TruncatedBetaProblems > 0 && len(s.BetaProblems) == 0 {
-		return errors.New("truncated beta problems reported with no beta problems reported")
+	// Ensure that problem and conflict list truncations have only occurred in
+	// cases where the corresponding list(s) are non-empty.
+	if s.ExcludedAlphaScanProblems > 0 && len(s.AlphaScanProblems) == 0 {
+		return errors.New("excluded alpha scan problems reported with no alpha scan problems reported")
+	} else if s.ExcludedBetaScanProblems > 0 && len(s.BetaScanProblems) == 0 {
+		return errors.New("excluded beta scan problems reported with no beta scan problems reported")
+	} else if s.ExcludedConflicts > 0 && len(s.Conflicts) == 0 {
+		return errors.New("excluded conflicts reported with no conflicts reported")
+	} else if s.ExcludedAlphaTransitionProblems > 0 && len(s.AlphaTransitionProblems) == 0 {
+		return errors.New("excluded alpha transition problems reported with no alpha transition problems reported")
+	} else if s.ExcludedBetaTransitionProblems > 0 && len(s.BetaTransitionProblems) == 0 {
+		return errors.New("excluded beta transition problems reported with no beta transition problems reported")
 	}
 
 	// Success.
 	return nil
 }
 
-// copy creates a static copy of the state, deep-copying any mutable members.
+// copy creates a shallow copy of the state, deep-copying any mutable members.
 func (s *State) copy() *State {
 	return &State{
 		Session:                         s.Session.copy(),
@@ -107,11 +126,15 @@ func (s *State) copy() *State {
 		LastError:                       s.LastError,
 		SuccessfulSynchronizationCycles: s.SuccessfulSynchronizationCycles,
 		StagingStatus:                   s.StagingStatus,
+		AlphaScanProblems:               s.AlphaScanProblems,
+		ExcludedAlphaScanProblems:       s.ExcludedAlphaScanProblems,
+		BetaScanProblems:                s.BetaScanProblems,
+		ExcludedBetaScanProblems:        s.ExcludedBetaScanProblems,
 		Conflicts:                       s.Conflicts,
-		AlphaProblems:                   s.AlphaProblems,
-		BetaProblems:                    s.BetaProblems,
-		TruncatedConflicts:              s.TruncatedConflicts,
-		TruncatedAlphaProblems:          s.TruncatedAlphaProblems,
-		TruncatedBetaProblems:           s.TruncatedBetaProblems,
+		ExcludedConflicts:               s.ExcludedConflicts,
+		AlphaTransitionProblems:         s.AlphaTransitionProblems,
+		ExcludedAlphaTransitionProblems: s.ExcludedAlphaTransitionProblems,
+		BetaTransitionProblems:          s.BetaTransitionProblems,
+		ExcludedBetaTransitionProblems:  s.ExcludedBetaTransitionProblems,
 	}
 }

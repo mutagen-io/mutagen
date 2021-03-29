@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the synchronization mode is
@@ -27,7 +27,7 @@ func (m *SynchronizationMode) UnmarshalText(textBytes []byte) error {
 	case "one-way-replica":
 		*m = SynchronizationMode_SynchronizationModeOneWayReplica
 	default:
-		return errors.Errorf("unknown synchronization mode specification: %s", text)
+		return fmt.Errorf("unknown synchronization mode specification: %s", text)
 	}
 
 	// Success.

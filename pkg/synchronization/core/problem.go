@@ -1,7 +1,8 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"sort"
 )
 
 // EnsureValid ensures that Problem's invariants are respected.
@@ -11,11 +12,52 @@ func (p *Problem) EnsureValid() error {
 		return errors.New("nil problem")
 	}
 
-	// We intentionally don't check that error != "", because we take the error
-	// message as its given to use by the system, and thus we don't really have
-	// any control over what it says. The more important thing is that the
-	// presence of a non-nil problem indicates that there was a non-nil error.
+	// Ensure that an error message has been provided.
+	if p.Error == "" {
+		return errors.New("empty or missing error message")
+	}
 
 	// Success.
 	return nil
+}
+
+// CopyProblems creates a copy of a list of problems in a new slice, usually for
+// the purpose of modifying the list. The problem objects themselves are not
+// copied. It preserves nil vs. non-nil characteristics for empty slices.
+func CopyProblems(problems []*Problem) []*Problem {
+	// If the slice is nil, then preserve its nilness. For zero-length, non-nil
+	// slices, we still allocate on the heap to preserve non-nilness.
+	if problems == nil {
+		return nil
+	}
+
+	// Make a copy.
+	result := make([]*Problem, len(problems))
+	copy(result, problems)
+
+	// Done.
+	return result
+}
+
+// sortableProblemList implements sort.Interface for problem lists.
+type sortableProblemList []*Problem
+
+// Len implements sort.Interface.Len.
+func (l sortableProblemList) Len() int {
+	return len(l)
+}
+
+// Less implements sort.Interface.Less.
+func (l sortableProblemList) Less(i, j int) bool {
+	return pathLess(l[i].Path, l[j].Path)
+}
+
+// Swap implements sort.Interface.Swap.
+func (l sortableProblemList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+// SortProblems sorts a list of conflicts based on their problem paths.
+func SortProblems(conflicts []*Problem) {
+	sort.Sort(sortableProblemList(conflicts))
 }

@@ -255,7 +255,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	return controller, nil
 }
 
-// currentState creates a snapshot of the current session state.
+// currentState creates a static snapshot of the current session state.
 func (c *controller) currentState() *State {
 	// Lock the session state and defer its release. It's very important that we
 	// unlock without a notification here, otherwise we'd trigger an infinite

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the VCS ignore mode is
@@ -23,7 +23,7 @@ func (m *IgnoreVCSMode) UnmarshalText(textBytes []byte) error {
 	case "false":
 		*m = IgnoreVCSMode_IgnoreVCSModePropagate
 	default:
-		return errors.Errorf("unknown VCS ignore specification: %s", text)
+		return fmt.Errorf("unknown VCS ignore specification: %s", text)
 	}
 
 	// Success.

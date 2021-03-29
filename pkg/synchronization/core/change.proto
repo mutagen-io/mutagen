@@ -6,8 +6,16 @@ option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
 
 import "synchronization/core/entry.proto";
 
+// Change encodes a change to an entry hierarchy. Change objects should be
+// considered immutable and must not be modified.
 message Change {
+    // Path is the path of the root of the change (relative to the
+    // synchronization root).
     string path = 1;
+    // Old represents the old filesystem hierarchy at the change path. It may be
+    // nil if no content previously existed.
     Entry old = 2;
+    // New represents the new filesystem hierarchy at the change path. It may be
+    // nil if content has been deleted.
     Entry new = 3;
 }

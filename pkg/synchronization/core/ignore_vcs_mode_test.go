@@ -4,11 +4,34 @@ import (
 	"testing"
 )
 
-// TestIgnoreVCSModeUnmarshal tests that unmarshaling from a string
-// specification succeeeds for IgnoreVCSMode.
-func TestIgnoreVCSModeUnmarshal(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
+// TestIgnoreVCSModeIsDefault tests IgnoreVCSMode.IsDefault.
+func TestIgnoreVCSModeIsDefault(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		value    IgnoreVCSMode
+		expected bool
+	}{
+		{IgnoreVCSMode_IgnoreVCSModeDefault - 1, false},
+		{IgnoreVCSMode_IgnoreVCSModeDefault, true},
+		{IgnoreVCSMode_IgnoreVCSModeIgnore, false},
+		{IgnoreVCSMode_IgnoreVCSModePropagate, false},
+		{IgnoreVCSMode_IgnoreVCSModePropagate + 1, false},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if result := test.value.IsDefault(); result && !test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as default", i)
+		} else if !result && test.expected {
+			t.Errorf("test index %d: value was unexpectedly classified as non-default", i)
+		}
+	}
+}
+
+// TestIgnoreVCSModeUnmarshalText tests IgnoreVCSMode.UnmarshalText.
+func TestIgnoreVCSModeUnmarshalText(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
 		text          string
 		expectedMode  IgnoreVCSMode
 		expectFailure bool
@@ -20,19 +43,19 @@ func TestIgnoreVCSModeUnmarshal(t *testing.T) {
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
+	for _, test := range tests {
 		var mode IgnoreVCSMode
-		if err := mode.UnmarshalText([]byte(testCase.text)); err != nil {
-			if !testCase.expectFailure {
-				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
+		if err := mode.UnmarshalText([]byte(test.text)); err != nil {
+			if !test.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", test.text, err)
 			}
-		} else if testCase.expectFailure {
-			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
-		} else if mode != testCase.expectedMode {
+		} else if test.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", test.text)
+		} else if mode != test.expectedMode {
 			t.Errorf(
 				"unmarshaled mode (%s) does not match expected (%s)",
 				mode,
-				testCase.expectedMode,
+				test.expectedMode,
 			)
 		}
 	}

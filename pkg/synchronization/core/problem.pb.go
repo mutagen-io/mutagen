@@ -25,12 +25,18 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+// Problem indicates an issue or error encountered at some stage of a
+// synchronization cycle. Problem objects should be considered immutable and
+// must not be modified.
 type Problem struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Path  string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Path is the path at which the problem occurred (relative to the
+	// synchronization root).
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Error is a human-readable summary of the problem.
 	Error string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 

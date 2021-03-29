@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the symbolic link handling mode is
@@ -25,7 +25,7 @@ func (m *SymlinkMode) UnmarshalText(textBytes []byte) error {
 	case "posix-raw":
 		*m = SymlinkMode_SymlinkModePOSIXRaw
 	default:
-		return errors.Errorf("unknown symlink mode specification: %s", text)
+		return fmt.Errorf("unknown symlink mode specification: %s", text)
 	}
 
 	// Success.
