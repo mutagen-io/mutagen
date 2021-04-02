@@ -106,8 +106,8 @@ func NewEndpoint(
 }
 
 // TransportErrors implements forwarding.Endpoint.TransportErrors.
-func (e *client) TransportErrors() <-chan error {
-	return e.transportErrors
+func (c *client) TransportErrors() <-chan error {
+	return c.transportErrors
 }
 
 // Open implements forwarding.Endpoint.Open.

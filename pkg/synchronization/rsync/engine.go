@@ -511,7 +511,7 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 	sendBlock := func(index uint64) error {
 		if coalescedCount > 0 {
 			if coalescedStart+coalescedCount == index {
-				coalescedCount += 1
+				coalescedCount++
 				return nil
 			} else if err := e.transmitBlock(coalescedStart, coalescedCount, transmit); err != nil {
 				return nil
@@ -644,7 +644,7 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 			} else {
 				weak, r1, r2 = e.rollWeakHash(r1, r2, buffer[occupancy-base.BlockSize], b, base.BlockSize)
 				buffer[occupancy] = b
-				occupancy += 1
+				occupancy++
 			}
 		}
 

@@ -228,7 +228,7 @@ func (g testDataGenerator) generate() []byte {
 
 	// Mutate.
 	for _, index := range g.mutations {
-		result[index] += 1
+		result[index]++
 	}
 
 	// Prepend data if necessary. This isn't super-efficient, but it's fine for
@@ -301,7 +301,7 @@ func (c engineTestCase) run(t *testing.T) {
 					dataLength, ">", expectedMaxDataOpSize,
 				)
 			}
-			nDataOperations += 1
+			nDataOperations++
 		} else if o.Count > 1 {
 			haveCoalescedOperations = true
 		}

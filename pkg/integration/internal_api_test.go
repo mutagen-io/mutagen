@@ -24,10 +24,10 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
-func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string, allowScanProblems, allowConflicts, allowTransitionProblems bool) error {
+func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionID string, allowScanProblems, allowConflicts, allowTransitionProblems bool) error {
 	// Create a session selection specification.
 	selection := &selection.Selection{
-		Specifications: []string{sessionId},
+		Specifications: []string{sessionID},
 	}
 
 	// Perform waiting.
@@ -55,7 +55,7 @@ func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionId string
 
 func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url.URL, configuration *synchronization.Configuration, allowScanProblems, allowConflicts, allowTransitionProblems bool) error {
 	// Create a session.
-	sessionId, err := synchronizationManager.Create(
+	sessionID, err := synchronizationManager.Create(
 		ctx,
 		alpha, beta,
 		configuration,
@@ -73,7 +73,7 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 	// Wait for the session to have at least one successful synchronization
 	// cycle.
 	// TODO: Should we add a timeout on this?
-	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionID, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for successful synchronization")
 	}
 
@@ -86,7 +86,7 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 
 	// Create a session selection specification.
 	selection := &selection.Selection{
-		Specifications: []string{sessionId},
+		Specifications: []string{sessionID},
 	}
 
 	// Pause the session.
@@ -101,7 +101,7 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 
 	// Wait for the session to have at least one additional synchronization
 	// cycle.
-	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionId, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
+	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionID, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
 		return errors.Wrap(err, "unable to wait for additional synchronization")
 	}
 

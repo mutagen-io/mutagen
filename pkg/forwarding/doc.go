@@ -1,2 +1,2 @@
-// Package forwarding provides forwarding infrastructure.
+// Package forwarding provides infrastructure for forwarding sessions.
 package forwarding

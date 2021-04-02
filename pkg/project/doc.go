@@ -1,2 +1,2 @@
-// Package provides project orchestration infrastructure.
+// Package project provides project orchestration infrastructure.
 package project

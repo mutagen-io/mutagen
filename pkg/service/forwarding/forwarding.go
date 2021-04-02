@@ -119,7 +119,7 @@ func (r *ListRequest) ensureValid() error {
 	return nil
 }
 
-// ensureValid verifies that a ListResponse is valid.
+// EnsureValid verifies that a ListResponse is valid.
 func (r *ListResponse) EnsureValid() error {
 	// A nil list response is not valid.
 	if r == nil {

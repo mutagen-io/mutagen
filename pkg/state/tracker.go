@@ -40,7 +40,7 @@ func (t *Tracker) NotifyOfChange() {
 	defer t.change.L.Unlock()
 
 	// Increment the state index and broadcast changes.
-	t.index += 1
+	t.index++
 	t.change.Broadcast()
 }
 

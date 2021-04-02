@@ -32,7 +32,7 @@ const (
 	// FlushOnCreateBehaviorNoFlush indicates that flush-on-create behavior has
 	// been disabled.
 	FlushOnCreateBehaviorNoFlush
-	// FlushOnCreateBehaviorNoFlush indicates that flush-on-create behavior has
+	// FlushOnCreateBehaviorFlush indicates that flush-on-create behavior has
 	// been enabled.
 	FlushOnCreateBehaviorFlush
 )

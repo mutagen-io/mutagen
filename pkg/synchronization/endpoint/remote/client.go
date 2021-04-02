@@ -90,10 +90,10 @@ func NewEndpoint(
 }
 
 // Poll implements the Poll method for remote endpoints.
-func (e *endpointClient) Poll(ctx context.Context) error {
+func (c *endpointClient) Poll(ctx context.Context) error {
 	// Create and send the poll request.
 	request := &EndpointRequest{Poll: &PollRequest{}}
-	if err := e.encoder.Encode(request); err != nil {
+	if err := c.encoder.Encode(request); err != nil {
 		return errors.Wrap(err, "unable to send poll request")
 	}
 
@@ -106,7 +106,7 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := e.encoder.Encode(&PollCompletionRequest{}); err != nil {
+		if err := c.encoder.Encode(&PollCompletionRequest{}); err != nil {
 			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
 		} else {
 			completionSendErrors <- nil
@@ -117,7 +117,7 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 	response := &PollResponse{}
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
-		if err := e.decoder.Decode(response); err != nil {
+		if err := c.decoder.Decode(response); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "unable to receive poll response")
 		} else if err = response.ensureValid(); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "invalid poll response")
@@ -161,7 +161,7 @@ func (e *endpointClient) Poll(ctx context.Context) error {
 }
 
 // Scan implements the Scan method for remote endpoints.
-func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
+func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
@@ -169,8 +169,8 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	// If we have the bytes from the last received snapshot, use those, because
 	// they'll be more acccurate, but otherwise use the provided ancestor.
 	var baseBytes []byte
-	if e.lastSnapshotBytes != nil {
-		baseBytes = e.lastSnapshotBytes
+	if c.lastSnapshotBytes != nil {
+		baseBytes = c.lastSnapshotBytes
 	} else {
 		buffer := proto.NewBuffer(nil)
 		buffer.SetDeterministic(true)
@@ -190,7 +190,7 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 			Full:                  full,
 		},
 	}
-	if err := e.encoder.Encode(request); err != nil {
+	if err := c.encoder.Encode(request); err != nil {
 		return nil, false, errors.Wrap(err, "unable to send scan request"), false
 	}
 
@@ -203,7 +203,7 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := e.encoder.Encode(&ScanCompletionRequest{}); err != nil {
+		if err := c.encoder.Encode(&ScanCompletionRequest{}); err != nil {
 			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
 		} else {
 			completionSendErrors <- nil
@@ -214,7 +214,7 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	response := &ScanResponse{}
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
-		if err := e.decoder.Decode(response); err != nil {
+		if err := c.decoder.Decode(response); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "unable to receive scan response")
 		} else if err = response.ensureValid(); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "invalid scan response")
@@ -276,14 +276,14 @@ func (e *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	}
 
 	// Store the bytes that gave us a successful snapshot.
-	e.lastSnapshotBytes = snapshotBytes
+	c.lastSnapshotBytes = snapshotBytes
 
 	// Success.
 	return snapshot, response.PreservesExecutability, nil, false
 }
 
 // Stage implements the Stage method for remote endpoints.
-func (e *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
+func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
 	// If there are no entries to stage, then we're done. We enforce (in message
 	// validation) that stage requests aren't sent to the server with no entries
 	// present.
@@ -298,13 +298,13 @@ func (e *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 			Digests: digests,
 		},
 	}
-	if err := e.encoder.Encode(request); err != nil {
+	if err := c.encoder.Encode(request); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to send stage request")
 	}
 
 	// Receive the response and check for remote errors.
 	response := &StageResponse{}
-	if err := e.decoder.Decode(response); err != nil {
+	if err := c.decoder.Decode(response); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "unable to receive stage response")
 	} else if err = response.ensureValid(); err != nil {
 		return nil, nil, nil, errors.Wrap(err, "invalid scan response")
@@ -320,7 +320,7 @@ func (e *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	encoder := newProtobufRsyncEncoder(e.encoder)
+	encoder := newProtobufRsyncEncoder(c.encoder)
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Success.
@@ -328,7 +328,7 @@ func (e *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 }
 
 // Supply implements the Supply method for remote endpoints.
-func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
+func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
 	// Create and send the supply request.
 	request := &EndpointRequest{
 		Supply: &SupplyRequest{
@@ -336,7 +336,7 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 			Signatures: signatures,
 		},
 	}
-	if err := e.encoder.Encode(request); err != nil {
+	if err := c.encoder.Encode(request); err != nil {
 		// TODO: Should we find a way to finalize the receiver here? That's a
 		// private rsync method, and there shouldn't be any resources in the
 		// receiver in need of finalizing here, but it would be worth thinking
@@ -354,7 +354,7 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 	// The endpoint should now forward rsync operations, so we need to decode
 	// and forward them to the receiver. If this operation completes
 	// successfully, supplying is complete and successful.
-	decoder := newProtobufRsyncDecoder(e.decoder)
+	decoder := newProtobufRsyncDecoder(c.decoder)
 	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return errors.Wrap(err, "unable to decode and forward rsync operations")
 	}
@@ -364,14 +364,14 @@ func (e *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 }
 
 // Transition implements the Transition method for remote endpoints.
-func (e *endpointClient) Transition(ctx context.Context, transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
+func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Change) ([]*core.Entry, []*core.Problem, bool, error) {
 	// Create and send the transition request.
 	request := &EndpointRequest{
 		Transition: &TransitionRequest{
 			Transitions: transitions,
 		},
 	}
-	if err := e.encoder.Encode(request); err != nil {
+	if err := c.encoder.Encode(request); err != nil {
 		return nil, nil, false, errors.Wrap(err, "unable to send transition request")
 	}
 
@@ -384,7 +384,7 @@ func (e *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := e.encoder.Encode(&TransitionCompletionRequest{}); err != nil {
+		if err := c.encoder.Encode(&TransitionCompletionRequest{}); err != nil {
 			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
 		} else {
 			completionSendErrors <- nil
@@ -395,7 +395,7 @@ func (e *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	response := &TransitionResponse{}
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
-		if err := e.decoder.Decode(response); err != nil {
+		if err := c.decoder.Decode(response); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "unable to receive transition response")
 		} else if err = response.ensureValid(len(transitions)); err != nil {
 			responseReceiveErrors <- errors.Wrap(err, "invalid transition response")
@@ -445,8 +445,8 @@ func (e *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 }
 
 // Shutdown implements the Shutdown method for remote endpoints.
-func (e *endpointClient) Shutdown() error {
+func (c *endpointClient) Shutdown() error {
 	// Close the underlying connection. This will cause all stream reads/writes
 	// to unblock.
-	return e.connection.Close()
+	return c.connection.Close()
 }

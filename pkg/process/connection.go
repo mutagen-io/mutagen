@@ -16,12 +16,12 @@ import (
 type address struct{}
 
 // Network returns the connection protocol name.
-func (_ address) Network() string {
+func (address) Network() string {
 	return "standard input/output"
 }
 
 // String returns the connection address.
-func (_ address) String() string {
+func (address) String() string {
 	return "standard input/output"
 }
 

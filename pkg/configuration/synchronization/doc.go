@@ -1,3 +1,3 @@
-// Package forwarding provides definitions for human-readable forwarding
-// configuration files.
+// Package synchronization provides definitions for human-readable
+// synchronization configuration files.
 package synchronization
