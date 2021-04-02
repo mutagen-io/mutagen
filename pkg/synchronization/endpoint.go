@@ -29,7 +29,7 @@ type Endpoint interface {
 	// a boolean indicating whether or not the synchronization root preserves
 	// POSIX executability bits, any error that occurred while trying to create
 	// the scan, and a boolean indicating whether or not to re-try the scan if
-	// an error occured. Any non-fatal problems encountered during the scan can
+	// an error occurred. Any non-fatal problems encountered during the scan can
 	// be extracted from the resulting entry.
 	Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
 

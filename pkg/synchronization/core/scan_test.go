@@ -495,7 +495,7 @@ func TestScan(t *testing.T) {
 			// Create a proxy hasher to track re-hashing.
 			rescanHasher := &testHashingDetector{
 				hasher, func() {
-					t.Errorf("%s: hashing occured on warm scan on %s filesystem",
+					t.Errorf("%s: hashing occurred on warm scan on %s filesystem",
 						test.description, filesystem.name,
 					)
 				},
