@@ -175,12 +175,12 @@ func printSession(state *synchronization.State, long bool) {
 		fmt.Println("\tMaximum staging file size:", maximumStagingFileSizeDescription)
 
 		// Compute and print symlink mode.
-		symlinkModeDescription := configuration.SymlinkMode.Description()
-		if configuration.SymlinkMode.IsDefault() {
-			defaultSymlinkMode := state.Session.Version.DefaultSymlinkMode()
-			symlinkModeDescription += fmt.Sprintf(" (%s)", defaultSymlinkMode.Description())
+		symbolicLinkModeDescription := configuration.SymbolicLinkMode.Description()
+		if configuration.SymbolicLinkMode.IsDefault() {
+			defaultSymbolicLinkMode := state.Session.Version.DefaultSymbolicLinkMode()
+			symbolicLinkModeDescription += fmt.Sprintf(" (%s)", defaultSymbolicLinkMode.Description())
 		}
-		fmt.Println("\tSymbolic link mode:", symlinkModeDescription)
+		fmt.Println("\tSymbolic link mode:", symbolicLinkModeDescription)
 
 		// Compute and print the VCS ignore mode.
 		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()

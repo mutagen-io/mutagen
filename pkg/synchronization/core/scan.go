@@ -107,8 +107,8 @@ type scanner struct {
 	ignorer *ignorer
 	// ignoreCache is the cache of ignored path behavior.
 	ignoreCache IgnoreCache
-	// symlinkMode is the symlink mode to use for synchronization.
-	symlinkMode SymlinkMode
+	// symbolicLinkMode is the symbolic link mode being used.
+	symbolicLinkMode SymbolicLinkMode
 	// newCache is the new file digest cache to populate.
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
@@ -262,7 +262,7 @@ func (s *scanner) symbolicLink(
 	// If requested, enforce that the link is portable, otherwise just ensure
 	// that it's non-empty (this is required even in POSIX raw mode).
 	if enforcePortable {
-		target, err = normalizeSymlinkAndEnsurePortable(path, target)
+		target, err = normalizeSymbolicLinkAndEnsurePortable(path, target)
 		if err != nil {
 			return &Entry{
 				Kind:    EntryKind_Problematic,
@@ -432,14 +432,14 @@ func (s *scanner) directory(
 		if contentKind == EntryKind_File {
 			entry, err = s.file(contentPath, directory, contentMetadata, nil)
 		} else if contentKind == EntryKind_SymbolicLink {
-			if s.symlinkMode == SymlinkMode_SymlinkModePortable {
+			if s.symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePortable {
 				entry, err = s.symbolicLink(contentPath, directory, contentName, true)
-			} else if s.symlinkMode == SymlinkMode_SymlinkModeIgnore {
+			} else if s.symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModeIgnore {
 				entry = &Entry{Kind: EntryKind_Untracked}
-			} else if s.symlinkMode == SymlinkMode_SymlinkModePOSIXRaw {
+			} else if s.symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw {
 				entry, err = s.symbolicLink(contentPath, directory, contentName, false)
 			} else {
-				panic("unsupported symlink mode")
+				panic("unsupported symbolic link mode")
 			}
 		} else if contentKind == EntryKind_Directory {
 			entry, err = s.directory(contentPath, directory, contentMetadata, nil, contentBaseline)
@@ -480,11 +480,11 @@ func Scan(
 	ignores []string,
 	ignoreCache IgnoreCache,
 	probeMode behavior.ProbeMode,
-	symlinkMode SymlinkMode,
+	symbolicLinkMode SymbolicLinkMode,
 ) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
-	// Verify that the symlink mode is valid for this platform.
-	if symlinkMode == SymlinkMode_SymlinkModePOSIXRaw && runtime.GOOS == "windows" {
-		return nil, false, false, nil, nil, errors.New("raw POSIX symlinks not supported on Windows")
+	// Verify that the symbolic link mode is valid for this platform.
+	if symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw && runtime.GOOS == "windows" {
+		return nil, false, false, nil, nil, errors.New("raw POSIX symbolic links not supported on Windows")
 	}
 
 	// Open the root and defer its closure. We explicitly disallow symbolic
@@ -693,7 +693,7 @@ func Scan(
 		cache:                  cache,
 		ignorer:                ignorer,
 		ignoreCache:            ignoreCache,
-		symlinkMode:            symlinkMode,
+		symbolicLinkMode:       symbolicLinkMode,
 		newCache:               newCache,
 		newIgnoreCache:         newIgnoreCache,
 		copyBuffer:             make([]byte, scannerCopyBufferSize),

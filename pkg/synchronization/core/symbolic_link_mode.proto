@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
+
+// SymbolicLinkMode specifies the mode for handling symbolic links.
+enum SymbolicLinkMode {
+    // SymbolicLinkMode_SymbolicLinkModeDefault represents an unspecified
+    // symbolic link mode. It is not valid for use with Scan or Transition. It
+    // should be converted to one of the following values based on the desired
+    // default behavior.
+    SymbolicLinkModeDefault = 0;
+    // SymbolicLinkMode_SymbolicLinkModeIgnore specifies that all symbolic links
+    // should be ignored.
+    SymbolicLinkModeIgnore = 1;
+    // SymbolicLinkMode_SymbolicLinkModePortable specifies that only portable
+    // symbolic links should be synchronized. Any absolute symbolic links or
+    // symbolic links which are otherwise non-portable will be treate as
+    // problematic content.
+    SymbolicLinkModePortable = 2;
+    // SymbolicLinkMode_SymbolicLinkModePOSIXRaw specifies that symbolic links
+    // should be propagated in their raw form. It is only valid on POSIX systems
+    // and only makes sense in the context of POSIX-to-POSIX synchronization.
+    SymbolicLinkModePOSIXRaw = 3;
+}

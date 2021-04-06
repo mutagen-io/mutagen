@@ -8,21 +8,21 @@ import (
 )
 
 const (
-	// maximumPortableSymlinkTargetLength is the maximum symlink target length
-	// that we can synchronize in a portable fashion. It is limited by Windows,
-	// where a path length of 248 characters or longer will be converted to
-	// extended path format (i.e. prefixed with "\\?\"), thus not allowing us to
-	// reliably round-trip it to disk. For more information, see
-	// Go's src/os/path_windows.go (fixLongPath function). The length should be
-	// fine on all other modern systems.
-	maximumPortableSymlinkTargetLength = 247
+	// maximumPortableSymbolicLinkTargetLength is the maximum symbolic link
+	// target length that can be synchronized in a portable fashion. It is
+	// limited by Windows, where a path length of 248 characters or longer will
+	// be converted to extended path format (i.e. prefixed with "\\?\"), thus
+	// not allowing reliable round-tripping it to disk. For more information,
+	// see Go's src/os/path_windows.go (fixLongPath function). All modern POSIX
+	// operating systems should support longer targets.
+	maximumPortableSymbolicLinkTargetLength = 247
 )
 
-// normalizeSymlinkAndEnsurePortable normalizes a symlink target and verifies
-// that it's valid safe for portable propagation. This requires that the symlink
-// be relative, not escape the synchronization root, and be composed of only
-// portable characters. These are the only types of symlinks that we can safely
-// (and sanely) synchronize between systems.
+// normalizeSymbolicLinkAndEnsurePortable normalizes a symbolic link target and
+// verifies that it's valid safe for portable propagation. This requires that
+// the symbolic link be relative, not escape the synchronization root, and be
+// composed of only portable characters. These are the only types of symbolic
+// links that can be safely (and sanely) synchronized between systems.
 //
 // Effectively this means that the target needs to be components of the form
 // "<name>", "..", or ".", separated by '/', and not an absolute path of any
@@ -32,15 +32,15 @@ const (
 // https://msdn.microsoft.com/en-us/library/windows/desktop/aa363866(v=vs.85).aspx
 // It lists some of the possible Windows path formats accepted by
 // CreateSymbolicLinkW.
-func normalizeSymlinkAndEnsurePortable(path, target string) (string, error) {
+func normalizeSymbolicLinkAndEnsurePortable(path, target string) (string, error) {
 	// If the target is empty, it's invalid on most (all?) platforms.
 	if target == "" {
 		return "", errors.New("target empty")
 	}
 
-	// If the target is longer than the maximum allowed symlink length, we can't
-	// propagate it.
-	if len(target) > maximumPortableSymlinkTargetLength {
+	// If the target is longer than the maximum allowed symbolic link target
+	// length, then it can't be propagated.
+	if len(target) > maximumPortableSymbolicLinkTargetLength {
 		return "", errors.New("target too long")
 	}
 
@@ -59,7 +59,7 @@ func normalizeSymlinkAndEnsurePortable(path, target string) (string, error) {
 	}
 
 	// If we're on a Windows system, convert all backslashes to forward slashes.
-	// Windows only supports using backslashes in symlink targets, so Go
+	// Windows only supports using backslashes in symbolic link targets, so Go
 	// performs this conversion when creating them. If we're on a POSIX system,
 	// backslashes are allowed in filenames (and hence paths), and they don't
 	// act as a path separator. That being said, we won't be able to round-trip
@@ -79,11 +79,11 @@ func normalizeSymlinkAndEnsurePortable(path, target string) (string, error) {
 		return "", errors.New("target is absolute")
 	}
 
-	// Compute the depth of the symlink inside the synchronization root and
-	// iterate through the target components, ensuring that the target never
+	// Compute the depth of the symbolic link inside the synchronization root
+	// and iterate through the target components, ensuring that the target never
 	// references a location outside of the synchronization root. Note that we
 	// don't add 1 to our calculation of pathDepth because the act of
-	// dereferencing the symlink removes one element of path depth.
+	// dereferencing the symbolic link removes one element of path depth.
 	pathDepth := strings.Count(path, "/")
 	for _, component := range strings.Split(target, "/") {
 		// Update the depth.

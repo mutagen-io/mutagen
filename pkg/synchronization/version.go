@@ -93,11 +93,12 @@ func (v Version) DefaultStageMode() StageMode {
 	}
 }
 
-// DefaultSymlinkMode returns the default symlink mode for the session version.
-func (v Version) DefaultSymlinkMode() core.SymlinkMode {
+// DefaultSymbolicLinkMode returns the default symbolic link mode for the
+// session version.
+func (v Version) DefaultSymbolicLinkMode() core.SymbolicLinkMode {
 	switch v {
 	case Version_Version1:
-		return core.SymlinkMode_SymlinkModePortable
+		return core.SymbolicLinkMode_SymbolicLinkModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}

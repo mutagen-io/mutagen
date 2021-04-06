@@ -92,7 +92,7 @@ func (g *testingContentManager) generate() (string, error) {
 		root,
 		[]*Change{creation},
 		nil,
-		SymlinkMode_SymlinkModePOSIXRaw,
+		SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
 		0600,
 		0700,
 		nil,

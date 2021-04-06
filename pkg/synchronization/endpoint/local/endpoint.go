@@ -73,9 +73,9 @@ type endpoint struct {
 	// for the endpoint. This is computed based off of the scan mode. This field
 	// is static and thus safe for concurrent reads.
 	accelerationAllowed bool
-	// symlinkMode is the symlink mode for the session. This field is static and
-	// thus safe for concurrent reads.
-	symlinkMode core.SymlinkMode
+	// symbolicLinkMode is the symbolic link mode for the session. This field is
+	// static and thus safe for concurrent reads.
+	symbolicLinkMode core.SymbolicLinkMode
 	// ignores is the list of ignored paths for the session. This field is
 	// static and thus safe for concurrent reads.
 	ignores []string
@@ -228,10 +228,10 @@ func NewEndpoint(
 	}
 	accelerationAllowed := scanMode == synchronization.ScanMode_ScanModeAccelerated
 
-	// Compute the effective symlink mode.
-	symlinkMode := configuration.SymlinkMode
-	if symlinkMode.IsDefault() {
-		symlinkMode = version.DefaultSymlinkMode()
+	// Compute the effective symbolic link mode.
+	symbolicLinkMode := configuration.SymbolicLinkMode
+	if symbolicLinkMode.IsDefault() {
+		symbolicLinkMode = version.DefaultSymbolicLinkMode()
 	}
 
 	// Compute the effective VCS ignore mode.
@@ -345,7 +345,7 @@ func NewEndpoint(
 		maximumEntryCount:                  maximumEntryCount,
 		probeMode:                          probeMode,
 		accelerationAllowed:                accelerationAllowed,
-		symlinkMode:                        symlinkMode,
+		symbolicLinkMode:                   symbolicLinkMode,
 		ignores:                            ignores,
 		defaultFileMode:                    defaultFileMode,
 		defaultDirectoryMode:               defaultDirectoryMode,
@@ -988,7 +988,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths 
 		e.hasher, e.cache,
 		e.ignores, e.ignoreCache,
 		e.probeMode,
-		e.symlinkMode,
+		e.symbolicLinkMode,
 	)
 	if err != nil {
 		return err
@@ -1266,7 +1266,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.root,
 		transitions,
 		e.cache,
-		e.symlinkMode,
+		e.symbolicLinkMode,
 		e.defaultFileMode,
 		e.defaultDirectoryMode,
 		e.defaultOwnership,

@@ -49,14 +49,14 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("unknown or unsupported staging mode")
 	}
 
-	// Verify that the symlink mode.
+	// Verify that the symbolic link mode is unspecified or supported for usage.
 	if endpointSpecific {
-		if !c.SymlinkMode.IsDefault() {
-			return errors.New("symbolic link handling mode cannot be specified on an endpoint-specific basis")
+		if !c.SymbolicLinkMode.IsDefault() {
+			return errors.New("symbolic link mode cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if !(c.SymlinkMode.IsDefault() || c.SymlinkMode.Supported()) {
-			return errors.New("unknown or unsupported symlink mode")
+		if !(c.SymbolicLinkMode.IsDefault() || c.SymbolicLinkMode.Supported()) {
+			return errors.New("unknown or unsupported symbolic link mode")
 		}
 	}
 
@@ -151,7 +151,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.ProbeMode == other.ProbeMode &&
 		c.ScanMode == other.ScanMode &&
 		c.StageMode == other.StageMode &&
-		c.SymlinkMode == other.SymlinkMode &&
+		c.SymbolicLinkMode == other.SymbolicLinkMode &&
 		c.WatchMode == other.WatchMode &&
 		c.WatchPollingInterval == other.WatchPollingInterval &&
 		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
@@ -190,14 +190,14 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.MaximumStagingFileSize = lower.MaximumStagingFileSize
 	}
 
-	// Merge probe mode.
+	// Merge probing mode.
 	if !higher.ProbeMode.IsDefault() {
 		result.ProbeMode = higher.ProbeMode
 	} else {
 		result.ProbeMode = lower.ProbeMode
 	}
 
-	// Merge scan mode.
+	// Merge scanning mode.
 	if !higher.ScanMode.IsDefault() {
 		result.ScanMode = higher.ScanMode
 	} else {
@@ -211,14 +211,14 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.StageMode = lower.StageMode
 	}
 
-	// Merge symlink mode.
-	if !higher.SymlinkMode.IsDefault() {
-		result.SymlinkMode = higher.SymlinkMode
+	// Merge symbolic link mode.
+	if !higher.SymbolicLinkMode.IsDefault() {
+		result.SymbolicLinkMode = higher.SymbolicLinkMode
 	} else {
-		result.SymlinkMode = lower.SymlinkMode
+		result.SymbolicLinkMode = lower.SymbolicLinkMode
 	}
 
-	// Merge watch mode.
+	// Merge watching mode.
 	if !higher.WatchMode.IsDefault() {
 		result.WatchMode = higher.WatchMode
 	} else {

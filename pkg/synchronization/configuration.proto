@@ -10,7 +10,7 @@ import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
 import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
-import "synchronization/core/symlink_mode.proto";
+import "synchronization/core/symbolic_link_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
@@ -19,8 +19,8 @@ import "synchronization/core/symlink_mode.proto";
 message Configuration {
     // Synchronization parameters (fields 11-20).
     // NOTE: These run from field indices 11-20 (rather than 1-10, which are
-    // reserved for symlink configuration parameters) due to the historical
-    // order in which these fields were added.
+    // reserved for symbolic link configuration parameters) due to the
+    // historical order in which these fields were added.
 
     // SynchronizationMode specifies the synchronization mode that should be
     // used in synchronization.
@@ -47,16 +47,16 @@ message Configuration {
     // parameters.
 
 
-    // Symlink configuration parameters (fields 1-10).
+    // Symbolic link configuration parameters (fields 1-10).
     // NOTE: These run from field indices 1-10. The reason for this is that
-    // symlink configuration parameters is due to the historical order in which
-    // configuration fields were added.
+    // symbolic link configuration parameters is due to the historical order in
+    // which configuration fields were added.
 
-    // SymlinkMode specifies the symlink mode that should be used in
-    // synchronization.
-    core.SymlinkMode symlinkMode = 1;
+    // SymbolicLinkMode specifies the symbolic link mode.
+    core.SymbolicLinkMode symbolicLinkMode = 1;
 
-    // Fields 2-10 are reserved for future symlink configuration parameters.
+    // Fields 2-10 are reserved for future symbolic link configuration
+    // parameters.
 
 
     // Watch configuration parameters (fields 21-30).

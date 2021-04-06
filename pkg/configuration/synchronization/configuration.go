@@ -33,10 +33,10 @@ type Configuration struct {
 		// VCS specifies the VCS ignore mode.
 		VCS core.IgnoreVCSMode `yaml:"vcs"`
 	} `yaml:"ignore"`
-	// Symlink contains parameters related to symlink handling.
+	// Symlink contains parameters related to symbolic link handling.
 	Symlink struct {
-		// Mode specifies the symlink mode.
-		Mode core.SymlinkMode `yaml:"mode"`
+		// Mode specifies the symbolic link mode.
+		Mode core.SymbolicLinkMode `yaml:"mode"`
 	} `yaml:"symlink"`
 	// Watch contains parameters related to filesystem monitoring.
 	Watch struct {
@@ -77,7 +77,7 @@ func (c *Configuration) Configuration() *synchronization.Configuration {
 		ProbeMode:              c.ProbeMode,
 		ScanMode:               c.ScanMode,
 		StageMode:              c.StageMode,
-		SymlinkMode:            c.Symlink.Mode,
+		SymbolicLinkMode:       c.Symlink.Mode,
 		WatchMode:              c.Watch.Mode,
 		WatchPollingInterval:   c.Watch.PollingInterval,
 		Ignores:                c.Ignore.Paths,

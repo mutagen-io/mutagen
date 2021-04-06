@@ -241,7 +241,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	}
 
 	// Validate and convert the symbolic link mode specification.
-	var symbolicLinkMode core.SymlinkMode
+	var symbolicLinkMode core.SymbolicLinkMode
 	if createConfiguration.symbolicLinkMode != "" {
 		if err := symbolicLinkMode.UnmarshalText([]byte(createConfiguration.symbolicLinkMode)); err != nil {
 			return errors.Wrap(err, "unable to parse symbolic link mode")
@@ -389,7 +389,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		ProbeMode:              probeMode,
 		ScanMode:               scanMode,
 		StageMode:              stageMode,
-		SymlinkMode:            symbolicLinkMode,
+		SymbolicLinkMode:       symbolicLinkMode,
 		WatchMode:              watchMode,
 		WatchPollingInterval:   createConfiguration.watchPollingInterval,
 		Ignores:                createConfiguration.ignores,

@@ -38,9 +38,10 @@ const (
 	// EntryKind_Untracked indicates content (or the root of content) that is
 	// intentionally excluded from synchronization by Mutagen. This includes
 	// explicitly ignored content, content that is ignored due to settings (such
-	// as symbolic links in the "ignore" symlink mode), as well as content types
-	// that Mutagen doesn't understand and/or have a way to propagate (such as
-	// FIFOs and Unix domain sockets). This type of entry is not synchronizable.
+	// as symbolic links in the "ignore" symbolic link mode), as well as content
+	// types that Mutagen doesn't understand and/or have a way to propagate
+	// (such as FIFOs and Unix domain sockets). This type of entry is not
+	// synchronizable.
 	EntryKind_Untracked EntryKind = 100
 	// EntryKind_Problematic indicates content (or the root of content) that
 	// would normally be synchronized, but which is currently inaccessible to
@@ -48,8 +49,8 @@ const (
 	// concurrently with scanning, content that is inaccessible due to
 	// permissions, content that can't be read due to filesystem errors, content
 	// that cannot be properly encoded given the current settings (such as
-	// absolute symbolic links found when using the "portable" symlink mode),
-	// and content that Mutagen cannot scan or watch reliably (such as
+	// absolute symbolic links found when using the "portable" symbolic link
+	// mode), and content that Mutagen cannot scan or watch reliably (such as
 	// directories that are also mount points). This type of entry is not
 	// synchronizable.
 	EntryKind_Problematic EntryKind = 101
@@ -100,10 +101,10 @@ func (EntryKind) EnumDescriptor() ([]byte, []int) {
 	return file_synchronization_core_entry_proto_rawDescGZIP(), []int{0}
 }
 
-// Entry encodes a filesystem entry (e.g. a directory, a file, or a symlink). A
-// nil Entry represents an absence of content. An zero-value Entry represents an
-// empty Directory. Entry objects should be considered immutable and must not be
-// modified.
+// Entry encodes a filesystem entry (e.g. a directory, a file, or a symbolic
+// link). A nil Entry represents an absence of content. An zero-value Entry
+// represents an empty Directory. Entry objects should be considered immutable
+// and must not be modified.
 type Entry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -50,7 +50,7 @@ var expectedConfiguration = &synchronization.Configuration{
 	ProbeMode:              behavior.ProbeMode_ProbeModeAssume,
 	ScanMode:               synchronization.ScanMode_ScanModeAccelerated,
 	StageMode:              synchronization.StageMode_StageModeNeighboring,
-	SymlinkMode:            core.SymlinkMode_SymlinkModePortable,
+	SymbolicLinkMode:       core.SymbolicLinkMode_SymbolicLinkModePortable,
 	WatchMode:              synchronization.WatchMode_WatchModeForcePoll,
 	WatchPollingInterval:   5,
 	Ignores: []string{
@@ -110,8 +110,8 @@ func TestLoadConfiguration(t *testing.T) {
 	if configuration.StageMode != expectedConfiguration.StageMode {
 		t.Error("stage mode mismatch:", configuration.StageMode, "!=", expectedConfiguration.StageMode)
 	}
-	if configuration.SymlinkMode != expectedConfiguration.SymlinkMode {
-		t.Error("symlink mode mismatch:", configuration.SymlinkMode, "!=", expectedConfiguration.SymlinkMode)
+	if configuration.SymbolicLinkMode != expectedConfiguration.SymbolicLinkMode {
+		t.Error("symbolic link mode mismatch:", configuration.SymbolicLinkMode, "!=", expectedConfiguration.SymbolicLinkMode)
 	}
 	if configuration.WatchMode != expectedConfiguration.WatchMode {
 		t.Error("watch mode mismatch:", configuration.WatchMode, "!=", expectedConfiguration.WatchMode)
