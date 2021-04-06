@@ -3,7 +3,7 @@ package rsync
 import (
 	"github.com/pkg/errors"
 
-	fs "github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // Transmit performs streaming transmission of files (in rsync deltafied form)
@@ -20,7 +20,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 
 	// Create a file opener that we can use to safely open files, and defer its
 	// closure.
-	opener := fs.NewOpener(root)
+	opener := filesystem.NewOpener(root)
 	defer opener.Close()
 
 	// Create an rsync engine.

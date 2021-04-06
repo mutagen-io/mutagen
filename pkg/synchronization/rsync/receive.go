@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	fs "github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
 // EnsureValid ensures that ReceiverStatus' invariants are respected.
@@ -75,7 +75,7 @@ type receiver struct {
 	// paths.
 	signatures []*Signature
 	// opener is the filesystem opener used to open base files.
-	opener *fs.Opener
+	opener *filesystem.Opener
 	// sinker is the Sinker to use for staging files.
 	sinker Sinker
 	// engine is the rsync Engine.
@@ -112,7 +112,7 @@ func NewReceiver(root string, paths []string, signatures []*Signature, sinker Si
 		root:       root,
 		paths:      paths,
 		signatures: signatures,
-		opener:     fs.NewOpener(root),
+		opener:     filesystem.NewOpener(root),
 		sinker:     sinker,
 		engine:     NewEngine(),
 		total:      uint64(len(paths)),
