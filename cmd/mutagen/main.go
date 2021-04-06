@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/compose"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
@@ -68,6 +69,7 @@ func init() {
 		sync.SyncCommand,
 		forward.ForwardCommand,
 		project.ProjectCommand,
+		compose.RootCommand,
 		daemon.DaemonCommand,
 		versionCommand,
 		legalCommand,
@@ -110,6 +112,15 @@ func main() {
 	// Handle terminal compatibility issues. If this call returns, it means that
 	// we should proceed normally.
 	cmd.HandleTerminalCompatibility()
+
+	// HACK: If we're performing command line completion, then remove the
+	// adapter command that we use to keep the Docker Compose command hierarchy
+	// separate and replace it with the actual Docker Compose command hierarchy
+	// so that completions work properly.
+	if cmd.PerformingShellCompletion {
+		rootCommand.RemoveCommand(compose.RootCommand)
+		rootCommand.AddCommand(compose.ComposeCommand)
+	}
 
 	// Execute the root command.
 	if err := rootCommand.Execute(); err != nil {
