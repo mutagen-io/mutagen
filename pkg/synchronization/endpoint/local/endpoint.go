@@ -192,14 +192,7 @@ func NewEndpoint(
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
-	options ...EndpointOption,
 ) (synchronization.Endpoint, error) {
-	// Create an endpoint configuration and apply all options.
-	endpointOptions := &endpointOptions{}
-	for _, o := range options {
-		o.apply(endpointOptions)
-	}
-
 	// Determine if the endpoint is running in a read-only mode.
 	synchronizationMode := configuration.SynchronizationMode
 	if synchronizationMode.IsDefault() {
@@ -289,12 +282,7 @@ func NewEndpoint(
 	}
 
 	// Compute the cache path if this isn't an ephemeral endpoint.
-	var cachePath string
-	if endpointOptions.cachePathCallback != nil {
-		cachePath, err = endpointOptions.cachePathCallback(sessionIdentifier, alpha)
-	} else {
-		cachePath, err = pathForCache(sessionIdentifier, alpha)
-	}
+	cachePath, err := pathForCache(sessionIdentifier, alpha)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to compute/create cache path")
 	}
@@ -319,9 +307,7 @@ func NewEndpoint(
 	// Compute the staging root path and whether or not it should be hidden.
 	var stagingRoot string
 	var hideStagingRoot bool
-	if endpointOptions.stagingRootCallback != nil {
-		stagingRoot, hideStagingRoot, err = endpointOptions.stagingRootCallback(sessionIdentifier, alpha)
-	} else if stageMode == synchronization.StageMode_StageModeMutagen {
+	if stageMode == synchronization.StageMode_StageModeMutagen {
 		stagingRoot, err = pathForMutagenStagingRoot(sessionIdentifier, alpha)
 	} else if stageMode == synchronization.StageMode_StageModeNeighboring {
 		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)

@@ -32,7 +32,7 @@ type endpointServer struct {
 // ServeEndpoint creates and serves a endpoint server on the specified
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
-func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...EndpointServerOption) error {
+func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	// Defer closure of the connection.
 	defer connection.Close()
 
@@ -44,12 +44,6 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 	encoder := encoding.NewProtobufEncoder(writer)
 	decoder := encoding.NewProtobufDecoder(reader)
 
-	// Create an endpoint configuration and apply all options.
-	endpointServerOptions := &endpointServerOptions{}
-	for _, o := range options {
-		o.apply(endpointServerOptions)
-	}
-
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
 	request := &InitializeSynchronizationRequest{}
@@ -57,42 +51,6 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 		err = errors.Wrap(err, "unable to receive initialize request")
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
-	}
-
-	// If a root path override has been specified, then apply it.
-	if endpointServerOptions.root != "" {
-		request.Root = endpointServerOptions.root
-	}
-
-	// If configuration overrides have been provided, then validate them and
-	// merge them into the main configuration.
-	if endpointServerOptions.configuration != nil {
-		if err := endpointServerOptions.configuration.EnsureValid(true); err != nil {
-			err = errors.Wrap(err, "override configuration invalid")
-			encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-			return err
-		}
-		request.Configuration = synchronization.MergeConfigurations(
-			request.Configuration,
-			endpointServerOptions.configuration,
-		)
-	}
-
-	// If a connection validator has been provided, then ensure that it
-	// approves if the specified endpoint configuration.
-	if endpointServerOptions.connectionValidator != nil {
-		err := endpointServerOptions.connectionValidator(
-			request.Root,
-			request.Session,
-			request.Version,
-			request.Configuration,
-			request.Alpha,
-		)
-		if err != nil {
-			err = errors.Wrap(err, "endpoint configuration rejected")
-			encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-			return err
-		}
 	}
 
 	// Ensure that the initialization request is valid.
@@ -120,7 +78,6 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn, options ...Endpo
 		request.Version,
 		request.Configuration,
 		request.Alpha,
-		endpointServerOptions.endpointOptions...,
 	)
 	if err != nil {
 		err = errors.Wrap(err, "unable to create underlying endpoint")
