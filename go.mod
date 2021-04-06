@@ -3,16 +3,16 @@ module github.com/mutagen-io/mutagen
 go 1.16
 
 require (
-	github.com/Microsoft/go-winio v0.4.14
+	github.com/Microsoft/go-winio v0.4.16
 	github.com/bmatcuk/doublestar v1.1.1
-	github.com/compose-spec/compose-go v0.0.0-20200518130854-7c515c977fb5
+	github.com/compose-spec/compose-go v0.0.0-20210322090015-6166d06f9ce2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/basex v1.0.0
-	github.com/fatih/color v1.9.0
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
-	github.com/golang/protobuf v1.4.3
-	github.com/google/uuid v1.1.2
-	github.com/hashicorp/yamux v0.0.0-20190923154419-df201c70410d
+	github.com/fatih/color v1.10.0
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+	github.com/golang/protobuf v1.5.2
+	github.com/google/uuid v1.2.0
+	github.com/hashicorp/yamux v0.0.0-20210316155119-a95892c5f864
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/joho/godotenv v1.3.0
 	github.com/mattn/go-isatty v0.0.12
@@ -20,16 +20,17 @@ require (
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
-	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7 // indirect
-	golang.org/x/sys v0.0.0-20210223212115-eede4237b368
-	golang.org/x/text v0.3.5
-	google.golang.org/grpc v1.34.0
-	google.golang.org/protobuf v1.25.0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
+	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
+	golang.org/x/text v0.3.6
+	google.golang.org/genproto v0.0.0-20210405174219-a39eb2f71cb9 // indirect
+	google.golang.org/grpc v1.36.1
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/apimachinery v0.18.3
 )
