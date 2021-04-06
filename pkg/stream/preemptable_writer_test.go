@@ -1,4 +1,4 @@
-package core
+package stream
 
 import (
 	"bytes"
@@ -31,11 +31,7 @@ func TestPreemptableWriter(t *testing.T) {
 
 	// Create a preemptable writer.
 	destinationBuffer := &bytes.Buffer{}
-	destination := &preemptableWriter{
-		cancelled:     cancelled,
-		writer:        destinationBuffer,
-		checkInterval: 3,
-	}
+	destination := NewPreemptableWriter(destinationBuffer, cancelled, 3)
 
 	// Perform a copy.
 	n, err := io.CopyBuffer(destination, source, copyBuffer)
@@ -43,7 +39,7 @@ func TestPreemptableWriter(t *testing.T) {
 	// Check the copy error.
 	if err == nil {
 		t.Error("copy not preempted")
-	} else if err != errWritePreempted {
+	} else if err != ErrWritePreempted {
 		t.Fatal("unexpected copy error:", err)
 	}
 

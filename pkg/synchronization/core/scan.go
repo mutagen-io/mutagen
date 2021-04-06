@@ -17,6 +17,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 const (
@@ -188,13 +189,9 @@ func (s *scanner) file(
 		// Copy data into the hash and verify that we copied the amount
 		// expected. We use a preemptable wrapper around the hasher to enable
 		// timely cancellation.
-		preemptableHasher := &preemptableWriter{
-			cancelled:     s.cancelled,
-			writer:        s.hasher,
-			checkInterval: scannerCopyPreemptionInterval,
-		}
+		preemptableHasher := stream.NewPreemptableWriter(s.hasher, s.cancelled, scannerCopyPreemptionInterval)
 		if copied, err := io.CopyBuffer(preemptableHasher, file, s.copyBuffer); err != nil {
-			if err == errWritePreempted {
+			if err == stream.ErrWritePreempted {
 				return nil, errScanCancelled
 			}
 			return &Entry{

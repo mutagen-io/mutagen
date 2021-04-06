@@ -14,6 +14,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 const (
@@ -631,11 +632,11 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	}
 
 	// Wrap the temporary file in a preemptable writer to enable cancellation.
-	preemptableTemporary := &preemptableWriter{
-		cancelled:     t.cancelled,
-		writer:        temporary,
-		checkInterval: transitionCopyPreemptionInterval,
-	}
+	preemptableTemporary := stream.NewPreemptableWriter(
+		temporary,
+		t.cancelled,
+		transitionCopyPreemptionInterval,
+	)
 
 	// Copy the file contents. We'll handle errors below.
 	_, copyErr := io.CopyBuffer(preemptableTemporary, stagedFile, t.copyBuffer)
@@ -647,7 +648,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// If there was a copy error, then remove the temporary and abort.
 	if copyErr != nil {
 		parent.RemoveFile(temporaryName)
-		if copyErr == errWritePreempted {
+		if copyErr == stream.ErrWritePreempted {
 			return errTransitionCancelled
 		}
 		return errors.Wrap(copyErr, "unable to copy file contents")
