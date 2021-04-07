@@ -34,7 +34,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		// Open the file. If this fails, it's a non-terminal error, but we
 		// need to inform the receiver. If sending the message fails, that is
 		// a terminal error.
-		file, err := opener.Open(p)
+		file, err := opener.OpenFile(p)
 		if err != nil {
 			*transmission = Transmission{
 				Done:  true,

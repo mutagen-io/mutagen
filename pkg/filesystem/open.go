@@ -72,13 +72,13 @@ func NewOpener(root string) *Opener {
 	return &Opener{root: root}
 }
 
-// Open opens the file at the specified path (relative to the root). On all
+// OpenFile opens the file at the specified path (relative to the root). On all
 // platforms, the path must be provided using a forward slash as the path
 // separator, and path components must not be "." or "..". The path may be empty
 // to open the root path itself (if it's a file). If any symbolic links or
 // non-directory parent components are encountered, or if the target does not
 // represent a file, this method will fail.
-func (o *Opener) Open(path string) (io.ReadSeekCloser, error) {
+func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, error) {
 	// Handle the special case of a root path. We enforce that it must be a
 	// file.
 	if path == "" {
