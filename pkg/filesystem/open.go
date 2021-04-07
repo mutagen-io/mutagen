@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -28,13 +29,13 @@ func OpenDirectory(path string, allowSymbolicLinkLeaf bool) (*Directory, *Metada
 
 // OpenFile is a convenience wrapper around Open that requires the result to be
 // a file.
-func OpenFile(path string, allowSymbolicLinkLeaf bool) (ReadableFile, *Metadata, error) {
+func OpenFile(path string, allowSymbolicLinkLeaf bool) (io.ReadSeekCloser, *Metadata, error) {
 	if f, metadata, err := Open(path, allowSymbolicLinkLeaf); err != nil {
 		return nil, nil, err
 	} else if (metadata.Mode & ModeTypeMask) != ModeTypeFile {
 		f.Close()
 		return nil, nil, errors.New("path is not a file")
-	} else if file, ok := f.(ReadableFile); !ok {
+	} else if file, ok := f.(io.ReadSeekCloser); !ok {
 		f.Close()
 		panic("invalid file object returned from open operation")
 	} else {
@@ -77,7 +78,7 @@ func NewOpener(root string) *Opener {
 // to open the root path itself (if it's a file). If any symbolic links or
 // non-directory parent components are encountered, or if the target does not
 // represent a file, this method will fail.
-func (o *Opener) Open(path string) (ReadableFile, error) {
+func (o *Opener) Open(path string) (io.ReadSeekCloser, error) {
 	// Handle the special case of a root path. We enforce that it must be a
 	// file.
 	if path == "" {

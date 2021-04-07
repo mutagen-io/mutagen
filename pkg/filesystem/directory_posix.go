@@ -5,6 +5,7 @@ package filesystem
 import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"io"
 	"math/rand"
 	"os"
 	"runtime"
@@ -104,7 +105,7 @@ func init() {
 // CreateTemporaryFile creates a new temporary file using the specified name
 // pattern inside the directory. Pattern behavior follows that of os.CreateTemp.
 // The file will be created with user-only read/write permissions.
-func (d *Directory) CreateTemporaryFile(pattern string) (string, WritableFile, error) {
+func (d *Directory) CreateTemporaryFile(pattern string) (string, io.WriteCloser, error) {
 	// Verify that the name is valid. This should still be a sensible operation
 	// for pattern specifications.
 	if err := ensureValidName(pattern); err != nil {
@@ -386,7 +387,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 }
 
 // OpenFile opens the file within the directory specified by name.
-func (d *Directory) OpenFile(name string) (ReadableFile, error) {
+func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, error) {
 	_, file, err := d.open(name, false)
 	return file, err
 }

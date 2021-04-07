@@ -137,7 +137,7 @@ func (s *scanner) file(
 	path string,
 	parent *filesystem.Directory,
 	metadata *filesystem.Metadata,
-	file filesystem.ReadableFile,
+	file io.ReadSeekCloser,
 ) (*Entry, error) {
 	// Compute executability.
 	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
@@ -502,7 +502,7 @@ func Scan(
 	// Determine the root kind and extract the underlying object.
 	var rootKind EntryKind
 	var directoryRoot *filesystem.Directory
-	var fileRoot filesystem.ReadableFile
+	var fileRoot io.ReadSeekCloser
 	switch metadata.Mode & filesystem.ModeTypeMask {
 	case filesystem.ModeTypeDirectory:
 		rootKind = EntryKind_Directory
@@ -513,7 +513,7 @@ func Scan(
 		}
 	case filesystem.ModeTypeFile:
 		rootKind = EntryKind_File
-		if f, ok := rootObject.(filesystem.ReadableFile); !ok {
+		if f, ok := rootObject.(io.ReadSeekCloser); !ok {
 			panic("invalid file object returned from root open operation")
 		} else {
 			fileRoot = f
