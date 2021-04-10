@@ -6,7 +6,8 @@ import (
 	"strings"
 )
 
-// synchronizable returns whether or not an entry kind is synchronizable.
+// synchronizable returns true if the entry kind is synchronizable and false if
+// the entry kind is unsynchronizable.
 func (k EntryKind) synchronizable() bool {
 	return k == EntryKind_Directory ||
 		k == EntryKind_File ||
@@ -167,7 +168,7 @@ func (e *Entry) Count() uint64 {
 
 	// Unsynchronizable entries can be excluded from the count because they
 	// don't represent content that can or will be synchronized.
-	if e.Kind == EntryKind_Untracked || e.Kind == EntryKind_Problematic {
+	if !e.Kind.synchronizable() {
 		return 0
 	}
 
@@ -321,7 +322,7 @@ func (e *Entry) synchronizable() *Entry {
 
 	// If the entry itself consists of unsynchronizable content, then the
 	// resulting subtree is nil.
-	if e.Kind == EntryKind_Untracked || e.Kind == EntryKind_Problematic {
+	if !e.Kind.synchronizable() {
 		return nil
 	}
 
