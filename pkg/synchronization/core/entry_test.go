@@ -384,34 +384,6 @@ func TestEntryCopy(t *testing.T) {
 	}
 }
 
-// TestEntryUnsynchronizable tests Entry.unsynchronizable.
-func TestEntryUnsynchronizable(t *testing.T) {
-	// Define test cases.
-	tests := []struct {
-		entry    *Entry
-		expected bool
-	}{
-		{tN, false},
-		{tF1, false},
-		{tSR, false},
-		{tD0, false},
-		{tD1, false},
-		{tU, true},
-		{tP1, true},
-		{tDU, true},
-		{tDP1, true},
-	}
-
-	// Process test cases.
-	for i, test := range tests {
-		if unsynchronizable := test.entry.unsynchronizable(); unsynchronizable != test.expected {
-			t.Errorf("test index %d: unsynchronizability does not match expected: %t != %t",
-				i, unsynchronizable, test.expected,
-			)
-		}
-	}
-}
-
 // TestEntrySynchronizable tests Entry.synchronizable.
 func TestEntrySynchronizable(t *testing.T) {
 	// Define test cases.

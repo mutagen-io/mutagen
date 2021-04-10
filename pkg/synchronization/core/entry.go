@@ -308,32 +308,6 @@ func (e *Entry) Copy(deep bool) *Entry {
 	return result
 }
 
-// unsynchronizable returns true if the entry either represents or contains
-// unsynchronizable content. It is useful for testing whether or not an entry is
-// suitable as the old value of a change. If true, it indicates that the entry
-// cannot (or should not) be transitioned away on disk.
-func (e *Entry) unsynchronizable() bool {
-	// If the entry is nil, then it's synchronizable.
-	if e == nil {
-		return false
-	}
-
-	// If the entry itself is unsynchronizable, then we're done.
-	if e.Kind == EntryKind_Untracked || e.Kind == EntryKind_Problematic {
-		return true
-	}
-
-	// Otherwise we need to check child contents recursively.
-	for _, child := range e.Contents {
-		if child.unsynchronizable() {
-			return true
-		}
-	}
-
-	// Done.
-	return false
-}
-
 // synchronizable returns the subtree of the entry hierarchy consisting of only
 // synchronizable content. It is useful for constructing the new value of a
 // change when attempting to propagate around unsychronizable content. It will

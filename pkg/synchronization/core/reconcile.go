@@ -512,11 +512,12 @@ func (r *reconciler) handleDisagreementOneWaySafe(path string, ancestor, alpha, 
 func (r *reconciler) handleDisagreementOneWayReplica(path string, ancestor, alpha, beta *Entry) {
 	// In the one-way-replica mode, we're performing exact mirroring, so we want
 	// to simply replace the beta contents at this path with those from alpha.
-	// However, we won't (and in many cases can't) remove or replace
-	// unsynchronizable content, so we need to ensure that beta doesn't contain
-	// any unsynchronizable content at or below this path before attempting to
-	// propagate contents from alpha. If it does, then we generate a conflict.
-	if beta.unsynchronizable() {
+	// However, we first need to make sure that beta doesn't contain any
+	// unsynchronizable content (that we can't remove) at or below this path,
+	// so we'll search its changes for unsynchronizable content changes and
+	// generate a conflict if any are found.
+	betaDeltaUnsynchronizable := extractUnsynchronizableChanges(diff(path, ancestor, beta))
+	if len(betaDeltaUnsynchronizable) > 0 {
 		// Compute the conflicting changes on the alpha side. If there aren't
 		// any changes (which may well be the case), then create a "synthetic"
 		// change that indicates alpha has stayed the same.
@@ -524,14 +525,6 @@ func (r *reconciler) handleDisagreementOneWayReplica(path string, ancestor, alph
 		if len(alphaDelta) == 0 {
 			alphaDelta = []*Change{{Path: path, Old: alpha, New: alpha}}
 		}
-
-		// Compute the conflicting changes on the beta side. In this case, the
-		// conflicting changes are only those due to unsynchronizable content.
-		// Any other changes (including non-deletion changes) aren't considered
-		// conflicting by this mode, which would normally wipe them out.
-		betaDeltaUnsynchronizable := extractUnsynchronizableChanges(
-			diff(path, ancestor, beta),
-		)
 
 		// Record the conflict and bail.
 		r.conflicts = append(r.conflicts, &Conflict{
