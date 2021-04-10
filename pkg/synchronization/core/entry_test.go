@@ -4,6 +4,30 @@ import (
 	"testing"
 )
 
+// TestEntryKindSynchronizable tests EntryKind.synchronizable.
+func TestEntryKindSynchronizable(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		kind     EntryKind
+		expected bool
+	}{
+		{EntryKind_Directory, true},
+		{EntryKind_File, true},
+		{EntryKind_SymbolicLink, true},
+		{EntryKind_Untracked, false},
+		{EntryKind_Problematic, false},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if synchronizable := test.kind.synchronizable(); synchronizable != test.expected {
+			t.Errorf("test case %d: synchronizability does not match expected: %t != %t",
+				i, synchronizable, test.expected,
+			)
+		}
+	}
+}
+
 func init() {
 	// Enable wildcard problem matching for tests.
 	entryEqualWildcardProblemMatch = true

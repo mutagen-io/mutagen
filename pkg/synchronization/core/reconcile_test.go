@@ -58,30 +58,68 @@ var oneWayReplicaMode = []SynchronizationMode{
 
 // TestNonDeletionChangesOnly tests nonDeletionChangesOnly.
 func TestNonDeletionChangesOnly(t *testing.T) {
-	// Set up test cases.
-	var testCases = []struct {
+	// Define test cases.
+	var tests = []struct {
+		unfiltered                             []*Change
+		expectedFiltered                       []*Change
+		expectedGeneratedSynchronizableContent bool
+	}{
+		{nil, nil, false},
+		{[]*Change{}, []*Change{}, false},
+		{[]*Change{{New: tF1}}, []*Change{{New: tF1}}, true},
+		{[]*Change{{New: tU}}, []*Change{{New: tU}}, false},
+		{[]*Change{{New: tP1}}, []*Change{{New: tP1}}, false},
+		{[]*Change{{New: tD0}, {Path: "untracked", New: tU}}, []*Change{{New: tD0}, {Path: "untracked", New: tU}}, true},
+		{[]*Change{{Old: tF1, New: tF2}}, []*Change{{Old: tF1, New: tF2}}, true},
+		{[]*Change{{Old: tF1}}, []*Change{}, false},
+		{[]*Change{{Path: "changed", Old: tF1, New: tF2}, {Path: "removed", Old: tD1}}, []*Change{{Path: "changed", Old: tF1, New: tF2}}, true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		filtered, generatedSynchronizableContent := nonDeletionChangesOnly(test.unfiltered)
+		if !testingChangeListsEqual(filtered, test.expectedFiltered) {
+			t.Errorf("test index %d: filtered changes don't match expected: %v != %v",
+				i, filtered, test.expectedFiltered,
+			)
+		}
+		if generatedSynchronizableContent != test.expectedGeneratedSynchronizableContent {
+			t.Errorf("test index %d: generation of synchronizable content does not match expected: %t != %t",
+				i, generatedSynchronizableContent, test.expectedGeneratedSynchronizableContent,
+			)
+		}
+	}
+}
+
+// TestExtractUnsynchronizableChanges tests extractUnsynchronizableChanges.
+func TestExtractUnsynchronizableChanges(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
 		unfiltered []*Change
 		expected   []*Change
 	}{
 		{nil, nil},
 		{[]*Change{}, []*Change{}},
-		{[]*Change{{New: tF1}}, []*Change{{New: tF1}}},
-		{[]*Change{{Old: tF1, New: tF2}}, []*Change{{Old: tF1, New: tF2}}},
-		{[]*Change{{Old: tF1}}, []*Change{}},
-		{[]*Change{{Path: "changed", Old: tF1, New: tF2}, {Path: "removed", Old: tD1}}, []*Change{{Path: "changed", Old: tF1, New: tF2}}},
+		{[]*Change{{New: tU}}, []*Change{{New: tU}}},
+		{[]*Change{{New: tDU}}, []*Change{{Path: "untracked", New: tU}}},
+		{[]*Change{{Old: tF1, New: tU}}, []*Change{{Old: tF1, New: tU}}},
+		{[]*Change{{Old: tF1, New: tDU}}, []*Change{{Path: "untracked", New: tU}}},
 	}
 
 	// Process test cases.
-	for _, testCase := range testCases {
-		if filtered := nonDeletionChangesOnly(testCase.unfiltered); !testingChangeListsEqual(filtered, testCase.expected) {
-			t.Errorf("filtered changes don't match expected: %v != %v", filtered, testCase.expected)
+	for i, test := range tests {
+		filtered := extractUnsynchronizableChanges(test.unfiltered)
+		if !testingChangeListsEqual(filtered, test.expected) {
+			t.Errorf("test index %d: filtered changes don't match expected: %v != %v",
+				i, filtered, test.expected,
+			)
 		}
 	}
 }
 
 // TestReconcile tests Reconcile.
 func TestReconcile(t *testing.T) {
-	// Set up test cases.
+	// Define test cases.
 	var tests = []struct {
 		// description is a human readable description of the test case.
 		description string
@@ -688,25 +726,79 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{Old: tF2}},
 		},
 		{
-			description:         "alpha deleted all, beta deleted part of directory",
+			description:         "alpha deleted all of directory, beta deleted part of directory",
 			modes:               allModes,
 			ancestor:            tD1,
 			beta:                tD0,
 			expectedBetaChanges: []*Change{{Old: tD0}},
 		},
 		{
-			description:          "alpha deleted part, beta deleted all of directory (bidirectional)",
+			description:          "alpha deleted part of directory, beta deleted all of directory (bidirectional)",
 			modes:                twoWayModes,
 			ancestor:             tD1,
 			alpha:                tD0,
 			expectedAlphaChanges: []*Change{{Old: tD0}},
 		},
 		{
-			description:         "alpha deleted part, beta deleted all of directory (unidirectional)",
+			description:         "alpha deleted part of directory, beta deleted all of directory (unidirectional)",
 			modes:               oneWayModes,
 			ancestor:            tD1,
 			alpha:               tD0,
 			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description: "alpha deleted all of directory, beta deleted part of directory and created unsynchronizable content",
+			modes:       allModes,
+			ancestor:    tD1,
+			beta:        nested("untracked", tU),
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory (bidirectional)",
+			modes:       twoWayModes,
+			ancestor:    tD1,
+			alpha:       nested("untracked", tU),
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Path: "untracked", New: tU}},
+				BetaChanges:  []*Change{{Old: tD1}},
+			}},
+		},
+		{
+			description:         "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory (unidirectional)",
+			modes:               oneWayModes,
+			ancestor:            tD1,
+			alpha:               nested("untracked", tU),
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description:         "alpha replaced directory with unsynchronizable content, beta deleted part of directory",
+			modes:               allModes,
+			ancestor:            tD1,
+			alpha:               tU,
+			beta:                tD0,
+			expectedBetaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description:          "alpha deleted part of directory, beta replaced directory with unsynchronizable content (bidirectional)",
+			modes:                twoWayModes,
+			ancestor:             tD1,
+			alpha:                tD0,
+			beta:                 tU,
+			expectedAlphaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description: "alpha deleted part of directory, beta replaced directory with unsynchronizable content (unidirectional)",
+			modes:       oneWayModes,
+			ancestor:    tD1,
+			alpha:       tD0,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Path: "file", Old: tF1}},
+				BetaChanges:  []*Change{{Old: tD1, New: tU}},
+			}},
 		},
 
 		// Test cases with a combination of synchronizable and unsynchronizable
@@ -893,7 +985,7 @@ func TestReconcile(t *testing.T) {
 			beta:        tU,
 			expectedConflicts: []*Conflict{{
 				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
-				BetaChanges:  []*Change{{New: tU}},
+				BetaChanges:  []*Change{{Old: tF1, New: tU}},
 			}},
 		},
 		{

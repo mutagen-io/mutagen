@@ -1,21 +1,52 @@
 package core
 
 // nonDeletionChangesOnly filters a list of changes to include only non-deletion
-// changes (i.e. creations or modifications). The provided slice is modified
-// in place to avoid any allocation.
-func nonDeletionChangesOnly(changes []*Change) []*Change {
-	// Extract the tip of the slice so that we can perform in-place filtering.
-	filtered := changes[:0]
+// changes (i.e. creations or modifications). The original list is not modified.
+// It also returns a boolean value that is true if there was at least one change
+// resulting in non-nil content that is at least partially synchronizable (and
+// false otherwise).
+func nonDeletionChangesOnly(changes []*Change) ([]*Change, bool) {
+	// Set up results.
+	var filtered []*Change
+	var anyGeneratedSynchronizableContent bool
 
-	// Perform filtering.
-	for _, c := range changes {
-		if c.New != nil {
-			filtered = append(filtered, c)
+	// Perform filtering and kind checking.
+	for _, change := range changes {
+		if change.New != nil {
+			filtered = append(filtered, change)
+			if change.New.Kind.synchronizable() {
+				anyGeneratedSynchronizableContent = true
+			}
 		}
 	}
 
 	// Done.
-	return filtered
+	return filtered, anyGeneratedSynchronizableContent
+}
+
+// extractUnsynchronizableChanges will analyze a list of changes and generate a
+// list of filtered and/or decomposed changes corresponding to only new content
+// that is unsynchronizable. The original list is not modified. If no changes
+// are returned, it means that the changes in the original list generate no
+// unsynchronizable content.
+func extractUnsynchronizableChanges(changes []*Change) (filtered []*Change) {
+	for _, change := range changes {
+		if change.New == nil {
+			continue
+		} else if !change.New.Kind.synchronizable() {
+			filtered = append(filtered, change)
+		} else if change.New.Kind == EntryKind_Directory {
+			change.New.walk(change.Path, func(path string, entry *Entry) {
+				if !entry.Kind.synchronizable() {
+					filtered = append(filtered, &Change{
+						Path: path,
+						New:  entry,
+					})
+				}
+			}, false)
+		}
+	}
+	return
 }
 
 // reconciler provides the recursive implementation of reconciliation.
@@ -172,9 +203,8 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 	// case, we can simply propagate the synchronizable content from the side
 	// that's modified. We also know that the unmodified side can't contain any
 	// unsynchronizable content (since it would show up in the diff), so there
-	// won't be any problems with removal. This is the classical three-way merge
-	// behavior, which handles propagation of most creation, modification, and
-	// deletion operations.
+	// won't be any problems with removal. This is the classic three-way merge
+	// behavior, which propagates most creations, modifications, and deletions.
 	betaDelta := diff(path, ancestor, beta)
 	if len(betaDelta) == 0 {
 		r.betaChanges = append(r.betaChanges, &Change{
@@ -194,30 +224,33 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 		return
 	}
 
-	// At this point, we know that both alpha and beta have been modified, which
-	// prevents the classical three-way merge from resolving the disagreement.
-	// However, there are still a few heuristics that we can apply to handle a
-	// broad range of cases (before yielding a conflict or forced resolution).
+	// At this point, we know that both alpha and beta have been modified, thus
+	// preventing the classical three-way merge from resolving the disagreement.
+	// The only additional scenarios that we can handle safely (before yielding
+	// a conflict or forced resolution) are those where one or both sides'
+	// changes are purely deletion changes, because those cases don't involve
+	// the loss of any new content. Thus, we'll start by filtering and analyzing
+	// the changes from each side.
+	alphaDeltaNonDeletion, alphaGeneratedSynchronizableContent := nonDeletionChangesOnly(alphaDelta)
+	betaDeltaNonDeletion, betaGeneratedSynchronizableContent := nonDeletionChangesOnly(betaDelta)
 
 	// First, check if both sides have purely deletion changes. If this is the
 	// case, then we know that ancestor is a directory, one of alpha or beta is
-	// nil, and the other is a pure subtree of the ancestor directory. Ancestor
-	// must be a directory because it can't be nil (since we have deletion
-	// changes), it can't be unsynchronizable (by definition), and it can't be a
-	// synchronizable scalar type because that would require both alpha and beta
-	// to be nil (which they aren't) in order to see purely deletion changes on
-	// both sides. Since we know that ancestor is a directory, we know that
-	// neither alpha nor beta can be a scalar type (since each must be a subtree
-	// of ancestor), so they must either both be nil (which is excluded), both
-	// be directories (which is also excluded), or be a combination of nil and
-	// directory. In this case, one side has completely deleted a directory and
-	// the other has partially deleted the directory, so we can simply propagate
-	// the full deletion to the side with the partial deletion. Since the side
-	// we're wiping out is a pure subtree of the ancestor, we also know that it
-	// can't contain any unsynchronizable content, so we won't have any issues
-	// with content removal.
-	alphaDeltaNonDeletion := nonDeletionChangesOnly(alphaDelta)
-	betaDeltaNonDeletion := nonDeletionChangesOnly(betaDelta)
+	// nil, and the other is a non-nil pure subtree of the ancestor directory.
+	// Ancestor must be a directory because it can't be nil (since we have
+	// deletion changes), it can't be unsynchronizable (by definition), and it
+	// can't be a synchronizable scalar type because that would require both
+	// alpha and beta to be nil (which they can't be at this point) in order to
+	// see purely deletion changes on both sides. Since we know that ancestor is
+	// a directory, we know that neither alpha nor beta can be a scalar type
+	// (since each must be a subtree of ancestor), so they must either both be
+	// nil (which is excluded), both be directories (which is also excluded), or
+	// be a combination of nil and directory. In this case, one side has
+	// completely deleted a directory and the other has partially deleted the
+	// directory, so we can simply propagate the full deletion to the side with
+	// the partial deletion. Since the side we're wiping out is a pure subtree
+	// of the ancestor, we also know that it can't contain any unsynchronizable
+	// content, so we won't have any issues with content removal.
 	if len(alphaDeltaNonDeletion) == 0 && len(betaDeltaNonDeletion) == 0 {
 		if alpha == nil {
 			r.betaChanges = append(r.betaChanges, &Change{
@@ -233,30 +266,101 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 		return
 	}
 
-	// Second, check if just one side has purely deletion changes. In that case,
-	// it's reasonable to propagate changes from the other side since we won't
-	// lose new content. In this case, we'll filter out the unsynchronizable
-	// content from the side with non-deletion changes. We know there can't be
-	// any unsynchronizable content on the other side since it has only deletion
-	// changes, so we don't need to explicitly check or filter there.
+	// Second, check if only one side has purely deletion changes. In this case,
+	// we know that the other side has creation and/or modification changes (due
+	// to the fact that our first heuristic didn't trigger), so we'll want to
+	// propagate the content from that side to the one with purely deletion
+	// changes (which we know can't contain any unsynchronizable content). This
+	// is what enables our form of manual conflict resolution: deleting the
+	// losing side of a conflict.
+	//
+	// There's one exception to this rule that we have to handle: the case where
+	// the side with creation/modification changes is a directory and all of its
+	// creation/modification changes generate purely unsynchronizable content.
+	// In this case, we know that the side with purely deletion changes is nil,
+	// because it can't be a scalar (since it has deletion-only changes) and it
+	// can't be a directory (since the other side is also a directory). We also
+	// know that the ancestor is a directory because the side with the creation
+	// and/or modification changes doesn't show creation of a directory and
+	// therefore it must have already existed. Thus, we have a situation where
+	// one side has completely deleted a directory and the other side is
+	// effectively blocking propagation of that deletion due to unsynchronizable
+	// content. The directory side may have also performed some deletions, but
+	// that's irrelevant since they agree with the total deletion on the other
+	// side. In this case, we have to indicate a conflict, because this should
+	// yield a deletion operation, but it's blocked by unsynchronizable content.
+	// Historically, this *would* have yielded a deletion operation, which would
+	// have encountered transition problems due to unknown content on disk. Now
+	// that we have unsynchronizable content tracking, we're essentially just
+	// moving detection of these conditions to an earlier point in the
+	// synchronization cycle, reclassifying them as conflicts, and leaving the
+	// corresponding on-disk content in a more coherent state until the conflict
+	// is resolved. We record the full delta on the deletion-only side in this
+	// case, since the deletion operation is part of the conflict, though on the
+	// other side we only record the non-deletion changes since those are the
+	// only thing blocking the deletion from propagating.
+	//
+	// The reason that we don't have to make a similar exception for scalar
+	// unsynchronizable content on the creation/modification change side is
+	// that the presence of the unsynchronizable scalar already indicates a full
+	// deletion of the ancestor content of which the purely deletion side is a
+	// subtree, so we're okay to just finish off that deletion by propagating
+	// the (nil) synchronizable subtree of the unsynchronizable scalar side.
+	// It's a weird anti-symmetric property brought about by the fact that a
+	// change to a scalar implies deletion of what existed before but an
+	// addition to a directory does not imply deletion of that directory.
+	//
+	// It's worth noting here that if one side has deleted a directory and the
+	// other has created or modified content in that directory (excluding the
+	// case where the content is purely unsynchronizable), we'll repropagate the
+	// entire directory (including its new synchronizable contents) back to the
+	// deleted side. This is an intentional behavior. One could alternatively
+	// imagine deleting some subset of the creation/modification side (based on
+	// what was in the ancestor and therefore deleted on the other side) before
+	// propagating the new content, but this rapidly becomes ill-defined (or at
+	// least very complex) because you'd also have to preserve the parent
+	// directories of the newly created content. Another alternative choice
+	// would be to simply indicate a conflict (at least in the two-way-safe
+	// case), which would be the behavior of a classic three-way merge
+	// algorithm, but there's little practical utility in that, especially when
+	// we can perform some sort of resolution action without losing content. By
+	// making the choice to repropagate the whole directory, we're avoiding a
+	// conflict and preserving the "context" for newly created content.
 	if len(betaDeltaNonDeletion) == 0 {
-		r.betaChanges = append(r.betaChanges, &Change{
-			Path: path,
-			Old:  beta,
-			New:  alpha.synchronizable(),
-		})
+		if alpha.Kind == EntryKind_Directory && !alphaGeneratedSynchronizableContent {
+			r.conflicts = append(r.conflicts, &Conflict{
+				Root:         path,
+				AlphaChanges: alphaDeltaNonDeletion,
+				BetaChanges:  betaDelta,
+			})
+		} else {
+			r.betaChanges = append(r.betaChanges, &Change{
+				Path: path,
+				Old:  beta,
+				New:  alpha.synchronizable(),
+			})
+		}
 		return
 	} else if len(alphaDeltaNonDeletion) == 0 {
-		r.alphaChanges = append(r.alphaChanges, &Change{
-			Path: path,
-			Old:  alpha,
-			New:  beta.synchronizable(),
-		})
+		if beta.Kind == EntryKind_Directory && !betaGeneratedSynchronizableContent {
+			r.conflicts = append(r.conflicts, &Conflict{
+				Root:         path,
+				AlphaChanges: alphaDelta,
+				BetaChanges:  betaDeltaNonDeletion,
+			})
+		} else {
+			r.alphaChanges = append(r.alphaChanges, &Change{
+				Path: path,
+				Old:  alpha,
+				New:  beta.synchronizable(),
+			})
+		}
 		return
 	}
 
-	// At this point, there are no other heuristics we can apply, so we need to
-	// either indicate a conflict or force a resolution, depending on the mode.
+	// At this point we know that both sides have non-deletion chanages, meaning
+	// there are no other heuristics we can apply. We need to either indicate a
+	// conflict or force a resolution (depending on the mode).
 	if r.mode == SynchronizationMode_SynchronizationModeTwoWaySafe {
 		// In the two-way-safe mode, we simply generate a conflict. We only
 		// include non-deletion changes in the conflict since these are the only
@@ -267,26 +371,19 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 			BetaChanges:  betaDeltaNonDeletion,
 		})
 	} else {
-		// In the two-way-resolved mode, alpha always wins over beta, so we want
-		// to simply replace the beta contents at this path with those from
-		// alpha. However, we won't (and in many cases can't) remove or replace
-		// unsynchronizable content, so we need to ensure that beta doesn't
-		// contain any unsynchronizable content at or below this path before
-		// attempting to propagate contents from alpha. If it does, then we
-		// generate a conflict.
-		if beta.unsynchronizable() {
-			// Compute the conflicting changes on the beta side. In this case,
-			// the conflicting changes are only those due to unsynchronizable
-			// content. Any other changes (including non-deletion changes)
-			// aren't considered conflicting by this mode, which would normally
-			// wipe them out.
-			betaUnsynchronizableDelta := diff(path, beta.synchronizable(), beta)
-
-			// Record the conflict and bail.
+		// In the two-way-resolved mode, alpha wins over beta if none of our
+		// heuristics can provide a resolution, so we want to simply replace the
+		// beta contents at this path with those from alpha. However, we first
+		// need to make sure that beta doesn't contain any unsynchronizable
+		// content (that we can't remove) at or below this path, so we'll search
+		// its non-deletion changes for unsynchronizable content changes and
+		// generate a conflict if any are found.
+		betaDeltaUnsynchronizable := extractUnsynchronizableChanges(betaDeltaNonDeletion)
+		if len(betaDeltaUnsynchronizable) > 0 {
 			r.conflicts = append(r.conflicts, &Conflict{
 				Root:         path,
 				AlphaChanges: alphaDeltaNonDeletion,
-				BetaChanges:  betaUnsynchronizableDelta,
+				BetaChanges:  betaDeltaUnsynchronizable,
 			})
 			return
 		}
@@ -316,7 +413,7 @@ func (r *reconciler) handleDisagreementOneWaySafe(path string, ancestor, alpha, 
 	// ancestor, it also can't contain any unsynchronizable content, so we don't
 	// need to check that explicitly, though we do need to filter any
 	// unsynchronizable content from alpha before propagating its contents.
-	betaDeltaNonDeletion := nonDeletionChangesOnly(diff(path, ancestor, beta))
+	betaDeltaNonDeletion, _ := nonDeletionChangesOnly(diff(path, ancestor, beta))
 	if len(betaDeltaNonDeletion) == 0 {
 		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,
@@ -432,13 +529,15 @@ func (r *reconciler) handleDisagreementOneWayReplica(path string, ancestor, alph
 		// conflicting changes are only those due to unsynchronizable content.
 		// Any other changes (including non-deletion changes) aren't considered
 		// conflicting by this mode, which would normally wipe them out.
-		betaUnsynchronizableDelta := diff(path, beta.synchronizable(), beta)
+		betaDeltaUnsynchronizable := extractUnsynchronizableChanges(
+			diff(path, ancestor, beta),
+		)
 
 		// Record the conflict and bail.
 		r.conflicts = append(r.conflicts, &Conflict{
 			Root:         path,
 			AlphaChanges: alphaDelta,
-			BetaChanges:  betaUnsynchronizableDelta,
+			BetaChanges:  betaDeltaUnsynchronizable,
 		})
 		return
 	}

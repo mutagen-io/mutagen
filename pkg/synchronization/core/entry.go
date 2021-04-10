@@ -6,6 +6,13 @@ import (
 	"strings"
 )
 
+// synchronizable returns whether or not an entry kind is synchronizable.
+func (k EntryKind) synchronizable() bool {
+	return k == EntryKind_Directory ||
+		k == EntryKind_File ||
+		k == EntryKind_SymbolicLink
+}
+
 // EnsureValid ensures that Entry's invariants are respected. If synchronizable
 // is true, then unsynchronizable content will be considered invalid.
 func (e *Entry) EnsureValid(synchronizable bool) error {
