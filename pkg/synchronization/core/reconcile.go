@@ -1,34 +1,27 @@
 package core
 
-// nonDeletionChangesOnly filters a list of changes to include only non-deletion
-// changes (i.e. creations or modifications). The original list is not modified.
-// It also returns a boolean value that is true if there was at least one change
-// resulting in non-nil content that is at least partially synchronizable (and
-// false otherwise).
-func nonDeletionChangesOnly(changes []*Change) ([]*Change, bool) {
-	// Set up results.
-	var filtered []*Change
-	var anyGeneratedSynchronizableContent bool
-
-	// Perform filtering and kind checking.
+// extractNonDeletionChanges analyzes a list of changes and generates a new list
+// of only those changes in the original list that correspond to non-deletion
+// operations (i.e. creations or modifications). It also returns a boolean value
+// that is true if there was at least one change resulting in non-nil content
+// that is at least partially synchronizable and false if there were no changes
+// or all resulted in purely unsynchronizable content.
+func extractNonDeletionChanges(changes []*Change) (filtered []*Change, synchronizable bool) {
 	for _, change := range changes {
 		if change.New != nil {
 			filtered = append(filtered, change)
 			if change.New.Kind.synchronizable() {
-				anyGeneratedSynchronizableContent = true
+				synchronizable = true
 			}
 		}
 	}
-
-	// Done.
-	return filtered, anyGeneratedSynchronizableContent
+	return
 }
 
-// extractUnsynchronizableChanges will analyze a list of changes and generate a
+// extractUnsynchronizableChanges analyzes a list of changes and generates a new
 // list of filtered and/or decomposed changes corresponding to only new content
-// that is unsynchronizable. The original list is not modified. If no changes
-// are returned, it means that the changes in the original list generate no
-// unsynchronizable content.
+// that is unsynchronizable. If no changes are returned, it means that the
+// changes in the original list generate no unsynchronizable content.
 func extractUnsynchronizableChanges(changes []*Change) (filtered []*Change) {
 	for _, change := range changes {
 		if change.New == nil {
@@ -231,8 +224,8 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 	// changes are purely deletion changes, because those cases don't involve
 	// the loss of any new content. Thus, we'll start by filtering and analyzing
 	// the changes from each side.
-	alphaDeltaNonDeletion, alphaGeneratedSynchronizableContent := nonDeletionChangesOnly(alphaDelta)
-	betaDeltaNonDeletion, betaGeneratedSynchronizableContent := nonDeletionChangesOnly(betaDelta)
+	alphaDeltaNonDeletion, alphaGeneratedSynchronizableContent := extractNonDeletionChanges(alphaDelta)
+	betaDeltaNonDeletion, betaGeneratedSynchronizableContent := extractNonDeletionChanges(betaDelta)
 
 	// First, check if both sides have purely deletion changes. If this is the
 	// case, then we know that ancestor is a directory, one of alpha or beta is
@@ -413,7 +406,7 @@ func (r *reconciler) handleDisagreementOneWaySafe(path string, ancestor, alpha, 
 	// ancestor, it also can't contain any unsynchronizable content, so we don't
 	// need to check that explicitly, though we do need to filter any
 	// unsynchronizable content from alpha before propagating its contents.
-	betaDeltaNonDeletion, _ := nonDeletionChangesOnly(diff(path, ancestor, beta))
+	betaDeltaNonDeletion, _ := extractNonDeletionChanges(diff(path, ancestor, beta))
 	if len(betaDeltaNonDeletion) == 0 {
 		r.betaChanges = append(r.betaChanges, &Change{
 			Path: path,

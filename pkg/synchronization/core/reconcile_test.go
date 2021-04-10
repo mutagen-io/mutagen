@@ -56,13 +56,13 @@ var oneWayReplicaMode = []SynchronizationMode{
 	SynchronizationMode_SynchronizationModeOneWayReplica,
 }
 
-// TestNonDeletionChangesOnly tests nonDeletionChangesOnly.
-func TestNonDeletionChangesOnly(t *testing.T) {
+// TestExtractNonDeletionChanges tests extractNonDeletionChanges.
+func TestExtractNonDeletionChanges(t *testing.T) {
 	// Define test cases.
 	var tests = []struct {
-		unfiltered                             []*Change
-		expectedFiltered                       []*Change
-		expectedGeneratedSynchronizableContent bool
+		unfiltered             []*Change
+		expectedFiltered       []*Change
+		expectedSynchronizable bool
 	}{
 		{nil, nil, false},
 		{[]*Change{}, []*Change{}, false},
@@ -77,15 +77,15 @@ func TestNonDeletionChangesOnly(t *testing.T) {
 
 	// Process test cases.
 	for i, test := range tests {
-		filtered, generatedSynchronizableContent := nonDeletionChangesOnly(test.unfiltered)
+		filtered, synchronizable := extractNonDeletionChanges(test.unfiltered)
 		if !testingChangeListsEqual(filtered, test.expectedFiltered) {
 			t.Errorf("test index %d: filtered changes don't match expected: %v != %v",
 				i, filtered, test.expectedFiltered,
 			)
 		}
-		if generatedSynchronizableContent != test.expectedGeneratedSynchronizableContent {
+		if synchronizable != test.expectedSynchronizable {
 			t.Errorf("test index %d: generation of synchronizable content does not match expected: %t != %t",
-				i, generatedSynchronizableContent, test.expectedGeneratedSynchronizableContent,
+				i, synchronizable, test.expectedSynchronizable,
 			)
 		}
 	}
