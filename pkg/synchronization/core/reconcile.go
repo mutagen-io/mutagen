@@ -4,8 +4,7 @@ package core
 // of only those changes in the original list that correspond to non-deletion
 // operations (i.e. creations or modifications). It also returns a boolean value
 // that is true if there was at least one change resulting in non-nil content
-// that is at least partially synchronizable and false if there were no changes
-// or all resulted in purely unsynchronizable content.
+// that is at least partially synchronizable (and false otherwise).
 func extractNonDeletionChanges(changes []*Change) (filtered []*Change, synchronizable bool) {
 	for _, change := range changes {
 		if change.New != nil {
