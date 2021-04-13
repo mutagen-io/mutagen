@@ -60,55 +60,23 @@ var oneWayReplicaMode = []SynchronizationMode{
 func TestExtractNonDeletionChanges(t *testing.T) {
 	// Define test cases.
 	var tests = []struct {
-		unfiltered             []*Change
-		expectedFiltered       []*Change
-		expectedSynchronizable bool
-	}{
-		{nil, nil, false},
-		{[]*Change{}, []*Change{}, false},
-		{[]*Change{{New: tF1}}, []*Change{{New: tF1}}, true},
-		{[]*Change{{New: tU}}, []*Change{{New: tU}}, false},
-		{[]*Change{{New: tP1}}, []*Change{{New: tP1}}, false},
-		{[]*Change{{New: tD0}, {Path: "untracked", New: tU}}, []*Change{{New: tD0}, {Path: "untracked", New: tU}}, true},
-		{[]*Change{{Old: tF1, New: tF2}}, []*Change{{Old: tF1, New: tF2}}, true},
-		{[]*Change{{Old: tF1}}, []*Change{}, false},
-		{[]*Change{{Path: "changed", Old: tF1, New: tF2}, {Path: "removed", Old: tD1}}, []*Change{{Path: "changed", Old: tF1, New: tF2}}, true},
-	}
-
-	// Process test cases.
-	for i, test := range tests {
-		filtered, synchronizable := extractNonDeletionChanges(test.unfiltered)
-		if !testingChangeListsEqual(filtered, test.expectedFiltered) {
-			t.Errorf("test index %d: filtered changes don't match expected: %v != %v",
-				i, filtered, test.expectedFiltered,
-			)
-		}
-		if synchronizable != test.expectedSynchronizable {
-			t.Errorf("test index %d: generation of synchronizable content does not match expected: %t != %t",
-				i, synchronizable, test.expectedSynchronizable,
-			)
-		}
-	}
-}
-
-// TestExtractUnsynchronizableChanges tests extractUnsynchronizableChanges.
-func TestExtractUnsynchronizableChanges(t *testing.T) {
-	// Define test cases.
-	tests := []struct {
 		unfiltered []*Change
 		expected   []*Change
 	}{
 		{nil, nil},
 		{[]*Change{}, []*Change{}},
+		{[]*Change{{New: tF1}}, []*Change{{New: tF1}}},
 		{[]*Change{{New: tU}}, []*Change{{New: tU}}},
-		{[]*Change{{New: tDU}}, []*Change{{Path: "untracked", New: tU}}},
-		{[]*Change{{Old: tF1, New: tU}}, []*Change{{Old: tF1, New: tU}}},
-		{[]*Change{{Old: tF1, New: tDU}}, []*Change{{Path: "untracked", New: tU}}},
+		{[]*Change{{New: tP1}}, []*Change{{New: tP1}}},
+		{[]*Change{{New: tD0}, {Path: "untracked", New: tU}}, []*Change{{New: tD0}, {Path: "untracked", New: tU}}},
+		{[]*Change{{Old: tF1, New: tF2}}, []*Change{{Old: tF1, New: tF2}}},
+		{[]*Change{{Old: tF1}}, []*Change{}},
+		{[]*Change{{Path: "changed", Old: tF1, New: tF2}, {Path: "removed", Old: tD1}}, []*Change{{Path: "changed", Old: tF1, New: tF2}}},
 	}
 
 	// Process test cases.
 	for i, test := range tests {
-		filtered := extractUnsynchronizableChanges(test.unfiltered)
+		filtered := extractNonDeletionChanges(test.unfiltered)
 		if !testingChangeListsEqual(filtered, test.expected) {
 			t.Errorf("test index %d: filtered changes don't match expected: %v != %v",
 				i, filtered, test.expected,
@@ -455,58 +423,58 @@ func TestReconcile(t *testing.T) {
 
 		// Test cases where only beta has modified content.
 		{
-			description:          "beta created file (bidirectional)",
+			description:          "beta created file",
 			modes:                twoWayModes,
 			beta:                 tF1,
 			expectedAlphaChanges: []*Change{{New: tF1}},
 		},
 		{
-			description: "beta created file (one-way-safe)",
+			description: "beta created file",
 			modes:       oneWaySafeMode,
 			beta:        tF1,
 		},
 		{
-			description:         "beta created file (one-way-replica)",
+			description:         "beta created file",
 			modes:               oneWayReplicaMode,
 			beta:                tF1,
 			expectedBetaChanges: []*Change{{Old: tF1}},
 		},
 		{
-			description:          "beta created empty directory (bidirectional)",
+			description:          "beta created empty directory",
 			modes:                twoWayModes,
 			beta:                 tD0,
 			expectedAlphaChanges: []*Change{{New: tD0}},
 		},
 		{
-			description: "beta created empty directory (one-way-safe)",
+			description: "beta created empty directory",
 			modes:       oneWaySafeMode,
 			beta:        tD0,
 		},
 		{
-			description:         "beta created empty directory (one-way-replica)",
+			description:         "beta created empty directory",
 			modes:               oneWayReplicaMode,
 			beta:                tD0,
 			expectedBetaChanges: []*Change{{Old: tD0}},
 		},
 		{
-			description:          "beta created directory (bidirectional)",
+			description:          "beta created directory",
 			modes:                twoWayModes,
 			beta:                 tD1,
 			expectedAlphaChanges: []*Change{{New: tD1}},
 		},
 		{
-			description: "beta created directory (one-way-safe)",
+			description: "beta created directory",
 			modes:       oneWaySafeMode,
 			beta:        tD1,
 		},
 		{
-			description:         "beta created directory (one-way-replica)",
+			description:         "beta created directory",
 			modes:               oneWayReplicaMode,
 			beta:                tD1,
 			expectedBetaChanges: []*Change{{Old: tD1}},
 		},
 		{
-			description:          "beta created file in existing directory (bidirectional)",
+			description:          "beta created file in existing directory",
 			modes:                twoWayModes,
 			ancestor:             tD0,
 			alpha:                tD0,
@@ -514,14 +482,14 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges: []*Change{{Path: "file", New: tF1}},
 		},
 		{
-			description: "beta created file in existing directory (one-way-safe)",
+			description: "beta created file in existing directory",
 			modes:       oneWaySafeMode,
 			ancestor:    tD0,
 			alpha:       tD0,
 			beta:        tD1,
 		},
 		{
-			description:         "beta created file in existing directory (one-way-replica)",
+			description:         "beta created file in existing directory",
 			modes:               oneWayReplicaMode,
 			ancestor:            tD0,
 			alpha:               tD0,
@@ -529,7 +497,7 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{Path: "file", Old: tF1}},
 		},
 		{
-			description:          "beta modified file (bidirectional)",
+			description:          "beta modified file",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			alpha:                tF1,
@@ -537,7 +505,7 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges: []*Change{{Old: tF1, New: tF2}},
 		},
 		{
-			description: "beta modified file (one-way-safe)",
+			description: "beta modified file",
 			modes:       oneWaySafeMode,
 			ancestor:    tF1,
 			alpha:       tF1,
@@ -548,7 +516,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:         "beta modified file (one-way-replica)",
+			description:         "beta modified file",
 			modes:               oneWayReplicaMode,
 			ancestor:            tF1,
 			alpha:               tF1,
@@ -556,7 +524,7 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{Old: tF2, New: tF1}},
 		},
 		{
-			description:          "beta replaced file with directory (bidirectional)",
+			description:          "beta replaced file with directory",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			alpha:                tF1,
@@ -564,7 +532,7 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges: []*Change{{Old: tF1, New: tD1}},
 		},
 		{
-			description: "beta replaced file with directory (one-way-safe)",
+			description: "beta replaced file with directory",
 			modes:       oneWaySafeMode,
 			ancestor:    tF1,
 			alpha:       tF1,
@@ -575,7 +543,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:         "beta replaced file with directory (one-way-replica)",
+			description:         "beta replaced file with directory",
 			modes:               oneWayReplicaMode,
 			ancestor:            tF1,
 			alpha:               tF1,
@@ -583,28 +551,28 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{Old: tD1, New: tF1}},
 		},
 		{
-			description:          "beta deleted file (bidirectional)",
+			description:          "beta deleted file",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			alpha:                tF1,
 			expectedAlphaChanges: []*Change{{Old: tF1}},
 		},
 		{
-			description:         "beta deleted file (unidirectional)",
+			description:         "beta deleted file",
 			modes:               oneWayModes,
 			ancestor:            tF1,
 			alpha:               tF1,
 			expectedBetaChanges: []*Change{{New: tF1}},
 		},
 		{
-			description:          "beta deleted directory (bidirectional)",
+			description:          "beta deleted directory",
 			modes:                twoWayModes,
 			ancestor:             tD1,
 			alpha:                tD1,
 			expectedAlphaChanges: []*Change{{Old: tD1}},
 		},
 		{
-			description:         "beta deleted directory (unidirectional)",
+			description:         "beta deleted directory",
 			modes:               oneWayModes,
 			ancestor:            tD1,
 			alpha:               tD1,
@@ -613,7 +581,7 @@ func TestReconcile(t *testing.T) {
 
 		// Test cases where both sides have modified content.
 		{
-			description: "both created different file (safe)",
+			description: "both created different file",
 			modes:       safeModes,
 			alpha:       tF1,
 			beta:        tF2,
@@ -623,14 +591,14 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:         "both created different file (resolved)",
+			description:         "both created different file",
 			modes:               resolvedModes,
 			alpha:               tF1,
 			beta:                tF2,
 			expectedBetaChanges: []*Change{{Old: tF2, New: tF1}},
 		},
 		{
-			description: "alpha created file beta created directory (safe)",
+			description: "alpha created file beta created directory",
 			modes:       safeModes,
 			alpha:       tF1,
 			beta:        tD1,
@@ -640,7 +608,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:         "alpha created file beta created directory (resolved)",
+			description:         "alpha created file beta created directory",
 			modes:               resolvedModes,
 			alpha:               tF1,
 			beta:                tD1,
@@ -655,7 +623,7 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges:     []*Change{{Path: "file", New: tF1}},
 		},
 		{
-			description:             "both created directory beta created file in directory (bidirectional)",
+			description:             "both created directory beta created file in directory",
 			modes:                   twoWayModes,
 			alpha:                   tD0,
 			beta:                    tD1,
@@ -663,14 +631,14 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges:    []*Change{{Path: "file", New: tF1}},
 		},
 		{
-			description:             "both created directory beta created file in directory (one-way-safe)",
+			description:             "both created directory beta created file in directory",
 			modes:                   oneWaySafeMode,
 			alpha:                   tD0,
 			beta:                    tD1,
 			expectedAncestorChanges: []*Change{{New: tD0}},
 		},
 		{
-			description:             "both created directory beta created file in directory (one-way-replica)",
+			description:             "both created directory beta created file in directory",
 			modes:                   oneWayReplicaMode,
 			alpha:                   tD0,
 			beta:                    tD1,
@@ -678,7 +646,7 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges:     []*Change{{Path: "file", Old: tF1}},
 		},
 		{
-			description:             "both created directory with different file (safe)",
+			description:             "both created directory with different file",
 			modes:                   safeModes,
 			alpha:                   tD1,
 			beta:                    tD2,
@@ -690,7 +658,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:             "both created directory with different file (resolved)",
+			description:             "both created directory with different file",
 			modes:                   resolvedModes,
 			alpha:                   tD1,
 			beta:                    tD2,
@@ -705,21 +673,21 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{New: tF2}},
 		},
 		{
-			description:          "beta modified file alpha deleted (bidirectional)",
+			description:          "beta modified file alpha deleted",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			beta:                 tF2,
 			expectedAlphaChanges: []*Change{{New: tF2}},
 		},
 		{
-			description:             "beta modified file alpha deleted (one-way-safe)",
+			description:             "beta modified file alpha deleted",
 			modes:                   oneWaySafeMode,
 			ancestor:                tF1,
 			beta:                    tF2,
 			expectedAncestorChanges: []*Change{{}},
 		},
 		{
-			description:         "beta modified file alpha deleted (one-way-replica)",
+			description:         "beta modified file alpha deleted",
 			modes:               oneWayReplicaMode,
 			ancestor:            tF1,
 			beta:                tF2,
@@ -733,79 +701,25 @@ func TestReconcile(t *testing.T) {
 			expectedBetaChanges: []*Change{{Old: tD0}},
 		},
 		{
-			description:          "alpha deleted part of directory, beta deleted all of directory (bidirectional)",
+			description:          "alpha deleted part of directory, beta deleted all of directory",
 			modes:                twoWayModes,
 			ancestor:             tD1,
 			alpha:                tD0,
 			expectedAlphaChanges: []*Change{{Old: tD0}},
 		},
 		{
-			description:         "alpha deleted part of directory, beta deleted all of directory (unidirectional)",
+			description:         "alpha deleted part of directory, beta deleted all of directory",
 			modes:               oneWayModes,
 			ancestor:            tD1,
 			alpha:               tD0,
 			expectedBetaChanges: []*Change{{New: tD0}},
 		},
-		{
-			description: "alpha deleted all of directory, beta deleted part of directory and created unsynchronizable content",
-			modes:       allModes,
-			ancestor:    tD1,
-			beta:        nested("untracked", tU),
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{Old: tD1}},
-				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
-			}},
-		},
-		{
-			description: "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory (bidirectional)",
-			modes:       twoWayModes,
-			ancestor:    tD1,
-			alpha:       nested("untracked", tU),
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{Path: "untracked", New: tU}},
-				BetaChanges:  []*Change{{Old: tD1}},
-			}},
-		},
-		{
-			description:         "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory (unidirectional)",
-			modes:               oneWayModes,
-			ancestor:            tD1,
-			alpha:               nested("untracked", tU),
-			expectedBetaChanges: []*Change{{New: tD0}},
-		},
-		{
-			description:         "alpha replaced directory with unsynchronizable content, beta deleted part of directory",
-			modes:               allModes,
-			ancestor:            tD1,
-			alpha:               tU,
-			beta:                tD0,
-			expectedBetaChanges: []*Change{{Old: tD0}},
-		},
-		{
-			description:          "alpha deleted part of directory, beta replaced directory with unsynchronizable content (bidirectional)",
-			modes:                twoWayModes,
-			ancestor:             tD1,
-			alpha:                tD0,
-			beta:                 tU,
-			expectedAlphaChanges: []*Change{{Old: tD0}},
-		},
-		{
-			description: "alpha deleted part of directory, beta replaced directory with unsynchronizable content (unidirectional)",
-			modes:       oneWayModes,
-			ancestor:    tD1,
-			alpha:       tD0,
-			beta:        tU,
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{Path: "file", Old: tF1}},
-				BetaChanges:  []*Change{{Old: tD1, New: tU}},
-			}},
-		},
 
 		// Test cases with a combination of synchronizable and unsynchronizable
 		// content, including cases with modified content.
 		{
-			description: "alpha created untracked, beta created file (safe)",
-			modes:       safeModes,
+			description: "alpha created untracked, beta created file",
+			modes:       twoWayModes,
 			alpha:       tU,
 			beta:        tF1,
 			expectedConflicts: []*Conflict{{
@@ -814,14 +728,20 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:         "alpha created untracked, beta created file (resolved)",
-			modes:               resolvedModes,
+			description: "alpha created untracked, beta created file",
+			modes:       oneWaySafeMode,
+			alpha:       tU,
+			beta:        tF1,
+		},
+		{
+			description:         "alpha created untracked, beta created file",
+			modes:               oneWayReplicaMode,
 			alpha:               tU,
 			beta:                tF1,
 			expectedBetaChanges: []*Change{{Old: tF1}},
 		},
 		{
-			description: "alpha problematic in existing directory",
+			description: "alpha created problematic in existing directory",
 			modes:       allModes,
 			ancestor:    tD0,
 			alpha:       tDP1,
@@ -857,17 +777,17 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description: "alpha created file, beta directory with untracked (safe)",
+			description: "alpha created file, beta created directory with untracked",
 			modes:       safeModes,
 			alpha:       tF1,
 			beta:        tDU,
 			expectedConflicts: []*Conflict{{
 				AlphaChanges: []*Change{{New: tF1}},
-				BetaChanges:  []*Change{{New: tDU}},
+				BetaChanges:  []*Change{{New: tD0}},
 			}},
 		},
 		{
-			description: "alpha created file, beta directory with untracked (resolved)",
+			description: "alpha created file, beta created directory with untracked",
 			modes:       resolvedModes,
 			alpha:       tF1,
 			beta:        tDU,
@@ -876,19 +796,8 @@ func TestReconcile(t *testing.T) {
 				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
 			}},
 		},
-
 		{
-			description: "alpha created file, beta created untracked",
-			modes:       allModes,
-			alpha:       tF1,
-			beta:        tU,
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{New: tF1}},
-				BetaChanges:  []*Change{{New: tU}},
-			}},
-		},
-		{
-			description: "beta problematic in existing directory",
+			description: "beta created problematic in existing directory",
 			modes:       allModes,
 			ancestor:    tD0,
 			alpha:       tD0,
@@ -902,18 +811,18 @@ func TestReconcile(t *testing.T) {
 			beta:        tD0,
 		},
 		{
-			description:          "beta created directory with problematic (bidirectional)",
+			description:          "beta created directory with problematic",
 			modes:                twoWayModes,
 			beta:                 tDP1,
 			expectedAlphaChanges: []*Change{{New: tD0}},
 		},
 		{
-			description: "beta created directory with problematic (one-way-safe)",
+			description: "beta created directory with problematic",
 			modes:       oneWaySafeMode,
 			beta:        tDP1,
 		},
 		{
-			description: "beta created directory with problematic (one-way-replica)",
+			description: "beta created directory with problematic",
 			modes:       oneWayReplicaMode,
 			beta:        tDP1,
 			expectedConflicts: []*Conflict{{
@@ -922,18 +831,18 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description:          "beta created directory with untracked (bidirectional)",
+			description:          "beta created directory with untracked",
 			modes:                twoWayModes,
 			beta:                 tDU,
 			expectedAlphaChanges: []*Change{{New: tD0}},
 		},
 		{
-			description: "beta created directory with untracked (one-way-safe)",
+			description: "beta created directory with untracked",
 			modes:       oneWaySafeMode,
 			beta:        tDU,
 		},
 		{
-			description: "beta created directory with untracked (one-way-replica)",
+			description: "beta created directory with untracked",
 			modes:       oneWayReplicaMode,
 			beta:        tDU,
 			expectedConflicts: []*Conflict{{
@@ -942,24 +851,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		{
-			description: "alpha created untracked, beta created file (safe)",
-			modes:       safeModes,
-			alpha:       tU,
-			beta:        tF1,
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{New: tU}},
-				BetaChanges:  []*Change{{New: tF1}},
-			}},
-		},
-		{
-			description:         "alpha created untracked, beta created file (resolved)",
-			modes:               resolvedModes,
-			alpha:               tU,
-			beta:                tF1,
-			expectedBetaChanges: []*Change{{Old: tF1}},
-		},
-		{
-			description:          "beta replaced file with untracked (bidirectional)",
+			description:          "beta replaced file with untracked",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			alpha:                tF1,
@@ -967,29 +859,18 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges: []*Change{{Old: tF1}},
 		},
 		{
-			description: "beta replaced file with untracked (one-way-safe)",
-			modes:       oneWaySafeMode,
+			description: "beta replaced file with untracked",
+			modes:       oneWayModes,
 			ancestor:    tF1,
 			alpha:       tF1,
 			beta:        tU,
 			expectedConflicts: []*Conflict{{
 				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
-				BetaChanges:  []*Change{{Old: tF1, New: tU}},
+				BetaChanges:  []*Change{{New: tU}},
 			}},
 		},
 		{
-			description: "beta replaced file with untracked (one-way-replica)",
-			modes:       oneWayReplicaMode,
-			ancestor:    tF1,
-			alpha:       tF1,
-			beta:        tU,
-			expectedConflicts: []*Conflict{{
-				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
-				BetaChanges:  []*Change{{Old: tF1, New: tU}},
-			}},
-		},
-		{
-			description:          "beta replaced file with directory containing untracked (bidirectional)",
+			description:          "beta replaced file with directory containing untracked",
 			modes:                twoWayModes,
 			ancestor:             tF1,
 			alpha:                tF1,
@@ -997,18 +878,18 @@ func TestReconcile(t *testing.T) {
 			expectedAlphaChanges: []*Change{{Old: tF1, New: tD0}},
 		},
 		{
-			description: "beta replaced file with directory containing untracked (one-way-safe)",
+			description: "beta replaced file with directory containing untracked",
 			modes:       oneWaySafeMode,
 			ancestor:    tF1,
 			alpha:       tF1,
 			beta:        tDU,
 			expectedConflicts: []*Conflict{{
 				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
-				BetaChanges:  []*Change{{Old: tF1, New: tDU}},
+				BetaChanges:  []*Change{{Old: tF1, New: tD0}},
 			}},
 		},
 		{
-			description: "beta replaced file with directory containing untracked (one-way-replica)",
+			description: "beta replaced file with directory containing untracked",
 			modes:       oneWayReplicaMode,
 			ancestor:    tF1,
 			alpha:       tF1,
@@ -1016,6 +897,142 @@ func TestReconcile(t *testing.T) {
 			expectedConflicts: []*Conflict{{
 				AlphaChanges: []*Change{{Old: tF1, New: tF1}},
 				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+		{
+			description: "alpha deleted all of directory, beta deleted part of directory and created unsynchronizable content",
+			modes:       allModes,
+			ancestor:    tD1,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory",
+			modes:       twoWayModes,
+			ancestor:    tD1,
+			alpha:       tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Path: "untracked", New: tU}},
+				BetaChanges:  []*Change{{Old: tD1}},
+			}},
+		},
+		{
+			description:         "alpha deleted part of directory and created unsynchronizable content, beta deleted all of directory",
+			modes:               oneWayModes,
+			ancestor:            tD1,
+			alpha:               tDU,
+			expectedBetaChanges: []*Change{{New: tD0}},
+		},
+		{
+			description:         "alpha replaced directory with unsynchronizable content, beta deleted part of directory",
+			modes:               allModes,
+			ancestor:            tD1,
+			alpha:               tU,
+			beta:                tD0,
+			expectedBetaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description:          "alpha deleted part of directory, beta replaced directory with unsynchronizable content",
+			modes:                twoWayModes,
+			ancestor:             tD1,
+			alpha:                tD0,
+			beta:                 tU,
+			expectedAlphaChanges: []*Change{{Old: tD0}},
+		},
+		{
+			description: "alpha deleted part of directory, beta replaced directory with unsynchronizable content",
+			modes:       oneWayModes,
+			ancestor:    tD1,
+			alpha:       tD0,
+			beta:        tU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1, New: tD0}},
+				BetaChanges:  []*Change{{New: tU}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created untracked content, beta replaced directory with file",
+			modes:       twoWayModes,
+			ancestor:    tD1,
+			alpha:       tDU,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Path: "untracked", New: tU}},
+				BetaChanges:  []*Change{{Old: tD1, New: tF2}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created untracked content, beta replaced directory with file",
+			modes:       oneWaySafeMode,
+			ancestor:    tD1,
+			alpha:       tDU,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1, New: tDU}},
+				BetaChanges:  []*Change{{Old: tD1, New: tF2}},
+			}},
+		},
+		{
+			description:         "alpha deleted part of directory and created untracked content, beta replaced directory with file",
+			modes:               oneWayReplicaMode,
+			ancestor:            tD1,
+			alpha:               tDU,
+			beta:                tF2,
+			expectedBetaChanges: []*Change{{Old: tF2, New: tD0}},
+		},
+		{
+			description: "beta deleted part of directory and created untracked content, alpha replaced directory with file",
+			modes:       allModes,
+			ancestor:    tD1,
+			alpha:       tF2,
+			beta:        tDU,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1, New: tF2}},
+				BetaChanges:  []*Change{{Path: "untracked", New: tU}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created problematic content, beta replaced directory with file",
+			modes:       twoWayModes,
+			ancestor:    tD1,
+			alpha:       tDP1,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Path: "problematic", New: tP1}},
+				BetaChanges:  []*Change{{Old: tD1, New: tF2}},
+			}},
+		},
+		{
+			description: "alpha deleted part of directory and created problematic content, beta replaced directory with file",
+			modes:       oneWaySafeMode,
+			ancestor:    tD1,
+			alpha:       tDP1,
+			beta:        tF2,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1, New: tDP1}},
+				BetaChanges:  []*Change{{Old: tD1, New: tF2}},
+			}},
+		},
+		{
+			description:         "alpha deleted part of directory and created problematic content, beta replaced directory with file",
+			modes:               oneWayReplicaMode,
+			ancestor:            tD1,
+			alpha:               tDP1,
+			beta:                tF2,
+			expectedBetaChanges: []*Change{{Old: tF2, New: tD0}},
+		},
+		{
+			description: "beta deleted part of directory and created problematic content, alpha replaced directory with file",
+			modes:       allModes,
+			ancestor:    tD1,
+			alpha:       tF2,
+			beta:        tDP1,
+			expectedConflicts: []*Conflict{{
+				AlphaChanges: []*Change{{Old: tD1, New: tF2}},
+				BetaChanges:  []*Change{{Path: "problematic", New: tP1}},
 			}},
 		},
 	}
@@ -1031,28 +1048,28 @@ func TestReconcile(t *testing.T) {
 
 			// Verify the ancestor changes.
 			if !testingChangeListsEqual(ancestorChanges, test.expectedAncestorChanges) {
-				t.Errorf("%s: ancestor changes do not match expected in %s mode: %v != %v",
+				t.Errorf("%s (%s): ancestor changes do not match expected: %v != %v",
 					test.description, mode.Description(), ancestorChanges, test.expectedAncestorChanges,
 				)
 			}
 
 			// Verify the alpha changes.
 			if !testingChangeListsEqual(alphaChanges, test.expectedAlphaChanges) {
-				t.Errorf("%s: alpha changes do not match expected in %s mode: %v != %v",
+				t.Errorf("%s (%s): alpha changes do not match expected: %v != %v",
 					test.description, mode.Description(), alphaChanges, test.expectedAlphaChanges,
 				)
 			}
 
 			// Verify the beta changes.
 			if !testingChangeListsEqual(betaChanges, test.expectedBetaChanges) {
-				t.Errorf("%s: beta changes do not match expected in %s mode: %v != %v",
+				t.Errorf("%s (%s): beta changes do not match expected: %v != %v",
 					test.description, mode.Description(), betaChanges, test.expectedBetaChanges,
 				)
 			}
 
 			// Verify the conflicts.
 			if !testingConflictListsEqual(conflicts, test.expectedConflicts) {
-				t.Errorf("%s: conflicts do not match expected in %s mode: %v != %v",
+				t.Errorf("%s (%s): conflicts do not match expected: %v != %v",
 					test.description, mode.Description(), conflicts, test.expectedConflicts,
 				)
 			}
