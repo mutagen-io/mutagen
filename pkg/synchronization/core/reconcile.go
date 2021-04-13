@@ -181,10 +181,11 @@ func (r *reconciler) handleDisagreementBidirectional(path string, ancestor, alph
 	// and leave on-disk contents in a more coherent state until those conflicts
 	// are resolved. In addition to relying on invariant preservation, this
 	// strategy also relies on the fact that filtering unsynchronizable content
-	// yields either no entry (if the unsynchronizable content was new) or
-	// yields a deletion operation (if the unsynchronizable content replaced
-	// existing synchronizable content), both of which are the behaviors we want
-	// for our reconciliation algorithm.
+	// and then performing a diff operation against the ancestor yields either
+	// no changes (if the unsynchronizable content was new) or yields a deletion
+	// operation (if the unsynchronizable content replaced previously existing
+	// synchronizable content), both of which are the behaviors we want for our
+	// reconciliation algorithm.
 	α := alpha.synchronizable()
 	β := beta.synchronizable()
 
