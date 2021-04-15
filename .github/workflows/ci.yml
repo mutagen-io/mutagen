@@ -19,9 +19,6 @@ jobs:
       - run: scripts/ci/setup_partitions_darwin.sh
       - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
-      - uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.txt
       - run: scripts/ci/build.sh
       - uses: actions/upload-artifact@v2
         with:
@@ -42,9 +39,6 @@ jobs:
       - run: scripts/ci/setup_docker.sh
       - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
-      - uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.txt
       - run: scripts/ci/test_386.sh
       - run: scripts/ci/build.sh
   windows:
@@ -64,9 +58,6 @@ jobs:
         shell: bash
       - run: scripts/ci/test.sh
         shell: bash
-      - uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.txt
       - run: scripts/ci/test_386.sh
         shell: bash
       - run: scripts/ci/build.sh

@@ -45,14 +45,12 @@ For updates about the project and its releases, you can
 Mutagen is built and tested on Windows, macOS, and Linux, and it's available for
 [many more platforms](https://github.com/mutagen-io/mutagen/releases/latest).
 
-| Tests                               | Code coverage                           | Report card                         | License                                   |
-| :---------------------------------: | :-------------------------------------: | :---------------------------------: | :---------------------------------------: |
-| [![Tests][tests-badge]][tests-link] | [![Code coverage][cov-badge]][cov-link] | [![Report card][rc-badge]][rc-link] | [![License][license-badge]][license-link] |
+| Tests                               | Report card                         | License                                   |
+| :---------------------------------: | :---------------------------------: | :---------------------------------------: |
+| [![Tests][tests-badge]][tests-link] | [![Report card][rc-badge]][rc-link] | [![License][license-badge]][license-link] |
 
 [tests-badge]: https://github.com/mutagen-io/mutagen/workflows/CI/badge.svg "Test status"
 [tests-link]: https://github.com/mutagen-io/mutagen/actions "Test status"
-[cov-badge]: https://codecov.io/gh/mutagen-io/mutagen/branch/master/graph/badge.svg "Code coverage status"
-[cov-link]: https://codecov.io/gh/mutagen-io/mutagen/tree/master/pkg "Code coverage status"
 [rc-badge]: https://goreportcard.com/badge/github.com/mutagen-io/mutagen "Report card status"
 [rc-link]: https://goreportcard.com/report/github.com/mutagen-io/mutagen "Report card status"
 [license-badge]: https://img.shields.io/github/license/mutagen-io/mutagen.svg "MIT licensed"
