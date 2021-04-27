@@ -3,18 +3,34 @@
 package filesystem
 
 import (
+	"io"
+
 	"golang.org/x/sys/unix"
 
 	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
-// openatRetryingOnEINTR is a wrapper around the openat system call that retries on
-// EINTR errors and returns on the first successful call or non-EINTR error.
+// openatRetryingOnEINTR is a wrapper around the openat system call that retries
+// on EINTR errors and returns on the first successful call or non-EINTR error.
 func openatRetryingOnEINTR(directory int, path string, flags int, mode uint32) (int, error) {
 	for {
 		result, err := unix.Openat(directory, path, flags, mode)
 		if err == unix.EINTR {
 			continue
+		}
+		return result, err
+	}
+}
+
+// readRetryingOnEINTR is a wrapper around the read system call that retries on
+// EINTR errors and returns on the first successful call or non-EINTR error.
+func readRetryingOnEINTR(file int, buffer []byte) (int, error) {
+	for {
+		result, err := unix.Read(file, buffer)
+		if err == unix.EINTR {
+			continue
+		} else if err == nil && result == 0 {
+			return 0, io.EOF
 		}
 		return result, err
 	}

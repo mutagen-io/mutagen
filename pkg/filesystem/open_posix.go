@@ -73,18 +73,15 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		FileID:           uint64(rawMetadata.Ino),
 	}
 
-	// Wrap the descriptor up in an os.File object.
-	file := os.NewFile(uintptr(descriptor), path)
-
 	// Dispatch further construction according to type.
 	switch metadata.Mode & ModeTypeMask {
 	case ModeTypeDirectory:
 		return &Directory{
 			descriptor: descriptor,
-			file:       file,
+			file:       os.NewFile(uintptr(descriptor), path),
 		}, metadata, nil
 	case ModeTypeFile:
-		return file, metadata, nil
+		return file(descriptor), metadata, nil
 	default:
 		closeConsideringEINTR(descriptor)
 		return nil, nil, ErrUnsupportedOpenType

@@ -212,13 +212,13 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 
 // open is the underlying open implementation shared by OpenDirectory and
 // OpenFile.
-func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error) {
+func (d *Directory) open(name string, wantDirectory bool) (int, error) {
 	// Verify that the name is valid.
 	if wantDirectory && name == "." {
 		// As a special case, we allow directories to be re-opened on POSIX
 		// systems. This is safe since it doesn't allow traversal.
 	} else if err := ensureValidName(name); err != nil {
-		return -1, nil, err
+		return -1, err
 	}
 
 	// Open the file for reading while avoiding symbolic link traversal. There
@@ -235,7 +235,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	// POSIX platforms support this flag.
 	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return -1, nil, err
+		return -1, err
 	}
 
 	// Verify that we've ended up with the expected file type. This keeps parity
@@ -253,20 +253,14 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 	var metadata unix.Stat_t
 	if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
 		closeConsideringEINTR(descriptor)
-		return -1, nil, errors.Wrap(err, "unable to query file metadata")
+		return -1, errors.Wrap(err, "unable to query file metadata")
 	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
 		closeConsideringEINTR(descriptor)
-		return -1, nil, errors.New("path is not of the expected type")
+		return -1, errors.New("path is not of the expected type")
 	}
 
-	// Wrap the descriptor up in a file object. We use the base name for the
-	// file since that's the name that was used to "open" the file, which is
-	// what os.File.Name is supposed to return (even though we don't expose
-	// os.File.Name).
-	file := os.NewFile(uintptr(descriptor), name)
-
 	// Success.
-	return descriptor, file, nil
+	return descriptor, nil
 }
 
 // OpenDirectory opens the directory within the directory specified by name. On
@@ -275,7 +269,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *os.File, error)
 // function.
 func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Call the underlying open method.
-	descriptor, file, err := d.open(name, true)
+	descriptor, err := d.open(name, true)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +277,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Success.
 	return &Directory{
 		descriptor: descriptor,
-		file:       file,
+		file:       os.NewFile(uintptr(descriptor), name),
 	}, nil
 }
 
@@ -388,8 +382,14 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 // OpenFile opens the file within the directory specified by name.
 func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, error) {
-	_, file, err := d.open(name, false)
-	return file, err
+	// Perform the open operation.
+	descriptor, err := d.open(name, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the file descriptor to a usable type.
+	return file(descriptor), err
 }
 
 // readlinkInitialBufferSize specifies the initial buffer size to use for
