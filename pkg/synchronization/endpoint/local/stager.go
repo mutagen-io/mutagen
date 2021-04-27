@@ -103,7 +103,7 @@ func (s *stagingSink) Close() error {
 	}
 
 	// Relocate the file to the destination.
-	if err = os.Rename(s.storage.Name(), destination); err != nil {
+	if err = filesystem.Rename(nil, s.storage.Name(), nil, destination); err != nil {
 		os.Remove(s.storage.Name())
 		return errors.Wrap(err, "unable to relocate file")
 	}
