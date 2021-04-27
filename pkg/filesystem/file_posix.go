@@ -1,3 +1,5 @@
+// +build !windows
+
 package filesystem
 
 // file is the readable file implementation used on POSIX systems. We avoid
