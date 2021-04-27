@@ -505,6 +505,7 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 func Rename(
 	sourceDirectory *Directory, sourceNameOrPath string,
 	targetDirectory *Directory, targetNameOrPath string,
+	replace bool,
 ) error {
 	// Adjust the source path if necessary.
 	if sourceDirectory != nil {
@@ -522,8 +523,24 @@ func Rename(
 		targetNameOrPath = filepath.Join(targetDirectory.file.Name(), targetNameOrPath)
 	}
 
-	// Perform an atomic rename.
-	return os.Rename(sourceNameOrPath, targetNameOrPath)
+	// Convert paths to UTF-16.
+	sourceNameOrPathUTF16, err := windows.UTF16PtrFromString(sourceNameOrPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to convert source path to UTF-16")
+	}
+	targetNameOrPathUTF16, err := windows.UTF16PtrFromString(targetNameOrPath)
+	if err != nil {
+		return errors.Wrap(err, "unable to convert targt path to UTF-16")
+	}
+
+	// Compute flags.
+	var flags uint32
+	if replace {
+		flags = uint32(windows.MOVEFILE_REPLACE_EXISTING)
+	}
+
+	// Attempt the rename operation.
+	return windows.MoveFileEx(sourceNameOrPathUTF16, targetNameOrPathUTF16, flags)
 }
 
 const (

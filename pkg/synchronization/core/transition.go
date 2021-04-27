@@ -316,24 +316,6 @@ func (t *transitioner) ensureExpectedSymbolicLink(parent *filesystem.Directory, 
 	return nil
 }
 
-// ensureNotExists ensures that no content with the specified name exists within
-// the specified directory.
-func (t *transitioner) ensureNotExists(parent *filesystem.Directory, name string) error {
-	// Attempt to grab stat information for the path.
-	_, err := parent.ReadContentMetadata(name)
-
-	// Handle error cases (which may indicate success).
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return errors.Wrap(err, "unable to determine path existence")
-	}
-
-	// Failure.
-	return errors.New("path exists")
-}
-
 // removeFile removes the file specified by name within the specified directory,
 // enforcing that it matches the specified entry.
 func (t *transitioner) removeFile(parent *filesystem.Directory, name, path string, expected *Entry) error {
@@ -569,6 +551,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	target *Entry,
 	parent *filesystem.Directory,
 	name string,
+	replace bool,
 ) error {
 	// Compute the new file mode based on the new entry's executability. We
 	// enforce that default file modes don't have executability bits set, so we
@@ -595,7 +578,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	}
 
 	// Attempt to atomically rename the file. If we succeed, we're done.
-	renameErr := filesystem.Rename(nil, stagedPath, parent, name)
+	renameErr := filesystem.Rename(nil, stagedPath, parent, name, replace)
 	if renameErr == nil {
 		return nil
 	}
@@ -659,7 +642,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	}
 
 	// Rename the file.
-	if err := filesystem.Rename(parent, temporaryName, parent, name); err != nil {
+	if err := filesystem.Rename(parent, temporaryName, parent, name, replace); err != nil {
 		parent.RemoveFile(temporaryName)
 		return errors.Wrap(err, "unable to relocate intermediate file")
 	}
@@ -721,24 +704,12 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	}
 
 	// Otherwise, we will have a staged file, so find it and move it into place.
-	return t.findAndMoveStagedFileIntoPlace(path, newEntry, parent, name)
+	return t.findAndMoveStagedFileIntoPlace(path, newEntry, parent, name, true)
 }
 
 // createFile creates the target file at the specified path.
 func (t *transitioner) createFile(parent *filesystem.Directory, name, path string, target *Entry) error {
-	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
-	// modification since the last scan.
-	if err := t.ensureNotExists(parent, name); err != nil {
-		return errors.Wrap(err, "unable to ensure path does not exist")
-	}
-
-	// RACE: There is a race condition here between the non-existence check and
-	// the file relocation that we have to live with due to limitations in
-	// filesystem APIs. The worst case fallout is replacement of contents that
-	// are created during this window.
-
-	// Find the staged file and move it into place.
-	return t.findAndMoveStagedFileIntoPlace(path, target, parent, name)
+	return t.findAndMoveStagedFileIntoPlace(path, target, parent, name, false)
 }
 
 // createSymbolicLink creates the target symbolic link at the specified path.
@@ -751,17 +722,6 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 			return errors.New("symbolic link was not in normalized form or was not portable")
 		}
 	}
-
-	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
-	// modification since the last scan.
-	if err := t.ensureNotExists(parent, name); err != nil {
-		return errors.Wrap(err, "unable to ensure path does not exist")
-	}
-
-	// RACE: There is a race condition here between the non-existence check and
-	// the symbolic link creation that we have to live with due to limitations
-	// in filesystem APIs. The worst case fallout is replacement of contents
-	// that are created during this window.
 
 	// Create the symbolic link.
 	if err := parent.CreateSymbolicLink(name, target.Target); err != nil {
@@ -802,13 +762,6 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 // portion of the directory can be created, an entry representing that portion
 // will be returned.
 func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path string, target *Entry) *Entry {
-	// Ensure that the target path doesn't exist, e.g. due to a case conflict or
-	// modification since the last scan.
-	if err := t.ensureNotExists(parent, name); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to ensure path does not exist"))
-		return nil
-	}
-
 	// Attempt to create the directory.
 	if err := parent.CreateDirectory(name); err != nil {
 		t.recordProblem(path, errors.Wrap(err, "unable to create directory"))

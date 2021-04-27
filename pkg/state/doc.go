@@ -1,2 +1,2 @@
-// Package state provides index-based state change tracking facilities.
+// Package state provides state tracking facilities.
 package state

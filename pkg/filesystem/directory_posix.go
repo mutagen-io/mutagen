@@ -19,6 +19,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
+	"github.com/mutagen-io/mutagen/pkg/state"
 )
 
 // ensureValidName verifies that the provided name does not reference the
@@ -54,6 +55,10 @@ type Directory struct {
 	// required for its Readdirnames function, since there's no other portable
 	// way to do this from Go.
 	file *os.File
+	// renameatNoReplaceUnsupported is marked if
+	// renameatNoReplaceRetryingOnEINTR is found to be unsupported with this
+	// directory as a target.
+	renameatNoReplaceUnsupported state.Marker
 }
 
 // Close closes the directory.
@@ -483,33 +488,74 @@ func (d *Directory) RemoveSymbolicLink(name string) error {
 func Rename(
 	sourceDirectory *Directory, sourceNameOrPath string,
 	targetDirectory *Directory, targetNameOrPath string,
+	replace bool,
 ) error {
 	// If a source directory has been provided, then verify that the source name
-	// is a valid name and not a path.
+	// is valid and extract the source directory descriptor.
+	sourceDescriptor := unix.AT_FDCWD
 	if sourceDirectory != nil {
 		if err := ensureValidName(sourceNameOrPath); err != nil {
 			return errors.Wrap(err, "source name invalid")
 		}
+		sourceDescriptor = sourceDirectory.descriptor
 	}
 
 	// If a target directory has been provided, then verify that the target name
-	// is a valid name and not a path.
+	// is valid and extract the target directory descriptor.
+	targetDescriptor := unix.AT_FDCWD
 	if targetDirectory != nil {
 		if err := ensureValidName(targetNameOrPath); err != nil {
 			return errors.Wrap(err, "target name invalid")
 		}
-	}
-
-	// Extract the file descriptors to pass to renameat.
-	var sourceDescriptor, targetDescriptor int
-	if sourceDirectory != nil {
-		sourceDescriptor = sourceDirectory.descriptor
-	}
-	if targetDirectory != nil {
 		targetDescriptor = targetDirectory.descriptor
 	}
 
-	// Perform an atomic rename.
+	// If we're allowing the target to be replaced, then just attempt a standard
+	// rename operation.
+	if replace {
+		return renameatRetryingOnEINTR(
+			sourceDescriptor, sourceNameOrPath,
+			targetDescriptor, targetNameOrPath,
+		)
+	}
+
+	// Since we're not allowing replacement, we need to ensure that the target
+	// doesn't exist. Some platforms provide specialized renameat variants and
+	// flags for this purpose, so we'll see if that's the case first. We'll skip
+	// this if we've already determined that the target directory's filesystem
+	// doesn't support this mechanism.
+	if targetDirectory == nil || !targetDirectory.renameatNoReplaceUnsupported.Marked() {
+		err := renameatNoReplaceRetryingOnEINTR(
+			sourceDescriptor, sourceNameOrPath,
+			targetDescriptor, targetNameOrPath,
+		)
+		if err == nil || (err != unix.ENOTSUP && err != unix.ENOSYS) {
+			return err
+		} else if err == unix.ENOTSUP && targetDirectory != nil {
+			targetDirectory.renameatNoReplaceUnsupported.Mark()
+		}
+	}
+
+	// There either isn't a non-replacing variant of renameat available or it
+	// isn't supported on this platform or target filesystem. In any case, we're
+	// falling back to the slower and less atomic method, so check if the target
+	// exists.
+	var probeErr error
+	if targetDirectory != nil {
+		_, probeErr = targetDirectory.ReadContentMetadata(targetNameOrPath)
+	} else {
+		_, probeErr = os.Lstat(targetNameOrPath)
+	}
+	if probeErr == nil {
+		return os.ErrExist
+	} else if !os.IsNotExist(probeErr) {
+		return errors.Wrap(probeErr, "unable to probe target existence")
+	}
+
+	// RACE: There's a race window here between the time of our check and the
+	// time that the file is renamed. This is a limitation of the POSIX API.
+
+	// Attempt the rename operation.
 	return renameatRetryingOnEINTR(
 		sourceDescriptor, sourceNameOrPath,
 		targetDescriptor, targetNameOrPath,
