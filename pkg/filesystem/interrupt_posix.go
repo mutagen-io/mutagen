@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // openatRetryingOnEINTR is a wrapper around the openat system call that retries
@@ -165,7 +165,7 @@ func fchownatRetryingOnEINTR(directory int, path string, uid int, gid int, flags
 // error.
 func symlinkatRetryingOnEINTR(target string, directory int, path string) error {
 	for {
-		err := fssyscall.Symlinkat(target, directory, path)
+		err := syscall.Symlinkat(target, directory, path)
 		if err == unix.EINTR {
 			continue
 		}
@@ -178,7 +178,7 @@ func symlinkatRetryingOnEINTR(target string, directory int, path string) error {
 // error.
 func readlinkatRetryingOnEINTR(directory int, path string, buffer []byte) (int, error) {
 	for {
-		result, err := fssyscall.Readlinkat(directory, path, buffer)
+		result, err := syscall.Readlinkat(directory, path, buffer)
 		if err == unix.EINTR {
 			continue
 		}

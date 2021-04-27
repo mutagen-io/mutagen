@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	fssyscall "github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
+	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // queryFileHandle performs a metadata query on a Windows file handle, returning
@@ -41,7 +41,7 @@ func queryFileHandle(handle windows.Handle) (bool, bool, error) {
 	// cases where this query returns an invalid parameter error, we assume that
 	// we're on a non-NTFS filesystem, in which case symbolic links aren't
 	// supported in any case. See golang/go#29214 for more information.
-	var attributes fssyscall.FileAttributeTagInfo
+	var attributes syscall.FileAttributeTagInfo
 	if err := windows.GetFileInformationByHandleEx(
 		handle,
 		windows.FileAttributeTagInfo,
