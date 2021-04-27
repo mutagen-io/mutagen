@@ -16,6 +16,28 @@ const (
 	numberOfByteValues = 1 << 8
 )
 
+// mkdirAllowExist is a wrapper around os.Mkdir that allows a directory to exist
+// without also allowing the creation of intermediate directories (as is the
+// case with os.MkdirAll). It isn't atomic, but it's fine for staging purposes.
+func mkdirAllowExist(name string, perm os.FileMode) error {
+	// Attempt to create the directory and handle the non-error case.
+	err := os.Mkdir(name, perm)
+	if err == nil {
+		return nil
+	}
+
+	// If the error is due to an existing filesystem entry, then check if that
+	// entry is already a directory. If so, then we can return without an error.
+	if os.IsExist(err) {
+		if stat, statErr := os.Lstat(name); statErr == nil && stat.IsDir() {
+			return nil
+		}
+	}
+
+	// Otherwise return the creation error.
+	return err
+}
+
 // stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
 	// stager is the parent stager.
@@ -135,12 +157,11 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 		return nil
 	}
 
-	// Otherwise create it and mark it as created. We can also mark the root as
-	// created since it'll be an intermediate directory.
-	if err := os.Mkdir(filepath.Join(s.root, prefix), 0700); err != nil {
+	// Otherwise create the prefix and record its creation. We allow prefixes to
+	// exist already in order to support staging resumption.
+	if err := mkdirAllowExist(filepath.Join(s.root, prefix), 0700); err != nil {
 		return err
 	}
-	s.rootCreated = true
 	s.prefixCreated[prefix] = true
 
 	// Success.
@@ -168,8 +189,9 @@ func (s *stager) wipe() error {
 func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	// Create the staging root if we haven't already.
 	if !s.rootCreated {
-		// Attempt to create the directory.
-		if err := os.Mkdir(s.root, 0700); err != nil {
+		// Attempt to create the root directory. We allow the root to exist
+		// already in order to support staging resumption.
+		if err := mkdirAllowExist(s.root, 0700); err != nil {
 			return nil, errors.Wrap(err, "unable to create staging root")
 		}
 
