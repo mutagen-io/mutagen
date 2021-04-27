@@ -16,26 +16,24 @@ const (
 	numberOfByteValues = 1 << 8
 )
 
+// existsAndIsDirectory returns true if the target path exists, is readable, and
+// is a directory, otherwise it returns false.
+func existsAndIsDirectory(path string) bool {
+	metadata, err := os.Lstat(path)
+	return err == nil && metadata.IsDir()
+}
+
 // mkdirAllowExist is a wrapper around os.Mkdir that allows a directory to exist
 // without also allowing the creation of intermediate directories (as is the
 // case with os.MkdirAll). It isn't atomic, but it's fine for staging purposes.
 func mkdirAllowExist(name string, perm os.FileMode) error {
-	// Attempt to create the directory and handle the non-error case.
-	err := os.Mkdir(name, perm)
-	if err == nil {
+	if err := os.Mkdir(name, perm); err == nil {
 		return nil
+	} else if os.IsExist(err) && existsAndIsDirectory(name) {
+		return nil
+	} else {
+		return err
 	}
-
-	// If the error is due to an existing filesystem entry, then check if that
-	// entry is already a directory. If so, then we can return without an error.
-	if os.IsExist(err) {
-		if stat, statErr := os.Lstat(name); statErr == nil && stat.IsDir() {
-			return nil
-		}
-	}
-
-	// Otherwise return the creation error.
-	return err
 }
 
 // stagingSink is an io.WriteCloser designed to be returned by stager.
@@ -121,31 +119,27 @@ type stager struct {
 	// root is the staging root path.
 	root string
 	// hideRoot indicates whether or not the staging root should be marked as
-	// hidden.
+	// hidden when created.
 	hideRoot bool
 	// digester is the hash function to use when processing files.
 	digester hash.Hash
 	// maximumFileSize is the maximum allowed size for a single staged file.
 	maximumFileSize uint64
-	// rootCreated indicates whether or not the staging root has been created
-	// by us since the last wipe.
-	rootCreated bool
-	// prefixCreated maps prefix names (e.g. "00" - "ff") to a boolean
-	// indicating whether or not the prefix has been created by us since the
-	// last wipe.
-	prefixCreated map[string]bool
+	// rootExists indicates whether or not the staging root currently exists.
+	rootExists bool
+	// prefixExists tracks whether or not individual prefix directories exist.
+	prefixExists map[string]bool
 }
 
-// newStager creates a new stager. Parent should be a common directory in which
-// staging roots are created, and rootName should be the endpoint-unique name of
-// the staging root to create/delete within the parent.
+// newStager creates a new stager.
 func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *stager {
 	return &stager{
 		root:            root,
 		hideRoot:        hideRoot,
 		digester:        digester,
 		maximumFileSize: maximumFileSize,
-		prefixCreated:   make(map[string]bool, numberOfByteValues),
+		rootExists:      existsAndIsDirectory(root),
+		prefixExists:    make(map[string]bool, numberOfByteValues),
 	}
 }
 
@@ -153,7 +147,7 @@ func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize u
 // the staging root, using a cache to avoid inefficient recreation.
 func (s *stager) ensurePrefixExists(prefix string) error {
 	// Check if we've already created that prefix.
-	if s.prefixCreated[prefix] {
+	if s.prefixExists[prefix] {
 		return nil
 	}
 
@@ -162,7 +156,7 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 	if err := mkdirAllowExist(filepath.Join(s.root, prefix), 0700); err != nil {
 		return err
 	}
-	s.prefixCreated[prefix] = true
+	s.prefixExists[prefix] = true
 
 	// Success.
 	return nil
@@ -171,10 +165,10 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 // wipe removes the staging root.
 func (s *stager) wipe() error {
 	// Reset the prefix creation tracker.
-	s.prefixCreated = make(map[string]bool, numberOfByteValues)
+	s.prefixExists = make(map[string]bool, numberOfByteValues)
 
 	// Reset root creation tracking.
-	s.rootCreated = false
+	s.rootExists = false
 
 	// Remove the staging root.
 	if err := os.RemoveAll(s.root); err != nil {
@@ -188,10 +182,9 @@ func (s *stager) wipe() error {
 // Sink implements the Sink method of rsync.Sinker.
 func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	// Create the staging root if we haven't already.
-	if !s.rootCreated {
-		// Attempt to create the root directory. We allow the root to exist
-		// already in order to support staging resumption.
-		if err := mkdirAllowExist(s.root, 0700); err != nil {
+	if !s.rootExists {
+		// Attempt to create the root directory.
+		if err := os.Mkdir(s.root, 0700); err != nil {
 			return nil, errors.Wrap(err, "unable to create staging root")
 		}
 
@@ -202,8 +195,8 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 			}
 		}
 
-		// Update our creation tracking.
-		s.rootCreated = true
+		// Update our tracking.
+		s.rootExists = true
 	}
 
 	// Create a temporary storage file in the staging root.
@@ -227,6 +220,14 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 
 // Provide implements the Provide method of sync.Provider.
 func (s *stager) Provide(path string, digest []byte) (string, error) {
+	// If the root doesn't exist, then there's no way the file exists, and we
+	// can simply return. This is an important optimization path for initial
+	// synchronization of a large directories, where we don't want to perform a
+	// huge number of os.Lstat calls that we know will fail.
+	if !s.rootExists {
+		return "", os.ErrNotExist
+	}
+
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, digest)
 	if err != nil {
