@@ -3,7 +3,6 @@ package compose
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -112,7 +111,7 @@ type Project struct {
 // the resulting project if loading is successful.
 func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionFlags) (*Project, error) {
 	// Create a temporary directory to store generated project resources.
-	temporaryDirectory, err := ioutil.TempDir("", "io.mutagen.compose.*")
+	temporaryDirectory, err := os.MkdirTemp("", "io.mutagen.compose.*")
 	if err != nil {
 		return nil, fmt.Errorf("unable to create temporary directory for project resources: %w", err)
 	}
