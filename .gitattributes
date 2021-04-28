@@ -1,10 +1,13 @@
 # Automatically normalize line endings to \n when checking in text files.
 * text=auto
 
-# Enforce that Go module metadata files are always checked out with newline
-# endings, because Go tooling will normalize them to newline endings.
+# Enforce that Go module metadata files always use newline endings, because Go
+# tooling will normalize them to newline endings, even on Windows.
 go.mod text eol=lf
 go.sum text eol=lf
+
+# Enforce that shell scripts always use newline endings.
+*.sh text eol=lf
 
 # Enforce that Windows batch files always use CRLF line endings.
 *.bat text eol=crlf
