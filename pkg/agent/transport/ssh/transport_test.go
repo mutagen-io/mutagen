@@ -36,7 +36,7 @@ func TestCopy(t *testing.T) {
 	}
 
 	// Create a transport.
-	transport := &transport{
+	transport := &sshTransport{
 		user: user.Username,
 		host: "localhost",
 		port: 22,
@@ -86,7 +86,7 @@ func TestCommandOutput(t *testing.T) {
 	}
 
 	// Create a transport.
-	transport := &transport{
+	transport := &sshTransport{
 		user: user.Username,
 		host: "localhost",
 		port: 22,

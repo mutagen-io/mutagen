@@ -2,15 +2,15 @@
 
 // TODO: Figure out what to do for Plan 9. It doesn't support Setsid.
 
-package process
+package transport
 
 import (
 	"syscall"
 )
 
-// DetachedProcessAttributes returns the process attributes to use for starting
-// detached processes.
-func DetachedProcessAttributes() *syscall.SysProcAttr {
+// ProcessAttributes returns the process attributes to use for starting
+// transport processes from the daemon.
+func ProcessAttributes() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
 		// There's also a Noctty field, but it only detaches standard input from
 		// the controlling terminal (not standard output or error), and if

@@ -11,7 +11,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
-	"github.com/mutagen-io/mutagen/pkg/agent/transports/ssh"
+	"github.com/mutagen-io/mutagen/pkg/agent/transport"
+	"github.com/mutagen-io/mutagen/pkg/agent/transport/ssh"
 	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
@@ -26,8 +27,8 @@ Hyper-V doesn't support copying files into running containers.
 
 Would you like to continue? (yes/no)? `
 
-// transport implements the agent.Transport interface using Docker.
-type transport struct {
+// dockerTransport implements the agent.Transport interface using Docker.
+type dockerTransport struct {
 	// container is the target container name.
 	container string
 	// user is the container user under which agents should be invoked.
@@ -73,7 +74,7 @@ func NewTransport(container, user string, environment, parameters map[string]str
 	}
 
 	// Success.
-	return &transport{
+	return &dockerTransport{
 		container:             container,
 		user:                  user,
 		environment:           environment,
@@ -86,7 +87,7 @@ func NewTransport(container, user string, environment, parameters map[string]str
 // specification of the working directory inside the container, as well as an
 // override of the executing user. An empty user specification means to use the
 // username specified in the remote URL, if any.
-func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, error) {
+func (t *dockerTransport) command(command, workingDirectory, user string) (*exec.Cmd, error) {
 	// Set up top-level command-line flags.
 	var dockerArguments []string
 	dockerArguments = append(dockerArguments, t.daemonConnectionFlags...)
@@ -125,8 +126,8 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 		return nil, err
 	}
 
-	// Force it to run detached.
-	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
+	// Set the process attributes.
+	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -152,7 +153,7 @@ func (t *transport) command(command, workingDirectory, user string) (*exec.Cmd, 
 // probeContainer ensures that the containerIsWindows and containerHomeDirectory
 // fields are populated. It is idempotent. If probing previously failed, probing
 // will simply return an error indicating the previous failure.
-func (t *transport) probeContainer() error {
+func (t *dockerTransport) probeContainer() error {
 	// Watch for previous errors.
 	if t.containerProbeError != nil {
 		return errors.Wrap(t.containerProbeError, "previous container probing failed")
@@ -286,7 +287,7 @@ func (t *transport) probeContainer() error {
 
 // changeContainerStatus stops or starts the container. It is required for
 // copying files on Windows when using Hyper-V.
-func (t *transport) changeContainerStatus(stop bool) error {
+func (t *dockerTransport) changeContainerStatus(stop bool) error {
 	// Set up top-level command-line flags.
 	var dockerArguments []string
 	dockerArguments = append(dockerArguments, t.daemonConnectionFlags...)
@@ -304,8 +305,8 @@ func (t *transport) changeContainerStatus(stop bool) error {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}
 
-	// Force it to run detached.
-	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
+	// Set the process attributes.
+	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -329,7 +330,7 @@ func (t *transport) changeContainerStatus(stop bool) error {
 }
 
 // Copy implements the Copy method of agent.Transport.
-func (t *transport) Copy(localPath, remoteName string) error {
+func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return errors.Wrap(err, "unable to probe container")
@@ -390,8 +391,8 @@ func (t *transport) Copy(localPath, remoteName string) error {
 		return errors.Wrap(err, "unable to set up Docker invocation")
 	}
 
-	// Force it to run detached.
-	dockerCommand.SysProcAttr = process.DetachedProcessAttributes()
+	// Set the process attributes.
+	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -464,7 +465,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 }
 
 // Command implements the Command method of agent.Transport.
-func (t *transport) Command(command string) (*exec.Cmd, error) {
+func (t *dockerTransport) Command(command string) (*exec.Cmd, error) {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return nil, errors.Wrap(err, "unable to probe container")
@@ -475,7 +476,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 }
 
 // ClassifyError implements the ClassifyError method of agent.Transport.
-func (t *transport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
+func (t *dockerTransport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
 		return false, false, errors.Wrap(err, "unable to probe container")

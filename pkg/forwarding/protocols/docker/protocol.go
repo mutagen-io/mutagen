@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
-	"github.com/mutagen-io/mutagen/pkg/agent/transports/docker"
+	"github.com/mutagen-io/mutagen/pkg/agent/transport/docker"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
 	"github.com/mutagen-io/mutagen/pkg/logging"

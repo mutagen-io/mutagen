@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/agent/transport"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/ssh"
 )
@@ -27,8 +28,8 @@ const (
 	serverAliveCountMax = 1
 )
 
-// transport implements the agent.Transport interface using SSH.
-type transport struct {
+// sshTransport implements the agent.Transport interface using SSH.
+type sshTransport struct {
 	// user is the SSH user under which agents should be invoked.
 	user string
 	// host is the target host.
@@ -41,7 +42,7 @@ type transport struct {
 
 // NewTransport creates a new SSH transport using the specified parameters.
 func NewTransport(user, host string, port uint16, prompter string) (agent.Transport, error) {
-	return &transport{
+	return &sshTransport{
 		user:     user,
 		host:     host,
 		port:     port,
@@ -50,7 +51,7 @@ func NewTransport(user, host string, port uint16, prompter string) (agent.Transp
 }
 
 // Copy implements the Copy method of agent.Transport.
-func (t *transport) Copy(localPath, remoteName string) error {
+func (t *sshTransport) Copy(localPath, remoteName string) error {
 	// HACK: On Windows, we attempt to use SCP executables that might not
 	// understand Windows paths because they're designed to run inside a POSIX-
 	// style environment (e.g. MSYS or Cygwin). To work around this, we run them
@@ -100,8 +101,8 @@ func (t *transport) Copy(localPath, remoteName string) error {
 	// Set the working directory.
 	scpCommand.Dir = workingDirectory
 
-	// Force it to run detached.
-	scpCommand.SysProcAttr = process.DetachedProcessAttributes()
+	// Set the process attributes.
+	scpCommand.SysProcAttr = transport.ProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -128,7 +129,7 @@ func (t *transport) Copy(localPath, remoteName string) error {
 }
 
 // Command implements the Command method of agent.Transport.
-func (t *transport) Command(command string) (*exec.Cmd, error) {
+func (t *sshTransport) Command(command string) (*exec.Cmd, error) {
 	// Compute the target.
 	target := t.host
 	if t.user != "" {
@@ -154,7 +155,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 	}
 
 	// Force it to run detached.
-	sshCommand.SysProcAttr = process.DetachedProcessAttributes()
+	sshCommand.SysProcAttr = transport.ProcessAttributes()
 
 	// Create a copy of the current environment.
 	environment := os.Environ()
@@ -176,7 +177,7 @@ func (t *transport) Command(command string) (*exec.Cmd, error) {
 }
 
 // ClassifyError implements the ClassifyError method of agent.Transport.
-func (t *transport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
+func (t *sshTransport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
 	// SSH faithfully returns exit codes and error output, so we can use direct
 	// methods for testing and classification. Note that we may get POSIX-like
 	// error codes back even from Windows remotes, but that indicates a POSIX
