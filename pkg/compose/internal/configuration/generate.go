@@ -28,8 +28,6 @@ type GeneratedServiceConfiguration struct {
 // thus only encodes those fields needed by Mutagen services. It is designed to
 // be compatible with both 2.x and 3.x Docker Compose configuration formats.
 type GeneratedComposeConfiguration struct {
-	// Version is the Docker Compose configuration file version.
-	Version string `yaml:"version"`
 	// Services are the Docker Compose services.
 	Services map[string]*GeneratedServiceConfiguration `yaml:"services"`
 }

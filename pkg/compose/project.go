@@ -286,10 +286,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		projectName = "default"
 	}
 
-	// Load each configuration file, storing the version specification for the
-	// first file, recording service, volume, and network names, and storing
-	// Mutagen session configurations.
-	var version string
+	// Load each configuration file, recording service, volume, and network
+	// names, and storing Mutagen session configurations.
 	services := make(map[string]bool)
 	volumes := make(map[string]bool)
 	networks := map[string]bool{"default": true}
@@ -297,20 +295,11 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		Forwarding:      make(map[string]configuration.ForwardingConfiguration),
 		Synchronization: make(map[string]configuration.SynchronizationConfiguration),
 	}
-	for f, file := range files {
+	for _, file := range files {
 		// Load the configuration file.
 		configuration, err := configuration.Load(file, environment)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load configuration file (%s): %w", file, err)
-		}
-
-		// Store the version if this is the first configuration file. We don't
-		// bother validating the version since the only decent check we can do
-		// is for emptiness. Docker Compose will validate it once it loads
-		// files, and our generated file will come last anyway, so it won't be
-		// the source of any validation errors that arise.
-		if f == 0 {
-			version = configuration.Version
 		}
 
 		// Record the service, volume, and network names defined in the file.
@@ -624,7 +613,6 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 	// Generate the Mutagen Docker Compose configuration file.
 	mutagenComposeConfiguration := &configuration.GeneratedComposeConfiguration{
-		Version: version,
 		Services: map[string]*configuration.GeneratedServiceConfiguration{
 			MutagenServiceName: mutagenServiceConfiguration,
 		},
