@@ -156,6 +156,13 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 	if err != nil {
 		return nil, fmt.Errorf("unable to load/compute environment: %w", err)
 	}
+	if _, err := os.Lstat(environmentFile); err != nil {
+		if os.IsNotExist(err) {
+			environmentFile = ""
+		} else {
+			return nil, fmt.Errorf("unable to check environment file existence: %w", err)
+		}
+	}
 
 	// Query the Docker daemon metadata and ensure that the Docker daemon is
 	// running an OS supported by Mutagen's Docker Compose integration.
@@ -654,7 +661,9 @@ func (p *Project) TopLevelFlags() []string {
 	}
 	flags = append(flags, "--project-name", p.name)
 	flags = append(flags, "--project-directory", p.workingDirectory)
-	flags = append(flags, "--env-file", p.environmentFile)
+	if p.environmentFile != "" {
+		flags = append(flags, "--env-file", p.environmentFile)
+	}
 
 	// Done.
 	return flags
