@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -165,11 +166,12 @@ func invokeAndExit(topLevelFlags []string, command string, arguments []string) {
 	cmd.Fatal(err)
 }
 
-// handleTopLevelFlags handles top-level Docker Compose flags. This is necessary
-// to emulate Docker Compose's handling of these flags, which occurs even if a
-// command is specified. If this function returns, then execution can continue
-// normally.
-func handleTopLevelFlags() {
+// handleTopLevelFlagsAndEnvironmentVariables handles (and validates) top-level
+// Docker Compose flags and environment variables. This is necessary to emulate
+// Docker Compose's handling of these flags, which occurs even if a command is
+// specified, as well as to block accidental control of Mutagen's internal
+// service profile. If this function returns, then execution can continue.
+func handleTopLevelFlagsAndEnvironmentVariables() {
 	// Handle help and version flags. Help behavior always take precedence over
 	// version behavior, even if the -v/--version flag is specified before the
 	// -h/--help flag.
@@ -177,6 +179,17 @@ func handleTopLevelFlags() {
 		invokeAndExit([]string{"--help"}, "", nil)
 	} else if composeConfiguration.version {
 		invokeAndExit([]string{"--version"}, "", nil)
+	}
+
+	// Enforce that the Mutagen service profile isn't being targeted.
+	if composeConfiguration.profile == compose.MutagenProfileName {
+		cmd.Fatal(errors.New("the Mutagen internal service profile should not be targeted"))
+	}
+	environmentProfiles := strings.Split(os.Getenv("COMPOSE_PROFILES"), ",")
+	for _, profile := range environmentProfiles {
+		if profile == compose.MutagenProfileName {
+			cmd.Fatal(errors.New("the Mutagen internal service profile should not be targeted"))
+		}
 	}
 
 	// Enforce that the --skip-hostname-check flag isn't specified. This flag
@@ -193,8 +206,8 @@ func handleTopLevelFlags() {
 // result in termination. In order to use this handler, flag parsing must be
 // disabled for the command.
 func passthrough(command *cobra.Command, arguments []string) {
-	// Handle top-level flags that might result in termination.
-	handleTopLevelFlags()
+	// Handle/validate top-level flags and environment variables.
+	handleTopLevelFlagsAndEnvironmentVariables()
 
 	// Reconstitute top-level flags and pass control to Docker Compose.
 	topLevelFlags := reconstituteFlags(ComposeCommand.Flags(), nil)
@@ -207,8 +220,8 @@ func passthrough(command *cobra.Command, arguments []string) {
 // Docker Compose commands but end their operation with a call to invoke.
 func wrapper(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
 	return func(command *cobra.Command, arguments []string) error {
-		// Handle top-level flags that might result in termination.
-		handleTopLevelFlags()
+		// Handle/validate top-level flags and environment variables.
+		handleTopLevelFlagsAndEnvironmentVariables()
 
 		// Run the underlying handler.
 		err := run(command, arguments)
@@ -275,6 +288,8 @@ var composeConfiguration struct {
 	help bool
 	// ProjectFlags are the flags that control the Docker Compose project.
 	compose.ProjectFlags
+	// Profile stores the value of the --profile flag.
+	profile string
 	// DaemonConnectionFlags are the flags that control the Docker daemon
 	// connection.
 	docker.DaemonConnectionFlags
@@ -307,6 +322,7 @@ func init() {
 	flags.BoolVarP(&composeConfiguration.help, "help", "h", false, "")
 	flags.StringSliceVarP(&composeConfiguration.File, "file", "f", nil, "")
 	flags.StringVarP(&composeConfiguration.ProjectName, "project-name", "p", "", "")
+	flags.StringVar(&composeConfiguration.profile, "profile", "", "")
 	flags.StringVarP(&composeConfiguration.Context, "context", "c", "", "")
 	flags.BoolVar(&composeConfiguration.verbose, "verbose", false, "")
 	flags.StringVar(&composeConfiguration.logLevel, "log-level", "", "")

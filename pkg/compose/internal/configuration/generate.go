@@ -15,6 +15,8 @@ import (
 type GeneratedServiceConfiguration struct {
 	// Image is the image for the service.
 	Image string `yaml:"image"`
+	// Profiles are the profiles for the service.
+	Profiles []string `yaml:"profiles,omitempty"`
 	// Networks are the network dependencies for the service.
 	Networks []string `yaml:"networks,omitempty"`
 	// Volumes are the volume dependencies for the service.

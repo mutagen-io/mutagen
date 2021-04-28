@@ -31,7 +31,8 @@ const (
 // ensureMutagenUp ensures that the Mutagen service is running and up-to-date.
 func ensureMutagenUp(topLevelFlags []string) error {
 	// Set up command flags and arguments. We honor certain up command flags
-	// that control output.
+	// that control output. Note that we don't need to specify the Mutagen
+	// profile name here because we're explicitly targeting the service.
 	var arguments []string
 	arguments = append(arguments, topLevelFlags...)
 	arguments = append(arguments, "up", "--detach")
@@ -282,18 +283,6 @@ func upMain(command *cobra.Command, arguments []string) error {
 	// Handle Mutagen session reconciliation.
 	if err := reconcileSessions(project); err != nil {
 		return fmt.Errorf("unable to reconcile Mutagen sessions: %w", err)
-	}
-
-	// If no services have been explicitly specified, then use a list of all
-	// services defined for the project. We want to avoid having the Mutagen
-	// service targeted by the nominal up command because we don't want the
-	// flags for that command to affect the Mutagen service.
-	if len(arguments) == 0 {
-		if len(project.Services) == 0 {
-			return errors.New("no services defined for project")
-		} else {
-			arguments = project.Services
-		}
 	}
 
 	// Compute flags and arguments for the command itself.

@@ -26,6 +26,9 @@ const (
 	MutagenServiceName = "mutagen"
 	// mutagenSidecarImage is the Mutagen sidecar container image.
 	mutagenSidecarImage = "mutagenio/sidecar:latest"
+	// MutagenProfileName is the name use for the Mutagen profile in
+	// Mutagen-enhanced Docker Compose Projects.
+	MutagenProfileName = "mutagen_internal"
 )
 
 // normalizeProjectNameReplacer is a regular expression used by
@@ -89,8 +92,6 @@ type Project struct {
 	// name is the fully resolved project name. This value should be passed to
 	// Docker Compose commands using the top-level --name flag.
 	name string
-	// Services are the names of the non-Mutagen services in the project.
-	Services []string
 	// Forwarding are the forwarding session specifications.
 	Forwarding map[string]*forwardingsvc.CreationSpecification
 	// Synchronization are the synchronization session specifications.
@@ -607,7 +608,8 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 
 	// Generate the Mutagen service configuration.
 	mutagenServiceConfiguration := &configuration.GeneratedServiceConfiguration{
-		Image: mutagenSidecarImage,
+		Image:    mutagenSidecarImage,
+		Profiles: []string{MutagenProfileName},
 	}
 	for network := range networkDependencies {
 		mutagenServiceConfiguration.Networks = append(mutagenServiceConfiguration.Networks,
@@ -640,7 +642,6 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		files:              files,
 		workingDirectory:   projectDirectory,
 		name:               projectName,
-		Services:           serviceNames,
 		Forwarding:         forwardingSpecifications,
 		Synchronization:    synchronizationSpecifications,
 		daemonIdentifier:   daemonIdentifier,
