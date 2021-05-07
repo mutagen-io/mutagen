@@ -18,7 +18,7 @@ func AcquireLock() (*Lock, error) {
 	// Compute the lock path.
 	lockPath, err := subpath(lockName)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute daemon lock path")
+		return nil, errors.Wrap(err, "unable to determine daemon lock path")
 	}
 
 	// Create the locker and attempt to acquire the lock.

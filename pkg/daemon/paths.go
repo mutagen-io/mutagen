@@ -10,11 +10,14 @@ import (
 
 const (
 	// lockName is the name of the daemon lock. It resides within the daemon
-	// subdirectory of the Mutagen directory.
+	// subdirectory of the Mutagen data directory.
 	lockName = "daemon.lock"
 	// endpointName is the name of the daemon IPC endpoint. It resides within
-	// the daemon subdirectory of the Mutagen directory.
+	// the daemon subdirectory of the Mutagen data directory.
 	endpointName = "daemon.sock"
+	// logName is the name of the daemon log file. It resides within the daemon
+	// subdirectory of the Mutagen data directory.
+	logName = "log"
 )
 
 // subpath computes a subpath of the daemon subdirectory, creating the daemon
@@ -34,6 +37,12 @@ func subpath(name string) (string, error) {
 // directories as necessary.
 func lockPath() (string, error) {
 	return subpath(lockName)
+}
+
+// logPath computes the path to the daemon log, creating any intermediate
+// directories as necessary.
+func logPath() (string, error) {
+	return subpath(logName)
 }
 
 // EndpointPath computes the path to the daemon IPC endpoint, creating any

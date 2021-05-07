@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"io"
 	"os"
 	"os/signal"
 
@@ -46,8 +47,15 @@ func runMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Open the daemon log and defer its closure.
+	logFile, err := daemon.OpenLog()
+	if err != nil {
+		return errors.Wrap(err, "unable to open daemon log")
+	}
+	defer logFile.Close()
+
 	// Create the root logger.
-	logger := logging.NewLogger(os.Stderr)
+	logger := logging.NewLogger(io.MultiWriter(logFile, os.Stderr))
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forwarding"))
