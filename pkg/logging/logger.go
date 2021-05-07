@@ -8,17 +8,27 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
-// Logger is the main logger type. It has the novel property that it still
-// functions if nil, but it doesn't log anything. It is designed to use the
-// standard logger provided by the log package, so it respects any flags set for
-// that logger. It is safe for concurrent usage.
+// Logger performs level-based logging. It is a wrapper around the standard log
+// package's Logger type, but with more flexible levels and without the ability
+// to terminate the program. A nil Logger is valid for use and simply performs
+// no logging and returns only nil subloggers. Loggers are safe for concurrent
+// usage by multiple Goroutines.
 type Logger struct {
+	// logger is the shared underlying logger.
+	logger *log.Logger
 	// prefix is any prefix specified for the logger.
 	prefix string
 }
 
-// RootLogger is the root logger from which all other loggers derive.
-var RootLogger = &Logger{}
+// NewLogger constructs a new root-level logger (i.e. a logger with no message
+// prefix) using the specified output stream. Loggers for subsystems should be
+// created using the Sublogger method. Write access to the output stream is
+// automatically serialized.
+func NewLogger(output io.Writer) *Logger {
+	return &Logger{
+		logger: log.New(output, "", log.Ldate|log.Lmicroseconds|log.LUTC),
+	}
+}
 
 // Sublogger creates a new sublogger with the specified name.
 func (l *Logger) Sublogger(name string) *Logger {
@@ -35,6 +45,7 @@ func (l *Logger) Sublogger(name string) *Logger {
 
 	// Create the new logger.
 	return &Logger{
+		logger: l.logger,
 		prefix: prefix,
 	}
 }
@@ -49,7 +60,7 @@ func (l *Logger) output(level, line string) {
 	}
 
 	// Log.
-	log.Output(4, line)
+	l.logger.Output(4, line)
 }
 
 // println provides logging with formatting semantics equivalent to fmt.Println.

@@ -56,10 +56,13 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Create the root logger.
+	logger := logging.NewLogger(os.Stderr)
+
 	// Set up regular housekeeping and defer its shutdown.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go housekeepRegularly(ctx, logging.RootLogger.Sublogger("housekeeping"))
+	go housekeepRegularly(ctx, logger.Sublogger("housekeeping"))
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
@@ -79,7 +82,7 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	synchronizationTermination := make(chan error, 1)
 	go func() {
 		synchronizationTermination <- remote.ServeEndpoint(
-			logging.RootLogger.Sublogger("synchronization"),
+			logger.Sublogger("synchronization"),
 			connection,
 		)
 	}()

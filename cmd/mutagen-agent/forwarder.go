@@ -24,6 +24,9 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Create the root logger.
+	logger := logging.NewLogger(os.Stderr)
+
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
 
@@ -42,7 +45,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	forwardingTermination := make(chan error, 1)
 	go func() {
 		forwardingTermination <- remote.ServeEndpoint(
-			logging.RootLogger.Sublogger("forwarding"),
+			logger.Sublogger("forwarding"),
 			connection,
 		)
 	}()

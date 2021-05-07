@@ -627,6 +627,10 @@ func build() error {
 }
 
 func main() {
+	// Configure logging.
+	log.SetFlags(log.Ldate | log.Lmicroseconds | log.LUTC)
+
+	// Perform the build.
 	if err := build(); err != nil {
 		cmd.Fatal(err)
 	}
