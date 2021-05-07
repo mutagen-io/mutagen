@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	isatty "github.com/mattn/go-isatty"
+	"github.com/mattn/go-isatty"
 )
 
 // HandleTerminalCompatibility automatically restarts the current process inside
