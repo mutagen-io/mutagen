@@ -39,3 +39,30 @@ func TestEndpointPath(t *testing.T) {
 		t.Error("empty IPC endpoint path returned")
 	}
 }
+
+// TestLogPath tests that logPath succeeds.
+func TestLogPath(t *testing.T) {
+	if path, err := logPath(); err != nil {
+		t.Fatal("unable to compute log path:", err)
+	} else if path == "" {
+		t.Error("empty log path returned")
+	}
+}
+
+// TestTokenPath tests that TokenPath succeeds.
+func TestTokenPath(t *testing.T) {
+	if path, err := TokenPath(); err != nil {
+		t.Fatal("unable to compute token path:", err)
+	} else if path == "" {
+		t.Error("empty token path returned")
+	}
+}
+
+// TestPortPath tests that PortPath succeeds.
+func TestPortPath(t *testing.T) {
+	if path, err := PortPath(); err != nil {
+		t.Fatal("unable to compute port path:", err)
+	} else if path == "" {
+		t.Error("empty port path returned")
+	}
+}

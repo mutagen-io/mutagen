@@ -93,7 +93,7 @@ func terminateMain(_ *cobra.Command, _ []string) error {
 	projectIdentifier := buffer.String()
 
 	// Ensure that the project identifier is valid.
-	if !identifier.IsValid(projectIdentifier) {
+	if !identifier.IsValid(projectIdentifier, true) {
 		return errors.New("invalid project identifier found in project lock")
 	}
 

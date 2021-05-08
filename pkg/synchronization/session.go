@@ -17,7 +17,7 @@ func (s *Session) EnsureValid() error {
 	}
 
 	// Ensure that the session identifier is valid.
-	if !identifier.IsValid(s.Identifier) {
+	if !identifier.IsValid(s.Identifier, true) {
 		return errors.New("invalid session identifier")
 	}
 

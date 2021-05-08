@@ -1,10 +1,14 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -13,8 +17,10 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
@@ -104,18 +110,87 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// daemon lock, we preemptively remove any existing socket since it (should)
 	// be stale.
 	os.Remove(endpoint)
-	listener, err := ipc.NewListener(endpoint)
+	ipcListener, err := ipc.NewListener(endpoint)
 	if err != nil {
 		return fmt.Errorf("unable to create IPC listener: %w", err)
 	}
-	defer listener.Close()
+	defer ipcListener.Close()
 
 	// Serve incoming connections in a separate Goroutine, watching for serving
 	// failure.
 	serverErrors := make(chan error, 1)
 	go func() {
-		serverErrors <- server.Serve(listener)
+		serverErrors <- server.Serve(ipcListener)
 	}()
+
+	// Compute the daemon token storage path.
+	tokenPath, err := daemon.TokenPath()
+	if err != nil {
+		return fmt.Errorf("unable to compute token path: %w", err)
+	}
+
+	// Load the daemon token. If it's missing or invalid, then generate a new
+	// one and write it to disk.
+	tokenBytes, err := os.ReadFile(tokenPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			tokenBytes = nil
+		} else {
+			return fmt.Errorf("unable to load token: %w", err)
+		}
+	} else if !utf8.Valid(tokenBytes) {
+		tokenBytes = nil
+	}
+	token := string(tokenBytes)
+	if !identifier.IsValid(token, false) {
+		token, err = identifier.New(identifier.PrefixToken)
+		if err != nil {
+			return fmt.Errorf("unable to generate token: %w", err)
+		}
+		if err := filesystem.WriteFileAtomic(tokenPath, []byte(token), 0600); err != nil {
+			return fmt.Errorf("unable to write daemon token to disk: %w", err)
+		}
+	}
+
+	// Compute the daemon TCP port.
+	var port uint16
+	if p, ok := os.LookupEnv("MUTAGEN_DAEMON_TCP_PORT"); ok {
+		if p16, err := strconv.ParseUint(p, 10, 16); err != nil {
+			return fmt.Errorf("invalid port (%s) specified in environment", p)
+		} else {
+			port = uint16(p16)
+		}
+	} else {
+		port = daemon.DefaultPort
+	}
+
+	// Create the daemon TCP listener and defer its closure.
+	bind := fmt.Sprintf("%s:%d", daemon.Host, port)
+	listener, err := net.Listen("tcp", bind)
+	if err != nil {
+		return fmt.Errorf("unable to bind to daemon TCP port: %w", err)
+	}
+	defer listener.Close()
+
+	// If using a dynamic port, determine which port was allocated.
+	if port == 0 {
+		address, ok := listener.Addr().(*net.TCPAddr)
+		if !ok {
+			return errors.New("invalid listener address type")
+		}
+		port = uint16(address.Port)
+	}
+
+	// Write the daemon TCP port to disk and defer its removal.
+	portPath, err := daemon.PortPath()
+	if err != nil {
+		return fmt.Errorf("unable to compute daemon port path: %w", err)
+	}
+	portBytes := []byte(fmt.Sprintf("%d", port))
+	if err := filesystem.WriteFileAtomic(portPath, portBytes, 0600); err != nil {
+		return fmt.Errorf("unable to write daemon port to disk: %w", err)
+	}
+	defer os.Remove(portPath)
 
 	// Wait for termination from a signal, the daemon service, or the gRPC
 	// server. We treat termination via the daemon service as a non-error.

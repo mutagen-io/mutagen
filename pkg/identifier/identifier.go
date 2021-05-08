@@ -19,6 +19,8 @@ const (
 	PrefixProject = "proj"
 	// PrefixPrompter is the prefix used for prompter identifiers.
 	PrefixPrompter = "pmtr"
+	// PrefixToken is the prefix used for daemon tokens.
+	PrefixToken = "tokn"
 
 	// requiredPrefixLength is the required length for identifier prefixes.
 	requiredPrefixLength = 4
@@ -92,6 +94,18 @@ func New(prefix string) (string, error) {
 }
 
 // IsValid determines whether or not a string is a valid identifier.
-func IsValid(value string) bool {
-	return matcher.MatchString(value) || legacyMatcher.MatchString(value)
+// TODO(LEGACY): Remove support for legacy identifiers before v1.0.
+func IsValid(value string, allowLegacy bool) bool {
+	// Handle standard identifiers.
+	if matcher.MatchString(value) {
+		return true
+	}
+
+	// If allowed, check for legacy identifiers.
+	if allowLegacy && legacyMatcher.MatchString(value) {
+		return true
+	}
+
+	// No matching format was found.
+	return false
 }
