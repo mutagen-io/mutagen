@@ -54,10 +54,6 @@ const (
 	// MutagenForwardingDirectoryName is the name of the forwarding data
 	// directory within the Mutagen data directory.
 	MutagenForwardingDirectoryName = "forwarding"
-
-	// MutagenIODirectoryName is the name of the mutagen.io data directory
-	// within the Mutagen data directory.
-	MutagenIODirectoryName = "mutagen.io"
 )
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen
