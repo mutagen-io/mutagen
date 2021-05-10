@@ -34,21 +34,25 @@ const (
 	// MutagenSynchronizationSessionsDirectoryName is the name of the
 	// synchronization session storage directory within the Mutagen data
 	// directory.
+	// TODO(LEGACY): Rename to "synchronization" before v1.0.
 	MutagenSynchronizationSessionsDirectoryName = "sessions"
 
 	// MutagenSynchronizationCachesDirectoryName is the name of the
 	// synchronization cache storage directory within the Mutagen data
 	// directory.
+	// TODO(LEGACY): Relocate under synchronization data directory before v1.0.
 	MutagenSynchronizationCachesDirectoryName = "caches"
 
 	// MutagenSynchronizationArchivesDirectoryName is the name of the
 	// synchronization archive storage directory within the Mutagen data
 	// directory.
+	// TODO(LEGACY): Relocate under synchronization data directory before v1.0.
 	MutagenSynchronizationArchivesDirectoryName = "archives"
 
 	// MutagenSynchronizationStagingDirectoryName is the name of the
 	// synchronization staging storage directory within the Mutagen data
 	// directory.
+	// TODO(LEGACY): Relocate under synchronization data directory before v1.0.
 	MutagenSynchronizationStagingDirectoryName = "staging"
 
 	// MutagenForwardingDirectoryName is the name of the forwarding data
