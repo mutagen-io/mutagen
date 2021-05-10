@@ -20,6 +20,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 
+	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/api"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -216,7 +217,9 @@ func runMain(_ *cobra.Command, _ []string) error {
 	daemonService := daemon.NewService()
 	daemonService.Register(router)
 
-	// TODO: Create the agent service and register its endpoints.
+	// Create the agent service and register its endpoints.
+	agentService := agent.NewService()
+	agentService.Register(router)
 
 	// TODO: Create the prompting service and register its endpoints.
 

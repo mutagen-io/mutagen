@@ -50,7 +50,7 @@ type getResponse struct {
 	VersionTag string `json:"versionTag,omitempty"`
 }
 
-// get handles GET requests and returns daemon metadata.
+// get handles GET requests and serves daemon metadata.
 func (s *Service) get(w http.ResponseWriter, r *http.Request) {
 	// Set the response content type.
 	api.SetContentTypeJSON(w)

@@ -3,16 +3,13 @@ package agent
 import (
 	"archive/tar"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 const (
@@ -43,21 +40,43 @@ const (
 // package.
 var ExpectedBundleLocation BundleLocation
 
-// ExecutableForPlatform attempts to locate the agent bundle and extract an
-// agent executable for the specified target platform. If no output path is
-// specified, then the extracted file will be in a temporary location accessible
-// to only the user, will have an appropriate extension for the target platform,
-// and will have the executability bit set if it makes sense. The path to the
-// extracted file will be returned, and the caller is responsible for cleaning
-// up the file if this function returns a nil error.
-func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
-	// Compute the path to the location in which we expect to find the agent
-	// bundle.
+// agentReadCloser is an io.ReadCloser implementation for reading agent
+// executables from the agent bundle.
+type agentReadCloser struct {
+	// archive is the decompressed bundle archive stream, initially set to the
+	// location of the executable within the bundle.
+	archive io.Reader
+	// decompressor is the decompressor.
+	decompressor io.Closer
+	// bundle is the bundle file.
+	bundle io.Closer
+}
+
+// Read implements io.Reader.Read.
+func (a *agentReadCloser) Read(buffer []byte) (int, error) {
+	return a.archive.Read(buffer)
+}
+
+// Close implements io.Closer.Close.
+func (a *agentReadCloser) Close() error {
+	if err := a.decompressor.Close(); err != nil {
+		a.bundle.Close()
+		return err
+	}
+	return a.bundle.Close()
+}
+
+// executableStreamForPlatform attempts to locate the agent bundle and provides
+// a stream that contains the agent executable for the specified platform. The
+// caller is responsible for its closure (except in cases where a non-nil error
+// is returned, in which case the stream will be nil).
+func executableStreamForPlatform(goos, goarch string) (io.ReadCloser, error) {
+	// Compute bundle search locations.
 	var bundleSearchPaths []string
 	if ExpectedBundleLocation == BundleLocationDefault {
 		// Add the executable directory as a search path.
 		if executablePath, err := os.Executable(); err != nil {
-			return "", fmt.Errorf("unable to determine executable path: %w", err)
+			return nil, fmt.Errorf("unable to determine executable path: %w", err)
 		} else {
 			bundleSearchPaths = append(bundleSearchPaths, filepath.Dir(executablePath))
 		}
@@ -69,7 +88,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 		}
 	} else if ExpectedBundleLocation == BundleLocationBuildDirectory {
 		if sourceTreePath, err := mutagen.SourceTreePath(); err != nil {
-			return "", fmt.Errorf("unable to determine Mutagen source tree path: %w", err)
+			return nil, fmt.Errorf("unable to determine Mutagen source tree path: %w", err)
 		} else {
 			bundleSearchPaths = append(bundleSearchPaths, filepath.Join(sourceTreePath, mutagen.BuildDirectoryName))
 		}
@@ -77,8 +96,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 		panic("invalid bundle location specification")
 	}
 
-	// Loop until we find a bundle file. If we fail to locate a bundle, then
-	// abort. If we succeed, then defer its closure.
+	// Attempt to find the bundle file.
 	var bundle *os.File
 	for _, path := range bundleSearchPaths {
 		bundlePath := filepath.Join(path, BundleName)
@@ -86,82 +104,87 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return "", fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
+			return nil, fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
 		} else if metadata, err := file.Stat(); err != nil {
 			file.Close()
-			return "", fmt.Errorf("unable to access agent bundle (%s) file metadata: %w", bundlePath, err)
+			return nil, fmt.Errorf("unable to access agent bundle (%s) file metadata: %w", bundlePath, err)
 		} else if metadata.Mode()&os.ModeType != 0 {
 			file.Close()
-			return "", fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
+			return nil, fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
 		} else {
 			bundle = file
-			defer bundle.Close()
 		}
 	}
 	if bundle == nil {
-		return "", fmt.Errorf("unable to locate agent bundle (search paths: %v)", bundleSearchPaths)
+		return nil, fmt.Errorf("unable to locate agent bundle (search paths: %v): %w",
+			bundleSearchPaths, os.ErrNotExist,
+		)
 	}
 
 	// Create a decompressor and defer its closure.
-	bundleDecompressor, err := gzip.NewReader(bundle)
+	decompressor, err := gzip.NewReader(bundle)
 	if err != nil {
-		return "", fmt.Errorf("unable to decompress agent bundle: %w", err)
+		bundle.Close()
+		return nil, fmt.Errorf("unable to decompress agent bundle: %w", err)
 	}
-	defer bundleDecompressor.Close()
 
 	// Create an archive reader.
-	bundleArchive := tar.NewReader(bundleDecompressor)
+	archive := tar.NewReader(decompressor)
 
 	// Scan until we find a matching header.
 	var header *tar.Header
+	target := fmt.Sprintf("%s_%s", goos, goarch)
 	for {
-		if h, err := bundleArchive.Next(); err != nil {
+		if h, err := archive.Next(); err != nil {
 			if err == io.EOF {
 				break
 			}
-			return "", fmt.Errorf("unable to read archive header: %w", err)
-		} else if h.Name == fmt.Sprintf("%s_%s", goos, goarch) {
+			decompressor.Close()
+			bundle.Close()
+			return nil, fmt.Errorf("unable to read archive header: %w", err)
+		} else if h.Name == target {
 			header = h
 			break
 		}
 	}
 
-	// Check if we have a valid header. If not, there was no match.
+	// Check if we have a valid header. If not, then there was no match.
 	if header == nil {
-		return "", errors.New("unsupported platform")
+		decompressor.Close()
+		bundle.Close()
+		return nil, fmt.Errorf("unsupported platform: %w", os.ErrNotExist)
 	}
 
-	// If an output path has been specified, then open the path for writing,
-	// otherwise create a temporary file.
-	var file *os.File
-	if outputPath != "" {
-		file, err = os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	} else {
-		file, err = os.CreateTemp("", process.ExecutableName(BaseName+".*", goos))
-	}
+	// Success.
+	return &agentReadCloser{
+		archive:      archive,
+		decompressor: decompressor,
+		bundle:       bundle,
+	}, nil
+}
+
+// executableForPlatform is a wrapper around executableStreamForPlatform that
+// writes the stream to a temporary file with secure permissions. The caller is
+// responsible for cleaning up the file on disk.
+func executableForPlatform(goos, goarch string) (string, error) {
+	// Load the executable stream for the target platform and defer its closure.
+	stream, err := executableStreamForPlatform(goos, goarch)
 	if err != nil {
-		return "", fmt.Errorf("unable to create output file: %w", err)
+		return "", err
+	}
+	defer stream.Close()
+
+	// Create the temporary file and defer its closure.
+	file, err := os.CreateTemp("", BaseName)
+	if err != nil {
+		return "", nil
 	}
 
-	// Copy data into the file.
-	if _, err := io.CopyN(file, bundleArchive, header.Size); err != nil {
+	// Copy the executable contents.
+	if _, err := io.Copy(file, stream); err != nil {
 		file.Close()
 		os.Remove(file.Name())
-		return "", fmt.Errorf("unable to copy agent data: %w", err)
-	}
-
-	// If we're not on Windows and our target system is not Windows, mark the
-	// file as executable. This will save us an additional "chmod +x" command
-	// during agent installation. Note that the mechanism we use here
-	// (os.File.Chmod) does not work on Windows (only the path-based os.Chmod is
-	// supported there), but this is fine because this code wouldn't make sense
-	// to use on Windows in any scenario (where executability bits don't exist).
-	if runtime.GOOS != "windows" && goos != "windows" {
-		if err := file.Chmod(0700); err != nil {
-			file.Close()
-			os.Remove(file.Name())
-			return "", fmt.Errorf("unable to make agent executable: %w", err)
-		}
+		return "", fmt.Errorf("unable to copy executable contents: %w", err)
 	}
 
 	// Close the file.
