@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mutagen-io/mutagen/pkg/agent"
 )
 
 func init() {
@@ -28,7 +30,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 
 // rootCommand is the root command.
 var rootCommand = &cobra.Command{
-	Use:          "mutagen-agent",
+	Use:          agent.BaseName,
 	Short:        "The Mutagen agent should not be invoked by human beings",
 	RunE:         rootMain,
 	SilenceUsage: true,

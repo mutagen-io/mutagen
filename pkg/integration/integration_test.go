@@ -14,7 +14,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
-	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
@@ -77,11 +76,6 @@ func TestMain(m *testing.M) {
 		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
 	)
 	defer server.Stop()
-
-	// Create and register the daemon service and defer its shutdown.
-	daemonServer := daemonsvc.NewServer()
-	daemonsvc.RegisterDaemonServer(server, daemonServer)
-	defer daemonServer.Shutdown()
 
 	// Create and register the prompt service.
 	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())

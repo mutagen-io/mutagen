@@ -1,8 +1,6 @@
 package daemon
 
 import (
-	"context"
-
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
@@ -10,7 +8,6 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/daemon"
-	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
 // stopMain is the entry point for the stop command.
@@ -33,12 +30,14 @@ func stopMain(_ *cobra.Command, _ []string) error {
 	}
 	defer daemonConnection.Close()
 
+	// TODO: Reimplement with the REST service.
+
 	// Create a daemon service client.
-	daemonService := daemonsvc.NewDaemonClient(daemonConnection)
+	// daemonService := daemonsvc.NewDaemonClient(daemonConnection)
 
 	// Invoke shutdown. We don't check the response or error, because the daemon
 	// may terminate before it has a chance to send the response.
-	daemonService.Terminate(context.Background(), &daemonsvc.TerminateRequest{})
+	// daemonService.Terminate(context.Background(), &daemonsvc.TerminateRequest{})
 
 	// Success.
 	return nil

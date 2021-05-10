@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -19,50 +18,21 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote"
 )
 
-const (
-	// housekeepingInterval is the interval at which housekeeping will be
-	// invoked by the agent.
-	housekeepingInterval = 24 * time.Hour
-)
-
-// housekeepRegularly is the entry point for the housekeeping Goroutine.
-func housekeepRegularly(context context.Context, logger *logging.Logger) {
-	// Perform an initial housekeeping operation since the ticker won't fire
-	// straight away.
-	logger.Info("Performing initial housekeeping")
-	housekeeping.Housekeep()
-
-	// Create a ticker to regulate housekeeping and defer its shutdown.
-	ticker := time.NewTicker(housekeepingInterval)
-	defer ticker.Stop()
-
-	// Loop and wait for the ticker or cancellation.
-	for {
-		select {
-		case <-context.Done():
-			return
-		case <-ticker.C:
-			logger.Info("Performing regular housekeeping")
-			housekeeping.Housekeep()
-		}
-	}
-}
-
 // synchronizerMain is the entry point for the synchronizer command.
 func synchronizerMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
+	terminationSignals := make(chan os.Signal, 1)
+	signal.Notify(terminationSignals, cmd.TerminationSignals...)
 
 	// Create the root logger.
 	logger := logging.NewLogger(os.Stderr)
 
 	// Set up regular housekeeping and defer its shutdown.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go housekeepRegularly(ctx, logger.Sublogger("housekeeping"))
+	housekeepingCtx, cancelHousekeeping := context.WithCancel(context.Background())
+	defer cancelHousekeeping()
+	go housekeeping.HousekeepRegularly(housekeepingCtx, logger.Sublogger("housekeeping"))
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
@@ -89,8 +59,8 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 
 	// Wait for termination from a signal or the synchronizer.
 	select {
-	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+	case s := <-terminationSignals:
+		return errors.Errorf("terminated by signal: %s", s)
 	case err := <-synchronizationTermination:
 		return errors.Wrap(err, "synchronization terminated")
 	}

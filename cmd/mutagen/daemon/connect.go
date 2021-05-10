@@ -14,8 +14,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
-	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 )
 
 const (
@@ -119,20 +117,21 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// If requested, verify that the daemon version matches the current process'
 	// version.
 	if enforceVersionMatch {
-		daemonService := daemonsvc.NewDaemonClient(connection)
-		version, err := daemonService.Version(context.Background(), &daemonsvc.VersionRequest{})
-		if err != nil {
-			connection.Close()
-			return nil, errors.Wrap(err, "unable to query daemon version")
-		}
-		versionMatch := version.Major == mutagen.VersionMajor &&
-			version.Minor == mutagen.VersionMinor &&
-			version.Patch == mutagen.VersionPatch &&
-			version.Tag == mutagen.VersionTag
-		if !versionMatch {
-			connection.Close()
-			return nil, errors.New("client/daemon version mismatch (daemon restart recommended)")
-		}
+		// TODO: Replace with the REST API.
+		// daemonService := daemonsvc.NewDaemonClient(connection)
+		// version, err := daemonService.Version(context.Background(), &daemonsvc.VersionRequest{})
+		// if err != nil {
+		// 	connection.Close()
+		// 	return nil, errors.Wrap(err, "unable to query daemon version")
+		// }
+		// versionMatch := version.Major == mutagen.VersionMajor &&
+		// 	version.Minor == mutagen.VersionMinor &&
+		// 	version.Patch == mutagen.VersionPatch &&
+		// 	version.Tag == mutagen.VersionTag
+		// if !versionMatch {
+		// 	connection.Close()
+		// 	return nil, errors.New("client/daemon version mismatch (daemon restart recommended)")
+		// }
 	}
 
 	// Success.

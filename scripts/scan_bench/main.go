@@ -85,10 +85,10 @@ func main() {
 	defer cancel()
 
 	// Wire up termination signals to context cancellation.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
+	terminationSignals := make(chan os.Signal, 1)
+	signal.Notify(terminationSignals, cmd.TerminationSignals...)
 	go func() {
-		<-signalTermination
+		<-terminationSignals
 		cancel()
 	}()
 

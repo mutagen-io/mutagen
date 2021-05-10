@@ -1,3 +1,2 @@
-// Package housekeeping provides automated cleanup facilities for the Mutagen
-// data directory.
+// Package housekeeping provides housekeeping utility functions.
 package housekeeping

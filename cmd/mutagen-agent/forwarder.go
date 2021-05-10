@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
+	"github.com/mutagen-io/mutagen/pkg/housekeeping"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
@@ -21,11 +23,16 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
+	terminationSignals := make(chan os.Signal, 1)
+	signal.Notify(terminationSignals, cmd.TerminationSignals...)
 
 	// Create the root logger.
 	logger := logging.NewLogger(os.Stderr)
+
+	// Set up regular housekeeping and defer its shutdown.
+	housekeepingCtx, cancelHousekeeping := context.WithCancel(context.Background())
+	defer cancelHousekeeping()
+	go housekeeping.HousekeepRegularly(housekeepingCtx, logger.Sublogger("housekeeping"))
 
 	// Create a connection on standard input/output.
 	connection := newStdioConnection()
@@ -52,8 +59,8 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 
 	// Wait for termination from a signal or the forwarder.
 	select {
-	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+	case s := <-terminationSignals:
+		return errors.Errorf("terminated by signal: %s", s)
 	case err := <-forwardingTermination:
 		return errors.Wrap(err, "forwarding terminated")
 	}

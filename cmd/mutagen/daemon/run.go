@@ -1,10 +1,12 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -14,16 +16,19 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/julienschmidt/httprouter"
+
 	"github.com/mutagen-io/mutagen/cmd"
 
+	"github.com/mutagen-io/mutagen/pkg/api"
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/housekeeping"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
 	"github.com/mutagen-io/mutagen/pkg/logging"
-	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
@@ -49,8 +54,8 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Create a channel to track termination signals. We do this before creating
 	// and starting other infrastructure so that we can ensure things terminate
 	// smoothly, not mid-initialization.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
+	terminationSignals := make(chan os.Signal, 1)
+	signal.Notify(terminationSignals, cmd.TerminationSignals...)
 
 	// Open the daemon log and defer its closure.
 	logFile, err := daemon.OpenLog()
@@ -61,6 +66,11 @@ func runMain(_ *cobra.Command, _ []string) error {
 
 	// Create the root logger.
 	logger := logging.NewLogger(io.MultiWriter(logFile, os.Stderr))
+
+	// Set up regular housekeeping and defer its shutdown.
+	housekeepingCtx, cancelHousekeeping := context.WithCancel(context.Background())
+	defer cancelHousekeeping()
+	go housekeeping.HousekeepRegularly(housekeepingCtx, logger.Sublogger("housekeeping"))
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forwarding"))
@@ -78,27 +88,22 @@ func runMain(_ *cobra.Command, _ []string) error {
 
 	// Create the gRPC server and defer its stoppage. We use a hard stop rather
 	// than a graceful stop so that it doesn't hang on open requests.
-	server := grpc.NewServer(
+	grpcServer := grpc.NewServer(
 		grpc.MaxSendMsgSize(grpcutil.MaximumMessageSize),
 		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
 	)
-	defer server.Stop()
-
-	// Create the daemon server, defer its shutdown, and register it.
-	daemonServer := daemonsvc.NewServer()
-	defer daemonServer.Shutdown()
-	daemonsvc.RegisterDaemonServer(server, daemonServer)
+	defer grpcServer.Stop()
 
 	// Create and register the prompt server.
-	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())
+	promptingsvc.RegisterPromptingServer(grpcServer, promptingsvc.NewServer())
 
 	// Create and register the forwarding server.
 	forwardingServer := forwardingsvc.NewServer(forwardingManager)
-	forwardingsvc.RegisterForwardingServer(server, forwardingServer)
+	forwardingsvc.RegisterForwardingServer(grpcServer, forwardingServer)
 
 	// Create and register the synchronization server.
 	synchronizationServer := synchronizationsvc.NewServer(synchronizationManager)
-	synchronizationsvc.RegisterSynchronizationServer(server, synchronizationServer)
+	synchronizationsvc.RegisterSynchronizationServer(grpcServer, synchronizationServer)
 
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
@@ -116,11 +121,10 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 	defer ipcListener.Close()
 
-	// Serve incoming connections in a separate Goroutine, watching for serving
-	// failure.
-	serverErrors := make(chan error, 1)
+	// Serve incoming connections in a separate Goroutine and watch for failure.
+	grpcServerErrors := make(chan error, 1)
 	go func() {
-		serverErrors <- server.Serve(ipcListener)
+		grpcServerErrors <- grpcServer.Serve(ipcListener)
 	}()
 
 	// Compute the daemon token storage path.
@@ -192,18 +196,78 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 	defer os.Remove(portPath)
 
-	// Wait for termination from a signal, the daemon service, or the gRPC
-	// server. We treat termination via the daemon service as a non-error.
+	// Create the HTTP request router.
+	router := httprouter.New()
+
+	// Disable automatic trailing slash redirection in the router.
+	router.RedirectTrailingSlash = false
+
+	// Disable automated path fixing in the router.
+	router.RedirectFixedPath = false
+
+	// Prevent supported method information disclosure when an incorrect method
+	// is used on a path supporting other methods.
+	router.HandleMethodNotAllowed = false
+
+	// Prevent supported method information disclosure via OPTIONS requests.
+	router.HandleOPTIONS = false
+
+	// Create the daemon service and register its endpoints.
+	daemonService := daemon.NewService()
+	daemonService.Register(router)
+
+	// TODO: Create the agent service and register its endpoints.
+
+	// TODO: Create the prompting service and register its endpoints.
+
+	// TODO: Create the synchronization service and register its endpoints.
+
+	// TODO: Create the forwarding service and register its endpoints.
+
+	// Abstract the router to a generic handler so that we can apply middleware.
+	handler := http.Handler(router)
+
+	// Require authentication.
+	handler = api.RequireAuthentication(handler, token)
+
+	// Add response security headers.
+	handler = api.AddSecurityHeaders(handler)
+
+	// TODO: Set up request logging for debugging or tracing.
+
+	// Create the daemon HTTP server. We intentionally avoid setting a write
+	// timeout because some API requests use indefinite polling.
+	// TODO: Redirect error logging.
+	server := &http.Server{
+		Handler:     handler,
+		ReadTimeout: api.ReadTimeout,
+		IdleTimeout: api.IdleTimeout,
+	}
+
+	// Serve incoming connections in a separate Goroutine and watch for failure.
+	// We defer a hard shutdown of the server because we don't want blocking
+	// requests to block daemon shutdown.
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- server.Serve(listener)
+	}()
+	defer server.Close()
+
+	// Wait for a termination signal, a termination request via the daemon
+	// service, or an error from the API server.
 	select {
-	case sig := <-signalTermination:
-		logger.Info("Received termination signal:", sig)
+	case s := <-terminationSignals:
+		logger.Info("Received termination signal:", s)
 		return nil
-	case <-daemonServer.Termination:
+	case <-daemonService.Done():
 		logger.Info("Received termination request")
 		return nil
 	case err = <-serverErrors:
-		logger.Error("Daemon API server terminated abnormally:", err)
-		return fmt.Errorf("daemon API server terminated abnormally: %w", err)
+		logger.Error("Daemon server terminated abnormally:", err)
+		return fmt.Errorf("daemon server terminated abnormally: %w", err)
+	case err = <-grpcServerErrors:
+		logger.Error("Daemon gRPC server terminated abnormally:", err)
+		return fmt.Errorf("daemon gRPC server terminated abnormally: %w", err)
 	}
 }
 
