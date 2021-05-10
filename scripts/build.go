@@ -40,9 +40,6 @@ const (
 	// release bundles are built.
 	releaseBuildSubdirectoryName = "release"
 
-	// agentBaseName is the name of the Mutagen agent binary without any path or
-	// extension.
-	agentBaseName = "mutagen-agent"
 	// cliBaseName is the name of the Mutagen binary without any path or
 	// extension.
 	cliBaseName = "mutagen"
@@ -166,14 +163,23 @@ func (t Target) BuildBundleInReleaseSlimMode() bool {
 }
 
 // Build executes a module-aware build of the specified package URL, storing the
-// output of the build at the specified path.
-func (t Target) Build(url, output string) error {
+// output of the build at the specified path. If agent is true, then the "agent"
+// build tag will be used for the build.
+func (t Target) Build(url, output string, agent bool) error {
 	// Create the build command. We use the "-s -w" linker flags to omit the
 	// symbol table and debugging information. This shaves off about 25% of the
 	// binary size and only disables debugging (stack traces are still intact).
-	// For more information, see:
+	// For more information, see
 	// https://blog.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick
-	builder := exec.Command("go", "build", "-o", output, "-trimpath", "-ldflags=-s -w", url)
+	// We also use the trimpath flag to reduce the size of source code paths
+	// embedded in the resulting binary. Finally, we optionally include the
+	// "agent" tag to allow packages to exclude code from the agent binary.
+	arguments := []string{"build", "-o", output, "-ldflags=-s -w", "-trimpath"}
+	if agent {
+		arguments = append(arguments, "-tags", "agent")
+	}
+	arguments = append(arguments, url)
+	builder := exec.Command("go", arguments...)
 
 	// Set the environment.
 	environment, err := t.goEnv()
@@ -552,7 +558,7 @@ func build() error {
 	for _, target := range agentTargets {
 		log.Println("Building agent for", target)
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
-		if err := target.Build(agentPackage, agentBuildPath); err != nil {
+		if err := target.Build(agentPackage, agentBuildPath, true); err != nil {
 			return errors.Wrap(err, "unable to build agent")
 		}
 	}
@@ -562,7 +568,7 @@ func build() error {
 	for _, target := range cliTargets {
 		log.Println("Build CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
-		if err := target.Build(cliPackage, cliBuildPath); err != nil {
+		if err := target.Build(cliPackage, cliBuildPath, false); err != nil {
 			return errors.Wrap(err, "unable to build CLI")
 		}
 	}
