@@ -31,10 +31,8 @@ in the [Mutagen documentation](https://mutagen.io/documentation).
 
 ## Community
 
-Mutagen's community chat is the place to go for discussion, questions, and
-ideas:
-
-[![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)](https://spectrum.chat/mutagen)
+The [Mutagen Community Slack Workspace](https://mutagen.io/slack) is the place
+to go for discussion, questions, and ideas.
 
 For updates about the project and its releases, you can
 [follow Mutagen on Twitter](https://twitter.com/mutagen_io).

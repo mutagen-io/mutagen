@@ -22,8 +22,8 @@ might include problems you've had, use cases that aren't covered by existing
 features, or even just general thoughts about how to improve Mutagen. All of
 this also applies to Mutagen's website, documentation, and community portals.
 You can send your feedback via the
-[Mutagen community chat](https://spectrum.chat/mutagen/general), submit it via
-the [issue tracker](https://github.com/mutagen-io/mutagen/issues), or even just
+[Mutagen Community Slack Workspace](https://mutagen.io/slack), submit it via the
+[issue tracker](https://github.com/mutagen-io/mutagen/issues), or even just
 email us at [hello@mutagen.io](mailto:hello@mutagen.io).
 
 
@@ -88,6 +88,6 @@ Here's an example of a not-so-good message:
 Please be aware that Mutagen is still at a rapid stage of development, so pull
 requests may be put on the back burner if they conflict with ongoing refactors.
 If you have questions or an idea for a pull request, please reach out on the
-[Mutagen community chat](https://spectrum.chat/mutagen/development) before
-investing a large amount of time writing code. It may be the case that someone
-else is already working on the same thing!
+[Mutagen Community Slack Workspace](https://mutagen.io/slack) before investing a
+large amount of time writing code. It may be the case that someone else is
+already working on the same thing!
