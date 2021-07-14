@@ -32,6 +32,9 @@ else
     go run scripts/build.go --mode=slim
 fi
 
+# Ensure that the sidecar entrypoint builds.
+go build ./cmd/mutagen-sidecar
+
 # Build test scripts to ensure that they are maintained as core packages evolve.
 go build ./scripts/scan_bench
 go build ./scripts/watch_demo
