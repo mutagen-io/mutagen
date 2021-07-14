@@ -45,9 +45,8 @@ func init() {
 	// alphabetically in the help output.
 	cobra.EnableCommandSorting = false
 
-	// Disable Cobra's use of mousetrap. This breaks daemon registration on
-	// Windows because it tries to enforce that the CLI only be launched from
-	// a console, which it's not when running automatically.
+	// Disable Cobra's use of mousetrap. This is primarily for consistency with
+	// the main CLI, as it's not necessary for the agent.
 	cobra.MousetrapHelpText = ""
 
 	// Grab a handle for the command line flags.
