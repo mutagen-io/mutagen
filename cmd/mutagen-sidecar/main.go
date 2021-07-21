@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
 // rootMain is the entry point for the root command.
@@ -25,6 +27,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 // rootCommand is the root command.
 var rootCommand = &cobra.Command{
 	Use:          "mutagen-sidecar",
+	Version:      mutagen.Version,
 	Short:        "Sidecar entrypoint for creating and controlling Mutagen sessions",
 	RunE:         rootMain,
 	SilenceUsage: true,
