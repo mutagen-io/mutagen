@@ -25,12 +25,18 @@ const (
 	// MutagenServiceName is the name used for the Mutagen service in
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenServiceName = "mutagen"
-	// mutagenSidecarImage is the Mutagen sidecar container image.
-	mutagenSidecarImage = sidecar.BaseTag + ":" + mutagen.Version
 	// MutagenProfileName is the name use for the Mutagen profile in
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenProfileName = "mutagen_internal"
 )
+
+// mutagenSidecarImage is the Mutagen sidecar image tag.
+var mutagenSidecarImage string
+
+func init() {
+	// Compute the sidecar image tag.
+	mutagenSidecarImage = sidecar.BaseTag + ":" + mutagen.Version
+}
 
 // normalizeProjectNameReplacer is a regular expression used by
 // normalizeProjectName to remove unsuitable characters.
