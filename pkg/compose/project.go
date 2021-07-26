@@ -11,9 +11,11 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/compose/internal/configuration"
 	"github.com/mutagen-io/mutagen/pkg/docker"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/sidecar"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/url"
 	forwardingurl "github.com/mutagen-io/mutagen/pkg/url/forwarding"
@@ -24,7 +26,7 @@ const (
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenServiceName = "mutagen"
 	// mutagenSidecarImage is the Mutagen sidecar container image.
-	mutagenSidecarImage = "mutagenio/sidecar:latest"
+	mutagenSidecarImage = sidecar.BaseTag + ":" + mutagen.Version
 	// MutagenProfileName is the name use for the Mutagen profile in
 	// Mutagen-enhanced Docker Compose Projects.
 	MutagenProfileName = "mutagen_internal"
