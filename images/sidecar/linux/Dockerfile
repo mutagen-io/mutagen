@@ -1,13 +1,5 @@
 # Use an Alpine-based Go builder.
-# TODO: It would be better to use a tag with more precise version information
-# here (ideally explicitly matching the Alpine version specified below), but for
-# some reason there are inconsistencies between the available architectures with
-# different Go image tag formats (even though the tags are equivalent). More
-# specifically, a linux/s390x image doesn't seem to be available for tag formats
-# with more precise version information. For now we'll just use the more general
-# tag format (and manually check version alignment), but we should use the more
-# precise tags once the inconsistencies are resolved.
-FROM golang:1.16-alpine AS builder
+FROM golang:1.16-alpine3.14 AS builder
 
 # Define an argument to specify the entrypoint version target.
 ARG TARGET
