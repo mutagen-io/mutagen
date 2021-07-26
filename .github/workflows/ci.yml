@@ -70,24 +70,24 @@ jobs:
       - name: "Analyze"
         id: analyze
         run: |
-        # Determine whether or not this is a release build.
-        RELEASE="${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}"
+          # Determine whether or not this is a release build.
+          RELEASE="${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}"
 
-        # Determine version target information for Go. If this is a release,
-        # then we'll use the tag, otherwise we'll use the raw commit identifier.
-        if [ "${RELEASE}" = "true" ]; then
-          TARGET="${GITHUB_REF#refs/tags/}"
-        else
-          TARGET="${GITHUB_SHA}"
-        fi
+          # Determine version target information for Go. If this is a release,
+          # then we'll use the tag, otherwise we'll use the raw commit identifier.
+          if [ "${RELEASE}" = "true" ]; then
+            TARGET="${GITHUB_REF#refs/tags/}"
+          else
+            TARGET="${GITHUB_SHA}"
+          fi
 
-        # Determine the sidecar image tags.
-        SIDECAR_TAGS="$(go run scripts/ci/sidecar_tags.go)"
+          # Determine the sidecar image tags.
+          SIDECAR_TAGS="$(go run scripts/ci/sidecar_tags.go)"
 
-        # Set outputs.
-        echo ::set-output name=release::${RELEASE}
-        echo ::set-output name=target::${TARGET}
-        echo ::set-output name=sidecar_tags::${SIDECAR_TAGS}
+          # Set outputs.
+          echo ::set-output name=release::${RELEASE}
+          echo ::set-output name=target::${TARGET}
+          echo ::set-output name=sidecar_tags::${SIDECAR_TAGS}
     outputs:
       release: ${{ steps.analyze.outputs.release }}
       target: ${{ steps.analyze.outputs.target }}
