@@ -1,6 +1,10 @@
 # Use an Alpine-based Go builder.
 FROM golang:1.16-alpine3.14 AS builder
 
+# Disable cgo in order to match the behavior of our release binaries (and to
+# avoid the need for gcc on certain architectures).
+ENV CGO_ENABLED=0
+
 # Define an argument to specify the entrypoint version target.
 ARG TARGET
 
