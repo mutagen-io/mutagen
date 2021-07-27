@@ -106,7 +106,7 @@ jobs:
   sidecar:
     name: Sidecar
     runs-on: ubuntu-latest
-    needs: [linux, versioning]
+    needs: [macos, linux, windows, versioning, windows_installer]
     steps:
       - uses: actions/checkout@v2
       - uses: docker/setup-qemu-action@v1
