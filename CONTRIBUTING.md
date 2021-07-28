@@ -28,12 +28,16 @@ email us at [hello@mutagen.io](mailto:hello@mutagen.io).
 
 ## Pull requests
 
-> **Please note:** Mutagen is currently in a state of high code churn and I
-simply don't have the time to review pull requests. GitHub unfortunately doesn't
-allow me to disable pull requests, but please be aware that they will probably
-be left on the back burner for the foreseeable future. Sorry :-(
->
-> – Jacob
+---
+
+**Please note:** Mutagen is currently in a state of high code churn and I simply
+don't have the time to review pull requests. GitHub unfortunately doesn't allow
+me to disable pull requests, but please be aware that they will probably be left
+on the back burner for the foreseeable future. Sorry :-(
+
+– Jacob
+
+---
 
 Before taking the time to implement a change or feature, please discuss the
 proposed change on the
