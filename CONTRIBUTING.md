@@ -1,8 +1,7 @@
 # Contributing
 
-Mutagen welcomes community contributions in all forms, including issue feedback,
-experience reports, and pull requests. See below for more information on the
-best channels for each of these.
+Mutagen welcomes community contributions, especially feedback and experience
+reports. See below for more information on the best channels for each of these.
 
 
 ## Issues
@@ -29,14 +28,25 @@ email us at [hello@mutagen.io](mailto:hello@mutagen.io).
 
 ## Pull requests
 
-Mutagen is happy to receive pull requests and we want to make that procedure as
-painless as possible. To that end, we've outlined a few guidelines to help make
-the process go smoothly.
+> **Please note:** Mutagen is currently in a state of high code churn and I
+simply don't have the time to review pull requests. GitHub unfortunately doesn't
+allow me to disable pull requests, but please be aware that they will probably
+be left on the back burner for the foreseeable future. Sorry :-(
+>
+> – Jacob
+
+Before taking the time to implement a change or feature, please discuss the
+proposed change on the
+[Mutagen Community Slack Workspace](https://mutagen.io/slack).
+
+If it *does* make sense to open a pull request, please adhere to the following
+guidelines. Pull requests that don't follow these guidelines will simply be
+closed.
 
 
 ### Developer Certificate of Origin
 
-Pull requests to Mutagen are submitted under the terms of the
+Pull requests to Mutagen must be submitted under the terms of the
 [Developer Certificate of Origin (DCO)](DCO). In order to accept a pull request,
 we require that you sign-off all commits in the pull request using the `-s` flag
 with `git commit` to indicate that you agree to the terms of the DCO.
@@ -78,16 +88,8 @@ Here's an example of a good message:
 
     Fixes #00000
 
+    Signed-off-by: Jacob Howard <jacob@mutagen.io>
+
 Here's an example of a not-so-good message:
 
     fixes sync
-
-
-### Just a heads up...
-
-Please be aware that Mutagen is still at a rapid stage of development, so pull
-requests may be put on the back burner if they conflict with ongoing refactors.
-If you have questions or an idea for a pull request, please reach out on the
-[Mutagen Community Slack Workspace](https://mutagen.io/slack) before investing a
-large amount of time writing code. It may be the case that someone else is
-already working on the same thing!
