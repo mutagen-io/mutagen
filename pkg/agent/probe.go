@@ -129,7 +129,7 @@ func probePOSIX(transport Transport) (string, string, error) {
 // the assumption that the remote system is a Windows system.
 func probeWindows(transport Transport) (string, string, error) {
 	// Attempt to dump the remote environment.
-	outputBytes, err := output(transport, "cmd /c set")
+	outputBytes, err := output(transport, "cmd.exe /c set")
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to invoke remote environment printing")
 	} else if !utf8.Valid(outputBytes) {
