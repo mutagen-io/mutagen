@@ -343,6 +343,8 @@ apimachinery (Kubernetes package)
 
 https://github.com/kubernetes/apimachinery
 
+Forked and modified at https://github.com/mutagen-io/apimachinery.
+
 Copyright (c) 2014 The Kubernetes Authors.
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
