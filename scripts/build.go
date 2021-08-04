@@ -167,13 +167,22 @@ func (t Target) BuildBundleInReleaseSlimMode() bool {
 
 // Build executes a module-aware build of the specified package URL, storing the
 // output of the build at the specified path.
-func (t Target) Build(url, output string) error {
-	// Create the build command. We use the "-s -w" linker flags to omit the
-	// symbol table and debugging information. This shaves off about 25% of the
-	// binary size and only disables debugging (stack traces are still intact).
-	// For more information, see:
+func (t Target) Build(url, output string, disableDebug bool) error {
+	// Compute the build command. If we don't need debugging, then we use the -s
+	// and -w linker flags to omit the symbol table and debugging information.
+	// This shaves off about 25% of the binary size and only disables debugging
+	// (stack traces are still intact). For more information, see:
 	// https://blog.filippo.io/shrink-your-go-binaries-with-this-one-weird-trick
-	builder := exec.Command("go", "build", "-o", output, "-trimpath", "-ldflags=-s -w", url)
+	// In this case, we also trim the code paths stored in the executable, as
+	// there's no use in having the full paths available.
+	arguments := []string{"build", "-o", output}
+	if disableDebug {
+		arguments = append(arguments, "-ldflags=-s -w", "-trimpath")
+	}
+	arguments = append(arguments, url)
+
+	// Create the build command.
+	builder := exec.Command("go", arguments...)
 
 	// Set the environment.
 	environment, err := t.goEnv()
@@ -547,12 +556,16 @@ func build() error {
 		cliTargets = append(cliTargets, target)
 	}
 
+	// Determine whether or not to disable debugging information in binaries.
+	// Doing so saves significant space, but is only suited to release builds.
+	disableDebug := mode == "release" || mode == "release-slim"
+
 	// Build agent binaries.
 	log.Println("Building agent binaries...")
 	for _, target := range agentTargets {
 		log.Println("Building agent for", target)
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
-		if err := target.Build(agentPackage, agentBuildPath); err != nil {
+		if err := target.Build(agentPackage, agentBuildPath, disableDebug); err != nil {
 			return errors.Wrap(err, "unable to build agent")
 		}
 	}
@@ -562,7 +575,7 @@ func build() error {
 	for _, target := range cliTargets {
 		log.Println("Build CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
-		if err := target.Build(cliPackage, cliBuildPath); err != nil {
+		if err := target.Build(cliPackage, cliBuildPath, disableDebug); err != nil {
 			return errors.Wrap(err, "unable to build CLI")
 		}
 	}
