@@ -15,11 +15,27 @@ jobs:
         with:
           go-version: '^1.16'
       - run: go version
+      - run: brew install coreutils
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_partitions_darwin.sh
       - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
       - run: scripts/ci/build.sh
+      - uses: crazy-max/ghaction-import-gpg@v3
+        id: import_gpg
+        with:
+          gpg-private-key: ${{ secrets.GPG_SIGNING_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_SIGNING_PRIVATE_KEY_PASSPHRASE }}
+      - run: |
+          # Compute SHA256 digests.
+          sha256sum mutagen_* > SHA256SUMS
+
+          # Sign the SHA256 digests file.
+          gpg --detach-sign --armor \
+            --default-key ${{ steps.import_gpg.outputs.email }} \
+            --output SHA256SUMS.gpg \
+            SHA256SUMS
+        working-directory: build/release
       - uses: actions/upload-artifact@v2
         with:
           name: bundles
