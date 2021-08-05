@@ -12,9 +12,7 @@ ARG TARGET
 # access the TARGET argument.
 RUN go get github.com/mutagen-io/mutagen/cmd/mutagen-sidecar@${TARGET}
 
-# Switch to a vanilla Alpine base for the final image. In theory, we could also
-# use scratch as our base here, but Alpine provides the ability to drop into a
-# shell, which can be useful for debugging.
+# Switch to a vanilla Alpine base for the final image.
 FROM alpine:3.14
 
 # Copy the sidecar entrypoint from the builder.
