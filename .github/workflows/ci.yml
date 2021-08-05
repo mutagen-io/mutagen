@@ -15,7 +15,8 @@ jobs:
         with:
           go-version: '^1.16'
       - run: go version
-      - run: brew install coreutils
+      - name: "Install sha256sum"
+        run: brew install coreutils
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_partitions_darwin.sh
       - run: scripts/ci/analyze.sh
@@ -26,7 +27,8 @@ jobs:
         with:
           gpg-private-key: ${{ secrets.GPG_SIGNING_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_SIGNING_PRIVATE_KEY_PASSPHRASE }}
-      - run: |
+      - name: "Generate SHA256 digest manifest"
+        run: |
           # Compute SHA256 digests.
           sha256sum mutagen_* > SHA256SUMS
 
@@ -87,7 +89,7 @@ jobs:
         with:
           go-version: '^1.16'
       - run: go version
-      - name: "Analyze"
+      - name: "Analyze version information and release status"
         id: analyze
         run: |
           # Determine whether or not this is a release build.
