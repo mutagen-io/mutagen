@@ -18,7 +18,6 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 	"github.com/mutagen-io/mutagen/pkg/state"
 )
 
@@ -456,7 +455,7 @@ func (d *Directory) RemoveDirectory(name string) error {
 	}
 
 	// Remove the directory.
-	return unlinkatRetryingOnEINTR(d.descriptor, name, syscall.AT_REMOVEDIR)
+	return unlinkatRetryingOnEINTR(d.descriptor, name, unix.AT_REMOVEDIR)
 }
 
 // RemoveFile deletes a file with the specified name inside the directory.

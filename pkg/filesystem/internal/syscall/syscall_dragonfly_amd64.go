@@ -6,12 +6,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const (
-	// AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
-	// with the unlinkat system call.
-	AT_REMOVEDIR = 0x2
-)
-
 // Symlinkat is a Go entry point for the symlinkat system call.
 func Symlinkat(target string, directory int, path string) error {
 	return unix.Symlinkat(target, directory, path)

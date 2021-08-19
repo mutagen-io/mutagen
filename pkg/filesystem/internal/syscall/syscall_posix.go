@@ -1,15 +1,9 @@
-// +build darwin freebsd linux
+// +build linux darwin freebsd openbsd netbsd
 
 package syscall
 
 import (
 	"golang.org/x/sys/unix"
-)
-
-const (
-	// AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
-	// with the unlinkat system call.
-	AT_REMOVEDIR = unix.AT_REMOVEDIR
 )
 
 // Symlinkat is a Go entry point for the symlinkat system call.

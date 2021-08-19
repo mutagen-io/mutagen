@@ -7,12 +7,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const (
-	// AT_REMOVEDIR is the numeric representation of the AT_REMOVEDIR flag used
-	// with the unlinkat system call.
-	AT_REMOVEDIR = unix.AT_REMOVEDIR
-)
-
 // libcFunction is a handle type for AIX libc functions.
 type libcFunction uintptr
 
