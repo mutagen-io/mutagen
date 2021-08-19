@@ -1,6 +1,6 @@
 // This code is derived from the golang.org/x/sys module, available at
 // https://github.com/golang/sys. This code was based on the implementation of
-// Renameat in commit d19ff857e887eacb631721f188c7d365c2331456.
+// Renameat in commit bce67f096156eed6c615f74469be352d112b71f4.
 //
 // The original code license:
 //
@@ -32,9 +32,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// +build gc
-
 #include "textflag.h"
 
-TEXT ·libc_renameatx_np_trampoline(SB),NOSPLIT,$0-0
+TEXT libc_renameatx_np_trampoline<>(SB),NOSPLIT,$0-0
 	JMP	libc_renameatx_np(SB)
+
+GLOBL	·libc_renameatx_np_trampoline_addr(SB), RODATA, $8
+DATA	·libc_renameatx_np_trampoline_addr(SB)/8, $libc_renameatx_np_trampoline<>(SB)

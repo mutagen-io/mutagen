@@ -1,6 +1,6 @@
 // This code is derived from the golang.org/x/sys module, available at
 // https://github.com/golang/sys. This code was based on the implementation of
-// Renameat in commit d19ff857e887eacb631721f188c7d365c2331456.
+// Renameat in commit bce67f096156eed6c615f74469be352d112b71f4.
 //
 // The original code license:
 //
@@ -40,23 +40,16 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Implemented in the runtime package (runtime/sys_darwin.go)
-func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err unix.Errno)
-
-//go:linkname syscall_syscall6 syscall.syscall6
-
-// Find the entry point for f. See comments in runtime/proc.go for the
-// function of the same name.
-//go:nosplit
-func funcPC(f func()) uintptr {
-	return **(**uintptr)(unsafe.Pointer(&f))
-}
-
 const (
 	// RENAME_EXCL indicates that EEXIST should be returned if the rename target
 	// already exists.
 	RENAME_EXCL = 0x4
 )
+
+// Implemented in the runtime package (runtime/sys_darwin.go)
+func syscall_syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err unix.Errno)
+
+//go:linkname syscall_syscall6 syscall.syscall6
 
 // Renameatx_np exposes the renameatx_np function on macOS.
 func Renameatx_np(fromfd int, from string, tofd int, to string, flags uint) (err error) {
@@ -70,13 +63,13 @@ func Renameatx_np(fromfd int, from string, tofd int, to string, flags uint) (err
 	if err != nil {
 		return
 	}
-	_, _, e1 := syscall_syscall6(funcPC(libc_renameatx_np_trampoline), uintptr(fromfd), uintptr(unsafe.Pointer(_p0)), uintptr(tofd), uintptr(unsafe.Pointer(_p1)), uintptr(flags), 0)
+	_, _, e1 := syscall_syscall6(libc_renameatx_np_trampoline_addr, uintptr(fromfd), uintptr(unsafe.Pointer(_p0)), uintptr(tofd), uintptr(unsafe.Pointer(_p1)), uintptr(flags), 0)
 	if e1 != 0 {
 		err = e1
 	}
 	return
 }
 
-func libc_renameatx_np_trampoline()
+var libc_renameatx_np_trampoline_addr uintptr
 
 //go:cgo_import_dynamic libc_renameatx_np renameatx_np "/usr/lib/libSystem.B.dylib"
