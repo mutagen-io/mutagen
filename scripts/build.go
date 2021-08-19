@@ -310,6 +310,7 @@ var targets = []Target{
 	// isn't documented at https://golang.org/doc/install/source. Submit a pull
 	// request to add it to the Go documentation.
 	{"windows", "arm"},
+	{"windows", "arm64"},
 }
 
 // archiveBuilderCopyBufferSize determines the size of the copy buffer used when
