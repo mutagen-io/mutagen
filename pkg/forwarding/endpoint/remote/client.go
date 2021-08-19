@@ -2,15 +2,13 @@ package remote
 
 import (
 	"net"
+	"context"
 
 	"github.com/pkg/errors"
 
-	"github.com/hashicorp/yamux"
-
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/closewrite"
-	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/monitor"
+	"github.com/mutagen-io/mutagen/pkg/multiplexing"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements
@@ -19,7 +17,7 @@ type client struct {
 	// transportErrors is the transport error channel.
 	transportErrors <-chan error
 	// multiplexer is the underlying multiplexer.
-	multiplexer *yamux.Session
+	multiplexer *multiplexing.Multiplexer
 	// listener indicates whether or not the remote endpoint is operating as a
 	// listener.
 	listener bool
@@ -38,20 +36,8 @@ func NewEndpoint(
 	address string,
 	source bool,
 ) (forwarding.Endpoint, error) {
-	// Monitor the connection for read and write errors. The multiplexer we'll
-	// create has an internal read loop that will trigger an error if the
-	// transport fails, allowing us to monitor for transport errors without
-	// implementing our own heartbeat mechanism.
-	connection, transportErrors := monitor.Enable(connection)
-
-	// Wrap the connection in a multiplexer. This constructor won't close the
-	// underlying connnection on error, so we need to do that manually if an
-	// error occurs.
-	multiplexer, err := yamux.Client(connection, nil)
-	if err != nil {
-		connection.Close()
-		return nil, errors.Wrap(err, "unable to create multiplexer")
-	}
+	// Multiplex the connection.
+	multiplexer := multiplexing.Multiplex(connection, false, nil)
 
 	// Defer closure of the multiplexer in the event that we're unsuccessful.
 	var successful bool
@@ -63,7 +49,7 @@ func NewEndpoint(
 
 	// Open the initialization stream. We don't need to close this stream on
 	// failure since closing the multiplexer will implicitly close the stream.
-	stream, err := multiplexer.Open()
+	stream, err := multiplexer.OpenStream(context.Background())
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to open initialization stream")
 	}
@@ -96,8 +82,22 @@ func NewEndpoint(
 		return nil, errors.Wrap(err, "unable to close initialization stream")
 	}
 
-	// Success.
+	// Mark initialization as successful.
 	successful = true
+
+	// Create a channel to monitor for transport errors and a Goroutine to
+	// populate it.
+	transportErrors := make(chan error, 1)
+	go func() {
+		<-multiplexer.Closed()
+		if err := multiplexer.InternalError(); err != nil {
+			transportErrors <- err
+		} else {
+			transportErrors <- multiplexing.ErrMultiplexerClosed
+		}
+	}()
+
+	// Success.
 	return &client{
 		transportErrors: transportErrors,
 		multiplexer:     multiplexer,
@@ -111,25 +111,13 @@ func (c *client) TransportErrors() <-chan error {
 }
 
 // Open implements forwarding.Endpoint.Open.
-func (c *client) Open() (connection net.Conn, err error) {
-	// Perform the appropriate opening operation.
+func (c *client) Open() (net.Conn, error) {
 	if c.listener {
-		connection, err = c.multiplexer.Accept()
+		return c.multiplexer.Accept()
 	} else {
-		connection, err = c.multiplexer.Open()
+		stream, err := c.multiplexer.OpenStream(context.Background())
+		return stream, err
 	}
-
-	// Check for errors.
-	if err != nil {
-		return
-	}
-
-	// Wrap the connection to enable write closure since yamux doesn't support
-	// it natively.
-	connection = closewrite.Enable(connection)
-
-	// Done.
-	return
 }
 
 // Shutdown implements forwarding.Endpoint.Shutdown.

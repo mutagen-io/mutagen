@@ -18,6 +18,8 @@ type Endpoint interface {
 	// should make no assumptions about whether this method will be called or
 	// whether the resulting channel will be read from. Callers should make no
 	// assumptions about whether or not the resulting channel will be populated.
+	// The returned channel may be nil if transport errors are not possible for
+	// the endpoint (e.g. with local endpoints).
 	TransportErrors() <-chan error
 
 	// Open should open a network connection for the endpoint. For listener
@@ -26,7 +28,7 @@ type Endpoint interface {
 	// should dial the underlying target.
 	Open() (net.Conn, error)
 
-	// Shutdown shuts down the endpoint. This function should unblock any
-	// pending Open call.
+	// Shutdown shuts down the endpoint. This function must unblock any pending
+	// Open call.
 	Shutdown() error
 }

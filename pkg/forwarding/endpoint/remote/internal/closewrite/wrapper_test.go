@@ -1,3 +1,0 @@
-package closewrite
-
-// TODO: Implement.

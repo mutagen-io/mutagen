@@ -6,31 +6,20 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/hashicorp/yamux"
-
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
-	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote/internal/closewrite"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/multiplexing"
 )
 
 // ServeEndpoint creates and serves a remote endpoint on the specified
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
 func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
-	// Wrap the connection in a multiplexer. This constructor won't close the
-	// underlying connnection on error, so we need to do that manually if an
-	// error occurs.
-	multiplexer, err := yamux.Server(connection, nil)
-	if err != nil {
-		connection.Close()
-		return errors.Wrap(err, "unable to create multiplexer")
-	}
-
-	// Defer closure of the multiplexer (which will close the underlying
-	// connection).
+	// Multiplex the connection and defer closure of the multiplexer.
+	multiplexer := multiplexing.Multiplex(connection, true, nil)
 	defer multiplexer.Close()
 
 	// Accept the initialization stream. We don't need to close this stream on
@@ -79,6 +68,19 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		)
 	}
 
+	// If we successfully created the underlying endpoint, then start a
+	// Goroutine couple the lifetime of the underlying endpoint to the lifetime
+	// of the multiplexer. This will cause the local endpoint to be shutdown if
+	// this function returns or if the multiplexer shuts down due to remote
+	// closure or an internal error. This is particularly important for
+	// preempting local accept operations.
+	if endpoint != nil {
+		go func() {
+			<-multiplexer.Closed()
+			endpoint.Shutdown()
+		}()
+	}
+
 	// Send the initialization response, indicating any initialization error
 	// that occurred.
 	response := &InitializeForwardingResponse{}
@@ -103,8 +105,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	for {
 		// Receive the next incoming connection. If this fails, then we should
 		// terminate serving because either the local listener has failed or the
-		// multiplexer has failed. We wrap multiplexer connections to enable
-		// write closure since yamux doesn't support it natively.
+		// multiplexer has failed.
 		var incoming net.Conn
 		if request.Listener {
 			if incoming, err = endpoint.Open(); err != nil {
@@ -115,21 +116,18 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 			if err != nil {
 				return errors.Wrap(err, "multiplexer failure")
 			}
-			incoming = closewrite.Enable(incoming)
 		}
 
 		// Open the corresponding outgoing connection. If the multiplexer fails,
 		// then we should terminate serving. If local dialing fails, then we can
-		// just close the incoming connection. We wrap multiplexer connections
-		// to enable write closure since yamux doesn't support it natively.
+		// just close the incoming connection to indicate dialing failure.
 		var outgoing net.Conn
 		if request.Listener {
-			outgoing, err = multiplexer.Open()
+			outgoing, err = multiplexer.OpenStream(context.Background())
 			if err != nil {
 				incoming.Close()
 				return errors.Wrap(err, "multiplexer failure")
 			}
-			outgoing = closewrite.Enable(outgoing)
 		} else {
 			if outgoing, err = endpoint.Open(); err != nil {
 				incoming.Close()
