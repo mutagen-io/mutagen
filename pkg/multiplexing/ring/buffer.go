@@ -42,7 +42,7 @@ type Buffer struct {
 	// possible under the invariants of the buffer's algorithms (nor would they
 	// be encodable by this data structure).
 	storage []byte
-	// size is the storage buffer size. It is cached for performance reasons.
+	// size is the storage buffer size. It is cached for better performance.
 	size int
 	// start is the data start index. It is restricted to the range [0, size).
 	start int
@@ -73,8 +73,8 @@ func (b *Buffer) Used() int {
 	return b.used
 }
 
-// Available returns the unused buffer capacity.
-func (b *Buffer) Available() int {
+// Free returns the unused buffer capacity.
+func (b *Buffer) Free() int {
 	return b.size - b.used
 }
 

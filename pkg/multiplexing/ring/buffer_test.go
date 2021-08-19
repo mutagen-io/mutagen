@@ -693,8 +693,8 @@ ProcessTests:
 			)
 			invalid = true
 		}
-		if ba := buffer.Available(); ba != (buffer.size - buffer.used) {
-			t.Errorf("test index %d: available accessor returned incorrect value: %d != %d",
+		if ba := buffer.Free(); ba != (buffer.size - buffer.used) {
+			t.Errorf("test index %d: free accessor returned incorrect value: %d != %d",
 				i, ba, buffer.size-buffer.used,
 			)
 			invalid = true
