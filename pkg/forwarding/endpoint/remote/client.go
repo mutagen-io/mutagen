@@ -1,8 +1,8 @@
 package remote
 
 import (
-	"net"
 	"context"
+	"net"
 
 	"github.com/pkg/errors"
 

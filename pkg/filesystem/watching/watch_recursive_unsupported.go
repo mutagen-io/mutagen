@@ -1,3 +1,4 @@
+//go:build (!darwin && !windows) || (darwin && !cgo)
 // +build !darwin,!windows darwin,!cgo
 
 package watching

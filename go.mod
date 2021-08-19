@@ -1,6 +1,6 @@
 module github.com/mutagen-io/mutagen
 
-go 1.16
+go 1.17
 
 require (
 	github.com/Microsoft/go-winio v0.4.16
@@ -30,6 +30,14 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 	k8s.io/apimachinery v0.21.3
+)
+
+require (
+	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 )
 
 replace k8s.io/apimachinery v0.21.3 => github.com/mutagen-io/apimachinery v0.21.3-mutagen1
