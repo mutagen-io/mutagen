@@ -7,8 +7,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// libcFunction is a handle type for Solaris libc functions.
-type libcFunction uintptr
+// syscallFunc is a handle type for Solaris libc functions.
+type syscallFunc uintptr
 
 // sysvicall6 is a handle for the Solaris system call implementation in the
 // syscall package (which is itself just a thin wrapper around the actual
@@ -26,7 +26,7 @@ var (
 	// procSymlinkat is a handle for the symlinkat libc function.
 	procSymlinkat,
 	// procReadlinkat is a handle for the readlinkat libc function.
-	procReadlinkat libcFunction
+	procReadlinkat syscallFunc
 )
 
 // Symlinkat is a Go entry point for the symlinkat system call.
@@ -75,7 +75,7 @@ func Readlinkat(directory int, path string, buffer []byte) (int, error) {
 	// Perform the system call.
 	n, _, errnoErr := sysvicall6(uintptr(unsafe.Pointer(&procReadlinkat)), 4, uintptr(directory), uintptr(unsafe.Pointer(pathBytes)), uintptr(unsafe.Pointer(bufferBytes)), uintptr(len(buffer)), 0, 0)
 	if errnoErr != 0 {
-		return 0, errnoErr
+		return int(n), errnoErr
 	}
 
 	// Success.

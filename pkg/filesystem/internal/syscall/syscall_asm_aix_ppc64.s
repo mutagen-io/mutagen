@@ -1,7 +1,7 @@
 // Re-exposure of AIX system call implementation from the syscall package (which
 // is itself just a thin wrapper around the actual system implementation in the
 // runtime package). Based on (but modified from):
-// https://github.com/golang/sys/blob/eede4237b3684e80c608c85a5cc6fd98603c412c/unix/asm_aix_ppc64.s.
+// https://github.com/golang/sys/blob/bce67f096156eed6c615f74469be352d112b71f4/unix/asm_aix_ppc64.s
 //
 // The original code license:
 //
@@ -38,8 +38,6 @@
 // Copyright 2018 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// +build gc
 
 #include "textflag.h"
 

@@ -35,7 +35,7 @@ func Readlinkat(directory int, path string, buffer []byte) (int, error) {
 	// Perform the system call.
 	n, _, errnoErr := unix.Syscall6(unix.SYS_READLINKAT, uintptr(directory), uintptr(unsafe.Pointer(pathBytes)), uintptr(bytesBuffer), uintptr(len(buffer)), 0, 0)
 	if errnoErr != 0 {
-		return 0, errnoErr
+		return int(n), errnoErr
 	}
 
 	// Success.
