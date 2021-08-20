@@ -14,9 +14,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 Mutagen depends on the following third-party software:
 ================================================================================
 
-Go, the Go standard library, the Go crypto, net, sys, and text subrepositories,
-modified code from the Go standard library, and modified code from the build,
-sys, and exp subrepositories.
+Go, the Go standard library, the Go crypto, net, sys, term, and text
+subrepositories, modified code from the Go standard library, and modified code
+from the build, sys, and exp subrepositories.
 
 https://golang.org/
 https://github.com/golang/
@@ -222,6 +222,18 @@ Copyright 2016 Google Inc.
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
 http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+
+Package for equality of Go values
+
+https://github.com/google/go-cmp
+
+Copyright (c) 2017 The Go Authors. All rights reserved.
+
+Used under the terms of the 3-Clause BSD License (Google version). A copy of
+this license can be found later in this text and a templated version can be
+found online at https://opensource.org/licenses/BSD-3-Clause.
 
 --------------------------------------------------------------------------------
 
