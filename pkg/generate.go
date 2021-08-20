@@ -1,4 +1,4 @@
-// +build generate
+//go:build generate
 
 //go:generate go build github.com/golang/protobuf/protoc-gen-go
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=paths=source_relative:. filesystem/behavior/probe_mode.proto

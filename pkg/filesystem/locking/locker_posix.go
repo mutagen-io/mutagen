@@ -1,5 +1,4 @@
 //go:build !windows && !plan9
-// +build !windows,!plan9
 
 // TODO: Figure out what to do for Plan 9. It doesn't support FcntlFlock at all,
 // but we might be able to ~emulate it with os.O_EXCL, but that wouldn't allow
