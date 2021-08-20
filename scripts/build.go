@@ -454,7 +454,7 @@ platform. 'slim' will build the CLI binary for only the current platform and
 agents for a small subset of platforms. 'release' will build CLI and agent
 binaries for all platforms and package for release. 'release-slim' is the same
 as release but only builds release bundles for a small subset of platforms. The
-default mode is 'local'.
+default mode is 'slim'.
 `
 
 // build is the primary entry point.
@@ -463,7 +463,7 @@ func build() error {
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
 	var mode string
-	flagSet.StringVarP(&mode, "mode", "m", "local", "specify the build mode")
+	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
