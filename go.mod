@@ -7,14 +7,14 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.0.2
 	github.com/compose-spec/compose-go v0.0.0-20210322090015-6166d06f9ce2
 	github.com/dustin/go-humanize v1.0.0
-	github.com/eknkc/basex v1.0.0
-	github.com/fatih/color v1.10.0
+	github.com/eknkc/basex v1.0.1
+	github.com/fatih/color v1.12.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golang/protobuf v1.5.2
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/joho/godotenv v1.3.0
-	github.com/mattn/go-isatty v0.0.12
+	github.com/mattn/go-isatty v0.0.13
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
