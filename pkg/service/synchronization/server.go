@@ -9,6 +9,8 @@ import (
 
 // Server provides an implementation of the Synchronization service.
 type Server struct {
+	// UnimplementedSynchronizationServer is the required base implementation.
+	UnimplementedSynchronizationServer
 	// manager is the underlying session manager.
 	manager *synchronization.Manager
 }

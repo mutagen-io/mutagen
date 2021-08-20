@@ -10,7 +10,10 @@ import (
 )
 
 // Server provides an implementation of the Prompting service.
-type Server struct{}
+type Server struct{
+	// UnimplementedPromptingServer is the required base implementation.
+	UnimplementedPromptingServer
+}
 
 // NewServer creates a new prompt server.
 func NewServer() *Server {

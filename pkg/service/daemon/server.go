@@ -16,6 +16,8 @@ const (
 
 // Server provides an implementation of the Daemon service.
 type Server struct {
+	// UnimplementedDaemonServer is the required base implementation.
+	UnimplementedDaemonServer
 	// Termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
 	// ignore temination requests originating from clients. The channel is

@@ -9,6 +9,8 @@ import (
 
 // Server provides an implementation of the Forwarding service.
 type Server struct {
+	// UnimplementedForwardingServer is the required base implementation.
+	UnimplementedForwardingServer
 	// manager is the underlying session manager.
 	manager *forwarding.Manager
 }
