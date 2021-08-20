@@ -3,7 +3,7 @@ module github.com/mutagen-io/mutagen
 go 1.17
 
 require (
-	github.com/Microsoft/go-winio v0.4.16
+	github.com/Microsoft/go-winio v0.5.0
 	github.com/bmatcuk/doublestar v1.1.1
 	github.com/compose-spec/compose-go v0.0.0-20210322090015-6166d06f9ce2
 	github.com/dustin/go-humanize v1.0.0
