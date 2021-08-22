@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
@@ -22,10 +22,10 @@ func main() {
 	if locker, err := locking.NewLocker(path, 0600); err != nil {
 		cmd.Fatal(errors.New("unable to create filesystem locker"))
 	} else if err = locker.Lock(false); err != nil {
-		cmd.Fatal(errors.Wrap(err, "lock acquisition failed"))
+		cmd.Fatal(fmt.Errorf("lock acquisition failed: %w", err))
 	} else if err = locker.Unlock(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "lock release failed"))
+		cmd.Fatal(fmt.Errorf("lock release failed: %w", err))
 	} else if err = locker.Close(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "locker closure failed"))
+		cmd.Fatal(fmt.Errorf("locker closure failed: %w", err))
 	}
 }

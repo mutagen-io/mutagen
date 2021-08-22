@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
@@ -33,12 +33,12 @@ func newProtobufRsyncEncoder(encoder *encoding.ProtobufEncoder) *protobufRsyncEn
 func (e *protobufRsyncEncoder) Encode(transmission *rsync.Transmission) error {
 	// Check for previous errors.
 	if e.error != nil {
-		return errors.Wrap(e.error, "previous error encountered")
+		return fmt.Errorf("previous error encountered: %w", e.error)
 	}
 
 	// Encode the transmission without sending.
 	if err := e.encoder.EncodeWithoutFlush(transmission); err != nil {
-		e.error = errors.Wrap(err, "unable to encode transmission")
+		e.error = fmt.Errorf("unable to encode transmission: %w", err)
 		return e.error
 	}
 
@@ -49,7 +49,7 @@ func (e *protobufRsyncEncoder) Encode(transmission *rsync.Transmission) error {
 	// to buffer, then flush the buffer and reset the count.
 	if e.buffered == rsyncTransmissionGroupSize {
 		if err := e.encoder.Flush(); err != nil {
-			e.error = errors.Wrap(err, "unable to write encoded messages")
+			e.error = fmt.Errorf("unable to write encoded messages: %w", err)
 			return e.error
 		}
 		e.buffered = 0
@@ -65,12 +65,12 @@ func (e *protobufRsyncEncoder) Finalize() error {
 	// up the chain and canceled rsync transmission, but we definitely shouldn't
 	// attempt a flush if we know the stream is bad.
 	if e.error != nil {
-		return errors.Wrap(e.error, "previous error encountered")
+		return fmt.Errorf("previous error encountered: %w", e.error)
 	}
 
 	// Flush any pending messages.
 	if err := e.encoder.Flush(); err != nil {
-		return errors.Wrap(err, "unable to write encoded messages")
+		return fmt.Errorf("unable to write encoded messages: %w", err)
 	}
 
 	// Reset the buffered message count, in case this encoder is reused.

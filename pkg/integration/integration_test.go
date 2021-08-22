@@ -1,12 +1,11 @@
 package integration
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/grpc"
 
@@ -58,21 +57,21 @@ func TestMain(m *testing.M) {
 	// Acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to acquire daemon lock"))
+		cmd.Fatal(fmt.Errorf("unable to acquire daemon lock: %w", err))
 	}
 	defer lock.Release()
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err = forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create forwarding session manager"))
+		cmd.Fatal(fmt.Errorf("unable to create forwarding session manager: %w", err))
 	}
 	defer forwardingManager.Shutdown()
 
 	// Create a session manager and defer its shutdown.
 	synchronizationManager, err = synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create synchronization session manager"))
+		cmd.Fatal(fmt.Errorf("unable to create synchronization session manager: %w", err))
 	}
 	defer synchronizationManager.Shutdown()
 
@@ -103,7 +102,7 @@ func TestMain(m *testing.M) {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to compute endpoint path"))
+		cmd.Fatal(fmt.Errorf("unable to compute endpoint path: %w", err))
 	}
 
 	// Create the daemon listener and defer its closure. Since we hold the
@@ -112,7 +111,7 @@ func TestMain(m *testing.M) {
 	os.Remove(endpoint)
 	listener, err := ipc.NewListener(endpoint)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create daemon listener"))
+		cmd.Fatal(fmt.Errorf("unable to create daemon listener: %w", err))
 	}
 	defer listener.Close()
 

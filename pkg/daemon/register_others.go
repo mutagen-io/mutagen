@@ -3,7 +3,7 @@
 package daemon
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // RegistrationSupported indicates whether or not daemon registration is

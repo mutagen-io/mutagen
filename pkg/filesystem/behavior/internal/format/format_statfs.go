@@ -3,7 +3,7 @@
 package format
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"golang.org/x/sys/unix"
 
@@ -40,7 +40,7 @@ func QueryByPath(path string) (Format, error) {
 	// Perform a filesystem metadata query on the path.
 	var metadata unix.Statfs_t
 	if err := statfsRetryingOnEINTR(path, &metadata); err != nil {
-		return FormatUnknown, errors.Wrap(err, "unable to query filesystem metadata")
+		return FormatUnknown, fmt.Errorf("unable to query filesystem metadata: %w", err)
 	}
 
 	// Classify the filesystem.
@@ -52,7 +52,7 @@ func Query(directory *filesystem.Directory) (Format, error) {
 	// Perform a filesystem metadata query on the directory.
 	var metadata unix.Statfs_t
 	if err := fstatfsRetryingOnEINTR(directory.Descriptor(), &metadata); err != nil {
-		return FormatUnknown, errors.Wrap(err, "unable to query filesystem metadata")
+		return FormatUnknown, fmt.Errorf("unable to query filesystem metadata: %w", err)
 	}
 
 	// Classify the filesystem.

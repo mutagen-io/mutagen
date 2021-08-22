@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/pflag"
 
@@ -66,7 +65,7 @@ func main() {
 			fmt.Fprint(os.Stdout, usage)
 			return
 		} else {
-			cmd.Fatal(errors.Wrap(err, "unable to parse command line"))
+			cmd.Fatal(fmt.Errorf("unable to parse command line: %w", err))
 		}
 	}
 	arguments := flagSet.Args()
@@ -101,7 +100,7 @@ func main() {
 	var err error
 	if enableProfile {
 		if profiler, err = profile.New("scan_full_cold"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start := time.Now()
@@ -118,14 +117,14 @@ func main() {
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
 	} else if snapshot == nil {
 		cmd.Fatal(errors.New("target doesn't exist"))
 	}
 	stop := time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -137,7 +136,7 @@ func main() {
 	// profiling.
 	if enableProfile {
 		if profiler, err = profile.New("scan_full_warm"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
@@ -154,14 +153,14 @@ func main() {
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
 	} else if snapshot == nil {
 		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -171,13 +170,13 @@ func main() {
 	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"preserves executability mismatch: %t != %t",
 			newPreservesExecutability,
 			preservesExecutability,
 		))
 	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"decomposes Unicode mismatch: %t != %t",
 			newDecomposesUnicode,
 			decomposesUnicode,
@@ -194,7 +193,7 @@ func main() {
 	// CPU and memory profiling.
 	if enableProfile {
 		if profiler, err = profile.New("scan_accelerated_recheck"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
@@ -211,14 +210,14 @@ func main() {
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
 	} else if snapshot == nil {
 		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -228,13 +227,13 @@ func main() {
 	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"preserves executability mismatch: %t != %t",
 			newPreservesExecutability,
 			preservesExecutability,
 		))
 	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"decomposes Unicode mismatch: %t != %t",
 			newDecomposesUnicode,
 			decomposesUnicode,
@@ -249,7 +248,7 @@ func main() {
 	// enable CPU and memory profiling.
 	if enableProfile {
 		if profiler, err = profile.New("scan_accelerated_no_recheck"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
@@ -266,14 +265,14 @@ func main() {
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to create snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
 	} else if snapshot == nil {
 		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -283,13 +282,13 @@ func main() {
 	if !newSnapshot.Equal(snapshot, true) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
 	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"preserves executability mismatch: %t != %t",
 			newPreservesExecutability,
 			preservesExecutability,
 		))
 	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(errors.Errorf(
+		cmd.Fatal(fmt.Errorf(
 			"decomposes Unicode mismatch: %t != %t",
 			newDecomposesUnicode,
 			decomposesUnicode,
@@ -303,7 +302,7 @@ func main() {
 	// Validate the snapshot.
 	start = time.Now()
 	if err := snapshot.EnsureValid(false); err != nil {
-		cmd.Fatal(errors.Wrap(err, "snapshot invalid"))
+		cmd.Fatal(fmt.Errorf("snapshot invalid: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot validation took", stop.Sub(start))
@@ -323,19 +322,19 @@ func main() {
 	// Serialize it.
 	if enableProfile {
 		if profiler, err = profile.New("serialize_snapshot"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
 	marshaling := proto.MarshalOptions{Deterministic: true}
 	serializedSnapshot, err := marshaling.Marshal(snapshot)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to serialize snapshot: %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -344,18 +343,18 @@ func main() {
 	// Deserialize it.
 	if enableProfile {
 		if profiler, err = profile.New("deserialize_snapshot"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
 	deserializedSnapshot := &core.Entry{}
 	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to deserialize snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to deserialize snapshot: %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -364,7 +363,7 @@ func main() {
 	// Validate the deserialized snapshot.
 	start = time.Now()
 	if err = deserializedSnapshot.EnsureValid(false); err != nil {
-		cmd.Fatal(errors.Wrap(err, "deserialized snapshot invalid"))
+		cmd.Fatal(fmt.Errorf("deserialized snapshot invalid: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot validation took", stop.Sub(start))
@@ -372,7 +371,7 @@ func main() {
 	// Write the serialized snapshot to disk.
 	start = time.Now()
 	if err = os.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to write snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to write snapshot: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot write took", stop.Sub(start))
@@ -380,14 +379,14 @@ func main() {
 	// Read the serialized snapshot from disk.
 	start = time.Now()
 	if _, err = os.ReadFile(snapshotFile); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to read snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to read snapshot: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot read took", stop.Sub(start))
 
 	// Wipe the temporary file.
 	if err = os.Remove(snapshotFile); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to remove snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to remove snapshot: %w", err))
 	}
 
 	// TODO: I'd like to add a stable serialization benchmark since that's what
@@ -412,18 +411,18 @@ func main() {
 	// Serialize the cache.
 	if enableProfile {
 		if profiler, err = profile.New("serialize_cache"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
 	serializedCache, err := proto.Marshal(cache)
 	if err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to serialize cache"))
+		cmd.Fatal(fmt.Errorf("unable to serialize cache: %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -432,18 +431,18 @@ func main() {
 	// Deserialize the cache.
 	if enableProfile {
 		if profiler, err = profile.New("deserialize_cache"); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to create profiler"))
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
 	deserializedCache := &core.Cache{}
 	if err = proto.Unmarshal(serializedCache, deserializedCache); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to deserialize cache"))
+		cmd.Fatal(fmt.Errorf("unable to deserialize cache: %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {
-			cmd.Fatal(errors.Wrap(err, "unable to finalize profiler"))
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
 		}
 		profiler = nil
 	}
@@ -452,7 +451,7 @@ func main() {
 	// Write the serialized cache to disk.
 	start = time.Now()
 	if err = os.WriteFile(cacheFile, serializedCache, 0600); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to write cache"))
+		cmd.Fatal(fmt.Errorf("unable to write cache: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Cache write took", stop.Sub(start))
@@ -460,14 +459,14 @@ func main() {
 	// Read the serialized cache from disk.
 	start = time.Now()
 	if _, err = os.ReadFile(cacheFile); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to read cache"))
+		cmd.Fatal(fmt.Errorf("unable to read cache: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Cache read took", stop.Sub(start))
 
 	// Wipe the temporary file.
 	if err = os.Remove(cacheFile); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to remove cache"))
+		cmd.Fatal(fmt.Errorf("unable to remove cache: %w", err))
 	}
 
 	// Print serialized cache size.
@@ -476,7 +475,7 @@ func main() {
 	// Generate a reverse lookup map for the cache.
 	start = time.Now()
 	if _, err = cache.GenerateReverseLookupMap(); err != nil {
-		cmd.Fatal(errors.Wrap(err, "unable to generate reverse lookup map"))
+		cmd.Fatal(fmt.Errorf("unable to generate reverse lookup map: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Reverse lookup map generation took", stop.Sub(start))

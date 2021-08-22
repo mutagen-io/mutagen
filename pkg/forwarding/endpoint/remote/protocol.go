@@ -1,7 +1,8 @@
 package remote
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
@@ -20,7 +21,7 @@ func (r *InitializeForwardingRequest) ensureValid() error {
 
 	// Ensure that the configuration is valid.
 	if err := r.Configuration.EnsureValid(false); err != nil {
-		return errors.Wrap(err, "invalid configuration")
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Enforce that protocol is non-empty and supported.

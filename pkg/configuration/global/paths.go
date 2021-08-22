@@ -1,10 +1,9 @@
 package global
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -15,7 +14,7 @@ func ConfigurationPath() (string, error) {
 	// Compute the path to the user's home directory.
 	homeDirectoryPath, err := os.UserHomeDir()
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute path to home directory")
+		return "", fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Success.

@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/pkg/errors"
-
 	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
@@ -70,7 +68,7 @@ func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := sshCommandPath()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to identify 'ssh' command")
+		return nil, fmt.Errorf("unable to identify 'ssh' command: %w", err)
 	}
 
 	// Create the command.
@@ -96,7 +94,7 @@ func SCPCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := scpCommandPath()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to identify 'scp' command")
+		return nil, fmt.Errorf("unable to identify 'scp' command: %w", err)
 	}
 
 	// Create the command.

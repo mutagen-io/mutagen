@@ -2,11 +2,10 @@ package forward
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -39,7 +38,7 @@ func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Conf
 	// validate it.
 	configuration := yamlConfiguration.Forwarding.Defaults.Configuration()
 	if err := configuration.EnsureValid(false); err != nil {
-		return nil, errors.Wrap(err, "invalid configuration")
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Success.
@@ -62,7 +61,7 @@ func CreateWithSpecification(
 	)
 	if err != nil {
 		promptingCancel()
-		return "", errors.Wrap(err, "unable to initiate prompting")
+		return "", fmt.Errorf("unable to initiate prompting: %w", err)
 	}
 
 	// Perform the create operation, cancel prompting, and handle errors.
@@ -79,7 +78,7 @@ func CreateWithSpecification(
 		return "", grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		statusLinePrinter.BreakIfNonEmpty()
-		return "", errors.Wrap(err, "invalid create response received")
+		return "", fmt.Errorf("invalid create response received: %w", err)
 	}
 
 	// Success.
@@ -95,16 +94,16 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	}
 	source, err := url.Parse(arguments[0], url.Kind_Forwarding, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse source URL")
+		return fmt.Errorf("unable to parse source URL: %w", err)
 	}
 	destination, err := url.Parse(arguments[1], url.Kind_Forwarding, false)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse destination URL")
+		return fmt.Errorf("unable to parse destination URL: %w", err)
 	}
 
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
-		return errors.Wrap(err, "invalid session name")
+		return fmt.Errorf("invalid session name: %w", err)
 	}
 
 	// Parse, validate, and record labels.
@@ -120,9 +119,9 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			value = components[1]
 		}
 		if err := selection.EnsureLabelKeyValid(key); err != nil {
-			return errors.Wrap(err, "invalid label key")
+			return fmt.Errorf("invalid label key: %w", err)
 		} else if err := selection.EnsureLabelValueValid(value); err != nil {
-			return errors.Wrap(err, "invalid label value")
+			return fmt.Errorf("invalid label value: %w", err)
 		}
 		labels[key] = value
 	}
@@ -137,14 +136,14 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		// Compute the path to the global configuration file.
 		globalConfigurationPath, err := global.ConfigurationPath()
 		if err != nil {
-			return errors.Wrap(err, "unable to compute path to global configuration file")
+			return fmt.Errorf("unable to compute path to global configuration file: %w", err)
 		}
 
 		// Attempt to load the file. We allow it to not exist.
 		globalConfiguration, err := loadAndValidateGlobalForwardingConfiguration(globalConfigurationPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				return errors.Wrap(err, "unable to load global configuration")
+				return fmt.Errorf("unable to load global configuration: %w", err)
 			}
 		} else {
 			configuration = forwarding.MergeConfigurations(configuration, globalConfiguration)
@@ -155,7 +154,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
 		if c, err := loadAndValidateGlobalForwardingConfiguration(createConfiguration.configurationFile); err != nil {
-			return errors.Wrap(err, "unable to load configuration file")
+			return fmt.Errorf("unable to load configuration file: %w", err)
 		} else {
 			configuration = forwarding.MergeConfigurations(configuration, c)
 		}
@@ -165,17 +164,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var socketOverwriteMode, socketOverwriteModeSource, socketOverwriteModeDestination forwarding.SocketOverwriteMode
 	if createConfiguration.socketOverwriteMode != "" {
 		if err := socketOverwriteMode.UnmarshalText([]byte(createConfiguration.socketOverwriteMode)); err != nil {
-			return errors.Wrap(err, "unable to socket overwrite mode")
+			return fmt.Errorf("unable to socket overwrite mode: %w", err)
 		}
 	}
 	if createConfiguration.socketOverwriteModeSource != "" {
 		if err := socketOverwriteModeSource.UnmarshalText([]byte(createConfiguration.socketOverwriteModeSource)); err != nil {
-			return errors.Wrap(err, "unable to socket overwrite mode for source")
+			return fmt.Errorf("unable to socket overwrite mode for source: %w", err)
 		}
 	}
 	if createConfiguration.socketOverwriteModeDestination != "" {
 		if err := socketOverwriteModeDestination.UnmarshalText([]byte(createConfiguration.socketOverwriteModeDestination)); err != nil {
-			return errors.Wrap(err, "unable to socket overwrite mode for destination")
+			return fmt.Errorf("unable to socket overwrite mode for destination: %w", err)
 		}
 	}
 
@@ -229,17 +228,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var socketPermissionMode, socketPermissionModeSource, socketPermissionModeDestination filesystem.Mode
 	if createConfiguration.socketPermissionMode != "" {
 		if err := socketPermissionMode.UnmarshalText([]byte(createConfiguration.socketPermissionMode)); err != nil {
-			return errors.Wrap(err, "unable to parse socket permission mode")
+			return fmt.Errorf("unable to parse socket permission mode: %w", err)
 		}
 	}
 	if createConfiguration.socketPermissionModeSource != "" {
 		if err := socketPermissionModeSource.UnmarshalText([]byte(createConfiguration.socketPermissionModeSource)); err != nil {
-			return errors.Wrap(err, "unable to parse socket permission mode for source")
+			return fmt.Errorf("unable to parse socket permission mode for source: %w", err)
 		}
 	}
 	if createConfiguration.socketPermissionModeDestination != "" {
 		if err := socketPermissionModeDestination.UnmarshalText([]byte(createConfiguration.socketPermissionModeDestination)); err != nil {
-			return errors.Wrap(err, "unable to parse socket permission mode for destination")
+			return fmt.Errorf("unable to parse socket permission mode for destination: %w", err)
 		}
 	}
 
@@ -277,7 +276,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

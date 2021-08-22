@@ -2,12 +2,11 @@ package forwarding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -91,7 +90,7 @@ func newSession(
 	// Compute the creation time and check that it's valid for Protocol Buffers.
 	creationTime := timestamppb.Now()
 	if err := creationTime.CheckValid(); err != nil {
-		return nil, errors.Wrap(err, "unable to record creation time")
+		return nil, fmt.Errorf("unable to record creation time: %w", err)
 	}
 
 	// Compute merged endpoint configurations.
@@ -127,7 +126,7 @@ func newSession(
 		)
 		if err != nil {
 			logger.Info("Source connection failure:", err)
-			return nil, errors.Wrap(err, "unable to connect to source")
+			return nil, fmt.Errorf("unable to connect to source: %w", err)
 		}
 		logger.Info("Connecting to destination endpoint")
 		destinationEndpoint, err = connect(
@@ -142,7 +141,7 @@ func newSession(
 		)
 		if err != nil {
 			logger.Info("Destination connection failure:", err)
-			return nil, errors.Wrap(err, "unable to connect to destination")
+			return nil, fmt.Errorf("unable to connect to destination: %w", err)
 		}
 	}
 
@@ -167,12 +166,12 @@ func newSession(
 	// Compute the session path.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute session path")
+		return nil, fmt.Errorf("unable to compute session path: %w", err)
 	}
 
 	// Save the session to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		return nil, errors.Wrap(err, "unable to save session")
+		return nil, fmt.Errorf("unable to save session: %w", err)
 	}
 
 	// Create the controller.
@@ -211,16 +210,16 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	// Compute the session path.
 	sessionPath, err := pathForSession(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute session path")
+		return nil, fmt.Errorf("unable to compute session path: %w", err)
 	}
 
 	// Load and validate the session.
 	session := &Session{}
 	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
-		return nil, errors.Wrap(err, "unable to load session configuration")
+		return nil, fmt.Errorf("unable to load session configuration: %w", err)
 	}
 	if err := session.EnsureValid(); err != nil {
-		return nil, errors.Wrap(err, "invalid session found on disk")
+		return nil, fmt.Errorf("invalid session found on disk: %w", err)
 	}
 
 	// Create the controller.
@@ -370,11 +369,11 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 	// on partial or complete failure (since it might be able to auto-reconnect
 	// on its own), we wait until the end to report errors.
 	if saveErr != nil {
-		return errors.Wrap(saveErr, "unable to save session")
+		return fmt.Errorf("unable to save session: %w", saveErr)
 	} else if sourceConnectErr != nil {
-		return errors.Wrap(sourceConnectErr, "unable to connect to source")
+		return fmt.Errorf("unable to connect to source: %w", sourceConnectErr)
 	} else if destinationConnectErr != nil {
-		return errors.Wrap(destinationConnectErr, "unable to connect to destination")
+		return fmt.Errorf("unable to connect to destination: %w", destinationConnectErr)
 	}
 
 	// Success.
@@ -444,7 +443,7 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
 		c.stateLock.Unlock()
 		if saveErr != nil {
-			return errors.Wrap(saveErr, "unable to save session")
+			return fmt.Errorf("unable to save session: %w", saveErr)
 		}
 	} else if mode == controllerHaltModeShutdown {
 		// Disable the controller.
@@ -456,7 +455,7 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		// Wipe the session information from disk.
 		sessionRemoveErr := os.Remove(c.sessionPath)
 		if sessionRemoveErr != nil {
-			return errors.Wrap(sessionRemoveErr, "unable to remove session from disk")
+			return fmt.Errorf("unable to remove session from disk: %w", sessionRemoveErr)
 		}
 	} else {
 		panic("invalid halt mode specified")
@@ -522,7 +521,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 			c.stateLock.Lock()
 			c.state.SourceConnected = (source != nil)
 			if sourceConnectErr != nil {
-				c.state.LastError = errors.Wrap(sourceConnectErr, "unable to connect to source").Error()
+				c.state.LastError = fmt.Errorf("unable to connect to source: %w", sourceConnectErr).Error()
 			}
 			c.stateLock.Unlock()
 
@@ -555,7 +554,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 			c.stateLock.Lock()
 			c.state.DestinationConnected = (destination != nil)
 			if destinationConnectErr != nil {
-				c.state.LastError = errors.Wrap(destinationConnectErr, "unable to connect to destination").Error()
+				c.state.LastError = fmt.Errorf("unable to connect to destination: %w", destinationConnectErr).Error()
 			}
 			c.stateLock.Unlock()
 
@@ -692,14 +691,14 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Accept a connection from the source.
 		incoming, err := source.Open()
 		if err != nil {
-			return errors.Wrap(err, "unable to accept connection")
+			return fmt.Errorf("unable to accept connection: %w", err)
 		}
 
 		// Open the outgoing connection to which we should forward.
 		outgoing, err := destination.Open()
 		if err != nil {
 			incoming.Close()
-			return errors.Wrap(err, "unable to open forwarding connection")
+			return fmt.Errorf("unable to open forwarding connection: %w", err)
 		}
 
 		// Increment the open and total connection counts.

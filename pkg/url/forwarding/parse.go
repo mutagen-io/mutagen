@@ -1,9 +1,9 @@
 package forwarding
 
 import (
+	"errors"
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Parse parses a forwarding sub-URL (which is stored as the Path component of
@@ -22,7 +22,7 @@ func Parse(url string) (string, string, error) {
 
 	// Ensure that the protocol is valid.
 	if !IsValidProtocol(components[0]) {
-		return "", "", errors.Errorf("invalid protocol: %s", components[0])
+		return "", "", fmt.Errorf("invalid protocol: %s", components[0])
 	}
 
 	// Ensure that the address is non-empty. There's not much other validation

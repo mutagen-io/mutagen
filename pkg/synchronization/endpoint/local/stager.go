@@ -1,12 +1,12 @@
 package local
 
 import (
+	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -81,7 +81,7 @@ func (s *stagingSink) Write(data []byte) (int, error) {
 func (s *stagingSink) Close() error {
 	// Close the underlying storage.
 	if err := s.storage.Close(); err != nil {
-		return errors.Wrap(err, "unable to close underlying storage")
+		return fmt.Errorf("unable to close underlying storage: %w", err)
 	}
 
 	// Compute the final digest.
@@ -91,19 +91,19 @@ func (s *stagingSink) Close() error {
 	destination, prefix, err := pathForStaging(s.stager.root, s.path, digest)
 	if err != nil {
 		os.Remove(s.storage.Name())
-		return errors.Wrap(err, "unable to compute staging destination")
+		return fmt.Errorf("unable to compute staging destination: %w", err)
 	}
 
 	// Ensure the prefix directory exists.
 	if err = s.stager.ensurePrefixExists(prefix); err != nil {
 		os.Remove(s.storage.Name())
-		return errors.Wrap(err, "unable to create prefix directory")
+		return fmt.Errorf("unable to create prefix directory: %w", err)
 	}
 
 	// Relocate the file to the destination.
 	if err = filesystem.Rename(nil, s.storage.Name(), nil, destination, true); err != nil {
 		os.Remove(s.storage.Name())
-		return errors.Wrap(err, "unable to relocate file")
+		return fmt.Errorf("unable to relocate file: %w", err)
 	}
 
 	// Success.
@@ -172,7 +172,7 @@ func (s *stager) wipe() error {
 
 	// Remove the staging root.
 	if err := os.RemoveAll(s.root); err != nil {
-		errors.Wrap(err, "unable to remove staging directory")
+		fmt.Errorf("unable to remove staging directory: %w", err)
 	}
 
 	// Success.
@@ -185,13 +185,13 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	if !s.rootExists {
 		// Attempt to create the root directory.
 		if err := os.Mkdir(s.root, 0700); err != nil {
-			return nil, errors.Wrap(err, "unable to create staging root")
+			return nil, fmt.Errorf("unable to create staging root: %w", err)
 		}
 
 		// Mark the directory as hidden, if requested.
 		if s.hideRoot {
 			if err := filesystem.MarkHidden(s.root); err != nil {
-				return nil, errors.Wrap(err, "unable to make staging root as hidden")
+				return nil, fmt.Errorf("unable to make staging root as hidden: %w", err)
 			}
 		}
 
@@ -202,7 +202,7 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	// Create a temporary storage file in the staging root.
 	storage, err := os.CreateTemp(s.root, "staging")
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create temporary storage file")
+		return nil, fmt.Errorf("unable to create temporary storage file: %w", err)
 	}
 
 	// Reset the hash function state.
@@ -231,7 +231,7 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 	// Compute the expected location of the file.
 	expectedLocation, _, err := pathForStaging(s.root, path, digest)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute staging path")
+		return "", fmt.Errorf("unable to compute staging path: %w", err)
 	}
 
 	// Ensure that the path exists (i.e. that it staged successfully with the
@@ -240,7 +240,7 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 		if os.IsNotExist(err) {
 			return "", err
 		}
-		return "", errors.Wrap(err, "unable to query staged file metadata")
+		return "", fmt.Errorf("unable to query staged file metadata: %w", err)
 	}
 
 	// Success.

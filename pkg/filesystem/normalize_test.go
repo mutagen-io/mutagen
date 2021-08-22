@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -8,8 +9,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 // TestTildeNotPathSeparator ensures that ~ is not considered a path separator
@@ -94,7 +93,7 @@ func currentUsername() (string, error) {
 	// Grab the user.
 	user, err := user.Current()
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get current user")
+		return "", fmt.Errorf("unable to get current user: %w", err)
 	}
 
 	// If we're on a POSIX system, we're done.

@@ -1,7 +1,7 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the watch mode is
@@ -25,7 +25,7 @@ func (m *WatchMode) UnmarshalText(textBytes []byte) error {
 	case "no-watch":
 		*m = WatchMode_WatchModeNoWatch
 	default:
-		return errors.Errorf("unknown watch mode specification: %s", text)
+		return fmt.Errorf("unknown watch mode specification: %s", text)
 	}
 
 	// Success.

@@ -2,10 +2,9 @@ package compose
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/process"
 )
@@ -31,7 +30,7 @@ func Command(context context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command path.
 	commandPath, err := CommandPath()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to identify 'docker-compose' command")
+		return nil, fmt.Errorf("unable to identify 'docker-compose' command: %w", err)
 	}
 
 	// Create the command.

@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,8 +13,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/pflag"
 
@@ -187,7 +186,7 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 	// Set the environment.
 	environment, err := t.goEnv()
 	if err != nil {
-		return errors.Wrap(err, "unable to create build environment")
+		return fmt.Errorf("unable to create build environment: %w", err)
 	}
 	builder.Env = environment
 
@@ -198,7 +197,7 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 
 	// Run the build.
 	if err := builder.Run(); err != nil {
-		errors.Wrap(err, "compilation failed")
+		fmt.Errorf("compilation failed: %w", err)
 	}
 
 	// Success.
@@ -336,14 +335,14 @@ func NewArchiveBuilder(bundlePath string) (*ArchiveBuilder, error) {
 	// Open the underlying file.
 	file, err := os.Create(bundlePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create target file")
+		return nil, fmt.Errorf("unable to create target file: %w", err)
 	}
 
 	// Create the compressor.
 	compressor, err := gzip.NewWriterLevel(file, gzip.BestCompression)
 	if err != nil {
 		file.Close()
-		return nil, errors.Wrap(err, "unable to create compressor")
+		return nil, fmt.Errorf("unable to create compressor: %w", err)
 	}
 
 	// Success.
@@ -360,12 +359,12 @@ func (b *ArchiveBuilder) Close() error {
 	if err := b.archiver.Close(); err != nil {
 		b.compressor.Close()
 		b.file.Close()
-		return errors.Wrap(err, "unable to close archiver")
+		return fmt.Errorf("unable to close archiver: %w", err)
 	} else if err := b.compressor.Close(); err != nil {
 		b.file.Close()
-		return errors.Wrap(err, "unable to close compressor")
+		return fmt.Errorf("unable to close compressor: %w", err)
 	} else if err := b.file.Close(); err != nil {
-		return errors.Wrap(err, "unable to close file")
+		return fmt.Errorf("unable to close file: %w", err)
 	}
 
 	// Success.
@@ -381,14 +380,14 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 	// Open the file and ensure its cleanup.
 	file, err := os.Open(path)
 	if err != nil {
-		return errors.Wrap(err, "unable to open file")
+		return fmt.Errorf("unable to open file: %w", err)
 	}
 	defer file.Close()
 
 	// Compute its size.
 	stat, err := file.Stat()
 	if err != nil {
-		return errors.Wrap(err, "unable to determine file size")
+		return fmt.Errorf("unable to determine file size: %w", err)
 	}
 	size := stat.Size()
 
@@ -400,12 +399,12 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 		ModTime: time.Now(),
 	}
 	if err := b.archiver.WriteHeader(header); err != nil {
-		return errors.Wrap(err, "unable to write archive header")
+		return fmt.Errorf("unable to write archive header: %w", err)
 	}
 
 	// Copy the file contents.
 	if _, err := io.CopyBuffer(b.archiver, file, b.copyBuffer); err != nil {
-		return errors.Wrap(err, "unable to write archive entry")
+		return fmt.Errorf("unable to write archive entry: %w", err)
 	}
 
 	// Success.
@@ -418,14 +417,14 @@ func copyFile(sourcePath, destinationPath string) error {
 	// Open the source file and defer its closure.
 	source, err := os.Open(sourcePath)
 	if err != nil {
-		return errors.Wrap(err, "unable to open source file")
+		return fmt.Errorf("unable to open source file: %w", err)
 	}
 	defer source.Close()
 
 	// Grab source file metadata.
 	metadata, err := source.Stat()
 	if err != nil {
-		return errors.Wrap(err, "unable to query source file metadata")
+		return fmt.Errorf("unable to query source file metadata: %w", err)
 	}
 
 	// Remove the destination.
@@ -436,13 +435,13 @@ func copyFile(sourcePath, destinationPath string) error {
 	// its permissions are set correctly.
 	destination, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, metadata.Mode()&os.ModePerm)
 	if err != nil {
-		return errors.Wrap(err, "unable to create destination file")
+		return fmt.Errorf("unable to create destination file: %w", err)
 	}
 	defer destination.Close()
 
 	// Copy contents.
 	if count, err := io.Copy(destination, source); err != nil {
-		return errors.Wrap(err, "unable to copy data")
+		return fmt.Errorf("unable to copy data: %w", err)
 	} else if count != metadata.Size() {
 		return errors.New("copied size does not match expected")
 	}
@@ -474,7 +473,7 @@ func build() error {
 			fmt.Fprint(os.Stdout, usage)
 			return nil
 		} else {
-			return errors.Wrap(err, "unable to parse command line")
+			return fmt.Errorf("unable to parse command line: %w", err)
 		}
 	}
 	if !(mode == "local" || mode == "slim" || mode == "release" || mode == "release-slim") {
@@ -498,18 +497,18 @@ func build() error {
 	// Compute the path to the Mutagen source directory.
 	mutagenSourcePath, err := mutagen.SourceTreePath()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute Mutagen source tree path")
+		return fmt.Errorf("unable to compute Mutagen source tree path: %w", err)
 	}
 
 	// Verify that we're running inside the Mutagen source directory, otherwise
 	// we can't rely on Go modules working.
 	workingDirectory, err := os.Getwd()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute working directory")
+		return fmt.Errorf("unable to compute working directory: %w", err)
 	}
 	workingDirectoryRelativePath, err := filepath.Rel(mutagenSourcePath, workingDirectory)
 	if err != nil {
-		return errors.Wrap(err, "unable to determine working directory relative path")
+		return fmt.Errorf("unable to determine working directory relative path: %w", err)
 	}
 	if strings.Contains(workingDirectoryRelativePath, "..") {
 		return errors.New("build script run outside Mutagen source tree")
@@ -518,7 +517,7 @@ func build() error {
 	// Compute the path to the build directory and ensure that it exists.
 	buildPath := filepath.Join(mutagenSourcePath, mutagen.BuildDirectoryName)
 	if err := os.MkdirAll(buildPath, 0700); err != nil {
-		return errors.Wrap(err, "unable to create build directory")
+		return fmt.Errorf("unable to create build directory: %w", err)
 	}
 
 	// Create the necessary build directory hierarchy.
@@ -526,14 +525,14 @@ func build() error {
 	cliBuildSubdirectoryPath := filepath.Join(buildPath, cliBuildSubdirectoryName)
 	releaseBuildSubdirectoryPath := filepath.Join(buildPath, releaseBuildSubdirectoryName)
 	if err := os.MkdirAll(agentBuildSubdirectoryPath, 0700); err != nil {
-		return errors.Wrap(err, "unable to create agent build subdirectory")
+		return fmt.Errorf("unable to create agent build subdirectory: %w", err)
 	}
 	if err := os.MkdirAll(cliBuildSubdirectoryPath, 0700); err != nil {
-		return errors.Wrap(err, "unable to create CLI build subdirectory")
+		return fmt.Errorf("unable to create CLI build subdirectory: %w", err)
 	}
 	if mode == "release" || mode == "release-slim" {
 		if err := os.MkdirAll(releaseBuildSubdirectoryPath, 0700); err != nil {
-			return errors.Wrap(err, "unable to create release build subdirectory")
+			return fmt.Errorf("unable to create release build subdirectory: %w", err)
 		}
 	}
 
@@ -572,7 +571,7 @@ func build() error {
 		log.Println("Building agent for", target)
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
 		if err := target.Build(agentPackage, agentBuildPath, disableDebug); err != nil {
-			return errors.Wrap(err, "unable to build agent")
+			return fmt.Errorf("unable to build agent: %w", err)
 		}
 	}
 
@@ -582,7 +581,7 @@ func build() error {
 		log.Println("Build CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
 		if err := target.Build(cliPackage, cliBuildPath, disableDebug); err != nil {
-			return errors.Wrap(err, "unable to build CLI")
+			return fmt.Errorf("unable to build CLI: %w", err)
 		}
 	}
 
@@ -591,17 +590,17 @@ func build() error {
 	agentBundlePath := filepath.Join(buildPath, agent.BundleName)
 	agentBundleBuilder, err := NewArchiveBuilder(agentBundlePath)
 	if err != nil {
-		return errors.Wrap(err, "unable to create agent bundle archive builder")
+		return fmt.Errorf("unable to create agent bundle archive builder: %w", err)
 	}
 	for _, target := range agentTargets {
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
 		if err := agentBundleBuilder.Add(target.Name(), agentBuildPath, 0755); err != nil {
 			agentBundleBuilder.Close()
-			return errors.Wrap(err, "unable to add agent to bundle")
+			return fmt.Errorf("unable to add agent to bundle: %w", err)
 		}
 	}
 	if err := agentBundleBuilder.Close(); err != nil {
-		return errors.Wrap(err, "unable to finalize agent bundle")
+		return fmt.Errorf("unable to finalize agent bundle: %w", err)
 	}
 
 	// Build release bundles if necessary.
@@ -620,15 +619,15 @@ func build() error {
 
 			// Build the release bundle.
 			if releaseBundle, err := NewArchiveBuilder(releaseBundlePath); err != nil {
-				return errors.Wrap(err, "unable to create release bundle")
+				return fmt.Errorf("unable to create release bundle: %w", err)
 			} else if err = releaseBundle.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0755); err != nil {
 				releaseBundle.Close()
-				return errors.Wrap(err, "unable to add CLI to release bundle")
+				return fmt.Errorf("unable to add CLI to release bundle: %w", err)
 			} else if err = releaseBundle.Add("", agentBundlePath, 0644); err != nil {
 				releaseBundle.Close()
-				return errors.Wrap(err, "unable to add agent bundle to release bundle")
+				return fmt.Errorf("unable to add agent bundle to release bundle: %w", err)
 			} else if err = releaseBundle.Close(); err != nil {
-				return errors.Wrap(err, "unable to finalize release bundle")
+				return fmt.Errorf("unable to finalize release bundle: %w", err)
 			}
 		}
 	}
@@ -638,7 +637,7 @@ func build() error {
 	localCLIBuildPath := filepath.Join(cliBuildSubdirectoryPath, localTarget.Name())
 	localCLIRelocationPath := filepath.Join(buildPath, localTarget.ExecutableName(cliBaseName))
 	if err := copyFile(localCLIBuildPath, localCLIRelocationPath); err != nil {
-		return errors.Wrap(err, "unable to copy current platform CLI")
+		return fmt.Errorf("unable to copy current platform CLI: %w", err)
 	}
 
 	// Success.

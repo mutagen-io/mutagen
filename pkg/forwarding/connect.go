@@ -2,8 +2,7 @@ package forwarding
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
@@ -45,7 +44,7 @@ func connect(
 	// Local the appropriate protocol handler.
 	handler, ok := ProtocolHandlers[url.Protocol]
 	if !ok {
-		return nil, errors.Errorf("unknown protocol: %s", url.Protocol)
+		return nil, fmt.Errorf("unknown protocol: %s", url.Protocol)
 	} else if handler == nil {
 		panic("nil protocol handler registered")
 	}
@@ -53,7 +52,7 @@ func connect(
 	// Dispatch the dialing.
 	endpoint, err := handler.Connect(ctx, logger, url, prompter, session, version, configuration, source)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to connect to endpoint")
+		return nil, fmt.Errorf("unable to connect to endpoint: %w", err)
 	}
 
 	// Success.

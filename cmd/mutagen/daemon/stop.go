@@ -2,8 +2,7 @@ package daemon
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -18,7 +17,7 @@ func stopMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different stop
 	// mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStop(); err != nil {
-		return errors.Wrap(err, "unable to stop daemon using system mechanism")
+		return fmt.Errorf("unable to stop daemon using system mechanism: %w", err)
 	} else if handled {
 		return nil
 	}
@@ -29,7 +28,7 @@ func stopMain(_ *cobra.Command, _ []string) error {
 	// portion of the daemon API is stable.
 	daemonConnection, err := Connect(false, false)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

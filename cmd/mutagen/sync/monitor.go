@@ -2,9 +2,8 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -82,13 +81,13 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		LabelSelector:  monitorConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
+		return fmt.Errorf("invalid session selection specification: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 
@@ -115,9 +114,9 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
-			return errors.Wrap(grpcutil.PeelAwayRPCErrorLayer(err), "list failed")
+			return fmt.Errorf("list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
 		} else if err = response.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid list response received")
+			return fmt.Errorf("invalid list response received: %w", err)
 		}
 
 		// Validate the response and extract the relevant session state. If we

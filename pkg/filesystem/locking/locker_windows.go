@@ -40,12 +40,11 @@
 package locking
 
 import (
+	"errors"
 	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
-
-	"github.com/pkg/errors"
 )
 
 var (

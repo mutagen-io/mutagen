@@ -1,7 +1,7 @@
 package prompting
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // hostRequestMode indicates the mode for a HostRequest.

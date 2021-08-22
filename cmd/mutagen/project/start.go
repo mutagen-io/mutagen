@@ -2,12 +2,11 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -41,7 +40,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 		directory, configurationFileName = filepath.Split(startConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
-				return errors.Wrap(err, "unable to switch to target directory")
+				return fmt.Errorf("unable to switch to target directory: %w", err)
 			}
 		}
 	}
@@ -56,7 +55,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return errors.Wrap(err, "unable to create project locker")
+		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
 		locker.Close()
@@ -73,7 +72,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// lock file before we manage to remove it will simply see an empty lock
 	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
-		return errors.Wrap(err, "unable to acquire project lock")
+		return fmt.Errorf("unable to acquire project lock: %w", err)
 	}
 	defer func() {
 		if removeLockFileOnReturn {
@@ -89,7 +88,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// Read the full contents of the lock file and ensure that it's empty.
 	buffer := &bytes.Buffer{}
 	if length, err := buffer.ReadFrom(locker); err != nil {
-		return errors.Wrap(err, "unable to read project lock")
+		return fmt.Errorf("unable to read project lock: %w", err)
 	} else if length != 0 {
 		return errors.New("project already running")
 	}
@@ -103,18 +102,18 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// Create a unique project identifier.
 	identifier, err := identifier.New(identifier.PrefixProject)
 	if err != nil {
-		return errors.Wrap(err, "unable to generate project identifier")
+		return fmt.Errorf("unable to generate project identifier: %w", err)
 	}
 
 	// Write the project identifier to the lock file.
 	if _, err := locker.Write([]byte(identifier)); err != nil {
-		return errors.Wrap(err, "unable to write project identifier")
+		return fmt.Errorf("unable to write project identifier: %w", err)
 	}
 
 	// Load the configuration file.
 	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
-		return errors.Wrap(err, "unable to load configuration file")
+		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
 
 	// Unless disabled, attempt to load configuration from the global
@@ -126,23 +125,23 @@ func startMain(_ *cobra.Command, _ []string) error {
 		// Compute the path to the global configuration file.
 		globalConfigurationPath, err := global.ConfigurationPath()
 		if err != nil {
-			return errors.Wrap(err, "unable to compute path to global configuration file")
+			return fmt.Errorf("unable to compute path to global configuration file: %w", err)
 		}
 
 		// Attempt to load and validate the file. We allow it to not exist.
 		globalConfiguration, err := global.LoadConfiguration(globalConfigurationPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				return errors.Wrap(err, "unable to load global configuration")
+				return fmt.Errorf("unable to load global configuration: %w", err)
 			}
 		} else {
 			globalConfigurationForwarding = globalConfiguration.Forwarding.Defaults.Configuration()
 			if err := globalConfigurationForwarding.EnsureValid(false); err != nil {
-				return errors.Wrap(err, "invalid global forwarding configuration")
+				return fmt.Errorf("invalid global forwarding configuration: %w", err)
 			}
 			globalConfigurationSynchronization = globalConfiguration.Synchronization.Defaults.Configuration()
 			if err := globalConfigurationSynchronization.EnsureValid(false); err != nil {
-				return errors.Wrap(err, "invalid global synchronization configuration")
+				return fmt.Errorf("invalid global synchronization configuration: %w", err)
 			}
 		}
 	}
@@ -157,15 +156,15 @@ func startMain(_ *cobra.Command, _ []string) error {
 		defaultDestination = defaults.Destination
 		defaultConfigurationForwarding = defaults.Configuration.Configuration()
 		if err := defaultConfigurationForwarding.EnsureValid(false); err != nil {
-			return errors.Wrap(err, "invalid default forwarding configuration")
+			return fmt.Errorf("invalid default forwarding configuration: %w", err)
 		}
 		defaultConfigurationSource = defaults.ConfigurationSource.Configuration()
 		if err := defaultConfigurationSource.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid default forwarding source configuration")
+			return fmt.Errorf("invalid default forwarding source configuration: %w", err)
 		}
 		defaultConfigurationDestination = defaults.ConfigurationDestination.Configuration()
 		if err := defaultConfigurationDestination.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid default forwarding destination configuration")
+			return fmt.Errorf("invalid default forwarding destination configuration: %w", err)
 		}
 	}
 
@@ -181,15 +180,15 @@ func startMain(_ *cobra.Command, _ []string) error {
 		defaultFlushOnCreate = defaults.FlushOnCreate
 		defaultConfigurationSynchronization = defaults.Configuration.Configuration()
 		if err := defaultConfigurationSynchronization.EnsureValid(false); err != nil {
-			return errors.Wrap(err, "invalid default synchronization configuration")
+			return fmt.Errorf("invalid default synchronization configuration: %w", err)
 		}
 		defaultConfigurationAlpha = defaults.ConfigurationAlpha.Configuration()
 		if err := defaultConfigurationAlpha.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid default synchronization alpha configuration")
+			return fmt.Errorf("invalid default synchronization alpha configuration: %w", err)
 		}
 		defaultConfigurationBeta = defaults.ConfigurationBeta.Configuration()
 		if err := defaultConfigurationBeta.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid default synchronization beta configuration")
+			return fmt.Errorf("invalid default synchronization beta configuration: %w", err)
 		}
 	}
 
@@ -213,7 +212,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 
 		// Verify that the name is valid.
 		if err := selection.EnsureNameValid(name); err != nil {
-			return errors.Errorf("invalid forwarding session name (%s): %v", name, err)
+			return fmt.Errorf("invalid forwarding session name (%s): %v", name, err)
 		}
 
 		// Compute URLs.
@@ -229,31 +228,31 @@ func startMain(_ *cobra.Command, _ []string) error {
 		// Parse URLs.
 		sourceURL, err := url.Parse(source, url.Kind_Forwarding, true)
 		if err != nil {
-			return errors.Errorf("unable to parse forwarding source URL (%s): %v", source, err)
+			return fmt.Errorf("unable to parse forwarding source URL (%s): %v", source, err)
 		}
 		destinationURL, err := url.Parse(destination, url.Kind_Forwarding, false)
 		if err != nil {
-			return errors.Errorf("unable to parse forwarding destination URL (%s): %v", destination, err)
+			return fmt.Errorf("unable to parse forwarding destination URL (%s): %v", destination, err)
 		}
 
 		// Compute configuration.
 		configuration := session.Configuration.Configuration()
 		if err := configuration.EnsureValid(false); err != nil {
-			return errors.Errorf("invalid forwarding session configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid forwarding session configuration for %s: %v", name, err)
 		}
 		configuration = forwarding.MergeConfigurations(defaultConfigurationForwarding, configuration)
 
 		// Compute source-specific configuration.
 		sourceConfiguration := session.ConfigurationSource.Configuration()
 		if err := sourceConfiguration.EnsureValid(true); err != nil {
-			return errors.Errorf("invalid forwarding session source configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid forwarding session source configuration for %s: %v", name, err)
 		}
 		sourceConfiguration = forwarding.MergeConfigurations(defaultConfigurationSource, sourceConfiguration)
 
 		// Compute destination-specific configuration.
 		destinationConfiguration := session.ConfigurationDestination.Configuration()
 		if err := destinationConfiguration.EnsureValid(true); err != nil {
-			return errors.Errorf("invalid forwarding session destination configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid forwarding session destination configuration for %s: %v", name, err)
 		}
 		destinationConfiguration = forwarding.MergeConfigurations(defaultConfigurationDestination, destinationConfiguration)
 
@@ -284,7 +283,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 
 		// Verify that the name is valid.
 		if err := selection.EnsureNameValid(name); err != nil {
-			return errors.Errorf("invalid synchronization session name (%s): %v", name, err)
+			return fmt.Errorf("invalid synchronization session name (%s): %v", name, err)
 		}
 
 		// Compute URLs.
@@ -300,31 +299,31 @@ func startMain(_ *cobra.Command, _ []string) error {
 		// Parse URLs.
 		alphaURL, err := url.Parse(alpha, url.Kind_Synchronization, true)
 		if err != nil {
-			return errors.Errorf("unable to parse synchronization alpha URL (%s): %v", alpha, err)
+			return fmt.Errorf("unable to parse synchronization alpha URL (%s): %v", alpha, err)
 		}
 		betaURL, err := url.Parse(beta, url.Kind_Synchronization, false)
 		if err != nil {
-			return errors.Errorf("unable to parse synchronization beta URL (%s): %v", beta, err)
+			return fmt.Errorf("unable to parse synchronization beta URL (%s): %v", beta, err)
 		}
 
 		// Compute configuration.
 		configuration := session.Configuration.Configuration()
 		if err := configuration.EnsureValid(false); err != nil {
-			return errors.Errorf("invalid synchronization session configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid synchronization session configuration for %s: %v", name, err)
 		}
 		configuration = synchronization.MergeConfigurations(defaultConfigurationSynchronization, configuration)
 
 		// Compute alpha-specific configuration.
 		alphaConfiguration := session.ConfigurationAlpha.Configuration()
 		if err := alphaConfiguration.EnsureValid(true); err != nil {
-			return errors.Errorf("invalid synchronization session alpha configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid synchronization session alpha configuration for %s: %v", name, err)
 		}
 		alphaConfiguration = synchronization.MergeConfigurations(defaultConfigurationAlpha, alphaConfiguration)
 
 		// Compute beta-specific configuration.
 		betaConfiguration := session.ConfigurationBeta.Configuration()
 		if err := betaConfiguration.EnsureValid(true); err != nil {
-			return errors.Errorf("invalid synchronization session beta configuration for %s: %v", name, err)
+			return fmt.Errorf("invalid synchronization session beta configuration for %s: %v", name, err)
 		}
 		betaConfiguration = synchronization.MergeConfigurations(defaultConfigurationBeta, betaConfiguration)
 
@@ -353,7 +352,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 
@@ -365,14 +364,14 @@ func startMain(_ *cobra.Command, _ []string) error {
 	for _, command := range configuration.BeforeCreate {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "pre-create command failed")
+			return fmt.Errorf("pre-create command failed: %w", err)
 		}
 	}
 
 	// Create forwarding sessions.
 	for _, specification := range forwardingSpecifications {
 		if _, err := forward.CreateWithSpecification(daemonConnection, specification); err != nil {
-			return errors.Errorf("unable to create forwarding session (%s): %v", specification.Name, err)
+			return fmt.Errorf("unable to create forwarding session (%s): %v", specification.Name, err)
 		}
 	}
 
@@ -382,7 +381,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 		// Perform session creation.
 		session, err := sync.CreateWithSpecification(daemonConnection, specification)
 		if err != nil {
-			return errors.Errorf("unable to create synchronization session (%s): %v", specification.Name, err)
+			return fmt.Errorf("unable to create synchronization session (%s): %v", specification.Name, err)
 		}
 
 		// Determine whether or not to flush this session.
@@ -395,7 +394,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	if len(sessionsToFlush) > 0 {
 		flushSelection := &selection.Selection{Specifications: sessionsToFlush}
 		if err := sync.FlushWithSelection(daemonConnection, flushSelection, false); err != nil {
-			return errors.Wrap(err, "unable to flush synchronization session(s)")
+			return fmt.Errorf("unable to flush synchronization session(s): %w", err)
 		}
 	}
 
@@ -403,7 +402,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	for _, command := range configuration.AfterCreate {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "post-create command failed")
+			return fmt.Errorf("post-create command failed: %w", err)
 		}
 	}
 

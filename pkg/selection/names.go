@@ -1,9 +1,9 @@
 package selection
 
 import (
+	"errors"
+	"fmt"
 	"unicode"
-
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 )
@@ -28,7 +28,7 @@ func EnsureNameValid(name string) error {
 			containsDash = true
 			continue
 		}
-		return errors.Errorf("invalid name character at index %d: '%c'", i, r)
+		return fmt.Errorf("invalid name character at index %d: '%c'", i, r)
 	}
 
 	// If the name contains a dash, then ensure that it isn't a UUID.

@@ -2,9 +2,9 @@ package remote
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/protobuf/proto"
 
@@ -48,21 +48,21 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	// response (even though the pipe is probably broken) and abort.
 	request := &InitializeSynchronizationRequest{}
 	if err := decoder.Decode(request); err != nil {
-		err = errors.Wrap(err, "unable to receive initialize request")
+		err = fmt.Errorf("unable to receive initialize request: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
 
 	// Ensure that the initialization request is valid.
 	if err := request.ensureValid(); err != nil {
-		err = errors.Wrap(err, "invalid initialize request")
+		err = fmt.Errorf("invalid initialize request: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
 
 	// Expand and normalize the root path.
 	if r, err := filesystem.Normalize(request.Root); err != nil {
-		err = errors.Wrap(err, "unable to normalize synchronization root")
+		err = fmt.Errorf("unable to normalize synchronization root: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	} else {
@@ -80,7 +80,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		request.Alpha,
 	)
 	if err != nil {
-		err = errors.Wrap(err, "unable to create underlying endpoint")
+		err = fmt.Errorf("unable to create underlying endpoint: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
 		return err
 	}
@@ -88,7 +88,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 
 	// Send a successful initialize response.
 	if err = encoder.Encode(&InitializeSynchronizationResponse{}); err != nil {
-		return errors.Wrap(err, "unable to send initialize response")
+		return fmt.Errorf("unable to send initialize response: %w", err)
 	}
 
 	// Create the server.
@@ -112,31 +112,31 @@ func (s *endpointServer) serve() error {
 		// Receive the next request.
 		*request = EndpointRequest{}
 		if err := s.decoder.Decode(request); err != nil {
-			return errors.Wrap(err, "unable to receive request")
+			return fmt.Errorf("unable to receive request: %w", err)
 		} else if err = request.ensureValid(); err != nil {
-			return errors.Wrap(err, "invalid endpoint request")
+			return fmt.Errorf("invalid endpoint request: %w", err)
 		}
 
 		// Handle the request based on type.
 		if request.Poll != nil {
 			if err := s.servePoll(request.Poll); err != nil {
-				return errors.Wrap(err, "unable to serve poll request")
+				return fmt.Errorf("unable to serve poll request: %w", err)
 			}
 		} else if request.Scan != nil {
 			if err := s.serveScan(request.Scan); err != nil {
-				return errors.Wrap(err, "unable to serve scan request")
+				return fmt.Errorf("unable to serve scan request: %w", err)
 			}
 		} else if request.Stage != nil {
 			if err := s.serveStage(request.Stage); err != nil {
-				return errors.Wrap(err, "unable to serve stage request")
+				return fmt.Errorf("unable to serve stage request: %w", err)
 			}
 		} else if request.Supply != nil {
 			if err := s.serveSupply(request.Supply); err != nil {
-				return errors.Wrap(err, "unable to serve supply request")
+				return fmt.Errorf("unable to serve supply request: %w", err)
 			}
 		} else if request.Transition != nil {
 			if err := s.serveTransition(request.Transition); err != nil {
-				return errors.Wrap(err, "unable to serve transition request")
+				return fmt.Errorf("unable to serve transition request: %w", err)
 			}
 		} else {
 			// TODO: Should we panic here? The request validation already
@@ -151,7 +151,7 @@ func (s *endpointServer) serve() error {
 func (s *endpointServer) servePoll(request *PollRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid poll request")
+		return fmt.Errorf("invalid poll request: %w", err)
 	}
 
 	// Create a cancellable context for executing the poll.
@@ -162,9 +162,9 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 	go func() {
 		request := &PollCompletionRequest{}
 		if err := s.decoder.Decode(request); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+			completionReceiveErrors <- fmt.Errorf("unable to receive completion request: %w", err)
 		} else if err = request.ensureValid(); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+			completionReceiveErrors <- fmt.Errorf("received invalid completion request: %w", err)
 		} else {
 			completionReceiveErrors <- nil
 		}
@@ -185,7 +185,7 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 
 		// Send te response.
 		if err := s.encoder.Encode(response); err != nil {
-			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil
 		}
@@ -223,7 +223,7 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 func (s *endpointServer) serveScan(request *ScanRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid scan request")
+		return fmt.Errorf("invalid scan request: %w", err)
 	}
 
 	// Create a cancellable context for executing the scan.
@@ -234,9 +234,9 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 	go func() {
 		request := &ScanCompletionRequest{}
 		if err := s.decoder.Decode(request); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+			completionReceiveErrors <- fmt.Errorf("unable to receive completion request: %w", err)
 		} else if err = request.ensureValid(); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+			completionReceiveErrors <- fmt.Errorf("received invalid completion request: %w", err)
 		} else {
 			completionReceiveErrors <- nil
 		}
@@ -261,7 +261,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 			}
 		} else if snapshotBytes, err := marshaling.Marshal(&core.Archive{Content: snapshot}); err != nil {
 			response = &ScanResponse{
-				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
+				Error: fmt.Errorf("unable to marshal snapshot: %w", err).Error(),
 			}
 		} else {
 			delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
@@ -273,7 +273,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 
 		// Send the response.
 		if err := s.encoder.Encode(response); err != nil {
-			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil
 		}
@@ -311,14 +311,14 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 func (s *endpointServer) serveStage(request *StageRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid stage request")
+		return fmt.Errorf("invalid stage request: %w", err)
 	}
 
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.Stage(request.Paths, request.Digests)
 	if err != nil {
 		s.encoder.Encode(&StageResponse{Error: err.Error()})
-		return errors.Wrap(err, "unable to begin staging")
+		return fmt.Errorf("unable to begin staging: %w", err)
 	}
 
 	// Send the response.
@@ -327,7 +327,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 		Signatures: signatures,
 	}
 	if err = s.encoder.Encode(response); err != nil {
-		return errors.Wrap(err, "unable to send stage response")
+		return fmt.Errorf("unable to send stage response: %w", err)
 	}
 
 	// If there weren't any paths requiring staging, then we're done.
@@ -340,7 +340,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	// completes successfully, staging is complete and successful.
 	decoder := newProtobufRsyncDecoder(s.decoder)
 	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
-		return errors.Wrap(err, "unable to decode and forward rsync operations")
+		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
 
 	// Success.
@@ -351,7 +351,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid supply request")
+		return fmt.Errorf("invalid supply request: %w", err)
 	}
 
 	// Create an encoding receiver that can transmit rsync operations to the
@@ -361,7 +361,7 @@ func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 
 	// Perform supplying.
 	if err := s.endpoint.Supply(request.Paths, request.Signatures, receiver); err != nil {
-		return errors.Wrap(err, "unable to perform supplying")
+		return fmt.Errorf("unable to perform supplying: %w", err)
 	}
 
 	// Success.
@@ -372,7 +372,7 @@ func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid transition request")
+		return fmt.Errorf("invalid transition request: %w", err)
 	}
 
 	// Create a cancellable context for executing the transition.
@@ -383,9 +383,9 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	go func() {
 		request := &TransitionCompletionRequest{}
 		if err := s.decoder.Decode(request); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "unable to receive completion request")
+			completionReceiveErrors <- fmt.Errorf("unable to receive completion request: %w", err)
 		} else if err = request.ensureValid(); err != nil {
-			completionReceiveErrors <- errors.Wrap(err, "received invalid completion request")
+			completionReceiveErrors <- fmt.Errorf("received invalid completion request: %w", err)
 		} else {
 			completionReceiveErrors <- nil
 		}
@@ -418,7 +418,7 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 
 		// Send the response.
 		if err := s.encoder.Encode(response); err != nil {
-			responseSendErrors <- errors.Wrap(err, "unable to transmit response")
+			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil
 		}

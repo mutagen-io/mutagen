@@ -1,9 +1,8 @@
 package synchronization
 
 import (
+	"fmt"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -15,7 +14,7 @@ func pathForSession(sessionIdentifier string) (string, error) {
 	// Compute/create the sessions directory.
 	sessionsDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationSessionsDirectoryName)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute/create sessions directory")
+		return "", fmt.Errorf("unable to compute/create sessions directory: %w", err)
 	}
 
 	// Success.
@@ -28,7 +27,7 @@ func pathForArchive(session string) (string, error) {
 	// Compute/create the archives directory.
 	archivesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationArchivesDirectoryName)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute/create archives directory")
+		return "", fmt.Errorf("unable to compute/create archives directory: %w", err)
 	}
 
 	// Success.

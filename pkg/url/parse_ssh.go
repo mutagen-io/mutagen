@@ -1,11 +1,11 @@
 package url
 
 import (
+	"errors"
+	"fmt"
 	"runtime"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
@@ -166,7 +166,7 @@ func parseSCPSSH(raw string, kind Kind) (*URL, error) {
 	} else if kind == Kind_Forwarding {
 		// Parse the forwarding endpoint URL to ensure that it's valid.
 		if _, _, err := forwarding.Parse(path); err != nil {
-			return nil, errors.Wrap(err, "invalid forwarding endpoint URL")
+			return nil, fmt.Errorf("invalid forwarding endpoint URL: %w", err)
 		}
 	} else {
 		panic("unhandled URL kind")

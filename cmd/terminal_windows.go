@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/pkg/errors"
 
 	isatty "github.com/mattn/go-isatty"
 )
@@ -30,7 +30,7 @@ func HandleTerminalCompatibility() {
 	// Compute the path to the current executable.
 	executable, err := os.Executable()
 	if err != nil {
-		Fatal(errors.Wrap(err, "running inside mintty terminal and unable to locate current executable"))
+		Fatal(fmt.Errorf("running inside mintty terminal and unable to locate current executable: %w", err))
 	}
 
 	// Build the argument list for winpty.

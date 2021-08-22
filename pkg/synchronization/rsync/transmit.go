@@ -1,7 +1,8 @@
 package rsync
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -38,11 +39,11 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		if err != nil {
 			*transmission = Transmission{
 				Done:  true,
-				Error: errors.Wrap(err, "unable to open file").Error(),
+				Error: fmt.Errorf("unable to open file: %w", err).Error(),
 			}
 			if err = receiver.Receive(transmission); err != nil {
 				receiver.finalize()
-				return errors.Wrap(err, "unable to send error transmission")
+				return fmt.Errorf("unable to send error transmission: %w", err)
 			}
 			continue
 		}
@@ -67,7 +68,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		// Handle any transmission errors. These are terminal.
 		if transmitError != nil {
 			receiver.finalize()
-			return errors.Wrap(transmitError, "unable to transmit delta")
+			return fmt.Errorf("unable to transmit delta: %w", transmitError)
 		}
 
 		// Inform the client the operation stream for this file is complete. Any
@@ -75,17 +76,17 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		// reported to the receiver.
 		*transmission = Transmission{Done: true}
 		if err != nil {
-			transmission.Error = errors.Wrap(err, "engine error").Error()
+			transmission.Error = fmt.Errorf("engine error: %w", err).Error()
 		}
 		if err = receiver.Receive(transmission); err != nil {
 			receiver.finalize()
-			return errors.Wrap(err, "unable to send done message")
+			return fmt.Errorf("unable to send done message: %w", err)
 		}
 	}
 
 	// Ensure that the receiver is finalized.
 	if err := receiver.finalize(); err != nil {
-		return errors.Wrap(err, "unable to finalize receiver")
+		return fmt.Errorf("unable to finalize receiver: %w", err)
 	}
 
 	// Success.

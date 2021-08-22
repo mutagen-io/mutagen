@@ -7,11 +7,10 @@
 package locking
 
 import (
+	"errors"
 	"os"
 
 	"golang.org/x/sys/unix"
-
-	"github.com/pkg/errors"
 )
 
 // fcntlFlockRetryingOnEINTR is a wrapper around the fcntl system call that

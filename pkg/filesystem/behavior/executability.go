@@ -1,10 +1,9 @@
 package behavior
 
 import (
+	"fmt"
 	"os"
 	"runtime"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -43,7 +42,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 	// Create a temporary file.
 	file, err := os.CreateTemp(path, executabilityProbeFileNamePrefix)
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to create test file")
+		return false, true, fmt.Errorf("unable to create test file: %w", err)
 	}
 
 	// Ensure that the file is cleaned up and removed when we're done.
@@ -55,7 +54,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = file.Chmod(0700); err != nil {
-		return false, true, errors.Wrap(err, "unable to mark test file as executable")
+		return false, true, fmt.Errorf("unable to mark test file as executable: %w", err)
 	}
 
 	// Grab the file statistics and check for executability. We enforce that
@@ -66,7 +65,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 	// Linux marks every file as having no executable bit set), but this test
 	// should be.
 	if info, err := file.Stat(); err != nil {
-		return false, true, errors.Wrap(err, "unable to check test file executability")
+		return false, true, fmt.Errorf("unable to check test file executability: %w", err)
 	} else {
 		return info.Mode()&0111 == 0100, true, nil
 	}
@@ -99,7 +98,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Create a temporary file.
 	name, file, err := directory.CreateTemporaryFile(executabilityProbeFileNamePrefix)
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to create test file")
+		return false, true, fmt.Errorf("unable to create test file: %w", err)
 	}
 
 	// Ensure that the file is cleaned up and removed when we're done.
@@ -119,7 +118,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Mark the file as user-executable. We use the os.File-based Chmod here
 	// since this code only runs on POSIX systems where this is supported.
 	if err = osFile.Chmod(0700); err != nil {
-		return false, true, errors.Wrap(err, "unable to mark test file as executable")
+		return false, true, fmt.Errorf("unable to mark test file as executable: %w", err)
 	}
 
 	// Grab the file statistics and check for executability. We enforce that
@@ -130,7 +129,7 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 	// Linux marks every file as having no executable bit set), but this test
 	// should be.
 	if info, err := osFile.Stat(); err != nil {
-		return false, true, errors.Wrap(err, "unable to check test file executability")
+		return false, true, fmt.Errorf("unable to check test file executability: %w", err)
 	} else {
 		return info.Mode()&0111 == 0100, true, nil
 	}

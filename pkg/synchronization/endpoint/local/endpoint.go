@@ -2,13 +2,13 @@ package local
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -278,13 +278,13 @@ func NewEndpoint(
 		defaultGroupSpecification,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create ownership specification")
+		return nil, fmt.Errorf("unable to create ownership specification: %w", err)
 	}
 
 	// Compute the cache path if this isn't an ephemeral endpoint.
 	cachePath, err := pathForCache(sessionIdentifier, alpha)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute/create cache path")
+		return nil, fmt.Errorf("unable to compute/create cache path: %w", err)
 	}
 
 	// Load any existing cache. If it fails to load or validate, just replace it
@@ -316,7 +316,7 @@ func NewEndpoint(
 		panic("unhandled staging mode")
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute staging root")
+		return nil, fmt.Errorf("unable to compute staging root: %w", err)
 	}
 
 	// Compute the effective watch mode.
@@ -1026,7 +1026,7 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	// that may have occurred during background cache writes. If we see any
 	// error, then we skip scanning and report them here.
 	if e.cacheWriteError != nil {
-		return nil, false, errors.Wrap(e.cacheWriteError, "unable to save cache to disk"), false
+		return nil, false, fmt.Errorf("unable to save cache to disk: %w", e.cacheWriteError), false
 	}
 
 	// Perform a scan.
@@ -1139,7 +1139,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	reverseLookupMap, err := e.cache.GenerateReverseLookupMap()
 	if err != nil {
 		e.scanLock.Unlock()
-		return nil, nil, nil, errors.Wrap(err, "unable to generate reverse lookup map")
+		return nil, nil, nil, fmt.Errorf("unable to generate reverse lookup map: %w", err)
 	}
 
 	// Release the scan lock.
@@ -1200,7 +1200,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Create a receiver.
 	receiver, err := rsync.NewReceiver(e.root, filteredPaths, signatures, e.stager)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "unable to create rsync receiver")
+		return nil, nil, nil, fmt.Errorf("unable to create rsync receiver: %w", err)
 	}
 
 	// Done.

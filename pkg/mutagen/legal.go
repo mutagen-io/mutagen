@@ -44,19 +44,6 @@ http://www.apache.org/licenses/LICENSE-2.0.
 
 --------------------------------------------------------------------------------
 
-errors
-
-https://github.com/pkg/errors
-
-Copyright (c) 2015, Dave Cheney <dave@cheney.net>
-All rights reserved.
-
-Used under the terms of the 2-Clause BSD License. A copy of this license can be
-found later in this text or online at
-https://opensource.org/licenses/BSD-2-Clause.
-
---------------------------------------------------------------------------------
-
 Cobra
 
 https://github.com/spf13/cobra

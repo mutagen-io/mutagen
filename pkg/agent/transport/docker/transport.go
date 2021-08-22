@@ -2,13 +2,12 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transport"
@@ -140,7 +139,7 @@ func (t *dockerTransport) command(command, workingDirectory, user string) (*exec
 	// require prompting.
 	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to set SSH prompting environment variables")
+		return nil, fmt.Errorf("unable to set SSH prompting environment variables: %w", err)
 	}
 
 	// Set the environment for the command.
@@ -156,7 +155,7 @@ func (t *dockerTransport) command(command, workingDirectory, user string) (*exec
 func (t *dockerTransport) probeContainer() error {
 	// Watch for previous errors.
 	if t.containerProbeError != nil {
-		return errors.Wrap(t.containerProbeError, "previous container probing failed")
+		return fmt.Errorf("previous container probing failed: %w", t.containerProbeError)
 	}
 
 	// Check if we've already probed. If not, then we're going to probe, so mark
@@ -176,7 +175,7 @@ func (t *dockerTransport) probeContainer() error {
 	// detect a non-UTF-8 output or detect an empty home directory, we treat
 	// that as an error.
 	if command, err := t.command("env", "", ""); err != nil {
-		return errors.Wrap(err, "unable to set up Docker invocation")
+		return fmt.Errorf("unable to set up Docker invocation: %w", err)
 	} else if envBytes, err := command.Output(); err != nil {
 		posixErr = err
 	} else if !utf8.Valid(envBytes) {
@@ -199,7 +198,7 @@ func (t *dockerTransport) probeContainer() error {
 	// on Windows to identify the USERPROFILE environment variable.
 	if home == "" {
 		if command, err := t.command("cmd /c set", "", ""); err != nil {
-			return errors.Wrap(err, "unable to set up Docker invocation")
+			return fmt.Errorf("unable to set up Docker invocation: %w", err)
 		} else if envBytes, err := command.Output(); err != nil {
 			windowsErr = err
 		} else if !utf8.Valid(envBytes) {
@@ -222,7 +221,7 @@ func (t *dockerTransport) probeContainer() error {
 
 	// If both probing mechanisms have failed, then create a combined error.
 	if home == "" {
-		t.containerProbeError = errors.Errorf(
+		t.containerProbeError = fmt.Errorf(
 			"container probing failed under POSIX hypothesis (%v) and Windows hypothesis (%v)",
 			posixErr,
 			windowsErr,
@@ -241,7 +240,7 @@ func (t *dockerTransport) probeContainer() error {
 	if !windows {
 		// Query username.
 		if command, err := t.command("id -un", "", ""); err != nil {
-			return errors.Wrap(err, "unable to set up Docker invocation")
+			return fmt.Errorf("unable to set up Docker invocation: %w", err)
 		} else if usernameBytes, err := command.Output(); err != nil {
 			t.containerProbeError = errors.New("unable to probe POSIX username")
 			return t.containerProbeError
@@ -260,7 +259,7 @@ func (t *dockerTransport) probeContainer() error {
 
 		// Query default group name.
 		if command, err := t.command("id -gn", "", ""); err != nil {
-			return errors.Wrap(err, "unable to set up Docker invocation")
+			return fmt.Errorf("unable to set up Docker invocation: %w", err)
 		} else if groupBytes, err := command.Output(); err != nil {
 			t.containerProbeError = errors.New("unable to probe POSIX group name")
 			return t.containerProbeError
@@ -302,7 +301,7 @@ func (t *dockerTransport) changeContainerStatus(stop bool) error {
 	// Create the command.
 	dockerCommand, err := docker.Command(context.Background(), dockerArguments...)
 	if err != nil {
-		return errors.Wrap(err, "unable to set up Docker invocation")
+		return fmt.Errorf("unable to set up Docker invocation: %w", err)
 	}
 
 	// Set the process attributes.
@@ -319,7 +318,7 @@ func (t *dockerTransport) changeContainerStatus(stop bool) error {
 	// require prompting.
 	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
 	if err != nil {
-		return errors.Wrap(err, "unable to set SSH prompting environment variables")
+		return fmt.Errorf("unable to set SSH prompting environment variables: %w", err)
 	}
 
 	// Set the environment for the command.
@@ -333,7 +332,7 @@ func (t *dockerTransport) changeContainerStatus(stop bool) error {
 func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
-		return errors.Wrap(err, "unable to probe container")
+		return fmt.Errorf("unable to probe container: %w", err)
 	}
 
 	// If this is a Windows container, then we need to stop it from running
@@ -345,7 +344,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 		}
 		for {
 			if response, err := prompting.Prompt(t.prompter, windowsContainerCopyNotification); err != nil {
-				return errors.Wrap(err, "unable to prompt for Docker copy behavior confirmation")
+				return fmt.Errorf("unable to prompt for Docker copy behavior confirmation: %w", err)
 			} else if response == "no" {
 				return errors.New("user cancelled copy operation")
 			} else if response == "yes" {
@@ -353,7 +352,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 			}
 		}
 		if err := t.changeContainerStatus(true); err != nil {
-			return errors.Wrap(err, "unable to stop Docker container")
+			return fmt.Errorf("unable to stop Docker container: %w", err)
 		}
 	}
 
@@ -388,7 +387,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// Create the command.
 	dockerCommand, err := docker.Command(context.Background(), dockerArguments...)
 	if err != nil {
-		return errors.Wrap(err, "unable to set up Docker invocation")
+		return fmt.Errorf("unable to set up Docker invocation: %w", err)
 	}
 
 	// Set the process attributes.
@@ -405,7 +404,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// require prompting.
 	environment, err = ssh.SetPrompterVariables(environment, t.prompter)
 	if err != nil {
-		return errors.Wrap(err, "unable to set SSH prompting environment variables")
+		return fmt.Errorf("unable to set SSH prompting environment variables: %w", err)
 	}
 
 	// Set the environment for the command.
@@ -413,7 +412,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 
 	// Run the operation.
 	if err := dockerCommand.Run(); err != nil {
-		return errors.Wrap(err, "unable to run Docker copy command")
+		return fmt.Errorf("unable to run Docker copy command: %w", err)
 	}
 
 	// The default ownership of files copied into containers is a bit uncertain.
@@ -446,9 +445,9 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 			remoteName,
 		)
 		if command, err := t.command(chownCommand, t.containerHomeDirectory, "root"); err != nil {
-			return errors.Wrap(err, "unable to set up Docker invocation")
+			return fmt.Errorf("unable to set up Docker invocation: %w", err)
 		} else if err := command.Run(); err != nil {
-			return errors.Wrap(err, "unable to set ownership of copied file")
+			return fmt.Errorf("unable to set ownership of copied file: %w", err)
 		}
 	}
 
@@ -456,7 +455,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// while we copy the agent.
 	if t.containerIsWindows {
 		if err := t.changeContainerStatus(false); err != nil {
-			return errors.Wrap(err, "unable to start Docker container")
+			return fmt.Errorf("unable to start Docker container: %w", err)
 		}
 	}
 
@@ -468,7 +467,7 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 func (t *dockerTransport) Command(command string) (*exec.Cmd, error) {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
-		return nil, errors.Wrap(err, "unable to probe container")
+		return nil, fmt.Errorf("unable to probe container: %w", err)
 	}
 
 	// Generate the command.
@@ -479,7 +478,7 @@ func (t *dockerTransport) Command(command string) (*exec.Cmd, error) {
 func (t *dockerTransport) ClassifyError(processState *os.ProcessState, errorOutput string) (bool, bool, error) {
 	// Ensure that the container has been probed.
 	if err := t.probeContainer(); err != nil {
-		return false, false, errors.Wrap(err, "unable to probe container")
+		return false, false, fmt.Errorf("unable to probe container: %w", err)
 	}
 
 	// Docker alises cases of both "invalid command" (POSIX shell error 126) and

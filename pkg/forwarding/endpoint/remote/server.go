@@ -2,9 +2,8 @@ package remote
 
 import (
 	"context"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -26,15 +25,15 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	// failure since closing the multiplexer will implicitly close the stream.
 	stream, err := multiplexer.Accept()
 	if err != nil {
-		return errors.Wrap(err, "unable to accept initialization stream")
+		return fmt.Errorf("unable to accept initialization stream: %w", err)
 	}
 
 	// Receive the initialization request and ensure that it's valid.
 	request := &InitializeForwardingRequest{}
 	if err := encoding.NewProtobufDecoder(stream).Decode(request); err != nil {
-		return errors.Wrap(err, "unable to receive initialization request")
+		return fmt.Errorf("unable to receive initialization request: %w", err)
 	} else if err = request.ensureValid(); err != nil {
-		return errors.Wrap(err, "invalid initialization request received")
+		return fmt.Errorf("invalid initialization request received: %w", err)
 	}
 
 	// If this is a Unix domain socket endpoint, perform normalization on the
@@ -42,7 +41,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	address := request.Address
 	if request.Protocol == "unix" {
 		if a, err := filesystem.Normalize(address); err != nil {
-			return errors.Wrap(err, "unable to normalize socket path")
+			return fmt.Errorf("unable to normalize socket path: %w", err)
 		} else {
 			address = a
 		}
@@ -88,17 +87,17 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		response.Error = initializationError.Error()
 	}
 	if err := encoding.NewProtobufEncoder(stream).Encode(response); err != nil {
-		return errors.Wrap(err, "unable to send initialization response")
+		return fmt.Errorf("unable to send initialization response: %w", err)
 	}
 
 	// Check for initialization errors.
 	if initializationError != nil {
-		return errors.Wrap(initializationError, "endpoint initialization failed")
+		return fmt.Errorf("endpoint initialization failed: %w", initializationError)
 	}
 
 	// Close the initialization stream.
 	if err := stream.Close(); err != nil {
-		return errors.Wrap(err, "unable to close initialization stream")
+		return fmt.Errorf("unable to close initialization stream: %w", err)
 	}
 
 	// Receive and forward connections indefinitely.
@@ -109,12 +108,12 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		var incoming net.Conn
 		if request.Listener {
 			if incoming, err = endpoint.Open(); err != nil {
-				return errors.Wrap(err, "listener failure")
+				return fmt.Errorf("listener failure: %w", err)
 			}
 		} else {
 			incoming, err = multiplexer.Accept()
 			if err != nil {
-				return errors.Wrap(err, "multiplexer failure")
+				return fmt.Errorf("multiplexer failure: %w", err)
 			}
 		}
 
@@ -126,7 +125,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 			outgoing, err = multiplexer.OpenStream(context.Background())
 			if err != nil {
 				incoming.Close()
-				return errors.Wrap(err, "multiplexer failure")
+				return fmt.Errorf("multiplexer failure: %w", err)
 			}
 		} else {
 			if outgoing, err = endpoint.Open(); err != nil {

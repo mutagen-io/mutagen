@@ -3,7 +3,7 @@
 package format
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )

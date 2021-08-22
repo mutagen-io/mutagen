@@ -3,8 +3,6 @@ package prompting
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/mutagen-io/gopass"
 )
 
@@ -27,7 +25,7 @@ func PromptCommandLineWithResponseMode(prompt string, mode ResponseMode) (string
 	// Get the result.
 	result, err := getter()
 	if err != nil {
-		return "", errors.Wrap(err, "unable to read response")
+		return "", fmt.Errorf("unable to read response: %w", err)
 	}
 
 	// Success.

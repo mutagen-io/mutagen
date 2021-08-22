@@ -1,7 +1,7 @@
 package forwarding
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the socket overwrite mode is
@@ -29,7 +29,7 @@ func (m *SocketOverwriteMode) UnmarshalText(textBytes []byte) error {
 	case "overwrite":
 		*m = SocketOverwriteMode_SocketOverwriteModeOverwrite
 	default:
-		return errors.Errorf("unknown socket overwrite mode specification: %s", text)
+		return fmt.Errorf("unknown socket overwrite mode specification: %s", text)
 	}
 
 	// Success.

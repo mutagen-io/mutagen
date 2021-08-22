@@ -2,10 +2,10 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/grpc"
 
@@ -46,7 +46,7 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute endpoint path")
+		return nil, fmt.Errorf("unable to compute endpoint path: %w", err)
 	}
 
 	// Check if autostart has been disabled by an environment variable.
@@ -123,7 +123,7 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 		version, err := daemonService.Version(context.Background(), &daemonsvc.VersionRequest{})
 		if err != nil {
 			connection.Close()
-			return nil, errors.Wrap(err, "unable to query daemon version")
+			return nil, fmt.Errorf("unable to query daemon version: %w", err)
 		}
 		versionMatch := version.Major == mutagen.VersionMajor &&
 			version.Minor == mutagen.VersionMinor &&

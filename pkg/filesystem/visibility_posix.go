@@ -3,10 +3,9 @@
 package filesystem
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // MarkHidden ensures that a path is hidden.

@@ -1,10 +1,9 @@
 package core
 
 import (
+	"errors"
 	"runtime"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (

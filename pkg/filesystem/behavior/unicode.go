@@ -1,12 +1,12 @@
 package behavior
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -41,9 +41,9 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 	// Create and close a temporary file using the composed filename.
 	file, err := os.CreateTemp(path, composedFileNamePrefix)
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to create test file")
+		return false, true, fmt.Errorf("unable to create test file: %w", err)
 	} else if err = file.Close(); err != nil {
-		return false, true, errors.Wrap(err, "unable to close test file")
+		return false, true, fmt.Errorf("unable to close test file: %w", err)
 	}
 
 	// Grab the file's name. This is calculated from the parameters passed to
@@ -68,7 +68,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 	// Grab the contents of the path.
 	contents, err := filesystem.DirectoryContentsByPath(path)
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to read directory contents")
+		return false, true, fmt.Errorf("unable to read directory contents: %w", err)
 	}
 
 	// Loop through contents and see if we find a match for the decomposed file
@@ -108,9 +108,9 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// Create and close a temporary file using the composed filename.
 	composedName, file, err := directory.CreateTemporaryFile(composedFileNamePrefix)
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to create test file")
+		return false, true, fmt.Errorf("unable to create test file: %w", err)
 	} else if err = file.Close(); err != nil {
-		return false, true, errors.Wrap(err, "unable to close test file")
+		return false, true, fmt.Errorf("unable to close test file: %w", err)
 	}
 
 	// The name returned from CreateTemporaryFile is calculated from the
@@ -148,7 +148,7 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	if runtime.GOOS == "linux" {
 		directoryForContentRead, err = directory.OpenDirectory(".")
 		if err != nil {
-			return false, true, errors.Wrap(err, "unable to re-open directory")
+			return false, true, fmt.Errorf("unable to re-open directory: %w", err)
 		}
 		defer directoryForContentRead.Close()
 	}
@@ -156,7 +156,7 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// Grab the content names in the directory.
 	names, err := directoryForContentRead.ReadContentNames()
 	if err != nil {
-		return false, true, errors.Wrap(err, "unable to read directory content names")
+		return false, true, fmt.Errorf("unable to read directory content names: %w", err)
 	}
 
 	// Loop through the names and see if we find a match for either the composed

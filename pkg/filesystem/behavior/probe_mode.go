@@ -1,7 +1,7 @@
 package behavior
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the probe mode is
@@ -23,7 +23,7 @@ func (m *ProbeMode) UnmarshalText(textBytes []byte) error {
 	case "assume":
 		*m = ProbeMode_ProbeModeAssume
 	default:
-		return errors.Errorf("unknown probe mode specification: %s", text)
+		return fmt.Errorf("unknown probe mode specification: %s", text)
 	}
 
 	// Success.

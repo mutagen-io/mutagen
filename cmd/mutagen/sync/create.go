@@ -2,11 +2,10 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -43,7 +42,7 @@ func loadAndValidateGlobalSynchronizationConfiguration(path string) (*synchroniz
 	// validate it.
 	configuration := yamlConfiguration.Synchronization.Defaults.Configuration()
 	if err := configuration.EnsureValid(false); err != nil {
-		return nil, errors.Wrap(err, "invalid configuration")
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Success.
@@ -66,7 +65,7 @@ func CreateWithSpecification(
 	)
 	if err != nil {
 		promptingCancel()
-		return "", errors.Wrap(err, "unable to initiate prompting")
+		return "", fmt.Errorf("unable to initiate prompting: %w", err)
 	}
 
 	// Perform the create operation, cancel prompting, and handle errors.
@@ -83,7 +82,7 @@ func CreateWithSpecification(
 		return "", grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		statusLinePrinter.BreakIfNonEmpty()
-		return "", errors.Wrap(err, "invalid create response received")
+		return "", fmt.Errorf("invalid create response received: %w", err)
 	}
 
 	// Success.
@@ -99,16 +98,16 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	}
 	alpha, err := url.Parse(arguments[0], url.Kind_Synchronization, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse alpha URL")
+		return fmt.Errorf("unable to parse alpha URL: %w", err)
 	}
 	beta, err := url.Parse(arguments[1], url.Kind_Synchronization, false)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse beta URL")
+		return fmt.Errorf("unable to parse beta URL: %w", err)
 	}
 
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
-		return errors.Wrap(err, "invalid session name")
+		return fmt.Errorf("invalid session name: %w", err)
 	}
 
 	// Parse, validate, and record labels.
@@ -124,9 +123,9 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			value = components[1]
 		}
 		if err := selection.EnsureLabelKeyValid(key); err != nil {
-			return errors.Wrap(err, "invalid label key")
+			return fmt.Errorf("invalid label key: %w", err)
 		} else if err := selection.EnsureLabelValueValid(value); err != nil {
-			return errors.Wrap(err, "invalid label value")
+			return fmt.Errorf("invalid label value: %w", err)
 		}
 		labels[key] = value
 	}
@@ -141,14 +140,14 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		// Compute the path to the global configuration file.
 		globalConfigurationPath, err := global.ConfigurationPath()
 		if err != nil {
-			return errors.Wrap(err, "unable to compute path to global configuration file")
+			return fmt.Errorf("unable to compute path to global configuration file: %w", err)
 		}
 
 		// Attempt to load the file. We allow it to not exist.
 		globalConfiguration, err := loadAndValidateGlobalSynchronizationConfiguration(globalConfigurationPath)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				return errors.Wrap(err, "unable to load global configuration")
+				return fmt.Errorf("unable to load global configuration: %w", err)
 			}
 		} else {
 			configuration = synchronization.MergeConfigurations(configuration, globalConfiguration)
@@ -159,7 +158,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// into our cumulative configuration.
 	if createConfiguration.configurationFile != "" {
 		if c, err := loadAndValidateGlobalSynchronizationConfiguration(createConfiguration.configurationFile); err != nil {
-			return errors.Wrap(err, "unable to load configuration file")
+			return fmt.Errorf("unable to load configuration file: %w", err)
 		} else {
 			configuration = synchronization.MergeConfigurations(configuration, c)
 		}
@@ -169,7 +168,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var synchronizationMode core.SynchronizationMode
 	if createConfiguration.synchronizationMode != "" {
 		if err := synchronizationMode.UnmarshalText([]byte(createConfiguration.synchronizationMode)); err != nil {
-			return errors.Wrap(err, "unable to parse synchronization mode")
+			return fmt.Errorf("unable to parse synchronization mode: %w", err)
 		}
 	}
 
@@ -180,7 +179,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var maximumStagingFileSize uint64
 	if createConfiguration.maximumStagingFileSize != "" {
 		if s, err := humanize.ParseBytes(createConfiguration.maximumStagingFileSize); err != nil {
-			return errors.Wrap(err, "unable to parse maximum staging file size")
+			return fmt.Errorf("unable to parse maximum staging file size: %w", err)
 		} else {
 			maximumStagingFileSize = s
 		}
@@ -190,17 +189,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var probeMode, probeModeAlpha, probeModeBeta behavior.ProbeMode
 	if createConfiguration.probeMode != "" {
 		if err := probeMode.UnmarshalText([]byte(createConfiguration.probeMode)); err != nil {
-			return errors.Wrap(err, "unable to parse probe mode")
+			return fmt.Errorf("unable to parse probe mode: %w", err)
 		}
 	}
 	if createConfiguration.probeModeAlpha != "" {
 		if err := probeModeAlpha.UnmarshalText([]byte(createConfiguration.probeModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse probe mode for alpha")
+			return fmt.Errorf("unable to parse probe mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.probeModeBeta != "" {
 		if err := probeModeBeta.UnmarshalText([]byte(createConfiguration.probeModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse probe mode for beta")
+			return fmt.Errorf("unable to parse probe mode for beta: %w", err)
 		}
 	}
 
@@ -208,17 +207,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var scanMode, scanModeAlpha, scanModeBeta synchronization.ScanMode
 	if createConfiguration.scanMode != "" {
 		if err := scanMode.UnmarshalText([]byte(createConfiguration.scanMode)); err != nil {
-			return errors.Wrap(err, "unable to parse scan mode")
+			return fmt.Errorf("unable to parse scan mode: %w", err)
 		}
 	}
 	if createConfiguration.scanModeAlpha != "" {
 		if err := scanModeAlpha.UnmarshalText([]byte(createConfiguration.scanModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse scan mode for alpha")
+			return fmt.Errorf("unable to parse scan mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.scanModeBeta != "" {
 		if err := scanModeBeta.UnmarshalText([]byte(createConfiguration.scanModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse scan mode for beta")
+			return fmt.Errorf("unable to parse scan mode for beta: %w", err)
 		}
 	}
 
@@ -226,17 +225,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var stageMode, stageModeAlpha, stageModeBeta synchronization.StageMode
 	if createConfiguration.stageMode != "" {
 		if err := stageMode.UnmarshalText([]byte(createConfiguration.stageMode)); err != nil {
-			return errors.Wrap(err, "unable to parse staging mode")
+			return fmt.Errorf("unable to parse staging mode: %w", err)
 		}
 	}
 	if createConfiguration.stageModeAlpha != "" {
 		if err := stageModeAlpha.UnmarshalText([]byte(createConfiguration.stageModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse staging mode for alpha")
+			return fmt.Errorf("unable to parse staging mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.stageModeBeta != "" {
 		if err := stageModeBeta.UnmarshalText([]byte(createConfiguration.stageModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse staging mode for beta")
+			return fmt.Errorf("unable to parse staging mode for beta: %w", err)
 		}
 	}
 
@@ -244,7 +243,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var symbolicLinkMode core.SymbolicLinkMode
 	if createConfiguration.symbolicLinkMode != "" {
 		if err := symbolicLinkMode.UnmarshalText([]byte(createConfiguration.symbolicLinkMode)); err != nil {
-			return errors.Wrap(err, "unable to parse symbolic link mode")
+			return fmt.Errorf("unable to parse symbolic link mode: %w", err)
 		}
 	}
 
@@ -252,17 +251,17 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var watchMode, watchModeAlpha, watchModeBeta synchronization.WatchMode
 	if createConfiguration.watchMode != "" {
 		if err := watchMode.UnmarshalText([]byte(createConfiguration.watchMode)); err != nil {
-			return errors.Wrap(err, "unable to parse watch mode")
+			return fmt.Errorf("unable to parse watch mode: %w", err)
 		}
 	}
 	if createConfiguration.watchModeAlpha != "" {
 		if err := watchModeAlpha.UnmarshalText([]byte(createConfiguration.watchModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse watch mode for alpha")
+			return fmt.Errorf("unable to parse watch mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.watchModeBeta != "" {
 		if err := watchModeBeta.UnmarshalText([]byte(createConfiguration.watchModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse watch mode for beta")
+			return fmt.Errorf("unable to parse watch mode for beta: %w", err)
 		}
 	}
 
@@ -272,7 +271,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// Validate ignore specifications.
 	for _, ignore := range createConfiguration.ignores {
 		if !core.ValidIgnorePattern(ignore) {
-			return errors.Errorf("invalid ignore pattern: %s", ignore)
+			return fmt.Errorf("invalid ignore pattern: %s", ignore)
 		}
 	}
 
@@ -290,23 +289,23 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var defaultFileMode, defaultFileModeAlpha, defaultFileModeBeta filesystem.Mode
 	if createConfiguration.defaultFileMode != "" {
 		if err := defaultFileMode.UnmarshalText([]byte(createConfiguration.defaultFileMode)); err != nil {
-			return errors.Wrap(err, "unable to parse default file mode")
+			return fmt.Errorf("unable to parse default file mode: %w", err)
 		} else if err = core.EnsureDefaultFileModeValid(defaultFileMode); err != nil {
-			return errors.Wrap(err, "invalid default file mode")
+			return fmt.Errorf("invalid default file mode: %w", err)
 		}
 	}
 	if createConfiguration.defaultFileModeAlpha != "" {
 		if err := defaultFileModeAlpha.UnmarshalText([]byte(createConfiguration.defaultFileModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse default file mode for alpha")
+			return fmt.Errorf("unable to parse default file mode for alpha: %w", err)
 		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeAlpha); err != nil {
-			return errors.Wrap(err, "invalid default file mode for alpha")
+			return fmt.Errorf("invalid default file mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.defaultFileModeBeta != "" {
 		if err := defaultFileModeBeta.UnmarshalText([]byte(createConfiguration.defaultFileModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse default file mode for beta")
+			return fmt.Errorf("unable to parse default file mode for beta: %w", err)
 		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeBeta); err != nil {
-			return errors.Wrap(err, "invalid default file mode for beta")
+			return fmt.Errorf("invalid default file mode for beta: %w", err)
 		}
 	}
 
@@ -314,23 +313,23 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	var defaultDirectoryMode, defaultDirectoryModeAlpha, defaultDirectoryModeBeta filesystem.Mode
 	if createConfiguration.defaultDirectoryMode != "" {
 		if err := defaultDirectoryMode.UnmarshalText([]byte(createConfiguration.defaultDirectoryMode)); err != nil {
-			return errors.Wrap(err, "unable to parse default directory mode")
+			return fmt.Errorf("unable to parse default directory mode: %w", err)
 		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryMode); err != nil {
-			return errors.Wrap(err, "invalid default directory mode")
+			return fmt.Errorf("invalid default directory mode: %w", err)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeAlpha != "" {
 		if err := defaultDirectoryModeAlpha.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeAlpha)); err != nil {
-			return errors.Wrap(err, "unable to parse default directory mode for alpha")
+			return fmt.Errorf("unable to parse default directory mode for alpha: %w", err)
 		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeAlpha); err != nil {
-			return errors.Wrap(err, "invalid default directory mode for alpha")
+			return fmt.Errorf("invalid default directory mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeBeta != "" {
 		if err := defaultDirectoryModeBeta.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeBeta)); err != nil {
-			return errors.Wrap(err, "unable to parse default directory mode for beta")
+			return fmt.Errorf("unable to parse default directory mode for beta: %w", err)
 		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeBeta); err != nil {
-			return errors.Wrap(err, "invalid default directory mode for beta")
+			return fmt.Errorf("invalid default directory mode for beta: %w", err)
 		}
 	}
 
@@ -435,7 +434,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

@@ -2,8 +2,8 @@ package local
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
@@ -45,7 +45,7 @@ func (p *protocolHandler) Connect(
 	// Parse the target specification from the URL's Path component.
 	protocol, address, err := forwardingurl.Parse(url.Path)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse target specification")
+		return nil, fmt.Errorf("unable to parse target specification: %w", err)
 	}
 
 	// Handle creation based on mode.

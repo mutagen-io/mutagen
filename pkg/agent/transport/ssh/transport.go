@@ -2,12 +2,11 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transport"
@@ -95,7 +94,7 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 	// Create the process.
 	scpCommand, err := ssh.SCPCommand(context.Background(), scpArguments...)
 	if err != nil {
-		return errors.Wrap(err, "unable to set up SCP invocation")
+		return fmt.Errorf("unable to set up SCP invocation: %w", err)
 	}
 
 	// Set the working directory.
@@ -113,7 +112,7 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 	// Set prompting environment variables
 	environment, err = SetPrompterVariables(environment, t.prompter)
 	if err != nil {
-		return errors.Wrap(err, "unable to create prompter environment")
+		return fmt.Errorf("unable to create prompter environment: %w", err)
 	}
 
 	// Set the environment.
@@ -121,7 +120,7 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 
 	// Run the operation.
 	if err = scpCommand.Run(); err != nil {
-		return errors.Wrap(err, "unable to run SCP process")
+		return fmt.Errorf("unable to run SCP process: %w", err)
 	}
 
 	// Success.
@@ -151,7 +150,7 @@ func (t *sshTransport) Command(command string) (*exec.Cmd, error) {
 	// Create the process.
 	sshCommand, err := ssh.SSHCommand(context.Background(), sshArguments...)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to set up SSH invocation")
+		return nil, fmt.Errorf("unable to set up SSH invocation: %w", err)
 	}
 
 	// Force it to run detached.
@@ -166,7 +165,7 @@ func (t *sshTransport) Command(command string) (*exec.Cmd, error) {
 	// Set prompting environment variables
 	environment, err = SetPrompterVariables(environment, t.prompter)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create prompter environment")
+		return nil, fmt.Errorf("unable to create prompter environment: %w", err)
 	}
 
 	// Set the environment.

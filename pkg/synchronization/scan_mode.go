@@ -1,7 +1,7 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the scan mode is ScanMode_ScanModeDefault.
@@ -22,7 +22,7 @@ func (m *ScanMode) UnmarshalText(textBytes []byte) error {
 	case "accelerated":
 		*m = ScanMode_ScanModeAccelerated
 	default:
-		return errors.Errorf("unknown scan mode specification: %s", text)
+		return fmt.Errorf("unknown scan mode specification: %s", text)
 	}
 
 	// Success.

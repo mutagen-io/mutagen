@@ -2,9 +2,9 @@ package watching
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/golang/groupcache/lru"
 
@@ -116,7 +116,7 @@ func NewNonRecursiveMRUWatcher(events chan string, maximumWatches int) (*NonRecu
 		} else {
 			if err := watcher.Unwatch(path); err != nil {
 				select {
-				case watchErrors <- errors.Wrap(err, "unwatch error"):
+				case watchErrors <- fmt.Errorf("unwatch error: %w", err):
 				default:
 				}
 			}

@@ -2,10 +2,9 @@ package encoding
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 // testMessageJSON is a test structure to use for encoding tests using JSON.

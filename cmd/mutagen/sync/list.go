@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
@@ -174,7 +172,7 @@ func ListWithSelection(
 	if err != nil {
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid list response received")
+		return fmt.Errorf("invalid list response received: %w", err)
 	}
 
 	// Handle output based on whether or not any sessions were returned.
@@ -217,13 +215,13 @@ func listMain(_ *cobra.Command, arguments []string) error {
 		LabelSelector:  listConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
+		return fmt.Errorf("invalid session selection specification: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

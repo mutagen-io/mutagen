@@ -1,7 +1,7 @@
 package url
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
@@ -14,7 +14,7 @@ func parseLocal(raw string, kind Kind) (*URL, error) {
 	// normalized.
 	if kind == Kind_Synchronization {
 		if normalized, err := filesystem.Normalize(raw); err != nil {
-			return nil, errors.Wrap(err, "unable to normalize path")
+			return nil, fmt.Errorf("unable to normalize path: %w", err)
 		} else {
 			raw = normalized
 		}
@@ -27,13 +27,13 @@ func parseLocal(raw string, kind Kind) (*URL, error) {
 		// Perform parsing.
 		protocol, address, err := forwarding.Parse(raw)
 		if err != nil {
-			return nil, errors.Wrap(err, "invalid forwarding endpoint URL")
+			return nil, fmt.Errorf("invalid forwarding endpoint URL: %w", err)
 		}
 
 		// Normalize and reformat the endpoint URL if necessary.
 		if protocol == "unix" {
 			if normalized, err := filesystem.Normalize(address); err != nil {
-				return nil, errors.Wrap(err, "unable to normalize socket path")
+				return nil, fmt.Errorf("unable to normalize socket path: %w", err)
 			} else {
 				raw = protocol + ":" + normalized
 			}

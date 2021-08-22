@@ -1,10 +1,10 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	userpkg "os/user"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
@@ -48,7 +48,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 
 			// Convert the retrieved SID to a string.
 			if s, err := windows.StringToSid(retrievedSID); err != nil {
-				return nil, errors.Wrap(err, "unable to convert SID string to object")
+				return nil, fmt.Errorf("unable to convert SID string to object: %w", err)
 			} else {
 				ownerSID = s
 			}
@@ -66,7 +66,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 
 			// Convert the retrieved SID to a string.
 			if s, err := windows.StringToSid(retrievedSID); err != nil {
-				return nil, errors.Wrap(err, "unable to convert SID string to object")
+				return nil, fmt.Errorf("unable to convert SID string to object: %w", err)
 			} else {
 				ownerSID = s
 			}
@@ -85,17 +85,17 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 			return nil, errors.New("POSIX IDs not supported on Windows systems")
 		case OwnershipIdentifierKindWindowsSID:
 			if groupObject, err := userpkg.LookupGroupId(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup group by ID")
+				return nil, fmt.Errorf("unable to lookup group by ID: %w", err)
 			} else if g, err := windows.StringToSid(groupObject.Gid); err != nil {
-				return nil, errors.Wrap(err, "unable to convert SID string to object")
+				return nil, fmt.Errorf("unable to convert SID string to object: %w", err)
 			} else {
 				groupSID = g
 			}
 		case OwnershipIdentifierKindName:
 			if groupObject, err := userpkg.LookupGroup(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup group by ID")
+				return nil, fmt.Errorf("unable to lookup group by ID: %w", err)
 			} else if g, err := windows.StringToSid(groupObject.Gid); err != nil {
-				return nil, errors.Wrap(err, "unable to convert SID string to object")
+				return nil, fmt.Errorf("unable to convert SID string to object: %w", err)
 			} else {
 				groupSID = g
 			}
@@ -141,7 +141,7 @@ func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode M
 			0,
 			0,
 		); err != nil {
-			return errors.Wrap(err, "unable to set ownership information")
+			return fmt.Errorf("unable to set ownership information: %w", err)
 		}
 	}
 
@@ -149,7 +149,7 @@ func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode M
 	mode = mode & ModePermissionsMask
 	if mode != 0 {
 		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
-			return errors.Wrap(err, "unable to set permission bits")
+			return fmt.Errorf("unable to set permission bits: %w", err)
 		}
 	}
 

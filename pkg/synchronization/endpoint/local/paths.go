@@ -2,10 +2,9 @@ package local
 
 import (
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -27,7 +26,7 @@ func pathForCache(session string, alpha bool) (string, error) {
 	// Compute/create the caches directory.
 	cachesDirectoryPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationCachesDirectoryName)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute/create caches directory")
+		return "", fmt.Errorf("unable to compute/create caches directory: %w", err)
 	}
 
 	// Compute the endpoint name.
@@ -52,7 +51,7 @@ func pathForMutagenStagingRoot(session string, alpha bool) (string, error) {
 	// directory in which staging roots are stored) and ensure that it exists.
 	stagingDataPath, err := filesystem.Mutagen(true, filesystem.MutagenSynchronizationStagingDirectoryName)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to create staging data directory")
+		return "", fmt.Errorf("unable to create staging data directory: %w", err)
 	}
 
 	// Compute the endpoint name.

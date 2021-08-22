@@ -1,11 +1,11 @@
 package process
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 )
 
 // FindCommand searches for a command with the specified name within the
@@ -26,7 +26,7 @@ func FindCommand(name string, paths []string) (string, error) {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return "", errors.Wrap(err, "unable to query file metadata")
+			return "", fmt.Errorf("unable to query file metadata: %w", err)
 		} else if metadata.Mode()&os.ModeType != 0 {
 			continue
 		} else {

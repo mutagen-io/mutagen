@@ -5,8 +5,6 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/pkg/errors"
-
 	"github.com/google/uuid"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -19,18 +17,18 @@ func Install() error {
 	// Compute the destination.
 	destination, err := installPath()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute agent destination")
+		return fmt.Errorf("unable to compute agent destination: %w", err)
 	}
 
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
 	if err != nil {
-		return errors.Wrap(err, "unable to determine executable path")
+		return fmt.Errorf("unable to determine executable path: %w", err)
 	}
 
 	// Relocate the current executable to the installation path.
 	if err = os.Rename(executablePath, destination); err != nil {
-		return errors.Wrap(err, "unable to relocate agent executable")
+		return fmt.Errorf("unable to relocate agent executable: %w", err)
 	}
 
 	// Success.
@@ -43,17 +41,17 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	// Detect the target platform.
 	goos, goarch, posix, err := probe(transport, prompter)
 	if err != nil {
-		return errors.Wrap(err, "unable to probe remote platform")
+		return fmt.Errorf("unable to probe remote platform: %w", err)
 	}
 
 	// Find the appropriate agent binary. Ensure that it's cleaned up when we're
 	// done with it.
 	if err := prompting.Message(prompter, "Extracting agent..."); err != nil {
-		return errors.Wrap(err, "unable to message prompter")
+		return fmt.Errorf("unable to message prompter: %w", err)
 	}
 	agentExecutable, err := ExecutableForPlatform(goos, goarch, "")
 	if err != nil {
-		return errors.Wrap(err, "unable to get agent for platform")
+		return fmt.Errorf("unable to get agent for platform: %w", err)
 	}
 	defer os.Remove(agentExecutable)
 
@@ -63,11 +61,11 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	// are handled separately below). For POSIX systems, we add a dot prefix to
 	// hide the executable.
 	if err := prompting.Message(prompter, "Copying agent..."); err != nil {
-		return errors.Wrap(err, "unable to message prompter")
+		return fmt.Errorf("unable to message prompter: %w", err)
 	}
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
-		return errors.Wrap(err, "unable to generate UUID for agent copying")
+		return fmt.Errorf("unable to generate UUID for agent copying: %w", err)
 	}
 	destination := BaseName + randomUUID.String()
 	if goos == "windows" {
@@ -77,7 +75,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 		destination = "." + destination
 	}
 	if err = transport.Copy(agentExecutable, destination); err != nil {
-		return errors.Wrap(err, "unable to copy agent binary")
+		return fmt.Errorf("unable to copy agent binary: %w", err)
 	}
 
 	// For cases where we're copying from a Windows system to a POSIX remote,
@@ -88,17 +86,17 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	// POSIX remotes, but a "chmod +x" there will just be a no-op.
 	if runtime.GOOS == "windows" && posix {
 		if err := prompting.Message(prompter, "Setting agent executability..."); err != nil {
-			return errors.Wrap(err, "unable to message prompter")
+			return fmt.Errorf("unable to message prompter: %w", err)
 		}
 		executabilityCommand := fmt.Sprintf("chmod +x %s", destination)
 		if err := run(transport, executabilityCommand); err != nil {
-			return errors.Wrap(err, "unable to set agent executability")
+			return fmt.Errorf("unable to set agent executability: %w", err)
 		}
 	}
 
 	// Invoke the remote installation.
 	if err := prompting.Message(prompter, "Installing agent..."); err != nil {
-		return errors.Wrap(err, "unable to message prompter")
+		return fmt.Errorf("unable to message prompter: %w", err)
 	}
 	var installCommand string
 	if posix {
@@ -107,7 +105,7 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 		installCommand = fmt.Sprintf("%s %s", destination, ModeInstall)
 	}
 	if err := run(transport, installCommand); err != nil {
-		return errors.Wrap(err, "unable to invoke agent installation")
+		return fmt.Errorf("unable to invoke agent installation: %w", err)
 	}
 
 	// Success.

@@ -1,10 +1,10 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // ErrUnsupportedOpenType indicates that the filesystem entry at the specified
@@ -94,7 +94,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, error) {
 
 		// Attempt to open the file.
 		if file, _, err := OpenFile(o.root, false); err != nil {
-			return nil, errors.Wrap(err, "unable to open root file")
+			return nil, fmt.Errorf("unable to open root file: %w", err)
 		} else {
 			return file, nil
 		}
@@ -108,7 +108,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, error) {
 	// If it's not already open, open the root directory.
 	if o.rootDirectory == nil {
 		if directory, _, err := OpenDirectory(o.root, false); err != nil {
-			return nil, errors.Wrap(err, "unable to open root directory")
+			return nil, fmt.Errorf("unable to open root directory: %w", err)
 		} else {
 			o.rootDirectory = directory
 		}
@@ -129,7 +129,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, error) {
 				for i := c; i < len(o.openParentNames); i++ {
 					// Attempt to close the directory.
 					if err := o.openParentDirectories[i].Close(); err != nil {
-						return nil, errors.Wrap(err, "unable to close previous parent directory")
+						return nil, fmt.Errorf("unable to close previous parent directory: %w", err)
 					}
 
 					// We nil-out successfully closed directories for two
@@ -145,7 +145,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, error) {
 
 		// Open the directory ourselves and add it to the parent stacks.
 		if directory, err := parent.OpenDirectory(component); err != nil {
-			return nil, errors.Wrap(err, "unable to open parent directory")
+			return nil, fmt.Errorf("unable to open parent directory: %w", err)
 		} else {
 			parent = directory
 			o.openParentNames = append(o.openParentNames, component)

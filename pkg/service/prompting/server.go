@@ -2,8 +2,8 @@ package prompting
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
@@ -25,20 +25,20 @@ func (s *Server) Host(stream Prompting_HostServer) error {
 	// Receive and validate the initial request.
 	request, err := stream.Recv()
 	if err != nil {
-		return errors.Wrap(err, "unable to receive initial request")
+		return fmt.Errorf("unable to receive initial request: %w", err)
 	} else if err = request.ensureValid(hostRequestModeInitial); err != nil {
-		return errors.Wrap(err, "received invalid initial request")
+		return fmt.Errorf("received invalid initial request: %w", err)
 	}
 
 	// Create a unique identifier for the prompter.
 	identifier, err := identifier.New(identifier.PrefixPrompter)
 	if err != nil {
-		return errors.Wrap(err, "unable to generate prompter identifier")
+		return fmt.Errorf("unable to generate prompter identifier: %w", err)
 	}
 
 	// Send the initial response.
 	if err := stream.Send(&HostResponse{Identifier: identifier}); err != nil {
-		return errors.Wrap(err, "unable to send initial response")
+		return fmt.Errorf("unable to send initial response: %w", err)
 	}
 
 	// Extract the request context.
@@ -52,7 +52,7 @@ func (s *Server) Host(stream Prompting_HostServer) error {
 
 	// Register the prompter.
 	if err := prompting.RegisterPrompterWithIdentifier(identifier, prompter); err != nil {
-		return errors.Wrap(err, "unable to register prompter")
+		return fmt.Errorf("unable to register prompter: %w", err)
 	}
 
 	// Wait for the request or connection to be terminated.
@@ -78,7 +78,7 @@ type asyncPromptResponse struct {
 func (s *Server) Prompt(ctx context.Context, request *PromptRequest) (*PromptResponse, error) {
 	// Validate the request.
 	if err := request.ensureValid(); err != nil {
-		return nil, errors.Wrap(err, "invalid prompt request")
+		return nil, fmt.Errorf("invalid prompt request: %w", err)
 	}
 
 	// Perform prompting from the global registry asynchronously.
@@ -95,7 +95,7 @@ func (s *Server) Prompt(ctx context.Context, request *PromptRequest) (*PromptRes
 		return nil, errors.New("prompting cancelled while waiting for response")
 	case r := <-asyncResponse:
 		if r.error != nil {
-			return nil, errors.Wrap(r.error, "unable to prompt")
+			return nil, fmt.Errorf("unable to prompt: %w", r.error)
 		} else {
 			return &PromptResponse{Response: r.response}, nil
 		}

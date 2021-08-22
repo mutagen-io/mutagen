@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/user"
 
-	"github.com/pkg/errors"
-
 	"github.com/google/uuid"
 
 	"github.com/Microsoft/go-winio"
@@ -20,7 +18,7 @@ func DialContext(context context.Context, path string) (net.Conn, error) {
 	// Read the pipe name.
 	pipeNameBytes, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read pipe name")
+		return nil, fmt.Errorf("unable to read pipe name: %w", err)
 	}
 	pipeName := string(pipeNameBytes)
 
@@ -42,7 +40,7 @@ func (l *listener) Close() error {
 	// Remove the pipe name record.
 	if err := os.Remove(l.path); err != nil {
 		l.Listener.Close()
-		return errors.Wrap(err, "unable to remove pipe name record")
+		return fmt.Errorf("unable to remove pipe name record: %w", err)
 	}
 
 	// Close the underlying listener.
@@ -54,14 +52,14 @@ func NewListener(path string) (net.Listener, error) {
 	// Create a unique pipe name.
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate UUID for named pipe")
+		return nil, fmt.Errorf("unable to generate UUID for named pipe: %w", err)
 	}
 	pipeName := fmt.Sprintf(`\\.\pipe\mutagen-ipc-%s`, randomUUID.String())
 
 	// Compute the SID of the user.
 	user, err := user.Current()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to look up current user")
+		return nil, fmt.Errorf("unable to look up current user: %w", err)
 	}
 	sid := user.Uid
 
@@ -91,7 +89,7 @@ func NewListener(path string) (net.Listener, error) {
 		if os.IsExist(err) {
 			return nil, err
 		}
-		return nil, errors.Wrap(err, "unable to open endpoint")
+		return nil, fmt.Errorf("unable to open endpoint: %w", err)
 	}
 
 	// Defer closure of the endpoint file when we're done, along with removal in
@@ -114,7 +112,7 @@ func NewListener(path string) (net.Listener, error) {
 	// partially written, but MoveFileEx isn't guaranteed to be atomic either,
 	// so renaming a file into place here doesn't help much.
 	if _, err := file.Write([]byte(pipeName)); err != nil {
-		return nil, errors.Wrap(err, "unable to write pipe name")
+		return nil, fmt.Errorf("unable to write pipe name: %w", err)
 	}
 
 	// Mark ourselves as successful.

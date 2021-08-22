@@ -2,8 +2,7 @@ package forward
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -33,7 +32,7 @@ func ResumeWithSelection(
 	)
 	if err != nil {
 		promptingCancel()
-		return errors.Wrap(err, "unable to initiate prompting")
+		return fmt.Errorf("unable to initiate prompting: %w", err)
 	}
 
 	// Perform the resume operation, cancel prompting, and handle errors.
@@ -50,7 +49,7 @@ func ResumeWithSelection(
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		statusLinePrinter.BreakIfNonEmpty()
-		return errors.Wrap(err, "invalid resume response received")
+		return fmt.Errorf("invalid resume response received: %w", err)
 	}
 
 	// Success.
@@ -67,13 +66,13 @@ func resumeMain(_ *cobra.Command, arguments []string) error {
 		LabelSelector:  resumeConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
+		return fmt.Errorf("invalid session selection specification: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

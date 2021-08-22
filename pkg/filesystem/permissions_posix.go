@@ -3,11 +3,11 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	userpkg "os/user"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 // OwnershipSpecification is an opaque type that encodes specification of file
@@ -36,7 +36,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 			return nil, errors.New("invalid user specification")
 		case OwnershipIdentifierKindPOSIXID:
 			if u, err := strconv.Atoi(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
+				return nil, fmt.Errorf("unable to convert user ID to numeric value: %w", err)
 			} else if u < 0 {
 				return nil, errors.New("negative user ID")
 			} else {
@@ -46,9 +46,9 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 			return nil, errors.New("Windows SIDs not supported on POSIX systems")
 		case OwnershipIdentifierKindName:
 			if userObject, err := userpkg.Lookup(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup user by ID")
+				return nil, fmt.Errorf("unable to lookup user by ID: %w", err)
 			} else if u, err := strconv.Atoi(userObject.Uid); err != nil {
-				return nil, errors.Wrap(err, "unable to convert user ID to numeric value")
+				return nil, fmt.Errorf("unable to convert user ID to numeric value: %w", err)
 			} else if u < 0 {
 				return nil, errors.New("negative user ID retrieved")
 			} else {
@@ -67,7 +67,7 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 			return nil, errors.New("invalid group specification")
 		case OwnershipIdentifierKindPOSIXID:
 			if g, err := strconv.Atoi(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
+				return nil, fmt.Errorf("unable to convert group ID to numeric value: %w", err)
 			} else if g < 0 {
 				return nil, errors.New("negative group ID")
 			} else {
@@ -77,9 +77,9 @@ func NewOwnershipSpecification(owner, group string) (*OwnershipSpecification, er
 			return nil, errors.New("Windows SIDs not supported on POSIX systems")
 		case OwnershipIdentifierKindName:
 			if groupObject, err := userpkg.LookupGroup(identifier); err != nil {
-				return nil, errors.Wrap(err, "unable to lookup group by ID")
+				return nil, fmt.Errorf("unable to lookup group by ID: %w", err)
 			} else if g, err := strconv.Atoi(groupObject.Gid); err != nil {
-				return nil, errors.Wrap(err, "unable to convert group ID to numeric value")
+				return nil, fmt.Errorf("unable to convert group ID to numeric value: %w", err)
 			} else if g < 0 {
 				return nil, errors.New("negative group ID retrieved")
 			} else {
@@ -109,7 +109,7 @@ func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode M
 	// Set ownership information, if specified.
 	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
 		if err := os.Chown(path, ownership.ownerID, ownership.groupID); err != nil {
-			return errors.Wrap(err, "unable to set ownership information")
+			return fmt.Errorf("unable to set ownership information: %w", err)
 		}
 	}
 
@@ -117,7 +117,7 @@ func SetPermissionsByPath(path string, ownership *OwnershipSpecification, mode M
 	mode = mode & ModePermissionsMask
 	if mode != 0 {
 		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
-			return errors.Wrap(err, "unable to set permission bits")
+			return fmt.Errorf("unable to set permission bits: %w", err)
 		}
 	}
 

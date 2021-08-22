@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 )
@@ -18,13 +18,13 @@ func AcquireLock() (*Lock, error) {
 	// Compute the lock path.
 	lockPath, err := subpath(lockName)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute daemon lock path")
+		return nil, fmt.Errorf("unable to compute daemon lock path: %w", err)
 	}
 
 	// Create the locker and attempt to acquire the lock.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create daemon file locker")
+		return nil, fmt.Errorf("unable to create daemon file locker: %w", err)
 	} else if err = locker.Lock(false); err != nil {
 		locker.Close()
 		return nil, err
@@ -46,7 +46,7 @@ func (l *Lock) Release() error {
 
 	// Close the locker.
 	if err := l.locker.Close(); err != nil {
-		errors.Wrap(err, "unable to close locker")
+		fmt.Errorf("unable to close locker: %w", err)
 	}
 
 	// Success.

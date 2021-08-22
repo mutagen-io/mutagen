@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -28,14 +26,14 @@ func Register() error {
 	// when we're done.
 	key, err := registry.OpenKey(rootKey, runPath, registry.SET_VALUE)
 	if err != nil {
-		return errors.Wrap(err, "unable to open registry path")
+		return fmt.Errorf("unable to open registry path: %w", err)
 	}
 	defer key.Close()
 
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
 	if err != nil {
-		return errors.Wrap(err, "unable to determine executable path")
+		return fmt.Errorf("unable to determine executable path: %w", err)
 	}
 
 	// Compute the command to start the Mutagen daemon.
@@ -43,7 +41,7 @@ func Register() error {
 
 	// Attempt to register the daemon.
 	if err := key.SetStringValue(runKeyName, command); err != nil {
-		return errors.Wrap(err, "unable to set registry key")
+		return fmt.Errorf("unable to set registry key: %w", err)
 	}
 
 	// Success.
@@ -56,13 +54,13 @@ func Unregister() error {
 	// when we're done.
 	key, err := registry.OpenKey(rootKey, runPath, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
-		return errors.Wrap(err, "unable to open registry path")
+		return fmt.Errorf("unable to open registry path: %w", err)
 	}
 	defer key.Close()
 
 	// Attempt to deregister the daemon.
 	if err := key.DeleteValue(runKeyName); err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "unable to remove registry key")
+		return fmt.Errorf("unable to remove registry key: %w", err)
 	}
 
 	// Success.

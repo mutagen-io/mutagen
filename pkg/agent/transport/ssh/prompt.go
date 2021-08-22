@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
@@ -32,7 +30,7 @@ func SetPrompterVariables(environment []string, prompter string) ([]string, erro
 		// Compute the path to the current (mutagen) executable and store it in
 		// the SSH_ASKPASS variable.
 		if mutagenPath, err := os.Executable(); err != nil {
-			return nil, errors.Wrap(err, "unable to determine executable path")
+			return nil, fmt.Errorf("unable to determine executable path: %w", err)
 		} else {
 			environment = append(environment, fmt.Sprintf("SSH_ASKPASS=%s", mutagenPath))
 		}

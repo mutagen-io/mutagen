@@ -1,7 +1,7 @@
 package url
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // Parse parses a raw URL string into a URL type. It accepts information about

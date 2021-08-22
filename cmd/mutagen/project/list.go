@@ -2,12 +2,11 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -35,7 +34,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 		directory, configurationFileName = filepath.Split(listConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
-				return errors.Wrap(err, "unable to switch to target directory")
+				return fmt.Errorf("unable to switch to target directory: %w", err)
 			}
 		}
 	}
@@ -50,7 +49,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return errors.Wrap(err, "unable to create project locker")
+		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
 		locker.Close()
@@ -67,7 +66,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// lock file before we manage to remove it will simply see an empty lock
 	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
-		return errors.Wrap(err, "unable to acquire project lock")
+		return fmt.Errorf("unable to acquire project lock: %w", err)
 	}
 	defer func() {
 		if removeLockFileOnReturn {
@@ -85,7 +84,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// just remove it.
 	buffer := &bytes.Buffer{}
 	if length, err := buffer.ReadFrom(locker); err != nil {
-		return errors.Wrap(err, "unable to read project lock")
+		return fmt.Errorf("unable to read project lock: %w", err)
 	} else if length == 0 {
 		removeLockFileOnReturn = true
 		return errors.New("project not running")
@@ -100,7 +99,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 
@@ -112,7 +111,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// List forwarding sessions.
 	fmt.Println("Forwarding sessions:")
 	if err := forward.ListWithSelection(daemonConnection, selection, listConfiguration.long); err != nil {
-		return errors.Wrap(err, "unable to list forwarding session(s)")
+		return fmt.Errorf("unable to list forwarding session(s): %w", err)
 	}
 
 	// Print an empty line.
@@ -121,7 +120,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 	// List synchronization sessions.
 	fmt.Println("Synchronization sessions:")
 	if err := sync.ListWithSelection(daemonConnection, selection, listConfiguration.long); err != nil {
-		return errors.Wrap(err, "unable to list synchronization session(s)")
+		return fmt.Errorf("unable to list synchronization session(s): %w", err)
 	}
 
 	// Success.

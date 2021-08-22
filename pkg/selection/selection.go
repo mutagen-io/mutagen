@@ -1,7 +1,7 @@
 package selection
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // EnsureValid verifies that a Selection is valid.

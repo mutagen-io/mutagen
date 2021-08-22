@@ -1,10 +1,9 @@
 package selection
 
 import (
+	"errors"
 	"sort"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	k8svalidation "k8s.io/apimachinery/pkg/util/validation"

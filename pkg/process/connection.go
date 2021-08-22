@@ -1,6 +1,8 @@
 package process
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os/exec"
@@ -8,8 +10,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // address implements net.Addr for connection.
@@ -57,13 +57,13 @@ func NewConnection(process *exec.Cmd, killDelay time.Duration) (*Connection, err
 	// Redirect the process' standard input.
 	standardInput, err := process.StdinPipe()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to redirect process input")
+		return nil, fmt.Errorf("unable to redirect process input: %w", err)
 	}
 
 	// Redirect the process' standard output.
 	standardOutput, err := process.StdoutPipe()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to redirect process output")
+		return nil, fmt.Errorf("unable to redirect process output: %w", err)
 	}
 
 	// Create the result.
@@ -136,7 +136,7 @@ func (c *Connection) Close() error {
 	// Wait, up to the specified duration, for the process to exit on its own.
 	select {
 	case err := <-waitResults:
-		return errors.Wrap(err, "process wait failed")
+		return fmt.Errorf("process wait failed: %w", err)
 	case <-time.After(killDelay):
 	}
 
@@ -173,7 +173,7 @@ func (c *Connection) Close() error {
 
 	// Wait for the wait operation to complete.
 	if err := <-waitResults; err != nil {
-		errors.Wrap(err, "process wait failed")
+		fmt.Errorf("process wait failed: %w", err)
 	}
 
 	// Success.

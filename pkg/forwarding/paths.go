@@ -1,9 +1,8 @@
 package forwarding
 
 import (
+	"fmt"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -25,7 +24,7 @@ func pathForSession(sessionIdentifier string) (string, error) {
 		sessionsDirectoryName,
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute/create sessions directory")
+		return "", fmt.Errorf("unable to compute/create sessions directory: %w", err)
 	}
 
 	// Success.

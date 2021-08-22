@@ -1,9 +1,9 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -36,7 +36,7 @@ const (
 // empty.
 func parseMode(value string, mask Mode) (Mode, error) {
 	if m, err := strconv.ParseUint(value, 8, 32); err != nil {
-		return 0, errors.Wrap(err, "unable to parse numeric value")
+		return 0, fmt.Errorf("unable to parse numeric value: %w", err)
 	} else if mode := Mode(m); mode&mask != mode {
 		return 0, errors.New("mode contains disallowed bits")
 	} else {

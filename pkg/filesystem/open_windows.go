@@ -1,11 +1,11 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
@@ -37,7 +37,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "unable to convert path to UTF-16")
+		return nil, nil, fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
 	// Open the path in a manner that is suitable for reading, doesn't allow for
@@ -61,14 +61,14 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		if os.IsNotExist(err) {
 			return nil, nil, err
 		}
-		return nil, nil, errors.Wrap(err, "unable to open path")
+		return nil, nil, fmt.Errorf("unable to open path: %w", err)
 	}
 
 	// Query file handle metadata.
 	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
 	if err != nil {
 		windows.CloseHandle(handle)
-		return nil, nil, errors.Wrap(err, "unable to query file handle metadata")
+		return nil, nil, fmt.Errorf("unable to query file handle metadata: %w", err)
 	}
 
 	// Verify that we're not dealing with a symbolic link. If we are allowing
@@ -84,7 +84,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		file, err = os.Open(path)
 		if err != nil {
 			windows.CloseHandle(handle)
-			return nil, nil, errors.Wrap(err, "unable to open file object for directory")
+			return nil, nil, fmt.Errorf("unable to open file object for directory: %w", err)
 		}
 	} else {
 		file = os.NewFile(uintptr(handle), path)
@@ -103,7 +103,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 			windows.CloseHandle(handle)
 		}
 		file.Close()
-		return nil, nil, errors.Wrap(err, "unable to query file metadata")
+		return nil, nil, fmt.Errorf("unable to query file metadata: %w", err)
 	}
 
 	// Convert metadata.

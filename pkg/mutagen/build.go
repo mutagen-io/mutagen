@@ -1,10 +1,9 @@
 package mutagen
 
 import (
+	"errors"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 )
 
 const (

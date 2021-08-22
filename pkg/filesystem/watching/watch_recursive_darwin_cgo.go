@@ -4,11 +4,11 @@ package watching
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/fsevents"
 )
@@ -65,7 +65,7 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	// that calling filepath.EvalSymlinks has the side-effect of enforcing that
 	// the target exists.
 	if t, err := filepath.EvalSymlinks(target); err != nil {
-		return errors.Wrap(err, "unable to resolve symbolic links for watch target")
+		return fmt.Errorf("unable to resolve symbolic links for watch target: %w", err)
 	} else {
 		target = t
 	}

@@ -3,9 +3,9 @@ package rsync
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -342,7 +342,7 @@ func (r *monitoringReceiver) Receive(transmission *Transmission) error {
 			Total:    r.total,
 		}
 		if err := r.monitor(status); err != nil {
-			return errors.Wrap(err, "unable to send receiving status")
+			return fmt.Errorf("unable to send receiving status: %w", err)
 		}
 	}
 
@@ -434,7 +434,7 @@ func NewEncodingReceiver(encoder Encoder) Receiver {
 
 // Receive encodes the specified transmission using the underlying encoder.
 func (r *encodingReceiver) Receive(transmission *Transmission) error {
-	return errors.Wrap(r.encoder.Encode(transmission), "unable to encode transmission")
+	return fmt.Errorf("unable to encode transmission: %w", r.encoder.Encode(transmission))
 }
 
 // finalize finalizes the encoding receiver, which means that it calls Finalize
@@ -450,7 +450,7 @@ func (r *encodingReceiver) finalize() error {
 
 	// Finalize the encoder.
 	if err := r.encoder.Finalize(); err != nil {
-		return errors.Wrap(err, "unable to finalize encoder")
+		return fmt.Errorf("unable to finalize encoder: %w", err)
 	}
 
 	// Success.
@@ -491,21 +491,21 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 			if err := decoder.Decode(transmission); err != nil {
 				decoder.Finalize()
 				receiver.finalize()
-				return errors.Wrap(err, "unable to decode transmission")
+				return fmt.Errorf("unable to decode transmission: %w", err)
 			}
 
 			// Validate the transmission.
 			if err := transmission.EnsureValid(); err != nil {
 				decoder.Finalize()
 				receiver.finalize()
-				return errors.Wrap(err, "invalid transmission received")
+				return fmt.Errorf("invalid transmission received: %w", err)
 			}
 
 			// Forward the message.
 			if err := receiver.Receive(transmission); err != nil {
 				decoder.Finalize()
 				receiver.finalize()
-				return errors.Wrap(err, "unable to forward message to receiver")
+				return fmt.Errorf("unable to forward message to receiver: %w", err)
 			}
 
 			// If the message indicates completion, we're done receiving
@@ -522,12 +522,12 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 	// Ensure that the decoder is finalized.
 	if err := decoder.Finalize(); err != nil {
 		receiver.finalize()
-		return errors.Wrap(err, "unable to finalize decoder")
+		return fmt.Errorf("unable to finalize decoder: %w", err)
 	}
 
 	// Ensure that the receiver is finalized.
 	if err := receiver.finalize(); err != nil {
-		return errors.Wrap(err, "unable to finalize receiver")
+		return fmt.Errorf("unable to finalize receiver: %w", err)
 	}
 
 	// Done.

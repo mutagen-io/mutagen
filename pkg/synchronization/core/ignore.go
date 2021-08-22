@@ -1,10 +1,10 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	pathpkg "path"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -68,7 +68,7 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 	// match against a non-empty path (we choose something simple), otherwise
 	// bad pattern errors won't be detected.
 	if _, err := doublestar.Match(pattern, "a"); err != nil {
-		return nil, errors.Wrap(err, "unable to validate pattern")
+		return nil, fmt.Errorf("unable to validate pattern: %w", err)
 	}
 
 	// Success.
@@ -129,7 +129,7 @@ func newIgnorer(patterns []string) (*ignorer, error) {
 	ignorePatterns := make([]*ignorePattern, len(patterns))
 	for i, p := range patterns {
 		if ip, err := newIgnorePattern(p); err != nil {
-			return nil, errors.Wrap(err, "unable to parse pattern")
+			return nil, fmt.Errorf("unable to parse pattern: %w", err)
 		} else {
 			ignorePatterns[i] = ip
 		}

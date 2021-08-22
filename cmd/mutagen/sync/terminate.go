@@ -2,8 +2,7 @@ package sync
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -34,7 +33,7 @@ func TerminateWithSelection(
 	)
 	if err != nil {
 		promptingCancel()
-		return errors.Wrap(err, "unable to initiate prompting")
+		return fmt.Errorf("unable to initiate prompting: %w", err)
 	}
 
 	// Perform the terminate operation, cancel prompting, and handle errors.
@@ -51,7 +50,7 @@ func TerminateWithSelection(
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		statusLinePrinter.BreakIfNonEmpty()
-		return errors.Wrap(err, "invalid terminate response received")
+		return fmt.Errorf("invalid terminate response received: %w", err)
 	}
 
 	// Success.
@@ -68,13 +67,13 @@ func terminateMain(_ *cobra.Command, arguments []string) error {
 		LabelSelector:  terminateConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
+		return fmt.Errorf("invalid session selection specification: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

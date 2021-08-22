@@ -3,13 +3,13 @@ package core
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/text/unicode/norm"
 
@@ -103,7 +103,7 @@ func (t *transitioner) nameExistsInDirectoryWithProperCase(
 	// Grab the content names in the directory.
 	names, err := directory.ReadContentNames()
 	if err != nil {
-		return false, errors.Wrap(err, "unable to read directory contents")
+		return false, fmt.Errorf("unable to read directory contents: %w", err)
 	}
 
 	// Check if this path component exists in the contents. It's important
@@ -169,7 +169,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// since we allow symbolic link resolution for parent components of the
 		// synchronization root (just not at the synchronization root itself).
 		if rootParent, _, err := filesystem.OpenDirectory(rootParentPath, true); err != nil {
-			return nil, "", errors.Wrap(err, "unable to open synchronization root parent directory")
+			return nil, "", fmt.Errorf("unable to open synchronization root parent directory: %w", err)
 		} else {
 			return rootParent, rootName, nil
 		}
@@ -184,7 +184,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 	// valid.
 	parent, _, err := filesystem.OpenDirectory(t.root, false)
 	if err != nil {
-		return nil, "", errors.Wrap(err, "unable to open synchronization root")
+		return nil, "", fmt.Errorf("unable to open synchronization root: %w", err)
 	}
 
 	// Traverse through parent components, validating casing as we go and moving
@@ -193,7 +193,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// Verify that the next component exists with the proper casing.
 		if found, err := t.nameExistsInDirectoryWithProperCase(component, parent); err != nil {
 			parent.Close()
-			return nil, "", errors.Wrap(err, "unable to verify parent path casing")
+			return nil, "", fmt.Errorf("unable to verify parent path casing: %w", err)
 		} else if !found {
 			parent.Close()
 			return nil, "", errors.New("parent path does not exist or has incorrect casing")
@@ -214,7 +214,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// Open the next directory.
 		if p, err := parent.OpenDirectory(component); err != nil {
 			parent.Close()
-			return nil, "", errors.Wrap(err, "unable to open parent component")
+			return nil, "", fmt.Errorf("unable to open parent component: %w", err)
 		} else {
 			parent.Close()
 			parent = p
@@ -226,7 +226,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 	if validateLeafCasing {
 		if found, err := t.nameExistsInDirectoryWithProperCase(leafName, parent); err != nil {
 			parent.Close()
-			return nil, "", errors.Wrap(err, "unable to verify path leaf name casing")
+			return nil, "", fmt.Errorf("unable to verify path leaf name casing: %w", err)
 		} else if !found {
 			parent.Close()
 			return nil, "", errors.New("leaf name does not exist or has incorrect casing")
@@ -253,7 +253,7 @@ func (t *transitioner) ensureExpectedFile(parent *filesystem.Directory, name, pa
 	// Grab metadata for this path.
 	metadata, err := parent.ReadContentMetadata(name)
 	if err != nil {
-		return errors.Wrap(err, "unable to grab file statistics")
+		return fmt.Errorf("unable to grab file statistics: %w", err)
 	}
 
 	// Instead of comparing directly against the expected entry, compare the
@@ -294,7 +294,7 @@ func (t *transitioner) ensureExpectedSymbolicLink(parent *filesystem.Directory, 
 	// Grab the link target.
 	target, err := parent.ReadSymbolicLink(name)
 	if err != nil {
-		return errors.Wrap(err, "unable to read symbolic link target")
+		return fmt.Errorf("unable to read symbolic link target: %w", err)
 	}
 
 	// If we're in portable symbolic link mode, then we need to normalize the
@@ -303,7 +303,7 @@ func (t *transitioner) ensureExpectedSymbolicLink(parent *filesystem.Directory, 
 	if t.symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePortable {
 		target, err = normalizeSymbolicLinkAndEnsurePortable(path, target)
 		if err != nil {
-			return errors.Wrap(err, "unable to normalize target in portable mode")
+			return fmt.Errorf("unable to normalize target in portable mode: %w", err)
 		}
 	}
 
@@ -322,7 +322,7 @@ func (t *transitioner) removeFile(parent *filesystem.Directory, name, path strin
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
 	if err := t.ensureExpectedFile(parent, name, path, expected); err != nil {
-		return errors.Wrap(err, "unable to validate existing file")
+		return fmt.Errorf("unable to validate existing file: %w", err)
 	}
 
 	// RACE: There is a race condition here between the file check and the file
@@ -345,7 +345,7 @@ func (t *transitioner) removeSymbolicLink(parent *filesystem.Directory, name, pa
 	// Ensure that the existing symbolic link hasn't been modified from what
 	// we're expecting.
 	if err := t.ensureExpectedSymbolicLink(parent, name, path, expected); err != nil {
-		return errors.Wrap(err, "unable to validate existing symbolic link")
+		return fmt.Errorf("unable to validate existing symbolic link: %w", err)
 	}
 
 	// RACE: There is a race condition here between the symbolic link check and
@@ -366,7 +366,7 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 	// to explicitly close it before being able to remove it.
 	directory, err := parent.OpenDirectory(name)
 	if err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to open directory"))
+		t.recordProblem(path, fmt.Errorf("unable to open directory: %w", err))
 		return false
 	}
 
@@ -374,7 +374,7 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 	contents, err := directory.ReadContents()
 	if err != nil {
 		directory.Close()
-		t.recordProblem(path, errors.Wrap(err, "unable to read directory contents"))
+		t.recordProblem(path, fmt.Errorf("unable to read directory contents: %w", err))
 		return false
 	}
 
@@ -429,13 +429,13 @@ ContentLoop:
 		} else if entry.Kind == EntryKind_File {
 			if err = t.removeFile(directory, contentName, contentPath, entry); err != nil {
 				contentRemovalFailed = true
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove file"))
+				t.recordProblem(contentPath, fmt.Errorf("unable to remove file: %w", err))
 				continue
 			}
 		} else if entry.Kind == EntryKind_SymbolicLink {
 			if err = t.removeSymbolicLink(directory, contentName, contentPath, entry); err != nil {
 				contentRemovalFailed = true
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to remove symbolic link"))
+				t.recordProblem(contentPath, fmt.Errorf("unable to remove symbolic link: %w", err))
 				continue
 			}
 		} else {
@@ -483,7 +483,7 @@ ContentLoop:
 	// the directory itself.
 	if !cancelled && !unknownContentEncountered && !contentRemovalFailed {
 		if err := parent.RemoveDirectory(name); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to remove directory"))
+			t.recordProblem(path, fmt.Errorf("unable to remove directory: %w", err))
 		} else {
 			return true
 		}
@@ -508,7 +508,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 	// If we are successful, defer closure of the parent.
 	parent, name, err := t.walkToParentAndComputeLeafName(path, true)
 	if err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root"))
+		t.recordProblem(path, fmt.Errorf("unable to walk to transition root: %w", err))
 		return entry
 	}
 	defer parent.Close()
@@ -524,12 +524,12 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 		}
 	} else if entry.Kind == EntryKind_File {
 		if err := t.removeFile(parent, name, path, entry); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to remove file"))
+			t.recordProblem(path, fmt.Errorf("unable to remove file: %w", err))
 			return entry
 		}
 	} else if entry.Kind == EntryKind_SymbolicLink {
 		if err := t.removeSymbolicLink(parent, name, path, entry); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to remove symbolic link"))
+			t.recordProblem(path, fmt.Errorf("unable to remove symbolic link: %w", err))
 			return entry
 		}
 	} else {
@@ -569,12 +569,12 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 		if os.IsNotExist(err) {
 			t.providerMissingFiles = true
 		}
-		return errors.Wrap(err, "unable to locate staged file")
+		return fmt.Errorf("unable to locate staged file: %w", err)
 	}
 
 	// Set permissions for the staged file.
 	if err := filesystem.SetPermissionsByPath(stagedPath, t.defaultOwnership, mode); err != nil {
-		return errors.Wrap(err, "unable to set staged file permissions")
+		return fmt.Errorf("unable to set staged file permissions: %w", err)
 	}
 
 	// Attempt to atomically rename the file. If we succeed, we're done.
@@ -586,7 +586,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// If the atomic rename failed, check if it was due to a cross-device
 	// rename. If not, then there's nothing else we can do.
 	if !filesystem.IsCrossDeviceError(renameErr) {
-		return errors.Wrap(renameErr, "unable to relocate staged file")
+		return fmt.Errorf("unable to relocate staged file: %w", renameErr)
 	}
 
 	// At this point, we know we're dealing with a cross-device rename, for
@@ -599,7 +599,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// platforms, notably Windows) if the file handle is open.
 	stagedFile, err := os.Open(stagedPath)
 	if err != nil {
-		return errors.Wrap(err, "unable to open staged file")
+		return fmt.Errorf("unable to open staged file: %w", err)
 	}
 
 	// Create a temporary file in the target directory. We can't defer its
@@ -609,7 +609,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	temporaryName, temporary, err := parent.CreateTemporaryFile(crossDeviceRenameTemporaryNamePrefix)
 	if err != nil {
 		stagedFile.Close()
-		return errors.Wrap(err, "unable to create temporary file for cross-device rename")
+		return fmt.Errorf("unable to create temporary file for cross-device rename: %w", err)
 	}
 
 	// Wrap the temporary file in a preemptable writer to enable cancellation.
@@ -632,19 +632,19 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 		if copyErr == stream.ErrWritePreempted {
 			return errTransitionCancelled
 		}
-		return errors.Wrap(copyErr, "unable to copy file contents")
+		return fmt.Errorf("unable to copy file contents: %w", copyErr)
 	}
 
 	// Set permissions on the temporary file.
 	if err := parent.SetPermissions(temporaryName, t.defaultOwnership, mode); err != nil {
 		parent.RemoveFile(temporaryName)
-		return errors.Wrap(err, "unable to set intermediate file permissions")
+		return fmt.Errorf("unable to set intermediate file permissions: %w", err)
 	}
 
 	// Rename the file.
 	if err := filesystem.Rename(parent, temporaryName, parent, name, replace); err != nil {
 		parent.RemoveFile(temporaryName)
-		return errors.Wrap(err, "unable to relocate intermediate file")
+		return fmt.Errorf("unable to relocate intermediate file: %w", err)
 	}
 
 	// Remove the staged file. We don't bother checking for errors because
@@ -662,14 +662,14 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	// If we are successful, defer closure of the parent.
 	parent, name, err := t.walkToParentAndComputeLeafName(path, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to walk to transition root")
+		return fmt.Errorf("unable to walk to transition root: %w", err)
 	}
 	defer parent.Close()
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
 	if err := t.ensureExpectedFile(parent, name, path, oldEntry); err != nil {
-		return errors.Wrap(err, "unable to validate existing file")
+		return fmt.Errorf("unable to validate existing file: %w", err)
 	}
 
 	// RACE: There is a race condition here between the file check and the file
@@ -696,7 +696,7 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 		// the transitioner, we could skip this call on systems where
 		// executability information is not preserved.
 		if err := parent.SetPermissions(name, t.defaultOwnership, mode); err != nil {
-			return errors.Wrap(err, "unable to change file permissions")
+			return fmt.Errorf("unable to change file permissions: %w", err)
 		}
 
 		// Success.
@@ -751,7 +751,7 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 		mode = 0
 	}
 	if err := parent.SetPermissions(name, t.defaultOwnership, mode); err != nil {
-		return errors.Wrap(err, "unable to set symbolic link permissions")
+		return fmt.Errorf("unable to set symbolic link permissions: %w", err)
 	}
 
 	// Success.
@@ -764,7 +764,7 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path string, target *Entry) *Entry {
 	// Attempt to create the directory.
 	if err := parent.CreateDirectory(name); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to create directory"))
+		t.recordProblem(path, fmt.Errorf("unable to create directory: %w", err))
 		return nil
 	}
 
@@ -784,7 +784,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 	// However, since we did succeed in creating the directory, we return that
 	// portion.
 	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultDirectoryPermissionMode); err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to set directory permissions"))
+		t.recordProblem(path, fmt.Errorf("unable to set directory permissions: %w", err))
 		return created
 	}
 
@@ -798,7 +798,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 
 		// Open the directory.
 		if d, err := parent.OpenDirectory(name); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to open new directory"))
+			t.recordProblem(path, fmt.Errorf("unable to open new directory: %w", err))
 			return created
 		} else {
 			directory = d
@@ -828,13 +828,13 @@ ContentLoop:
 			}
 		} else if entry.Kind == EntryKind_File {
 			if err := t.createFile(directory, name, contentPath, entry); err != nil {
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to create file"))
+				t.recordProblem(contentPath, fmt.Errorf("unable to create file: %w", err))
 			} else {
 				created.Contents[name] = entry
 			}
 		} else if entry.Kind == EntryKind_SymbolicLink {
 			if err := t.createSymbolicLink(directory, name, contentPath, entry); err != nil {
-				t.recordProblem(contentPath, errors.Wrap(err, "unable to create symbolic link"))
+				t.recordProblem(contentPath, fmt.Errorf("unable to create symbolic link: %w", err))
 			} else {
 				created.Contents[name] = entry
 			}
@@ -860,7 +860,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 	// If we are successful, defer closure of the parent.
 	parent, name, err := t.walkToParentAndComputeLeafName(path, false)
 	if err != nil {
-		t.recordProblem(path, errors.Wrap(err, "unable to walk to transition root parent"))
+		t.recordProblem(path, fmt.Errorf("unable to walk to transition root parent: %w", err))
 		return nil
 	}
 	defer parent.Close()
@@ -870,14 +870,14 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 		return t.createDirectory(parent, name, path, target)
 	} else if target.Kind == EntryKind_File {
 		if err := t.createFile(parent, name, path, target); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to create file"))
+			t.recordProblem(path, fmt.Errorf("unable to create file: %w", err))
 			return nil
 		} else {
 			return target
 		}
 	} else if target.Kind == EntryKind_SymbolicLink {
 		if err := t.createSymbolicLink(parent, name, path, target); err != nil {
-			t.recordProblem(path, errors.Wrap(err, "unable to create symbolic link"))
+			t.recordProblem(path, fmt.Errorf("unable to create symbolic link: %w", err))
 			return nil
 		} else {
 			return target
@@ -949,7 +949,7 @@ func Transition(
 		if fileToFile {
 			if err := transitioner.swapFile(t.Path, t.Old, t.New); err != nil {
 				results = append(results, t.Old)
-				transitioner.recordProblem(t.Path, errors.Wrap(err, "unable to swap file"))
+				transitioner.recordProblem(t.Path, fmt.Errorf("unable to swap file: %w", err))
 			} else {
 				results = append(results, t.New)
 			}

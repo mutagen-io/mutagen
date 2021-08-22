@@ -4,10 +4,9 @@ package ipc
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 // DialContext attempts to establish an IPC connection, timing out if the
@@ -32,7 +31,7 @@ func NewListener(path string) (net.Listener, error) {
 	// Explicitly set socket permissions.
 	if err := os.Chmod(path, 0600); err != nil {
 		listener.Close()
-		return nil, errors.Wrap(err, "unable to set socket permissions")
+		return nil, fmt.Errorf("unable to set socket permissions: %w", err)
 	}
 
 	// Create the listener.

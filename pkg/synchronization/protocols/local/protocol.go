@@ -2,8 +2,8 @@ package local
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -44,7 +44,7 @@ func (h *protocolHandler) Connect(
 	// Create a local endpoint.
 	endpoint, err := local.NewEndpoint(logger, url.Path, session, version, configuration, alpha)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create local endpoint")
+		return nil, fmt.Errorf("unable to create local endpoint: %w", err)
 	}
 
 	// Success.

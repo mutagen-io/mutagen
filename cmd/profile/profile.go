@@ -5,8 +5,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-
-	"github.com/pkg/errors"
 )
 
 // Profile manages a CPU and heap profile.
@@ -22,13 +20,13 @@ func New(name string) (*Profile, error) {
 	// Open the CPU profile output.
 	cpuProfile, err := os.Create(fmt.Sprintf("%s_cpu.prof", name))
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create CPU profile")
+		return nil, fmt.Errorf("unable to create CPU profile: %w", err)
 	}
 
 	// Start CPU profiling.
 	if err := pprof.StartCPUProfile(cpuProfile); err != nil {
 		cpuProfile.Close()
-		return nil, errors.Wrap(err, "unable to start CPU profile")
+		return nil, fmt.Errorf("unable to start CPU profile: %w", err)
 	}
 
 	// Success.
@@ -44,7 +42,7 @@ func (p *Profile) Finalize() error {
 	// Close out the CPU profile.
 	pprof.StopCPUProfile()
 	if err := p.cpuProfile.Close(); err != nil {
-		return errors.Wrap(err, "unable to close CPU profile")
+		return fmt.Errorf("unable to close CPU profile: %w", err)
 	}
 
 	// Run a GC cycle to update the heap profile statistics.
@@ -53,14 +51,14 @@ func (p *Profile) Finalize() error {
 	// Write a heap profile.
 	heapProfile, err := os.Create(fmt.Sprintf("%s_heap.prof", p.name))
 	if err != nil {
-		return errors.Wrap(err, "unable to create heap profile")
+		return fmt.Errorf("unable to create heap profile: %w", err)
 	}
 	if err := pprof.WriteHeapProfile(heapProfile); err != nil {
 		heapProfile.Close()
-		return errors.Wrap(err, "unable to write heap profile")
+		return fmt.Errorf("unable to write heap profile: %w", err)
 	}
 	if err := heapProfile.Close(); err != nil {
-		return errors.Wrap(err, "unable to close heap profile")
+		return fmt.Errorf("unable to close heap profile: %w", err)
 	}
 
 	// Success.

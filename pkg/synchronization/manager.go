@@ -2,9 +2,9 @@ package synchronization
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sort"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
@@ -57,11 +57,11 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	logger.Info("Looking for existing sessions")
 	sessionsDirectory, err := pathForSession("")
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute sessions directory")
+		return nil, fmt.Errorf("unable to compute sessions directory: %w", err)
 	}
 	sessionsDirectoryContents, err := filesystem.DirectoryContentsByPath(sessionsDirectory)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read contents of sessions directory")
+		return nil, fmt.Errorf("unable to read contents of sessions directory: %w", err)
 	}
 	for _, c := range sessionsDirectoryContents {
 		identifier := c.Name()
@@ -120,7 +120,7 @@ func (m *Manager) findControllersBySpecification(specifications []string) ([]*co
 			}
 		}
 		if !matched {
-			return nil, errors.Errorf("specification \"%s\" did not match any sessions", specification)
+			return nil, fmt.Errorf("specification \"%s\" did not match any sessions", specification)
 		}
 	}
 
@@ -140,7 +140,7 @@ func (m *Manager) findControllersByLabelSelector(labelSelector string) ([]*contr
 	// Parse the label selector.
 	selector, err := selection.ParseLabelSelector(labelSelector)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse label selector")
+		return nil, fmt.Errorf("unable to parse label selector: %w", err)
 	}
 
 	// Grab the registry lock and defer its release.
@@ -210,7 +210,7 @@ func (m *Manager) Create(
 	// Create a unique session identifier.
 	identifier, err := identifier.New(identifier.PrefixSynchronization)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to generate identifier for session")
+		return "", fmt.Errorf("unable to generate identifier for session: %w", err)
 	}
 
 	// Attempt to create a session.
@@ -257,7 +257,7 @@ func (m *Manager) List(_ context.Context, selection *selection.Selection, previo
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return 0, nil, errors.Wrap(err, "unable to locate requested sessions")
+		return 0, nil, fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Create a static snapshot of the state from each controller, then perform
@@ -348,13 +348,13 @@ func (m *Manager) Flush(ctx context.Context, selection *selection.Selection, pro
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return errors.Wrap(err, "unable to locate requested sessions")
+		return fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Attempt to flush the sessions.
 	for _, controller := range controllers {
 		if err := controller.flush(ctx, prompter, skipWait); err != nil {
-			return errors.Wrap(err, "unable to flush session")
+			return fmt.Errorf("unable to flush session: %w", err)
 		}
 	}
 
@@ -367,13 +367,13 @@ func (m *Manager) Pause(ctx context.Context, selection *selection.Selection, pro
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return errors.Wrap(err, "unable to locate requested sessions")
+		return fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Attempt to pause the sessions.
 	for _, controller := range controllers {
 		if err := controller.halt(ctx, controllerHaltModePause, prompter, false); err != nil {
-			return errors.Wrap(err, "unable to pause session")
+			return fmt.Errorf("unable to pause session: %w", err)
 		}
 	}
 
@@ -387,13 +387,13 @@ func (m *Manager) Resume(ctx context.Context, selection *selection.Selection, pr
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return errors.Wrap(err, "unable to locate requested sessions")
+		return fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Attempt to resume.
 	for _, controller := range controllers {
 		if err := controller.resume(ctx, prompter, false); err != nil {
-			return errors.Wrap(err, "unable to resume session")
+			return fmt.Errorf("unable to resume session: %w", err)
 		}
 	}
 
@@ -407,13 +407,13 @@ func (m *Manager) Reset(ctx context.Context, selection *selection.Selection, pro
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return errors.Wrap(err, "unable to locate requested sessions")
+		return fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Attempt to reset.
 	for _, controller := range controllers {
 		if err := controller.reset(ctx, prompter); err != nil {
-			return errors.Wrap(err, "unable to reset session")
+			return fmt.Errorf("unable to reset session: %w", err)
 		}
 	}
 
@@ -427,14 +427,14 @@ func (m *Manager) Terminate(ctx context.Context, selection *selection.Selection,
 	// Extract the controllers for the sessions of interest.
 	controllers, err := m.selectControllers(selection)
 	if err != nil {
-		return errors.Wrap(err, "unable to locate requested sessions")
+		return fmt.Errorf("unable to locate requested sessions: %w", err)
 	}
 
 	// Attempt to terminate the sessions. Since we're terminating them, we're
 	// responsible for removing them from the session map.
 	for _, controller := range controllers {
 		if err := controller.halt(ctx, controllerHaltModeTerminate, prompter, false); err != nil {
-			return errors.Wrap(err, "unable to terminate session")
+			return fmt.Errorf("unable to terminate session: %w", err)
 		}
 		m.sessionsLock.Lock()
 		delete(m.sessions, controller.session.Identifier)

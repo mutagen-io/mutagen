@@ -1,7 +1,7 @@
 package rsync
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // resetToZeroMaintainingCapacity resets a Transmission to its zero value, with

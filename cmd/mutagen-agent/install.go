@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -14,7 +14,7 @@ import (
 func installMain(_ *cobra.Command, _ []string) error {
 	// Perform the installation.
 	if err := agent.Install(); err != nil {
-		return errors.Wrap(err, "installation error")
+		return fmt.Errorf("installation error: %w", err)
 	}
 
 	// Success.

@@ -1,10 +1,9 @@
 package filesystem
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -21,32 +20,32 @@ func WriteFileAtomic(path string, data []byte, permissions os.FileMode) error {
 	// for creating temporary files, so we don't need to change them.
 	temporary, err := os.CreateTemp(filepath.Dir(path), atomicWriteTemporaryNamePrefix)
 	if err != nil {
-		return errors.Wrap(err, "unable to create temporary file")
+		return fmt.Errorf("unable to create temporary file: %w", err)
 	}
 
 	// Write data.
 	if _, err = temporary.Write(data); err != nil {
 		temporary.Close()
 		os.Remove(temporary.Name())
-		return errors.Wrap(err, "unable to write data to temporary file")
+		return fmt.Errorf("unable to write data to temporary file: %w", err)
 	}
 
 	// Close out the file.
 	if err = temporary.Close(); err != nil {
 		os.Remove(temporary.Name())
-		return errors.Wrap(err, "unable to close temporary file")
+		return fmt.Errorf("unable to close temporary file: %w", err)
 	}
 
 	// Set the file's permissions.
 	if err = os.Chmod(temporary.Name(), permissions); err != nil {
 		os.Remove(temporary.Name())
-		return errors.Wrap(err, "unable to change file permissions")
+		return fmt.Errorf("unable to change file permissions: %w", err)
 	}
 
 	// Rename the file.
 	if err = os.Rename(temporary.Name(), path); err != nil {
 		os.Remove(temporary.Name())
-		return errors.Wrap(err, "unable to rename file")
+		return fmt.Errorf("unable to rename file: %w", err)
 	}
 
 	// Success.

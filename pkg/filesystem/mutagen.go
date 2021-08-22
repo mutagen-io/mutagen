@@ -1,10 +1,10 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
@@ -79,7 +79,7 @@ func Mutagen(create bool, pathComponents ...string) (string, error) {
 		// Compute the path to the user's home directory.
 		homeDirectory, err := os.UserHomeDir()
 		if err != nil {
-			return "", errors.Wrap(err, "unable to compute path to home directory")
+			return "", fmt.Errorf("unable to compute path to home directory: %w", err)
 		}
 
 		// Compute the path to the Mutagen data directory.
@@ -105,13 +105,13 @@ func Mutagen(create bool, pathComponents ...string) (string, error) {
 	if create {
 		// Create the directory.
 		if err := os.MkdirAll(result, 0700); err != nil {
-			return "", errors.Wrap(err, "unable to create subpath")
+			return "", fmt.Errorf("unable to create subpath: %w", err)
 		}
 
 		// Mark the directory as hidden, if necessary.
 		if hide {
 			if err := MarkHidden(mutagenDataDirectoryPath); err != nil {
-				return "", errors.Wrap(err, "unable to hide Mutagen data directory")
+				return "", fmt.Errorf("unable to hide Mutagen data directory: %w", err)
 			}
 		}
 	}

@@ -1,7 +1,8 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -78,7 +79,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	}
 	for _, ignore := range c.DefaultIgnores {
 		if !core.ValidIgnorePattern(ignore) {
-			return errors.Errorf("invalid default ignore pattern: %s", ignore)
+			return fmt.Errorf("invalid default ignore pattern: %s", ignore)
 		}
 	}
 
@@ -89,7 +90,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	}
 	for _, ignore := range c.Ignores {
 		if !core.ValidIgnorePattern(ignore) {
-			return errors.Errorf("invalid ignore pattern: %s", ignore)
+			return fmt.Errorf("invalid ignore pattern: %s", ignore)
 		}
 	}
 
@@ -107,14 +108,14 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// Verify the default file mode.
 	if c.DefaultFileMode != 0 {
 		if err := core.EnsureDefaultFileModeValid(filesystem.Mode(c.DefaultFileMode)); err != nil {
-			return errors.Wrap(err, "invalid default file permission mode specified")
+			return fmt.Errorf("invalid default file permission mode specified: %w", err)
 		}
 	}
 
 	// Verify the default directory mode.
 	if c.DefaultDirectoryMode != 0 {
 		if err := core.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.DefaultDirectoryMode)); err != nil {
-			return errors.Wrap(err, "invalid default directory permission mode specified")
+			return fmt.Errorf("invalid default directory permission mode specified: %w", err)
 		}
 	}
 

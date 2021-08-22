@@ -1,10 +1,10 @@
 package agent
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/environment"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
@@ -88,7 +88,7 @@ func probePOSIX(transport Transport) (string, string, error) {
 	// Try to invoke uname and print kernel and machine name.
 	unameSMBytes, err := output(transport, "uname -s -m")
 	if err != nil {
-		return "", "", errors.Wrap(err, "unable to invoke uname")
+		return "", "", fmt.Errorf("unable to invoke uname: %w", err)
 	} else if !utf8.Valid(unameSMBytes) {
 		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
@@ -131,7 +131,7 @@ func probeWindows(transport Transport) (string, string, error) {
 	// Attempt to dump the remote environment.
 	outputBytes, err := output(transport, "cmd.exe /c set")
 	if err != nil {
-		return "", "", errors.Wrap(err, "unable to invoke remote environment printing")
+		return "", "", fmt.Errorf("unable to invoke remote environment printing: %w", err)
 	} else if !utf8.Valid(outputBytes) {
 		return "", "", errors.New("remote output is not UTF-8 encoded")
 	}
@@ -172,7 +172,7 @@ func probe(transport Transport, prompter string) (string, string, bool, error) {
 	// Attempt to probe for a POSIX platform. This might apply to certain
 	// Windows environments as well.
 	if err := prompting.Message(prompter, "Probing endpoint (POSIX)..."); err != nil {
-		return "", "", false, errors.Wrap(err, "unable to message prompter")
+		return "", "", false, fmt.Errorf("unable to message prompter: %w", err)
 	}
 	if goos, goarch, err := probePOSIX(transport); err == nil {
 		return goos, goarch, true, nil
@@ -180,7 +180,7 @@ func probe(transport Transport, prompter string) (string, string, bool, error) {
 
 	// If that fails, attempt a Windows fallback.
 	if err := prompting.Message(prompter, "Probing endpoint (Windows)..."); err != nil {
-		return "", "", false, errors.Wrap(err, "unable to message prompter")
+		return "", "", false, fmt.Errorf("unable to message prompter: %w", err)
 	}
 	if goos, goarch, err := probeWindows(transport); err == nil {
 		return goos, goarch, false, nil

@@ -1,9 +1,8 @@
 package encoding
 
 import (
+	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -19,12 +18,12 @@ func LoadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 		if os.IsNotExist(err) {
 			return err
 		}
-		return errors.Wrap(err, "unable to load file")
+		return fmt.Errorf("unable to load file: %w", err)
 	}
 
 	// Perform the unmarshaling.
 	if err := unmarshal(data); err != nil {
-		return errors.Wrap(err, "unable to unmarshal data")
+		return fmt.Errorf("unable to unmarshal data: %w", err)
 	}
 
 	// Success.
@@ -39,12 +38,12 @@ func MarshalAndSave(path string, marshal func() ([]byte, error)) error {
 	// Marshal the message.
 	data, err := marshal()
 	if err != nil {
-		return errors.Wrap(err, "unable to marshal message")
+		return fmt.Errorf("unable to marshal message: %w", err)
 	}
 
 	// Write the file atomically with secure file permissions.
 	if err := filesystem.WriteFileAtomic(path, data, 0600); err != nil {
-		return errors.Wrap(err, "unable to write message data")
+		return fmt.Errorf("unable to write message data: %w", err)
 	}
 
 	// Success.

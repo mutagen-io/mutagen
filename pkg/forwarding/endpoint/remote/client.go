@@ -2,9 +2,9 @@ package remote
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
@@ -51,7 +51,7 @@ func NewEndpoint(
 	// failure since closing the multiplexer will implicitly close the stream.
 	stream, err := multiplexer.OpenStream(context.Background())
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to open initialization stream")
+		return nil, fmt.Errorf("unable to open initialization stream: %w", err)
 	}
 
 	// Create and send the initialization request.
@@ -63,23 +63,23 @@ func NewEndpoint(
 		Listener:      source,
 	}
 	if err := encoding.NewProtobufEncoder(stream).Encode(request); err != nil {
-		return nil, errors.Wrap(err, "unable to send initialization request")
+		return nil, fmt.Errorf("unable to send initialization request: %w", err)
 	}
 
 	// Receive the initialization response, ensure that it's valid, and check
 	// for initialization errors.
 	response := &InitializeForwardingResponse{}
 	if err := encoding.NewProtobufDecoder(stream).Decode(response); err != nil {
-		return nil, errors.Wrap(err, "unable to receive initialization response")
+		return nil, fmt.Errorf("unable to receive initialization response: %w", err)
 	} else if err = response.ensureValid(); err != nil {
-		return nil, errors.Wrap(err, "invalid initialization response received")
+		return nil, fmt.Errorf("invalid initialization response received: %w", err)
 	} else if response.Error != "" {
-		return nil, errors.Wrap(errors.New(response.Error), "remote initialization failure")
+		return nil, fmt.Errorf("remote initialization failure: %w", errors.New(response.Error))
 	}
 
 	// Close the initialization stream.
 	if err := stream.Close(); err != nil {
-		return nil, errors.Wrap(err, "unable to close initialization stream")
+		return nil, fmt.Errorf("unable to close initialization stream: %w", err)
 	}
 
 	// Mark initialization as successful.

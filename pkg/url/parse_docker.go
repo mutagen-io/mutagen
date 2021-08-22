@@ -1,9 +1,9 @@
 package url
 
 import (
+	"errors"
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
@@ -114,7 +114,7 @@ func parseDocker(raw string, kind Kind, first bool) (*URL, error) {
 
 		// Parse the forwarding endpoint URL to ensure that it's valid.
 		if _, _, err := forwarding.Parse(path); err != nil {
-			return nil, errors.Wrap(err, "invalid forwarding endpoint URL")
+			return nil, fmt.Errorf("invalid forwarding endpoint URL: %w", err)
 		}
 	} else {
 		panic("unhandled URL kind")

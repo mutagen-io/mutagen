@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -30,7 +29,7 @@ func promptMain(arguments []string) error {
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(false, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 
@@ -44,9 +43,9 @@ func promptMain(arguments []string) error {
 	}
 	response, err := promptingService.Prompt(context.Background(), request)
 	if err != nil {
-		return errors.Wrap(err, "unable to invoke prompt")
+		return fmt.Errorf("unable to invoke prompt: %w", err)
 	} else if err = response.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid prompt response")
+		return fmt.Errorf("invalid prompt response: %w", err)
 	}
 
 	// Print the response.

@@ -6,12 +6,11 @@ package daemon
 // https://developer.apple.com/library/content/technotes/tn2083/_index.html#//apple_ref/doc/uid/DTS10003794-CH1-SUBSECTION44
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -67,7 +66,7 @@ const (
 func Register() error {
 	// If we're already registered, don't do anything.
 	if registered, err := registered(); err != nil {
-		return errors.Wrap(err, "unable to determine registration status")
+		return fmt.Errorf("unable to determine registration status: %w", err)
 	} else if registered {
 		return nil
 	}
@@ -85,25 +84,25 @@ func Register() error {
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute path to home directory")
+		return fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Ensure the user's Library directory exists.
 	targetPath := filepath.Join(homeDirectory, libraryDirectoryName)
 	if err := os.MkdirAll(targetPath, libraryDirectoryPermissions); err != nil {
-		return errors.Wrap(err, "unable to create Library directory")
+		return fmt.Errorf("unable to create Library directory: %w", err)
 	}
 
 	// Ensure the LaunchAgents directory exists.
 	targetPath = filepath.Join(targetPath, launchAgentsDirectoryName)
 	if err := os.MkdirAll(targetPath, launchAgentsDirectoryPermissions); err != nil {
-		return errors.Wrap(err, "unable to create LaunchAgents directory")
+		return fmt.Errorf("unable to create LaunchAgents directory: %w", err)
 	}
 
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
 	if err != nil {
-		return errors.Wrap(err, "unable to determine executable path")
+		return fmt.Errorf("unable to determine executable path: %w", err)
 	}
 
 	// Format a launchd plist.
@@ -112,7 +111,7 @@ func Register() error {
 	// Attempt to write the launchd plist.
 	targetPath = filepath.Join(targetPath, launchdPlistName)
 	if err := filesystem.WriteFileAtomic(targetPath, []byte(plist), launchdPlistPermissions); err != nil {
-		return errors.Wrap(err, "unable to write launchd agent plist")
+		return fmt.Errorf("unable to write launchd agent plist: %w", err)
 	}
 
 	// Success.
@@ -123,7 +122,7 @@ func Register() error {
 func Unregister() error {
 	// If we're not registered, don't do anything.
 	if registered, err := registered(); err != nil {
-		return errors.Wrap(err, "unable to determine registration status")
+		return fmt.Errorf("unable to determine registration status: %w", err)
 	} else if !registered {
 		return nil
 	}
@@ -141,7 +140,7 @@ func Unregister() error {
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute path to home directory")
+		return fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Compute the launchd plist path.
@@ -155,7 +154,7 @@ func Unregister() error {
 	// Attempt to remove the launchd plist.
 	if err := os.Remove(targetPath); err != nil {
 		if !os.IsNotExist(err) {
-			return errors.Wrap(err, "unable to remove launchd agent plist")
+			return fmt.Errorf("unable to remove launchd agent plist: %w", err)
 		}
 	}
 
@@ -169,7 +168,7 @@ func registered() (bool, error) {
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return false, errors.Wrap(err, "unable to compute path to home directory")
+		return false, fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Compute the launchd plist path.
@@ -185,7 +184,7 @@ func registered() (bool, error) {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, "unable to query launchd agent plist")
+		return false, fmt.Errorf("unable to query launchd agent plist: %w", err)
 	} else if !info.Mode().IsRegular() {
 		return false, errors.New("unexpected contents at launchd agent plist path")
 	}
@@ -200,7 +199,7 @@ func registered() (bool, error) {
 func RegisteredStart() (bool, error) {
 	// Check if we're registered. If not, we don't handle the start request.
 	if registered, err := registered(); err != nil {
-		return false, errors.Wrap(err, "unable to determine daemon registration status")
+		return false, fmt.Errorf("unable to determine daemon registration status: %w", err)
 	} else if !registered {
 		return false, nil
 	}
@@ -208,7 +207,7 @@ func RegisteredStart() (bool, error) {
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return false, errors.Wrap(err, "unable to compute path to home directory")
+		return false, fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Compute the launchd plist path.
@@ -224,7 +223,7 @@ func RegisteredStart() (bool, error) {
 	load.Stdout = os.Stdout
 	load.Stderr = os.Stderr
 	if err := load.Run(); err != nil {
-		return false, errors.Wrap(err, "unable to load launchd plist")
+		return false, fmt.Errorf("unable to load launchd plist: %w", err)
 	}
 
 	// Success.
@@ -237,7 +236,7 @@ func RegisteredStart() (bool, error) {
 func RegisteredStop() (bool, error) {
 	// Check if we're registered. If not, we don't handle the stop request.
 	if registered, err := registered(); err != nil {
-		return false, errors.Wrap(err, "unable to determine daemon registration status")
+		return false, fmt.Errorf("unable to determine daemon registration status: %w", err)
 	} else if !registered {
 		return false, nil
 	}
@@ -245,7 +244,7 @@ func RegisteredStop() (bool, error) {
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
-		return false, errors.Wrap(err, "unable to compute path to home directory")
+		return false, fmt.Errorf("unable to compute path to home directory: %w", err)
 	}
 
 	// Compute the launchd plist path.
@@ -261,7 +260,7 @@ func RegisteredStop() (bool, error) {
 	unload.Stdout = os.Stdout
 	unload.Stderr = os.Stderr
 	if err := unload.Run(); err != nil {
-		return false, errors.Wrap(err, "unable to unload launchd plist")
+		return false, fmt.Errorf("unable to unload launchd plist: %w", err)
 	}
 
 	// Success.

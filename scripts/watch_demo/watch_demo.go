@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/cmd"
 
@@ -53,5 +52,5 @@ func main() {
 	}
 
 	// Wait for the watch error.
-	cmd.Fatal(errors.Wrap(<-watchErrors, "watching failed"))
+	cmd.Fatal(fmt.Errorf("watching failed: %w", <-watchErrors))
 }

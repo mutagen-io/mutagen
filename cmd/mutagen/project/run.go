@@ -2,12 +2,11 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -39,7 +38,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 		directory, configurationFileName = filepath.Split(runConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
-				return errors.Wrap(err, "unable to switch to target directory")
+				return fmt.Errorf("unable to switch to target directory: %w", err)
 			}
 		}
 	}
@@ -54,7 +53,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return errors.Wrap(err, "unable to create project locker")
+		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
 		locker.Close()
@@ -71,7 +70,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	// lock file before we manage to remove it will simply see an empty lock
 	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
-		return errors.Wrap(err, "unable to acquire project lock")
+		return fmt.Errorf("unable to acquire project lock: %w", err)
 	}
 	defer func() {
 		if removeLockFileOnReturn {
@@ -89,7 +88,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	// just remove it.
 	buffer := &bytes.Buffer{}
 	if length, err := buffer.ReadFrom(locker); err != nil {
-		return errors.Wrap(err, "unable to read project lock")
+		return fmt.Errorf("unable to read project lock: %w", err)
 	} else if length == 0 {
 		removeLockFileOnReturn = true
 		return errors.New("project not running")
@@ -104,7 +103,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	// Load the configuration file.
 	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
-		return errors.Wrap(err, "unable to load configuration file")
+		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
 
 	// Look up the command.

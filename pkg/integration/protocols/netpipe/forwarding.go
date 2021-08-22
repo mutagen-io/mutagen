@@ -2,9 +2,8 @@ package netpipe
 
 import (
 	"context"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
@@ -40,7 +39,7 @@ func (h *forwardingProtocolHandler) Connect(
 	// Parse the target specification from the URL's Path component.
 	protocol, address, err := forwardingurl.Parse(url.Path)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse target specification")
+		return nil, fmt.Errorf("unable to parse target specification: %w", err)
 	}
 
 	// Create an in-memory network connection.
@@ -60,7 +59,7 @@ func (h *forwardingProtocolHandler) Connect(
 		source,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create in-memory endpoint client")
+		return nil, fmt.Errorf("unable to create in-memory endpoint client: %w", err)
 	}
 
 	// Success.

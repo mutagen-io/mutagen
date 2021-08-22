@@ -1,9 +1,8 @@
 package daemon
 
 import (
+	"fmt"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -23,7 +22,7 @@ func subpath(name string) (string, error) {
 	// Compute the daemon root directory path and ensure it exists.
 	daemonRoot, err := filesystem.Mutagen(true, filesystem.MutagenDaemonDirectoryName)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute daemon directory")
+		return "", fmt.Errorf("unable to compute daemon directory: %w", err)
 	}
 
 	// Compute the combined path.

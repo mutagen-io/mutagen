@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,8 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"github.com/google/uuid"
 
@@ -37,7 +36,7 @@ func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionID string
 	for {
 		previousStateIndex, states, err = synchronizationManager.List(ctx, selection, previousStateIndex)
 		if err != nil {
-			return errors.Wrap(err, "unable to list session states")
+			return fmt.Errorf("unable to list session states: %w", err)
 		} else if len(states) != 1 {
 			return errors.New("invalid number of session states returned")
 		} else if states[0].SuccessfulSynchronizationCycles > 0 {
@@ -67,14 +66,14 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 		prompter,
 	)
 	if err != nil {
-		return errors.Wrap(err, "unable to create session")
+		return fmt.Errorf("unable to create session: %w", err)
 	}
 
 	// Wait for the session to have at least one successful synchronization
 	// cycle.
 	// TODO: Should we add a timeout on this?
 	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionID, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
-		return errors.Wrap(err, "unable to wait for successful synchronization")
+		return fmt.Errorf("unable to wait for successful synchronization: %w", err)
 	}
 
 	// TODO: Add hook for verifying file contents.
@@ -91,28 +90,28 @@ func testSessionLifecycle(ctx context.Context, prompter string, alpha, beta *url
 
 	// Pause the session.
 	if err := synchronizationManager.Pause(ctx, selection, ""); err != nil {
-		return errors.Wrap(err, "unable to pause session")
+		return fmt.Errorf("unable to pause session: %w", err)
 	}
 
 	// Resume the session.
 	if err := synchronizationManager.Resume(ctx, selection, ""); err != nil {
-		return errors.Wrap(err, "unable to resume session")
+		return fmt.Errorf("unable to resume session: %w", err)
 	}
 
 	// Wait for the session to have at least one additional synchronization
 	// cycle.
 	if err := waitForSuccessfulSynchronizationCycle(ctx, sessionID, allowScanProblems, allowConflicts, allowTransitionProblems); err != nil {
-		return errors.Wrap(err, "unable to wait for additional synchronization")
+		return fmt.Errorf("unable to wait for additional synchronization: %w", err)
 	}
 
 	// Attempt an additional resume (this should be a no-op).
 	if err := synchronizationManager.Resume(ctx, selection, ""); err != nil {
-		return errors.Wrap(err, "unable to perform additional resume")
+		return fmt.Errorf("unable to perform additional resume: %w", err)
 	}
 
 	// Terminate the session.
 	if err := synchronizationManager.Terminate(ctx, selection, ""); err != nil {
-		return errors.Wrap(err, "unable to terminate session")
+		return fmt.Errorf("unable to terminate session: %w", err)
 	}
 
 	// TODO: Verify that cleanup took place.
@@ -456,14 +455,14 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		// Perform the request and defer closure of the response body.
 		response, err := http.Get(fmt.Sprintf("http://%s/", listenerAddress))
 		if err != nil {
-			return errors.Wrap(err, "unable to perform HTTP GET")
+			return fmt.Errorf("unable to perform HTTP GET: %w", err)
 		}
 		defer response.Body.Close()
 
 		// Read the full body.
 		message, err := io.ReadAll(response.Body)
 		if err != nil {
-			return errors.Wrap(err, "unable to read response body")
+			return fmt.Errorf("unable to read response body: %w", err)
 		}
 
 		// Compare the message.

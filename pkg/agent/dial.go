@@ -2,14 +2,13 @@ package agent
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -75,11 +74,11 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		message = "Connecting to agent (Windows)..."
 	}
 	if err := prompting.Message(prompter, message); err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to message prompter")
+		return nil, false, false, fmt.Errorf("unable to message prompter: %w", err)
 	}
 	agentProcess, err := transport.Command(command)
 	if err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to create agent command")
+		return nil, false, false, fmt.Errorf("unable to create agent command: %w", err)
 	}
 
 	// Create a connection that wraps the process' standard input/output. We
@@ -89,7 +88,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// connection issue.
 	connection, err := process.NewConnection(agentProcess, agentKillDelay)
 	if err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to create agent process connection")
+		return nil, false, false, fmt.Errorf("unable to create agent process connection: %w", err)
 	}
 
 	// Create a buffer that we can use to capture the process' standard error
@@ -108,7 +107,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Start the process.
 	if err = agentProcess.Start(); err != nil {
-		return nil, false, false, errors.Wrap(err, "unable to start agent process")
+		return nil, false, false, fmt.Errorf("unable to start agent process: %w", err)
 	}
 
 	// Perform a handshake with the remote to ensure that we're talking with a
@@ -142,12 +141,12 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		tryInstall, cmdExe, err := transport.ClassifyError(agentProcess.ProcessState, errorOutput)
 		if err != nil {
 			if errorOutput != "" {
-				return nil, false, false, errors.Errorf(
+				return nil, false, false, fmt.Errorf(
 					"agent handshake failed with error output:\n%s",
 					strings.TrimSpace(errorOutput),
 				)
 			}
-			return nil, false, false, errors.Wrap(err, "unable to classify agent handshake error")
+			return nil, false, false, fmt.Errorf("unable to classify agent handshake error: %w", err)
 		}
 
 		// The transport was able to classify the error, so return that
@@ -162,7 +161,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// Perform a version handshake.
 	if err := mutagen.ClientVersionHandshake(connection); err != nil {
 		connection.Close()
-		return nil, false, false, errors.Wrap(err, "version handshake error")
+		return nil, false, false, fmt.Errorf("version handshake error: %w", err)
 	}
 
 	// Done.
@@ -198,7 +197,7 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (n
 
 	// Attempt to install.
 	if err := install(logger, transport, prompter); err != nil {
-		return nil, errors.Wrap(err, "unable to install agent")
+		return nil, fmt.Errorf("unable to install agent: %w", err)
 	}
 
 	// Re-attempt connectivity.

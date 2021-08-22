@@ -2,13 +2,13 @@ package watching
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching/internal/third_party/winfsnotify"
 )
@@ -61,7 +61,7 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	// filepath.EvalSymlinks. Note that calling filepath.EvalSymlinks has the
 	// side-effect of enforcing that the target exists.
 	if t, err := filepath.EvalSymlinks(target); err != nil {
-		return errors.Wrap(err, "unable to resolve symbolic links for watch target")
+		return fmt.Errorf("unable to resolve symbolic links for watch target: %w", err)
 	} else {
 		target = t
 	}
@@ -105,7 +105,7 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	// called without FILE_FLAG_OPEN_REPARSE_POINT in the watcher).
 	initialWatchRootMetadata, err := os.Stat(watchRoot)
 	if err != nil {
-		return errors.Wrap(err, "unable to query initial watch root metadata")
+		return fmt.Errorf("unable to query initial watch root metadata: %w", err)
 	}
 
 	// Create a timer to watch for changes to the watch root. We start this
@@ -141,9 +141,9 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 	// Create the watcher, add the watch, and defer watcher shutdown.
 	watcher, err := winfsnotify.NewWatcher()
 	if err != nil {
-		return errors.Wrap(err, "unable to create watcher")
+		return fmt.Errorf("unable to create watcher: %w", err)
 	} else if err = watcher.AddWatch(watchRoot, winfsnotifyFlags); err != nil {
-		return errors.Wrap(err, "unable to start watching")
+		return fmt.Errorf("unable to start watching: %w", err)
 	}
 	defer watcher.Close()
 
@@ -196,7 +196,7 @@ func WatchRecursive(context context.Context, target string, events chan string) 
 			// use os.Stat for the reasons outlined above.
 			currentWatchRootMetadata, err := os.Stat(watchRoot)
 			if err != nil {
-				return errors.Wrap(err, "unable to query watch root metadata")
+				return fmt.Errorf("unable to query watch root metadata: %w", err)
 			}
 
 			// Abort watching if the watch has been invalidated.

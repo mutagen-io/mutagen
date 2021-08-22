@@ -2,9 +2,8 @@ package netpipe
 
 import (
 	"context"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -82,7 +81,7 @@ func (h *synchronizationProtocolHandler) Connect(
 		alpha,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create in-memory endpoint client")
+		return nil, fmt.Errorf("unable to create in-memory endpoint client: %w", err)
 	}
 
 	// Wrap the client so that it blocks on the full shutdown of the remote

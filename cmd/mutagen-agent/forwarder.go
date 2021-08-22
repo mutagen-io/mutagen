@@ -1,10 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -29,12 +28,12 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 
 	// Perform an agent handshake.
 	if err := agent.ServerHandshake(connection); err != nil {
-		return errors.Wrap(err, "server handshake failed")
+		return fmt.Errorf("server handshake failed: %w", err)
 	}
 
 	// Perform a version handshake.
 	if err := mutagen.ServerVersionHandshake(connection); err != nil {
-		return errors.Wrap(err, "version handshake error")
+		return fmt.Errorf("version handshake error: %w", err)
 	}
 
 	// Serve a forwarder on standard input/output and monitor for its
@@ -50,9 +49,9 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	// Wait for termination from a signal or the forwarder.
 	select {
 	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+		return fmt.Errorf("terminated by signal: %s", sig)
 	case err := <-forwardingTermination:
-		return errors.Wrap(err, "forwarding terminated")
+		return fmt.Errorf("forwarding terminated: %w", err)
 	}
 }
 

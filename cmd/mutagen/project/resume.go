@@ -2,12 +2,11 @@ package project
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -35,7 +34,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 		directory, configurationFileName = filepath.Split(resumeConfiguration.projectFile)
 		if directory != "" {
 			if err := os.Chdir(directory); err != nil {
-				return errors.Wrap(err, "unable to switch to target directory")
+				return fmt.Errorf("unable to switch to target directory: %w", err)
 			}
 		}
 	}
@@ -50,7 +49,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	// systems, we have to handle this removal after the file is closed.
 	locker, err := locking.NewLocker(lockPath, 0600)
 	if err != nil {
-		return errors.Wrap(err, "unable to create project locker")
+		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
 		locker.Close()
@@ -67,7 +66,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	// lock file before we manage to remove it will simply see an empty lock
 	// file, which it will ignore or attempt to remove.
 	if err := locker.Lock(true); err != nil {
-		return errors.Wrap(err, "unable to acquire project lock")
+		return fmt.Errorf("unable to acquire project lock: %w", err)
 	}
 	defer func() {
 		if removeLockFileOnReturn {
@@ -85,7 +84,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	// just remove it.
 	buffer := &bytes.Buffer{}
 	if length, err := buffer.ReadFrom(locker); err != nil {
-		return errors.Wrap(err, "unable to read project lock")
+		return fmt.Errorf("unable to read project lock: %w", err)
 	} else if length == 0 {
 		removeLockFileOnReturn = true
 		return errors.New("project not running")
@@ -100,21 +99,21 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	// Load the configuration file.
 	configuration, err := project.LoadConfiguration(configurationFileName)
 	if err != nil {
-		return errors.Wrap(err, "unable to load configuration file")
+		return fmt.Errorf("unable to load configuration file: %w", err)
 	}
 
 	// Perform pre-resume commands.
 	for _, command := range configuration.BeforeResume {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "pre-resume command failed")
+			return fmt.Errorf("pre-resume command failed: %w", err)
 		}
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 
@@ -125,19 +124,19 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 
 	// Resume forwarding sessions.
 	if err := forward.ResumeWithSelection(daemonConnection, selection); err != nil {
-		return errors.Wrap(err, "unable to resume forwarding session(s)")
+		return fmt.Errorf("unable to resume forwarding session(s): %w", err)
 	}
 
 	// Resume synchronization sessions.
 	if err := sync.ResumeWithSelection(daemonConnection, selection); err != nil {
-		return errors.Wrap(err, "unable to resume synchronization session(s)")
+		return fmt.Errorf("unable to resume synchronization session(s): %w", err)
 	}
 
 	// Perform post-resume commands.
 	for _, command := range configuration.AfterResume {
 		fmt.Println(">", command)
 		if err := runInShell(command); err != nil {
-			return errors.Wrap(err, "post-resume command failed")
+			return fmt.Errorf("post-resume command failed: %w", err)
 		}
 	}
 

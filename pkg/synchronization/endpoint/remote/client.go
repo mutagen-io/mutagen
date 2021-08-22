@@ -2,9 +2,8 @@ package remote
 
 import (
 	"context"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/protobuf/proto"
 
@@ -67,17 +66,17 @@ func NewEndpoint(
 		Alpha:         alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
-		return nil, errors.Wrap(err, "unable to send initialize request")
+		return nil, fmt.Errorf("unable to send initialize request: %w", err)
 	}
 
 	// Receive the response and check for remote errors.
 	response := &InitializeSynchronizationResponse{}
 	if err := decoder.Decode(response); err != nil {
-		return nil, errors.Wrap(err, "unable to receive transition response")
+		return nil, fmt.Errorf("unable to receive transition response: %w", err)
 	} else if err = response.ensureValid(); err != nil {
-		return nil, errors.Wrap(err, "invalid initialize response")
+		return nil, fmt.Errorf("invalid initialize response: %w", err)
 	} else if response.Error != "" {
-		return nil, errors.Errorf("remote error: %s", response.Error)
+		return nil, fmt.Errorf("remote error: %s", response.Error)
 	}
 
 	// Success.
@@ -94,7 +93,7 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 	// Create and send the poll request.
 	request := &EndpointRequest{Poll: &PollRequest{}}
 	if err := c.encoder.Encode(request); err != nil {
-		return errors.Wrap(err, "unable to send poll request")
+		return fmt.Errorf("unable to send poll request: %w", err)
 	}
 
 	// Create a subcontext that we can cancel to regulate transmission of the
@@ -107,7 +106,7 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 	go func() {
 		<-completionCtx.Done()
 		if err := c.encoder.Encode(&PollCompletionRequest{}); err != nil {
-			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
+			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
 		}
@@ -118,9 +117,9 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
 		if err := c.decoder.Decode(response); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "unable to receive poll response")
+			responseReceiveErrors <- fmt.Errorf("unable to receive poll response: %w", err)
 		} else if err = response.ensureValid(); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "invalid poll response")
+			responseReceiveErrors <- fmt.Errorf("invalid poll response: %w", err)
 		} else {
 			responseReceiveErrors <- nil
 		}
@@ -153,7 +152,7 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 
 	// Check for remote errors.
 	if response.Error != "" {
-		return errors.Errorf("remote error: %s", response.Error)
+		return fmt.Errorf("remote error: %s", response.Error)
 	}
 
 	// Done.
@@ -176,7 +175,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 		marshaling := proto.MarshalOptions{Deterministic: true}
 		baseBytes, err = marshaling.Marshal(&core.Archive{Content: ancestor})
 		if err != nil {
-			return nil, false, errors.Wrap(err, "unable to marshal ancestor"), false
+			return nil, false, fmt.Errorf("unable to marshal ancestor: %w", err), false
 		}
 	}
 
@@ -191,7 +190,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 		},
 	}
 	if err := c.encoder.Encode(request); err != nil {
-		return nil, false, errors.Wrap(err, "unable to send scan request"), false
+		return nil, false, fmt.Errorf("unable to send scan request: %w", err), false
 	}
 
 	// Create a subcontext that we can cancel to regulate transmission of the
@@ -204,7 +203,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	go func() {
 		<-completionCtx.Done()
 		if err := c.encoder.Encode(&ScanCompletionRequest{}); err != nil {
-			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
+			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
 		}
@@ -215,9 +214,9 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
 		if err := c.decoder.Decode(response); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "unable to receive scan response")
+			responseReceiveErrors <- fmt.Errorf("unable to receive scan response: %w", err)
 		} else if err = response.ensureValid(); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "invalid scan response")
+			responseReceiveErrors <- fmt.Errorf("invalid scan response: %w", err)
 		} else {
 			responseReceiveErrors <- nil
 		}
@@ -250,19 +249,19 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 
 	// Check for remote errors.
 	if response.Error != "" {
-		return nil, false, errors.Errorf("remote error: %s", response.Error), response.TryAgain
+		return nil, false, fmt.Errorf("remote error: %s", response.Error), response.TryAgain
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
 	snapshotBytes, err := engine.PatchBytes(baseBytes, baseSignature, response.SnapshotDelta)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "unable to patch base snapshot"), false
+		return nil, false, fmt.Errorf("unable to patch base snapshot: %w", err), false
 	}
 
 	// Unmarshal the snapshot.
 	archive := &core.Archive{}
 	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
-		return nil, false, errors.Wrap(err, "unable to unmarshal snapshot"), false
+		return nil, false, fmt.Errorf("unable to unmarshal snapshot: %w", err), false
 	}
 	snapshot := archive.Content
 
@@ -272,7 +271,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	// Protocol Buffers decoding before it actually has the underlying response,
 	// we can't perform this validation into ScanResponse.ensureValid.
 	if err = snapshot.EnsureValid(false); err != nil {
-		return nil, false, errors.Wrap(err, "invalid snapshot received"), false
+		return nil, false, fmt.Errorf("invalid snapshot received: %w", err), false
 	}
 
 	// Store the bytes that gave us a successful snapshot.
@@ -299,17 +298,17 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 		},
 	}
 	if err := c.encoder.Encode(request); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "unable to send stage request")
+		return nil, nil, nil, fmt.Errorf("unable to send stage request: %w", err)
 	}
 
 	// Receive the response and check for remote errors.
 	response := &StageResponse{}
 	if err := c.decoder.Decode(response); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "unable to receive stage response")
+		return nil, nil, nil, fmt.Errorf("unable to receive stage response: %w", err)
 	} else if err = response.ensureValid(); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "invalid scan response")
+		return nil, nil, nil, fmt.Errorf("invalid scan response: %w", err)
 	} else if response.Error != "" {
-		return nil, nil, nil, errors.Errorf("remote error: %s", response.Error)
+		return nil, nil, nil, fmt.Errorf("remote error: %s", response.Error)
 	}
 
 	// If everything was already staged, then we can abort the staging
@@ -341,7 +340,7 @@ func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 		// private rsync method, and there shouldn't be any resources in the
 		// receiver in need of finalizing here, but it would be worth thinking
 		// about for consistency.
-		return errors.Wrap(err, "unable to send supply request")
+		return fmt.Errorf("unable to send supply request: %w", err)
 	}
 
 	// We don't receive a response to ensure that the remote is ready to
@@ -356,7 +355,7 @@ func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 	// successfully, supplying is complete and successful.
 	decoder := newProtobufRsyncDecoder(c.decoder)
 	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
-		return errors.Wrap(err, "unable to decode and forward rsync operations")
+		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
 
 	// Success.
@@ -372,7 +371,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 		},
 	}
 	if err := c.encoder.Encode(request); err != nil {
-		return nil, nil, false, errors.Wrap(err, "unable to send transition request")
+		return nil, nil, false, fmt.Errorf("unable to send transition request: %w", err)
 	}
 
 	// Create a subcontext that we can cancel to regulate transmission of the
@@ -385,7 +384,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	go func() {
 		<-completionCtx.Done()
 		if err := c.encoder.Encode(&TransitionCompletionRequest{}); err != nil {
-			completionSendErrors <- errors.Wrap(err, "unable to send completion request")
+			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
 		}
@@ -396,9 +395,9 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	responseReceiveErrors := make(chan error, 1)
 	go func() {
 		if err := c.decoder.Decode(response); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "unable to receive transition response")
+			responseReceiveErrors <- fmt.Errorf("unable to receive transition response: %w", err)
 		} else if err = response.ensureValid(len(transitions)); err != nil {
-			responseReceiveErrors <- errors.Wrap(err, "invalid transition response")
+			responseReceiveErrors <- fmt.Errorf("invalid transition response: %w", err)
 		} else {
 			responseReceiveErrors <- nil
 		}
@@ -431,7 +430,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 
 	// Check for remote errors.
 	if response.Error != "" {
-		return nil, nil, false, errors.Errorf("remote error: %s", response.Error)
+		return nil, nil, false, fmt.Errorf("remote error: %s", response.Error)
 	}
 
 	// HACK: Extract the wrapped results.

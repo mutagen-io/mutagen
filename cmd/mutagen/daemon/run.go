@@ -1,10 +1,9 @@
 package daemon
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -36,7 +35,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Attempt to acquire the daemon lock and defer its release.
 	lock, err := daemon.AcquireLock()
 	if err != nil {
-		return errors.Wrap(err, "unable to acquire daemon lock")
+		return fmt.Errorf("unable to acquire daemon lock: %w", err)
 	}
 	defer lock.Release()
 
@@ -49,14 +48,14 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
 	if err != nil {
-		return errors.Wrap(err, "unable to create forwarding session manager")
+		return fmt.Errorf("unable to create forwarding session manager: %w", err)
 	}
 	defer forwardingManager.Shutdown()
 
 	// Create a synchronization session manager and defer its shutdown.
 	synchronizationManager, err := synchronization.NewManager(logging.RootLogger.Sublogger("synchronization"))
 	if err != nil {
-		return errors.Wrap(err, "unable to create synchronization session manager")
+		return fmt.Errorf("unable to create synchronization session manager: %w", err)
 	}
 	defer synchronizationManager.Shutdown()
 
@@ -87,7 +86,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Compute the path to the daemon IPC endpoint.
 	endpoint, err := daemon.EndpointPath()
 	if err != nil {
-		return errors.Wrap(err, "unable to compute endpoint path")
+		return fmt.Errorf("unable to compute endpoint path: %w", err)
 	}
 
 	// Create the daemon listener and defer its closure. Since we hold the
@@ -96,7 +95,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	os.Remove(endpoint)
 	listener, err := ipc.NewListener(endpoint)
 	if err != nil {
-		return errors.Wrap(err, "unable to create daemon listener")
+		return fmt.Errorf("unable to create daemon listener: %w", err)
 	}
 	defer listener.Close()
 
@@ -111,11 +110,11 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// server. We treat termination via the daemon service as a non-error.
 	select {
 	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+		return fmt.Errorf("terminated by signal: %s", sig)
 	case <-daemonServer.Termination:
 		return nil
 	case err = <-serverErrors:
-		return errors.Wrap(err, "daemon server termination")
+		return fmt.Errorf("daemon server termination: %w", err)
 	}
 }
 

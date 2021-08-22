@@ -3,12 +3,11 @@
 package filesystem
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/sys/unix"
 )
@@ -60,7 +59,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	var rawMetadata unix.Stat_t
 	if err := fstatRetryingOnEINTR(descriptor, &rawMetadata); err != nil {
 		closeConsideringEINTR(descriptor)
-		return nil, nil, errors.Wrap(err, "unable to query file metadata")
+		return nil, nil, fmt.Errorf("unable to query file metadata: %w", err)
 	}
 
 	// Convert the raw system-level metadata.

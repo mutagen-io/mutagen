@@ -1,7 +1,7 @@
 package synchronization
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // IsDefault indicates whether or not the staging mode is
@@ -23,7 +23,7 @@ func (m *StageMode) UnmarshalText(textBytes []byte) error {
 	case "neighboring":
 		*m = StageMode_StageModeNeighboring
 	default:
-		return errors.Errorf("unknown staging mode specification: %s", text)
+		return fmt.Errorf("unknown staging mode specification: %s", text)
 	}
 
 	// Success.

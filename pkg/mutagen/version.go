@@ -4,11 +4,10 @@ package mutagen
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -82,12 +81,12 @@ func ClientVersionHandshake(connection net.Conn) error {
 	// Receive the server's version.
 	serverMajor, serverMinor, _, err := receiveVersion(connection)
 	if err != nil {
-		return errors.Wrap(err, "unable to receive server version")
+		return fmt.Errorf("unable to receive server version: %w", err)
 	}
 
 	// Send our version to the server.
 	if err := sendVersion(connection); err != nil {
-		return errors.Wrap(err, "unable to send client version")
+		return fmt.Errorf("unable to send client version: %w", err)
 	}
 
 	// Ensure that our Mutagen versions are compatible. For now, we enforce that
@@ -114,13 +113,13 @@ func ClientVersionHandshake(connection net.Conn) error {
 func ServerVersionHandshake(connection net.Conn) error {
 	// Send our version to the client.
 	if err := sendVersion(connection); err != nil {
-		return errors.Wrap(err, "unable to send server version")
+		return fmt.Errorf("unable to send server version: %w", err)
 	}
 
 	// Receive the client's version.
 	clientMajor, clientMinor, _, err := receiveVersion(connection)
 	if err != nil {
-		return errors.Wrap(err, "unable to receive client version")
+		return fmt.Errorf("unable to receive client version: %w", err)
 	}
 
 	// Ensure that our versions are compatible. For now, we enforce that they're

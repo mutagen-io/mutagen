@@ -1,10 +1,9 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/pkg/errors"
 )
 
 // Transport is the standard agent transport interface, allowing the agent
@@ -50,7 +49,7 @@ func run(transport Transport, command string) error {
 	// Create the process.
 	process, err := transport.Command(command)
 	if err != nil {
-		return errors.Wrap(err, "unable to create command")
+		return fmt.Errorf("unable to create command: %w", err)
 	}
 
 	// Run the process.
@@ -66,7 +65,7 @@ func output(transport Transport, command string) ([]byte, error) {
 	// Create the process.
 	process, err := transport.Command(command)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create command")
+		return nil, fmt.Errorf("unable to create command: %w", err)
 	}
 
 	// Run the process.

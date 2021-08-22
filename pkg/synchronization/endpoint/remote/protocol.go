@@ -1,7 +1,8 @@
 package remote
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // ensureValid ensures that the InitializeSynchronizationRequest's invariants
@@ -24,7 +25,7 @@ func (r *InitializeSynchronizationRequest) ensureValid() error {
 
 	// Ensure that the configuration is valid.
 	if err := r.Configuration.EnsureValid(false); err != nil {
-		return errors.Wrap(err, "invalid configuration")
+		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	// Ensure that the root path is non-empty.
@@ -93,7 +94,7 @@ func (r *ScanRequest) ensureValid() error {
 
 	// Ensure that the base snapshot signature is valid.
 	if err := r.BaseSnapshotSignature.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid base snapshot signature")
+		return fmt.Errorf("invalid base snapshot signature: %w", err)
 	}
 
 	// Full is correct regardless of value, so no validation is required.
@@ -124,7 +125,7 @@ func (r *ScanResponse) ensureValid() error {
 	// Ensure that each snapshot delta operation is valid.
 	for _, operation := range r.SnapshotDelta {
 		if err := operation.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid snapshot delta operation")
+			return fmt.Errorf("invalid snapshot delta operation: %w", err)
 		}
 	}
 
@@ -199,7 +200,7 @@ func (r *StageResponse) ensureValid() error {
 	// Verify that all signatures are valid.
 	for _, signature := range r.Signatures {
 		if err := signature.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid rsync signature")
+			return fmt.Errorf("invalid rsync signature: %w", err)
 		}
 	}
 
@@ -229,7 +230,7 @@ func (r *SupplyRequest) ensureValid() error {
 	// Ensure that all signatures are valid.
 	for _, s := range r.Signatures {
 		if err := s.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid base signature detected")
+			return fmt.Errorf("invalid base signature detected: %w", err)
 		}
 	}
 
@@ -248,7 +249,7 @@ func (r *TransitionRequest) ensureValid() error {
 	// content.
 	for _, change := range r.Transitions {
 		if err := change.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid transition")
+			return fmt.Errorf("invalid transition: %w", err)
 		}
 	}
 
@@ -284,14 +285,14 @@ func (r *TransitionResponse) ensureValid(expectedCount int) error {
 	// synchronizable content.
 	for _, result := range r.Results {
 		if err := result.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "invalid result returned")
+			return fmt.Errorf("invalid result returned: %w", err)
 		}
 	}
 
 	// Validate that each problem is a valid problem specification.
 	for _, problem := range r.Problems {
 		if err := problem.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid problem returned")
+			return fmt.Errorf("invalid problem returned: %w", err)
 		}
 	}
 

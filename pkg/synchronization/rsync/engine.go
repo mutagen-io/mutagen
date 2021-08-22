@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha1"
+	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"math"
-
-	"github.com/pkg/errors"
 )
 
 // EnsureValid verifies that block hash invariants are respected.
@@ -37,7 +37,7 @@ func (s *Signature) EnsureValid() error {
 	// Ensure that all block hashes are valid.
 	for _, h := range s.Hashes {
 		if err := h.EnsureValid(); err != nil {
-			return errors.Wrap(err, "invalid block hash")
+			return fmt.Errorf("invalid block hash: %w", err)
 		}
 	}
 
@@ -186,15 +186,15 @@ func OptimalBlockSizeForBaseLength(baseLength uint64) uint64 {
 // attempt to reset the base to its original position.
 func OptimalBlockSizeForBase(base io.Seeker) (uint64, error) {
 	if currentOffset, err := base.Seek(0, io.SeekCurrent); err != nil {
-		return 0, errors.Wrap(err, "unable to determine current base offset")
+		return 0, fmt.Errorf("unable to determine current base offset: %w", err)
 	} else if currentOffset < 0 {
-		return 0, errors.Wrap(err, "seek return negative starting location")
+		return 0, fmt.Errorf("seek return negative starting location: %w", err)
 	} else if length, err := base.Seek(0, io.SeekEnd); err != nil {
-		return 0, errors.Wrap(err, "unable to compute base length")
+		return 0, fmt.Errorf("unable to compute base length: %w", err)
 	} else if length < 0 {
 		return 0, errors.New("seek returned negative offset")
 	} else if _, err = base.Seek(currentOffset, io.SeekStart); err != nil {
-		return 0, errors.Wrap(err, "unable to reset base")
+		return 0, fmt.Errorf("unable to reset base: %w", err)
 	} else {
 		return OptimalBlockSizeForBaseLength(uint64(length)), nil
 	}
@@ -369,7 +369,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (*Signature, error)
 			result.LastBlockSize = uint64(n)
 			eof = true
 		} else if err != nil {
-			return nil, errors.Wrap(err, "unable to read data block")
+			return nil, fmt.Errorf("unable to read data block: %w", err)
 		}
 
 		// Compute hashes for the the block that was read. For short blocks, we
@@ -403,7 +403,7 @@ func (e *Engine) BytesSignature(base []byte, blockSize uint64) *Signature {
 	// occur in-memory).
 	result, err := e.Signature(bytes.NewReader(base), blockSize)
 	if err != nil {
-		panic(errors.Wrap(err, "in-memory signature failure"))
+		panic(fmt.Errorf("in-memory signature failure: %w", err))
 	}
 
 	// Success.
@@ -469,13 +469,13 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 			return nil
 		} else if err == io.ErrUnexpectedEOF {
 			if err = e.transmitData(buffer[:n], transmit); err != nil {
-				return errors.Wrap(err, "unable to transmit data operation")
+				return fmt.Errorf("unable to transmit data operation: %w", err)
 			}
 			return nil
 		} else if err != nil {
-			return errors.Wrap(err, "unable to read target")
+			return fmt.Errorf("unable to read target: %w", err)
 		} else if err = e.transmitData(buffer, transmit); err != nil {
-			return errors.Wrap(err, "unable to transmit data operation")
+			return fmt.Errorf("unable to transmit data operation: %w", err)
 		}
 	}
 }
@@ -629,7 +629,7 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 				occupancy = uint64(n)
 				break
 			} else if err != nil {
-				return errors.Wrap(err, "unable to perform initial buffer fill")
+				return fmt.Errorf("unable to perform initial buffer fill: %w", err)
 			} else {
 				occupancy = base.BlockSize
 				weak, r1, r2 = e.weakHash(buffer[:occupancy], base.BlockSize)
@@ -640,7 +640,7 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 			if b, err := bufferedTarget.ReadByte(); err == io.EOF {
 				break
 			} else if err != nil {
-				return errors.Wrap(err, "unable to read target byte")
+				return fmt.Errorf("unable to read target byte: %w", err)
 			} else {
 				weak, r1, r2 = e.rollWeakHash(r1, r2, buffer[occupancy-base.BlockSize], b, base.BlockSize)
 				buffer[occupancy] = b
@@ -668,14 +668,14 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 		// preceding the search block.
 		if match {
 			if err := sendData(buffer[:occupancy-base.BlockSize]); err != nil {
-				return errors.Wrap(err, "unable to transmit data preceding match")
+				return fmt.Errorf("unable to transmit data preceding match: %w", err)
 			} else if err = sendBlock(matchIndex); err != nil {
-				return errors.Wrap(err, "unable to transmit match")
+				return fmt.Errorf("unable to transmit match: %w", err)
 			}
 			occupancy = 0
 		} else if occupancy == uint64(len(buffer)) {
 			if err := sendData(buffer[:occupancy-base.BlockSize]); err != nil {
-				return errors.Wrap(err, "unable to transmit data before truncation")
+				return fmt.Errorf("unable to transmit data before truncation: %w", err)
 			}
 			copy(buffer[:base.BlockSize], buffer[occupancy-base.BlockSize:occupancy])
 			occupancy = base.BlockSize
@@ -693,9 +693,9 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 		if w, _, _ := e.weakHash(potentialLastBlockMatch, base.BlockSize); w == shortLastBlock.Weak {
 			if bytes.Equal(e.strongHash(potentialLastBlockMatch, false), shortLastBlock.Strong) {
 				if err := sendData(buffer[:occupancy-base.LastBlockSize]); err != nil {
-					return errors.Wrap(err, "unable to transmit data")
+					return fmt.Errorf("unable to transmit data: %w", err)
 				} else if err = sendBlock(lastBlockIndex); err != nil {
-					return errors.Wrap(err, "unable to transmit operation")
+					return fmt.Errorf("unable to transmit operation: %w", err)
 				}
 				occupancy = 0
 			}
@@ -704,14 +704,14 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 
 	// Send any data remaining in the buffer.
 	if err := sendData(buffer[:occupancy]); err != nil {
-		return errors.Wrap(err, "unable to send final data operation")
+		return fmt.Errorf("unable to send final data operation: %w", err)
 	}
 
 	// Send any final pending coalesced operation. This can't be done as a defer
 	// because we need to watch for errors.
 	if coalescedCount > 0 {
 		if err := e.transmitBlock(coalescedStart, coalescedCount, transmit); err != nil {
-			return errors.Wrap(err, "unable to send final block operation")
+			return fmt.Errorf("unable to send final block operation: %w", err)
 		}
 	}
 
@@ -747,7 +747,7 @@ func (e *Engine) DeltafyBytes(target []byte, base *Signature, maxDataOpSize uint
 	// Compute the delta and watch for errors (which shouldn't occur for for
 	// in-memory data).
 	if err := e.Deltafy(reader, base, maxDataOpSize, transmit); err != nil {
-		panic(errors.Wrap(err, "in-memory deltafication failure"))
+		panic(fmt.Errorf("in-memory deltafication failure: %w", err))
 	}
 
 	// Success.
@@ -768,7 +768,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature *Sig
 	if len(operation.Data) > 0 {
 		// Write data operations directly to the destination.
 		if _, err := destination.Write(operation.Data); err != nil {
-			return errors.Wrap(err, "unable to write data")
+			return fmt.Errorf("unable to write data: %w", err)
 		}
 	} else {
 		// Seek to the start of the requested block in base.
@@ -776,7 +776,7 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature *Sig
 		// multiplied by the block size can't overflow an int64. Worst case
 		// at the moment it will cause the seek operation to fail.
 		if _, err := base.Seek(int64(operation.Start)*int64(signature.BlockSize), io.SeekStart); err != nil {
-			return errors.Wrap(err, "unable to seek to base location")
+			return fmt.Errorf("unable to seek to base location: %w", err)
 		}
 
 		// Copy the requested number of blocks.
@@ -792,9 +792,9 @@ func (e *Engine) Patch(destination io.Writer, base io.ReadSeeker, signature *Sig
 
 			// Copy the block.
 			if _, err := io.ReadFull(base, buffer); err != nil {
-				return errors.Wrap(err, "unable to read block data")
+				return fmt.Errorf("unable to read block data: %w", err)
 			} else if _, err = destination.Write(buffer); err != nil {
-				return errors.Wrap(err, "unable to write block data")
+				return fmt.Errorf("unable to write block data: %w", err)
 			}
 		}
 	}

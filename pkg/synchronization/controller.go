@@ -2,12 +2,11 @@ package synchronization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -103,7 +102,7 @@ func newSession(
 	// Compute the creation time and check that it's valid for Protocol Buffers.
 	creationTime := timestamppb.Now()
 	if err := creationTime.CheckValid(); err != nil {
-		return nil, errors.Wrap(err, "unable to record creation time")
+		return nil, fmt.Errorf("unable to record creation time: %w", err)
 	}
 
 	// Compute merged endpoint configurations.
@@ -139,7 +138,7 @@ func newSession(
 		)
 		if err != nil {
 			logger.Info("Alpha connection failure:", err)
-			return nil, errors.Wrap(err, "unable to connect to alpha")
+			return nil, fmt.Errorf("unable to connect to alpha: %w", err)
 		}
 		logger.Info("Connecting to beta endpoint")
 		betaEndpoint, err = connect(
@@ -154,7 +153,7 @@ func newSession(
 		)
 		if err != nil {
 			logger.Info("Beta connection failure:", err)
-			return nil, errors.Wrap(err, "unable to connect to beta")
+			return nil, fmt.Errorf("unable to connect to beta: %w", err)
 		}
 	}
 
@@ -180,20 +179,20 @@ func newSession(
 	// Compute the session and archive paths.
 	sessionPath, err := pathForSession(session.Identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute session path")
+		return nil, fmt.Errorf("unable to compute session path: %w", err)
 	}
 	archivePath, err := pathForArchive(session.Identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute archive path")
+		return nil, fmt.Errorf("unable to compute archive path: %w", err)
 	}
 
 	// Save components to disk.
 	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
-		return nil, errors.Wrap(err, "unable to save session")
+		return nil, fmt.Errorf("unable to save session: %w", err)
 	}
 	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
 		os.Remove(sessionPath)
-		return nil, errors.Wrap(err, "unable to save archive")
+		return nil, fmt.Errorf("unable to save archive: %w", err)
 	}
 
 	// Create the controller.
@@ -234,11 +233,11 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	// Compute session and archive paths.
 	sessionPath, err := pathForSession(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute session path")
+		return nil, fmt.Errorf("unable to compute session path: %w", err)
 	}
 	archivePath, err := pathForArchive(identifier)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to compute archive path")
+		return nil, fmt.Errorf("unable to compute archive path: %w", err)
 	}
 
 	// Load and validate the session. We have to populate a few optional fields
@@ -247,7 +246,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 	// set.
 	session := &Session{}
 	if err := encoding.LoadAndUnmarshalProtobuf(sessionPath, session); err != nil {
-		return nil, errors.Wrap(err, "unable to load session configuration")
+		return nil, fmt.Errorf("unable to load session configuration: %w", err)
 	}
 	if session.ConfigurationAlpha == nil {
 		session.ConfigurationAlpha = &Configuration{}
@@ -256,7 +255,7 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 		session.ConfigurationBeta = &Configuration{}
 	}
 	if err := session.EnsureValid(); err != nil {
-		return nil, errors.Wrap(err, "invalid session found on disk")
+		return nil, fmt.Errorf("invalid session found on disk: %w", err)
 	}
 
 	// Create the controller.
@@ -481,11 +480,11 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 	// even on partial or complete failure (since it might be able to
 	// auto-reconnect on its own), we wait until the end to report errors.
 	if saveErr != nil {
-		return errors.Wrap(saveErr, "unable to save session")
+		return fmt.Errorf("unable to save session: %w", saveErr)
 	} else if alphaConnectErr != nil {
-		return errors.Wrap(alphaConnectErr, "unable to connect to alpha")
+		return fmt.Errorf("unable to connect to alpha: %w", alphaConnectErr)
 	} else if betaConnectErr != nil {
-		return errors.Wrap(betaConnectErr, "unable to connect to beta")
+		return fmt.Errorf("unable to connect to beta: %w", betaConnectErr)
 	}
 
 	// Success.
@@ -560,7 +559,7 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
 		c.stateLock.Unlock()
 		if saveErr != nil {
-			return errors.Wrap(saveErr, "unable to save session")
+			return fmt.Errorf("unable to save session: %w", saveErr)
 		}
 	} else if mode == controllerHaltModeShutdown {
 		// Disable the controller.
@@ -573,9 +572,9 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		sessionRemoveErr := os.Remove(c.sessionPath)
 		archiveRemoveErr := os.Remove(c.archivePath)
 		if sessionRemoveErr != nil {
-			return errors.Wrap(sessionRemoveErr, "unable to remove session from disk")
+			return fmt.Errorf("unable to remove session from disk: %w", sessionRemoveErr)
 		} else if archiveRemoveErr != nil {
-			return errors.Wrap(archiveRemoveErr, "unable to remove archive from disk")
+			return fmt.Errorf("unable to remove archive from disk: %w", archiveRemoveErr)
 		}
 	} else {
 		panic("invalid halt mode specified")
@@ -792,9 +791,9 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 	// contains only synchronizable content.
 	archive := &core.Archive{}
 	if err := encoding.LoadAndUnmarshalProtobuf(c.archivePath, archive); err != nil {
-		return errors.Wrap(err, "unable to load archive")
+		return fmt.Errorf("unable to load archive: %w", err)
 	} else if err = archive.EnsureValid(true); err != nil {
-		return errors.Wrap(err, "invalid archive found on disk")
+		return fmt.Errorf("invalid archive found on disk: %w", err)
 	}
 	ancestor := archive.Content
 
@@ -919,9 +918,9 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			if cancelled {
 				return errors.New("cancelled during polling")
 			} else if αPollErr != nil {
-				return errors.Wrap(αPollErr, "alpha polling error")
+				return fmt.Errorf("alpha polling error: %w", αPollErr)
 			} else if βPollErr != nil {
-				return errors.Wrap(βPollErr, "beta polling error")
+				return fmt.Errorf("beta polling error: %w", βPollErr)
 			}
 		} else {
 			skipPolling = false
@@ -959,7 +958,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 
 		// Check for scan errors.
 		if αScanErr != nil {
-			αScanErr = errors.Wrap(αScanErr, "alpha scan error")
+			αScanErr = fmt.Errorf("alpha scan error: %w", αScanErr)
 			if !αTryAgain {
 				return αScanErr
 			} else {
@@ -969,7 +968,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			}
 		}
 		if βScanErr != nil {
-			βScanErr = errors.Wrap(βScanErr, "beta scan error")
+			βScanErr = fmt.Errorf("beta scan error: %w", βScanErr)
 			if !βTryAgain {
 				return βScanErr
 			} else {
@@ -1104,7 +1103,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		if paths, digests := core.TransitionDependencies(αTransitions); len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := alpha.Stage(paths, digests)
 			if err != nil {
-				return errors.Wrap(err, "unable to begin staging on alpha")
+				return fmt.Errorf("unable to begin staging on alpha: %w", err)
 			}
 			if !filteredPathsAreSubset(filteredPaths, paths) {
 				return errors.New("alpha returned incorrect subset of staging paths")
@@ -1113,7 +1112,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
-					return errors.Wrap(err, "unable to stage files on alpha")
+					return fmt.Errorf("unable to stage files on alpha: %w", err)
 				}
 			}
 		}
@@ -1125,7 +1124,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		if paths, digests := core.TransitionDependencies(βTransitions); len(paths) > 0 {
 			filteredPaths, signatures, receiver, err := beta.Stage(paths, digests)
 			if err != nil {
-				return errors.Wrap(err, "unable to begin staging on beta")
+				return fmt.Errorf("unable to begin staging on beta: %w", err)
 			}
 			if !filteredPathsAreSubset(filteredPaths, paths) {
 				return errors.New("beta returned incorrect subset of staging paths")
@@ -1134,7 +1133,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
-					return errors.Wrap(err, "unable to stage files on beta")
+					return fmt.Errorf("unable to stage files on beta: %w", err)
 				}
 			}
 		}
@@ -1193,7 +1192,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		ancestorChanges = append(ancestorChanges, αChanges...)
 		ancestorChanges = append(ancestorChanges, βChanges...)
 		if newAncestor, err := core.Apply(ancestor, ancestorChanges); err != nil {
-			return errors.Wrap(err, "unable to propagate changes to ancestor")
+			return fmt.Errorf("unable to propagate changes to ancestor: %w", err)
 		} else {
 			ancestor = newAncestor
 		}
@@ -1208,20 +1207,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// put out a broken release, or encounter some bizarre real world merge
 		// case that we didn't consider, things can be fixed.
 		if err := ancestor.EnsureValid(true); err != nil {
-			return errors.Wrap(err, "new ancestor is invalid")
+			return fmt.Errorf("new ancestor is invalid: %w", err)
 		}
 
 		// Save the ancestor.
 		archive.Content = ancestor
 		if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
-			return errors.Wrap(err, "unable to save ancestor")
+			return fmt.Errorf("unable to save ancestor: %w", err)
 		}
 
 		// Now check for transition errors.
 		if αTransitionErr != nil {
-			return errors.Wrap(αTransitionErr, "unable to apply changes to alpha")
+			return fmt.Errorf("unable to apply changes to alpha: %w", αTransitionErr)
 		} else if βTransitionErr != nil {
-			return errors.Wrap(βTransitionErr, "unable to apply changes to beta")
+			return fmt.Errorf("unable to apply changes to beta: %w", βTransitionErr)
 		}
 
 		// If there were files missing from either endpoint's stager during the

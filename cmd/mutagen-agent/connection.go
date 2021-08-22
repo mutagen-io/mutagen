@@ -1,12 +1,11 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"net"
 	"os"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // stdioAddress is a net.Addr implementation for stdioConnection.

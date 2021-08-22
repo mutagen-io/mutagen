@@ -1,10 +1,9 @@
 package daemon
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -18,7 +17,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// If the daemon is registered with the system, it may have a different
 	// start mechanism, so see if the system should handle it.
 	if handled, err := daemon.RegisteredStart(); err != nil {
-		return errors.Wrap(err, "unable to start daemon using system mechanism")
+		return fmt.Errorf("unable to start daemon using system mechanism: %w", err)
 	} else if handled {
 		return nil
 	}
@@ -26,7 +25,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	// Compute the path to the current executable.
 	executablePath, err := os.Executable()
 	if err != nil {
-		return errors.Wrap(err, "unable to determine executable path")
+		return fmt.Errorf("unable to determine executable path: %w", err)
 	}
 
 	// Restart in the background.
@@ -36,7 +35,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 		SysProcAttr: daemonProcessAttributes,
 	}
 	if err := daemonProcess.Start(); err != nil {
-		return errors.Wrap(err, "unable to fork daemon")
+		return fmt.Errorf("unable to fork daemon: %w", err)
 	}
 
 	// Success.

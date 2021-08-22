@@ -1,11 +1,10 @@
 package filesystem
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 // tildeExpand attempts tilde expansion of paths beginning with ~/ or
@@ -43,13 +42,13 @@ func tildeExpand(path string) (string, error) {
 	var homeDirectory string
 	if username == "" {
 		if h, err := os.UserHomeDir(); err != nil {
-			return "", errors.Wrap(err, "unable to compute path to home directory")
+			return "", fmt.Errorf("unable to compute path to home directory: %w", err)
 		} else {
 			homeDirectory = h
 		}
 	} else {
 		if u, err := user.Lookup(username); err != nil {
-			return "", errors.Wrap(err, "unable to lookup user")
+			return "", fmt.Errorf("unable to lookup user: %w", err)
 		} else {
 			homeDirectory = u.HomeDir
 		}
@@ -65,13 +64,13 @@ func Normalize(path string) (string, error) {
 	// Expand any leading tilde.
 	path, err := tildeExpand(path)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to perform tilde expansion")
+		return "", fmt.Errorf("unable to perform tilde expansion: %w", err)
 	}
 
 	// Convert to an absolute path. This will also invoke filepath.Clean.
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to compute absolute path")
+		return "", fmt.Errorf("unable to compute absolute path: %w", err)
 	}
 
 	// Success.

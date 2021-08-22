@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -66,12 +65,12 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 
 	// Perform an agent handshake.
 	if err := agent.ServerHandshake(connection); err != nil {
-		return errors.Wrap(err, "server handshake failed")
+		return fmt.Errorf("server handshake failed: %w", err)
 	}
 
 	// Perform a version handshake.
 	if err := mutagen.ServerVersionHandshake(connection); err != nil {
-		return errors.Wrap(err, "version handshake error")
+		return fmt.Errorf("version handshake error: %w", err)
 	}
 
 	// Serve a synchronizer on standard input/output and monitor for its
@@ -87,9 +86,9 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	// Wait for termination from a signal or the synchronizer.
 	select {
 	case sig := <-signalTermination:
-		return errors.Errorf("terminated by signal: %s", sig)
+		return fmt.Errorf("terminated by signal: %s", sig)
 	case err := <-synchronizationTermination:
-		return errors.Wrap(err, "synchronization terminated")
+		return fmt.Errorf("synchronization terminated: %w", err)
 	}
 }
 

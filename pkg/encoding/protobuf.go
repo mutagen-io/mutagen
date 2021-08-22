@@ -3,9 +3,9 @@ package encoding
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
@@ -82,7 +82,7 @@ func (e *ProtobufEncoder) EncodeWithoutFlush(message proto.Message) error {
 
 	// Encode the message.
 	if b, err := e.encoder.MarshalAppend(e.buffer, message); err != nil {
-		return errors.Wrap(err, "unable to encode message")
+		return fmt.Errorf("unable to encode message: %w", err)
 	} else {
 		e.buffer = b
 	}
@@ -97,7 +97,7 @@ func (e *ProtobufEncoder) Flush() error {
 	// Write the data to the wire if there is any.
 	if len(e.buffer) > 0 {
 		if _, err := e.writer.Write(e.buffer); err != nil {
-			return errors.Wrap(err, "unable to write message")
+			return fmt.Errorf("unable to write message: %w", err)
 		}
 	}
 
@@ -176,7 +176,7 @@ func (d *ProtobufDecoder) Decode(message proto.Message) error {
 	// Read the next message length.
 	length, err := binary.ReadUvarint(d.reader)
 	if err != nil {
-		return errors.Wrap(err, "unable to read message length")
+		return fmt.Errorf("unable to read message length: %w", err)
 	}
 
 	// Check if the message is too long to read.
@@ -189,12 +189,12 @@ func (d *ProtobufDecoder) Decode(message proto.Message) error {
 
 	// Read the message bytes.
 	if _, err := io.ReadFull(d.reader, messageBytes); err != nil {
-		return errors.Wrap(err, "unable to read message")
+		return fmt.Errorf("unable to read message: %w", err)
 	}
 
 	// Unmarshal the message.
 	if err := proto.Unmarshal(messageBytes, message); err != nil {
-		return errors.Wrap(err, "unable to unmarshal message")
+		return fmt.Errorf("unable to unmarshal message: %w", err)
 	}
 
 	// Success.
@@ -237,7 +237,7 @@ func DecodeProtobuf(reader io.Reader, message proto.Message) error {
 	// Read the next message length.
 	length, err := binary.ReadUvarint(&simpleByteReader{reader})
 	if err != nil {
-		return errors.Wrap(err, "unable to read message length")
+		return fmt.Errorf("unable to read message length: %w", err)
 	}
 
 	// Check if the message is too long to read.
@@ -250,12 +250,12 @@ func DecodeProtobuf(reader io.Reader, message proto.Message) error {
 
 	// Read the message bytes.
 	if _, err := io.ReadFull(reader, messageBytes); err != nil {
-		return errors.Wrap(err, "unable to read message")
+		return fmt.Errorf("unable to read message: %w", err)
 	}
 
 	// Unmarshal the message.
 	if err := proto.Unmarshal(messageBytes, message); err != nil {
-		return errors.Wrap(err, "unable to unmarshal message")
+		return fmt.Errorf("unable to unmarshal message: %w", err)
 	}
 
 	// Success.

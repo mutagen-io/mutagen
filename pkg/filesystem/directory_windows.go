@@ -1,13 +1,13 @@
 package filesystem
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/sys/windows"
 
@@ -60,12 +60,12 @@ func (d *Directory) Close() error {
 	// Close the file object.
 	if err := d.file.Close(); err != nil {
 		windows.CloseHandle(d.handle)
-		return errors.Wrap(err, "unable to close file object")
+		return fmt.Errorf("unable to close file object: %w", err)
 	}
 
 	// Close the handle.
 	if err := windows.CloseHandle(d.handle); err != nil {
-		return errors.Wrap(err, "unable to close file handle")
+		return fmt.Errorf("unable to close file handle: %w", err)
 	}
 
 	// Success.
@@ -188,7 +188,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 			0,
 			0,
 		); err != nil {
-			return errors.Wrap(err, "unable to set ownership information")
+			return fmt.Errorf("unable to set ownership information: %w", err)
 		}
 	}
 
@@ -196,7 +196,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	mode = mode & ModePermissionsMask
 	if mode != 0 {
 		if err := os.Chmod(path, os.FileMode(mode)); err != nil {
-			return errors.Wrap(err, "unable to set permission bits")
+			return fmt.Errorf("unable to set permission bits: %w", err)
 		}
 	}
 
@@ -221,7 +221,7 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return "", 0, errors.Wrap(err, "unable to convert path to UTF-16")
+		return "", 0, fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
 	// Open the path in a manner that is suitable for reading, doesn't allow for
@@ -241,14 +241,14 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 		if os.IsNotExist(err) {
 			return "", 0, err
 		}
-		return "", 0, errors.Wrap(err, "unable to open path")
+		return "", 0, fmt.Errorf("unable to open path: %w", err)
 	}
 
 	// Query file handle metadata.
 	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
 	if err != nil {
 		windows.CloseHandle(handle)
-		return "", 0, errors.Wrap(err, "unable to query file handle metadata")
+		return "", 0, fmt.Errorf("unable to query file handle metadata: %w", err)
 	}
 
 	// Verify that we're not dealing with a symbolic link.
@@ -272,7 +272,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Open the directory handle.
 	path, handle, err := d.openHandle(name, true)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to open directory handle")
+		return nil, fmt.Errorf("unable to open directory handle: %w", err)
 	}
 
 	// Open the corresponding file object. Unfortunately we can't force the file
@@ -282,7 +282,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		windows.CloseHandle(handle)
-		return nil, errors.Wrap(err, "unable to open file object for directory")
+		return nil, fmt.Errorf("unable to open file object for directory: %w", err)
 	}
 
 	// Success.
@@ -403,7 +403,7 @@ func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, error) {
 	// Open the file handle.
 	_, handle, err := d.openHandle(name, false)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to open file handle")
+		return nil, fmt.Errorf("unable to open file handle: %w", err)
 	}
 
 	// Wrap the file handle in an os.File object. We use the base name for the
@@ -445,7 +445,7 @@ func (d *Directory) RemoveDirectory(name string) error {
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return errors.Wrap(err, "unable to convert path to UTF-16")
+		return fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
 	// Remove the directory.
@@ -468,7 +468,7 @@ func (d *Directory) RemoveFile(name string) error {
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return errors.Wrap(err, "unable to convert path to UTF-16")
+		return fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
 	// Remove the file.
@@ -510,7 +510,7 @@ func Rename(
 	// Adjust the source path if necessary.
 	if sourceDirectory != nil {
 		if err := ensureValidName(sourceNameOrPath); err != nil {
-			return errors.Wrap(err, "source name invalid")
+			return fmt.Errorf("source name invalid: %w", err)
 		}
 		sourceNameOrPath = filepath.Join(sourceDirectory.file.Name(), sourceNameOrPath)
 	}
@@ -518,7 +518,7 @@ func Rename(
 	// Adjust the target path if necessary.
 	if targetDirectory != nil {
 		if err := ensureValidName(targetNameOrPath); err != nil {
-			return errors.Wrap(err, "target name invalid")
+			return fmt.Errorf("target name invalid: %w", err)
 		}
 		targetNameOrPath = filepath.Join(targetDirectory.file.Name(), targetNameOrPath)
 	}
@@ -526,11 +526,11 @@ func Rename(
 	// Convert paths to UTF-16.
 	sourceNameOrPathUTF16, err := windows.UTF16PtrFromString(sourceNameOrPath)
 	if err != nil {
-		return errors.Wrap(err, "unable to convert source path to UTF-16")
+		return fmt.Errorf("unable to convert source path to UTF-16: %w", err)
 	}
 	targetNameOrPathUTF16, err := windows.UTF16PtrFromString(targetNameOrPath)
 	if err != nil {
-		return errors.Wrap(err, "unable to convert targt path to UTF-16")
+		return fmt.Errorf("unable to convert targt path to UTF-16: %w", err)
 	}
 
 	// Compute flags.

@@ -2,8 +2,7 @@ package sync
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -34,7 +33,7 @@ func FlushWithSelection(
 	)
 	if err != nil {
 		promptingCancel()
-		return errors.Wrap(err, "unable to initiate prompting")
+		return fmt.Errorf("unable to initiate prompting: %w", err)
 	}
 
 	// Perform the flush operation, cancel prompting, and handle errors.
@@ -52,7 +51,7 @@ func FlushWithSelection(
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
 		statusLinePrinter.BreakIfNonEmpty()
-		return errors.Wrap(err, "invalid flush response received")
+		return fmt.Errorf("invalid flush response received: %w", err)
 	}
 
 	// Success.
@@ -69,13 +68,13 @@ func flushMain(_ *cobra.Command, arguments []string) error {
 		LabelSelector:  flushConfiguration.labelSelector,
 	}
 	if err := selection.EnsureValid(); err != nil {
-		return errors.Wrap(err, "invalid session selection specification")
+		return fmt.Errorf("invalid session selection specification: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
-		return errors.Wrap(err, "unable to connect to daemon")
+		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
 	defer daemonConnection.Close()
 

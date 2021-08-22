@@ -2,9 +2,8 @@ package compression
 
 import (
 	"compress/flate"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -38,7 +37,7 @@ func (w *automaticallyFlushingFlateWriter) Write(buffer []byte) (int, error) {
 	if err != nil {
 		return count, err
 	} else if err = w.compressor.Flush(); err != nil {
-		return 0, errors.Wrap(err, "unable to flush compressor")
+		return 0, fmt.Errorf("unable to flush compressor: %w", err)
 	}
 	return count, nil
 }

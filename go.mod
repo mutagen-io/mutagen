@@ -17,7 +17,6 @@ require (
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
-	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect

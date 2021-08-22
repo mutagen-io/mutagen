@@ -5,6 +5,8 @@ package filesystem
 import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -13,8 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"golang.org/x/sys/unix"
 
@@ -182,7 +182,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	// Set ownership information, if specified.
 	if ownership != nil && (ownership.ownerID != -1 || ownership.groupID != -1) {
 		if err := fchownatRetryingOnEINTR(d.descriptor, name, ownership.ownerID, ownership.groupID, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-			return errors.Wrap(err, "unable to set ownership information")
+			return fmt.Errorf("unable to set ownership information: %w", err)
 		}
 	}
 
@@ -196,16 +196,16 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 	if mode != 0 {
 		if runtime.GOOS == "linux" {
 			if f, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
-				return errors.Wrap(err, "unable to open file")
+				return fmt.Errorf("unable to open file: %w", err)
 			} else if err = fchmodRetryingOnEINTR(f, uint32(mode)); err != nil {
 				closeConsideringEINTR(f)
-				return errors.Wrap(err, "unable to set permission bits on file")
+				return fmt.Errorf("unable to set permission bits on file: %w", err)
 			} else if err = closeConsideringEINTR(f); err != nil {
-				return errors.Wrap(err, "unable to close file")
+				return fmt.Errorf("unable to close file: %w", err)
 			}
 		} else {
 			if err := fchmodatRetryingOnEINTR(d.descriptor, name, uint32(mode), unix.AT_SYMLINK_NOFOLLOW); err != nil {
-				return errors.Wrap(err, "unable to set permission bits")
+				return fmt.Errorf("unable to set permission bits: %w", err)
 			}
 		}
 	}
@@ -257,7 +257,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, error) {
 	var metadata unix.Stat_t
 	if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
 		closeConsideringEINTR(descriptor)
-		return -1, errors.Wrap(err, "unable to query file metadata")
+		return -1, fmt.Errorf("unable to query file metadata: %w", err)
 	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
 		closeConsideringEINTR(descriptor)
 		return -1, errors.New("path is not of the expected type")
@@ -298,7 +298,7 @@ func (d *Directory) ReadContentNames() ([]string, error) {
 	// Seek the directory back to the beginning since the Readdirnames operation
 	// will have exhausted its "content".
 	if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
-		return nil, errors.Wrap(err, "unable to reset directory read pointer")
+		return nil, fmt.Errorf("unable to reset directory read pointer: %w", err)
 	} else if offset != 0 {
 		return nil, errors.New("directory offset is non-zero after seek operation")
 	}
@@ -357,7 +357,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 	// Read content names.
 	names, err := d.ReadContentNames()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read directory content names")
+		return nil, fmt.Errorf("unable to read directory content names: %w", err)
 	}
 
 	// Allocate the result slice with enough capacity to accommodate all
@@ -374,7 +374,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return nil, errors.Wrap(err, "unable to access content metadata")
+			return nil, fmt.Errorf("unable to access content metadata: %w", err)
 		} else {
 			results = append(results, m)
 		}
@@ -494,7 +494,7 @@ func Rename(
 	sourceDescriptor := unix.AT_FDCWD
 	if sourceDirectory != nil {
 		if err := ensureValidName(sourceNameOrPath); err != nil {
-			return errors.Wrap(err, "source name invalid")
+			return fmt.Errorf("source name invalid: %w", err)
 		}
 		sourceDescriptor = sourceDirectory.descriptor
 	}
@@ -504,7 +504,7 @@ func Rename(
 	targetDescriptor := unix.AT_FDCWD
 	if targetDirectory != nil {
 		if err := ensureValidName(targetNameOrPath); err != nil {
-			return errors.Wrap(err, "target name invalid")
+			return fmt.Errorf("target name invalid: %w", err)
 		}
 		targetDescriptor = targetDirectory.descriptor
 	}
@@ -548,7 +548,7 @@ func Rename(
 	if probeErr == nil {
 		return os.ErrExist
 	} else if !os.IsNotExist(probeErr) {
-		return errors.Wrap(probeErr, "unable to probe target existence")
+		return fmt.Errorf("unable to probe target existence: %w", probeErr)
 	}
 
 	// RACE: There's a race window here between the time of our check and the

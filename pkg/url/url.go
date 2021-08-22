@@ -1,10 +1,10 @@
 package url
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
@@ -80,7 +80,7 @@ func (u *URL) EnsureValid() error {
 		// Parse the forwarding endpoint URL to ensure that it's valid.
 		protocol, address, err := forwarding.Parse(u.Path)
 		if err != nil {
-			return errors.Wrap(err, "invalid forwarding endpoint URL")
+			return fmt.Errorf("invalid forwarding endpoint URL: %w", err)
 		}
 
 		// If this is a local URL and represents a Unix domain socket endpoint,
