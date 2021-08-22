@@ -136,7 +136,10 @@ func (c *Connection) Close() error {
 	// Wait, up to the specified duration, for the process to exit on its own.
 	select {
 	case err := <-waitResults:
-		return fmt.Errorf("process wait failed: %w", err)
+		if err != nil {
+			return fmt.Errorf("process wait failed: %w", err)
+		}
+		return nil
 	case <-time.After(killDelay):
 	}
 

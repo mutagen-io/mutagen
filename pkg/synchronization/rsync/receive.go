@@ -434,7 +434,13 @@ func NewEncodingReceiver(encoder Encoder) Receiver {
 
 // Receive encodes the specified transmission using the underlying encoder.
 func (r *encodingReceiver) Receive(transmission *Transmission) error {
-	return fmt.Errorf("unable to encode transmission: %w", r.encoder.Encode(transmission))
+	// Encode the transmission.
+	if err := r.encoder.Encode(transmission); err != nil {
+		return fmt.Errorf("unable to encode transmission: %w", err)
+	}
+
+	// Success.
+	return nil
 }
 
 // finalize finalizes the encoding receiver, which means that it calls Finalize

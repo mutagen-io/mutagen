@@ -38,7 +38,7 @@ func (e *protobufRsyncEncoder) Encode(transmission *rsync.Transmission) error {
 
 	// Encode the transmission without sending.
 	if err := e.encoder.EncodeWithoutFlush(transmission); err != nil {
-		e.error = fmt.Errorf("unable to encode transmission: %w", err)
+		e.error = err
 		return e.error
 	}
 
@@ -49,7 +49,7 @@ func (e *protobufRsyncEncoder) Encode(transmission *rsync.Transmission) error {
 	// to buffer, then flush the buffer and reset the count.
 	if e.buffered == rsyncTransmissionGroupSize {
 		if err := e.encoder.Flush(); err != nil {
-			e.error = fmt.Errorf("unable to write encoded messages: %w", err)
+			e.error = fmt.Errorf("unable to flush encoded messages: %w", err)
 			return e.error
 		}
 		e.buffered = 0
