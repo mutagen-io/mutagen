@@ -197,7 +197,7 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 
 	// Run the build.
 	if err := builder.Run(); err != nil {
-		fmt.Errorf("compilation failed: %w", err)
+		return fmt.Errorf("compilation failed: %w", err)
 	}
 
 	// Success.

@@ -173,7 +173,7 @@ func (c *Connection) Close() error {
 
 	// Wait for the wait operation to complete.
 	if err := <-waitResults; err != nil {
-		fmt.Errorf("process wait failed: %w", err)
+		return fmt.Errorf("process wait failed: %w", err)
 	}
 
 	// Success.

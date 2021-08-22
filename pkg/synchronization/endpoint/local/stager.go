@@ -172,7 +172,7 @@ func (s *stager) wipe() error {
 
 	// Remove the staging root.
 	if err := os.RemoveAll(s.root); err != nil {
-		fmt.Errorf("unable to remove staging directory: %w", err)
+		return fmt.Errorf("unable to remove staging directory: %w", err)
 	}
 
 	// Success.

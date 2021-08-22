@@ -46,7 +46,7 @@ func (l *Lock) Release() error {
 
 	// Close the locker.
 	if err := l.locker.Close(); err != nil {
-		fmt.Errorf("unable to close locker: %w", err)
+		return fmt.Errorf("unable to close locker: %w", err)
 	}
 
 	// Success.
