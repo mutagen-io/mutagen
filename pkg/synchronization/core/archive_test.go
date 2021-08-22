@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestArchiveEnsureValid tests Archive.EnsureValid.
@@ -77,22 +77,23 @@ func TestArchiveConsistentSerialization(t *testing.T) {
 	firstEntry := tDM
 	secondEntry := firstEntry.Copy(true)
 
+	// Configure Protocol Buffers marshaling to be deterministic.
+	marshaling := proto.MarshalOptions{Deterministic: true}
+
 	// Serialize the first entry.
-	firstBuffer := proto.NewBuffer(nil)
-	firstBuffer.SetDeterministic(true)
-	if err := firstBuffer.Marshal(&Archive{Content: firstEntry}); err != nil {
+	firstBytes, err := marshaling.Marshal(&Archive{Content: firstEntry})
+	if err != nil {
 		t.Fatal("unable to marshal first entry:", err)
 	}
 
 	// Serialize the second entry.
-	secondBuffer := proto.NewBuffer(nil)
-	secondBuffer.SetDeterministic(true)
-	if err := secondBuffer.Marshal(&Archive{Content: secondEntry}); err != nil {
+	secondBytes, err := marshaling.Marshal(&Archive{Content: secondEntry})
+	if err != nil {
 		t.Fatal("unable to marshal second entry:", err)
 	}
 
 	// Ensure that they're equal.
-	if !bytes.Equal(firstBuffer.Bytes(), secondBuffer.Bytes()) {
+	if !bytes.Equal(firstBytes, secondBytes) {
 		t.Error("marshalling is not consistent")
 	}
 }

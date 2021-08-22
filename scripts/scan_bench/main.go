@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/profile"
@@ -327,12 +327,11 @@ func main() {
 		}
 	}
 	start = time.Now()
-	buffer := proto.NewBuffer(nil)
-	buffer.SetDeterministic(true)
-	if err := buffer.Marshal(snapshot); err != nil {
+	marshaling := proto.MarshalOptions{Deterministic: true}
+	serializedSnapshot, err := marshaling.Marshal(snapshot)
+	if err != nil {
 		cmd.Fatal(errors.Wrap(err, "unable to serialize snapshot"))
 	}
-	serializedSnapshot := buffer.Bytes()
 	stop = time.Now()
 	if enableProfile {
 		if err = profiler.Finalize(); err != nil {

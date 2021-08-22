@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/compression"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -245,9 +245,8 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 	// Start a Goroutine to execute the scan and send a response when done.
 	responseSendErrors := make(chan error, 1)
 	go func() {
-		// Create a deterministic Protocol Buffers marshaller.
-		buffer := proto.NewBuffer(nil)
-		buffer.SetDeterministic(true)
+		// Configure Protocol Buffers marshaling to be deterministic.
+		marshaling := proto.MarshalOptions{Deterministic: true}
 
 		// Create an rsync engine.
 		engine := rsync.NewEngine()
@@ -260,12 +259,11 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 				Error:    err.Error(),
 				TryAgain: tryAgain,
 			}
-		} else if err = buffer.Marshal(&core.Archive{Content: snapshot}); err != nil {
+		} else if snapshotBytes, err := marshaling.Marshal(&core.Archive{Content: snapshot}); err != nil {
 			response = &ScanResponse{
 				Error: errors.Wrap(err, "unable to marshal snapshot").Error(),
 			}
 		} else {
-			snapshotBytes := buffer.Bytes()
 			delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
 			response = &ScanResponse{
 				SnapshotDelta:          delta,

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/compression"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -172,12 +172,12 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	if c.lastSnapshotBytes != nil {
 		baseBytes = c.lastSnapshotBytes
 	} else {
-		buffer := proto.NewBuffer(nil)
-		buffer.SetDeterministic(true)
-		if err := buffer.Marshal(&core.Archive{Content: ancestor}); err != nil {
+		var err error
+		marshaling := proto.MarshalOptions{Deterministic: true}
+		baseBytes, err = marshaling.Marshal(&core.Archive{Content: ancestor})
+		if err != nil {
 			return nil, false, errors.Wrap(err, "unable to marshal ancestor"), false
 		}
-		baseBytes = buffer.Bytes()
 	}
 
 	// Compute the base signature.

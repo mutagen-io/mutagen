@@ -7,7 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -54,31 +55,36 @@ func MarshalAndSaveProtobuf(path string, message proto.Message) error {
 type ProtobufEncoder struct {
 	// writer is the underlying writer.
 	writer io.Writer
-	// buffer is a reusable Protocol Buffers encoding buffer.
-	buffer *proto.Buffer
+	// buffer is a reusable encoding buffer.
+	buffer []byte
+	// sizer is a Protocol Buffers marshaling configuration for computing sizes.
+	sizer proto.MarshalOptions
+	// encoder is a Protocol Buffers marshaling configuration for encoding.
+	encoder proto.MarshalOptions
 }
 
 // NewProtobufEncoder creates a new Protocol Buffers stream encoder.
 func NewProtobufEncoder(writer io.Writer) *ProtobufEncoder {
 	return &ProtobufEncoder{
-		writer: writer,
-		buffer: proto.NewBuffer(make([]byte, 0, protobufEncoderInitialBufferSize)),
+		writer:  writer,
+		buffer:  make([]byte, 0, protobufEncoderInitialBufferSize),
+		sizer:   proto.MarshalOptions{},
+		encoder: proto.MarshalOptions{UseCachedSize: true},
 	}
 }
 
 // EncodeWithoutFlush encodes a length-prefixed Protocol Buffers message into
 // the encoder's internal buffer, but does not write this data to the underlying
-// stream.
+// stream. If this fails, the encoder should be considered corrupt.
 func (e *ProtobufEncoder) EncodeWithoutFlush(message proto.Message) error {
-	// Encode the message with a length prefix. The 64-bit unsigned varint
-	// encoding used by this method is the same used by the encoding/binary
-	// package.
-	// TODO: This method is internally a bit inefficient because it computes the
-	// encoded message size twice. Unfortunately there's no way to get around
-	// this without resorting to using private interfaces in the generated
-	// Protocol Buffers code. We should file an issue about this though.
-	if err := e.buffer.EncodeMessage(message); err != nil {
+	// Encode the message size.
+	e.buffer = protowire.AppendVarint(e.buffer, uint64(e.sizer.Size(message)))
+
+	// Encode the message.
+	if b, err := e.encoder.MarshalAppend(e.buffer, message); err != nil {
 		return errors.Wrap(err, "unable to encode message")
+	} else {
+		e.buffer = b
 	}
 
 	// Success.
@@ -86,14 +92,11 @@ func (e *ProtobufEncoder) EncodeWithoutFlush(message proto.Message) error {
 }
 
 // Flush writes the contents of the encoder's internal buffer, if any, to the
-// underlying stream.
+// underlying stream. If this fails, the encoder should be considered corrupt.
 func (e *ProtobufEncoder) Flush() error {
-	// Extract the data waiting in the buffer.
-	data := e.buffer.Bytes()
-
 	// Write the data to the wire if there is any.
-	if len(data) > 0 {
-		if _, err := e.writer.Write(data); err != nil {
+	if len(e.buffer) > 0 {
+		if _, err := e.writer.Write(e.buffer); err != nil {
 			return errors.Wrap(err, "unable to write message")
 		}
 	}
@@ -102,10 +105,10 @@ func (e *ProtobufEncoder) Flush() error {
 	// carry around. If so, reset the buffer to the maximum persistent buffer
 	// size. Otherwise, reset the buffer so that it continues to use the same
 	// slice.
-	if cap(data) > protobufEncoderMaximumPersistentBufferSize {
-		e.buffer.SetBuf(make([]byte, 0, protobufEncoderMaximumPersistentBufferSize))
+	if cap(e.buffer) > protobufEncoderMaximumPersistentBufferSize {
+		e.buffer = make([]byte, 0, protobufEncoderMaximumPersistentBufferSize)
 	} else {
-		e.buffer.Reset()
+		e.buffer = e.buffer[:0]
 	}
 
 	// Success.
@@ -113,7 +116,8 @@ func (e *ProtobufEncoder) Flush() error {
 }
 
 // Encode encodes a length-prefixed Protocol Buffers message into the encoder's
-// internal buffer and writes this data to the underlying stream.
+// internal buffer and writes this data to the underlying stream. If this fails,
+// the encoder should be considered corrupt.
 func (e *ProtobufEncoder) Encode(message proto.Message) error {
 	// Encode the message.
 	if err := e.EncodeWithoutFlush(message); err != nil {
@@ -167,7 +171,7 @@ func (d *ProtobufDecoder) bufferWithSize(size int) []byte {
 }
 
 // Decode decodes a length-prefixed Protocol Buffers message from the underlying
-// stream.
+// stream. If this fails, the decoder should be considered corrupt.
 func (d *ProtobufDecoder) Decode(message proto.Message) error {
 	// Read the next message length.
 	length, err := binary.ReadUvarint(d.reader)
