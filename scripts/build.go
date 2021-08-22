@@ -197,7 +197,12 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 	builder.Stderr = os.Stderr
 
 	// Run the build.
-	return errors.Wrap(builder.Run(), "compilation failed")
+	if err := builder.Run(); err != nil {
+		errors.Wrap(err, "compilation failed")
+	}
+
+	// Success.
+	return nil
 }
 
 // targets encodes which combinations of GOOS and GOARCH we want to use for

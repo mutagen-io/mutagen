@@ -12,7 +12,13 @@ import (
 
 // installMain is the entry point for the install command.
 func installMain(_ *cobra.Command, _ []string) error {
-	return errors.Wrap(agent.Install(), "installation error")
+	// Perform the installation.
+	if err := agent.Install(); err != nil {
+		return errors.Wrap(err, "installation error")
+	}
+
+	// Success.
+	return nil
 }
 
 // installCommand is the install command.

@@ -172,7 +172,12 @@ func (c *Connection) Close() error {
 	}
 
 	// Wait for the wait operation to complete.
-	return errors.Wrap(<-waitResults, "process wait failed")
+	if err := <-waitResults; err != nil {
+		errors.Wrap(err, "process wait failed")
+	}
+
+	// Success.
+	return nil
 }
 
 // LocalAddr returns the local address for the connection.

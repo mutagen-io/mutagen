@@ -45,5 +45,10 @@ func (l *Lock) Release() error {
 	}
 
 	// Close the locker.
-	return errors.Wrap(l.locker.Close(), "unable to close locker")
+	if err := l.locker.Close(); err != nil {
+		errors.Wrap(err, "unable to close locker")
+	}
+
+	// Success.
+	return nil
 }
