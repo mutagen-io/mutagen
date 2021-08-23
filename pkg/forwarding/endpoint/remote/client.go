@@ -36,26 +36,19 @@ func NewEndpoint(
 	address string,
 	source bool,
 ) (forwarding.Endpoint, error) {
-	// Adapt the connection to serve as a multiplexer carrier.
+	// Adapt the connection to serve as a multiplexer carrier. This will also
+	// give us the buffering functionality we'll need for initialization.
 	carrier := multiplexing.NewCarrierFromStream(connection)
 
-	// Multiplex the carrier.
-	multiplexer := multiplexing.Multiplex(carrier, false, nil)
-
-	// Defer closure of the multiplexer in the event that we're unsuccessful.
-	var successful bool
+	// Defer closure of the carrier in the event that initialization isn't
+	// successful. Otherwise, we'll rely on closure of the multiplexer to close
+	// the carrier.
+	var initializationSuccessful bool
 	defer func() {
-		if !successful {
-			multiplexer.Close()
+		if !initializationSuccessful {
+			carrier.Close()
 		}
 	}()
-
-	// Open the initialization stream. We don't need to close this stream on
-	// failure since closing the multiplexer will implicitly close the stream.
-	stream, err := multiplexer.OpenStream(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("unable to open initialization stream: %w", err)
-	}
 
 	// Create and send the initialization request.
 	request := &InitializeForwardingRequest{
@@ -65,14 +58,14 @@ func NewEndpoint(
 		Address:       address,
 		Listener:      source,
 	}
-	if err := encoding.NewProtobufEncoder(stream).Encode(request); err != nil {
+	if err := encoding.EncodeProtobuf(carrier, request); err != nil {
 		return nil, fmt.Errorf("unable to send initialization request: %w", err)
 	}
 
 	// Receive the initialization response, ensure that it's valid, and check
 	// for initialization errors.
 	response := &InitializeForwardingResponse{}
-	if err := encoding.NewProtobufDecoder(stream).Decode(response); err != nil {
+	if err := encoding.DecodeProtobuf(carrier, response); err != nil {
 		return nil, fmt.Errorf("unable to receive initialization response: %w", err)
 	} else if err = response.ensureValid(); err != nil {
 		return nil, fmt.Errorf("invalid initialization response received: %w", err)
@@ -80,13 +73,11 @@ func NewEndpoint(
 		return nil, fmt.Errorf("remote initialization failure: %w", errors.New(response.Error))
 	}
 
-	// Close the initialization stream.
-	if err := stream.Close(); err != nil {
-		return nil, fmt.Errorf("unable to close initialization stream: %w", err)
-	}
-
 	// Mark initialization as successful.
-	successful = true
+	initializationSuccessful = true
+
+	// Multiplex the carrier.
+	multiplexer := multiplexing.Multiplex(carrier, false, nil)
 
 	// Create a channel to monitor for transport errors and a Goroutine to
 	// populate it.

@@ -13,48 +13,23 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/multiplexing"
 )
 
-// ServeEndpoint creates and serves a remote endpoint on the specified
-// connection. It enforces that the provided connection is closed by the time
-// this function returns, regardless of failure.
-func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
-	// Adapt the connection to serve as a multiplexer carrier.
-	carrier := multiplexing.NewCarrierFromStream(connection)
-
-	// Multiplex the carrier and defer closure of the multiplexer.
-	multiplexer := multiplexing.Multiplex(carrier, true, nil)
-	defer multiplexer.Close()
-
-	// Accept the initialization stream. We don't need to close this stream on
-	// failure since closing the multiplexer will implicitly close the stream.
-	stream, err := multiplexer.Accept()
-	if err != nil {
-		return fmt.Errorf("unable to accept initialization stream: %w", err)
-	}
-
-	// Receive the initialization request and ensure that it's valid.
-	request := &InitializeForwardingRequest{}
-	if err := encoding.NewProtobufDecoder(stream).Decode(request); err != nil {
-		return fmt.Errorf("unable to receive initialization request: %w", err)
-	} else if err = request.ensureValid(); err != nil {
-		return fmt.Errorf("invalid initialization request received: %w", err)
-	}
-
+// initializeEndpoint initializes the underlying endpoint based on the provided
+// initialization request.
+func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoint, error) {
 	// If this is a Unix domain socket endpoint, perform normalization on the
 	// socket path.
 	address := request.Address
 	if request.Protocol == "unix" {
 		if a, err := filesystem.Normalize(address); err != nil {
-			return fmt.Errorf("unable to normalize socket path: %w", err)
+			return nil, fmt.Errorf("unable to normalize socket path: %w", err)
 		} else {
 			address = a
 		}
 	}
 
 	// Create the underlying endpoint based on the initialization parameters.
-	var endpoint forwarding.Endpoint
-	var initializationError error
 	if request.Listener {
-		endpoint, initializationError = local.NewListenerEndpoint(
+		return local.NewListenerEndpoint(
 			request.Version,
 			request.Configuration,
 			request.Protocol,
@@ -62,25 +37,44 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 			false,
 		)
 	} else {
-		endpoint, initializationError = local.NewDialerEndpoint(
+		return local.NewDialerEndpoint(
 			request.Version,
 			request.Configuration,
 			request.Protocol,
 			address,
 		)
 	}
+}
 
-	// If we successfully created the underlying endpoint, then start a
-	// Goroutine couple the lifetime of the underlying endpoint to the lifetime
-	// of the multiplexer. This will cause the local endpoint to be shutdown if
-	// this function returns or if the multiplexer shuts down due to remote
-	// closure or an internal error. This is particularly important for
-	// preempting local accept operations.
-	if endpoint != nil {
-		go func() {
-			<-multiplexer.Closed()
-			endpoint.Shutdown()
-		}()
+// ServeEndpoint creates and serves a remote endpoint on the specified
+// connection. It enforces that the provided connection is closed by the time
+// this function returns, regardless of failure.
+func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
+	// Adapt the connection to serve as a multiplexer carrier. This will also
+	// give us the buffering functionality we'll need for initialization.
+	carrier := multiplexing.NewCarrierFromStream(connection)
+
+	// Defer closure of the carrier in the event that initialization isn't
+	// successful. Otherwise, we'll rely on closure of the multiplexer to close
+	// the carrier.
+	var initializationSuccessful bool
+	defer func() {
+		if !initializationSuccessful {
+			carrier.Close()
+		}
+	}()
+
+	// Receive the initialization request, ensure that it's valid, and perform
+	// initialization.
+	request := &InitializeForwardingRequest{}
+	var underlying forwarding.Endpoint
+	var initializationError error
+	if err := encoding.DecodeProtobuf(carrier, request); err != nil {
+		initializationError = fmt.Errorf("unable to receive initialization request: %w", err)
+	} else if err = request.ensureValid(); err != nil {
+		initializationError = fmt.Errorf("invalid initialization request received: %w", err)
+	} else {
+		underlying, initializationError = initializeEndpoint(request)
 	}
 
 	// Send the initialization response, indicating any initialization error
@@ -89,19 +83,31 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 	if initializationError != nil {
 		response.Error = initializationError.Error()
 	}
-	if err := encoding.NewProtobufEncoder(stream).Encode(response); err != nil {
+	if err := encoding.EncodeProtobuf(carrier, response); err != nil {
 		return fmt.Errorf("unable to send initialization response: %w", err)
 	}
 
-	// Check for initialization errors.
+	// If initialization failed, then bail.
 	if initializationError != nil {
 		return fmt.Errorf("endpoint initialization failed: %w", initializationError)
 	}
 
-	// Close the initialization stream.
-	if err := stream.Close(); err != nil {
-		return fmt.Errorf("unable to close initialization stream: %w", err)
-	}
+	// Mark initialization as successful.
+	initializationSuccessful = true
+
+	// Multiplex the carrier and defer closure of the multiplexer.
+	multiplexer := multiplexing.Multiplex(carrier, true, nil)
+	defer multiplexer.Close()
+
+	// Start a Goroutine couple the lifetime of the underlying endpoint to the
+	// lifetime of the multiplexer. This will cause the underlying endpoint to
+	// be shut down if this function returns or if the multiplexer shuts down
+	// due to remote closure or an internal error. This is particularly
+	// important for preempting local accept operations.
+	go func() {
+		<-multiplexer.Closed()
+		underlying.Shutdown()
+	}()
 
 	// Receive and forward connections indefinitely.
 	for {
@@ -109,8 +115,9 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 		// terminate serving because either the local listener has failed or the
 		// multiplexer has failed.
 		var incoming net.Conn
+		var err error
 		if request.Listener {
-			if incoming, err = endpoint.Open(); err != nil {
+			if incoming, err = underlying.Open(); err != nil {
 				return fmt.Errorf("listener failure: %w", err)
 			}
 		} else {
@@ -131,7 +138,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 				return fmt.Errorf("multiplexer failure: %w", err)
 			}
 		} else {
-			if outgoing, err = endpoint.Open(); err != nil {
+			if outgoing, err = underlying.Open(); err != nil {
 				incoming.Close()
 				continue
 			}

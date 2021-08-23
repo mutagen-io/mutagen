@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -55,7 +56,7 @@ func NewEndpoint(
 
 	// Create an encoder and decoder.
 	encoder := encoding.NewProtobufEncoder(writer)
-	decoder := encoding.NewProtobufDecoder(reader)
+	decoder := encoding.NewProtobufDecoder(bufio.NewReader(reader))
 
 	// Create and send the initialize request.
 	request := &InitializeSynchronizationRequest{

@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -42,7 +43,7 @@ func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
 
 	// Create an encoder and decoder.
 	encoder := encoding.NewProtobufEncoder(writer)
-	decoder := encoding.NewProtobufDecoder(reader)
+	decoder := encoding.NewProtobufDecoder(bufio.NewReader(reader))
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
