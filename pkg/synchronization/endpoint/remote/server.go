@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
+	"io"
 
 	"google.golang.org/protobuf/proto"
 
@@ -30,16 +30,17 @@ type endpointServer struct {
 	endpoint synchronization.Endpoint
 }
 
-// ServeEndpoint creates and serves a endpoint server on the specified
-// connection. It enforces that the provided connection is closed by the time
-// this function returns, regardless of failure.
-func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
-	// Defer closure of the connection.
-	defer connection.Close()
+// ServeEndpoint creates and serves a endpoint server on the specified stream.
+// It enforces that the provided stream is closed by the time this function
+// returns, regardless of failure. The provided stream must unblock read and
+// write operations when closed.
+func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
+	// Defer closure of the stream.
+	defer stream.Close()
 
-	// Enable read/write compression on the connection.
-	reader := compression.NewDecompressingReader(connection)
-	writer := compression.NewCompressingWriter(connection)
+	// Enable read/write compression on the stream.
+	reader := compression.NewDecompressingReader(stream)
+	writer := compression.NewCompressingWriter(stream)
 
 	// Create an encoder and decoder.
 	encoder := encoding.NewProtobufEncoder(writer)

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 )
 
 const (
@@ -77,15 +76,15 @@ func receiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 // client version.
 //
 // TODO: Add some ability to support version skew in this function.
-func ClientVersionHandshake(connection net.Conn) error {
+func ClientVersionHandshake(stream io.ReadWriteCloser) error {
 	// Receive the server's version.
-	serverMajor, serverMinor, _, err := receiveVersion(connection)
+	serverMajor, serverMinor, _, err := receiveVersion(stream)
 	if err != nil {
 		return fmt.Errorf("unable to receive server version: %w", err)
 	}
 
 	// Send our version to the server.
-	if err := sendVersion(connection); err != nil {
+	if err := sendVersion(stream); err != nil {
 		return fmt.Errorf("unable to send client version: %w", err)
 	}
 
@@ -110,14 +109,14 @@ func ClientVersionHandshake(connection net.Conn) error {
 // server version.
 //
 // TODO: Add some ability to support version skew in this function.
-func ServerVersionHandshake(connection net.Conn) error {
+func ServerVersionHandshake(stream io.ReadWriteCloser) error {
 	// Send our version to the client.
-	if err := sendVersion(connection); err != nil {
+	if err := sendVersion(stream); err != nil {
 		return fmt.Errorf("unable to send server version: %w", err)
 	}
 
 	// Receive the client's version.
-	clientMajor, clientMinor, _, err := receiveVersion(connection)
+	clientMajor, clientMinor, _, err := receiveVersion(stream)
 	if err != nil {
 		return fmt.Errorf("unable to receive client version: %w", err)
 	}

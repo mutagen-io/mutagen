@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net"
+	"io"
 
 	"google.golang.org/protobuf/proto"
 
@@ -18,8 +18,8 @@ import (
 // endpointClient provides an implementation of synchronization.Endpoint by
 // acting as a proxy for a remotely hosted synchronization.Endpoint.
 type endpointClient struct {
-	// connection is the control stream connection.
-	connection net.Conn
+	// closer closes the underlying stream.
+	closer io.Closer
 	// encoder is the control stream encoder.
 	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
@@ -30,29 +30,30 @@ type endpointClient struct {
 }
 
 // NewEndpoint creates a new remote synchronization.Endpoint operating over the
-// specified connection with the specified metadata. If this function fails,
-// then the provided connection will be closed. Once the endpoint has been
-// established, the underlying connection is owned by that endpoint and will be
-// closed when the endpoint is shut down.
+// specified stream with the specified metadata. If this function fails, then
+// the provided stream will be closed. Once the endpoint has been established,
+// the underlying stream is owned by the endpoint and will be closed when the
+// endpoint is shut down. The provided stream must unblock read and write
+// operations when closed.
 func NewEndpoint(
-	connection net.Conn,
+	stream io.ReadWriteCloser,
 	root string,
 	session string,
 	version synchronization.Version,
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
-	// Set up deferred closure of the connection if initialization fails.
+	// Set up deferred closure of the stream if initialization fails.
 	var successful bool
 	defer func() {
 		if !successful {
-			connection.Close()
+			stream.Close()
 		}
 	}()
 
-	// Enable read/write compression on the connection.
-	reader := compression.NewDecompressingReader(connection)
-	writer := compression.NewCompressingWriter(connection)
+	// Enable read/write compression on the stream.
+	reader := compression.NewDecompressingReader(stream)
+	writer := compression.NewCompressingWriter(stream)
 
 	// Create an encoder and decoder.
 	encoder := encoding.NewProtobufEncoder(writer)
@@ -83,9 +84,9 @@ func NewEndpoint(
 	// Success.
 	successful = true
 	return &endpointClient{
-		connection: connection,
-		encoder:    encoder,
-		decoder:    decoder,
+		closer:  stream,
+		encoder: encoder,
+		decoder: decoder,
 	}, nil
 }
 
@@ -446,7 +447,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 
 // Shutdown implements the Shutdown method for remote endpoints.
 func (c *endpointClient) Shutdown() error {
-	// Close the underlying connection. This will cause all stream reads/writes
-	// to unblock.
-	return c.connection.Close()
+	// Close the underlying stream. This will cause all stream reads/writes to
+	// unblock.
+	return c.closer.Close()
 }

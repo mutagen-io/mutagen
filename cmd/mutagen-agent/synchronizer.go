@@ -60,16 +60,16 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	defer cancel()
 	go housekeepRegularly(ctx, logging.RootLogger.Sublogger("housekeeping"))
 
-	// Create a connection on standard input/output.
-	connection := newStdioConnection()
+	// Create a stream using standard input/output.
+	stream := newStdioStream()
 
 	// Perform an agent handshake.
-	if err := agent.ServerHandshake(connection); err != nil {
+	if err := agent.ServerHandshake(stream); err != nil {
 		return fmt.Errorf("server handshake failed: %w", err)
 	}
 
 	// Perform a version handshake.
-	if err := mutagen.ServerVersionHandshake(connection); err != nil {
+	if err := mutagen.ServerVersionHandshake(stream); err != nil {
 		return fmt.Errorf("version handshake error: %w", err)
 	}
 
@@ -79,7 +79,7 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 	go func() {
 		synchronizationTermination <- remote.ServeEndpoint(
 			logging.RootLogger.Sublogger("synchronization"),
-			connection,
+			stream,
 		)
 	}()
 

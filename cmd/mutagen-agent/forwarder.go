@@ -23,16 +23,16 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
-	// Create a connection on standard input/output.
-	connection := newStdioConnection()
+	// Create a stream using standard input/output.
+	stream := newStdioStream()
 
 	// Perform an agent handshake.
-	if err := agent.ServerHandshake(connection); err != nil {
+	if err := agent.ServerHandshake(stream); err != nil {
 		return fmt.Errorf("server handshake failed: %w", err)
 	}
 
 	// Perform a version handshake.
-	if err := mutagen.ServerVersionHandshake(connection); err != nil {
+	if err := mutagen.ServerVersionHandshake(stream); err != nil {
 		return fmt.Errorf("version handshake error: %w", err)
 	}
 
@@ -42,7 +42,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	go func() {
 		forwardingTermination <- remote.ServeEndpoint(
 			logging.RootLogger.Sublogger("forwarding"),
-			connection,
+			stream,
 		)
 	}()
 

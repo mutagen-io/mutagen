@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 )
 
 // magicNumberBytes is a type capable of holding a Mutagen magic byte sequence.
@@ -47,17 +46,17 @@ func receiveAndCompareMagicNumber(reader io.Reader, expected magicNumberBytes) (
 	return received == expected, nil
 }
 
-// ClientHandshake performs a client-side handshake on the connection.
-func ClientHandshake(connection net.Conn) error {
+// ClientHandshake performs a client-side handshake on the stream.
+func ClientHandshake(stream io.ReadWriter) error {
 	// Receive the server's magic number.
-	if magicOk, err := receiveAndCompareMagicNumber(connection, serverMagicNumber); err != nil {
+	if magicOk, err := receiveAndCompareMagicNumber(stream, serverMagicNumber); err != nil {
 		return fmt.Errorf("unable to receive server magic number: %w", err)
 	} else if !magicOk {
 		return errors.New("server magic number incorrect")
 	}
 
 	// Send our magic number to the server.
-	if err := sendMagicNumber(connection, clientMagicNumber); err != nil {
+	if err := sendMagicNumber(stream, clientMagicNumber); err != nil {
 		return fmt.Errorf("unable to send client magic number: %w", err)
 	}
 
@@ -65,17 +64,17 @@ func ClientHandshake(connection net.Conn) error {
 	return nil
 }
 
-// ServerHandshake performs a server-side handshake on the connection.
-func ServerHandshake(connection net.Conn) error {
+// ServerHandshake performs a server-side handshake on the stream.
+func ServerHandshake(stream io.ReadWriter) error {
 	// Send our magic number to the client.
-	if err := sendMagicNumber(connection, serverMagicNumber); err != nil {
+	if err := sendMagicNumber(stream, serverMagicNumber); err != nil {
 		return fmt.Errorf("unable to send server magic number: %w", err)
 	}
 
 	// Receive the client's magic number. We treat a mismatch of the magic
 	// number as a transport error as well, because it indicates that we're not
 	// actually talking to a Mutagen client.
-	if magicOk, err := receiveAndCompareMagicNumber(connection, clientMagicNumber); err != nil {
+	if magicOk, err := receiveAndCompareMagicNumber(stream, clientMagicNumber); err != nil {
 		return fmt.Errorf("unable to receive client magic number: %w", err)
 	} else if !magicOk {
 		return errors.New("client magic number incorrect")

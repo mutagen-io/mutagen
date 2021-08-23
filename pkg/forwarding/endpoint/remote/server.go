@@ -3,6 +3,7 @@ package remote
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -46,13 +47,14 @@ func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoi
 	}
 }
 
-// ServeEndpoint creates and serves a remote endpoint on the specified
-// connection. It enforces that the provided connection is closed by the time
-// this function returns, regardless of failure.
-func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
+// ServeEndpoint creates and serves a remote endpoint on the specified stream.
+// It enforces that the provided stream is closed by the time this function
+// returns, regardless of failure. The provided stream must unblock read and
+// write operations when closed.
+func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	// Adapt the connection to serve as a multiplexer carrier. This will also
 	// give us the buffering functionality we'll need for initialization.
-	carrier := multiplexing.NewCarrierFromStream(connection)
+	carrier := multiplexing.NewCarrierFromStream(stream)
 
 	// Defer closure of the carrier in the event that initialization isn't
 	// successful. Otherwise, we'll rely on closure of the multiplexer to close

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
+	"io"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transport/docker"
@@ -22,8 +22,8 @@ type protocolHandler struct{}
 
 // dialResult provides asynchronous agent dialing results.
 type dialResult struct {
-	// connection is the connection returned by agent dialing.
-	connection net.Conn
+	// stream is the stream returned by agent dialing.
+	stream io.ReadWriteCloser
 	// error is the error returned by agent dialing.
 	error error
 }
@@ -65,32 +65,32 @@ func (p *protocolHandler) Connect(
 	// cancellation.
 	go func() {
 		// Perform the dialing operation.
-		connection, err := agent.Dial(logger, transport, agent.ModeForwarder, prompter)
+		stream, err := agent.Dial(logger, transport, agent.ModeForwarder, prompter)
 
-		// Transmit the result or, if cancelled, close the connection.
+		// Transmit the result or, if cancelled, close the stream.
 		select {
-		case results <- dialResult{connection, err}:
+		case results <- dialResult{stream, err}:
 		case <-ctx.Done():
-			if connection != nil {
-				connection.Close()
+			if stream != nil {
+				stream.Close()
 			}
 		}
 	}()
 
 	// Wait for dialing results or cancellation.
-	var connection net.Conn
+	var stream io.ReadWriteCloser
 	select {
 	case result := <-results:
 		if result.error != nil {
 			return nil, fmt.Errorf("unable to dial agent endpoint: %w", result.error)
 		}
-		connection = result.connection
+		stream = result.stream
 	case <-ctx.Done():
 		return nil, errors.New("connect operation cancelled")
 	}
 
 	// Create the endpoint.
-	return remote.NewEndpoint(connection, version, configuration, protocol, address, source)
+	return remote.NewEndpoint(stream, version, configuration, protocol, address, source)
 }
 
 func init() {

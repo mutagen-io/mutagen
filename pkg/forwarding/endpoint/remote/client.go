@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -24,21 +25,22 @@ type client struct {
 }
 
 // NewEndpoint creates a new remote forwarding.Endpoint operating over the
-// specified connection with the specified metadata. If this function fails,
-// then the provided connection will be closed. Once the endpoint has been
-// established, the underlying connection is owned by that endpoint and will be
-// closed when the endpoint is shut down.
+// specified stream with the specified metadata. If this function fails, then
+// the provided stream will be closed. Once the endpoint has been established,
+// the underlying stream is owned by the endpoint and will be closed when the
+// endpoint is shut down. The provided stream must unblock read and write
+// operations when closed.
 func NewEndpoint(
-	connection net.Conn,
+	stream io.ReadWriteCloser,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
 	protocol string,
 	address string,
 	source bool,
 ) (forwarding.Endpoint, error) {
-	// Adapt the connection to serve as a multiplexer carrier. This will also
-	// give us the buffering functionality we'll need for initialization.
-	carrier := multiplexing.NewCarrierFromStream(connection)
+	// Adapt the stream to serve as a multiplexer carrier. This will also give
+	// us the buffering functionality we'll need for initialization.
+	carrier := multiplexing.NewCarrierFromStream(stream)
 
 	// Defer closure of the carrier in the event that initialization isn't
 	// successful. Otherwise, we'll rely on closure of the multiplexer to close

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,7 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
-	"github.com/mutagen-io/mutagen/pkg/stream"
+	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 const (
@@ -33,7 +32,7 @@ const (
 // remote environment is cmd.exe-based and returns hints as to whether or not
 // installation should be attempted and whether or not the remote environment is
 // cmd.exe-based.
-func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (net.Conn, bool, bool, error) {
+func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
 	// Compute the agent invocation command, relative to the user's home
 	// directory on the remote. Unless we have reason to assume that this is a
 	// cmd.exe environment, we construct a path using forward slashes. This will
@@ -81,14 +80,13 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		return nil, false, false, fmt.Errorf("unable to create agent command: %w", err)
 	}
 
-	// Create a connection that wraps the process' standard input/output. We
-	// set a non-zero kill delay so that, if there's a handshake failure, the
-	// process will be allowed to exit with its natural exit code (instead of an
-	// exit code due to forced termination) that we can use to diagnose the
-	// connection issue.
-	connection, err := process.NewConnection(agentProcess, agentKillDelay)
+	// Create a stream that wraps the process' standard input/output. We set a
+	// non-zero kill delay so that, if there's a handshake failure, the process
+	// will be allowed to exit with its natural exit code (instead of an exit
+	// code due to forced termination) that we can use to diagnose the issue.
+	stream, err := process.NewStream(agentProcess, agentKillDelay)
 	if err != nil {
-		return nil, false, false, fmt.Errorf("unable to create agent process connection: %w", err)
+		return nil, false, false, fmt.Errorf("unable to create agent process stream: %w", err)
 	}
 
 	// Create a buffer that we can use to capture the process' standard error
@@ -98,7 +96,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// Wrap the error buffer in a valveWriter and defer the closure of that
 	// writer. This avoids continuing to pipe output into the buffer for the
 	// lifetime of the process.
-	errorWriter := stream.NewValveWriter(errorBuffer)
+	errorWriter := streampkg.NewValveWriter(errorBuffer)
 	defer errorWriter.Shut()
 
 	// Redirect the process' standard error output to a tee'd writer that writes
@@ -112,14 +110,14 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Perform a handshake with the remote to ensure that we're talking with a
 	// Mutagen agent.
-	if err := ClientHandshake(connection); err != nil {
-		// Close the connection to ensure that the underlying process and its
+	if err := ClientHandshake(stream); err != nil {
+		// Close the stream to ensure that the underlying process and its
 		// I/O-forwarding Goroutines have terminated. The error returned from
 		// Close will be non-nil if the process exits with a non-0 exit code, so
-		// we don't want to check it, but process.Connection guarantees that if
-		// Close returns, the underlying process has fully terminated, which is
-		// all we care about.
-		connection.Close()
+		// we don't want to check it, but process.Stream guarantees that if
+		// Close returns, then the underlying process has fully terminated,
+		// which is all we care about.
+		stream.Close()
 
 		// Extract error output and ensure it's UTF-8.
 		errorOutput := errorBuffer.String()
@@ -155,22 +153,22 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	}
 
 	// Now that we've successfully connected, disable the kill delay on the
-	// process connection.
-	connection.SetKillDelay(time.Duration(0))
+	// process stream.
+	stream.SetKillDelay(time.Duration(0))
 
 	// Perform a version handshake.
-	if err := mutagen.ClientVersionHandshake(connection); err != nil {
-		connection.Close()
+	if err := mutagen.ClientVersionHandshake(stream); err != nil {
+		stream.Close()
 		return nil, false, false, fmt.Errorf("version handshake error: %w", err)
 	}
 
 	// Done.
-	return connection, false, false, nil
+	return stream, false, false, nil
 }
 
 // Dial connects to an agent-based endpoint using the specified transport,
 // connection mode, and prompter.
-func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (net.Conn, error) {
+func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
 	// Validate that the mode is sane.
 	if !(mode == ModeSynchronizer || mode == ModeForwarder) {
 		panic("invalid agent dial mode")
@@ -179,13 +177,13 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (n
 	// Attempt a connection. If this fails but we detect a Windows cmd.exe
 	// environment in the process, then re-attempt a connection under the
 	// cmd.exe assumption.
-	connection, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false)
+	stream, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false)
 	if err == nil {
-		return connection, nil
+		return stream, nil
 	} else if cmdExe {
-		connection, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true)
+		stream, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true)
 		if err == nil {
-			return connection, nil
+			return stream, nil
 		}
 	}
 
@@ -201,9 +199,9 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (n
 	}
 
 	// Re-attempt connectivity.
-	connection, _, _, err = connect(logger, transport, mode, prompter, cmdExe)
+	stream, _, _, err = connect(logger, transport, mode, prompter, cmdExe)
 	if err != nil {
 		return nil, err
 	}
-	return connection, nil
+	return stream, nil
 }
