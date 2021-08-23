@@ -50,11 +50,15 @@ type controller struct {
 	mergedDestinationConfiguration *Configuration
 	// state represents the current forwarding state.
 	state *State
-	// lifecycleLock guards setting of the disabled, cancel, flushRequests, and
-	// done members. Access to these members is allowed for the forwarding loop
-	// without holding the lock. Any code wishing to set these members should
-	// first acquire the lock, then cancel the forwarding loop, and wait for it
-	// to complete before making any such changes.
+	// lifecycleLock guards access to the disabled, cancel, and done members.
+	// Only the current holder of the lifecycle lock may set any of these fields
+	// or invoke cancel. Only the forwarding loop may close done. The forwarding
+	// loop is allowed access to done without holding the lifecycle lock.
+	// Moreover, previous lifecycle lock holders may continue to poll on done
+	// after storing it in a separate variable and releasing the lifecycle lock.
+	// Any code wishing to set these members must first acquire the lock, then
+	// cancel the forwarding loop and wait for it to complete before making any
+	// changes.
 	lifecycleLock sync.Mutex
 	// disabled indicates that no more changes to the forwarding loop lifecycle
 	// are allowed (i.e. no more forwarding loops can be started for this

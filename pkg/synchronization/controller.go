@@ -57,11 +57,16 @@ type controller struct {
 	mergedBetaConfiguration *Configuration
 	// state represents the current synchronization state.
 	state *State
-	// lifecycleLock guards setting of the disabled, cancel, flushRequests, and
-	// done members. Access to these members is allowed for the synchronization
-	// loop without holding the lock. Any code wishing to set these members
-	// should first acquire the lock, then cancel the synchronization loop, and
-	// wait for it to complete before making any such changes.
+	// lifecycleLock guards access to the disabled, cancel, flushRequests, and
+	// done members. Only the current holder of the lifecycle lock may set any
+	// of these fields or invoke cancel. Only the synchronization loop may close
+	// done. The synchronization loop is allowed access to flushRequests and
+	// done without holding the lifecycle lock. Moreover, previous lifecycle
+	// lock holders may continue to write to flushRequests and poll on done
+	// after storing them in separate variables and releasing the lifecycle
+	// lock. Any code wishing to set these members must first acquire the lock,
+	// then cancel the synchronization loop and wait for it to complete before
+	// making any changes.
 	lifecycleLock sync.Mutex
 	// disabled indicates that no more changes to the synchronization loop
 	// lifecycle are allowed (i.e. no more synchronization loops can be started
@@ -69,8 +74,8 @@ type controller struct {
 	// only be set to true once any existing synchronization loop has been
 	// stopped.
 	disabled bool
-	// cancel cancels the synchronization loop execution context. It should be
-	// nil if and only if there is no synchronization loop running.
+	// cancel cancels the synchronization loop execution context. It is nil if
+	// and only if there is no synchronization loop running.
 	cancel context.CancelFunc
 	// flushRequests is used pass flush requests to the synchronization loop. It
 	// is buffered, allowing a single request to be queued. All requests passed
@@ -312,12 +317,12 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 	// Update status.
 	prompting.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
 
-	// Lock the controller's lifecycle and defer its release.
+	// Lock the controller's lifecycle.
 	c.lifecycleLock.Lock()
-	defer c.lifecycleLock.Unlock()
 
 	// Don't allow any operations if the controller is disabled.
 	if c.disabled {
+		c.lifecycleLock.Unlock()
 		return errors.New("controller disabled")
 	}
 
@@ -328,43 +333,55 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 	// existence of a synchronization loop only requires holding the lifecycle
 	// lock, which we do at this point.
 	if c.cancel == nil {
+		c.lifecycleLock.Unlock()
 		return errors.New("session is paused")
 	}
+
+	// Grab the flush requests and done channels and release the lifecycle lock.
+	flushRequests := c.flushRequests
+	done := c.done
+	c.lifecycleLock.Unlock()
 
 	// Create a flush request.
 	request := make(chan error, 1)
 
 	// If we don't want to wait, then we can simply send the request in a
 	// non-blocking manner, in which case either this request (or one that's
-	// already queued) will be processed eventually. After that, we're done.
+	// already queued) will be processed eventually. After that, we're done. In
+	// this case, we'll still check for synchronization termination, since we
+	// may as well report it if we can.
 	if skipWait {
-		// Send the request in a non-blocking manner.
 		select {
-		case c.flushRequests <- request:
+		case flushRequests <- request:
+			return nil
+		case <-done:
+			return errors.New("synchronization terminated before request could be sent")
 		default:
+			return nil
 		}
-
-		// Success.
-		return nil
 	}
 
 	// Otherwise we need to send the request in a blocking manner, watching for
-	// cancellation in the mean time.
+	// cancellation of the flush request or the synchronization loop.
 	select {
-	case c.flushRequests <- request:
+	case flushRequests <- request:
 	case <-ctx.Done():
 		return errors.New("flush cancelled before request could be sent")
+	case <-done:
+		return errors.New("synchronization terminated before flush request could be sent")
 	}
 
 	// Now we need to wait for a response to the request, again watching for
-	// cancellation in the mean time.
+	// cancellation.
 	select {
 	case err := <-request:
 		if err != nil {
 			return err
 		}
 	case <-ctx.Done():
-		return errors.New("flush cancelled while waiting for synchronization cycle")
+		return errors.New("flush cancelled while waiting for response")
+	case <-done:
+		return errors.New("synchronization terminated while waiting for flush response")
 	}
 
 	// Success.
