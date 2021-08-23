@@ -59,9 +59,9 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	// Defer closure of the carrier in the event that initialization isn't
 	// successful. Otherwise, we'll rely on closure of the multiplexer to close
 	// the carrier.
-	var initializationSuccessful bool
+	var initializationError error
 	defer func() {
-		if !initializationSuccessful {
+		if initializationError != nil {
 			carrier.Close()
 		}
 	}()
@@ -70,7 +70,6 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	// initialization.
 	request := &InitializeForwardingRequest{}
 	var underlying forwarding.Endpoint
-	var initializationError error
 	if err := encoding.DecodeProtobuf(carrier, request); err != nil {
 		initializationError = fmt.Errorf("unable to receive initialization request: %w", err)
 	} else if err = request.ensureValid(); err != nil {
@@ -93,9 +92,6 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	if initializationError != nil {
 		return fmt.Errorf("endpoint initialization failed: %w", initializationError)
 	}
-
-	// Mark initialization as successful.
-	initializationSuccessful = true
 
 	// Multiplex the carrier and defer closure of the multiplexer.
 	multiplexer := multiplexing.Multiplex(carrier, true, nil)
