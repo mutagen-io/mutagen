@@ -67,9 +67,13 @@ func TestMultiplexer(t *testing.T) {
 	// Create an in-memory pipe to multiplex.
 	p1, p2 := net.Pipe()
 
+	// Adapt the connections to serve as carriers.
+	p1Carrier := NewCarrierFromStream(p1)
+	p2Carrier := NewCarrierFromStream(p2)
+
 	// Perform multiplexing.
-	p1Mux := Multiplex(p1, false, nil)
-	p2Mux := Multiplex(p2, true, nil)
+	p1Mux := Multiplex(p1Carrier, false, nil)
+	p2Mux := Multiplex(p2Carrier, true, nil)
 
 	// Defer multiplexer shutdown.
 	defer func() {

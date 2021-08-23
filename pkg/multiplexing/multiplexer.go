@@ -1,7 +1,6 @@
 package multiplexing
 
 import (
-	"bufio"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -43,9 +42,9 @@ type Multiplexer struct {
 
 	// closeOnce guards closure of closer and closed.
 	closeOnce sync.Once
-	// closer closes the underlying stream.
+	// closer closes the underlying carrier.
 	closer io.Closer
-	// closed is closed when the underlying stream is closed.
+	// closed is closed when the underlying carrier is closed.
 	closed chan struct{}
 	// internalErrorLock guards access to internalError.
 	internalErrorLock sync.RWMutex
@@ -96,18 +95,21 @@ type Multiplexer struct {
 	enqueueClose chan uint64
 }
 
-// Multiplex creates a new multiplexer on top of an existing stream. The stream
-// provided must unblock reads and writes when closed. The multiplexer takes
-// ownership of the stream, so it should not be used directly after being passed
-// to this function. Multiplexers are symmetric, meaning that a multiplexer at
-// either end of the stream can both open and accept connections. Nevertheless,
-// a single asymmetric parameter is required to avoid the need for negotiating
-// stream identifiers, so the even parameter must be set to true on one endpoint
-// and false on the other (using some implicit or out-of-band coordination
-// mechanism, such as false for client and true for server). The value of even
-// has no observable effect on the multiplexer. If configuration is nil, the
-// default configuration will be used.
-func Multiplex(stream io.ReadWriteCloser, even bool, configuration *Configuration) *Multiplexer {
+// Multiplex creates a new multiplexer on top of an existing carrier stream. The
+// multiplexer takes ownership of the carrier, so it should not be used directly
+// after being passed to this function.
+//
+// Multiplexers are symmetric, meaning that a multiplexer at either end of the
+// carrier can both open and accept connections. However, a single asymmetric
+// parameter is required to avoid the need for negotiating stream identifiers,
+// so the even parameter must be set to true on one endpoint and false on the
+// other (using some implicit or out-of-band coordination mechanism, such as
+// false for client and true for server). The value of even has no observable
+// effect on the multiplexer, other than determining the evenness of outbound
+// stream identifiers.
+//
+// If configuration is nil, the default configuration will be used.
+func Multiplex(carrier Carrier, even bool, configuration *Configuration) *Multiplexer {
 	// If no configuration was provided, then use default values, otherwise
 	// normalize any out-of-range values provided by the caller.
 	if configuration == nil {
@@ -120,7 +122,7 @@ func Multiplex(stream io.ReadWriteCloser, even bool, configuration *Configuratio
 	multiplexer := &Multiplexer{
 		even:                            even,
 		configuration:                   configuration,
-		closer:                          stream,
+		closer:                          carrier,
 		closed:                          make(chan struct{}),
 		streams:                         make(map[uint64]*Stream),
 		pendingInboundStreamIdentifiers: make(chan uint64, configuration.AcceptBacklog),
@@ -140,25 +142,25 @@ func Multiplex(stream io.ReadWriteCloser, even bool, configuration *Configuratio
 	}
 
 	// Start the multiplexer's background Goroutines.
-	go multiplexer.run(stream)
+	go multiplexer.run(carrier)
 
 	// Done.
 	return multiplexer
 }
 
 // run is the primary entrypoint for the multiplexer's background Goroutines.
-func (m *Multiplexer) run(stream io.ReadWriter) {
+func (m *Multiplexer) run(carrier Carrier) {
 	// Start the reader Goroutine and monitor for its termination.
 	heartbeats := make(chan struct{}, 1)
 	readErrors := make(chan error, 1)
 	go func() {
-		readErrors <- m.read(bufio.NewReader(stream), heartbeats)
+		readErrors <- m.read(carrier, heartbeats)
 	}()
 
 	// Start the writer Goroutine and monitor for its termination.
 	writeErrors := make(chan error, 1)
 	go func() {
-		writeErrors <- m.write(stream)
+		writeErrors <- m.write(carrier)
 	}()
 
 	// Start the state accumulation/transmission Goroutine. It will only
@@ -202,7 +204,7 @@ func (m *Multiplexer) run(stream io.ReadWriter) {
 }
 
 // read is the entrypoint for the reader Goroutine.
-func (m *Multiplexer) read(reader *bufio.Reader, heartbeats chan<- struct{}) error {
+func (m *Multiplexer) read(reader Carrier, heartbeats chan<- struct{}) error {
 	// Create a buffer for reading stream data lengths, which are encoded as
 	// 16-bit unsigned integers.
 	var lengthBuffer [2]byte
@@ -482,7 +484,7 @@ func (m *Multiplexer) read(reader *bufio.Reader, heartbeats chan<- struct{}) err
 }
 
 // write is the entrypoint for the writer Goroutine.
-func (m *Multiplexer) write(writer io.Writer) error {
+func (m *Multiplexer) write(writer Carrier) error {
 	// If outbound heartbeats are enabled, then create a ticker to regulate
 	// heartbeat transmission, defer its shutdown, and craft a reusable
 	// heartbeat message.

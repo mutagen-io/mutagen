@@ -36,8 +36,11 @@ func NewEndpoint(
 	address string,
 	source bool,
 ) (forwarding.Endpoint, error) {
-	// Multiplex the connection.
-	multiplexer := multiplexing.Multiplex(connection, false, nil)
+	// Adapt the connection to serve as a multiplexer carrier.
+	carrier := multiplexing.NewCarrierFromStream(connection)
+
+	// Multiplex the carrier.
+	multiplexer := multiplexing.Multiplex(carrier, false, nil)
 
 	// Defer closure of the multiplexer in the event that we're unsuccessful.
 	var successful bool

@@ -17,8 +17,11 @@ import (
 // connection. It enforces that the provided connection is closed by the time
 // this function returns, regardless of failure.
 func ServeEndpoint(logger *logging.Logger, connection net.Conn) error {
-	// Multiplex the connection and defer closure of the multiplexer.
-	multiplexer := multiplexing.Multiplex(connection, true, nil)
+	// Adapt the connection to serve as a multiplexer carrier.
+	carrier := multiplexing.NewCarrierFromStream(connection)
+
+	// Multiplex the carrier and defer closure of the multiplexer.
+	multiplexer := multiplexing.Multiplex(carrier, true, nil)
 	defer multiplexer.Close()
 
 	// Accept the initialization stream. We don't need to close this stream on
