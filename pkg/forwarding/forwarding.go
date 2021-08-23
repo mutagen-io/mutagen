@@ -4,15 +4,9 @@ import (
 	"context"
 	"io"
 	"net"
-)
 
-// CloseWriter is the interface for connections implementing write closure.
-type CloseWriter interface {
-	// CloseWrite should close the stream for further writes. It need not
-	// unblock pending writes, but it should prevent future writes and send an
-	// EOF indicator to the read end of the other end of the connection.
-	CloseWrite() error
-}
+	"github.com/mutagen-io/mutagen/pkg/stream"
+)
 
 // ForwardAndClose performs bidirectional forwarding between the specified
 // connections. It waits for both directions to see EOF, for one direction to
@@ -27,11 +21,11 @@ func ForwardAndClose(ctx context.Context, first, second net.Conn) {
 	}()
 
 	// Extract write closure interfaces.
-	firstCloseWriter, ok := first.(CloseWriter)
+	firstCloseWriter, ok := first.(stream.CloseWriter)
 	if !ok {
 		panic("first connection does not implement write closure")
 	}
-	secondCloseWriter, ok := second.(CloseWriter)
+	secondCloseWriter, ok := second.(stream.CloseWriter)
 	if !ok {
 		panic("second connection does not implement write closure")
 	}

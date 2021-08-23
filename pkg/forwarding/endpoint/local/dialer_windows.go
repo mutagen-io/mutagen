@@ -7,7 +7,7 @@ import (
 
 	"github.com/Microsoft/go-winio"
 
-	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 // npipeCloseWriterConn adapts a net.Conn to support CloseWrite as a no-op. It
@@ -81,7 +81,7 @@ func dialWindowsNamedPipe(ctx context.Context, address string) (net.Conn, error)
 	// but fortunately Docker (our primary use case for named pipes) uses
 	// go-winio with message mode named pipes and thus understands these
 	// semantics just fine.
-	if _, ok := connection.(forwarding.CloseWriter); ok {
+	if _, ok := connection.(stream.CloseWriter); ok {
 		return connection, err
 	}
 
