@@ -636,6 +636,12 @@ func (c *controller) reset(ctx context.Context, prompter string) error {
 	return nil
 }
 
+var (
+	// errHaltedForSafety is a sentinel error indicating that a safety check
+	// wants the synchronization loop to be halted until manually resumed.
+	errHaltedForSafety = errors.New("synchronization halted")
+)
+
 // run is the main runloop for the controller, managing connectivity and
 // synchronization.
 func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
@@ -745,8 +751,15 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		beta.Shutdown()
 		beta = nil
 
-		// Reset the synchronization state, but propagate the error that caused
-		// failure.
+		// If synchronization failed due a halting error, then wait for the
+		// synchronization loop to be manually resumed.
+		if err == errHaltedForSafety {
+			<-ctx.Done()
+			return
+		}
+
+		// Otherwise, reset the synchronization state, but propagate the error
+		// that caused failure.
 		c.stateLock.Lock()
 		c.state = &State{
 			Session:   c.session,
@@ -1062,8 +1075,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootEmptied
 			c.stateLock.Unlock()
-			<-ctx.Done()
-			return errors.New("cancelled while halted on emptied root")
+			return errHaltedForSafety
 		}
 
 		// Perform reconciliation.
@@ -1089,8 +1101,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootDeletion
 			c.stateLock.Unlock()
-			<-ctx.Done()
-			return errors.New("cancelled while halted on root deletion")
+			return errHaltedForSafety
 		}
 
 		// Check if a root type change is being propagated. This can be
@@ -1101,8 +1112,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootTypeChange
 			c.stateLock.Unlock()
-			<-ctx.Done()
-			return errors.New("cancelled while halted on root type change")
+			return errHaltedForSafety
 		}
 
 		// Create a monitoring callback for rsync staging.
