@@ -37,13 +37,14 @@ type controller struct {
 	sessionPath string
 	// archivePath is the path to the serialized archive.
 	archivePath string
-	// stateLock guards and tracks changes to the session member's Paused field
-	// and the state member.
+	// stateLock guards and tracks changes to session's Paused field, state, and
+	// synchronizing. Previous holders may continue to poll on synchronizing if
+	// they store it in a separate variable before releasing the lock.
 	stateLock *state.TrackingLock
 	// session encodes the associated session metadata. It is considered static
-	// and safe for concurrent access except for its Paused field, for which the
-	// stateLock member should be held. It should be saved to disk any time it
-	// is modified.
+	// and safe for concurrent access except for its Paused field, for which
+	// stateLock should be held. It should be saved to disk any time it is
+	// modified.
 	session *Session
 	// mergedAlphaConfiguration is the alpha-specific configuration object
 	// (computed from the core configuration and alpha-specific overrides). It
@@ -57,16 +58,21 @@ type controller struct {
 	mergedBetaConfiguration *Configuration
 	// state represents the current synchronization state.
 	state *State
-	// lifecycleLock guards access to the disabled, cancel, flushRequests, and
-	// done members. Only the current holder of the lifecycle lock may set any
-	// of these fields or invoke cancel. Only the synchronization loop may close
-	// done. The synchronization loop is allowed access to flushRequests and
-	// done without holding the lifecycle lock. Moreover, previous lifecycle
-	// lock holders may continue to write to flushRequests and poll on done
-	// after storing them in separate variables and releasing the lifecycle
-	// lock. Any code wishing to set these members must first acquire the lock,
-	// then cancel the synchronization loop and wait for it to complete before
-	// making any changes.
+	// synchronizing is used to track whether or not the synchronization loop is
+	// currently in a state where it is capable of performing synchronization.
+	// It is non-nil if and only if the synchronization loop is connected and in
+	// a state where it can perform synchronization. It is closed when
+	// synchronization fails due to an error.
+	synchronizing chan struct{}
+	// lifecycleLock guards access to disabled, cancel, flushRequests, and done.
+	// Only the current holder of the lifecycle lock may set any of these fields
+	// or invoke cancel. The synchronization loop may close close done or
+	// receive from flushRequests without holding the lifecycle lock. Moreover,
+	// previous lifecycle lock holders may continue to send to flushRequests and
+	// poll on done after storing them in separate variables and releasing the
+	// lifecycle lock. Any code wishing to set these fields must first acquire
+	// the lock, then cancel the synchronization loop and wait for it to
+	// complete before making any changes.
 	lifecycleLock sync.Mutex
 	// disabled indicates that no more changes to the synchronization loop
 	// lifecycle are allowed (i.e. no more synchronization loops can be started
@@ -326,20 +332,28 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 		return errors.New("controller disabled")
 	}
 
-	// Check if the session is paused by checking whether or not it has a
-	// synchronization loop. It's an internal invariant that a session has a
-	// synchronization loop if and only if it is not paused, but checking for
-	// paused status requires holding the state lock, whereas checking for the
-	// existence of a synchronization loop only requires holding the lifecycle
-	// lock, which we do at this point.
+	// Check if the session is paused.
 	if c.cancel == nil {
 		c.lifecycleLock.Unlock()
 		return errors.New("session is paused")
 	}
 
-	// Grab the flush requests and done channels and release the lifecycle lock.
+	// Check if the session is currently synchronizing and store the channel
+	// that we'll use to track synchronizability.
+	c.stateLock.Lock()
+	synchronizing := c.synchronizing
+	c.stateLock.UnlockWithoutNotify()
+	if synchronizing == nil {
+		c.lifecycleLock.Unlock()
+		return errors.New("session is not currently able to synchronize")
+	}
+
+	// Store the channels that we'll need to submit flush requests and track
+	// synchronization termination.
 	flushRequests := c.flushRequests
 	done := c.done
+
+	// Release the lifecycle lock.
 	c.lifecycleLock.Unlock()
 
 	// Create a flush request.
@@ -348,44 +362,45 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 	// If we don't want to wait, then we can simply send the request in a
 	// non-blocking manner, in which case either this request (or one that's
 	// already queued) will be processed eventually. After that, we're done. In
-	// this case, we'll still check for synchronization termination, since we
+	// this case, we'll still check for an inability to synchronize, since we
 	// may as well report it if we can.
 	if skipWait {
 		select {
 		case flushRequests <- request:
 			return nil
+		case <-synchronizing:
+			return errors.New("synchronization failed before flush request could be sent")
 		case <-done:
-			return errors.New("synchronization terminated before request could be sent")
+			return errors.New("synchronization terminated before flush request could be sent")
 		default:
 			return nil
 		}
 	}
 
 	// Otherwise we need to send the request in a blocking manner, watching for
-	// cancellation of the flush request or the synchronization loop.
+	// cancellation, failure, or termination.
 	select {
 	case flushRequests <- request:
 	case <-ctx.Done():
 		return errors.New("flush cancelled before request could be sent")
+	case <-synchronizing:
+		return errors.New("synchronization failed before flush request could be sent")
 	case <-done:
 		return errors.New("synchronization terminated before flush request could be sent")
 	}
 
 	// Now we need to wait for a response to the request, again watching for
-	// cancellation.
+	// cancellation, failure, or termination.
 	select {
 	case err := <-request:
-		if err != nil {
-			return err
-		}
+		return err
 	case <-ctx.Done():
 		return errors.New("flush cancelled while waiting for response")
+	case <-synchronizing:
+		return errors.New("synchronization failed while waiting for flush response")
 	case <-done:
 		return errors.New("synchronization terminated while waiting for flush response")
 	}
-
-	// Success.
-	return nil
 }
 
 // resume attempts to reconnect and resume the session if it isn't currently
@@ -742,8 +757,23 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 			}
 		}
 
+		// Indicate that the synchronization loop is entering a state where it
+		// can actually perform synchronization. We don't need to perform any
+		// notification here since this is not a user-visible state change.
+		c.stateLock.Lock()
+		c.synchronizing = make(chan struct{})
+		c.stateLock.UnlockWithoutNotify()
+
 		// Perform synchronization.
 		err := c.synchronize(ctx, alpha, beta)
+
+		// Indicate that the synchronization loop is no longer synchronizing.
+		// Again, no notification is required here since this is not a
+		// user-visible state change.
+		c.stateLock.Lock()
+		close(c.synchronizing)
+		c.synchronizing = nil
+		c.stateLock.UnlockWithoutNotify()
 
 		// Shutdown the endpoints.
 		alpha.Shutdown()
@@ -806,16 +836,8 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.stateLock.UnlockWithoutNotify()
 	}
 
-	// Track any flush request that we've pulled from the queue but haven't
-	// marked as complete. If we bail due to an error, then close out the
-	// request.
+	// Track whether or not a flush request triggered the synchronization loop.
 	var flushRequest chan error
-	defer func() {
-		if flushRequest != nil {
-			flushRequest <- errors.New("synchronization cycle failed")
-			flushRequest = nil
-		}
-	}()
 
 	// Load the archive and extract the ancestor. We enforce that the archive
 	// contains only synchronizable content.

@@ -30,13 +30,12 @@ type controller struct {
 	logger *logging.Logger
 	// sessionPath is the path to the serialized session.
 	sessionPath string
-	// stateLock guards and tracks changes to the session member's Paused field
-	// and the state member.
+	// stateLock guards and tracks changes to session's Paused field and state.
 	stateLock *state.TrackingLock
 	// session encodes the associated session metadata. It is considered static
-	// and safe for concurrent access except for its Paused field, for which the
-	// stateLock member should be held. It should be saved to disk any time it
-	// is modified.
+	// and safe for concurrent access except for its Paused field, for which
+	// stateLock should be held. It should be saved to disk any time it is
+	// modified.
 	session *Session
 	// mergedSourceConfiguration is the source-specific configuration object
 	// (computed from the core configuration and source-specific overrides). It
@@ -50,15 +49,14 @@ type controller struct {
 	mergedDestinationConfiguration *Configuration
 	// state represents the current forwarding state.
 	state *State
-	// lifecycleLock guards access to the disabled, cancel, and done members.
-	// Only the current holder of the lifecycle lock may set any of these fields
-	// or invoke cancel. Only the forwarding loop may close done. The forwarding
-	// loop is allowed access to done without holding the lifecycle lock.
-	// Moreover, previous lifecycle lock holders may continue to poll on done
-	// after storing it in a separate variable and releasing the lifecycle lock.
-	// Any code wishing to set these members must first acquire the lock, then
-	// cancel the forwarding loop and wait for it to complete before making any
-	// changes.
+	// lifecycleLock guards access to disabled, cancel, and done. Only the
+	// current holder of the lifecycle lock may set any of these fields or
+	// invoke cancel. The forwarding loop may close done without holding the
+	// lifecycle lock. Moreover, previous lifecycle lock holders may poll on
+	// done after storing it in a separate variable and releasing the lifecycle
+	// lock. Any code wishing to set these fields must first acquire the lock,
+	// then cancel the forwarding loop and wait for it to complete before making
+	// any changes.
 	lifecycleLock sync.Mutex
 	// disabled indicates that no more changes to the forwarding loop lifecycle
 	// are allowed (i.e. no more forwarding loops can be started for this
