@@ -100,15 +100,16 @@ func (t Target) goEnv() ([]string, error) {
 	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
 	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
 
-	// If we're on macOS, we're going to use cgo to access the FSEvents API, so
-	// we need to ensure that we compile with flags that tell the C compiler and
-	// external linker to support older versions of macOS. These flags will tell
-	// the C compiler to generate code compatible with the target version of
-	// macOS and tell the external linker what value to embed for the
-	// LC_VERSION_MIN_MACOSX flag in the resulting Mach-O binaries. Go's
-	// internal linker automatically defaults to a relatively liberal (old)
-	// value for this flag, but since we're using an external linker, it
-	// defaults to the current SDK version.
+	// If we're building a macOS binary on macOS, then we enable cgo because
+	// we'll need it to access the FSEvents API. We have to enable it explicitly
+	// because Go won't enable it when cross compiling between different Darwin
+	// architectures. We also need to tell the C compiler and external linker to
+	// support older versions of macOS. These flags will tell the C compiler to
+	// generate code compatible with the target version of macOS and tell the
+	// external linker what value to embed for the LC_VERSION_MIN_MACOSX flag in
+	// the resulting Mach-O binaries. Go's internal linker automatically
+	// defaults to a relatively liberal (old) value for this flag, but since
+	// we're using an external linker, it defaults to the current SDK version.
 	//
 	// For all other platforms, we disable cgo. This is essential for our Linux
 	// CI setup, because we build agent executables during testing that we then
@@ -120,7 +121,8 @@ func (t Target) goEnv() ([]string, error) {
 	// good to disable cgo when building agent binaries during testing is that
 	// the release agent binaries will also have cgo disabled (except on macOS),
 	// and we'll want to faithfully recreate that.
-	if t.GOOS == "darwin" {
+	if t.GOOS == "darwin" && runtime.GOOS == "darwin" {
+		result = append(result, "CGO_ENABLED=1")
 		result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 		result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 	} else {
