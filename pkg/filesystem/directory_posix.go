@@ -136,11 +136,14 @@ func (d *Directory) CreateTemporaryFile(pattern string) (string, io.WriteCloser,
 		// Open the file. Note that we needn't specify O_NOFOLLOW here since
 		// we're enforcing that the file doesn't already exist.
 		descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
-		if os.IsExist(err) {
-			if try++; try < 10000 {
-				continue
+		if err != nil {
+			if os.IsExist(err) {
+				if try++; try < 10000 {
+					continue
+				}
+				return "", nil, errors.New("exhausted potential file names")
 			}
-			return "", nil, errors.New("exhausted potential file names")
+			return "", nil, err
 		}
 
 		// Wrap up the descriptor in a file object.
