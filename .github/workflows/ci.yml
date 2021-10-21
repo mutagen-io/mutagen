@@ -25,8 +25,8 @@ jobs:
       - uses: crazy-max/ghaction-import-gpg@v3
         id: import_gpg
         with:
-          gpg-private-key: ${{ secrets.GPG_SIGNING_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_SIGNING_PRIVATE_KEY_PASSPHRASE }}
+          gpg-private-key: ${{ secrets.GPG_SIGNING_KEY }}
+          passphrase: ${{ secrets.GPG_SIGNING_KEY_PASSWORD }}
       - name: "Generate SHA256 digest manifest"
         run: |
           # Compute SHA256 digests.
