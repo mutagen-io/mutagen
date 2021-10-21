@@ -47,7 +47,7 @@ const (
 	cliBaseName = "mutagen"
 
 	// minimumMacOSVersion is the minimum version of macOS that we'll support
-	// (currently pegged to the oldest version of macOS that Go supports).
+	// (currently pinned to the oldest version of macOS that Go supports).
 	minimumMacOSVersion = "10.13"
 
 	// minimumARMSupport is the value to pass to the GOARM environment variable
