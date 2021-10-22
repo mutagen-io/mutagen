@@ -326,7 +326,9 @@ func macOSCodeSign(path, identity string) error {
 	// without --force. When --force is specified, any existing signature will
 	// be overwritten, unless it's using the same code signing identity, in
 	// which case it will simply be left in place (which is actually optimal for
-	// for repeated local usage).
+	// for repeated local usage). Note that the --force flag is not required to
+	// override ad hoc signatures (which the Go toolchain will add by default
+	// darwin/arm64 binaries).
 	//
 	// The --options runtime and --timestamp flags are required to enable the
 	// hardened runtime (which doesn't affect Mutagen binaries) and to use a

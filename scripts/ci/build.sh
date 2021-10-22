@@ -29,7 +29,7 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     echo -n "${MACOS_CODESIGN_CERTIFICATE_AND_KEY}" | base64 --decode --output "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}"
     security import "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}" -k "${MUTAGEN_KEYCHAIN_PATH}" -P "${MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD}" -T "/usr/bin/codesign"
     rm "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}"
-    security set-key-partition-list -S apple-tool:,apple: -s -k "${MUTAGEN_KEYCHAIN_PASSWORD}" "${MUTAGEN_KEYCHAIN_PATH}"
+    security set-key-partition-list -S apple-tool:,apple: -s -k "${MUTAGEN_KEYCHAIN_PASSWORD}" "${MUTAGEN_KEYCHAIN_PATH}" > /dev/null
 
     # Perform a full release build.
     go run scripts/build.go --mode=release --macos-codesign-identity="${MACOS_CODESIGN_IDENTITY}"
@@ -60,14 +60,14 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
         /usr/bin/ditto -c -k --keepParent build/cli/darwin_arm64 "${RUNNER_TEMP}/notarize_cli_darwin_arm64.zip"
         /usr/bin/ditto -c -k --keepParent build/agent/darwin_amd64 "${RUNNER_TEMP}/notarize_agent_darwin_amd64.zip"
         /usr/bin/ditto -c -k --keepParent build/agent/darwin_arm64 "${RUNNER_TEMP}/notarize_agent_darwin_arm64.zip"
-        find "${RUNNER_TEMP}" -name 'notarize*.zip' -exec \
+        find "${RUNNER_TEMP}" -name 'notarize_*.zip' -exec \
             xcrun notarytool submit \
             --wait \
             --apple-id "${MACOS_NOTARIZE_APPLE_ID}" \
             --password "${MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD}" \
             --team-id "${MACOS_NOTARIZE_TEAM_ID}" \
             {} \;
-        rm "${RUNNER_TEMP}/notarize*.zip"
+        rm "${RUNNER_TEMP}/notarize_*.zip"
     fi
 
     # Reset the default keychain and remove the temporary keychain.
