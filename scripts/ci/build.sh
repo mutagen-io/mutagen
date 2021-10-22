@@ -52,6 +52,24 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     zip "build/release/mutagen_windows_arm_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
     rm mutagen.exe mutagen-agents.tar.gz
 
+    # If this is a tagged release, then notarize macOS binaries. We can't staple
+    # notarization information to the binaries anyway, so there's no need to do
+    # this before building the bundles.
+    if [[ "${MACOS_NOTARIZE}" == "true" ]]; then
+        /usr/bin/ditto -c -k --keepParent build/cli/darwin_amd64 "${RUNNER_TEMP}/notarize_cli_darwin_amd64.zip"
+        /usr/bin/ditto -c -k --keepParent build/cli/darwin_arm64 "${RUNNER_TEMP}/notarize_cli_darwin_arm64.zip"
+        /usr/bin/ditto -c -k --keepParent build/agent/darwin_amd64 "${RUNNER_TEMP}/notarize_agent_darwin_amd64.zip"
+        /usr/bin/ditto -c -k --keepParent build/agent/darwin_arm64 "${RUNNER_TEMP}/notarize_agent_darwin_arm64.zip"
+        find "${RUNNER_TEMP}" -name 'notarize*.zip' -exec \
+            xcrun notarytool submit \
+            --wait \
+            --apple-id "${MACOS_NOTARIZE_APPLE_ID}" \
+            --password "${MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD}" \
+            --team-id "${MACOS_NOTARIZE_TEAM_ID}" \
+            {} \;
+        rm "${RUNNER_TEMP}/notarize*.zip"
+    fi
+
     # Reset the default keychain and remove the temporary keychain.
     security default-keychain -s "${PREVIOUS_DEFAULT_KEYCHAIN}"
     security delete-keychain "${MUTAGEN_KEYCHAIN_PATH}"
