@@ -70,17 +70,9 @@ jobs:
         with:
           gpg-private-key: ${{ secrets.GPG_SIGNING_KEY }}
           passphrase: ${{ secrets.GPG_SIGNING_KEY_PASSWORD }}
-      - name: "Generate SHA256 digest manifest"
-        run: |
-          # Compute SHA256 digests.
-          sha256sum mutagen_* > SHA256SUMS
-
-          # Sign the SHA256 digests file.
-          gpg --detach-sign --armor \
-            --default-key ${{ steps.import_gpg.outputs.email }} \
-            --output SHA256SUMS.gpg \
-            SHA256SUMS
-        working-directory: build/release
+      - run: scripts/ci/sha256sum.sh
+        env:
+          SHA256_GPG_SIGNING_IDENTITY: ${{ steps.import_gpg.outputs.email }}
       - uses: actions/upload-artifact@v2
         with:
           name: bundles
