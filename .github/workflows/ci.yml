@@ -61,7 +61,9 @@ jobs:
           MACOS_CODESIGN_CERTIFICATE_AND_KEY: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY }}
           MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD }}
           MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
-          MACOS_NOTARIZE: ${{ needs.versioning.outputs.release }}
+      - run: scripts/ci/notarize.sh
+        if: ${{ needs.versioning.outputs.release == 'true' }}
+        env:
           MACOS_NOTARIZE_APPLE_ID: ${{ secrets.MACOS_NOTARIZE_APPLE_ID }}
           MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD: ${{ secrets.MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD }}
           MACOS_NOTARIZE_TEAM_ID: ${{ secrets.MACOS_NOTARIZE_TEAM_ID }}
