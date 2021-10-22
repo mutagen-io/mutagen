@@ -198,12 +198,7 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 	builder.Stderr = os.Stderr
 
 	// Run the build.
-	if err := builder.Run(); err != nil {
-		return fmt.Errorf("compilation failed: %w", err)
-	}
-
-	// Success.
-	return nil
+	return builder.Run()
 }
 
 // targets encodes which combinations of GOOS and GOARCH we want to use for
@@ -317,6 +312,41 @@ var targets = []Target{
 	// request to add it to the Go documentation.
 	{"windows", "arm"},
 	{"windows", "arm64"},
+}
+
+// macOSCodeSign performs macOS code signing on the specified path using the
+// specified signing identity. It performs code signing in a manner suitable for
+// later submission to Apple for notarization.
+func macOSCodeSign(path, identity string) error {
+	// Create the code signing command.
+	//
+	// We include the --force flag because the Go toolchain won't touch binaries
+	// if they don't need to be rebuilt and thus we might have a signature from
+	// a previous build. In that case, the code signing operation will fail
+	// without --force. When --force is specified, any existing signature will
+	// be overwritten, unless it's using the same code signing identity, in
+	// which case it will simply be left in place (which is actually optimal for
+	// for repeated local usage).
+	//
+	// The --options runtime and --timestamp flags are required to enable the
+	// hardened runtime (which doesn't affect Mutagen binaries) and to use a
+	// secure signing timestamp, both of which are required for notarization.
+	codesign := exec.Command("codesign",
+		"--sign", identity,
+		"--force",
+		"--options", "runtime",
+		"--timestamp",
+		"--verbose",
+		path,
+	)
+
+	// Forward input, output, and error streams.
+	codesign.Stdin = os.Stdin
+	codesign.Stdout = os.Stdout
+	codesign.Stderr = os.Stderr
+
+	// Run code signing.
+	return codesign.Run()
 }
 
 // archiveBuilderCopyBufferSize determines the size of the copy buffer used when
@@ -453,6 +483,7 @@ func copyFile(sourcePath, destinationPath string) error {
 }
 
 var usage = `usage: build [-h|--help] [-m|--mode=<mode>]
+       [--macos-codesign-identity=<identity>]
 
 The mode flag accepts four values: 'local', 'slim', 'release', and
 'release-slim'. 'local' will build CLI and agent binaries only for the current
@@ -461,6 +492,12 @@ agents for a small subset of platforms. 'release' will build CLI and agent
 binaries for all platforms and package for release. 'release-slim' is the same
 as release but only builds release bundles for a small subset of platforms. The
 default mode is 'slim'.
+
+If --macos-codesign-identity specifies a non-empty value, then it will be used
+to perform code signing on all macOS binaries in a fashion suitable for
+notarization by Apple. The codesign utility must be able to access the
+associated certificate and private keys in Keychain Access without a password if
+this script is operated in a non-interactive mode.
 `
 
 // build is the primary entry point.
@@ -468,8 +505,9 @@ func build() error {
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
-	var mode string
+	var mode, macosCodesignIdentity string
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
+	flagSet.StringVar(&macosCodesignIdentity, "macos-codesign-identity", "", "specify the macOS code signing identity")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -490,10 +528,16 @@ func build() error {
 	// other platforms can survive with pure Go compilation.
 	if runtime.GOOS != "darwin" {
 		if mode == "release" {
-			return errors.New("macOS required for release builds")
+			return errors.New("macOS is required for release builds")
 		} else if mode == "slim" || mode == "release-slim" {
 			cmd.Warning("macOS agents will be built without cgo support")
 		}
+	}
+
+	// If a macOS code signing identity has been specified, then make sure we're
+	// in a mode where that makes sense.
+	if macosCodesignIdentity != "" && runtime.GOOS != "darwin" {
+		return errors.New("macOS is required for macOS code signing")
 	}
 
 	// Compute the path to the Mutagen source directory.
@@ -575,6 +619,11 @@ func build() error {
 		if err := target.Build(agentPackage, agentBuildPath, disableDebug); err != nil {
 			return fmt.Errorf("unable to build agent: %w", err)
 		}
+		if macosCodesignIdentity != "" && target.GOOS == "darwin" {
+			if err := macOSCodeSign(agentBuildPath, macosCodesignIdentity); err != nil {
+				return fmt.Errorf("unable to code sign agent for macOS: %w", err)
+			}
+		}
 	}
 
 	// Build CLI binaries.
@@ -584,6 +633,11 @@ func build() error {
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
 		if err := target.Build(cliPackage, cliBuildPath, disableDebug); err != nil {
 			return fmt.Errorf("unable to build CLI: %w", err)
+		}
+		if macosCodesignIdentity != "" && target.GOOS == "darwin" {
+			if err := macOSCodeSign(cliBuildPath, macosCodesignIdentity); err != nil {
+				return fmt.Errorf("unable to code sign CLI for macOS: %w", err)
+			}
 		}
 	}
 

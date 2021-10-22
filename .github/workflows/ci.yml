@@ -22,6 +22,10 @@ jobs:
       - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
       - run: scripts/ci/build.sh
+        env:
+          MACOS_CODESIGN_CERTIFICATE_AND_KEY: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY }}
+          MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
       - uses: crazy-max/ghaction-import-gpg@v3
         id: import_gpg
         with:
