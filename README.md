@@ -8,9 +8,7 @@ flexible [network forwarding](https://mutagen.io/documentation/forwarding).
 It supports synchronization and forwarding between
 [local systems](https://mutagen.io/documentation/transports/local),
 [SSH-accessible locations](https://mutagen.io/documentation/transports/ssh),
-and [Docker containers](https://mutagen.io/documentation/transports/docker), as
-well as most other infrastructure (such as Kubernetes clusters) using its
-[tunnel transport](https://mutagen.io/documentation/transports/tunnels).
+and [Docker containers](https://mutagen.io/documentation/transports/docker).
 
 
 ## Getting started
