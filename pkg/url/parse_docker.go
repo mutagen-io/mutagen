@@ -15,9 +15,11 @@ const dockerURLPrefix = "docker://"
 // should be locked in to Docker URLs at parse time.
 var DockerEnvironmentVariables = []string{
 	"DOCKER_HOST",
+	"DOCKER_TLS", // This flag is not documented, but is supported by Docker.
 	"DOCKER_TLS_VERIFY",
 	"DOCKER_CERT_PATH",
 	"DOCKER_CONTEXT",
+	"DOCKER_CONFIG", // This flag is not documented, but is supported by Docker.
 	"DOCKER_API_VERSION",
 }
 
