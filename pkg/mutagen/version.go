@@ -78,7 +78,7 @@ func receiveVersion(reader io.Reader) (uint32, uint32, uint32, error) {
 // TODO: Add some ability to support version skew in this function.
 func ClientVersionHandshake(stream io.ReadWriteCloser) error {
 	// Receive the server's version.
-	serverMajor, serverMinor, _, err := receiveVersion(stream)
+	serverMajor, serverMinor, serverPatch, err := receiveVersion(stream)
 	if err != nil {
 		return fmt.Errorf("unable to receive server version: %w", err)
 	}
@@ -89,13 +89,15 @@ func ClientVersionHandshake(stream io.ReadWriteCloser) error {
 	}
 
 	// Ensure that our Mutagen versions are compatible. For now, we enforce that
-	// they're equal at the minor release level.
+	// they're equal.
 	// TODO: Once we lock-in an internal protocol that we're going to support
 	// for some time, we can allow some version skew. On the client side in
 	// particular, we'll probably want to look out for the specific "locked-in"
 	// server protocol that we support and instantiate some frozen client
 	// implementation from that version.
-	versionMatch := serverMajor == VersionMajor && serverMinor == VersionMinor
+	versionMatch := serverMajor == VersionMajor &&
+		serverMinor == VersionMinor &&
+		serverPatch == VersionPatch
 	if !versionMatch {
 		return errors.New("version mismatch")
 	}
@@ -116,14 +118,16 @@ func ServerVersionHandshake(stream io.ReadWriteCloser) error {
 	}
 
 	// Receive the client's version.
-	clientMajor, clientMinor, _, err := receiveVersion(stream)
+	clientMajor, clientMinor, clientPatch, err := receiveVersion(stream)
 	if err != nil {
 		return fmt.Errorf("unable to receive client version: %w", err)
 	}
 
 	// Ensure that our versions are compatible. For now, we enforce that they're
-	// equal at the minor release level.
-	versionMatch := clientMajor == VersionMajor && clientMinor == VersionMinor
+	// equal.
+	versionMatch := clientMajor == VersionMajor &&
+		clientMinor == VersionMinor &&
+		clientPatch == VersionPatch
 	if !versionMatch {
 		return errors.New("version mismatch")
 	}
