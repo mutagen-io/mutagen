@@ -352,7 +352,7 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 // return metadata for "." or ".." entries.
 func (d *Directory) ReadContents() ([]*Metadata, error) {
 	// Read directory content. On Windows, we use the os.File implementation to
-	// read names and (an acceptable amount of metadata) in one fell swoop,
+	// read names and (an acceptable amount of) metadata in one fell swoop,
 	// rather than using a "read names + loop and query" construct. The reason
 	// for this is that Windows file metadata queries are extremely slow,
 	// requiring use of either GetFileInformationByHandle (which requires
