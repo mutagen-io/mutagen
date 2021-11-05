@@ -343,12 +343,6 @@ func LoadProject(projectFlags ProjectFlags, daemonFlags docker.DaemonConnectionF
 		return nil, fmt.Errorf("service name \"%s\" is reserved for Mutagen", MutagenServiceName)
 	}
 
-	// Convert the set of service names to a list.
-	serviceNames := make([]string, 0, len(services))
-	for name := range services {
-		serviceNames = append(serviceNames, name)
-	}
-
 	// Compute the name of the Mutagen service container.
 	mutagenContainerName := singleContainerName(projectName, MutagenServiceName)
 
