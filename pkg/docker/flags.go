@@ -12,6 +12,8 @@ import (
 // structure is a valid value corresponding to the absence of any of these
 // flags.
 type DaemonConnectionFlags struct {
+	// Config stores the value of the --config flag.
+	Config string
 	// Host stores the value of the -H/--host flag.
 	Host string
 	// Context stores the value of the -c/--context flag.
@@ -37,6 +39,11 @@ func LoadDaemonConnectionFlagsFromURLParameters(parameters map[string]string) (*
 	// Validate and convert parameters.
 	for key, value := range parameters {
 		switch key {
+		case "config":
+			if value == "" {
+				return nil, errors.New("config parameter has empty value")
+			}
+			result.Config = value
 		case "context":
 			if value == "" {
 				return nil, errors.New("context parameter has empty value")
@@ -88,6 +95,9 @@ func (f *DaemonConnectionFlags) ToFlags() []string {
 	var result []string
 
 	// Add flags as necessary.
+	if f.Config != "" {
+		result = append(result, "--config", f.Config)
+	}
 	if f.Host != "" {
 		result = append(result, "--host", f.Host)
 	}
@@ -122,6 +132,9 @@ func (f *DaemonConnectionFlags) ToURLParameters() map[string]string {
 	result := make(map[string]string)
 
 	// Add parameters as necessary.
+	if f.Config != "" {
+		result["config"] = f.Config
+	}
 	if f.Host != "" {
 		result["host"] = f.Host
 	}
