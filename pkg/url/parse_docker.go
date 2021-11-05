@@ -23,6 +23,18 @@ var DockerEnvironmentVariables = []string{
 	"DOCKER_API_VERSION",
 }
 
+// dockerParameterNames is a list of supported Docker command line parameters.
+var dockerParameterNames = []string{
+	"config",
+	"context",
+	"host",
+	"tls",
+	"tlscacert",
+	"tlscert",
+	"tlskey",
+	"tlsverify",
+}
+
 // isDockerURL checks whether or not a URL is a Docker URL. It requires the
 // presence of a Docker protocol prefix.
 func isDockerURL(raw string) bool {

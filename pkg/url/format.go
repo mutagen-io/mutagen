@@ -88,6 +88,19 @@ func (u *URL) formatDocker(environmentPrefix string) string {
 		}
 	}
 
+	// Add parameter information, if requested.
+	if environmentPrefix != "" {
+		for _, name := range dockerParameterNames {
+			if value, present := u.Parameters[name]; present {
+				if value == "" {
+					result += fmt.Sprintf("%s%s=true", environmentPrefix, name)
+				} else {
+					result += fmt.Sprintf("%s%s=%s", environmentPrefix, name, value)
+				}
+			}
+		}
+	}
+
 	// Done.
 	return result
 }
