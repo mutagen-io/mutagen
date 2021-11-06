@@ -312,6 +312,9 @@ func NewEndpoint(
 	} else if stageMode == synchronization.StageMode_StageModeNeighboring {
 		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
 		hideStagingRoot = true
+	} else if stageMode == synchronization.StageMode_StageModeInternal {
+		stagingRoot, err = pathForInternalStagingRoot(root, sessionIdentifier, alpha)
+		hideStagingRoot = true
 	} else {
 		panic("unhandled staging mode")
 	}

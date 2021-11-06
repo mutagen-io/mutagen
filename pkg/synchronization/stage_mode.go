@@ -22,6 +22,8 @@ func (m *StageMode) UnmarshalText(textBytes []byte) error {
 		*m = StageMode_StageModeMutagen
 	case "neighboring":
 		*m = StageMode_StageModeNeighboring
+	case "internal":
+		*m = StageMode_StageModeInternal
 	default:
 		return fmt.Errorf("unknown staging mode specification: %s", text)
 	}
@@ -38,6 +40,8 @@ func (m StageMode) Supported() bool {
 		return true
 	case StageMode_StageModeNeighboring:
 		return true
+	case StageMode_StageModeInternal:
+		return true
 	default:
 		return false
 	}
@@ -52,6 +56,8 @@ func (m StageMode) Description() string {
 		return "Mutagen Data Directory"
 	case StageMode_StageModeNeighboring:
 		return "Neighboring"
+	case StageMode_StageModeInternal:
+		return "Internal"
 	default:
 		return "Unknown"
 	}

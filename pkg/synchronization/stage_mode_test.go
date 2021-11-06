@@ -17,6 +17,7 @@ func TestStageModeUnmarshal(t *testing.T) {
 		{"asdf", StageMode_StageModeDefault, true},
 		{"mutagen", StageMode_StageModeMutagen, false},
 		{"neighboring", StageMode_StageModeNeighboring, false},
+		{"internal", StageMode_StageModeInternal, false},
 	}
 
 	// Process test cases.
@@ -49,7 +50,8 @@ func TestStageModeSupported(t *testing.T) {
 		{StageMode_StageModeDefault, false},
 		{StageMode_StageModeMutagen, true},
 		{StageMode_StageModeNeighboring, true},
-		{(StageMode_StageModeNeighboring + 1), false},
+		{StageMode_StageModeInternal, true},
+		{(StageMode_StageModeInternal + 1), false},
 	}
 
 	// Process test cases.
@@ -75,7 +77,8 @@ func TestStageModeDescription(t *testing.T) {
 		{StageMode_StageModeDefault, "Default"},
 		{StageMode_StageModeMutagen, "Mutagen Data Directory"},
 		{StageMode_StageModeNeighboring, "Neighboring"},
-		{(StageMode_StageModeNeighboring + 1), "Unknown"},
+		{StageMode_StageModeInternal, "Internal"},
+		{(StageMode_StageModeInternal + 1), "Unknown"},
 	}
 
 	// Process test cases.

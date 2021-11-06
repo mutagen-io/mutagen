@@ -16,4 +16,8 @@ enum StageMode {
     // StageMode_StageModeNeighboring specifies that files should be staged in a
     // directory which neighbors the synchronization root.
     StageModeNeighboring = 2;
+    // StageMode_StageModeInternal specified that files should be staged in a
+    // directory contained within a synchronization root. This mode will only
+    // function if the synchronization root already exists.
+    StageModeInternal = 3;
 }

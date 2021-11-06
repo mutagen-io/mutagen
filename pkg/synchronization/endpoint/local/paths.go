@@ -92,6 +92,28 @@ func pathForNeighboringStagingRoot(root, session string, alpha bool) (string, er
 	return filepath.Join(parent, stagingRootName), nil
 }
 
+// pathForInternalStagingRoot computes the path to the staging root which is
+// internal to the synchronization root for the given root, session identifier,
+// and endpoint. It does not create the directory or any parent directories.
+func pathForInternalStagingRoot(root, session string, alpha bool) (string, error) {
+	// Compute the endpoint name.
+	endpointName := alphaName
+	if !alpha {
+		endpointName = betaName
+	}
+
+	// Compute the name of the staging directory.
+	stagingRootName := fmt.Sprintf(
+		"%sstaging-%s-%s",
+		filesystem.TemporaryNamePrefix,
+		session,
+		endpointName,
+	)
+
+	// Compute the path to the staging root.
+	return filepath.Join(root, stagingRootName), nil
+}
+
 // pathForStaging computes the staging path for the specified path/digest
 // relative to the staging root. It returns the prefix directory name but does
 // not ensure that it's been created.
