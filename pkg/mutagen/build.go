@@ -14,10 +14,10 @@ const (
 
 // SourceTreePath computes the path to the Mutagen source directory.
 func SourceTreePath() (string, error) {
-	// Compute the path to this script.
+	// Compute the path to this file.
 	_, filePath, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", errors.New("unable to compute script path")
+		return "", errors.New("unable to compute file path")
 	}
 
 	// Compute the path to the Mutagen source directory.

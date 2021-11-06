@@ -490,7 +490,7 @@ var usage = `usage: build [-h|--help] [-m|--mode=<mode>]
 The mode flag accepts four values: 'local', 'slim', 'release', and
 'release-slim'. 'local' will build CLI and agent binaries only for the current
 platform. 'slim' will build the CLI binary for only the current platform and
-agents for a small subset of platforms. 'release' will build CLI and agent
+agents for a common subset of platforms. 'release' will build CLI and agent
 binaries for all platforms and package for release. 'release-slim' is the same
 as release but only builds release bundles for a small subset of platforms. The
 default mode is 'slim'.
