@@ -21,5 +21,8 @@ COPY --from=builder ["/go/bin/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
 # Create the parent directory for volume mount points.
 RUN ["mkdir", "/volumes"]
 
+# Add an indicator that this is a Mutagen sidecar container.
+ENV MUTAGEN_SIDECAR=1
+
 # Set the image entrypoint.
 ENTRYPOINT ["mutagen-sidecar"]
