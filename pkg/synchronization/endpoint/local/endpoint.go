@@ -15,6 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/sidecar"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
@@ -298,10 +299,17 @@ func NewEndpoint(
 		cache = &core.Cache{}
 	}
 
-	// Compute the effective staging mode.
+	// Compute the effective staging mode. If no mode has been explicitly set
+	// and we're targeting a volume mount point in a Mutagen sidecar container,
+	// then use internal staging for better performance. Otherwise, use either
+	// the explicitly specified staging mode or the default staging mode.
 	stageMode := configuration.StageMode
 	if stageMode.IsDefault() {
-		stageMode = version.DefaultStageMode()
+		if sidecar.EnvironmentIsSidecar() && sidecar.PathIsVolumeMountPoint(root) {
+			stageMode = synchronization.StageMode_StageModeInternal
+		} else {
+			stageMode = version.DefaultStageMode()
+		}
 	}
 
 	// Compute the staging root path and whether or not it should be hidden.
