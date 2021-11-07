@@ -153,7 +153,7 @@ func (t Target) IncludeAgentInSlimBuildModes() bool {
 	return !t.IsCrossTarget() ||
 		(t.GOOS == "darwin") ||
 		(t.GOOS == "windows" && t.GOARCH == "amd64") ||
-		(t.GOOS == "linux" && (t.GOARCH == "amd64" || t.GOARCH == "arm")) ||
+		(t.GOOS == "linux" && (t.GOARCH == "amd64" || t.GOARCH == "arm64")) ||
 		(t.GOOS == "freebsd" && t.GOARCH == "amd64")
 }
 

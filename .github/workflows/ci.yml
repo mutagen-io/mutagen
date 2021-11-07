@@ -22,7 +22,7 @@ jobs:
           RELEASE="${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}"
 
           # Determine version target information for Go. If this is a release,
-          # then we'll use the tag, otherwise we'll use the raw commit identifier.
+          # then we'll use the tag, otherwise we'll use the raw commit digest.
           if [ "${RELEASE}" = "true" ]; then
             TARGET="${GITHUB_REF#refs/tags/}"
           else
@@ -58,9 +58,9 @@ jobs:
       - run: scripts/ci/test.sh
       - run: scripts/ci/build.sh
         env:
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
           MACOS_CODESIGN_CERTIFICATE_AND_KEY: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY }}
           MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD }}
-          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
       - run: scripts/ci/notarize.sh
         if: ${{ needs.versioning.outputs.release == 'true' }}
         env:
@@ -120,7 +120,7 @@ jobs:
   sidecar:
     name: Sidecar
     runs-on: ubuntu-latest
-    needs: [macos, linux, windows, versioning]
+    needs: [versioning, macos, linux, windows]
     steps:
       - uses: actions/checkout@v2
       - uses: docker/setup-qemu-action@v1
@@ -147,7 +147,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [macos, linux, windows, versioning, sidecar]
+    needs: [versioning, macos, linux, windows, sidecar]
     if: ${{ needs.versioning.outputs.release == 'true' }}
     steps:
       - uses: actions/download-artifact@v2
