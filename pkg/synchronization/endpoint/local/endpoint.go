@@ -249,6 +249,12 @@ func NewEndpoint(
 	ignores = append(ignores, configuration.DefaultIgnores...)
 	ignores = append(ignores, configuration.Ignores...)
 
+	// Track whether or not any non-default ownership or directory permissions
+	// are set. We don't care about non-default file permissions since we're
+	// only tracking this to set volume root ownership and permissions in
+	// sidecar containers.
+	var nonDefaultOwnershipOrDirectoryPermissionsSet bool
+
 	// Compute the effective default file mode.
 	defaultFileMode := filesystem.Mode(configuration.DefaultFileMode)
 	if defaultFileMode == 0 {
@@ -259,18 +265,24 @@ func NewEndpoint(
 	defaultDirectoryMode := filesystem.Mode(configuration.DefaultDirectoryMode)
 	if defaultDirectoryMode == 0 {
 		defaultDirectoryMode = version.DefaultDirectoryMode()
+	} else {
+		nonDefaultOwnershipOrDirectoryPermissionsSet = true
 	}
 
 	// Compute the effective owner specification.
 	defaultOwnerSpecification := configuration.DefaultOwner
 	if defaultOwnerSpecification == "" {
 		defaultOwnerSpecification = version.DefaultOwnerSpecification()
+	} else {
+		nonDefaultOwnershipOrDirectoryPermissionsSet = true
 	}
 
 	// Compute the effective owner group specification.
 	defaultGroupSpecification := configuration.DefaultGroup
 	if defaultGroupSpecification == "" {
 		defaultGroupSpecification = version.DefaultGroupSpecification()
+	} else {
+		nonDefaultOwnershipOrDirectoryPermissionsSet = true
 	}
 
 	// Compute the effective ownership specification.
@@ -299,13 +311,22 @@ func NewEndpoint(
 		cache = &core.Cache{}
 	}
 
+	// Check if the synchronization root is a volume Mount point in a Mutagen
+	// sidecar container.
+	var rootIsSidecarVolumeMountPoint bool
+	var sidecarVolumeName string
+	if sidecar.EnvironmentIsSidecar() {
+		rootIsSidecarVolumeMountPoint, sidecarVolumeName = sidecar.PathIsVolumeMountPoint(root)
+	}
+
 	// Compute the effective staging mode. If no mode has been explicitly set
-	// and we're targeting a volume mount point in a Mutagen sidecar container,
-	// then use internal staging for better performance. Otherwise, use either
-	// the explicitly specified staging mode or the default staging mode.
+	// and the synchronization root is a volume mount point in a Mutagen sidecar
+	// container, then use internal staging for better performance. Otherwise,
+	// use either the explicitly specified staging mode or the default staging
+	// mode.
 	stageMode := configuration.StageMode
 	if stageMode.IsDefault() {
-		if sidecar.EnvironmentIsSidecar() && sidecar.PathIsVolumeMountPoint(root) {
+		if rootIsSidecarVolumeMountPoint {
 			stageMode = synchronization.StageMode_StageModeInternal
 		} else {
 			stageMode = version.DefaultStageMode()
@@ -339,6 +360,23 @@ func NewEndpoint(
 	// Compute whether or not we're going to use native recursive watching.
 	watchIsRecursive := watchMode == synchronization.WatchMode_WatchModePortable &&
 		watching.RecursiveWatchingSupported
+
+	// HACK: If non-default ownership or permissions have been set and the
+	// synchronization root is a volume mount point in a Mutagen sidecar
+	// container with no pre-existing content, then set the ownership and
+	// permissions of the synchronization root to match those of the session.
+	// This is a heuristic to work around the fact that Docker volumes don't
+	// allow ownership specification at creation time, either via the command
+	// line or Compose.
+	if nonDefaultOwnershipOrDirectoryPermissionsSet && rootIsSidecarVolumeMountPoint {
+		if err := sidecar.SetVolumeOwnershipAndPermissionsIfEmpty(
+			sidecarVolumeName,
+			defaultOwnership,
+			defaultDirectoryMode,
+		); err != nil {
+			return nil, fmt.Errorf("unable to set ownership and permissions for sidecar volume: %w", err)
+		}
+	}
 
 	// Create a cancellable context in which the endpoint's background worker
 	// Goroutines will operate.
