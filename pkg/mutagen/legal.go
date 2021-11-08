@@ -1,8 +1,8 @@
 package mutagen
 
-// LegalNotice provides license notices for Mutagen itself and any third-party
+// Licenses provides license notices for Mutagen itself and any third-party
 // dependencies.
-const LegalNotice = `Mutagen
+const Licenses = `Mutagen
 
 Copyright (c) 2016 - 2021 Mutagen IO, Inc.
 
