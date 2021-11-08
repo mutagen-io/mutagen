@@ -59,25 +59,6 @@ If you'd like to contribute to Mutagen, please see the
 [contribution documentation](CONTRIBUTING.md).
 
 
-## External projects
-
-Users have built a number of cool projects to extend and integrate Mutagen into
-their workflows:
-
-- [**Mutagen Helper**](https://github.com/gfi-centre-ouest/mutagen-helper) is a
-  tool that makes the orchestration of synchronization sessions even easier by
-  letting you define sessions with configuration files that live inside your
-  codebase. Thanks to [**@Toilal**](https://github.com/Toilal)!
-- [**docker-magento-mutagen**](https://github.com/mage2click/docker-magento-mutagen)
-  (from [Mage2click](https://mage2.click/)) is a Docker-based development
-  environment for Magento that uses Mutagen for file synchronization. Thanks to
-  [**@u-maxx**](https://github.com/u-maxx) and
-  [**@shkoliar**](https://github.com/shkoliar)!
-- [**MutagenMon**](https://github.com/rualark/MutagenMon) is a Python-based GUI
-  for monitoring Mutagen sessions. Thanks to
-  [**@rualark**](https://github.com/rualark)!
-
-
 ## Security
 
 Mutagen takes security very seriously. If you believe you have found a security
@@ -108,6 +89,25 @@ see breakage when necessary, though we will endeavor to keep this to a minimum.
 ## Building
 
 Please see the [build instructions](BUILDING.md).
+
+
+## External projects
+
+Users have built a number of cool projects to extend and integrate Mutagen into
+their workflows:
+
+- [**Mutagen Helper**](https://github.com/gfi-centre-ouest/mutagen-helper) is a
+  tool that makes the orchestration of synchronization sessions even easier by
+  letting you define sessions with configuration files that live inside your
+  codebase. Thanks to [**@Toilal**](https://github.com/Toilal)!
+- [**docker-magento-mutagen**](https://github.com/mage2click/docker-magento-mutagen)
+  (from [Mage2click](https://mage2.click/)) is a Docker-based development
+  environment for Magento that uses Mutagen for file synchronization. Thanks to
+  [**@u-maxx**](https://github.com/u-maxx) and
+  [**@shkoliar**](https://github.com/shkoliar)!
+- [**MutagenMon**](https://github.com/rualark/MutagenMon) is a Python-based GUI
+  for monitoring Mutagen sessions. Thanks to
+  [**@rualark**](https://github.com/rualark)!
 
 
 ## Unrelated projects
