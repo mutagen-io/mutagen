@@ -30,10 +30,12 @@ email us at [hello@mutagen.io](mailto:hello@mutagen.io).
 
 ---
 
-**Please note:** Mutagen is currently in a state of high code churn and I simply
-don't have the time to review pull requests. GitHub unfortunately doesn't allow
-me to disable pull requests, but please be aware that they will probably be left
-on the back burner for the foreseeable future. Sorry :-(
+**Please note:** I'm still working on formulating Mutagen's pull request policy.
+I'm trying to make it as simple as possible while ensuring code quality and
+project longevity. I very much want community contributions, but I haven't had
+an extensive amount of time to review pull requests or formulate a review
+process. I'm working on changing this, so I ask you to bear with me for just a
+little longer. Thank you!
 
 – Jacob
 
@@ -48,18 +50,16 @@ guidelines. Pull requests that don't follow these guidelines will simply be
 closed.
 
 
-### Developer Certificate of Origin
+### Contributor License Agreement
 
-Pull requests to Mutagen must be submitted under the terms of the
-[Developer Certificate of Origin (DCO)](DCO). In order to accept a pull request,
-we require that you sign-off all commits in the pull request using the `-s` flag
-with `git commit` to indicate that you agree to the terms of the DCO.
+Mutagen pull requests will require a Contributor License Agreement, though the
+exact form of this agreement is still being decided.
 
 
 ### Code guidelines
 
 In order to ensure that Mutagen's codebase remains clean and understandable to
-newcomers, we kindly request that:
+all developers, we kindly request that:
 
 - Code adheres to Go style guidelines, including those in
   [Effective Go](https://golang.org/doc/effective_go.html) and the

@@ -1,8 +1,8 @@
 # Security
 
-If you find a security issue with Mutagen, please DO NOT submit it via the issue
-tracker! Instead, please follow responsible disclosure practices and send
-information about security issues directly to
+If you find a security issue with Mutagen or one of its related projects, please
+DO NOT submit it via the issue tracker! Instead, please follow responsible
+disclosure practices and send information about security issues directly to
 [security@mutagen.io](mailto:security@mutagen.io) so that a proper assessment
 can be made and a fix prepared before a wide announcement. You will receive an
 acknowledgement within 24 hours. If you do not, please contact the project
@@ -15,4 +15,4 @@ as soon as possible. We can work together to investigate, debug, and assess.
 You may also direct questions, feedback, or suggestions about Mutagen's security
 policy to the same email addresses.
 
-Your help is greatly appreciated in keeping Mutagen secure!
+Your help is greatly appreciated in keeping Mutagen code secure!
