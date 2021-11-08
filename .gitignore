@@ -1,8 +1,2 @@
 # Build output
 /build/
-
-# Tunnel credentials
-*.tunn
-
-# Project lock files
-*.lock
