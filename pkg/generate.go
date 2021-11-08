@@ -30,6 +30,6 @@ import (
 	// things as future-proof as possible. This file also makes a great location
 	// for doing these imports since it couples these imports conceptually with
 	// the commands above and it isn't included in any part of the build.
-	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
+	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 )
