@@ -62,11 +62,13 @@ func (h *protocolHandler) Connect(
 	// Create a channel to deliver the dialing result.
 	results := make(chan dialResult)
 
+	logger.Debug("configuration.Sudo:", configuration.Sudo)
+
 	// Perform dialing in a background Goroutine so that we can monitor for
 	// cancellation.
 	go func() {
 		// Perform the dialing operation.
-		stream, err := agent.Dial(logger, transport, agent.ModeSynchronizer, prompter)
+		stream, err := agent.Dial(logger, transport, agent.ModeSynchronizer, configuration.Sudo, prompter)
 
 		// Transmit the result or, if cancelled, close the stream.
 		select {

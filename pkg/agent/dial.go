@@ -32,7 +32,7 @@ const (
 // remote environment is cmd.exe-based and returns hints as to whether or not
 // installation should be attempted and whether or not the remote environment is
 // cmd.exe-based.
-func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
+func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool, sudo bool) (io.ReadWriteCloser, bool, bool, error) {
 	// Compute the agent invocation command, relative to the user's home
 	// directory on the remote. Unless we have reason to assume that this is a
 	// cmd.exe environment, we construct a path using forward slashes. This will
@@ -66,6 +66,9 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Compute the command to invoke.
 	command := fmt.Sprintf("%s %s", agentInvocationPath, mode)
+	if sudo && !cmdExe {
+		command = "sudo " + command
+	}
 
 	// Create an agent process.
 	message := "Connecting to agent (POSIX)..."
@@ -168,7 +171,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 // Dial connects to an agent-based endpoint using the specified transport,
 // connection mode, and prompter.
-func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
+func Dial(logger *logging.Logger, transport Transport, mode string, sudo bool, prompter string) (io.ReadWriteCloser, error) {
 	// Validate that the mode is sane.
 	if !(mode == ModeSynchronizer || mode == ModeForwarder) {
 		panic("invalid agent dial mode")
@@ -177,11 +180,11 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (i
 	// Attempt a connection. If this fails but we detect a Windows cmd.exe
 	// environment in the process, then re-attempt a connection under the
 	// cmd.exe assumption.
-	stream, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false)
+	stream, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false, sudo)
 	if err == nil {
 		return stream, nil
 	} else if cmdExe {
-		stream, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true)
+		stream, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true, sudo)
 		if err == nil {
 			return stream, nil
 		}
@@ -199,7 +202,7 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (i
 	}
 
 	// Re-attempt connectivity.
-	stream, _, _, err = connect(logger, transport, mode, prompter, cmdExe)
+	stream, _, _, err = connect(logger, transport, mode, prompter, cmdExe, sudo)
 	if err != nil {
 		return nil, err
 	}
