@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/external"
 
 	"github.com/mutagen-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/process"
 )
 
 // startMain is the entry point for the start command.
@@ -22,8 +25,14 @@ func startMain(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Compute the path to the current executable.
-	executablePath, err := os.Executable()
+	// Compute the path to the Mutagen CLI executable.
+	var executablePath string
+	var err error
+	if !external.UsePathBasedLookupForDaemonStart {
+		executablePath, err = os.Executable()
+	} else {
+		executablePath, err = exec.LookPath(process.ExecutableName("mutagen", runtime.GOOS))
+	}
 	if err != nil {
 		return fmt.Errorf("unable to determine executable path: %w", err)
 	}
