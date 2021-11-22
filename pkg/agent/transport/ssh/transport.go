@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transport"
@@ -15,9 +16,6 @@ import (
 )
 
 const (
-	// connectTimeoutSeconds is the number of seconds to use for OpenSSH's
-	// ConnectTimeout configuration option.
-	connectTimeoutSeconds = 5
 	// serverAliveIntervalSeconds is the number of seconds to use for OpenSSH's
 	// ServerAliveInterval configuration option. Multiplied by
 	// serverAliveCountMax, it effectively limits the maximum allowed latency.
@@ -26,6 +24,20 @@ const (
 	// configuration option.
 	serverAliveCountMax = 1
 )
+
+var (
+	// connectTimeoutSeconds is the number of seconds to use for OpenSSH's
+	// ConnectTimeout configuration option.
+	connectTimeoutSeconds uint64 = 5
+)
+
+func init() {
+	// If a valid connection timeout has been specified in the environment, then
+	// override the default connection timeout setting.
+	if t, err := strconv.ParseUint(os.Getenv("MUTAGEN_SSH_CONNECT_TIMEOUT"), 10, 64); err == nil && t > 0 {
+		connectTimeoutSeconds = t
+	}
+}
 
 // sshTransport implements the agent.Transport interface using SSH.
 type sshTransport struct {

@@ -20,7 +20,7 @@ func CompressionFlag() string {
 // ConnectTimeoutFlag returns a flag that can be passed to scp or ssh to limit
 // connection time. The provided timeout is in seconds. The timeout must be
 // greater than 0, otherwise this function will panic.
-func ConnectTimeoutFlag(timeout int) string {
+func ConnectTimeoutFlag(timeout uint64) string {
 	// Validate the timeout.
 	if timeout < 1 {
 		panic("invalid timeout value")
