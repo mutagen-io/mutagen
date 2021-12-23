@@ -41,6 +41,17 @@ func (v Version) DefaultSynchronizationMode() core.SynchronizationMode {
 	}
 }
 
+// DefaultIgnorerMode returns the default ignorer mode for the
+// session version.
+func (v Version) DefaultIgnorerMode() core.IgnorerMode {
+	switch v {
+	case Version_Version1:
+		return core.IgnorerMode_IgnorerModeDefault
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultMaximumEntryCount returns the default maximum entry count for the
 // session version.
 func (v Version) DefaultMaximumEntryCount() uint64 {

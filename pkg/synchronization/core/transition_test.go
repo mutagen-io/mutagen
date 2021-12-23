@@ -730,7 +730,7 @@ func TestTransition(t *testing.T) {
 				nil, nil,
 				hasher,
 				nil,
-				nil, nil,
+				nil, IgnorerMode_IgnorerModeDefault, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 			)

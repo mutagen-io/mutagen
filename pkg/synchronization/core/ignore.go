@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/docker/docker/pkg/fileutils"
 )
 
 // ignorePattern represents a single parsed ignore pattern.
@@ -117,14 +118,19 @@ func ValidIgnorePattern(pattern string) bool {
 }
 
 // ignorer is a collection of parsed ignore patterns.
-type ignorer struct {
+type ignorer interface {
+	ignored(path string, directory bool) (bool, bool, error)
+}
+
+// defaultIgnorer is a collection of parsed ignore patterns.
+type defaultIgnorer struct {
 	// patterns are the underlying ignore patterns.
 	patterns []*ignorePattern
 }
 
-// newIgnorer creates a new ignorer given a list of user-provided ignore
+// newDefaultIgnorer creates a new ignorer given a list of user-provided ignore
 // patterns.
-func newIgnorer(patterns []string) (*ignorer, error) {
+func newDefaultIgnorer(patterns []string) (ignorer, error) {
 	// Parse patterns.
 	ignorePatterns := make([]*ignorePattern, len(patterns))
 	for i, p := range patterns {
@@ -136,12 +142,12 @@ func newIgnorer(patterns []string) (*ignorer, error) {
 	}
 
 	// Success.
-	return &ignorer{ignorePatterns}, nil
+	return &defaultIgnorer{ignorePatterns}, nil
 }
 
 // ignored determines whether or not the specified path should be ignored based
 // on all provided ignore patterns and their order.
-func (i *ignorer) ignored(path string, directory bool) bool {
+func (i *defaultIgnorer) ignored(path string, directory bool) (bool, bool, error) {
 	// Nothing is initially ignored.
 	ignored := false
 
@@ -156,7 +162,65 @@ func (i *ignorer) ignored(path string, directory bool) bool {
 	}
 
 	// Done.
-	return ignored
+	return ignored, false, nil
+}
+
+// dockerIgnorer is a collection of parsed ignore patterns.
+type dockerIgnorer struct {
+	matcher       *fileutils.PatternMatcher
+	parentResults []fileutils.MatchInfo
+}
+
+// newDockerIgnorer creates a new ignorer given a list of user-provided
+// ignore patterns.
+func newDockerIgnorer(patterns []string) (ignorer, error) {
+	ignorePatterns := []string{}
+	for _, p := range patterns {
+		// all docker ignores are absolute, trim off / prefix
+		// if provided
+		if strings.HasPrefix(p, "/") {
+			p = p[1:]
+		}
+
+		ignorePatterns = append(ignorePatterns, p)
+	}
+
+	pm, err := fileutils.NewPatternMatcher(ignorePatterns)
+	if err != nil {
+		return nil, fmt.Errorf("unable to process ignore patterns: %w", err)
+	}
+
+	return &dockerIgnorer{
+		matcher: pm,
+	}, nil
+}
+
+// ignored determines whether or not the specified path should be ignored based
+// on all provided ignore patterns and their order.
+func (i *dockerIgnorer) ignored(path string, directory bool) (bool, bool, error) {
+	if path == "" {
+		return false, false, nil
+	}
+	pathDepth := strings.Count(path, "/")
+
+	var parentResults fileutils.MatchInfo
+	if pathDepth > 0 && len(i.parentResults) >= pathDepth {
+		parentResults = i.parentResults[pathDepth-1]
+	}
+
+	m, matchInfo, err := i.matcher.MatchesUsingParentResults(path, parentResults)
+	if err != nil {
+		return false, false, err
+	}
+	if directory {
+		if len(i.parentResults) > pathDepth {
+			i.parentResults[pathDepth] = matchInfo
+			i.parentResults = i.parentResults[:pathDepth+1]
+		} else {
+			i.parentResults = append(i.parentResults, matchInfo)
+		}
+	}
+	return m, directory && i.matcher.Exclusions(), nil
 }
 
 // IgnoreCacheKey represents a key in an ignore cache.
@@ -167,5 +231,13 @@ type IgnoreCacheKey struct {
 	directory bool
 }
 
+type IgnoreMatch struct {
+	ignored bool
+	partial bool
+	// onlyPartial keeps track of directories that might
+	// only contain partial matches, so we can prune later.
+	onlyPartial *bool
+}
+
 // IgnoreCache provides an efficient mechanism to avoid recomputing ignores.
-type IgnoreCache map[IgnoreCacheKey]bool
+type IgnoreCache map[IgnoreCacheKey]IgnoreMatch

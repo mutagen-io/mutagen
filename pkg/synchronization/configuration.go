@@ -61,6 +61,11 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
+	// Validate ignorer mode
+	if !(c.IgnorerMode.IsDefault() || c.IgnorerMode.Supported()) {
+		return errors.New("unknown or unsupported ignorer mode")
+	}
+
 	// Verify that the watch mode is unspecified or supported for usage.
 	if !(c.WatchMode.IsDefault() || c.WatchMode.Supported()) {
 		return errors.New("unknown or unsupported watch mode")
@@ -157,6 +162,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.WatchPollingInterval == other.WatchPollingInterval &&
 		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
 		comparison.StringSlicesEqual(c.Ignores, other.Ignores) &&
+		c.IgnorerMode == other.IgnorerMode &&
 		c.IgnoreVCSMode == other.IgnoreVCSMode &&
 		c.DefaultFileMode == other.DefaultFileMode &&
 		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
@@ -217,6 +223,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.SymbolicLinkMode = higher.SymbolicLinkMode
 	} else {
 		result.SymbolicLinkMode = lower.SymbolicLinkMode
+	}
+
+	// Merge ignorer mode.
+	if !higher.IgnorerMode.IsDefault() {
+		result.IgnorerMode = higher.IgnorerMode
+	} else {
+		result.IgnorerMode = lower.IgnorerMode
 	}
 
 	// Merge watching mode.

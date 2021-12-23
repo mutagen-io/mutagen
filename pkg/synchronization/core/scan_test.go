@@ -455,7 +455,7 @@ func TestScan(t *testing.T) {
 				root,
 				nil, nil,
 				hasher, nil,
-				test.ignores, nil,
+				test.ignores, IgnorerMode_IgnorerModeDefault, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 			)
@@ -507,7 +507,7 @@ func TestScan(t *testing.T) {
 				root,
 				nil, nil,
 				rescanHasher, cache,
-				test.ignores, ignoreCache,
+				test.ignores, IgnorerMode_IgnorerModeDefault, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 			)
@@ -564,7 +564,7 @@ func TestScan(t *testing.T) {
 				root,
 				snapshot, nil,
 				hasher, cache,
-				test.ignores, ignoreCache,
+				test.ignores, IgnorerMode_IgnorerModeDefault, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 			)
@@ -648,7 +648,7 @@ func TestScan(t *testing.T) {
 				root,
 				snapshot, recheckPaths,
 				hasher, cache,
-				test.ignores, ignoreCache,
+				test.ignores, IgnorerMode_IgnorerModeDefault, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 			)
@@ -734,6 +734,7 @@ func TestScanCrossFilesystemBoundary(t *testing.T) {
 		newTestingHasher(),
 		nil,
 		[]string{"*", "!" + name},
+		IgnorerMode_IgnorerModeDefault,
 		nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		SymbolicLinkMode_SymbolicLinkModePortable,

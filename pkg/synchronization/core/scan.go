@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"golang.org/x/text/unicode/norm"
-
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -104,7 +103,7 @@ type scanner struct {
 	// cache is the existing cache to use for fast digest lookups.
 	cache *Cache
 	// ignorer is the ignorer identifying ignored paths.
-	ignorer *ignorer
+	ignorer ignorer
 	// ignoreCache is the cache of ignored path behavior.
 	ignoreCache IgnoreCache
 	// symbolicLinkMode is the symbolic link mode being used.
@@ -395,12 +394,16 @@ func (s *scanner) directory(
 		// ignore cache. If the path is ignored, then record an untracked entry.
 		contentIsDirectory := contentKind == EntryKind_Directory
 		ignoreCacheKey := IgnoreCacheKey{contentPath, contentIsDirectory}
-		ignored, ok := s.ignoreCache[ignoreCacheKey]
+		ignoreMatch, ok := s.ignoreCache[ignoreCacheKey]
 		if !ok {
-			ignored = s.ignorer.ignored(contentPath, contentIsDirectory)
+			ignored, partial, err := s.ignorer.ignored(contentPath, contentIsDirectory)
+			if err != nil {
+				return nil, fmt.Errorf("failed to process ignorer on %q: %w", contentPath, err)
+			}
+			ignoreMatch = IgnoreMatch{ignored: ignored, partial: partial}
 		}
-		s.newIgnoreCache[ignoreCacheKey] = ignored
-		if ignored {
+		s.newIgnoreCache[ignoreCacheKey] = ignoreMatch
+		if ignoreMatch.ignored && !ignoreMatch.partial {
 			contents[contentName] = &Entry{Kind: EntryKind_Untracked}
 			continue
 		}
@@ -443,6 +446,14 @@ func (s *scanner) directory(
 			}
 		} else if contentKind == EntryKind_Directory {
 			entry, err = s.directory(contentPath, directory, contentMetadata, nil, contentBaseline)
+			if err == nil && ignoreMatch.partial {
+				onlyPartial := checkOnlyPartial(contentPath, entry, s.newIgnoreCache)
+				if onlyPartial {
+					// all partial matches, so skip the results
+					continue
+
+				}
+			}
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -468,6 +479,37 @@ func (s *scanner) directory(
 	}, nil
 }
 
+func checkOnlyPartial(contentPath string, entry *Entry, cache IgnoreCache) (onlyPartial bool) {
+	cacheKey := IgnoreCacheKey{
+		path:      contentPath,
+		directory: entry.Kind == EntryKind_Directory,
+	}
+	ignoreMatch := cache[cacheKey]
+	if ignoreMatch.onlyPartial != nil {
+		return *ignoreMatch.onlyPartial
+	}
+	// cache results so we dont have to rescan subdirectories for only
+	// partial matches
+	defer func() {
+		ignoreMatch.onlyPartial = &onlyPartial
+		cache[cacheKey] = ignoreMatch
+	}()
+	onlyPartial = ignoreMatch.ignored
+	for fn, e := range entry.Contents {
+		ignoreMatch := cache[IgnoreCacheKey{
+			path:      filepath.Join(contentPath, fn),
+			directory: e.Kind == EntryKind_Directory,
+		}]
+		if !ignoreMatch.ignored {
+			return false
+		}
+		if !checkOnlyPartial(filepath.Join(contentPath, fn), e, cache) {
+			return false
+		}
+	}
+	return onlyPartial
+}
+
 // Scan provides recursive filesystem scanning facilities for synchronization
 // roots.
 func Scan(
@@ -478,6 +520,7 @@ func Scan(
 	hasher hash.Hash,
 	cache *Cache,
 	ignores []string,
+	ignorerMode IgnorerMode,
 	ignoreCache IgnoreCache,
 	probeMode behavior.ProbeMode,
 	symbolicLinkMode SymbolicLinkMode,
@@ -659,7 +702,13 @@ func Scan(
 	}
 
 	// Create the ignorer.
-	ignorer, err := newIgnorer(ignores)
+	var ignorer ignorer
+	switch ignorerMode {
+	case IgnorerMode_IgnorerModeDocker:
+		ignorer, err = newDockerIgnorer(ignores)
+	default:
+		ignorer, err = newDefaultIgnorer(ignores)
+	}
 	if err != nil {
 		return nil, false, false, nil, nil, fmt.Errorf("unable to create ignorer: %w", err)
 	}
@@ -746,7 +795,7 @@ func Scan(
 			// type information, but the microscopic performance gains wouldn't
 			// be worth the additional complexity.
 			if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
-				newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+				newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = IgnoreMatch{false, false, nil}
 			}
 
 			// Propagate digest cache entries.

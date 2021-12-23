@@ -160,6 +160,8 @@ type endpoint struct {
 	// ignoreCache is the ignore cache from the last successful scan on the
 	// endpoint.
 	ignoreCache core.IgnoreCache
+	// ignorerMode is the mode to use for the ignores during a scan
+	ignorerMode core.IgnorerMode
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
@@ -198,6 +200,10 @@ func NewEndpoint(
 	synchronizationMode := configuration.SynchronizationMode
 	if synchronizationMode.IsDefault() {
 		synchronizationMode = version.DefaultSynchronizationMode()
+	}
+	ignorerMode := configuration.IgnorerMode
+	if ignorerMode.IsDefault() {
+		ignorerMode = version.DefaultIgnorerMode()
 	}
 	unidirectional := synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWaySafe ||
 		synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWayReplica
@@ -385,7 +391,6 @@ func NewEndpoint(
 	// Create channels to monitor background worker Goroutine completion.
 	saveCacheDone := make(chan struct{})
 	watchDone := make(chan struct{})
-
 	// Create the endpoint.
 	endpoint := &endpoint{
 		logger:                             logger,
@@ -396,6 +401,7 @@ func NewEndpoint(
 		accelerationAllowed:                accelerationAllowed,
 		symbolicLinkMode:                   symbolicLinkMode,
 		ignores:                            ignores,
+		ignorerMode:                        ignorerMode,
 		defaultFileMode:                    defaultFileMode,
 		defaultDirectoryMode:               defaultDirectoryMode,
 		defaultOwnership:                   defaultOwnership,
@@ -1035,7 +1041,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths 
 		e.root,
 		baseline, recheckPaths,
 		e.hasher, e.cache,
-		e.ignores, e.ignoreCache,
+		e.ignores, e.ignorerMode, e.ignoreCache,
 		e.probeMode,
 		e.symbolicLinkMode,
 	)

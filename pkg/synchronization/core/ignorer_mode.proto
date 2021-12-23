@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
+
+// IgnorerMode specifies the mode for processing scan ignores.
+enum IgnorerMode {
+    // IgnorerMode_IgnorerModeDefault represents the default mode for 
+    // using ignores during the scan.  It matches how .gitignore
+    // rules are processed.
+    IgnorerModeDefault = 0;
+    // IgnorerMode_IgnorerModeDocker can be used during scans so that
+    // ignores follow the Docker ignore (.dockerignore) rules
+    IgnorerModeDocker = 1;
+}

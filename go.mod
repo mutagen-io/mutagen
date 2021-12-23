@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/Microsoft/go-winio v0.5.1
 	github.com/bmatcuk/doublestar/v4 v4.0.2
+	github.com/docker/docker v20.10.3-0.20211126182219-55da5245ded6+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/basex v1.0.1
 	github.com/fatih/color v1.13.0
@@ -33,8 +34,10 @@ require (
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	google.golang.org/genproto v0.0.0-20220112215332-a9c7c0acf9f2 // indirect
+	gotest.tools/v3 v3.1.0 // indirect
 )
 
 replace k8s.io/apimachinery v0.21.3 => github.com/mutagen-io/apimachinery v0.21.3-mutagen1

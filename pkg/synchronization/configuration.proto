@@ -11,6 +11,7 @@ import "synchronization/watch_mode.proto";
 import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/symbolic_link_mode.proto";
+import "synchronization/core/ignorer_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
@@ -89,7 +90,10 @@ message Configuration {
     // synchronization.
     core.IgnoreVCSMode ignoreVCSMode = 33;
 
-    // Fields 34-60 are reserved for future ignore configuration parameters.
+    // IgnorerMode specifies the mode of the ignores used during scan.
+    core.IgnorerMode ignorerMode = 34;
+
+    // Fields 35-60 are reserved for future ignore configuration parameters.
 
 
     // Permission configuration parameters (fields 61-80).
