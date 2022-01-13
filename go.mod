@@ -19,7 +19,7 @@ require (
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03
 	golang.org/x/sys v0.0.0-20220111092808-5a964db01320
 	golang.org/x/text v0.3.7
