@@ -20,6 +20,8 @@ const (
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
 	VersionTag = "dev"
+	// DevelopmentModeEnabled indicates that development mode should be used.
+	DevelopmentModeEnabled = VersionTag == "dev"
 )
 
 // Version provides a stringified version of the current Mutagen version.
