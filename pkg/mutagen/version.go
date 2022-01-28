@@ -20,7 +20,7 @@ const (
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
 	VersionTag = "dev"
-	// DevelopmentModeEnabled indicates that development mode should be used.
+	// DevelopmentModeEnabled indicates that development mode is active.
 	DevelopmentModeEnabled = VersionTag == "dev"
 )
 
