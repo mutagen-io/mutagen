@@ -42,6 +42,9 @@ while read commit; do
 
     # TODO: Validate the commit message format.
 
+    # TODO: Perform spell checking on the commit message. This might be tricky
+    # if there are technical or code terms in the message.
+
     # Record that some verification was performed.
     PERFORMED_VERIFICATION="true"
 
