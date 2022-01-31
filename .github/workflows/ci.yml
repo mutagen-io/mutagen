@@ -11,30 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        if: github.event_name == 'pull_request'
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v2
+        if: github.event_name == 'pull_request'
         with:
           node-version: '16'
       - run: npm install --global @commitlint/cli
-      - name: "Verify commits"
-        id: verify
+        if: github.event_name == 'pull_request'
+      - name: "Perform commit verification"
         run: |
-          # Determine the commit range that requires verification.
-          GITHUB_EVENT_NAME="${{ github.event_name }}"
-          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
-            export VERIFY_COMMIT_START="origin/master"
-            export VERIFY_COMMIT_END="${GITHUB_SHA}"
-          elif [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            export VERIFY_COMMIT_START="${GITHUB_BASE_REF}"
-            export VERIFY_COMMIT_END="${GITHUB_HEAD_REF}"
-          else
-            echo "Unexpected event type"
-            exit 1
-          fi
+          # Determine the target commit range.
+          export VERIFY_COMMIT_START="${{ github.event.pull_request.base.sha }}"
+          export VERIFY_COMMIT_END="${{ github.event.pull_request.head.sha }}"
 
-          # Run verification
-          scripts/ci/verify.sh || exit 1
+          # Perform verification.
+          scripts/ci/verify.sh
+        if: github.event_name == 'pull_request'
   versioning:
     name: Versioning
     runs-on: ubuntu-latest
