@@ -39,7 +39,6 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17'
-      - run: go version
       - name: "Analyze version information and release status"
         id: analyze
         run: |
@@ -74,9 +73,9 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17'
-      - run: go version
       - name: "Install sha256sum"
         run: brew install coreutils
+      - run: scripts/ci/setup_go.sh
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_partitions_darwin.sh
       - run: scripts/ci/analyze.sh
@@ -114,8 +113,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17'
-      - run: docker version
-      - run: go version
+      - run: scripts/ci/setup_go.sh
       - run: scripts/ci/setup_ssh.sh
       - run: scripts/ci/setup_docker.sh
       - run: scripts/ci/analyze.sh
@@ -131,8 +129,8 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17'
-      - run: docker version
-      - run: go version
+      - run: scripts/ci/setup_go.sh
+        shell: bash
       - run: scripts/ci/setup_docker.sh
         shell: bash
       - run: diskpart /s scripts\ci\setup_partitions_windows.txt
