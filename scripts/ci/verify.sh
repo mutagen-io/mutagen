@@ -17,6 +17,14 @@ while read commit; do
     # Print status information.
     echo "> Verifying ${commit}"
 
+    # Validate the commit message format.
+    if git show --format="format:%B" --no-patch "${commit}" | commitlint --config scripts/ci/commitlint/config.json; then
+        echo "Commit message is valid"
+    else
+        echo "Invalid commit message!"
+        exit 1
+    fi
+
     # Verify that the expected sign-off is present.
     EXPECTED_SIGNOFF="$(git show "${commit}" --format="format:Signed-off-by: %an <%ae>" --no-patch)"
     if git show --summary "${commit}" | grep -q "${EXPECTED_SIGNOFF}"; then
@@ -39,8 +47,6 @@ while read commit; do
         echo "Missing or invalid cryptographic signature!"
         exit 1
     fi
-
-    # TODO: Validate the commit message format.
 
     # TODO: Perform spell checking on the commit message. This might be tricky
     # if there are technical or code terms in the message.
