@@ -3,6 +3,9 @@
 # Exit immediately on failure.
 set -e
 
+# Print Docker version information.
+docker version
+
 # Determine the operating system.
 MUTAGEN_OS_NAME="$(go env GOOS)"
 
