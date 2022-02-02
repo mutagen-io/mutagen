@@ -65,9 +65,9 @@ all developers, we kindly request that:
       lines to a reasonable length
 - Comments be used to break up code blocks and be composed of full and complete
   sentences
-  ([example](https://github.com/mutagen-io/mutagen/blob/67a94630f3f6ccf7fe7246b30ad75e68326ca2d1/pkg/synchronization/core/scan.go#L142-L240))
+  ([example](https://github.com/mutagen-io/mutagen/blob/da724cc1946ff70b9734be3bc5f3aae35c818c99/pkg/synchronization/core/scan.go#L142-L240))
 - Imports be grouped by module, with standard library packages in the first
-  group ([example](https://github.com/mutagen-io/mutagen/blob/master/cmd/mutagen/forward/create.go#L3-L25))
+  group ([example](https://github.com/mutagen-io/mutagen/blob/da724cc1946ff70b9734be3bc5f3aae35c818c99/cmd/mutagen/forward/create.go#L3-L25))
 - Non-trivial changes include full test coverage
 
 
