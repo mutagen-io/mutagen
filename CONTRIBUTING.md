@@ -75,10 +75,8 @@ all developers, we kindly request that:
 
 To help keep source control logs readable and useful, we also ask that all
 commits have well-formatted commit messages that follow the
-[Go commit message guidelines](https://go.dev/doc/contribute#commit_messages).
-The component in the first line must be one of those listed in
-`scripts/ci/commitlint/config.json` and lines must not exceed 72 characters in
-length.
+[Go commit message guidelines](https://go.dev/doc/contribute#commit_messages),
+with no line exceeding 72 characters in length.
 
 Here's an example of a good message:
 
