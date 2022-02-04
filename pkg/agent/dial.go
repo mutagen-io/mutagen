@@ -9,22 +9,22 @@ import (
 	"time"
 	"unicode/utf8"
 
+	transportpkg "github.com/mutagen-io/mutagen/pkg/agent/transport"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/process"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 const (
-	// agentKillDelay is the maximum amount of time that Mutagen will wait for
-	// an agent process to exit on its own in the event of an error before
-	// issuing a kill request. It's necessary to make this non-zero because
-	// agent transport executables need to be allowed time to exit on failure so
-	// that we can get their true exit codes instead of killing them immediately
-	// on a handshake error.
-	agentKillDelay = 5 * time.Second
+	// agentTerminationDelay is the maximum amount of time that Mutagen will
+	// wait for an agent process to terminate on its own in the event of a
+	// handshake error before forcing termination.
+	agentTerminationDelay = 5 * time.Second
+	// agentErrorInMemoryCutoff is the maximum number of bytes that Mutagen will
+	// capture in memory from the standard error output of an agent process.
+	agentErrorInMemoryCutoff = 32 * 1024
 )
 
 // connect connects to an agent-based endpoint using the specified transport,
@@ -67,7 +67,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// Compute the command to invoke.
 	command := fmt.Sprintf("%s %s", agentInvocationPath, mode)
 
-	// Create an agent process.
+	// Set up (but do not start) an agent process.
 	message := "Connecting to agent (POSIX)..."
 	if cmdExe {
 		message = "Connecting to agent (Windows)..."
@@ -80,28 +80,36 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		return nil, false, false, fmt.Errorf("unable to create agent command: %w", err)
 	}
 
-	// Create a stream that wraps the process' standard input/output. We set a
-	// non-zero kill delay so that, if there's a handshake failure, the process
-	// will be allowed to exit with its natural exit code (instead of an exit
-	// code due to forced termination) that we can use to diagnose the issue.
-	stream, err := process.NewStream(agentProcess, agentKillDelay)
-	if err != nil {
-		return nil, false, false, fmt.Errorf("unable to create agent process stream: %w", err)
-	}
-
 	// Create a buffer that we can use to capture the process' standard error
 	// output in order to give better feedback when there's an error.
 	errorBuffer := bytes.NewBuffer(nil)
 
-	// Wrap the error buffer in a valveWriter and defer the closure of that
-	// writer. This avoids continuing to pipe output into the buffer for the
-	// lifetime of the process.
-	errorWriter := streampkg.NewValveWriter(errorBuffer)
-	defer errorWriter.Shut()
+	// Create a cutoff for the error buffer that avoids using large amounts of
+	// memory (while still being sufficiently large to capture any reasonable
+	// human-readable error message).
+	errorCutoff := streampkg.NewCutoffWriter(errorBuffer, agentErrorInMemoryCutoff)
 
-	// Redirect the process' standard error output to a tee'd writer that writes
-	// to both our buffer (via the valveWriter) and the logger.
-	agentProcess.Stderr = io.MultiWriter(errorWriter, logger.Sublogger("remote").Writer(logging.LevelInfo))
+	// Create a valve that we can use to stop recording the error output once
+	// this function returns (at which point the error will already have been
+	// captured or not have occurred).
+	errorValve := streampkg.NewValveWriter(errorCutoff)
+	defer errorValve.Shut()
+
+	// Create a splitter that will forward standard error output to both the
+	// error buffer and the logger.
+	errorTee := io.MultiWriter(errorValve, logger.Sublogger("remote").Writer(logging.LevelInfo))
+
+	// Create a transport stream to communicate with the process and forward
+	// standard error output. Set a non-zero termination delay for the stream so
+	// that (in the event of a handshake failure) the process will be allowed to
+	// exit with its natural exit code (instead of an exit code due to forced
+	// termination) and will be able to yield some error output for diagnosing
+	// the issue.
+	stream, err := transportpkg.NewStream(agentProcess, errorTee)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("unable to create agent process stream: %w", err)
+	}
+	stream.SetTerminationDelay(agentTerminationDelay)
 
 	// Start the process.
 	if err = agentProcess.Start(); err != nil {
@@ -111,10 +119,10 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// Perform a handshake with the remote to ensure that we're talking with a
 	// Mutagen agent.
 	if err := ClientHandshake(stream); err != nil {
-		// Close the stream to ensure that the underlying process and its
+		// Close the stream to ensure that the underlying process and any
 		// I/O-forwarding Goroutines have terminated. The error returned from
 		// Close will be non-nil if the process exits with a non-0 exit code, so
-		// we don't want to check it, but process.Stream guarantees that if
+		// we don't want to check it, but transport.Stream guarantees that if
 		// Close returns, then the underlying process has fully terminated,
 		// which is all we care about.
 		stream.Close()
@@ -152,9 +160,9 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		return nil, tryInstall, cmdExe, errors.New("unable to handshake with agent process")
 	}
 
-	// Now that we've successfully connected, disable the kill delay on the
-	// process stream.
-	stream.SetKillDelay(time.Duration(0))
+	// Now that we've successfully connected, disable the termination delay on
+	// the process stream.
+	stream.SetTerminationDelay(time.Duration(0))
 
 	// Perform a version handshake.
 	if err := mutagen.ClientVersionHandshake(stream); err != nil {
