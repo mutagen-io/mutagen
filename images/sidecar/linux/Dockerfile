@@ -5,18 +5,26 @@ FROM golang:1.17-alpine3.14 AS builder
 # avoid the need for gcc on certain architectures).
 ENV CGO_ENABLED=0
 
-# Define an argument to specify the entrypoint version target.
-ARG TARGET
+# Copy the Mutagen source code into the container and set the code directory as
+# our default working location.
+RUN ["mkdir", "/mutagen"]
+COPY ["go.mod", "go.sum", "/mutagen/"]
+COPY ["cmd", "/mutagen/cmd/"]
+COPY ["pkg", "/mutagen/pkg/"]
+WORKDIR /mutagen
 
-# Build the sidecar entrypoint. We have to use the shell form of RUN in order to
-# access the TARGET argument.
-RUN go get github.com/mutagen-io/mutagen/cmd/mutagen-sidecar@${TARGET}
+# Build the sidecar entrypoint and agent binaries.
+RUN ["go", "build", "./cmd/mutagen-sidecar"]
+RUN ["go", "build", "./cmd/mutagen-agent"]
 
 # Switch to a vanilla Alpine base for the final image.
 FROM alpine:3.14
 
-# Copy the sidecar entrypoint from the builder.
-COPY --from=builder ["/go/bin/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
+# Copy the sidecar entrypoint and agent binaries from the builder. For the
+# agent, use its installation mechanism to move it to the correct location.
+COPY --from=builder ["/mutagen/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
+COPY --from=builder ["/mutagen/mutagen-agent", "/mutagen-agent"]
+RUN ["/mutagen-agent", "install"]
 
 # Create the parent directory for volume mount points.
 RUN ["mkdir", "/volumes"]
