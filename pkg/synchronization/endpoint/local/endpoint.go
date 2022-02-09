@@ -1299,12 +1299,12 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		// If the resulting entry count would be too high, then abort the
 		// transitioning operation, but return the error as a problem, not an
 		// error, since nobody is malfunctioning here.
-		results := make([]*core.Entry, len(transitions))
-		for t, transition := range transitions {
-			results[t] = transition.Old
-		}
-		problems := []*core.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 		if e.maximumEntryCount < resultingEntryCount {
+			results := make([]*core.Entry, len(transitions))
+			for t, transition := range transitions {
+				results[t] = transition.Old
+			}
+			problems := []*core.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 			return results, problems, false, nil
 		}
 	}
