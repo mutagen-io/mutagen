@@ -66,7 +66,7 @@ jobs:
   linux:
     name: Linux
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -82,7 +82,7 @@ jobs:
   windows:
     name: Windows
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -105,7 +105,7 @@ jobs:
     name: Sidecar (Non-release)
     runs-on: ubuntu-latest
     if: github.ref_type != 'tag'
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     needs: [macos, linux, windows]
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
