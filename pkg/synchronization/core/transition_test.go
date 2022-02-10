@@ -94,6 +94,9 @@ func TestTransition(t *testing.T) {
 		// expectedProblems are the expected problems. Their order is not
 		// important since they'll be compared with testingProblemListsEqual.
 		expectedProblems []*Problem
+		// expectAnyChangePerformed indicates whether or not change is expected
+		// to be performed successfully.
+		expectAnyChangePerformed bool
 		// expectMissingFiles indicates whether or not files are expected to be
 		// missing from the provider.
 		expectMissingFiles bool
@@ -110,6 +113,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF1},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -123,6 +127,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tD1},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -138,6 +143,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tDM},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -153,6 +159,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			testingNWildcardEntries(uint(tDM.Count())),
 			nil,
+			true,
 			false,
 		},
 
@@ -168,6 +175,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -181,6 +189,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -196,6 +205,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -211,6 +221,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			testingNWildcardEntries(uint(tDM.Count())),
 			nil,
+			true,
 			false,
 		},
 
@@ -226,6 +237,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF2},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -239,6 +251,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF2},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -254,6 +267,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{executable(tF1)},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -269,6 +283,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF1},
 			nil,
+			true,
 			false,
 		},
 		{
@@ -291,6 +306,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tF1},
 			[]*Problem{{Path: "file", Error: "*"}},
 			false,
+			false,
 		},
 
 		// Test traversal problems.
@@ -305,6 +321,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			[]*Problem{{Path: "subpath", Error: "*"}},
+			false,
 			false,
 		},
 		{
@@ -327,6 +344,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{nil},
 			[]*Problem{{Path: "populated subdir/thing.txt", Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"casing invalid",
@@ -340,6 +358,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tF1},
 			[]*Problem{{Path: "FILE", Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"parent casing invalid",
@@ -352,6 +371,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF1},
 			[]*Problem{{Path: "SUBdir/file", Error: "*"}},
+			false,
 			false,
 		},
 
@@ -368,6 +388,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{nil},
 			[]*Problem{{Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"invalid content type creation",
@@ -380,6 +401,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tD0},
 			[]*Problem{{Path: "child", Error: "*"}},
+			true,
 			false,
 		},
 		{
@@ -394,6 +416,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{nil},
 			[]*Problem{{Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"root already exists on directory root creation",
@@ -406,6 +429,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			[]*Problem{{Error: "*"}},
+			false,
 			false,
 		},
 		{
@@ -426,6 +450,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{nil},
 			[]*Problem{{Path: "link", Error: "*"}},
 			false,
+			false,
 		},
 
 		// Test removal problems.
@@ -441,6 +466,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{{Kind: -1}},
 			[]*Problem{{Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"invalid content type removal",
@@ -453,6 +479,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nested("file", &Entry{Kind: -1})},
 			[]*Problem{{Path: "file", Error: "*"}},
+			false,
 			false,
 		},
 		{
@@ -471,6 +498,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tF1},
 			[]*Problem{{Error: "*"}},
+			false,
 			false,
 		},
 		{
@@ -516,6 +544,7 @@ func TestTransition(t *testing.T) {
 				{Path: "file link", Error: "*"},
 				{Path: "populated subdir", Error: "*"},
 			},
+			true,
 			false,
 		},
 		{
@@ -531,6 +560,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
 			[]*Entry{tSR},
 			[]*Problem{{Path: "file link", Error: "*"}},
+			false,
 			false,
 		},
 		{
@@ -554,6 +584,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tSR},
 			[]*Problem{{Path: "file link", Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"symbolic link removal with modified (to (invalid) absolute) symbolic link target",
@@ -576,6 +607,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tSR},
 			[]*Problem{{Path: "file link", Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"inaccessible directory removal",
@@ -597,6 +629,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tD1},
 			[]*Problem{{Path: "populated subdir", Error: "*"}},
 			false,
+			false,
 		},
 
 		// Test file swapping problems.
@@ -617,6 +650,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tF1},
 			[]*Problem{{Error: "*"}},
 			false,
+			false,
 		},
 
 		// Test with a cancelled context.
@@ -631,6 +665,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{tD1},
 			[]*Problem{{Error: errTransitionCancelled.Error()}},
+			false,
 			false,
 		},
 
@@ -647,6 +682,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{tD0},
 			[]*Problem{{Path: "file", Error: "*"}},
 			true,
+			true,
 		},
 
 		// Test symbolic link creation problems.
@@ -662,6 +698,7 @@ func TestTransition(t *testing.T) {
 			[]*Entry{nil},
 			[]*Problem{{Path: "link", Error: "*"}},
 			false,
+			false,
 		},
 		{
 			"invalid absolute symbolic link",
@@ -674,6 +711,7 @@ func TestTransition(t *testing.T) {
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			[]*Entry{nil},
 			[]*Problem{{Path: "link", Error: "*"}},
+			false,
 			false,
 		},
 	}
@@ -757,7 +795,7 @@ func TestTransition(t *testing.T) {
 				contentMap: test.transitionsContentMap,
 				hasher:     newTestingHasher(),
 			}
-			results, problems, missingFiles := Transition(
+			results, problems, anyChangePerformed, missingFiles := Transition(
 				test.context,
 				root,
 				test.transitions,
@@ -790,11 +828,18 @@ func TestTransition(t *testing.T) {
 				t.Errorf("%s: problems do not match expected on %s filesystem", test.description, filesystem.name)
 			}
 
+			// Check whether or not changes were expected.
+			if anyChangePerformed && !test.expectAnyChangePerformed {
+				t.Errorf("%s: changes performed unexpectedly with %s filesystem", test.description, filesystem.name)
+			} else if !anyChangePerformed && test.expectAnyChangePerformed {
+				t.Errorf("%s: expected changes with %s filesystem", test.description, filesystem.name)
+			}
+
 			// Check missing file status.
 			if missingFiles && !test.expectMissingFiles {
 				t.Errorf("%s: unexpectedly missing staged files with %s filesystem", test.description, filesystem.name)
 			} else if !missingFiles && test.expectMissingFiles {
-				t.Errorf("%s: unexpectedly not missing staged files with %s filesystem", test.description, filesystem.name)
+				t.Errorf("%s: expected missing staged files with %s filesystem", test.description, filesystem.name)
 			}
 
 			// Perform cleanup.
