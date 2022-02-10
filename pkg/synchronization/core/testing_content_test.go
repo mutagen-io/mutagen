@@ -87,7 +87,7 @@ func (g *testingContentManager) generate() (string, error) {
 		contentMap: g.baselineContentMap,
 		hasher:     newTestingHasher(),
 	}
-	results, problems, missingFiles := Transition(
+	results, problems, anyChangePerformed, missingFiles := Transition(
 		context.Background(),
 		root,
 		[]*Change{creation},
@@ -99,7 +99,9 @@ func (g *testingContentManager) generate() (string, error) {
 		false,
 		provider,
 	)
-	if missingFiles {
+	if g.baseline != nil && !anyChangePerformed {
+		return "", errors.New("no changes performed for content creation")
+	} else if missingFiles {
 		return "", errors.New("content map missing file definitions")
 	} else if len(problems) > 0 {
 		return "", errors.New("problems encountered during creation")

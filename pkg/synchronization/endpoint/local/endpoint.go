@@ -44,6 +44,19 @@ const (
 	recursiveWatchingEventCoalescingWindow = 10 * time.Millisecond
 )
 
+// reifiedWatchMode describes a fully reified watch mode based on the watch mode
+// specified for the endpoint and the availability of modes on the system.
+type reifiedWatchMode uint8
+
+const (
+	// reifiedWatchModeDisabled indicates that watching has been disabled.
+	reifiedWatchModeDisabled reifiedWatchMode = iota
+	// reifiedWatchModeRecursive indicates that recursive watching is in use.
+	reifiedWatchModeRecursive
+	// reifiedWatchModePoll indicates poll-based watching is in use.
+	reifiedWatchModePoll
+)
+
 // endpoint provides a local, in-memory implementation of
 // synchronization.Endpoint for local files.
 type endpoint struct {
@@ -92,10 +105,9 @@ type endpoint struct {
 	// "portable" permission propagation. This field is static and thus safe for
 	// concurrent reads.
 	defaultOwnership *filesystem.OwnershipSpecification
-	// watchIsRecursive indicates that a watching Goroutine exists and that it
-	// is using native recursive watching. This field is static and thus safe
-	// for concurrent reads.
-	watchIsRecursive bool
+	// actualWatchMode indicates the actual watch mode being used. This field is
+	// static and thus safe for concurrent reads.
+	actualWatchMode reifiedWatchMode
 	// workerCancel cancels any background worker Goroutines for the endpoint.
 	// This field is static and safe for concurrent invocation.
 	workerCancel context.CancelFunc
@@ -120,9 +132,10 @@ type endpoint struct {
 	// the recursive watching Goroutine (if any) that it should try to
 	// re-establish watching. It is a non-buffered channel, with reads only
 	// occurring when the recursive watching Goroutine is waiting to retry watch
-	// establishment and writes only occurring in a non-blocking fashion. This
-	// field is static and never closed, and is thus safe for concurrent send
-	// operations.
+	// establishment and writes only occurring in a non-blocking fashion
+	// (meaning this is a best-effort signaling mechanism (with a fallback to a
+	// timer-based signal)). This field is static and never closed, and is thus
+	// safe for concurrent send operations.
 	recursiveWatchRetryEstablish chan struct{}
 	// recursiveWatchReenableAcceleration is a channel used to signal the
 	// recursive watching Goroutine (if any) that acceleration has been disabled
@@ -357,9 +370,22 @@ func NewEndpoint(
 		watchMode = version.DefaultWatchMode()
 	}
 
-	// Compute whether or not we're going to use native recursive watching.
-	watchIsRecursive := watchMode == synchronization.WatchMode_WatchModePortable &&
-		watching.RecursiveWatchingSupported
+	// Compute the reified watch mode. The structure of this logic should match
+	// that of the watching Goroutine startup below.
+	var actualWatchMode reifiedWatchMode
+	if watchMode == synchronization.WatchMode_WatchModePortable {
+		if watching.RecursiveWatchingSupported {
+			actualWatchMode = reifiedWatchModeRecursive
+		} else {
+			actualWatchMode = reifiedWatchModePoll
+		}
+	} else if watchMode == synchronization.WatchMode_WatchModeForcePoll {
+		actualWatchMode = reifiedWatchModePoll
+	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
+		actualWatchMode = reifiedWatchModeDisabled
+	} else {
+		panic("unhandled watch mode")
+	}
 
 	// HACK: If non-default ownership or permissions have been set and the
 	// synchronization root is a volume mount point in a Mutagen sidecar
@@ -399,7 +425,7 @@ func NewEndpoint(
 		defaultFileMode:                    defaultFileMode,
 		defaultDirectoryMode:               defaultDirectoryMode,
 		defaultOwnership:                   defaultOwnership,
-		watchIsRecursive:                   watchIsRecursive,
+		actualWatchMode:                    actualWatchMode,
 		workerCancel:                       workerCancel,
 		saveCacheDone:                      saveCacheDone,
 		watchDone:                          watchDone,
@@ -430,6 +456,8 @@ func NewEndpoint(
 	}
 
 	// Start the appropriate watching mechanism and monitor for its completion.
+	// The structure of this logic should match that of the reified watch mode
+	// computation above.
 	if watchMode == synchronization.WatchMode_WatchModePortable {
 		if watching.RecursiveWatchingSupported {
 			go func() {
@@ -452,7 +480,6 @@ func NewEndpoint(
 			close(watchDone)
 		}()
 	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
-		// Don't start any watcher.
 		close(watchDone)
 	} else {
 		panic("unhandled watch mode")
@@ -620,7 +647,9 @@ WatchEstablishment:
 
 		// Reset the scan timer (which won't be running) to fire immediately in
 		// our watch loop in order to try to enable accelerated scanning.
-		scanTimer.Reset(0)
+		if e.accelerationAllowed {
+			scanTimer.Reset(0)
+		}
 
 		// Loop and process events.
 	EventProcessing:
@@ -1093,9 +1122,12 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	// recent) snapshot, so acceleration will still work.
 	//
 	// If we see any error while scanning, we just have to assume that it's due
-	// to concurrent modifications and suggest a retry.
+	// to concurrent modifications and suggest a retry. In the case of
+	// accelerated scanning with recursive watching, there's no need to disable
+	// acceleration on failure so long as the watch is still established (and if
+	// it's not, that will handled elsewhere).
 	if e.accelerateScan && !full {
-		if e.watchIsRecursive {
+		if e.actualWatchMode == reifiedWatchModeRecursive {
 			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
 				return nil, false, err, true
 			} else {
@@ -1109,6 +1141,9 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	}
 
 	// Verify that we haven't exceeded the maximum entry count.
+	// TODO: Do we actually want to enforce this count in the scan operation so
+	// that we don't hold those entries in memory? Right now this is mostly
+	// concerned with avoiding transmission of the entries over the wire.
 	if e.lastScanEntryCount > e.maximumEntryCount {
 		return nil, false, errors.New("exceeded allowed entry count"), true
 	}
@@ -1299,18 +1334,18 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		// If the resulting entry count would be too high, then abort the
 		// transitioning operation, but return the error as a problem, not an
 		// error, since nobody is malfunctioning here.
-		results := make([]*core.Entry, len(transitions))
-		for t, transition := range transitions {
-			results[t] = transition.Old
-		}
-		problems := []*core.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 		if e.maximumEntryCount < resultingEntryCount {
+			results := make([]*core.Entry, len(transitions))
+			for t, transition := range transitions {
+				results[t] = transition.Old
+			}
+			problems := []*core.Problem{{Error: "transitioning would exceeded allowed entry count"}}
 			return results, problems, false, nil
 		}
 	}
 
 	// Perform the transition.
-	results, problems, stagerMissingFiles := core.Transition(
+	results, problems, transitionMadeChanges, stagerMissingFiles := core.Transition(
 		ctx,
 		e.root,
 		transitions,
@@ -1323,48 +1358,85 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.stager,
 	)
 
-	// In case there's a recursive watching Goroutine that doesn't currently
-	// have a watch established (due to non-existence of the synchronization
-	// root), send a signal that watch establishment should be retried
-	// immediately, because Transition likely created the synchronization root
-	// in that case. If the Goroutine already has a watch established, then this
-	// is a no-op.
-	if e.watchIsRecursive {
+	// If we're using recursive watching and we made any changes to disk, then
+	// send a best-effort signal to trigger watch establishment, because if no
+	// watch is currently established due to the synchronization root not having
+	// existed, then there's a high likelihood that we just created the
+	// synchronization root. If the watch is already established, then this has
+	// no effect.
+	if e.actualWatchMode == reifiedWatchModeRecursive && transitionMadeChanges {
 		select {
 		case e.recursiveWatchRetryEstablish <- struct{}{}:
 		default:
 		}
 	}
 
-	// Disable scan acceleration. It's critical to do this after a Transition
-	// operation to avoid Scan returning a pre-Transition snapshot. This can
-	// happen in poll-based watching if the last snapshot is pre-Transition and
-	// in recursive watching if the Transition errors-out the watch (causing
-	// events to be lost and a (partially or completely) pre-Transition
-	// baseline-based scan to be generated in the small window before the watch
-	// error is detected). Both of these "failure" modes can happen in normal
-	// operation (with externally generated events), but it is problematic in
-	// the case of Transition because returning a pre-Transition snapshot can
-	// lead to a feedback loop between endpoints (depending on the phase and
-	// mode of their watching Goroutines) where they essentially swap returned
-	// snapshots each time (one pre-Transition and one post-Transition) and
-	// changes are continually inverted and bounced back and forth between the
-	// endpoints. This isn't just hypothetical - it's quite easy to reproduce
-	// with poll-based watching and a large(ish) polling interval (e.g. a few
-	// seconds). The reason we don't need to worry about scans being stale in
-	// normal operation is that there isn't a corresponding actor on the other
-	// endpoint that's returning snapshots with constantly inverted changes
-	// (that effectively invert the algebra of the reconciliation algorithm on
-	// each synchronization cycle), driving a feedback loop. For poll-based
-	// scanning, acceleration will be re-enabled the next time it performs a
-	// scan, while for recursive watching we need to manually signal that it
-	// should attempt to re-enable accelated scanning.
+	// Temporarily disable accelerated scanning. It's critical to do this after
+	// a Transition operation to avoid any possibility of a stale,
+	// pre-Transition snapshot being returned by Scan. Doing so will tell the
+	// controller to immediately invert (on the other endpoint) the changes that
+	// were just applied on this endpoint. Depending on the phase and watch mode
+	// of the opposite endpoint, this can even trigger a feedback loop between
+	// endpoints where they are constantly bouncing inversions back and forth.
+	//
+	// This sounds hypothetical, but it's a very real problem, especially with
+	// poll-based watching with a large(ish) polling interval (a few seconds or
+	// more). It has a much lower chance of happening with recursive watching,
+	// because the recursive watcher is unlikely to error out, but if it does,
+	// then the inversion problem still occurs (though it likely won't lead to a
+	// feedback loop in that case).
+	//
+	// Of course, stale scans can happen at any point with accelerated scanning.
+	// In recursive watching, they can happen if the OS is slow to report events
+	// or if a scan happens after watching fails but before accelerated scanning
+	// can be disabled. In poll-based watching, they happen with an even higher
+	// cross-section: basically any events that happen between poll scans aren't
+	// caught until the next poll scan. That's just a reality of the accelerated
+	// scanning model. But the difference with those cases is that you don't
+	// have the controller driving a direct inversion of operations like you do
+	// in the case that a pre-Transition operation is returned. A "normal" stale
+	// scan will just delay changes and, because those changes typically aren't
+	// direct inversions of the ones just applied, won't cause inversion on the
+	// other endpoint.
+	//
+	// In any case, this disabling is merely temporary. For poll-based watching,
+	// acceleration will be reenabled after the next poll scan, and for
+	// recursive watching we'll send a signal telling the event loop to re-scan
+	// and re-enable acceleration.
 	e.accelerateScan = false
-	if e.watchIsRecursive {
+	if e.actualWatchMode == reifiedWatchModeRecursive {
 		select {
 		case e.recursiveWatchReenableAcceleration <- struct{}{}:
 		default:
 		}
+	}
+
+	// If we're using poll-based watching, then strobe the polling channel if
+	// Transition made any changes on disk. This is necessary to work around
+	// cases where some other mechanism rapidly (and fully) inverts changes, in
+	// which case the pre-Transition and post-Transition scans will look the
+	// same to the poll-based watching Goroutine and the inversion operation
+	// (which should be reported back to the controller) won't be caught. This
+	// is unrelated to the stale scan inversion issue mentioned above - in this
+	// case the problem is that the changes are seen, but no polling event is
+	// ever generated because the polling Goroutine doesn't know what the
+	// controller expects the disk to look like - it just knows that nothing has
+	// changed between now and some previous point in time.
+	//
+	// An example of this is when a new file is propagated but then removed by
+	// the user before the next poll-based scan. In this case, the polling scan
+	// looks the same before and after Transition, and no polling event will be
+	// generated if we don't do it here. It's important that we only do this if
+	// on-disk changes were actually applied, otherwise we'll drive a feedback
+	// loop when problems are encountered for changes that can never be fully
+	// applied.
+	//
+	// We don't do this if the watch is recursive (since any inversion changes
+	// will be captured by the watch or a poll triggered on watch
+	// re-establishment if necessary) or if watching is disabled (in which case
+	// this isn't the behavior we want).
+	if e.actualWatchMode == reifiedWatchModePoll && transitionMadeChanges {
+		e.strobePollEvents()
 	}
 
 	// Wipe the staging directory. We don't monitor for errors here, because we

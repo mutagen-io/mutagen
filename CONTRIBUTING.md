@@ -59,9 +59,9 @@ all developers, we kindly request that:
 - All code be `go fmt`'d
 - New code matches the style and structure of its surrouding code (unless a full
   refactor/rewrite of a package is being performed)
-- Comments be wrapped at 80 columns (with exceptions for long strings like URLs
-  that can't be wrapped)
-    - Code does not need to be wrapped at 80 lines, but please do try to keep
+- Comments be wrapped at 80 columns (including indentation), with exceptions for
+  long strings like URLs that shouldn't be broken across lines
+    - Code does not need to be wrapped at 80 columns, but please do try to keep
       lines to a reasonable length
 - Comments be used to break up code blocks and be composed of full and complete
   sentences
