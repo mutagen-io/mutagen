@@ -1358,42 +1358,51 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.stager,
 	)
 
-	// In case there's a recursive watching Goroutine that doesn't currently
-	// have a watch established (due to non-existence of the synchronization
-	// root), send a signal that watch establishment should be retried
-	// immediately, because Transition likely created the synchronization root
-	// in that case. If the Goroutine already has a watch established, then this
-	// is a no-op.
-	if e.actualWatchMode == reifiedWatchModeRecursive {
+	// If we're using recursive watching and we made any changes to disk, then
+	// send a best-effort signal to trigger watch establishment, because if no
+	// watch is currently established due to the synchronization root not having
+	// existed, then there's a high likelihood that we just created the
+	// synchronization root. If the watch is already established, then this has
+	// no effect.
+	if e.actualWatchMode == reifiedWatchModeRecursive && transitionMadeChanges {
 		select {
 		case e.recursiveWatchRetryEstablish <- struct{}{}:
 		default:
 		}
 	}
 
-	// Disable scan acceleration. It's critical to do this after a Transition
-	// operation to avoid Scan returning a pre-Transition snapshot. This can
-	// happen in poll-based watching if the last snapshot is pre-Transition and
-	// in recursive watching if the Transition errors-out the watch (causing
-	// events to be lost and a (partially or completely) pre-Transition
-	// baseline-based scan to be generated in the small window before the watch
-	// error is detected). Both of these "failure" modes can happen in normal
-	// operation (with externally generated events), but it is particularly
-	// problematic in the case of Transition because returning a pre-Transition
-	// snapshot can lead to a feedback loop between endpoints (depending on the
-	// phase and mode of their watching Goroutines) where they essentially swap
-	// returned snapshots each time (one pre-Transition and one post-Transition)
-	// and changes are continually inverted and bounced back and forth between
-	// the endpoints. This isn't just hypothetical - it's easy to reproduce with
-	// poll-based watching and a large(ish) polling interval (e.g. a few
-	// seconds). The reason we don't need to worry about scans being stale in
-	// normal operation is that there isn't a corresponding actor on the other
-	// endpoint that's returning snapshots with constantly inverted changes
-	// (that effectively invert the algebra of the reconciliation algorithm on
-	// each synchronization cycle), driving a feedback loop. For poll-based
-	// scanning, acceleration will be re-enabled the next time it performs a
-	// scan, while for recursive watching we need to manually signal that it
-	// should attempt to re-enable accelated scanning.
+	// Temporarily disable accelerated scanning. It's critical to do this after
+	// a Transition operation to avoid any possibility of a stale,
+	// pre-Transition snapshot being returned by Scan. Doing so will tell the
+	// controller to immediately invert (on the other endpoint) the changes that
+	// were just applied on this endpoint. Depending on the phase and watch mode
+	// of the opposite endpoint, this can even trigger a feedback loop between
+	// endpoints where they are constantly bouncing inversions back and forth.
+	//
+	// This sounds hypothetical, but it's a very real problem, especially with
+	// poll-based watching with a large(ish) polling interval (a few seconds or
+	// more). It has a much lower chance of happening with recursive watching,
+	// because the recursive watcher is unlikely to error out, but if it does,
+	// then the inversion problem still occurs (though it likely won't lead to a
+	// feedback loop in that case).
+	//
+	// Of course, stale scans can happen at any point with accelerated scanning.
+	// In recursive watching, they can happen if the OS is slow to report events
+	// or if a scan happens after watching fails but before accelerated scanning
+	// can be disabled. In poll-based watching, they happen with an even higher
+	// cross-section: basically any events that happen between poll scans aren't
+	// caught until the next poll scan. That's just a reality of the accelerated
+	// scanning model. But the difference with those cases is that you don't
+	// have the controller driving a direct inversion of operations like you do
+	// in the case that a pre-Transition operation is returned. A "normal" stale
+	// scan will just delay changes and, because those changes typically aren't
+	// direct inversions of the ones just applied, won't cause inversion on the
+	// other endpoint.
+	//
+	// In any case, this disabling is merely temporary. For poll-based watching,
+	// acceleration will be reenabled after the next poll scan, and for
+	// recursive watching we'll send a signal telling the event loop to re-scan
+	// and re-enable acceleration.
 	e.accelerateScan = false
 	if e.actualWatchMode == reifiedWatchModeRecursive {
 		select {
@@ -1407,7 +1416,12 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	// cases where some other mechanism rapidly (and fully) inverts changes, in
 	// which case the pre-Transition and post-Transition scans will look the
 	// same to the poll-based watching Goroutine and the inversion operation
-	// (which should be reported back to the controller) won't be caught.
+	// (which should be reported back to the controller) won't be caught. This
+	// is unrelated to the stale scan inversion issue mentioned above - in this
+	// case the problem is that the changes are seen, but no polling event is
+	// ever generated because the polling Goroutine doesn't know what the
+	// controller expects the disk to look like - it just knows that nothing has
+	// changed between now and some previous point in time.
 	//
 	// An example of this is when a new file is propagated but then removed by
 	// the user before the next poll-based scan. In this case, the polling scan
@@ -1421,7 +1435,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	// will be captured by the watch or a poll triggered on watch
 	// re-establishment if necessary) or if watching is disabled (in which case
 	// this isn't the behavior we want).
-	if transitionMadeChanges && e.actualWatchMode == reifiedWatchModePoll {
+	if e.actualWatchMode == reifiedWatchModePoll && transitionMadeChanges {
 		e.strobePollEvents()
 	}
 
