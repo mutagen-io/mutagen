@@ -14,6 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/project"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
 
+	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
 
@@ -32,6 +33,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 // rootCommand is the root command.
 var rootCommand = &cobra.Command{
 	Use:          "mutagen",
+	Version:      mutagen.Version,
 	Short:        "Fast file synchronization and network forwarding for remote development",
 	RunE:         rootMain,
 	SilenceUsage: true,
