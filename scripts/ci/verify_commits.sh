@@ -35,14 +35,23 @@ while read commit; do
         exit 1
     fi
 
-    # Verify that a cryptographic signature is present.
-    # TODO: It may be worth trying to corresponding GPG keys from GitHub to
-    # verify that they match the commit author, but that's going to be tricky.
-    # We'll also have to consider the possibility that the signatures were made
-    # with OpenSSH keys, and I'm not sure how to import those for Git-based
-    # verification. For now, we can just check the verified label on the GitHub
-    # web interface.
-    if [[ ! -z "$(git show --format="format:%GK" --no-patch "${commit}")" ]]; then
+    # Verify that a cryptographic signature is present. Ideally we'd want to use
+    # git-show for this, but its signature formatting simply refuses to print
+    # any SSH signature information correctly (it doesn't even print %G?
+    # correctly) unless the gpg.ssh.allowedSignersFile setting is set to a file
+    # (even an empty one). I assume this is a bug that will be fixed in later
+    # verisons of Git, but for now we'll just grab the raw commit headers and
+    # check that a gpgsig header is present. We use the sed command to halt
+    # git cat-file output at the first empty line, which signals the end of
+    # headers, to avoid false positives from commit message text. Unfortunately
+    # git-show also lacks the ability to print arbitrary raw header fields.
+    #
+    # TODO: It may be worth trying to corresponding GPG and/or SSH keys from
+    # GitHub to verify that they match the commit author, but that's going to be
+    # tricky and probably fragile. It would allow us to avoid this hack and
+    # provide stronger validation, but for the time being we can likely rely on
+    # GitHub account security and commit verification to provide validation.
+    if [[ ! -z "$(git cat-file commit "${commit}" | sed "/^$/q" | grep "gpgsig ")" ]]; then
         echo "Found cryptographic signature"
     else
         echo "Missing or invalid cryptographic signature!"
