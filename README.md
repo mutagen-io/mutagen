@@ -108,6 +108,9 @@ their workflows:
 - [**MutagenMon**](https://github.com/rualark/MutagenMon) is a Python-based GUI
   for monitoring Mutagen sessions. Thanks to
   [**@rualark**](https://github.com/rualark)!
+- [**mutagenmon**](https://github.com/andrewmed/mutagenmon) is an alternative
+  (Go-based) native GUI for Mac, for monitoring Mutagen sessions, provides apple
+  notarized builds.
 
 
 ## Unrelated projects
