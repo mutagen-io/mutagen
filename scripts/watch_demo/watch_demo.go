@@ -1,56 +1,66 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
 )
 
-const (
-	// eventsBufferSize is the buffer size to use for the events channel.
-	eventsBufferSize = 50
-)
-
 func main() {
-	// Verify that the platform supports recursive watching.
-	if !watching.RecursiveWatchingSupported {
-		cmd.Fatal(errors.New("recursive watching not supported"))
-	}
-
 	// Parse arguments.
 	if len(os.Args) != 2 {
 		cmd.Fatal(errors.New("invalid number of arguments"))
 	}
 	watchRoot := os.Args[1]
 
-	// Print status.
-	fmt.Println("Watching", watchRoot)
+	// Track termination signals.
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
-	// Create an events channel.
-	events := make(chan string, eventsBufferSize)
-
-	// Perform watching in the background and track any errors. Close the events
-	// channel once watching terminates.
-	watchErrors := make(chan error, 1)
-	go func() {
-		watchErrors <- watching.WatchRecursive(
-			context.Background(),
-			watchRoot,
-			events,
-		)
-		close(events)
-	}()
-
-	// Print events until watching has terminated.
-	for path := range events {
-		fmt.Printf("Event: \"%s\"\n", path)
+	// Create the best available watcher.
+	//
+	// HACK: We take advantage of the fact that NonRecursiveWatcher implements a
+	// superset of the RecursiveWatcher interface (albeit with vastly different,
+	// but compatible (for our purposes) semantics), so we can track whatever
+	// watcher we establish as a RecursiveWatcher.
+	var watcher watching.RecursiveWatcher
+	if watching.RecursiveWatchingSupported {
+		if w, err := watching.NewRecursiveWatcher(watchRoot); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to establish recursive watch: %w", err))
+		} else {
+			watcher = w
+			fmt.Println("Watching", watchRoot, "with recursive watching")
+		}
+	} else if watching.NonRecursiveWatchingSupported {
+		if w, err := watching.NewNonRecursiveWatcher(); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to establish non-recursive watch: %w", err))
+		} else {
+			w.Watch(watchRoot)
+			watcher = w
+			fmt.Println("Watching", watchRoot, "with non-recursive watching")
+		}
+	} else {
+		cmd.Fatal(errors.New("no supported watching mechanism"))
 	}
 
-	// Wait for the watch error.
-	cmd.Fatal(fmt.Errorf("watching failed: %w", <-watchErrors))
+	// Print events and their paths until watching has terminated.
+	for {
+		select {
+		case event := <-watcher.Events():
+			fmt.Println("Received event with", len(event), "paths")
+			for path := range event {
+				fmt.Printf("\t%s\n", path)
+			}
+		case err := <-watcher.Errors():
+			cmd.Fatal(fmt.Errorf("watching failed: %w", err))
+		case <-signalTermination:
+			fmt.Println("Received termination signal, terminating watching...")
+			watcher.Terminate()
+		}
+	}
 }
