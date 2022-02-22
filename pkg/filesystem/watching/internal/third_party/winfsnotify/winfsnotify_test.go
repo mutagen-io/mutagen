@@ -49,22 +49,23 @@ package winfsnotify
 import (
 	"os"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
 )
 
-func expect(t *testing.T, eventstream <-chan *Event, name string, mask uint32) {
+func expect(t *testing.T, watcher *Watcher, name string, mask uint32) {
 	select {
-	case event := <-eventstream:
+	case event := <-watcher.Event:
 		if event == nil {
 			t.Fatal("nil event received")
 		}
 		if event.Name != name || event.Mask != mask {
 			t.Fatal("did not receive expected event")
 		}
+	case err := <-watcher.Error:
+		t.Fatal("received error:", err)
 	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -97,7 +98,7 @@ func TestNotifyEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("creating test file failed: %s", err)
 	}
-	expect(t, watcher.Event, testFile, FS_CREATE)
+	expect(t, watcher, testFile, FS_CREATE)
 
 	err = watcher.AddWatch(testFile, mask)
 	if err != nil {
@@ -110,24 +111,24 @@ func TestNotifyEvents(t *testing.T) {
 	if err = file.Close(); err != nil {
 		t.Fatalf("failed to close test file: %s", err)
 	}
-	expect(t, watcher.Event, testFile, FS_MODIFY)
-	expect(t, watcher.Event, testFile, FS_MODIFY)
+	expect(t, watcher, testFile, FS_MODIFY)
+	expect(t, watcher, testFile, FS_MODIFY)
 
 	if err = os.Rename(testFile, testFile2); err != nil {
 		t.Fatalf("failed to rename test file: %s", err)
 	}
-	expect(t, watcher.Event, testFile, FS_MOVED_FROM)
-	expect(t, watcher.Event, testFile2, FS_MOVED_TO)
-	expect(t, watcher.Event, testFile, FS_MOVE_SELF)
+	expect(t, watcher, testFile, FS_MOVED_FROM)
+	expect(t, watcher, testFile2, FS_MOVED_TO)
+	expect(t, watcher, testFile, FS_MOVE_SELF)
 
 	if err = os.RemoveAll(testDir); err != nil {
 		t.Fatalf("failed to remove test directory: %s", err)
 	}
-	expect(t, watcher.Event, testFile2, FS_DELETE_SELF)
-	expect(t, watcher.Event, testFile2, FS_IGNORED)
-	expect(t, watcher.Event, testFile2, FS_DELETE)
-	expect(t, watcher.Event, testDir, FS_DELETE_SELF)
-	expect(t, watcher.Event, testDir, FS_IGNORED)
+	expect(t, watcher, testFile2, FS_DELETE_SELF)
+	expect(t, watcher, testFile2, FS_IGNORED)
+	expect(t, watcher, testFile2, FS_DELETE)
+	expect(t, watcher, testDir, FS_DELETE_SELF)
+	expect(t, watcher, testDir, FS_IGNORED)
 
 	if err = watcher.Close(); err != nil {
 		t.Fatalf("failed to close watcher: %s", err)
@@ -183,17 +184,6 @@ func TestWatchLongPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWatcher() failed: %s", err)
 	}
-
-	// Receive errors on the error channel on a separate goroutine
-	var wg sync.WaitGroup
-	wg.Add(1)
-	defer wg.Wait()
-	go func() {
-		defer wg.Done()
-		for err := range watcher.Error {
-			t.Fatalf("error received: %s", err)
-		}
-	}()
 	defer watcher.Close()
 
 	err = watcher.AddWatch(dir, FS_ALL_EVENTS)
@@ -205,5 +195,5 @@ func TestWatchLongPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteFile failed: %s", err)
 	}
-	expect(t, watcher.Event, newFile, FS_CREATE)
+	expect(t, watcher, newFile, FS_CREATE)
 }
