@@ -95,7 +95,7 @@ type watch struct {
 	mask   uint64            // Directory itself is being watched with these notify flags
 	names  map[string]uint64 // Map of names being watched and their notify flags
 	rename string            // Remembers the old name while renaming a file
-	buf    [16384]byte
+	buf    [65536]byte       // Maximum before we hit network packet limits
 }
 
 type indexMap map[uint64]*watch
@@ -312,6 +312,8 @@ func (w *Watcher) removeWatch(pathname string) error {
 	if err != nil {
 		return err
 	}
+	// We need the volume and index but not the handle itself.
+	syscall.CloseHandle(ino.handle)
 	watch := w.watches.get(ino)
 	if watch == nil {
 		return fmt.Errorf("can't remove non-existent watch for: %s", pathname)
@@ -342,6 +344,9 @@ func (w *Watcher) deleteWatch(watch *watch) {
 		watch.mask = 0
 	}
 }
+
+// From https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#short-vs-long-names
+const maxExtendedLengthPath = 32767
 
 // Must run within the I/O thread.
 func (w *Watcher) startRead(watch *watch) error {
@@ -449,7 +454,7 @@ func (w *Watcher) readEvents() {
 
 			// Point "raw" to the event in the buffer
 			raw := (*syscall.FileNotifyInformation)(unsafe.Pointer(&watch.buf[offset]))
-			buf := (*[syscall.MAX_PATH]uint16)(unsafe.Pointer(&raw.FileName))
+			buf := (*[maxExtendedLengthPath]uint16)(unsafe.Pointer(&raw.FileName))
 			name := syscall.UTF16ToString(buf[:raw.FileNameLength/2])
 			fullname := filepath.Join(watch.path, name)
 
