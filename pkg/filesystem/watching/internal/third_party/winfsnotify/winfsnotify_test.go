@@ -161,7 +161,7 @@ func TestNotifyClose(t *testing.T) {
 }
 
 func TestWatchLongPath(t *testing.T) {
-	dir, err := ioutil.TempDir("", "watch-extended-path")
+	dir, err := os.MkdirTemp("", "watch-extended-path")
 	if err != nil {
 		t.Fatalf("TempDir failed: %s", err)
 	}
@@ -201,7 +201,7 @@ func TestWatchLongPath(t *testing.T) {
 		t.Fatalf("Watcher.Watch() failed: %s", err)
 	}
 	newFile := filepath.Join(path, "new-file")
-	err = ioutil.WriteFile(newFile, []byte("test"), 0644)
+	err = os.WriteFile(newFile, []byte("test"), 0644)
 	if err != nil {
 		t.Fatalf("WriteFile failed: %s", err)
 	}
