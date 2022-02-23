@@ -63,7 +63,7 @@ type endpoint struct {
 	// logger is the endpoint's underlying logger. This field is static and thus
 	// safe for concurrent usage (since the logger itself is safe for concurrent
 	// usage).
-	logger *logging.Logger
+	logger logging.Logger
 	// root is the synchronization root for the endpoint. This field is static
 	// and thus safe for concurrent reads.
 	root string
@@ -200,7 +200,7 @@ type endpoint struct {
 // NewEndpoint creates a new local endpoint instance using the specified session
 // metadata and options.
 func NewEndpoint(
-	logger *logging.Logger,
+	logger logging.Logger,
 	root string,
 	sessionIdentifier string,
 	version synchronization.Version,

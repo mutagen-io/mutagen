@@ -18,7 +18,7 @@ type protocolHandler struct{}
 // Connect connects to a local endpoint.
 func (h *protocolHandler) Connect(
 	_ context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,

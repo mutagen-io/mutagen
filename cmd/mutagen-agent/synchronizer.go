@@ -25,7 +25,7 @@ const (
 )
 
 // housekeepRegularly is the entry point for the housekeeping Goroutine.
-func housekeepRegularly(context context.Context, logger *logging.Logger) {
+func housekeepRegularly(context context.Context, logger logging.Logger) {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
 	logger.Info("Performing initial housekeeping")

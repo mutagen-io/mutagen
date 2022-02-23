@@ -30,7 +30,7 @@ type dialResult struct {
 // Connect connects to a Docker endpoint.
 func (h *protocolHandler) Connect(
 	ctx context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,

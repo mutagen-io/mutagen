@@ -44,7 +44,7 @@ func (w *waitingSynchronizationEndpoint) Shutdown() error {
 // endpoint client connected to the server via an in-memory connection.
 func (h *synchronizationProtocolHandler) Connect(
 	_ context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,

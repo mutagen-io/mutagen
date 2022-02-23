@@ -18,7 +18,7 @@ import (
 // safe for concurrent usage, so it can be easily exported via an RPC interface.
 type Manager struct {
 	// logger is the underlying logger.
-	logger *logging.Logger
+	logger logging.Logger
 	// tracker tracks changes to session states.
 	tracker *state.Tracker
 	// sessionLock locks the sessions registry.
@@ -28,7 +28,7 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager instance.
-func NewManager(logger *logging.Logger) (*Manager, error) {
+func NewManager(logger logging.Logger) (*Manager, error) {
 	// Create a tracker and corresponding lock to watch for state changes.
 	tracker := state.NewTracker()
 	sessionsLock := state.NewTrackingLock(tracker)

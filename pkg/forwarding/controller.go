@@ -27,7 +27,7 @@ const (
 // controller manages and executes a single session.
 type controller struct {
 	// logger is the controller logger.
-	logger *logging.Logger
+	logger logging.Logger
 	// sessionPath is the path to the serialized session.
 	sessionPath string
 	// stateLock guards and tracks changes to session's Paused field and state.
@@ -73,7 +73,7 @@ type controller struct {
 // newSession creates a new session and corresponding controller.
 func newSession(
 	ctx context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	tracker *state.Tracker,
 	identifier string,
 	source, destination *url.URL,
@@ -208,7 +208,7 @@ func newSession(
 }
 
 // loadSession loads an existing session and creates a corresponding controller.
-func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier string) (*controller, error) {
+func loadSession(logger logging.Logger, tracker *state.Tracker, identifier string) (*controller, error) {
 	// Compute the session path.
 	sessionPath, err := pathForSession(identifier)
 	if err != nil {
