@@ -162,11 +162,8 @@ func TestNotifyClose(t *testing.T) {
 }
 
 func TestWatchLongPath(t *testing.T) {
-	dir, err := os.MkdirTemp("", "watch-extended-path")
-	if err != nil {
-		t.Fatalf("TempDir failed: %s", err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
+
 	// Create a path longer than syscall.MAX_PATH*2
 	path := dir
 	for {
@@ -175,8 +172,7 @@ func TestWatchLongPath(t *testing.T) {
 		}
 		path = filepath.Join(path, "another-dir")
 	}
-	err = os.MkdirAll(path, 0755)
-	if err != nil {
+	if err := os.MkdirAll(path, 0755); err != nil {
 		t.Fatalf("MkdirAll(%s) failed: %s", path, err)
 	}
 
