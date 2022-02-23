@@ -345,9 +345,6 @@ func (w *Watcher) deleteWatch(watch *watch) {
 	}
 }
 
-// From https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#short-vs-long-names
-const maxExtendedLengthPath = 32767
-
 // Must run within the I/O thread.
 func (w *Watcher) startRead(watch *watch) error {
 	if e := syscall.CancelIo(watch.ino.handle); e != nil {
@@ -454,8 +451,7 @@ func (w *Watcher) readEvents() {
 
 			// Point "raw" to the event in the buffer
 			raw := (*syscall.FileNotifyInformation)(unsafe.Pointer(&watch.buf[offset]))
-			buf := (*[maxExtendedLengthPath]uint16)(unsafe.Pointer(&raw.FileName))
-			name := syscall.UTF16ToString(buf[:raw.FileNameLength/2])
+			name := syscall.UTF16ToString(unsafe.Slice(&raw.FileName, raw.FileNameLength/2))
 			fullname := filepath.Join(watch.path, name)
 
 			var mask uint64
