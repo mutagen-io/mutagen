@@ -32,7 +32,7 @@ const (
 // remote environment is cmd.exe-based and returns hints as to whether or not
 // installation should be attempted and whether or not the remote environment is
 // cmd.exe-based.
-func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
+func connect(logger logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
 	// Compute the agent invocation command, relative to the user's home
 	// directory on the remote. Unless we have reason to assume that this is a
 	// cmd.exe environment, we construct a path using forward slashes. This will
@@ -176,7 +176,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 // Dial connects to an agent-based endpoint using the specified transport,
 // connection mode, and prompter.
-func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
+func Dial(logger logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
 	// Validate that the mode is sane.
 	if !(mode == ModeSynchronizer || mode == ModeForwarder) {
 		panic("invalid agent dial mode")

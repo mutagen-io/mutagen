@@ -21,7 +21,7 @@ type forwardingProtocolHandler struct{}
 // endpoint client connected to the server via an in-memory connection.
 func (h *forwardingProtocolHandler) Connect(
 	_ context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,

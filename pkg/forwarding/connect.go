@@ -16,7 +16,7 @@ type ProtocolHandler interface {
 	// endpoint using the specified parameters.
 	Connect(
 		ctx context.Context,
-		logger *logging.Logger,
+		logger logging.Logger,
 		url *urlpkg.URL,
 		prompter string,
 		session string,
@@ -33,7 +33,7 @@ var ProtocolHandlers = map[urlpkg.Protocol]ProtocolHandler{}
 // connect attempts to establish a connection to an endpoint.
 func connect(
 	ctx context.Context,
-	logger *logging.Logger,
+	logger logging.Logger,
 	url *urlpkg.URL,
 	prompter string,
 	session string,

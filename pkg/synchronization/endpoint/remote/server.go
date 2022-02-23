@@ -34,7 +34,7 @@ type endpointServer struct {
 // It enforces that the provided stream is closed by the time this function
 // returns, regardless of failure. The provided stream must unblock read and
 // write operations when closed.
-func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
+func ServeEndpoint(logger logging.Logger, stream io.ReadWriteCloser) error {
 	// Defer closure of the stream.
 	defer stream.Close()
 

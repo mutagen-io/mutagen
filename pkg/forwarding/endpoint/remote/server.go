@@ -51,7 +51,7 @@ func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoi
 // It enforces that the provided stream is closed by the time this function
 // returns, regardless of failure. The provided stream must unblock read and
 // write operations when closed.
-func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
+func ServeEndpoint(logger logging.Logger, stream io.ReadWriteCloser) error {
 	// Adapt the connection to serve as a multiplexer carrier. This will also
 	// give us the buffering functionality we'll need for initialization.
 	carrier := multiplexing.NewCarrierFromStream(stream)
