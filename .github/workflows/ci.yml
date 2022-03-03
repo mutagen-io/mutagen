@@ -52,10 +52,12 @@ jobs:
           MACOS_NOTARIZE_TEAM_ID: ${{ secrets.MACOS_NOTARIZE_TEAM_ID }}
       - uses: crazy-max/ghaction-import-gpg@v3
         id: import_gpg
+        if: github.ref_type == 'tag'
         with:
           gpg-private-key: ${{ secrets.GPG_SIGNING_KEY }}
           passphrase: ${{ secrets.GPG_SIGNING_KEY_PASSWORD }}
       - run: scripts/ci/sha256sum.sh
+        if: github.ref_type == 'tag'
         env:
           SHA256_GPG_SIGNING_IDENTITY: ${{ steps.import_gpg.outputs.email }}
       - uses: actions/upload-artifact@v2
