@@ -760,14 +760,12 @@ func TestTransition(t *testing.T) {
 				}
 			}
 
-			// Perform a scan to extract a filesystem cache and filesystem
-			// behavior for the root.
-			_, _, recomposeUnicode, cache, _, err := Scan(
+			// Perform a scan to extract filesystem behavior and a cache.
+			snapshot, cache, _, err := Scan(
 				background,
 				root,
 				nil, nil,
-				hasher,
-				nil,
+				hasher, nil,
 				nil, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
@@ -804,7 +802,7 @@ func TestTransition(t *testing.T) {
 				0600,
 				0700,
 				nil,
-				recomposeUnicode,
+				snapshot.DecomposesUnicode,
 				provider,
 			)
 

@@ -43,10 +43,8 @@ const (
 	defaultInitialCacheCapacity = 1024
 )
 
-var (
-	// errScanCancelled indicates that the scan was cancelled.
-	errScanCancelled = errors.New("scan cancelled")
-)
+// ErrScanCancelled indicates that the scan was cancelled.
+var ErrScanCancelled = errors.New("scan cancelled")
 
 // behaviorCache is a cache mapping filesystem device IDs to behavioral
 // information. It is only used in cases where probe files are required for
@@ -192,7 +190,7 @@ func (s *scanner) file(
 		preemptableHasher := stream.NewPreemptableWriter(s.hasher, s.cancelled, scannerCopyPreemptionInterval)
 		if copied, err := io.CopyBuffer(preemptableHasher, file, s.copyBuffer); err != nil {
 			if err == stream.ErrWritePreempted {
-				return nil, errScanCancelled
+				return nil, ErrScanCancelled
 			}
 			return &Entry{
 				Kind:    EntryKind_Problematic,
@@ -354,7 +352,7 @@ func (s *scanner) directory(
 		// Check for cancellation.
 		select {
 		case <-s.cancelled:
-			return nil, errScanCancelled
+			return nil, ErrScanCancelled
 		default:
 		}
 
@@ -468,23 +466,22 @@ func (s *scanner) directory(
 	}, nil
 }
 
-// Scan provides recursive filesystem scanning facilities for synchronization
-// roots.
+// Scan creates a new filesystem snapshot at the specified root. The only
+// required arguments are ctx, root, hasher, ignores, probeMode, and
+// symbolicLinkMode. The baseline, recheckPaths, cache, and ignoreCache fields
+// merely provide acceleration options.
 func Scan(
 	ctx context.Context,
 	root string,
-	baseline *Entry,
-	recheckPaths map[string]bool,
-	hasher hash.Hash,
-	cache *Cache,
-	ignores []string,
-	ignoreCache IgnoreCache,
+	baseline *Snapshot, recheckPaths map[string]bool,
+	hasher hash.Hash, cache *Cache,
+	ignores []string, ignoreCache IgnoreCache,
 	probeMode behavior.ProbeMode,
 	symbolicLinkMode SymbolicLinkMode,
-) (*Entry, bool, bool, *Cache, IgnoreCache, error) {
+) (*Snapshot, *Cache, IgnoreCache, error) {
 	// Verify that the symbolic link mode is valid for this platform.
 	if symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw && runtime.GOOS == "windows" {
-		return nil, false, false, nil, nil, errors.New("raw POSIX symbolic links not supported on Windows")
+		return nil, nil, nil, errors.New("raw POSIX symbolic links not supported on Windows")
 	}
 
 	// Open the root and defer its closure. We explicitly disallow symbolic
@@ -492,9 +489,9 @@ func Scan(
 	rootObject, metadata, err := filesystem.Open(root, false)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, false, false, &Cache{}, nil, nil
+			return &Snapshot{}, &Cache{}, nil, nil
 		} else {
-			return nil, false, false, nil, nil, fmt.Errorf("unable to open synchronization root: %w", err)
+			return nil, nil, nil, fmt.Errorf("unable to open synchronization root: %w", err)
 		}
 	}
 	defer rootObject.Close()
@@ -522,60 +519,40 @@ func Scan(
 		panic("invalid filesystem type returned from root open operation")
 	}
 
+	// Check if there is cached behavior information.
+	behaviorCache.RLock()
+	cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
+	cachedDecomposes, cachedDecomposesOk := behaviorCache.decomposesUnicode[metadata.DeviceID]
+	behaviorCache.RUnlock()
+
+	// Track whether or not we use probe files when determining behavior.
+	var usedProbeFiles bool
+
 	// Probe the behavior of the synchronization root.
-	var decomposesUnicode, preservesExecutability bool
+	var preservesExecutability, decomposesUnicode bool
 	if rootKind == EntryKind_Directory {
-		// Check if there is cached behavior information. This is an indication
-		// that we previously had to use probe files for this filesystem.
-		behaviorCache.RLock()
-		cachedDecomposes, cachedDecomposesOk := behaviorCache.decomposesUnicode[metadata.DeviceID]
-		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
-		behaviorCache.RUnlock()
-
-		// Track whether or not we use probe files.
-		var usedProbeFiles bool
-
-		// Determine Unicode decomposition behavior.
-		if cachedDecomposesOk {
-			decomposesUnicode = cachedDecomposes
-		} else if decomposes, usedFiles, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
-			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root Unicode decomposition behavior: %w", err)
-		} else {
-			decomposesUnicode = decomposes
-			usedProbeFiles = usedProbeFiles || usedFiles
-		}
-
-		// Determine executability preservation behavior.
+		// Check executability preservation behavior.
 		if cachedPreservesOk {
 			preservesExecutability = cachedPreserves
 		} else if preserves, usedFiles, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
-			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root executability preservation behavior: %w", err)
+			return nil, nil, nil, fmt.Errorf("unable to probe root executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
 			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 
-		// If we used probe files, then update the behavior cache. Probe files
-		// are never used on Windows, so we're safe to use the device ID (which
-		// is always 0 on Windows) as a cache key.
-		if usedProbeFiles {
-			behaviorCache.Lock()
-			behaviorCache.decomposesUnicode[metadata.DeviceID] = decomposesUnicode
-			behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
-			behaviorCache.Unlock()
+		// Check Unicode decomposition behavior.
+		if cachedDecomposesOk {
+			decomposesUnicode = cachedDecomposes
+		} else if decomposes, usedFiles, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to probe root Unicode decomposition behavior: %w", err)
+		} else {
+			decomposesUnicode = decomposes
+			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 	} else if rootKind == EntryKind_File {
-		// Check if there is cached behavior information. This is an indication
-		// that we previously had to use probe files for this filesystem.
-		behaviorCache.RLock()
-		cachedPreserves, cachedPreservesOk := behaviorCache.preservesExecutability[metadata.DeviceID]
-		behaviorCache.RUnlock()
-
-		// Track whether or not we use probe files.
-		var usedProbeFiles bool
-
-		// Determine executability preservation behavior for the parent of the
-		// root path.
+		// For file roots, we use the behavioral information of their parent
+		// directory.
 		//
 		// RACE: There is technically a race condition here on POSIX systems
 		// because the root file that we have open may have been unlinked and
@@ -586,7 +563,8 @@ func Scan(
 		// concept (due at least to the existence of hard links)). In any case,
 		// the minimal cross-section for this occurrence combined with the minor
 		// consequences of such a case arising mean that we're content to live
-		// with this situation for now.
+		// with this situation for now. Note, however, that this could affect
+		// the behavior caches for other sessions as well.
 		//
 		// TODO: Now that we have fstatfs-based behavior checks (which will also
 		// work for file roots), we should try to extract behavior information
@@ -597,33 +575,50 @@ func Scan(
 		// fallback) into the behavior package itself, though it'll be complex
 		// because of platform-specific interfaces and the fact that we'd need
 		// to pass through the full parent path.
+		parent := filepath.Dir(root)
+
+		// Check executability preservation behavior for the parent directory.
 		if cachedPreservesOk {
 			preservesExecutability = cachedPreserves
-		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(filepath.Dir(root), probeMode); err != nil {
-			return nil, false, false, nil, nil, fmt.Errorf("unable to probe root parent executability preservation behavior: %w", err)
+		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(parent, probeMode); err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to probe parent executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
 			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 
-		// If we used probe files, then update the behavior cache. Probe files
-		// are never used on Windows, so we're safe to use the device ID (which
-		// is always 0 on Windows) as a cache key. Moreover, we're okay to use
-		// the file's device ID, because we know the parent directory will have
-		// the same device ID (since files can't be filesystem roots).
-		if usedProbeFiles {
-			behaviorCache.Lock()
-			behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
-			behaviorCache.Unlock()
+		// Check Unicode decomposition behavior for the parent directory.
+		if cachedDecomposesOk {
+			decomposesUnicode = cachedDecomposes
+		} else if decomposes, usedFiles, err := behavior.DecomposesUnicodeByPath(parent, probeMode); err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to probe parent Unicode decomposition behavior: %w", err)
+		} else {
+			decomposesUnicode = decomposes
+			usedProbeFiles = usedProbeFiles || usedFiles
 		}
 	} else {
 		panic("unhandled root kind")
 	}
 
-	// If a baseline has been provided but its kind doesn't match that of the
-	// synchronization root, then we can ignore it.
-	if baseline != nil && baseline.Kind != rootKind {
-		baseline = nil
+	// If we used probe files, then update the behavior cache, because probing
+	// was relatively expensive. Probe files are never used on Windows, so we're
+	// safe to use the device ID (which is always 0 on Windows) as a cache key.
+	if usedProbeFiles {
+		behaviorCache.Lock()
+		behaviorCache.preservesExecutability[metadata.DeviceID] = preservesExecutability
+		behaviorCache.decomposesUnicode[metadata.DeviceID] = decomposesUnicode
+		behaviorCache.Unlock()
+	}
+
+	// If a baseline has been provided but differs in terms of root kind or
+	// filesystem behavior, then we can just ignore it.
+	if baseline != nil {
+		baselineInvalid := baseline.Content.Kind != rootKind ||
+			baseline.PreservesExecutability != preservesExecutability ||
+			baseline.DecomposesUnicode != decomposesUnicode
+		if baselineInvalid {
+			baseline = nil
+		}
 	}
 
 	// If a baseline of the correct kind is available, and there aren't any
@@ -632,7 +627,11 @@ func Scan(
 	// correspond to the baseline, because doing so is expensive. We place the
 	// burden of enforcing that invariant on the caller.
 	if baseline != nil && len(recheckPaths) == 0 {
-		return baseline, preservesExecutability, decomposesUnicode, cache, ignoreCache, nil
+		return &Snapshot{
+			Content:                baseline.Content,
+			PreservesExecutability: preservesExecutability,
+			DecomposesUnicode:      decomposesUnicode,
+		}, cache, ignoreCache, nil
 	}
 
 	// Convert the list of re-check paths into a set of dirty paths. The rule is
@@ -661,7 +660,7 @@ func Scan(
 	// Create the ignorer.
 	ignorer, err := newIgnorer(ignores)
 	if err != nil {
-		return nil, false, false, nil, nil, fmt.Errorf("unable to create ignorer: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to create ignorer: %w", err)
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -703,16 +702,20 @@ func Scan(
 	}
 
 	// Handle the scan based on the root type.
-	var result *Entry
+	var content *Entry
 	if rootKind == EntryKind_Directory {
-		result, err = s.directory("", nil, metadata, directoryRoot, baseline)
+		var directoryBaseline *Entry
+		if baseline != nil {
+			directoryBaseline = baseline.Content
+		}
+		content, err = s.directory("", nil, metadata, directoryRoot, directoryBaseline)
 	} else if rootKind == EntryKind_File {
-		result, err = s.file("", nil, metadata, fileRoot)
+		content, err = s.file("", nil, metadata, fileRoot)
 	} else {
 		panic("unhandled root kind")
 	}
 	if err != nil {
-		return nil, false, false, nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// If we have a baseline, then backfill the ignore and digest caches to
@@ -738,7 +741,7 @@ func Scan(
 		var missingCacheEntries bool
 
 		// Perform propagation.
-		result.walk("", func(path string, entry *Entry) {
+		content.walk("", func(path string, entry *Entry) {
 			// Create an ignore cache entry for this path. We can't record
 			// anything for unsynchronizable content because we don't know
 			// whether or not it's a directory. We probably could if we used
@@ -763,10 +766,14 @@ func Scan(
 
 		// Abort if we encountered missing cache entries.
 		if missingCacheEntries {
-			return nil, false, false, nil, nil, errors.New("old cache entries don't correspond to baseline")
+			return nil, nil, nil, errors.New("old cache entries don't correspond to baseline")
 		}
 	}
 
 	// Success.
-	return result, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, nil
+	return &Snapshot{
+		Content:                content,
+		PreservesExecutability: preservesExecutability,
+		DecomposesUnicode:      decomposesUnicode,
+	}, newCache, newIgnoreCache, nil
 }

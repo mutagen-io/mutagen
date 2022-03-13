@@ -450,7 +450,7 @@ func TestScan(t *testing.T) {
 			}
 
 			// Perform a cold scan and handle failure cases.
-			snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := Scan(
+			snapshot, cache, ignoreCache, err := Scan(
 				test.context,
 				root,
 				nil, nil,
@@ -476,12 +476,12 @@ func TestScan(t *testing.T) {
 			}
 
 			// Propagate executability if the filesystem doesn't preserve it.
-			if !preservesExecutability {
-				snapshot = PropagateExecutability(nil, test.expected, snapshot)
+			if !snapshot.PreservesExecutability {
+				snapshot.Content = PropagateExecutability(nil, test.expected, snapshot.Content)
 			}
 
 			// Check scan results.
-			if !snapshot.Equal(test.expected, true) {
+			if !snapshot.Content.Equal(test.expected, true) {
 				t.Errorf("%s: cold scan result not equal to expected on %s filesystem",
 					test.description, filesystem.name,
 				)
@@ -502,7 +502,7 @@ func TestScan(t *testing.T) {
 			}
 
 			// Perform a warm (but non-accelerated) scan.
-			newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := Scan(
+			newSnapshot, newCache, newIgnoreCache, err := Scan(
 				test.context,
 				root,
 				nil, nil,
@@ -522,13 +522,13 @@ func TestScan(t *testing.T) {
 			}
 
 			// Propagate executability if the filesystem doesn't preserve it.
-			if !newPreservesExecutability {
-				newSnapshot = PropagateExecutability(nil, test.expected, newSnapshot)
+			if !newSnapshot.PreservesExecutability {
+				newSnapshot.Content = PropagateExecutability(nil, test.expected, newSnapshot.Content)
 			}
 
 			// Check scan results.
-			if !newSnapshot.Equal(test.expected, true) {
-				t.Errorf("%s: warm scan result not equal to expected on %s filesystem",
+			if !newSnapshot.Equal(snapshot) {
+				t.Errorf("%s: warm scan result not equal to cold scan on %s filesystem",
 					test.description, filesystem.name,
 				)
 			}
@@ -546,20 +546,10 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
-			if newPreservesExecutability != preservesExecutability {
-				t.Errorf("%s: warm scan differed in executability preservation behavior on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
-			if newDecomposesUnicode != decomposesUnicode {
-				t.Errorf("%s: warm scan differed in Unicode decomposition behavior on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
 
 			// Perform an accelerated scan (without any re-check paths) using
 			// the snapshot as a baseline.
-			newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = Scan(
+			newSnapshot, newCache, newIgnoreCache, err = Scan(
 				test.context,
 				root,
 				snapshot, nil,
@@ -579,13 +569,13 @@ func TestScan(t *testing.T) {
 			}
 
 			// Propagate executability if the filesystem doesn't preserve it.
-			if !newPreservesExecutability {
-				newSnapshot = PropagateExecutability(nil, test.expected, newSnapshot)
+			if !newSnapshot.PreservesExecutability {
+				newSnapshot.Content = PropagateExecutability(nil, test.expected, newSnapshot.Content)
 			}
 
 			// Check scan results.
-			if !newSnapshot.Equal(test.expected, true) {
-				t.Errorf("%s: accelerated scan (without re-check paths) result not equal to expected on %s filesystem",
+			if !newSnapshot.Equal(snapshot) {
+				t.Errorf("%s: accelerated scan (without re-check paths) result not equal to cold scan on %s filesystem",
 					test.description, filesystem.name,
 				)
 			}
@@ -600,16 +590,6 @@ func TestScan(t *testing.T) {
 			}
 			if !testingAcceleratedIgnoreCacheIsSubset(newIgnoreCache, ignoreCache) {
 				t.Errorf("%s: accelerated scan (without re-check paths) ignore cache not a subset of baseline on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
-			if newPreservesExecutability != preservesExecutability {
-				t.Errorf("%s: accelerated scan (without re-check paths) differed in executability preservation behavior on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
-			if newDecomposesUnicode != decomposesUnicode {
-				t.Errorf("%s: accelerated scan (without re-check paths) differed in Unicode decomposition behavior on %s filesystem",
 					test.description, filesystem.name,
 				)
 			}
@@ -643,7 +623,7 @@ func TestScan(t *testing.T) {
 
 			// Perform an accelerated scan (with re-check paths) using the
 			// snapshot as a baseline.
-			newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = Scan(
+			newSnapshot, newCache, newIgnoreCache, err = Scan(
 				test.context,
 				root,
 				snapshot, recheckPaths,
@@ -663,18 +643,27 @@ func TestScan(t *testing.T) {
 			}
 
 			// Propagate executability if the filesystem doesn't preserve it.
-			if !newPreservesExecutability {
-				newSnapshot = PropagateExecutability(nil, modifiedExpected, newSnapshot)
+			if !newSnapshot.PreservesExecutability {
+				newSnapshot.Content = PropagateExecutability(nil, modifiedExpected, newSnapshot.Content)
 			}
 
 			// Check scan results. Since modifiers can perform arbitrary changes
 			// to the root, we have to restrict certain checks to cases where
-			// the filesystem hasn't been modified. In the case of Unicode
-			// decomposition checks, we have to restrict to the unmodified case
-			// because a modifier might change the root from (say) a directory
-			// to a file, in which case scan won't probe for Unicode behavior.
-			if !newSnapshot.Equal(modifiedExpected, true) {
+			// the filesystem hasn't been modified. We also have to decompose
+			// our scan equivalence check since we're not doing a direct
+			// comparison with the unmodified cold scan.
+			if !newSnapshot.Content.Equal(modifiedExpected, true) {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) result not equal to expected on %s filesystem",
+					test.description, filesystem.name,
+				)
+			}
+			if newSnapshot.PreservesExecutability != snapshot.PreservesExecutability {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) differed in executability preservation behavior from cold scan on %s filesystem",
+					test.description, filesystem.name,
+				)
+			}
+			if newSnapshot.DecomposesUnicode != snapshot.DecomposesUnicode {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) differed in Unicode decomposition behavior from cold scan on %s filesystem",
 					test.description, filesystem.name,
 				)
 			}
@@ -689,16 +678,6 @@ func TestScan(t *testing.T) {
 			}
 			if test.modifier == nil && !testingAcceleratedIgnoreCacheIsSubset(newIgnoreCache, ignoreCache) {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) ignore cache not a subset of baseline on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
-			if newPreservesExecutability != preservesExecutability {
-				t.Errorf("%s: accelerated scan (with re-check path(s)) differed in executability preservation behavior on %s filesystem",
-					test.description, filesystem.name,
-				)
-			}
-			if test.modifier == nil && newDecomposesUnicode != decomposesUnicode {
-				t.Errorf("%s: accelerated scan (with re-check path(s)) differed in Unicode decomposition behavior on %s filesystem",
 					test.description, filesystem.name,
 				)
 			}
@@ -727,20 +706,18 @@ func TestScanCrossFilesystemBoundary(t *testing.T) {
 
 	// Perform a scan that crosses the boundary. We'll ignore everything else in
 	// the parent other than the crossing point.
-	result, _, _, _, _, err := Scan(
+	snapshot, _, _, err := Scan(
 		context.Background(),
 		parent,
 		nil, nil,
-		newTestingHasher(),
-		nil,
-		[]string{"*", "!" + name},
-		nil,
+		newTestingHasher(), nil,
+		[]string{"*", "!" + name}, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
 		t.Fatalf("unable to perform scan: %v", err)
-	} else if result == nil {
+	} else if snapshot == nil {
 		t.Fatalf("scan returned nil result")
 	}
 
@@ -748,7 +725,7 @@ func TestScanCrossFilesystemBoundary(t *testing.T) {
 	// might be in the parent that ends up untracked, so we just check the entry
 	// that corresponds to the filesystem crossing point.
 	expected := &Entry{Kind: EntryKind_Problematic, Problem: "scan crossed filesystem boundary"}
-	if !result.Contents[name].Equal(expected, true) {
-		t.Errorf("result does not match expected: %v != %v", result.Contents[name], expected)
+	if !snapshot.Content.Contents[name].Equal(expected, true) {
+		t.Errorf("result does not match expected: %v != %v", snapshot.Content.Contents[name], expected)
 	}
 }

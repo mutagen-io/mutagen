@@ -20,11 +20,12 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Archive is a wrapper that distinguishes between a nil entry and a zero-value
-// entry when serializing. This is necessary because Protocol Buffers will
-// encode both a nil entry and a zero-value entry as an empty byte slice if they
-// are the root message that's being serialized. Adding a level of indirection
-// allows for a distinction in encoding.
+// Archive is a wrapper that distinguishes between a nil Entry and a zero-valued
+// Entry when serializing. This is necessary because Protocol Buffers will
+// encode both a nil Entry and a zero-valued Entry as an empty byte slice if
+// they are the root message that's being serialized. Adding a level of
+// indirection allows for a distinction in encoding between an absence of
+// content and an empty directory.
 type Archive struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
