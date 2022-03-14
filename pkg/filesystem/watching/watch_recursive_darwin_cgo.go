@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mutagen-io/fsevents"
 )
@@ -23,7 +24,15 @@ const (
 	// will perform event coalescing anyway, so each channel entry can store
 	// more than one event.
 	fseventsChannelCapacity = 50
-
+	// fseventsLatency is the internal latency (coalescing) parameter to use for
+	// FSEvents watches. We still perform our own coalescing on top of what
+	// FSEvents provides, because FSEvents appears to limit its coalescing to a
+	// maximum of 32 paths. However, there's still value in allowing FSEvents to
+	// perform some coalescing to reduce the overhead of transmitting the events
+	// from the kernel to userspace, and there won't be a significant impact on
+	// overall latency because we use the kFSEventStreamCreateFlagNoDefer flag
+	// to avoid latency on one-shot events.
+	fseventsLatency = 10 * time.Millisecond
 	// fseventsFlags are the flags to use for FSEvents watches. The inclusion
 	// of the NoDefer (kFSEventStreamCreateFlagNoDefer) flag means that one-shot
 	// events that occur outside of a coalescing window will be delivered
@@ -100,7 +109,7 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 	watch := &fsevents.EventStream{
 		Events:  make(chan []fsevents.Event, fseventsChannelCapacity),
 		Paths:   []string{target},
-		Latency: watchCoalescingWindow,
+		Latency: fseventsLatency,
 		Flags:   fseventsFlags,
 	}
 	watch.Start()
@@ -143,11 +152,20 @@ func (w *recursiveWatcher) run(ctx context.Context, target string) error {
 		eventPathTrimPrefix = target + "/"
 	}
 
+	// Create a coalescing timer, initially stopped and drained, and ensure that
+	// it's stopped once we return.
+	coalescingTimer := time.NewTimer(0)
+	if !coalescingTimer.Stop() {
+		<-coalescingTimer.C
+	}
+	defer coalescingTimer.Stop()
+
 	// Create an empty pending event.
 	pending := make(map[string]bool)
 
 	// Create a separate channel variable to track the target events channel. We
-	// keep it nil to block transmission until the pending event is non-empty.
+	// keep it nil to block transmission until the pending event is non-empty
+	// and the coalescing timer has fired.
 	var pendingTarget chan<- map[string]bool
 
 	// Perform event forwarding indefinitely.
@@ -206,16 +224,30 @@ func (w *recursiveWatcher) run(ctx context.Context, target string) error {
 				}
 			}
 
-			// If the pending event has been populated, then ensure that the
-			// target events channel is set to the actual events channel (which
-			// it will been already if the pending event was already populated).
-			// We probably don't need the size check here, since the loop above
-			// will almost certainly have populated the pending event, but just
-			// in case we receive a spurious empty event from the FSEvents API,
-			// we don't want to forward that onward.
-			if len(pending) > 0 {
-				pendingTarget = w.events
+			// If the pending event is still empty, then there's nothing that we
+			// need to do and we can continue waiting.
+			if len(pending) == 0 {
+				continue
 			}
+
+			// We may have already had a pending event that was coalesced and
+			// ready to be delivered, but now we've seen more changes and we're
+			// going to create a new coalescing window, so we'll block event
+			// transmission until the new coalescing window is complete.
+			pendingTarget = nil
+
+			// Reset the coalesing timer. We don't know if it was already
+			// running, so we need to drain it in a non-blocking fashion.
+			if !coalescingTimer.Stop() {
+				select {
+				case <-coalescingTimer.C:
+				default:
+				}
+			}
+			coalescingTimer.Reset(watchCoalescingWindow)
+		case <-coalescingTimer.C:
+			// Set the target events channel to the actual events channel.
+			pendingTarget = w.events
 		case pendingTarget <- pending:
 			// Create a new pending event.
 			pending = make(map[string]bool)

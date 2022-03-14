@@ -7,7 +7,7 @@ import (
 
 const (
 	// watchCoalescingWindow is the time window for event coalescing.
-	watchCoalescingWindow = 10 * time.Millisecond
+	watchCoalescingWindow = 20 * time.Millisecond
 	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
 	// will be allowed in a pending coalesced event.
 	watchCoalescingMaximumPendingPaths = 10 * 1024

@@ -20,7 +20,6 @@ const (
 	// inotifyChannelCapacity is the capacity to use for the internal inotify
 	// events channel.
 	inotifyChannelCapacity = 50
-
 	// inotifyDefaultMaximumWatches is the default maximum number of inotify
 	// watches that will be allowed to exist per-watcher.
 	inotifyDefaultMaximumWatches = 50
