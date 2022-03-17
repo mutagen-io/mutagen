@@ -55,8 +55,10 @@ type recursiveWatcher struct {
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
-// specified target path.
-func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
+// specified target path. It accepts an optional filter function that can be
+// used to exclude paths from being returned by the watcher. If filter is nil,
+// then no filtering is performed.
+func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error) {
 	// Resolve any symbolic links in the watch target. This is necessary because
 	// we're using the parent directory of the target path as the watch root and
 	// ReadDirectoryChangesW doesn't watch across symbolic link boundaries, so
@@ -146,7 +148,7 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 
 	// Start the run loop.
 	go func() {
-		watcher.errors <- watcher.run(ctx, watchRoot, initialWatchRootMetadata, target)
+		watcher.errors <- watcher.run(ctx, watchRoot, initialWatchRootMetadata, target, filter)
 	}()
 
 	// Success.
@@ -154,7 +156,7 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 }
 
 // run implements the event processing run loop for recursiveWatcher.
-func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWatchRootMetadata os.FileInfo, target string) error {
+func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWatchRootMetadata os.FileInfo, target string, filter Filter) error {
 	// Signal completion when done.
 	defer close(w.done)
 
@@ -223,6 +225,11 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 				path = path[len(eventPathTrimPrefix):]
 				path = strings.ReplaceAll(path, "\\", "/")
 			} else {
+				continue
+			}
+
+			// Check if the path should be excluded.
+			if filter != nil && filter(path) {
 				continue
 			}
 

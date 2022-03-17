@@ -55,7 +55,7 @@ func TestRecursiveWatcher(t *testing.T) {
 	directory := t.TempDir()
 
 	// Create the watcher and defer its termination.
-	watcher, err := NewRecursiveWatcher(directory)
+	watcher, err := NewRecursiveWatcher(directory, nil)
 	if err != nil {
 		t.Fatal("unable to establish watch:", err)
 	}
@@ -110,7 +110,7 @@ func TestNonRecursiveWatcher(t *testing.T) {
 	directory := t.TempDir()
 
 	// Create the watcher and defer its termination.
-	watcher, err := NewNonRecursiveWatcher()
+	watcher, err := NewNonRecursiveWatcher(nil)
 	if err != nil {
 		t.Fatal("unable to create watcher:", err)
 	}

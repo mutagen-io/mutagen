@@ -30,14 +30,14 @@ func main() {
 	// watcher we establish as a RecursiveWatcher.
 	var watcher watching.RecursiveWatcher
 	if watching.RecursiveWatchingSupported {
-		if w, err := watching.NewRecursiveWatcher(watchRoot); err != nil {
+		if w, err := watching.NewRecursiveWatcher(watchRoot, nil); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to establish recursive watch: %w", err))
 		} else {
 			watcher = w
 			fmt.Println("Watching", watchRoot, "with recursive watching")
 		}
 	} else if watching.NonRecursiveWatchingSupported {
-		if w, err := watching.NewNonRecursiveWatcher(); err != nil {
+		if w, err := watching.NewNonRecursiveWatcher(nil); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to establish non-recursive watch: %w", err))
 		} else {
 			w.Watch(watchRoot)

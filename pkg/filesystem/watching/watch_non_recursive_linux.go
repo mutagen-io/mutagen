@@ -44,8 +44,11 @@ type nonRecursiveWatcher struct {
 	done chan struct{}
 }
 
-// NewNonRecursiveWatcher creates a new inotify-based non-recursive watcher.
-func NewNonRecursiveWatcher() (NonRecursiveWatcher, error) {
+// NewNonRecursiveWatcher creates a new inotify-based non-recursive watcher. It
+// accepts an optional filter function that can be used to exclude paths from
+// being returned by the watcher. If filter is nil, then no filtering is
+// performed.
+func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 	// Create the raw event channel.
 	rawEvents := make(chan notify.EventInfo, inotifyChannelCapacity)
 
@@ -79,7 +82,7 @@ func NewNonRecursiveWatcher() (NonRecursiveWatcher, error) {
 	// Start the run loop.
 	go func() {
 		select {
-		case watcher.errors <- watcher.run(ctx, rawEvents):
+		case watcher.errors <- watcher.run(ctx, rawEvents, filter):
 		default:
 		}
 	}()
@@ -89,7 +92,7 @@ func NewNonRecursiveWatcher() (NonRecursiveWatcher, error) {
 }
 
 // run implements the event processing run loop for nonRecursiveWatcher.
-func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.EventInfo) error {
+func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.EventInfo, filter Filter) error {
 	// Signal completion when done.
 	defer close(w.done)
 
@@ -120,8 +123,16 @@ func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.E
 				return errors.New("raw events channel closed")
 			}
 
+			// Extract the path.
+			path := e.Path()
+
+			// Check if the path should be excluded.
+			if filter != nil && filter(path) {
+				continue
+			}
+
 			// Record the path.
-			pending[e.Path()] = true
+			pending[path] = true
 
 			// Check if we've exceeded the maximum number of allowed pending
 			// paths. We're technically allowing ourselves to go one over the

@@ -57,8 +57,10 @@ type recursiveWatcher struct {
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
-// specified target path.
-func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
+// specified target path. It accepts an optional filter function that can be
+// used to exclude paths from being returned by the watcher. If filter is nil,
+// then no filtering is performed.
+func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error) {
 	// Enforce that the watch target path is absolute. This is necessary because
 	// FSEvents will return event paths as absolute paths rooted at the system
 	// root (at least with the per-host streams that we're using), and thus
@@ -128,7 +130,7 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 
 	// Start the run loop.
 	go func() {
-		watcher.errors <- watcher.run(ctx, target)
+		watcher.errors <- watcher.run(ctx, target, filter)
 	}()
 
 	// Success.
@@ -136,7 +138,7 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 }
 
 // run implements the event processing run loop for recursiveWatcher.
-func (w *recursiveWatcher) run(ctx context.Context, target string) error {
+func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter) error {
 	// Signal completion when done.
 	defer close(w.done)
 
@@ -207,6 +209,11 @@ func (w *recursiveWatcher) run(ctx context.Context, target string) error {
 					path = path[len(eventPathTrimPrefix):]
 				} else {
 					return errors.New("event path is not watch target and does not have expected prefix")
+				}
+
+				// Check if the path should be excluded.
+				if filter != nil && filter(path) {
+					continue
 				}
 
 				// Record the path.
