@@ -25,23 +25,8 @@ const (
 	// cacheSaveInterval is the interval at which caches are serialized and
 	// written to disk in the background.
 	cacheSaveInterval = 60 * time.Second
-
-	// nativeEventsChannelCapacity is the channel to use for events received
-	// from native watchers.
-	nativeEventsChannelCapacity = 50
-
-	// recheckPathsMaximumCapacity is the maximum capacity for re-check path
-	// sets. We also use it as the default map capacity to avoid map
-	// reallocation when doing rapid event insertion.
-	recheckPathsMaximumCapacity = 50
-
-	// recursiveWatchingEventCoalescingWindow is the time window that recursive
-	// watching will wait after an event before strobing the poll events
-	// channel. If another event is received during that window, the coalescing
-	// timer is reset. It should be small enough to deliver events with no
-	// human-perceptible delay, but large enough to group events occurring in
-	// rapid succession.
-	recursiveWatchingEventCoalescingWindow = 10 * time.Millisecond
+	// recheckPathsMaximumCapacity is the maximum re-check path set capacity.
+	recheckPathsMaximumCapacity = 10 * 1024
 )
 
 // reifiedWatchMode describes a fully reified watch mode based on the watch mode
@@ -51,47 +36,42 @@ type reifiedWatchMode uint8
 const (
 	// reifiedWatchModeDisabled indicates that watching has been disabled.
 	reifiedWatchModeDisabled reifiedWatchMode = iota
-	// reifiedWatchModeRecursive indicates that recursive watching is in use.
-	reifiedWatchModeRecursive
 	// reifiedWatchModePoll indicates poll-based watching is in use.
 	reifiedWatchModePoll
+	// reifiedWatchModeRecursive indicates that recursive watching is in use.
+	reifiedWatchModeRecursive
 )
 
 // endpoint provides a local, in-memory implementation of
 // synchronization.Endpoint for local files.
 type endpoint struct {
-	// logger is the endpoint's underlying logger. This field is static and thus
-	// safe for concurrent usage (since the logger itself is safe for concurrent
-	// usage).
+	// logger is the underlying logger. This field is static and thus safe for
+	// concurrent usage.
 	logger *logging.Logger
-	// root is the synchronization root for the endpoint. This field is static
-	// and thus safe for concurrent reads.
+	// root is the synchronization root. This field is static and thus safe for
+	// concurrent reads.
 	root string
 	// readOnly determines whether or not the endpoint should be operating in a
 	// read-only mode (i.e. it is the source of unidirectional synchronization).
-	// Although the controller can send the endpoint whatever configuration it
-	// wants, there may be a configuration validation option for the endpoint
-	// that ensures the endpoint is in a read-only state. In those cases, we
-	// want to make sure an untrusted controller can't then try to perform a
-	// modification operation. This field is static and thus safe for concurrent
-	// reads.
+	// This field is static and thus safe for concurrent reads.
 	readOnly bool
-	// maximumEntryCount is the maximum number of entries within the
-	// synchronization root that this endpoint will support synchronizing. This
-	// field is static and thus safe for concurrent reads.
+	// maximumEntryCount is the maximum number of entries that the endpoint will
+	// synchronize. This field is static and thus safe for concurrent reads.
 	maximumEntryCount uint64
-	// probeMode is the probe mode for the session. This field is static and
+	// watchMode indicates the watch mode being used. This field is static and
 	// thus safe for concurrent reads.
-	probeMode behavior.ProbeMode
-	// accelerationAllowed indicates whether or not scan acceleration is allowed
-	// for the endpoint. This is computed based off of the scan mode. This field
-	// is static and thus safe for concurrent reads.
+	watchMode reifiedWatchMode
+	// accelerationAllowed indicates whether or not scan acceleration is
+	// allowed. This field is static and thus safe for concurrent reads.
 	accelerationAllowed bool
-	// symbolicLinkMode is the symbolic link mode for the session. This field is
-	// static and thus safe for concurrent reads.
+	// probeMode is the probe mode. This field is static and thus safe for
+	// concurrent reads.
+	probeMode behavior.ProbeMode
+	// symbolicLinkMode is the symbolic link mode. This field is static and thus
+	// safe for concurrent reads.
 	symbolicLinkMode core.SymbolicLinkMode
-	// ignores is the list of ignored paths for the session. This field is
-	// static and thus safe for concurrent reads.
+	// ignores are the path ignore specifications. This field is static and thus
+	// safe for concurrent reads.
 	ignores []string
 	// defaultFileMode is the default file permission mode to use in "portable"
 	// permission propagation. This field is static and thus safe for concurrent
@@ -105,21 +85,18 @@ type endpoint struct {
 	// "portable" permission propagation. This field is static and thus safe for
 	// concurrent reads.
 	defaultOwnership *filesystem.OwnershipSpecification
-	// actualWatchMode indicates the actual watch mode being used. This field is
-	// static and thus safe for concurrent reads.
-	actualWatchMode reifiedWatchMode
 	// workerCancel cancels any background worker Goroutines for the endpoint.
-	// This field is static and safe for concurrent invocation.
+	// This field is static and thus safe for concurrent invocation.
 	workerCancel context.CancelFunc
 	// saveCacheDone is closed when the cache saving Goroutine has completed. It
-	// will never have values written to it and will only be closed, so a read
-	// that returns indicates closure. This field is static and safe for
-	// concurrent reads.
+	// will never have values written to it and will only be closed, so a
+	// receive that returns indicates closure. This field is static and thus
+	// safe for concurrent receive operations.
 	saveCacheDone <-chan struct{}
 	// watchDone is closed when the watching Goroutine has completed. It will
-	// never have values written to it and will only be closed, so a read that
-	// returns indicates closure. This field is static and safe for concurrent
-	// reads.
+	// never have values written to it and will only be closed, so a receive
+	// that returns indicates closure. This field is static and thus safe for
+	// concurrent receive operations.
 	watchDone <-chan struct{}
 	// pollEvents is the channel used to inform a call to Poll that there are
 	// filesystem modifications (and thus it can return). It is a buffered
@@ -137,35 +114,22 @@ type endpoint struct {
 	// timer-based signal)). This field is static and never closed, and is thus
 	// safe for concurrent send operations.
 	recursiveWatchRetryEstablish chan struct{}
-	// recursiveWatchReenableAcceleration is a channel used to signal the
-	// recursive watching Goroutine (if any) that acceleration has been disabled
-	// (e.g. in Transition) and that it needs to perform a re-scan before
-	// re-enabling acceleration. It is a buffered channel with a capacity of
-	// one so that notifications can be registered even if the watching
-	// Goroutine is handling other events. Senders should always perform a
-	// non-blocking send to the channel, because if it is already populated,
-	// then the need to re-enable acceleration is already indicated. This field
-	// is static and never closed, and is thus safe for concurrent send
-	// operations.
-	recursiveWatchReenableAcceleration chan struct{}
-	// scanLock locks the endpoint's scan-related fields, specifically
-	// accelerateScan, snapshot, recheckPaths, hasher, cache, ignoreCache,
-	// cacheWriteError, preservesExecutability, decomposesUnicode,
-	// lastScanEntryCount, scannedSinceLastStageCall, and
-	// scannedSinceLastTransitionCall. This lock is not necessitated by the
-	// Endpoint interface (since it doesn't allow concurrent usage), but rather
-	// the endpoint's background worker Goroutines for cache saving and
-	// (potentially) watching, which also access/modify these fields.
+	// scanLock serializes access to accelerate, recheckPaths, snapshot, hasher,
+	// cache, ignoreCache, cacheWriteError, lastScanEntryCount,
+	// scannedSinceLastStageCall, and scannedSinceLastTransitionCall. This lock
+	// is not necessitated by the Endpoint interface (which doesn't permit
+	// concurrent usage), but rather the endpoint's background worker Goroutines
+	// for cache saving and filesystem watching.
 	scanLock sync.Mutex
-	// accelerateScan indicates that the Scan function should attempt to
-	// accelerate scanning by using data from a background watcher Goroutine.
-	accelerateScan bool
-	// snapshot is the snapshot from the last scan.
-	snapshot *core.Entry
-	// recheckPaths is the set of recheck paths to use when accelerating scans
-	// in recursive watching mode. This map will always be initialized (non-nil)
-	// and ready for writes.
+	// accelerate indicates that the Scan function should attempt to accelerate
+	// scanning by using data from a background watcher Goroutine.
+	accelerate bool
+	// recheckPaths is the set of re-check paths to use when accelerating scans
+	// in recursive watching mode. This map will be non-nil if and only if
+	// accelerate is true and recursive watching is being used.
 	recheckPaths map[string]bool
+	// snapshot is the snapshot from the last scan.
+	snapshot *core.Snapshot
 	// hasher is the hasher used for scans.
 	hasher hash.Hash
 	// cache is the cache from the last successful scan on the endpoint.
@@ -176,12 +140,6 @@ type endpoint struct {
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
-	// preservesExecutability is the executability preservation behavior
-	// detected by the last successful scan on the endpoint.
-	preservesExecutability bool
-	// decomposesUnicode is the Unicode decomposition behavior detected by the
-	// last successful scan on the endpoint.
-	decomposesUnicode bool
 	// lastScanEntryCount is the entry count at the time of the last scan.
 	lastScanEntryCount uint64
 	// scannedSinceLastStageCall tracks whether or not a scan operation has
@@ -228,19 +186,43 @@ func NewEndpoint(
 		maximumStagingFileSize = version.DefaultMaximumStagingFileSize()
 	}
 
-	// Compute the effective probe mode.
-	probeMode := configuration.ProbeMode
-	if probeMode.IsDefault() {
-		probeMode = version.DefaultProbeMode()
+	// Compute the effective watch mode.
+	watchMode := configuration.WatchMode
+	if watchMode.IsDefault() {
+		watchMode = version.DefaultWatchMode()
 	}
 
-	// Compute the effective scan mode and whether or not scan acceleration is
-	// allowed.
+	// Compute the actual (reified) watch mode.
+	var actualWatchMode reifiedWatchMode
+	var nonRecursiveWatchingAllowed bool
+	if watchMode == synchronization.WatchMode_WatchModePortable {
+		if watching.RecursiveWatchingSupported {
+			actualWatchMode = reifiedWatchModeRecursive
+		} else {
+			actualWatchMode = reifiedWatchModePoll
+			nonRecursiveWatchingAllowed = true
+		}
+	} else if watchMode == synchronization.WatchMode_WatchModeForcePoll {
+		actualWatchMode = reifiedWatchModePoll
+	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
+		actualWatchMode = reifiedWatchModeDisabled
+	} else {
+		panic("unhandled watch mode")
+	}
+
+	// Compute the effective scan mode and determine whether or not scan
+	// acceleration is allowed.
 	scanMode := configuration.ScanMode
 	if scanMode.IsDefault() {
 		scanMode = version.DefaultScanMode()
 	}
 	accelerationAllowed := scanMode == synchronization.ScanMode_ScanModeAccelerated
+
+	// Compute the effective probe mode.
+	probeMode := configuration.ProbeMode
+	if probeMode.IsDefault() {
+		probeMode = version.DefaultProbeMode()
+	}
 
 	// Compute the effective symbolic link mode.
 	symbolicLinkMode := configuration.SymbolicLinkMode
@@ -364,29 +346,6 @@ func NewEndpoint(
 		return nil, fmt.Errorf("unable to compute staging root: %w", err)
 	}
 
-	// Compute the effective watch mode.
-	watchMode := configuration.WatchMode
-	if watchMode.IsDefault() {
-		watchMode = version.DefaultWatchMode()
-	}
-
-	// Compute the reified watch mode. The structure of this logic should match
-	// that of the watching Goroutine startup below.
-	var actualWatchMode reifiedWatchMode
-	if watchMode == synchronization.WatchMode_WatchModePortable {
-		if watching.RecursiveWatchingSupported {
-			actualWatchMode = reifiedWatchModeRecursive
-		} else {
-			actualWatchMode = reifiedWatchModePoll
-		}
-	} else if watchMode == synchronization.WatchMode_WatchModeForcePoll {
-		actualWatchMode = reifiedWatchModePoll
-	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
-		actualWatchMode = reifiedWatchModeDisabled
-	} else {
-		panic("unhandled watch mode")
-	}
-
 	// HACK: If non-default ownership or permissions have been set and the
 	// synchronization root is a volume mount point in a Mutagen sidecar
 	// container with no pre-existing content, then set the ownership and
@@ -414,27 +373,25 @@ func NewEndpoint(
 
 	// Create the endpoint.
 	endpoint := &endpoint{
-		logger:                             logger,
-		root:                               root,
-		readOnly:                           readOnly,
-		maximumEntryCount:                  maximumEntryCount,
-		probeMode:                          probeMode,
-		accelerationAllowed:                accelerationAllowed,
-		symbolicLinkMode:                   symbolicLinkMode,
-		ignores:                            ignores,
-		defaultFileMode:                    defaultFileMode,
-		defaultDirectoryMode:               defaultDirectoryMode,
-		defaultOwnership:                   defaultOwnership,
-		actualWatchMode:                    actualWatchMode,
-		workerCancel:                       workerCancel,
-		saveCacheDone:                      saveCacheDone,
-		watchDone:                          watchDone,
-		pollEvents:                         make(chan struct{}, 1),
-		recursiveWatchRetryEstablish:       make(chan struct{}),
-		recursiveWatchReenableAcceleration: make(chan struct{}, 1),
-		recheckPaths:                       make(map[string]bool, recheckPathsMaximumCapacity),
-		hasher:                             version.Hasher(),
-		cache:                              cache,
+		logger:                       logger,
+		root:                         root,
+		readOnly:                     readOnly,
+		maximumEntryCount:            maximumEntryCount,
+		watchMode:                    actualWatchMode,
+		accelerationAllowed:          accelerationAllowed,
+		probeMode:                    probeMode,
+		symbolicLinkMode:             symbolicLinkMode,
+		ignores:                      ignores,
+		defaultFileMode:              defaultFileMode,
+		defaultDirectoryMode:         defaultDirectoryMode,
+		defaultOwnership:             defaultOwnership,
+		workerCancel:                 workerCancel,
+		saveCacheDone:                saveCacheDone,
+		watchDone:                    watchDone,
+		pollEvents:                   make(chan struct{}, 1),
+		recursiveWatchRetryEstablish: make(chan struct{}),
+		hasher:                       version.Hasher(),
+		cache:                        cache,
 		stager: newStager(
 			stagingRoot,
 			hideStagingRoot,
@@ -443,7 +400,7 @@ func NewEndpoint(
 		),
 	}
 
-	// Start the cache saving Goroutine and monitor for its completion.
+	// Start the cache saving Goroutine.
 	go func() {
 		endpoint.saveCacheRegularly(workerContext, cachePath)
 		close(saveCacheDone)
@@ -455,35 +412,15 @@ func NewEndpoint(
 		watchPollingInterval = version.DefaultWatchPollingInterval()
 	}
 
-	// Start the appropriate watching mechanism and monitor for its completion.
-	// The structure of this logic should match that of the reified watch mode
-	// computation above.
-	if watchMode == synchronization.WatchMode_WatchModePortable {
-		if watching.RecursiveWatchingSupported {
-			go func() {
-				endpoint.watchRecursive(workerContext, watchPollingInterval)
-				close(watchDone)
-			}()
-		} else {
-			go func() {
-				endpoint.watchPoll(
-					workerContext,
-					watchPollingInterval,
-					watching.NonRecursiveWatchingSupported,
-				)
-				close(watchDone)
-			}()
+	// Start the watching Goroutine.
+	go func() {
+		if actualWatchMode == reifiedWatchModePoll {
+			endpoint.watchPoll(workerContext, watchPollingInterval, nonRecursiveWatchingAllowed)
+		} else if actualWatchMode == reifiedWatchModeRecursive {
+			go endpoint.watchRecursive(workerContext, watchPollingInterval)
 		}
-	} else if watchMode == synchronization.WatchMode_WatchModeForcePoll {
-		go func() {
-			endpoint.watchPoll(workerContext, watchPollingInterval, false)
-			close(watchDone)
-		}()
-	} else if watchMode == synchronization.WatchMode_WatchModeNoWatch {
 		close(watchDone)
-	} else {
-		panic("unhandled watch mode")
-	}
+	}()
 
 	// Success.
 	return endpoint, nil
@@ -525,301 +462,22 @@ func (e *endpoint) saveCacheRegularly(context context.Context, cachePath string)
 	}
 }
 
-// stopAndDrainTimer is a convenience function that stops a timer and performs a
-// non-blocking drain on its channel. This allows a timer to be stopped/drained
-// without any knowledge of its current state.
+// stopAndDrainTimer stops a timer and performs a non-blocking drain on its
+// channel. This allows a timer to be stopped and drained without any knowledge
+// of its current state.
 func stopAndDrainTimer(timer *time.Timer) {
-	if !timer.Stop() {
-		select {
-		case <-timer.C:
-		default:
-		}
-	}
-}
-
-// watchRecursive is the watch loop for platforms where native recursive
-// watching facilities are available.
-func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
-	// Create a sublogger for watching.
-	logger := e.logger.Sublogger("watching")
-
-	// Convert the polling interval to a duration.
-	pollingDuration := time.Duration(pollingInterval) * time.Second
-
-	// Create a timer, initially stopped, that we can use to regulate the
-	// recreation of watches. Defer its termination in case it's running during
-	// cancellation.
-	watchRecreationTimer := time.NewTimer(0)
-	stopAndDrainTimer(watchRecreationTimer)
-	defer watchRecreationTimer.Stop()
-
-	// Create a timer, initially stopped, that we can use to regulate the
-	// scanning necessary to establish accelerated watches. Defer its
-	// termination in case it's running during cancellation.
-	scanTimer := time.NewTimer(0)
-	stopAndDrainTimer(scanTimer)
-	defer scanTimer.Stop()
-
-	// Create a timer, initially stopped, that we can use to coalesce events.
-	// Defer its termination in case it's running during cancellation.
-	coalescingTimer := time.NewTimer(0)
-	stopAndDrainTimer(coalescingTimer)
-	defer coalescingTimer.Stop()
-
-	// Loop and manage watches.
-WatchEstablishment:
-	for {
-		// Log the attempted watch establishment.
-		logger.Debug("Attempting to initialize recursive watching")
-
-		// Create our events channel.
-		events := make(chan string, nativeEventsChannelCapacity)
-
-		// Establish a watch and monitor for its termination.
-		watchErrors := make(chan error, 1)
-		go func() {
-			watchErrors <- watching.WatchRecursive(ctx, e.root, events)
-		}()
-
-		// Wait for the watch to be established (as indicated by an empty string
-		// on the events channel), or an error to occur. If an error occurs,
-		// then we'll strobe poll events and then wait for one polling interval
-		// before attempting to re-establish the watch.
-		select {
-		case <-ctx.Done():
-			// Log cancellation.
-			logger.Debug("Cancelled during initialization")
-
-			// Wait for the watching Goroutine to finish.
-			<-watchErrors
-
-			// Terminate watching.
-			return
-		case err := <-watchErrors:
-			// Log the error.
-			logger.Debug("Error during initialization:", err)
-
-			// If there's a watch error, then something interesting may have
-			// happened on disk, so we may as well strobe the poll events
-			// channel.
-			e.strobePollEvents()
-
-			// Reset the watch recreation timer (which won't be running).
-			watchRecreationTimer.Reset(pollingDuration)
-
-			// Wait for cancellation or our next watch creation attempt. We also
-			// watch for notifications from Transition, telling us that it might
-			// be worth trying to re-establish the watch, because the primary
-			// reason for watch errors here is non-existence of the
-			// synchronization root.
-			select {
-			case <-ctx.Done():
-				return
-			case <-watchRecreationTimer.C:
-				continue WatchEstablishment
-			case <-e.recursiveWatchRetryEstablish:
-				stopAndDrainTimer(watchRecreationTimer)
-				continue WatchEstablishment
-			}
-		case path := <-events:
-			// Ensure that the path is empty. Recursive watchers always send an
-			// empty path to signal completed initialization.
-			if path != "" {
-				panic("watch initialization path non-empty")
-			}
-
-			// Log the initialization.
-			logger.Debug("Initialization complete")
-		}
-
-		// Now that the watch has been successfully established, strobe the poll
-		// events channel. The reason for this is that, for recursive watching,
-		// successful establishment of the watch serves as a signal that the
-		// synchronization root exists and is accessible, which may not have
-		// been the case previously. For example, if the root or a parent didn't
-		// exist, we would have looped while trying to establish a watch,
-		// strobing the poll events channel on each failure. If we suddenly
-		// succeed, we need to notify the controller, otherwise it won't see any
-		// events until we receive events from within the root. Essentially,
-		// successful establishment of the watch is an event, of sorts, that
-		// we're only in a position to report here.
-		e.strobePollEvents()
-
-		// Reset the scan timer (which won't be running) to fire immediately in
-		// our watch loop in order to try to enable accelerated scanning.
-		if e.accelerationAllowed {
-			scanTimer.Reset(0)
-		}
-
-		// Loop and process events.
-	EventProcessing:
-		for {
-			select {
-			case <-ctx.Done():
-				// Log cancellation.
-				logger.Debug("Cancelled")
-
-				// Wait for the watching Goroutine to finish.
-				<-watchErrors
-
-				// Terminate watching.
-				return
-			case <-scanTimer.C:
-				// Log the scan.
-				logger.Debug("Timer fired to enable accelerated scanning")
-
-				// If acceleration isn't allowed on the endpoint, then we don't
-				// need to enable it, so there's nothing to do here.
-				if !e.accelerationAllowed {
-					continue EventProcessing
-				}
-
-				// Attempt to perform a full (warm) baseline scan. If this
-				// succeeds, then we can enable acceleration. If this fails,
-				// then we'll reset the scan timer (which won't be running) and
-				// try again after the polling interval.
-				logger.Debug("Performing baseline scan")
-				e.scanLock.Lock()
-				if err := e.scan(ctx, nil, nil); err != nil {
-					logger.Debug("Unable to perform baseline scan:", err)
-					scanTimer.Reset(pollingDuration)
-				} else {
-					logger.Debug("Enabling accelerated scanning")
-					e.accelerateScan = true
-				}
-				e.scanLock.Unlock()
-			case <-e.recursiveWatchReenableAcceleration:
-				// Log the request.
-				logger.Debug("Received request to enable accelerated scanning")
-
-				// If acceleration isn't allowed on the endpoint, then we don't
-				// need to enable it, so there's nothing to do here.
-				if !e.accelerationAllowed {
-					continue EventProcessing
-				}
-
-				// It's possible that the scan timer is running (e.g. if we
-				// receive this signal before we finish the initial
-				// acceleration-enabling scan), so we ensure it's stopped (since
-				// the following scan will serve the same purpose).
-				stopAndDrainTimer(scanTimer)
-
-				// Attempt to perform a full (warm) baseline scan. If this
-				// succeeds, then we can enable acceleration. If this fails,
-				// then we'll reset the scan timer (which won't be running) and
-				// try again after the polling interval.
-				logger.Debug("Performing baseline scan")
-				e.scanLock.Lock()
-				if err := e.scan(ctx, nil, nil); err != nil {
-					logger.Debug("Unable to perform baseline scan:", err)
-					scanTimer.Reset(pollingDuration)
-				} else {
-					logger.Debug("Enabling accelerated scanning")
-					e.accelerateScan = true
-				}
-				e.scanLock.Unlock()
-			case err := <-watchErrors:
-				// Log the error.
-				logger.Debug("Error:", err)
-
-				// If acceleration is allowed on the endpoint, then disable scan
-				// acceleration and clear out the re-check path set.
-				if e.accelerationAllowed {
-					e.scanLock.Lock()
-					e.accelerateScan = false
-					e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
-					e.scanLock.Unlock()
-				}
-
-				// Stop and drain any timers that might be running.
-				stopAndDrainTimer(scanTimer)
-				stopAndDrainTimer(coalescingTimer)
-
-				// Strobe the poll events channel. This is necessary since there
-				// may have been a scan performed with stale re-check paths in
-				// the window between the watch failure and the time that we
-				// were able to disable acceleration. Note that we don't have to
-				// worry about a (partially or completely) pre-Transition
-				// snapshot being returned in this window (and driving a
-				// feedback loop) because Transition operations always disable
-				// scan acceleration (see the comment in Transition). Worst case
-				// scenario we'd have returned a slightly stale scan. Even if
-				// the endpoint doesn't allow acceleration, the failure of the
-				// watch is still worth reporting.
-				e.strobePollEvents()
-
-				// Reset the watch recreation timer (which won't be running).
-				watchRecreationTimer.Reset(pollingDuration)
-
-				// Wait for cancellation or watch recreation. Note that, unlike
-				// above, we don't watch for notifications from Transition here
-				// because watch errors here are likely due to event overflow
-				// and we're better off giving the filesystem some time to
-				// settle.
-				select {
-				case <-ctx.Done():
-					// Log cancellation.
-					logger.Debug("Cancelled while waiting for watch recreation")
-
-					// Terminate watching.
-					return
-				case <-watchRecreationTimer.C:
-					continue WatchEstablishment
-				}
-			case path := <-events:
-				// If the path is a temporary file generated by Mutagen, then
-				// ignore it. We can use our fast-path base computation since
-				// recursive watchers generate synchronization-root-relative
-				// paths. We take this opportunity to log whether or not we're
-				// processing the path.
-				if filesystem.IsTemporaryFileName(core.PathBase(path)) {
-					logger.Trace("Ignoring change at", path)
-					continue EventProcessing
-				} else {
-					logger.Trace("Processing change at", path)
-				}
-
-				// If acceleration is allowed on the endpoint, then register the
-				// event path as a re-check path. If the re-check paths set
-				// would overflow its allowed size, then temporarily disable
-				// acceleration, clear out the re-check path set, and reset the
-				// scan timer (which may or may not be running) to force a full
-				// (warm) scan (and re-enable acceleration).
-				if e.accelerationAllowed {
-					e.scanLock.Lock()
-					if len(e.recheckPaths) == recheckPathsMaximumCapacity {
-						e.accelerateScan = false
-						e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
-						stopAndDrainTimer(scanTimer)
-						scanTimer.Reset(pollingDuration)
-					}
-					e.recheckPaths[path] = true
-					e.scanLock.Unlock()
-				}
-
-				// Reset the coalescing timer (which may or may not be running).
-				stopAndDrainTimer(coalescingTimer)
-				coalescingTimer.Reset(recursiveWatchingEventCoalescingWindow)
-			case <-coalescingTimer.C:
-				// Log the coalesced event.
-				logger.Trace("Coalesced event")
-
-				// Strobe the poll events channel.
-				e.strobePollEvents()
-			}
-		}
+	timer.Stop()
+	select {
+	case <-timer.C:
+	default:
 	}
 }
 
 // watchPoll is the watch loop for poll-based watching, with optional support
 // for using native non-recursive watching facilities to reduce notification
 // latency on frequently updated contents.
-func (e *endpoint) watchPoll(
-	ctx context.Context,
-	pollingInterval uint32,
-	useNonRecursiveWatching bool,
-) {
-	// Create a sublogger for watching.
+func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRecursiveWatchingAllowed bool) {
+	// Create a sublogger.
 	logger := e.logger.Sublogger("polling")
 
 	// Create a ticker to regulate polling and defer its shutdown.
@@ -830,57 +488,35 @@ func (e *endpoint) watchPoll(
 	// adjust some behaviors in that case.
 	first := true
 
-	// Track the previous scan results that we want to compare to watch for
-	// changes. It's safe to keep a reference to the snapshot since entries are
-	// treated as immutable.
-	var previousSnapshot *core.Entry
-	var previousPreservesExecutability, previousDecomposesUnicode bool
+	// Track the previous snapshot.
+	previous := &core.Snapshot{}
 
-	// If non-recursive watching is enabled, attempt to set up the non-recursive
-	// watching infrastructure.
-	var nonRecursiveWatchEvents chan string
-	var nonRecursiveWatcher *watching.NonRecursiveMRUWatcher
-	var nonRecursiveWatcherErrors chan error
-	var coalescingTimer *time.Timer
-	var coalescingTimerEvents <-chan time.Time
-	if useNonRecursiveWatching {
-		// Log the establishment of non-recursive watching.
-		logger.Debug("Enabling non-recursive watching")
+	// If non-recursive watching is available, then set up a non-recursive
+	// watcher. Since non-recursive watching is a best-effort basis to reduce
+	// latency, we don't try to re-establish this watcher if it fails.
+	var watcher watching.NonRecursiveWatcher
+	var watchEvents <-chan map[string]bool
+	var watchErrors <-chan error
+	if nonRecursiveWatchingAllowed && watching.NonRecursiveWatchingSupported {
+		// Create the filter that we'll use to exclude Mutagen temporary files.
+		filter := func(path string) bool {
+			return filesystem.IsTemporaryFileName(filepath.Base(path))
+		}
 
-		// Set up the events channel.
-		nonRecursiveWatchEvents = make(chan string, nativeEventsChannelCapacity)
-
-		// Attempt to create the watcher. If this fails, we simply avoid using
-		// native watching.
-		var err error
-		nonRecursiveWatcher, err = watching.NewNonRecursiveMRUWatcher(nonRecursiveWatchEvents, 0)
-		if err == nil {
-			// Log the successful initialization.
-			logger.Debug("Non-recursive watching successfully initialized")
-
-			// Extract the watcher's errors channel.
-			nonRecursiveWatcherErrors = nonRecursiveWatcher.Errors
-
-			// Set up conditional shutdown of the watcher. If it dies before
-			// watching terminates, we'll nil it out.
+		// Attempt to create the watcher and ensure that it will be terminated.
+		logger.Debug("Creating non-recursive watcher")
+		if w, err := watching.NewNonRecursiveWatcher(filter); err != nil {
+			logger.Debug("Unable to create non-recursive watcher:", err)
+		} else {
+			logger.Debug("Successfully created non-recursive watcher")
+			watcher = w
+			watchEvents = watcher.Events()
+			watchErrors = watcher.Errors()
 			defer func() {
-				if nonRecursiveWatcher != nil {
-					nonRecursiveWatcher.Stop()
+				if watcher != nil {
+					watcher.Terminate()
 				}
 			}()
-
-			// Create a timer, initially stopped, that we can use to coalesce
-			// events. Defer its termination in case it's running during
-			// cancellation.
-			coalescingTimer = time.NewTimer(0)
-			stopAndDrainTimer(coalescingTimer)
-			defer coalescingTimer.Stop()
-
-			// Extract the timer's event channel.
-			coalescingTimerEvents = coalescingTimer.C
-		} else {
-			// Log the reason for failure.
-			logger.Debug("Unable to establish non-recursive watching:", err)
 		}
 	}
 
@@ -914,15 +550,21 @@ func (e *endpoint) watchPoll(
 		if !skipWaiting {
 			select {
 			case <-ctx.Done():
-				// Log cancellation.
-				logger.Debug("Cancelled")
+				// Log termination.
+				logger.Debug("Polling terminated")
+
+				// Ensure that accelerated watching is disabled, if necessary.
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					e.accelerate = false
+					e.scanLock.Unlock()
+				}
 
 				// Terminate polling.
 				return
 			case <-ticker.C:
-				// Log the tick.
 				logger.Trace("Received polling signal")
-			case err := <-nonRecursiveWatcherErrors:
+			case err := <-watchErrors:
 				// Log the error.
 				logger.Debug("Non-recursive watching error:", err)
 
@@ -932,31 +574,14 @@ func (e *endpoint) watchPoll(
 				// case we don't want to trigger this code again on a nil
 				// watcher). We'll allow event channels to continue since they
 				// may contain residual events.
-				nonRecursiveWatcher.Stop()
-				nonRecursiveWatcher = nil
-				nonRecursiveWatcherErrors = nil
-				continue
-			case path := <-nonRecursiveWatchEvents:
-				// If the path is a temporary file generated by Mutagen, then
-				// ignore it. Unlike in the recurisve watcher case, we can't use
-				// our fast-path base computation since non-recursive watching
-				// won't return root-relative paths. We take this opportunity to
-				// log whether or not we're processing the path.
-				if filesystem.IsTemporaryFileName(filepath.Base(path)) {
-					logger.Trace("Ignoring change at", path)
-					continue
-				} else {
-					logger.Trace("Processing change at", path)
-				}
+				watcher.Terminate()
+				watcher = nil
+				watchErrors = nil
 
-				// Reset the coalescing timer (which may or may not be running)
-				// and continue. Once it fires, we'll perform a rescan.
-				stopAndDrainTimer(coalescingTimer)
-				coalescingTimer.Reset(recursiveWatchingEventCoalescingWindow)
+				// Continue polling.
 				continue
-			case <-coalescingTimerEvents:
-				// Log the coalesced event.
-				logger.Trace("Coalesced event")
+			case event := <-watchEvents:
+				logger.Trace("Received event with", len(event), "paths")
 			}
 		}
 
@@ -964,7 +589,7 @@ func (e *endpoint) watchPoll(
 		e.scanLock.Lock()
 
 		// Disable the use of the existing scan results.
-		e.accelerateScan = false
+		e.accelerate = false
 
 		// Perform a scan. If there's an error, then assume it's due to
 		// concurrent modification. In that case, release the scan lock and
@@ -985,35 +610,29 @@ func (e *endpoint) watchPoll(
 		// If our scan was successful, then we know that the scan results
 		// will be okay to return for the next Scan call, though we only
 		// indicate that acceleration should be used if the endpoint allows it.
-		e.accelerateScan = e.accelerationAllowed
+		e.accelerate = e.accelerationAllowed
 
 		// Extract scan parameters so that we can release the scan lock.
 		snapshot := e.snapshot
-		preservesExecutability := e.preservesExecutability
-		decomposesUnicode := e.decomposesUnicode
 
 		// Release the scan lock.
 		e.scanLock.Unlock()
 
 		// Check for modifications.
-		modified := !snapshot.Equal(previousSnapshot, true) ||
-			preservesExecutability != previousPreservesExecutability ||
-			decomposesUnicode != previousDecomposesUnicode
+		modified := !snapshot.Equal(previous)
 
 		// If we have a working non-recursive watcher, then perform a full diff
 		// to determine new watch paths, and then start the new watches. Any
 		// watch errors will be reported on the watch errors channel.
-		if nonRecursiveWatcher != nil {
-			changes := core.Diff(previousSnapshot, snapshot)
+		if watcher != nil {
+			changes := core.Diff(previous.Content, snapshot.Content)
 			for _, change := range changes {
-				nonRecursiveWatcher.Watch(filepath.Join(e.root, change.Path))
+				watcher.Watch(filepath.Join(e.root, change.Path))
 			}
 		}
 
 		// Update our tracking parameters.
-		previousSnapshot = snapshot
-		previousPreservesExecutability = preservesExecutability
-		previousDecomposesUnicode = decomposesUnicode
+		previous = snapshot
 
 		// If we've seen modifications, and we're not ignoring them, then strobe
 		// the poll events channel.
@@ -1030,8 +649,169 @@ func (e *endpoint) watchPoll(
 	}
 }
 
-// strobePollEvents is a convenience function to strobe the pollEvents channel
-// in a non-blocking fashion.
+// watchRecursive is the watch loop for platforms where native recursive
+// watching facilities are available.
+func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
+	// Create a sublogger.
+	logger := e.logger.Sublogger("watching")
+
+	// Convert the polling interval to a duration.
+	pollingDuration := time.Duration(pollingInterval) * time.Second
+
+	// Track our recursive watcher and ensure that it's stopped when we return.
+	var watcher watching.RecursiveWatcher
+	defer func() {
+		if watcher != nil {
+			watcher.Terminate()
+		}
+	}()
+
+	// Create the filter that we'll use to exclude Mutagen temporary files.
+	// Recursive watchers can use our fast-path base name calculation.
+	filter := func(path string) bool {
+		return filesystem.IsTemporaryFileName(core.PathBase(path))
+	}
+
+	// Create a timer, initially stopped and drained, that we can use to
+	// regulate waiting periods. Also, ensure that it's stopped when we return.
+	timer := time.NewTimer(0)
+	stopAndDrainTimer(timer)
+	defer timer.Stop()
+
+	// Loop until cancellation.
+	var err error
+WatchEstablishment:
+	for {
+		// Attempt to establish the watch.
+		logger.Debug("Attempting to establish recursive watch")
+		watcher, err = watching.NewRecursiveWatcher(e.root, filter)
+		if err != nil {
+			// Log the failure.
+			logger.Debug("Unable to establish recursive watch:", err)
+
+			// Strobe poll events (since nothing else will be driving
+			// synchronization from this endpoint at this point in time).
+			e.strobePollEvents()
+
+			// Wait to retry watch establishment.
+			timer.Reset(pollingDuration)
+			select {
+			case <-ctx.Done():
+				logger.Debug("Watching terminated while waiting for establishment")
+				return
+			case <-timer.C:
+				continue
+			case <-e.recursiveWatchRetryEstablish:
+				logger.Debug("Received recursive watch establishment suggestion")
+				stopAndDrainTimer(timer)
+				continue
+			}
+		}
+		logger.Debug("Watch successfully established")
+
+		// Strobe the poll events channel to signal that we now know the
+		// synchronization root exists and is accessible.
+		e.strobePollEvents()
+
+		// If accelerated scanning is allowed, then reset the timer (which won't
+		// be running) to fire immediately in the event loop in order to try
+		// enabling acceleration.
+		if e.accelerationAllowed {
+			timer.Reset(0)
+		}
+
+		// Loop and process events.
+		for {
+			select {
+			case <-ctx.Done():
+				// Log termination.
+				logger.Debug("Watching terminated")
+
+				// Ensure that accelerated watching is disabled, if necessary.
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					e.accelerate = false
+					e.recheckPaths = nil
+					e.scanLock.Unlock()
+				}
+
+				// Terminate watching.
+				return
+			case <-timer.C:
+				// Log the acceleration attempt.
+				logger.Debug("Attempting to enable accelerated scanning")
+
+				// Attempt to perform a baseline scan to enable acceleration.
+				e.scanLock.Lock()
+				if err := e.scan(ctx, nil, nil); err != nil {
+					logger.Debug("Unable to perform baseline scan:", err)
+					timer.Reset(pollingDuration)
+				} else {
+					logger.Debug("Accelerated scanning now available")
+					e.accelerate = true
+					e.recheckPaths = make(map[string]bool)
+				}
+				e.scanLock.Unlock()
+			case err := <-watcher.Errors():
+				// Log the error.
+				logger.Debug("Recursive watching error:", err)
+
+				// If acceleration is allowed on the endpoint, then disable scan
+				// acceleration and clear out the re-check paths.
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					e.accelerate = false
+					e.recheckPaths = nil
+					e.scanLock.Unlock()
+				}
+
+				// Stop and drain the timer, which may be running.
+				stopAndDrainTimer(timer)
+
+				// Strobe the poll events channel since something has occurred
+				// (likely on disk) that's killed our watch.
+				e.strobePollEvents()
+
+				// Terminate the watcher and restart watch establishment.
+				watcher.Terminate()
+				watcher = nil
+				continue WatchEstablishment
+			case event := <-watcher.Events():
+				// Log the event.
+				logger.Trace("Received event with", len(event), "paths")
+
+				// If acceleration is allowed (and available) on the endpoint,
+				// then register the event's paths as re-check paths. We only
+				// need to do this if acceleration is already available,
+				// otherwise we're still in a pre-baseline scan state and don't
+				// need to record these events. If we overflow the maximum
+				// re-check path set size, then we'll disable acceleration and
+				// schedule an immediate scan to re-enable acceleration.
+				if e.accelerationAllowed {
+					e.scanLock.Lock()
+					if e.accelerate {
+						for path := range event {
+							e.recheckPaths[path] = true
+							if len(e.recheckPaths) > recheckPathsMaximumCapacity {
+								logger.Debug("Re-check paths overflowed maximum capacity")
+								e.accelerate = false
+								e.recheckPaths = nil
+								timer.Reset(0)
+								break
+							}
+						}
+					}
+					e.scanLock.Unlock()
+				}
+
+				// Strobe the poll events channel to signal the event.
+				e.strobePollEvents()
+			}
+		}
+	}
+}
+
+// strobePollEvents strobes the pollEvents channel in a non-blocking fashion.
 func (e *endpoint) strobePollEvents() {
 	select {
 	case e.pollEvents <- struct{}{}:
@@ -1040,14 +820,11 @@ func (e *endpoint) strobePollEvents() {
 }
 
 // Poll implements the Poll method for local endpoints.
-func (e *endpoint) Poll(context context.Context) error {
+func (e *endpoint) Poll(ctx context.Context) error {
 	// Wait for either cancellation or an event.
 	select {
-	case <-context.Done():
-	case _, ok := <-e.pollEvents:
-		if !ok {
-			panic("poll events channel closed")
-		}
+	case <-ctx.Done():
+	case <-e.pollEvents:
 	}
 
 	// Done.
@@ -1055,11 +832,10 @@ func (e *endpoint) Poll(context context.Context) error {
 }
 
 // scan is the internal function which performs a scan operation on the root and
-// updates the endpoint scan parameters. The caller must hold the endpoint's
-// scan lock.
-func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths map[string]bool) error {
+// updates the endpoint scan parameters. The caller must hold the scan lock.
+func (e *endpoint) scan(ctx context.Context, baseline *core.Snapshot, recheckPaths map[string]bool) error {
 	// Perform a full (warm) scan, watching for errors.
-	snapshot, preservesExecutability, decomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
+	snapshot, newCache, newIgnoreCache, err := core.Scan(
 		ctx,
 		e.root,
 		baseline, recheckPaths,
@@ -1072,19 +848,15 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths 
 		return err
 	}
 
-	// Update the internal snapshot.
+	// Update the snapshot.
 	e.snapshot = snapshot
 
 	// Update caches.
 	e.cache = newCache
 	e.ignoreCache = newIgnoreCache
 
-	// Update behavior data.
-	e.preservesExecutability = preservesExecutability
-	e.decomposesUnicode = decomposesUnicode
-
 	// Update the last scan entry count.
-	e.lastScanEntryCount = snapshot.Count()
+	e.lastScanEntryCount = snapshot.Content.Count()
 
 	// Update call states.
 	e.scannedSinceLastStageCall = true
@@ -1095,7 +867,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Entry, recheckPaths 
 }
 
 // Scan implements the Scan method for local endpoints.
-func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Entry, bool, error, bool) {
+func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Snapshot, error, bool) {
 	// Grab the scan lock and defer its release.
 	e.scanLock.Lock()
 	defer e.scanLock.Unlock()
@@ -1104,7 +876,7 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	// that may have occurred during background cache writes. If we see any
 	// error, then we skip scanning and report them here.
 	if e.cacheWriteError != nil {
-		return nil, false, fmt.Errorf("unable to save cache to disk: %w", e.cacheWriteError), false
+		return nil, fmt.Errorf("unable to save cache to disk: %w", e.cacheWriteError), false
 	}
 
 	// Perform a scan.
@@ -1126,17 +898,17 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	// accelerated scanning with recursive watching, there's no need to disable
 	// acceleration on failure so long as the watch is still established (and if
 	// it's not, that will handled elsewhere).
-	if e.accelerateScan && !full {
-		if e.actualWatchMode == reifiedWatchModeRecursive {
+	if e.accelerate && !full {
+		if e.watchMode == reifiedWatchModeRecursive {
 			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
-				return nil, false, err, true
+				return nil, err, true
 			} else {
-				e.recheckPaths = make(map[string]bool, recheckPathsMaximumCapacity)
+				e.recheckPaths = make(map[string]bool)
 			}
 		}
 	} else {
 		if err := e.scan(ctx, nil, nil); err != nil {
-			return nil, false, err, true
+			return nil, err, true
 		}
 	}
 
@@ -1145,11 +917,11 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.En
 	// that we don't hold those entries in memory? Right now this is mostly
 	// concerned with avoiding transmission of the entries over the wire.
 	if e.lastScanEntryCount > e.maximumEntryCount {
-		return nil, false, errors.New("exceeded allowed entry count"), true
+		return nil, errors.New("exceeded allowed entry count"), true
 	}
 
 	// Success.
-	return e.snapshot, e.preservesExecutability, nil, false
+	return e.snapshot, nil, false
 }
 
 // stageFromRoot attempts to perform staging from local files by using a reverse
@@ -1345,7 +1117,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	}
 
 	// Perform the transition.
-	results, problems, transitionMadeChanges, stagerMissingFiles := core.Transition(
+	results, problems, stagerMissingFiles := core.Transition(
 		ctx,
 		e.root,
 		transitions,
@@ -1354,60 +1126,54 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.defaultFileMode,
 		e.defaultDirectoryMode,
 		e.defaultOwnership,
-		e.decomposesUnicode,
+		e.snapshot.DecomposesUnicode,
 		e.stager,
 	)
 
+	// Determine whether or not the transition made any changes on disk.
+	var transitionMadeChanges bool
+	for r, result := range results {
+		if !result.Equal(transitions[r].Old, true) {
+			transitionMadeChanges = true
+			break
+		}
+	}
+
 	// If we're using recursive watching and we made any changes to disk, then
-	// send a best-effort signal to trigger watch establishment, because if no
+	// send a signal to trigger watch establishment (if needed), because if no
 	// watch is currently established due to the synchronization root not having
-	// existed, then there's a high likelihood that we just created the
-	// synchronization root. If the watch is already established, then this has
-	// no effect.
-	if e.actualWatchMode == reifiedWatchModeRecursive && transitionMadeChanges {
+	// existed, then there's a high likelihood that we just created it.
+	if e.watchMode == reifiedWatchModeRecursive && transitionMadeChanges {
 		select {
 		case e.recursiveWatchRetryEstablish <- struct{}{}:
 		default:
 		}
 	}
 
-	// Temporarily disable accelerated scanning. It's critical to do this after
-	// a Transition operation to avoid any possibility of a stale,
-	// pre-Transition snapshot being returned by Scan. Doing so will tell the
-	// controller to immediately invert (on the other endpoint) the changes that
-	// were just applied on this endpoint. Depending on the phase and watch mode
-	// of the opposite endpoint, this can even trigger a feedback loop between
-	// endpoints where they are constantly bouncing inversions back and forth.
-	//
-	// This sounds hypothetical, but it's a very real problem, especially with
-	// poll-based watching with a large(ish) polling interval (a few seconds or
-	// more). It has a much lower chance of happening with recursive watching,
-	// because the recursive watcher is unlikely to error out, but if it does,
-	// then the inversion problem still occurs (though it likely won't lead to a
-	// feedback loop in that case).
-	//
-	// Of course, stale scans can happen at any point with accelerated scanning.
-	// In recursive watching, they can happen if the OS is slow to report events
-	// or if a scan happens after watching fails but before accelerated scanning
-	// can be disabled. In poll-based watching, they happen with an even higher
-	// cross-section: basically any events that happen between poll scans aren't
-	// caught until the next poll scan. That's just a reality of the accelerated
-	// scanning model. But the difference with those cases is that you don't
-	// have the controller driving a direct inversion of operations like you do
-	// in the case that a pre-Transition operation is returned. A "normal" stale
-	// scan will just delay changes and, because those changes typically aren't
-	// direct inversions of the ones just applied, won't cause inversion on the
-	// other endpoint.
-	//
-	// In any case, this disabling is merely temporary. For poll-based watching,
-	// acceleration will be reenabled after the next poll scan, and for
-	// recursive watching we'll send a signal telling the event loop to re-scan
-	// and re-enable acceleration.
-	e.accelerateScan = false
-	if e.actualWatchMode == reifiedWatchModeRecursive {
-		select {
-		case e.recursiveWatchReenableAcceleration <- struct{}{}:
-		default:
+	// Ensure that accelerated scanning doesn't return a stale (pre-transition)
+	// snapshot. This is critical, especially in the case of poll-based watching
+	// (where it has a high chance of occurring). If a pre-transition snapshot
+	// is returned by the next call to Scan, then the controller will perform an
+	// inversion (on the opposite endpoint) of the transitions that were just
+	// applied here. In the case of recursive watching, we just need to ensure
+	// that any modified paths get put into the re-check path list, because
+	// there could be a delay in the OS reporting the modifications. In the case
+	// of poll-based watching, we just need to disable accelerated scanning,
+	// which will be automatically re-enabled on the next polling operation. If
+	// filesystem watching is disabled, then so is acceleration, and thus
+	// there's no way that a stale scan could be returned.
+	if e.accelerate {
+		if e.watchMode == reifiedWatchModePoll {
+			e.accelerate = false
+		} else if e.watchMode == reifiedWatchModeRecursive {
+			for _, transition := range transitions {
+				e.recheckPaths[transition.Path] = true
+				if len(e.recheckPaths) > recheckPathsMaximumCapacity {
+					e.accelerate = false
+					e.recheckPaths = nil
+					break
+				}
+			}
 		}
 	}
 
@@ -1430,12 +1196,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	// on-disk changes were actually applied, otherwise we'll drive a feedback
 	// loop when problems are encountered for changes that can never be fully
 	// applied.
-	//
-	// We don't do this if the watch is recursive (since any inversion changes
-	// will be captured by the watch or a poll triggered on watch
-	// re-establishment if necessary) or if watching is disabled (in which case
-	// this isn't the behavior we want).
-	if e.actualWatchMode == reifiedWatchModePoll && transitionMadeChanges {
+	if e.watchMode == reifiedWatchModePoll && transitionMadeChanges {
 		e.strobePollEvents()
 	}
 

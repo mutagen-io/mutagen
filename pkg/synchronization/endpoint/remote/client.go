@@ -162,37 +162,41 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 }
 
 // Scan implements the Scan method for remote endpoints.
-func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool) {
+func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Snapshot, error, bool) {
 	// Create an rsync engine.
 	engine := rsync.NewEngine()
 
 	// Compute the bytes that we'll use as the base for receiving the snapshot.
-	// If we have the bytes from the last received snapshot, use those, because
-	// they'll be more acccurate, but otherwise use the provided ancestor.
-	var baseBytes []byte
+	// If we have the bytes from the last received snapshot, then use those,
+	// because they'll be more acccurate, but otherwise use the provided
+	// ancestor (with some probabilistic assumptions about filesystem behavior).
+	var baselineBytes []byte
 	if c.lastSnapshotBytes != nil {
-		baseBytes = c.lastSnapshotBytes
+		baselineBytes = c.lastSnapshotBytes
 	} else {
 		var err error
 		marshaling := proto.MarshalOptions{Deterministic: true}
-		baseBytes, err = marshaling.Marshal(&core.Archive{Content: ancestor})
+		baselineBytes, err = marshaling.Marshal(&core.Snapshot{
+			Content:                ancestor,
+			PreservesExecutability: true,
+		})
 		if err != nil {
-			return nil, false, fmt.Errorf("unable to marshal ancestor: %w", err), false
+			return nil, fmt.Errorf("unable to marshal ancestor-based snapshot: %w", err), false
 		}
 	}
 
 	// Compute the base signature.
-	baseSignature := engine.BytesSignature(baseBytes, 0)
+	baselineSignature := engine.BytesSignature(baselineBytes, 0)
 
 	// Create and send the scan request.
 	request := &EndpointRequest{
 		Scan: &ScanRequest{
-			BaseSnapshotSignature: baseSignature,
-			Full:                  full,
+			BaselineSnapshotSignature: baselineSignature,
+			Full:                      full,
 		},
 	}
 	if err := c.encoder.Encode(request); err != nil {
-		return nil, false, fmt.Errorf("unable to send scan request: %w", err), false
+		return nil, fmt.Errorf("unable to send scan request: %w", err), false
 	}
 
 	// Create a subcontext that we can cancel to regulate transmission of the
@@ -244,43 +248,42 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 
 	// Check for transmission errors.
 	if responseReceiveErr != nil {
-		return nil, false, responseReceiveErr, false
+		return nil, responseReceiveErr, false
 	} else if completionSendErr != nil {
-		return nil, false, completionSendErr, false
+		return nil, completionSendErr, false
 	}
 
 	// Check for remote errors.
 	if response.Error != "" {
-		return nil, false, fmt.Errorf("remote error: %s", response.Error), response.TryAgain
+		return nil, fmt.Errorf("remote error: %s", response.Error), response.TryAgain
 	}
 
 	// Apply the remote's deltas to the expected snapshot.
-	snapshotBytes, err := engine.PatchBytes(baseBytes, baseSignature, response.SnapshotDelta)
+	snapshotBytes, err := engine.PatchBytes(baselineBytes, baselineSignature, response.SnapshotDelta)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to patch base snapshot: %w", err), false
+		return nil, fmt.Errorf("unable to patch base snapshot: %w", err), false
 	}
 
 	// Unmarshal the snapshot.
-	archive := &core.Archive{}
-	if err := proto.Unmarshal(snapshotBytes, archive); err != nil {
-		return nil, false, fmt.Errorf("unable to unmarshal snapshot: %w", err), false
+	snapshot := &core.Snapshot{}
+	if err := proto.Unmarshal(snapshotBytes, snapshot); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal snapshot: %w", err), false
 	}
-	snapshot := archive.Content
 
 	// Ensure that the snapshot is valid since it came over the network. Ideally
 	// we'd want this validation to be performed by the ensureValid method of
 	// ScanResponse, but because this method requires rsync-based patching and
 	// Protocol Buffers decoding before it actually has the underlying response,
 	// we can't perform this validation into ScanResponse.ensureValid.
-	if err = snapshot.EnsureValid(false); err != nil {
-		return nil, false, fmt.Errorf("invalid snapshot received: %w", err), false
+	if err = snapshot.EnsureValid(); err != nil {
+		return nil, fmt.Errorf("invalid snapshot received: %w", err), false
 	}
 
 	// Store the bytes that gave us a successful snapshot.
 	c.lastSnapshotBytes = snapshotBytes
 
 	// Success.
-	return snapshot, response.PreservesExecutability, nil, false
+	return snapshot, nil, false
 }
 
 // Stage implements the Stage method for remote endpoints.

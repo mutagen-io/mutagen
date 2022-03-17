@@ -48,9 +48,9 @@ message PollResponse {
 
 // ScanRequest encodes a request for a scan.
 message ScanRequest {
-    // BaseSnapshotSignature is the rsync signature to use as the base for
+    // BaselineSnapshotSignature is the rsync signature to use as the base for
     // differentially transmitting snapshots.
-    rsync.Signature baseSnapshotSignature = 1;
+    rsync.Signature baselineSnapshotSignature = 1;
     // Full indicates whether or not to force a full (warm) scan, temporarily
     // avoiding any acceleration that might be available on the endpoint.
     bool full = 2;
@@ -65,13 +65,10 @@ message ScanResponse {
     // SnapshotDelta are the operations need to reconstruct the snapshot against
     // the specified base.
     repeated rsync.Operation snapshotDelta = 1;
-    // PreservesExecutability indicates whether or not the scan root preserves
-    // POSIX executability bits.
-    bool preservesExecutability = 2;
     // Error is the error message (if any) resulting from scanning.
-    string error = 3;
+    string error = 2;
     // TryAgain indicates whether or not the error is ephermeral.
-    bool tryAgain = 4;
+    bool tryAgain = 3;
 }
 
 // StageRequest encodes a request for staging.

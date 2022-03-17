@@ -985,18 +985,17 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.state.Status = Status_Scanning
 		c.stateLock.Unlock()
 		forceFullScan := flushRequest != nil
-		var αSnapshot, βSnapshot *core.Entry
-		var αPreservesExecutability, βPreservesExecutability bool
+		var αSnapshot, βSnapshot *core.Snapshot
 		var αScanErr, βScanErr error
 		var αTryAgain, βTryAgain bool
 		scanDone := &sync.WaitGroup{}
 		scanDone.Add(2)
 		go func() {
-			αSnapshot, αPreservesExecutability, αScanErr, αTryAgain = alpha.Scan(ctx, ancestor, forceFullScan)
+			αSnapshot, αScanErr, αTryAgain = alpha.Scan(ctx, ancestor, forceFullScan)
 			scanDone.Done()
 		}()
 		go func() {
-			βSnapshot, βPreservesExecutability, βScanErr, βTryAgain = beta.Scan(ctx, ancestor, forceFullScan)
+			βSnapshot, βScanErr, βTryAgain = beta.Scan(ctx, ancestor, forceFullScan)
 			scanDone.Done()
 		}()
 		scanDone.Wait()
@@ -1064,6 +1063,10 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 		skippingPollingDueToScanError = false
 
+		// Extract contents.
+		αContent := αSnapshot.Content
+		βContent := βSnapshot.Content
+
 		// Now that we've had a successful scan, clear the last error (if any),
 		// record scan problems (if any), and update the status to reconciling.
 		// We know that it's okay to clear the error here (if there is one)
@@ -1072,18 +1075,18 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// at the start of this function).
 		c.stateLock.Lock()
 		c.state.LastError = ""
-		c.state.AlphaScanProblems = αSnapshot.Problems()
-		c.state.BetaScanProblems = βSnapshot.Problems()
+		c.state.AlphaScanProblems = αContent.Problems()
+		c.state.BetaScanProblems = βContent.Problems()
 		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
 		// If one side preserves executability and the other does not, then
 		// propagate executability from the preserving side to the
 		// non-preserving side.
-		if αPreservesExecutability && !βPreservesExecutability {
-			βSnapshot = core.PropagateExecutability(ancestor, αSnapshot, βSnapshot)
-		} else if βPreservesExecutability && !αPreservesExecutability {
-			αSnapshot = core.PropagateExecutability(ancestor, βSnapshot, αSnapshot)
+		if αSnapshot.PreservesExecutability && !βSnapshot.PreservesExecutability {
+			βContent = core.PropagateExecutability(ancestor, αContent, βContent)
+		} else if βSnapshot.PreservesExecutability && !αSnapshot.PreservesExecutability {
+			αContent = core.PropagateExecutability(ancestor, βContent, αContent)
 		}
 
 		// Check if the root is a directory that's been emptied (by deleting a
@@ -1093,7 +1096,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// synchronization root. In any case, we switch to a halted state and
 		// wait for the user to either manually propagate the deletion and
 		// resume the session, recreate the session, or reset the session.
-		if oneEndpointEmptiedRoot(ancestor, αSnapshot, βSnapshot) {
+		if oneEndpointEmptiedRoot(ancestor, αContent, βContent) {
 			c.stateLock.Lock()
 			c.state.Status = Status_HaltedOnRootEmptied
 			c.stateLock.Unlock()
@@ -1103,8 +1106,8 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// Perform reconciliation.
 		ancestorChanges, αTransitions, βTransitions, conflicts := core.Reconcile(
 			ancestor,
-			αSnapshot,
-			βSnapshot,
+			αContent,
+			βContent,
 			synchronizationMode,
 		)
 

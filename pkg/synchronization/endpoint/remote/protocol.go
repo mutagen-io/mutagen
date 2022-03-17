@@ -92,9 +92,9 @@ func (r *ScanRequest) ensureValid() error {
 		return errors.New("nil scan request")
 	}
 
-	// Ensure that the base snapshot signature is valid.
-	if err := r.BaseSnapshotSignature.EnsureValid(); err != nil {
-		return fmt.Errorf("invalid base snapshot signature: %w", err)
+	// Ensure that the baseline snapshot signature is valid.
+	if err := r.BaselineSnapshotSignature.EnsureValid(); err != nil {
+		return fmt.Errorf("invalid baseline snapshot signature: %w", err)
 	}
 
 	// Full is correct regardless of value, so no validation is required.
@@ -129,14 +129,10 @@ func (r *ScanResponse) ensureValid() error {
 		}
 	}
 
-	// If an error is set, make sure that certain other fields are not. This
-	// isn't really an invariant that *needs* to be enforced, but it is a good
-	// sanity check.
+	// If an error is set, then make sure that no snapshot delta was provided.
 	if r.Error != "" {
 		if len(r.SnapshotDelta) > 0 {
 			return errors.New("non-empty snapshot delta present on error")
-		} else if r.PreservesExecutability {
-			return errors.New("executability preservation information present on error")
 		}
 	}
 

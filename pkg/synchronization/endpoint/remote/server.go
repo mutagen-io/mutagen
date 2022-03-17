@@ -255,21 +255,23 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 
 		// Perform a scan and set up the response.
 		var response *ScanResponse
-		snapshot, preservesExecutability, err, tryAgain := s.endpoint.Scan(ctx, nil, request.Full)
+		snapshot, err, tryAgain := s.endpoint.Scan(ctx, nil, request.Full)
 		if err != nil {
 			response = &ScanResponse{
 				Error:    err.Error(),
 				TryAgain: tryAgain,
 			}
-		} else if snapshotBytes, err := marshaling.Marshal(&core.Archive{Content: snapshot}); err != nil {
+		} else if snapshotBytes, err := marshaling.Marshal(snapshot); err != nil {
 			response = &ScanResponse{
 				Error: fmt.Errorf("unable to marshal snapshot: %w", err).Error(),
 			}
 		} else {
-			delta := engine.DeltafyBytes(snapshotBytes, request.BaseSnapshotSignature, 0)
 			response = &ScanResponse{
-				SnapshotDelta:          delta,
-				PreservesExecutability: preservesExecutability,
+				SnapshotDelta: engine.DeltafyBytes(
+					snapshotBytes,
+					request.BaselineSnapshotSignature,
+					0,
+				),
 			}
 		}
 
