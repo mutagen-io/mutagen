@@ -32,9 +32,9 @@ func TestArchiveEnsureValid(t *testing.T) {
 		valid := err == nil
 		if valid != test.expected {
 			if valid {
-				t.Errorf("test index %d: entry incorrectly classified as valid (%s)", i, description)
+				t.Errorf("test index %d: archive incorrectly classified as valid (%s)", i, description)
 			} else {
-				t.Errorf("test index %d: entry incorrectly classified as invalid (%s): %v", i, description, err)
+				t.Errorf("test index %d: archive incorrectly classified as invalid (%s): %v", i, description, err)
 			}
 		}
 	}
@@ -64,36 +64,5 @@ func TestArchiveNilEmptyContentDistinction(t *testing.T) {
 	// Ensure that the results differ.
 	if bytes.Equal(nilArchiveBytes, emptyContentArchiveBytes) {
 		t.Error("archive with nil root and archive with empty root serialize the same")
-	}
-}
-
-// TestArchiveConsistentSerialization tests that Protocol Buffers' deterministic
-// marshalling behaves correctly with Archive. This is really a test of Protocol
-// Buffers' implementation, but it's so performance-critical for us that it
-// warrants a test to serve as a canary.
-func TestArchiveConsistentSerialization(t *testing.T) {
-	// Create two entries, one of which is a deep copy of the other. We could
-	// also just serialize the same entry twice, but this is more rigorous.
-	firstEntry := tDM
-	secondEntry := firstEntry.Copy(true)
-
-	// Configure Protocol Buffers marshaling to be deterministic.
-	marshaling := proto.MarshalOptions{Deterministic: true}
-
-	// Serialize the first entry.
-	firstBytes, err := marshaling.Marshal(&Archive{Content: firstEntry})
-	if err != nil {
-		t.Fatal("unable to marshal first entry:", err)
-	}
-
-	// Serialize the second entry.
-	secondBytes, err := marshaling.Marshal(&Archive{Content: secondEntry})
-	if err != nil {
-		t.Fatal("unable to marshal second entry:", err)
-	}
-
-	// Ensure that they're equal.
-	if !bytes.Equal(firstBytes, secondBytes) {
-		t.Error("marshalling is not consistent")
 	}
 }

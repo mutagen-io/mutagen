@@ -104,22 +104,20 @@ func main() {
 		}
 	}
 	start := time.Now()
-	snapshot, preservesExecutability, decomposesUnicode, cache, ignoreCache, err := core.Scan(
+	snapshot, cache, ignoreCache, err := core.Scan(
 		ctx,
 		path,
-		nil,
-		nil,
-		sha1.New(),
-		nil,
-		ignores,
-		nil,
+		nil, nil,
+		sha1.New(), nil,
+		ignores, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
-	} else if snapshot == nil {
-		cmd.Fatal(errors.New("target doesn't exist"))
+		cmd.Fatal(fmt.Errorf("unable to perform cold scan: %w", err))
+	}
+	if snapshot.Content == nil {
+		fmt.Println("No content at the specified path!")
 	}
 	stop := time.Now()
 	if enableProfile {
@@ -129,8 +127,8 @@ func main() {
 		profiler = nil
 	}
 	fmt.Println("Cold scan took", stop.Sub(start))
-	fmt.Println("Root preserves executability:", preservesExecutability)
-	fmt.Println("Root requires Unicode recomposition:", decomposesUnicode)
+	fmt.Println("Root preserves executability:", snapshot.PreservesExecutability)
+	fmt.Println("Root requires Unicode recomposition:", snapshot.DecomposesUnicode)
 
 	// Perform a full (warm) scan. If requested, enable CPU and memory
 	// profiling.
@@ -140,22 +138,17 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err := core.Scan(
+	newSnapshot, newCache, newIgnoreCache, err := core.Scan(
 		ctx,
 		path,
-		nil,
-		nil,
-		sha1.New(),
-		cache,
-		ignores,
-		ignoreCache,
+		nil, nil,
+		sha1.New(), cache,
+		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
-	} else if snapshot == nil {
-		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to perform warm scan: %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
@@ -167,20 +160,8 @@ func main() {
 	fmt.Println("Warm scan took", stop.Sub(start))
 
 	// Compare the warm scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot, true) {
+	if !newSnapshot.Equal(snapshot) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
-	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(fmt.Errorf(
-			"preserves executability mismatch: %t != %t",
-			newPreservesExecutability,
-			preservesExecutability,
-		))
-	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(fmt.Errorf(
-			"decomposes Unicode mismatch: %t != %t",
-			newDecomposesUnicode,
-			decomposesUnicode,
-		))
 	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if len(newIgnoreCache) != len(ignoreCache) {
@@ -197,22 +178,17 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
+	newSnapshot, newCache, newIgnoreCache, err = core.Scan(
 		ctx,
 		path,
-		snapshot,
-		map[string]bool{"fake path": true},
-		sha1.New(),
-		cache,
-		ignores,
-		ignoreCache,
+		snapshot, map[string]bool{"fake path": true},
+		sha1.New(), cache,
+		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
-	} else if snapshot == nil {
-		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (with re-check paths): %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
@@ -224,20 +200,8 @@ func main() {
 	fmt.Println("Accelerated scan (with re-check paths) took", stop.Sub(start))
 
 	// Compare the accelerated scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot, true) {
+	if !newSnapshot.Equal(snapshot) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
-	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(fmt.Errorf(
-			"preserves executability mismatch: %t != %t",
-			newPreservesExecutability,
-			preservesExecutability,
-		))
-	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(fmt.Errorf(
-			"decomposes Unicode mismatch: %t != %t",
-			newDecomposesUnicode,
-			decomposesUnicode,
-		))
 	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if !ignoreCachesIntersectionEqual(newIgnoreCache, ignoreCache) {
@@ -252,22 +216,17 @@ func main() {
 		}
 	}
 	start = time.Now()
-	newSnapshot, newPreservesExecutability, newDecomposesUnicode, newCache, newIgnoreCache, err = core.Scan(
+	newSnapshot, newCache, newIgnoreCache, err = core.Scan(
 		ctx,
 		path,
-		snapshot,
-		nil,
-		sha1.New(),
-		cache,
-		ignores,
-		ignoreCache,
+		snapshot, nil,
+		sha1.New(), cache,
+		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 	)
 	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to create snapshot: %w", err))
-	} else if snapshot == nil {
-		cmd.Fatal(errors.New("target has been deleted since original snapshot"))
+		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (without re-check paths): %w", err))
 	}
 	stop = time.Now()
 	if enableProfile {
@@ -279,20 +238,8 @@ func main() {
 	fmt.Println("Accelerated scan (without re-check paths) took", stop.Sub(start))
 
 	// Compare the accelerated scan results with the baseline results.
-	if !newSnapshot.Equal(snapshot, true) {
+	if !newSnapshot.Equal(snapshot) {
 		cmd.Fatal(errors.New("snapshot mismatch"))
-	} else if newPreservesExecutability != preservesExecutability {
-		cmd.Fatal(fmt.Errorf(
-			"preserves executability mismatch: %t != %t",
-			newPreservesExecutability,
-			preservesExecutability,
-		))
-	} else if newDecomposesUnicode != decomposesUnicode {
-		cmd.Fatal(fmt.Errorf(
-			"decomposes Unicode mismatch: %t != %t",
-			newDecomposesUnicode,
-			decomposesUnicode,
-		))
 	} else if !newCache.Equal(cache) {
 		cmd.Fatal(errors.New("cache mismatch"))
 	} else if !ignoreCachesIntersectionEqual(newIgnoreCache, ignoreCache) {
@@ -301,25 +248,25 @@ func main() {
 
 	// Validate the snapshot.
 	start = time.Now()
-	if err := snapshot.EnsureValid(false); err != nil {
-		cmd.Fatal(fmt.Errorf("snapshot invalid: %w", err))
+	if err := snapshot.EnsureValid(); err != nil {
+		cmd.Fatal(fmt.Errorf("invalid snapshot: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot validation took", stop.Sub(start))
 
-	// Count entries.
+	// Count snapshot content entries.
 	start = time.Now()
-	snapshot.Count()
+	snapshot.Content.Count()
 	stop = time.Now()
 	fmt.Println("Snapshot entry counting took", stop.Sub(start))
 
-	// Perform a deep copy of the snapshot.
+	// Perform a deep copy of the snapshot contents.
 	start = time.Now()
-	snapshot.Copy(true)
+	snapshot.Content.Copy(true)
 	stop = time.Now()
-	fmt.Println("Snapshot copying took", stop.Sub(start))
+	fmt.Println("Snapshot entry copying took", stop.Sub(start))
 
-	// Serialize it.
+	// Serialize the snapshot.
 	if enableProfile {
 		if profiler, err = profile.New("serialize_snapshot"); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
@@ -340,14 +287,14 @@ func main() {
 	}
 	fmt.Println("Snapshot serialization took", stop.Sub(start))
 
-	// Deserialize it.
+	// Deserialize the snapshot.
 	if enableProfile {
 		if profiler, err = profile.New("deserialize_snapshot"); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
 		}
 	}
 	start = time.Now()
-	deserializedSnapshot := &core.Entry{}
+	deserializedSnapshot := &core.Snapshot{}
 	if err = proto.Unmarshal(serializedSnapshot, deserializedSnapshot); err != nil {
 		cmd.Fatal(fmt.Errorf("unable to deserialize snapshot: %w", err))
 	}
@@ -362,7 +309,7 @@ func main() {
 
 	// Validate the deserialized snapshot.
 	start = time.Now()
-	if err = deserializedSnapshot.EnsureValid(false); err != nil {
+	if err = deserializedSnapshot.EnsureValid(); err != nil {
 		cmd.Fatal(fmt.Errorf("deserialized snapshot invalid: %w", err))
 	}
 	stop = time.Now()
@@ -371,7 +318,7 @@ func main() {
 	// Write the serialized snapshot to disk.
 	start = time.Now()
 	if err = os.WriteFile(snapshotFile, serializedSnapshot, 0600); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to write snapshot: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to write snapshot to disk: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot write took", stop.Sub(start))
@@ -379,28 +326,21 @@ func main() {
 	// Read the serialized snapshot from disk.
 	start = time.Now()
 	if _, err = os.ReadFile(snapshotFile); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to read snapshot: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to read snapshot from disk: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Snapshot read took", stop.Sub(start))
 
-	// Wipe the temporary file.
+	// Remove the temporary file.
 	if err = os.Remove(snapshotFile); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to remove snapshot: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to remove snapshot from disk: %w", err))
 	}
-
-	// TODO: I'd like to add a stable serialization benchmark since that's what
-	// we really care about (especially since it has to copy the entire entry
-	// tree), but I also don't want to expose that machinery publicly.
 
 	// Print serialized snapshot size.
 	fmt.Println("Serialized snapshot size is", len(serializedSnapshot), "bytes")
 
 	// Print whether or not snapshots are equivalent.
-	fmt.Println(
-		"Original/deserialized snapshots equivalent?",
-		deserializedSnapshot.Equal(snapshot, true),
-	)
+	fmt.Println("Original/deserialized snapshots equivalent?", deserializedSnapshot.Equal(snapshot))
 
 	// Checksum it.
 	start = time.Now()
@@ -451,7 +391,7 @@ func main() {
 	// Write the serialized cache to disk.
 	start = time.Now()
 	if err = os.WriteFile(cacheFile, serializedCache, 0600); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to write cache: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to write cache to disk: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Cache write took", stop.Sub(start))
@@ -459,14 +399,14 @@ func main() {
 	// Read the serialized cache from disk.
 	start = time.Now()
 	if _, err = os.ReadFile(cacheFile); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to read cache: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to read cache from disk: %w", err))
 	}
 	stop = time.Now()
 	fmt.Println("Cache read took", stop.Sub(start))
 
-	// Wipe the temporary file.
+	// Remove the temporary file.
 	if err = os.Remove(cacheFile); err != nil {
-		cmd.Fatal(fmt.Errorf("unable to remove cache: %w", err))
+		cmd.Fatal(fmt.Errorf("unable to remove cache from disk: %w", err))
 	}
 
 	// Print serialized cache size.

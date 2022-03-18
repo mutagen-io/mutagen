@@ -83,9 +83,6 @@ type transitioner struct {
 	provider Provider
 	// problems are the problems encountered during transition operations.
 	problems []*Problem
-	// anyChangePerformed tracks whether or not any on-disk change was performed
-	// successfully.
-	anyChangePerformed bool
 	// providerMissingFiles indicates that the staged file provider returned an
 	// os.IsNotExist error for at least one file that was expected to be staged.
 	providerMissingFiles bool
@@ -334,15 +331,7 @@ func (t *transitioner) removeFile(parent *filesystem.Directory, name, path strin
 	// this window.
 
 	// Attempt to remove the file.
-	if err := parent.RemoveFile(name); err != nil {
-		return err
-	}
-
-	// Track change operations.
-	t.anyChangePerformed = true
-
-	// Success.
-	return nil
+	return parent.RemoveFile(name)
 }
 
 // removeSymbolicLink removes the symbolic link specified by name within the
@@ -365,15 +354,7 @@ func (t *transitioner) removeSymbolicLink(parent *filesystem.Directory, name, pa
 	// modified during this window.
 
 	// Attempt to remove the symbolic link.
-	if err := parent.RemoveSymbolicLink(name); err != nil {
-		return err
-	}
-
-	// Track change operations.
-	t.anyChangePerformed = true
-
-	// Success.
-	return nil
+	return parent.RemoveSymbolicLink(name)
 }
 
 // removeDirectory (recursively) removes the directory specified by name within
@@ -504,7 +485,6 @@ ContentLoop:
 		if err := parent.RemoveDirectory(name); err != nil {
 			t.recordProblem(path, fmt.Errorf("unable to remove directory: %w", err))
 		} else {
-			t.anyChangePerformed = true
 			return true
 		}
 	}
@@ -600,7 +580,6 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// Attempt to atomically rename the file. If we succeed, we're done.
 	renameErr := filesystem.Rename(nil, stagedPath, parent, name, replace)
 	if renameErr == nil {
-		t.anyChangePerformed = true
 		return nil
 	}
 
@@ -668,9 +647,6 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 		return fmt.Errorf("unable to relocate intermediate file: %w", err)
 	}
 
-	// Track changes operations.
-	t.anyChangePerformed = true
-
 	// Remove the staged file. We don't bother checking for errors because
 	// there's not much we can or need to do about them at this point.
 	os.Remove(stagedPath)
@@ -723,9 +699,6 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 			return fmt.Errorf("unable to change file permissions: %w", err)
 		}
 
-		// Track change operations.
-		t.anyChangePerformed = true
-
 		// Success.
 		return nil
 	}
@@ -754,9 +727,6 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 	if err := parent.CreateSymbolicLink(name, target.Target); err != nil {
 		return err
 	}
-
-	// Track change operations.
-	t.anyChangePerformed = true
 
 	// RACE: There is a race condition here between the creation of the symbolic
 	// link and the setting of its ownership/permissions that we have to live
@@ -797,9 +767,6 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 		t.recordProblem(path, fmt.Errorf("unable to create directory: %w", err))
 		return nil
 	}
-
-	// Track change operations.
-	t.anyChangePerformed = true
 
 	// Create a shallow copy of the target that we'll populate as we create its
 	// contents.
@@ -938,7 +905,7 @@ func Transition(
 	defaultOwnership *filesystem.OwnershipSpecification,
 	recomposeUnicode bool,
 	provider Provider,
-) ([]*Entry, []*Problem, bool, bool) {
+) ([]*Entry, []*Problem, bool) {
 	// Extract the cancellation channel.
 	cancelled := ctx.Done()
 
@@ -1005,5 +972,5 @@ func Transition(
 	}
 
 	// Done.
-	return results, transitioner.problems, transitioner.anyChangePerformed, transitioner.providerMissingFiles
+	return results, transitioner.problems, transitioner.providerMissingFiles
 }

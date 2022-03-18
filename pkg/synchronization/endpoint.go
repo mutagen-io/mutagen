@@ -20,18 +20,17 @@ type Endpoint interface {
 	// it returns nil and in the latter case it returns the error that occurred.
 	Poll(ctx context.Context) error
 
-	// Scan performs a scan of the endpoint's synchronization root. It allows
-	// the ancestor to be passed in for optimized snapshot transfers if the
-	// endpoint is remote. The ancestor may be nil, in which transfers from
-	// remote endpoints may be less than optimal. The full parameter forces the
-	// function to perform a full (warm) scan, avoiding any acceleration that
-	// might be available on the endpoint. The function returns the scan result,
-	// a boolean indicating whether or not the synchronization root preserves
-	// POSIX executability bits, any error that occurred while trying to create
-	// the scan, and a boolean indicating whether or not to re-try the scan if
-	// an error occurred. Any non-fatal problems encountered during the scan can
-	// be extracted from the resulting entry.
-	Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Entry, bool, error, bool)
+	// Scan performs a scan of the endpoint's synchronization root. If a non-nil
+	// ancestor is passed, then it will be used as a baseline for a deltified
+	// snapshot transfer if the endpoint is remote. The ancestor may be nil, in
+	// which case the transfer of the initial snapshot may be less than optimal.
+	// The full parameter forces the function to perform a full (but still warm)
+	// scan, avoiding any acceleration that might be available on the endpoint.
+	// The function returns the scan result, any error that occurred while
+	// trying to perform the scan, and a boolean indicating whether or not to
+	// re-try the scan if an error occurred. Any non-fatal problems encountered
+	// during the scan can be extracted from the resulting content.
+	Scan(ctx context.Context, ancestor *core.Entry, full bool) (*core.Snapshot, error, bool)
 
 	// Stage performs file staging on the endpoint. It accepts a list of file
 	// paths and a separate list of desired digests corresponding to those
