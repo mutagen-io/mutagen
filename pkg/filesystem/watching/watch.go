@@ -5,14 +5,6 @@ import (
 	"time"
 )
 
-const (
-	// watchCoalescingWindow is the time window for event coalescing.
-	watchCoalescingWindow = 20 * time.Millisecond
-	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
-	// will be allowed in a pending coalesced event.
-	watchCoalescingMaximumPendingPaths = 10 * 1024
-)
-
 var (
 	// ErrWatchTerminated indicates that a watcher has been terminated.
 	ErrWatchTerminated = errors.New("watch terminated")
@@ -24,3 +16,11 @@ var (
 // returned by a watcher. It accepts a path and returns true if that path should
 // be ignored and excluded from events.
 type Filter func(string) bool
+
+const (
+	// watchCoalescingWindow is the time window for event coalescing.
+	watchCoalescingWindow = 20 * time.Millisecond
+	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
+	// will be allowed in a pending coalesced event.
+	watchCoalescingMaximumPendingPaths = 10 * 1024
+)

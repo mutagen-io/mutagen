@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang/groupcache/lru"
@@ -41,7 +42,7 @@ type nonRecursiveWatcher struct {
 	// cancel is the run loop cancellation function.
 	cancel context.CancelFunc
 	// done is the run loop completion signaling mechanism.
-	done chan struct{}
+	done sync.WaitGroup
 }
 
 // NewNonRecursiveWatcher creates a new inotify-based non-recursive watcher. It
@@ -62,7 +63,6 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 		events:  make(chan map[string]bool),
 		errors:  make(chan error, 1),
 		cancel:  cancel,
-		done:    make(chan struct{}),
 	}
 
 	// Set the eviction handler.
@@ -79,12 +79,16 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 		}
 	}
 
+	// Track run loop termination.
+	watcher.done.Add(1)
+
 	// Start the run loop.
 	go func() {
 		select {
 		case watcher.errors <- watcher.run(ctx, rawEvents, filter):
 		default:
 		}
+		watcher.done.Done()
 	}()
 
 	// Success.
@@ -93,9 +97,6 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 
 // run implements the event processing run loop for nonRecursiveWatcher.
 func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.EventInfo, filter Filter) error {
-	// Signal completion when done.
-	defer close(w.done)
-
 	// Create a coalescing timer, initially stopped and drained, and ensure that
 	// it's stopped once we return.
 	coalescingTimer := time.NewTimer(0)
@@ -225,7 +226,7 @@ func (w *nonRecursiveWatcher) Terminate() error {
 	w.cancel()
 
 	// Wait for the run loop to exit.
-	<-w.done
+	w.done.Wait()
 
 	// Terminate the underlying watcher.
 	return w.watch.Close()
