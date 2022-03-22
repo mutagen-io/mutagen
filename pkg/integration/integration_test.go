@@ -75,8 +75,8 @@ func TestMain(m *testing.M) {
 	}
 	defer synchronizationManager.Shutdown()
 
-	// Create the gRPC server and defer its stoppage. We use a hard stop rather
-	// than a graceful stop so that it doesn't hang on open requests.
+	// Create the gRPC server and defer its termination. We use a hard stop
+	// rather than a graceful stop so that it doesn't hang on open requests.
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(grpcutil.MaximumMessageSize),
 		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
