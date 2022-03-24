@@ -11,3 +11,6 @@ GOARCH=386 go run scripts/build.go --mode=local
 
 # Run tests.
 GOARCH=386 go test -p 1 ./pkg/...
+
+# Run tests on SSPL code.
+GOARCH=386 go test -v -tags sspl ./sspl/...

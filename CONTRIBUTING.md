@@ -36,6 +36,9 @@ proposed change on the
 If it *does* make sense to open a pull request, please adhere to the following
 guidelines. Pull requests that don't follow these guidelines will be closed.
 
+Pull requesets are not currently accepted for code residing under the `sspl`
+directory.
+
 
 ### Developer Certificate of Origin
 

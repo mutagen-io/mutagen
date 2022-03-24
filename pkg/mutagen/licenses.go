@@ -4,12 +4,12 @@ package mutagen
 // dependencies.
 const Licenses = `Mutagen
 
-Copyright (c) 2016 - 2022 Mutagen IO, Inc.
+Copyright (c) 2016 - present Mutagen IO, Inc.
 
 Licensed under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.
 
-
+` + mutagenSSPLEnhancementsHeader + `
 ================================================================================
 Mutagen depends on the following third-party software:
 ================================================================================
@@ -662,4 +662,4 @@ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-`
+` + licenseTextSSPL
