@@ -120,13 +120,27 @@ jobs:
         with:
           username: ${{ secrets.SIDECAR_DEPLOYMENT_USER }}
           password: ${{ secrets.SIDECAR_DEPLOYMENT_TOKEN }}
-      - name: "Determine sidecar tags"
-        id: tags
-        run: echo ::set-output name=tags::$(go run scripts/ci/sidecar_tags.go)
+      - name: "Determine sidecar tag"
+        id: tag
+        run: echo ::set-output name=tag::$(go run scripts/ci/sidecar_tag.go)
       - uses: docker/build-push-action@v2
         with:
           file: images/sidecar/linux/Dockerfile
-          tags: ${{ steps.tags.outputs.tags }}
+          target: standard
+          tags: ${{ steps.tag.outputs.tag }}
+          push: ${{ github.ref_type == 'tag' }}
+          platforms: |
+            linux/386
+            linux/amd64
+            linux/arm/v6
+            linux/arm/v7
+            linux/arm64/v8
+            linux/ppc64le
+      - uses: docker/build-push-action@v2
+        with:
+          file: images/sidecar/linux/Dockerfile
+          target: enhanced
+          tags: ${{ steps.tag.outputs.tag }}-enhanced
           push: ${{ github.ref_type == 'tag' }}
           platforms: |
             linux/386
