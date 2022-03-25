@@ -104,35 +104,8 @@ jobs:
       - run: scripts/ci/build.sh
         shell: bash
   sidecar:
-    name: Sidecar (Non-release)
+    name: Sidecar
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag'
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '^1.17'
-      - uses: docker/setup-qemu-action@v1
-      - uses: docker/setup-buildx-action@v1
-      - name: "Determine sidecar tags"
-        id: tags
-        run: echo ::set-output name=tags::$(go run scripts/ci/sidecar_tags.go)
-      - uses: docker/build-push-action@v2
-        with:
-          file: images/sidecar/linux/Dockerfile
-          tags: ${{ steps.tags.outputs.tags }}
-          platforms: |
-            linux/386
-            linux/amd64
-            linux/arm/v6
-            linux/arm/v7
-            linux/arm64/v8
-            linux/ppc64le
-  sidecar_release:
-    name: Sidecar (Release)
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
     needs: [macos, linux, windows]
     timeout-minutes: 30
     steps:
@@ -143,6 +116,7 @@ jobs:
       - uses: docker/setup-qemu-action@v1
       - uses: docker/setup-buildx-action@v1
       - uses: docker/login-action@v1
+        if: github.ref_type == 'tag'
         with:
           username: ${{ secrets.SIDECAR_DEPLOYMENT_USER }}
           password: ${{ secrets.SIDECAR_DEPLOYMENT_TOKEN }}
@@ -153,7 +127,7 @@ jobs:
         with:
           file: images/sidecar/linux/Dockerfile
           tags: ${{ steps.tags.outputs.tags }}
-          push: true
+          push: ${{ github.ref_type == 'tag' }}
           platforms: |
             linux/386
             linux/amd64
@@ -165,7 +139,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
-    needs: [macos, linux, windows, sidecar_release]
+    needs: [macos, linux, windows, sidecar]
     timeout-minutes: 10
     steps:
       - uses: actions/download-artifact@v2
