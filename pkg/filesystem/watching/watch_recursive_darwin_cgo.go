@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mutagen-io/fsevents"
@@ -53,7 +54,7 @@ type recursiveWatcher struct {
 	// cancel is the run loop cancellation function.
 	cancel context.CancelFunc
 	// done is the run loop completion signaling mechanism.
-	done chan struct{}
+	done sync.WaitGroup
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
@@ -125,12 +126,15 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 		events: make(chan map[string]bool),
 		errors: make(chan error, 1),
 		cancel: cancel,
-		done:   make(chan struct{}),
 	}
+
+	// Track run loop termination.
+	watcher.done.Add(1)
 
 	// Start the run loop.
 	go func() {
 		watcher.errors <- watcher.run(ctx, target, filter)
+		watcher.done.Done()
 	}()
 
 	// Success.
@@ -139,9 +143,6 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 
 // run implements the event processing run loop for recursiveWatcher.
 func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter) error {
-	// Signal completion when done.
-	defer close(w.done)
-
 	// Compute the prefix that we'll need to trim from event paths to make them
 	// target-relative (if they aren't the target itself). Since we called
 	// filepath.EvalSymlinks above, which calls filepath.Clean, we know that
@@ -170,7 +171,7 @@ func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter
 	// and the coalescing timer has fired.
 	var pendingTarget chan<- map[string]bool
 
-	// Perform event forwarding indefinitely.
+	// Perform event forwarding until cancellation or failure.
 	for {
 		select {
 		case <-ctx.Done():
@@ -232,7 +233,8 @@ func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter
 			}
 
 			// If the pending event is still empty, then there's nothing that we
-			// need to do and we can continue waiting.
+			// need to do and we can continue waiting. In this case, we also
+			// know that the coalescing timer isn't (and wasn't) running.
 			if len(pending) == 0 {
 				continue
 			}
@@ -281,7 +283,7 @@ func (w *recursiveWatcher) Terminate() error {
 	w.cancel()
 
 	// Wait for the run loop to exit.
-	<-w.done
+	w.done.Wait()
 
 	// Terminate the underlying event stream.
 	w.watch.Stop()

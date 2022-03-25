@@ -1,3 +1,16 @@
+Unless otherwise specified, all code in this repository is made available under
+the terms of the MIT License, the text of which can be found below.
+
+Some code has been forked and/or vendored from projects released under different
+non-copyleft licenses, all of which are indicated by comments at the top of the
+relevant files.
+
+All code that resides under the sspl directory is made available under the terms
+of the Server Side Public License, the text of which can be found in
+sspl/LICENSE. This code is not included in standard Mutagen release builds.
+
+--------------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2016 - 2022 Mutagen IO, Inc.

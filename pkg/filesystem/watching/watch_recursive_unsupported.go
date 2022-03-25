@@ -1,12 +1,10 @@
-//go:build (!darwin && !windows) || (darwin && !cgo)
+//go:build !(darwin && cgo) && !(linux && sspl && fanotify) && !windows
 
 package watching
 
-const (
-	// RecursiveWatchingSupported indicates whether or not the current platform
-	// supports native recursive watching.
-	RecursiveWatchingSupported = false
-)
+// RecursiveWatchingSupported indicates whether or not the current platform
+// supports native recursive watching.
+const RecursiveWatchingSupported = false
 
 // NewRecursiveWatcher creates a new recursive watcher on platforms that support
 // native recursive watching. This platform does not support recursive watching

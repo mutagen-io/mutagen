@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -51,7 +52,7 @@ type recursiveWatcher struct {
 	// cancel is the run loop cancellation function.
 	cancel context.CancelFunc
 	// done is the run loop completion signaling mechanism.
-	done chan struct{}
+	done sync.WaitGroup
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
@@ -143,12 +144,15 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 		events: make(chan map[string]bool),
 		errors: make(chan error, 1),
 		cancel: cancel,
-		done:   make(chan struct{}),
 	}
+
+	// Track run loop termination.
+	watcher.done.Add(1)
 
 	// Start the run loop.
 	go func() {
 		watcher.errors <- watcher.run(ctx, watchRoot, initialWatchRootMetadata, target, filter)
+		watcher.done.Done()
 	}()
 
 	// Success.
@@ -157,9 +161,6 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 
 // run implements the event processing run loop for recursiveWatcher.
 func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWatchRootMetadata os.FileInfo, target string, filter Filter) error {
-	// Signal completion when done.
-	defer close(w.done)
-
 	// Compute the prefix that we'll use to (a) filter events to those occurring
 	// at or under the target and (b) trim off to make paths target-relative
 	// (assuming they aren't the target itself). Note that filepath.EvalSymlinks
@@ -197,7 +198,7 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 	// and the coalescing timer has fired.
 	var pendingTarget chan<- map[string]bool
 
-	// Loop indefinitely, polling for cancellation, events, and root checks.
+	// Perform event forwarding until cancellation or failure.
 	for {
 		select {
 		case <-ctx.Done():
@@ -219,6 +220,9 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 			// Convert the event path to be target-relative and replace
 			// backslashes with forward slashes. If the path isn't the target or
 			// a child of the target, then we ignore it.
+			//
+			// TODO: We should raise an error on spurious paths here in order to
+			// keep consistency with other platforms.
 			if path == target {
 				path = ""
 			} else if strings.HasPrefix(path, eventPathTrimPrefix) {
@@ -306,7 +310,7 @@ func (w *recursiveWatcher) Terminate() error {
 	w.cancel()
 
 	// Wait for the run loop to exit.
-	<-w.done
+	w.done.Wait()
 
 	// Terminate the underlying watcher.
 	return w.watch.Close()

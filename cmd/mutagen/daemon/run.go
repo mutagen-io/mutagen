@@ -59,8 +59,8 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 	defer synchronizationManager.Shutdown()
 
-	// Create the gRPC server and defer its stoppage. We use a hard stop rather
-	// than a graceful stop so that it doesn't hang on open requests.
+	// Create the gRPC server and defer its termination. We use a hard stop
+	// rather than a graceful stop so that it doesn't hang on open requests.
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(grpcutil.MaximumMessageSize),
 		grpc.MaxRecvMsgSize(grpcutil.MaximumMessageSize),
@@ -90,7 +90,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 
 	// Create the daemon listener and defer its closure. Since we hold the
-	// daemon lock, we preemptively remove any existing socket since it (should)
+	// daemon lock, we preemptively remove any existing socket since it should
 	// be stale.
 	os.Remove(endpoint)
 	listener, err := ipc.NewListener(endpoint)
@@ -99,8 +99,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 	defer listener.Close()
 
-	// Serve incoming connections in a separate Goroutine, watching for serving
-	// failure.
+	// Serve incoming requests and watch for server failure.
 	serverErrors := make(chan error, 1)
 	go func() {
 		serverErrors <- server.Serve(listener)
