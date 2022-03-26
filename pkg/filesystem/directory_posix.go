@@ -54,6 +54,9 @@ type Directory struct {
 	// required for its Readdirnames function, since there's no other portable
 	// way to do this from Go.
 	file *os.File
+	// exhausted indicates that the directory's contents have been read and that
+	// a seek is required before reading them again.
+	exhausted bool
 	// renameatNoReplaceUnsupported is marked if
 	// renameatNoReplaceRetryingOnEINTR is found to be unsupported with this
 	// directory as a target.
@@ -291,19 +294,25 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 // ReadContentNames queries the directory contents and returns their base names.
 // It does not return "." or ".." entries.
 func (d *Directory) ReadContentNames() ([]string, error) {
-	// Read content names. Fortunately we can use the os.File implementation for
-	// this since it operates on the underlying file descriptor directly.
-	names, err := d.file.Readdirnames(0)
-	if err != nil {
-		return nil, err
+	// If we've already performed a read on the directory's contents, then we
+	// need to rewind the directory before performing another read.
+	if d.exhausted {
+		if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
+			return nil, fmt.Errorf("unable to reset directory read pointer: %w", err)
+		} else if offset != 0 {
+			return nil, errors.New("directory offset is non-zero after seek operation")
+		}
+		d.exhausted = false
 	}
 
-	// Seek the directory back to the beginning since the Readdirnames operation
-	// will have exhausted its "content".
-	if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
-		return nil, fmt.Errorf("unable to reset directory read pointer: %w", err)
-	} else if offset != 0 {
-		return nil, errors.New("directory offset is non-zero after seek operation")
+	// Read content names. Fortunately we can use the os.File implementation for
+	// this since it operates on the underlying file descriptor directly. We
+	// always mark the directory as exhausted, even if we fail to read it all
+	// the way to the end.
+	names, err := d.file.Readdirnames(0)
+	d.exhausted = true
+	if err != nil {
+		return nil, err
 	}
 
 	// Filter names (without allocating a new slice).
