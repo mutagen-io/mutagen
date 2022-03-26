@@ -383,6 +383,12 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 	// APIs. The worst case fallout from this race is that directory removal
 	// will fail due to modifications that occur in this window.
 
+	// Compute the prefix to add to content names to compute their paths.
+	var contentPathPrefix string
+	if path != "" && len(contents) > 0 {
+		contentPathPrefix = path + "/"
+	}
+
 	// Loop through contents and remove them. We use the on-disk content listing
 	// to ensure that what we're removing has the proper case. If we were to
 	// just pass the OS whatever exists in our content map and the filesystem
@@ -409,7 +415,7 @@ ContentLoop:
 		}
 
 		// Compute the content path.
-		contentPath := pathJoin(path, contentName)
+		contentPath := contentPathPrefix + contentName
 
 		// Grab the corresponding entry. If we don't know anything about this
 		// entry, then mark that as a problem and ignore for now.
@@ -806,6 +812,12 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 		}
 	}
 
+	// Compute the prefix to add to content names to compute their paths.
+	var contentPathPrefix string
+	if path != "" && len(target.Contents) > 0 {
+		contentPathPrefix = path + "/"
+	}
+
 	// Attempt to create the target contents. We monitor for cancellation during
 	// this creation since it can block for a significant period of time.
 ContentLoop:
@@ -819,7 +831,7 @@ ContentLoop:
 		}
 
 		// Compute the content path.
-		contentPath := pathJoin(path, name)
+		contentPath := contentPathPrefix + name
 
 		// Handle content creation based on type.
 		if entry.Kind == EntryKind_Directory {

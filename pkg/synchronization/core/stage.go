@@ -19,8 +19,15 @@ func (f *stagingPathFinder) find(path string, entry *Entry) {
 	if entry == nil {
 		return
 	} else if entry.Kind == EntryKind_Directory {
+		// Compute the prefix to add to content names to compute their paths.
+		var contentPathPrefix string
+		if path != "" && len(entry.Contents) > 0 {
+			contentPathPrefix = path + "/"
+		}
+
+		// Process contents.
 		for name, entry := range entry.Contents {
-			f.find(pathJoin(path, name), entry)
+			f.find(contentPathPrefix+name, entry)
 		}
 	} else if entry.Kind == EntryKind_File {
 		f.paths = append(f.paths, path)

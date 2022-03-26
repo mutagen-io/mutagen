@@ -4,26 +4,6 @@ import (
 	"strings"
 )
 
-// pathJoin is a fast alternative to path.Join designed specifically for
-// root-relative synchronization paths. It avoids the unnecessary path cleaning
-// overhead incurred by path.Join. The provided leaf name must be non-empty,
-// otherwise this function will panic.
-func pathJoin(base, leaf string) string {
-	// Disalllow empty leaf names.
-	if leaf == "" {
-		panic("empty leaf name")
-	}
-
-	// When joining a path to the synchronization root, we don't want to
-	// concatenate.
-	if base == "" {
-		return leaf
-	}
-
-	// Concatenate the paths.
-	return base + "/" + leaf
-}
-
 // pathDir is a fast alternative to path.Dir designed specifically for
 // root-relative synchronization paths. It avoids the unnecessary path cleaning
 // overhead incurred by path.Dir. Note that, unlike path.Dir, this function

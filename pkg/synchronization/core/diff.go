@@ -18,11 +18,19 @@ func (d *differ) diff(path string, base, target *Entry) {
 		return
 	}
 
-	// Otherwise check contents for differences.
+	// Extract contents.
 	baseContents := base.GetContents()
 	targetContents := target.GetContents()
+
+	// Compute the prefix to add to content names to compute their paths.
+	var contentPathPrefix string
+	if path != "" && (len(baseContents) > 0 || len(targetContents) > 0) {
+		contentPathPrefix = path + "/"
+	}
+
+	// The nodes were equal at this path, so check their contents.
 	for name := range nameUnion(baseContents, targetContents) {
-		d.diff(pathJoin(path, name), baseContents[name], targetContents[name])
+		d.diff(contentPathPrefix+name, baseContents[name], targetContents[name])
 	}
 }
 
