@@ -337,6 +337,13 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 		return nil, err
 	}
 
+	// Perform the actual query operation.
+	return d.readContentMetadata(name)
+}
+
+// readContentMetadata reads metadata for the content within the directory
+// specified by name, but does not perform a check for name validity.
+func (d *Directory) readContentMetadata(name string) (*Metadata, error) {
 	// Query metadata.
 	var metadata unix.Stat_t
 	if err := fstatatRetryingOnEINTR(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
@@ -373,11 +380,11 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 	// Loop over names and grab their individual metadata.
 	for _, name := range names {
-		// Grab metadata for this entry. If the file has disappeared between
-		// listing and the metadata query, then just pretend that it never
-		// existed, because from an observability standpoint, it may as well not
-		// have.
-		if m, err := d.ReadContentMetadata(name); err != nil {
+		// Grab metadata for this entry. We don't need to validate its name in
+		// this scenario since we just received it from the OS. If the file has
+		// disappeared between listing and the metadata query, then just pretend
+		// that it never existed.
+		if m, err := d.readContentMetadata(name); err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
