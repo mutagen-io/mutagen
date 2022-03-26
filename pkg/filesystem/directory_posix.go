@@ -233,7 +233,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, error) {
 
 	// Open the file for reading while avoiding symbolic link traversal. If a
 	// directory has been requested, then enforce its type here.
-	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | extraOpenFlags
 	if wantDirectory {
 		flags |= unix.O_DIRECTORY
 	}
