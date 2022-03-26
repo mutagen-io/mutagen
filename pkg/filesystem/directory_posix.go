@@ -231,42 +231,37 @@ func (d *Directory) open(name string, wantDirectory bool) (int, error) {
 		return -1, err
 	}
 
-	// Open the file for reading while avoiding symbolic link traversal. There
-	// are a few things to note about the flags that we use. First, we don't
-	// specify O_NONBLOCK because that flag applies to the open operation itself
-	// rather than the resulting file, and even for the resulting file we don't
-	// want to set a non-blocking mode because it isn't useful for directories
-	// or regular files. Second, we use the O_CLOEXEC flag to avoid any race
-	// conditions with fork/exec infrastructure. It used to be the case that
-	// this flag was not supported on every Go platform (and it's still not
-	// supported on some of the more esoteric ports (e.g. NaCL and and web
-	// platforms)), and there was a race condition between opening files and
-	// manually setting close-on-exec behavior, but nowadays all of the "real"
-	// POSIX platforms support this flag.
-	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	// Open the file for reading while avoiding symbolic link traversal. If a
+	// directory has been requested, then enforce its type here.
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	if wantDirectory {
+		flags |= unix.O_DIRECTORY
+	}
+	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, flags, 0)
 	if err != nil {
 		return -1, err
 	}
 
-	// Verify that we've ended up with the expected file type. This keeps parity
-	// with the Windows implementation where checking file type is required for
-	// the implementation to work at all. There is some overhead to performing
-	// this check, of course, and on POSIX we could live without it (simply
-	// allowing other methods on the resulting directory or file object to
-	// fail), but given the typical filesystem access patterns at play when
-	// using this code (especially in Mutagen), the overhead will be minimal
-	// since this information should still be in the OS's stat cache.
-	expectedType := ModeTypeFile
-	if wantDirectory {
-		expectedType = ModeTypeDirectory
-	}
-	var metadata unix.Stat_t
-	if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
-		closeConsideringEINTR(descriptor)
-		return -1, fmt.Errorf("unable to query file metadata: %w", err)
-	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
-		closeConsideringEINTR(descriptor)
-		return -1, errors.New("path is not of the expected type")
+	// If a file has been requested, then verify that's what we've received.
+	// This (along with the directory enforcement above) keeps parity with the
+	// Windows implementation, where checking file type is required for the
+	// implementation to work at all. Unfortunately there's no O_FILE flag
+	// analagous to O_DIRECTORY that we can use with openat, so we have to check
+	// this using an fstat operation. There is some overhead to performing this
+	// check, of course, and on POSIX we could probably live without it (simply
+	// allowing other methods on the resulting object to fail due to an
+	// unexpected type), but given the typical filesystem access patterns at
+	// play when using this code, the overhead will be minimal since this
+	// information should still be in the OS's stat cache.
+	if !wantDirectory {
+		var metadata unix.Stat_t
+		if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
+			closeConsideringEINTR(descriptor)
+			return -1, fmt.Errorf("unable to query file metadata: %w", err)
+		} else if Mode(metadata.Mode)&ModeTypeMask != ModeTypeFile {
+			closeConsideringEINTR(descriptor)
+			return -1, errors.New("path is not a file")
+		}
 	}
 
 	// Success.
