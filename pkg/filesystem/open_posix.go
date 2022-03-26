@@ -46,7 +46,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// readlink and its ilk. Since ELOOP still sort of makes sense (we've
 	// encountered too many symbolic links at the path leaf), we return it
 	// unmodified.
-	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | extraOpenFlags
 	if allowSymbolicLinkLeaf {
 		flags &^= unix.O_NOFOLLOW
 	}

@@ -346,6 +346,12 @@ func (s *scanner) directory(
 	// advantageous, because it gives us some opportunity to detect concurrent
 	// filesystem modifications.
 
+	// Compute the prefix to add to content names to compute their paths.
+	var contentPathPrefix string
+	if path != "" && len(directoryContents) > 0 {
+		contentPathPrefix = path + "/"
+	}
+
 	// Compute entries.
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, contentMetadata := range directoryContents {
@@ -372,7 +378,7 @@ func (s *scanner) directory(
 		}
 
 		// Compute the content path.
-		contentPath := pathJoin(path, contentName)
+		contentPath := contentPathPrefix + contentName
 
 		// Compute the kind for this content, recording an untracked entry if
 		// the content type isn't supported.

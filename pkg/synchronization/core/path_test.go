@@ -4,55 +4,6 @@ import (
 	"testing"
 )
 
-// pathJoinPanicFree is a wrapper around pathJoin that allows the caller to
-// track panics.
-func pathJoinPanicFree(base, leaf string, panicked *bool) string {
-	// Track panics.
-	defer func() {
-		if recover() != nil {
-			*panicked = true
-		}
-	}()
-
-	// Invoke pathJoin.
-	return pathJoin(base, leaf)
-}
-
-// TestPathJoin verifies that pathJoin behaves correctly in a number of test
-// cases.
-func TestPathJoin(t *testing.T) {
-	// Set up test cases.
-	testCases := []struct {
-		base        string
-		leaf        string
-		expected    string
-		expectPanic bool
-	}{
-		{"", "", "", true},
-		{"a", "", "", true},
-		{"", "a", "a", false},
-		{"", "a/b", "a/b", false},
-		{"a", "b", "a/b", false},
-		{"a/b", "c/d", "a/b/c/d", false},
-	}
-
-	// Process test cases.
-	for _, testCase := range testCases {
-		// Compute the result and track panics.
-		var panicked bool
-		if result := pathJoinPanicFree(testCase.base, testCase.leaf, &panicked); result != testCase.expected {
-			t.Error("pathJoin result did not match expected:", result, "!=", testCase.expected)
-		}
-
-		// Check panic behavior.
-		if panicked && !testCase.expectPanic {
-			t.Error("pathJoin panicked unexpectedly")
-		} else if !panicked && testCase.expectPanic {
-			t.Error("pathJoin did not panic as expected")
-		}
-	}
-}
-
 // pathDirPanicFree is a wrapper around pathDir that tracks panics.
 func pathDirPanicFree(path string, panicked *bool) string {
 	// Track panics.

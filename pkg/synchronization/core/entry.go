@@ -142,13 +142,19 @@ func (e *Entry) walk(path string, visitor entryVisitor, reverse bool) {
 		visitor(path, e)
 	}
 
+	// Compute the prefix to add to content names to compute their paths.
+	var contentPathPrefix string
+	if path != "" && len(e.Contents) > 0 {
+		contentPathPrefix = path + "/"
+	}
+
 	// If this entry is non-nil, then visit any child entries. We don't bother
 	// checking if the entry is a directory since this is an internal method and
 	// the caller is responsible for enforcing entry invariants (meaning that
 	// only directories will have child entries).
 	if e != nil {
 		for name, child := range e.Contents {
-			child.walk(pathJoin(path, name), visitor, reverse)
+			child.walk(contentPathPrefix+name, visitor, reverse)
 		}
 	}
 

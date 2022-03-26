@@ -54,6 +54,9 @@ type Directory struct {
 	// required for its Readdirnames function, since there's no other portable
 	// way to do this from Go.
 	file *os.File
+	// exhausted indicates that the directory's contents have been read and that
+	// a seek is required before reading them again.
+	exhausted bool
 	// renameatNoReplaceUnsupported is marked if
 	// renameatNoReplaceRetryingOnEINTR is found to be unsupported with this
 	// directory as a target.
@@ -228,42 +231,37 @@ func (d *Directory) open(name string, wantDirectory bool) (int, error) {
 		return -1, err
 	}
 
-	// Open the file for reading while avoiding symbolic link traversal. There
-	// are a few things to note about the flags that we use. First, we don't
-	// specify O_NONBLOCK because that flag applies to the open operation itself
-	// rather than the resulting file, and even for the resulting file we don't
-	// want to set a non-blocking mode because it isn't useful for directories
-	// or regular files. Second, we use the O_CLOEXEC flag to avoid any race
-	// conditions with fork/exec infrastructure. It used to be the case that
-	// this flag was not supported on every Go platform (and it's still not
-	// supported on some of the more esoteric ports (e.g. NaCL and and web
-	// platforms)), and there was a race condition between opening files and
-	// manually setting close-on-exec behavior, but nowadays all of the "real"
-	// POSIX platforms support this flag.
-	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	// Open the file for reading while avoiding symbolic link traversal. If a
+	// directory has been requested, then enforce its type here.
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | extraOpenFlags
+	if wantDirectory {
+		flags |= unix.O_DIRECTORY
+	}
+	descriptor, err := openatRetryingOnEINTR(d.descriptor, name, flags, 0)
 	if err != nil {
 		return -1, err
 	}
 
-	// Verify that we've ended up with the expected file type. This keeps parity
-	// with the Windows implementation where checking file type is required for
-	// the implementation to work at all. There is some overhead to performing
-	// this check, of course, and on POSIX we could live without it (simply
-	// allowing other methods on the resulting directory or file object to
-	// fail), but given the typical filesystem access patterns at play when
-	// using this code (especially in Mutagen), the overhead will be minimal
-	// since this information should still be in the OS's stat cache.
-	expectedType := ModeTypeFile
-	if wantDirectory {
-		expectedType = ModeTypeDirectory
-	}
-	var metadata unix.Stat_t
-	if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
-		closeConsideringEINTR(descriptor)
-		return -1, fmt.Errorf("unable to query file metadata: %w", err)
-	} else if Mode(metadata.Mode)&ModeTypeMask != expectedType {
-		closeConsideringEINTR(descriptor)
-		return -1, errors.New("path is not of the expected type")
+	// If a file has been requested, then verify that's what we've received.
+	// This (along with the directory enforcement above) keeps parity with the
+	// Windows implementation, where checking file type is required for the
+	// implementation to work at all. Unfortunately there's no O_FILE flag
+	// analagous to O_DIRECTORY that we can use with openat, so we have to check
+	// this using an fstat operation. There is some overhead to performing this
+	// check, of course, and on POSIX we could probably live without it (simply
+	// allowing other methods on the resulting object to fail due to an
+	// unexpected type), but given the typical filesystem access patterns at
+	// play when using this code, the overhead will be minimal since this
+	// information should still be in the OS's stat cache.
+	if !wantDirectory {
+		var metadata unix.Stat_t
+		if err := fstatRetryingOnEINTR(descriptor, &metadata); err != nil {
+			closeConsideringEINTR(descriptor)
+			return -1, fmt.Errorf("unable to query file metadata: %w", err)
+		} else if Mode(metadata.Mode)&ModeTypeMask != ModeTypeFile {
+			closeConsideringEINTR(descriptor)
+			return -1, errors.New("path is not a file")
+		}
 	}
 
 	// Success.
@@ -291,19 +289,25 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 // ReadContentNames queries the directory contents and returns their base names.
 // It does not return "." or ".." entries.
 func (d *Directory) ReadContentNames() ([]string, error) {
-	// Read content names. Fortunately we can use the os.File implementation for
-	// this since it operates on the underlying file descriptor directly.
-	names, err := d.file.Readdirnames(0)
-	if err != nil {
-		return nil, err
+	// If we've already performed a read on the directory's contents, then we
+	// need to rewind the directory before performing another read.
+	if d.exhausted {
+		if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
+			return nil, fmt.Errorf("unable to reset directory read pointer: %w", err)
+		} else if offset != 0 {
+			return nil, errors.New("directory offset is non-zero after seek operation")
+		}
+		d.exhausted = false
 	}
 
-	// Seek the directory back to the beginning since the Readdirnames operation
-	// will have exhausted its "content".
-	if offset, err := seekConsideringEINTR(d.descriptor, 0, 0); err != nil {
-		return nil, fmt.Errorf("unable to reset directory read pointer: %w", err)
-	} else if offset != 0 {
-		return nil, errors.New("directory offset is non-zero after seek operation")
+	// Read content names. Fortunately we can use the os.File implementation for
+	// this since it operates on the underlying file descriptor directly. We
+	// always mark the directory as exhausted, even if we fail to read it all
+	// the way to the end.
+	names, err := d.file.Readdirnames(0)
+	d.exhausted = true
+	if err != nil {
+		return nil, err
 	}
 
 	// Filter names (without allocating a new slice).
@@ -333,6 +337,13 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 		return nil, err
 	}
 
+	// Perform the actual query operation.
+	return d.readContentMetadata(name)
+}
+
+// readContentMetadata reads metadata for the content within the directory
+// specified by name, but does not perform a check for name validity.
+func (d *Directory) readContentMetadata(name string) (*Metadata, error) {
 	// Query metadata.
 	var metadata unix.Stat_t
 	if err := fstatatRetryingOnEINTR(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
@@ -369,11 +380,11 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 
 	// Loop over names and grab their individual metadata.
 	for _, name := range names {
-		// Grab metadata for this entry. If the file has disappeared between
-		// listing and the metadata query, then just pretend that it never
-		// existed, because from an observability standpoint, it may as well not
-		// have.
-		if m, err := d.ReadContentMetadata(name); err != nil {
+		// Grab metadata for this entry. We don't need to validate its name in
+		// this scenario since we just received it from the OS. If the file has
+		// disappeared between listing and the metadata query, then just pretend
+		// that it never existed.
+		if m, err := d.readContentMetadata(name); err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}

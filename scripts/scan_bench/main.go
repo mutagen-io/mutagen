@@ -170,6 +170,48 @@ func main() {
 		cmd.Fatal(errors.New("ignore cache mismatch"))
 	}
 
+	// Perform a second full (warm) scan. If requested, enable CPU and memory
+	// profiling. A second warm scan will provide a more accurate real-world
+	// assessment of performance because the cold scan won't have wiped out the
+	// majority of the filesystem caches.
+	if enableProfile {
+		if profiler, err = profile.New("scan_second_full_warm"); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
+		}
+	}
+	start = time.Now()
+	newSnapshot, newCache, newIgnoreCache, err = core.Scan(
+		ctx,
+		path,
+		nil, nil,
+		sha1.New(), cache,
+		ignores, ignoreCache,
+		behavior.ProbeMode_ProbeModeProbe,
+		core.SymbolicLinkMode_SymbolicLinkModePortable,
+	)
+	if err != nil {
+		cmd.Fatal(fmt.Errorf("unable to perform second warm scan: %w", err))
+	}
+	stop = time.Now()
+	if enableProfile {
+		if err = profiler.Finalize(); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to finalize profiler: %w", err))
+		}
+		profiler = nil
+	}
+	fmt.Println("Second warm scan took", stop.Sub(start))
+
+	// Compare the warm scan results with the baseline results.
+	if !newSnapshot.Equal(snapshot) {
+		cmd.Fatal(errors.New("snapshot mismatch"))
+	} else if !newCache.Equal(cache) {
+		cmd.Fatal(errors.New("cache mismatch"))
+	} else if len(newIgnoreCache) != len(ignoreCache) {
+		cmd.Fatal(errors.New("ignore cache length mismatch"))
+	} else if !ignoreCachesIntersectionEqual(newIgnoreCache, ignoreCache) {
+		cmd.Fatal(errors.New("ignore cache mismatch"))
+	}
+
 	// Perform an accelerated scan (with a re-check path). If requested, enable
 	// CPU and memory profiling.
 	if enableProfile {
