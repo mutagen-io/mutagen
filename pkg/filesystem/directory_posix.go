@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -337,28 +336,8 @@ func (d *Directory) ReadContentMetadata(name string) (*Metadata, error) {
 		return nil, err
 	}
 
-	// Perform the actual query operation.
-	return d.readContentMetadata(name)
-}
-
-// readContentMetadata reads metadata for the content within the directory
-// specified by name, but does not perform a check for name validity.
-func (d *Directory) readContentMetadata(name string) (*Metadata, error) {
-	// Query metadata.
-	var metadata unix.Stat_t
-	if err := fstatatRetryingOnEINTR(d.descriptor, name, &metadata, unix.AT_SYMLINK_NOFOLLOW); err != nil {
-		return nil, err
-	}
-
-	// Success.
-	return &Metadata{
-		Name:             name,
-		Mode:             Mode(metadata.Mode),
-		Size:             uint64(metadata.Size),
-		ModificationTime: time.Unix(metadata.Mtim.Unix()),
-		DeviceID:         uint64(metadata.Dev),
-		FileID:           uint64(metadata.Ino),
-	}, nil
+	// Perform the metadata query.
+	return readContentMetadata(d.descriptor, name)
 }
 
 // ReadContents queries the directory contents and their associated metadata.
@@ -374,28 +353,8 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 		return nil, fmt.Errorf("unable to read directory content names: %w", err)
 	}
 
-	// Allocate the result slice with enough capacity to accommodate all
-	// entries.
-	results := make([]*Metadata, 0, len(names))
-
-	// Loop over names and grab their individual metadata.
-	for _, name := range names {
-		// Grab metadata for this entry. We don't need to validate its name in
-		// this scenario since we just received it from the OS. If the file has
-		// disappeared between listing and the metadata query, then just pretend
-		// that it never existed.
-		if m, err := d.readContentMetadata(name); err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, fmt.Errorf("unable to access content metadata: %w", err)
-		} else {
-			results = append(results, m)
-		}
-	}
-
-	// Success.
-	return results, nil
+	// Perform the metadata query in parallel.
+	return readContentMetadataParallel(d.descriptor, names)
 }
 
 // OpenFile opens the file within the directory specified by name.
