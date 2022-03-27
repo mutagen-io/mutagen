@@ -348,8 +348,8 @@ func (s *scanner) directory(
 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
-	if path != "" && len(directoryContents) > 0 {
-		contentPathPrefix = path + "/"
+	if len(directoryContents) > 0 {
+		contentPathPrefix = pathJoinable(path)
 	}
 
 	// Compute entries.

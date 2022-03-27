@@ -21,8 +21,8 @@ func (f *stagingPathFinder) find(path string, entry *Entry) {
 	} else if entry.Kind == EntryKind_Directory {
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
-		if path != "" && len(entry.Contents) > 0 {
-			contentPathPrefix = path + "/"
+		if len(entry.Contents) > 0 {
+			contentPathPrefix = pathJoinable(path)
 		}
 
 		// Process contents.
