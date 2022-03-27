@@ -5,6 +5,14 @@ import (
 	"fmt"
 )
 
+const (
+	// controlStreamBufferSize is the buffer size to use for control stream
+	// buffering. It should be ideally large enough to fill the kernel buffer
+	// for whatever stream is being used as a transport, which in our case is
+	// typically an OS pipe.
+	controlStreamBufferSize = 64 * 1024
+)
+
 // ensureValid ensures that the InitializeSynchronizationRequest's invariants
 // are respected.
 func (r *InitializeSynchronizationRequest) ensureValid() error {

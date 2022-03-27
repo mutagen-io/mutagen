@@ -2,14 +2,15 @@ package remote
 
 import (
 	"bufio"
+	"compress/flate"
 	"context"
 	"fmt"
 	"io"
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/mutagen-io/mutagen/pkg/compression"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
@@ -18,8 +19,10 @@ import (
 // endpointClient provides an implementation of synchronization.Endpoint by
 // acting as a proxy for a remotely hosted synchronization.Endpoint.
 type endpointClient struct {
-	// closer closes the underlying stream.
+	// closer close the compression resources and the control stream.
 	closer io.Closer
+	// flusher flushes the outbound control stream.
+	flusher streampkg.Flusher
 	// encoder is the control stream encoder.
 	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
@@ -43,21 +46,29 @@ func NewEndpoint(
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
-	// Set up deferred closure of the stream if initialization fails.
+	// Set up compression for the control stream.
+	decompressor := flate.NewReader(bufio.NewReaderSize(stream, controlStreamBufferSize))
+	outbound := bufio.NewWriterSize(stream, controlStreamBufferSize)
+	compressor, _ := flate.NewWriter(outbound, flate.DefaultCompression)
+	flusher := streampkg.MultiFlusher(compressor, outbound)
+
+	// Create a closer for the control stream and compression resources.
+	closer := streampkg.MultiCloser(compressor, decompressor, stream)
+
+	// Set up deferred closure of the control stream and compression resources
+	// in the event that initialization fails.
 	var successful bool
 	defer func() {
 		if !successful {
-			stream.Close()
+			closer.Close()
 		}
 	}()
 
-	// Enable read/write compression on the stream.
-	reader := compression.NewDecompressingReader(stream)
-	writer := compression.NewCompressingWriter(stream)
-
-	// Create an encoder and decoder.
-	encoder := encoding.NewProtobufEncoder(writer)
-	decoder := encoding.NewProtobufDecoder(bufio.NewReader(reader))
+	// Create an encoder and a decoder for Protocol Buffers messages. The
+	// compressor already implements internal buffering, but the decompressor
+	// requires additional buffering to implement io.ByteReader.
+	encoder := encoding.NewProtobufEncoder(compressor)
+	decoder := encoding.NewProtobufDecoder(bufio.NewReader(decompressor))
 
 	// Create and send the initialize request.
 	request := &InitializeSynchronizationRequest{
@@ -68,7 +79,9 @@ func NewEndpoint(
 		Alpha:         alpha,
 	}
 	if err := encoder.Encode(request); err != nil {
-		return nil, fmt.Errorf("unable to send initialize request: %w", err)
+		return nil, fmt.Errorf("unable to encode initialize request: %w", err)
+	} else if err = flusher.Flush(); err != nil {
+		return nil, fmt.Errorf("unable to transmit initialize request: %w", err)
 	}
 
 	// Receive the response and check for remote errors.
@@ -84,17 +97,29 @@ func NewEndpoint(
 	// Success.
 	successful = true
 	return &endpointClient{
-		closer:  stream,
+		closer:  closer,
+		flusher: flusher,
 		encoder: encoder,
 		decoder: decoder,
 	}, nil
+}
+
+// encodeAndFlush encodes a Protocol Buffers message using the underlying
+// encoder and then flushes the control stream.
+func (c *endpointClient) encodeAndFlush(message proto.Message) error {
+	if err := c.encoder.Encode(message); err != nil {
+		return err
+	} else if err = c.flusher.Flush(); err != nil {
+		return fmt.Errorf("message transmission failed: %w", err)
+	}
+	return nil
 }
 
 // Poll implements the Poll method for remote endpoints.
 func (c *endpointClient) Poll(ctx context.Context) error {
 	// Create and send the poll request.
 	request := &EndpointRequest{Poll: &PollRequest{}}
-	if err := c.encoder.Encode(request); err != nil {
+	if err := c.encodeAndFlush(request); err != nil {
 		return fmt.Errorf("unable to send poll request: %w", err)
 	}
 
@@ -107,7 +132,7 @@ func (c *endpointClient) Poll(ctx context.Context) error {
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := c.encoder.Encode(&PollCompletionRequest{}); err != nil {
+		if err := c.encodeAndFlush(&PollCompletionRequest{}); err != nil {
 			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
@@ -195,7 +220,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 			Full:                      full,
 		},
 	}
-	if err := c.encoder.Encode(request); err != nil {
+	if err := c.encodeAndFlush(request); err != nil {
 		return nil, fmt.Errorf("unable to send scan request: %w", err), false
 	}
 
@@ -208,7 +233,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := c.encoder.Encode(&ScanCompletionRequest{}); err != nil {
+		if err := c.encodeAndFlush(&ScanCompletionRequest{}); err != nil {
 			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
@@ -302,7 +327,7 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 			Digests: digests,
 		},
 	}
-	if err := c.encoder.Encode(request); err != nil {
+	if err := c.encodeAndFlush(request); err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to send stage request: %w", err)
 	}
 
@@ -324,7 +349,7 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
-	encoder := newProtobufRsyncEncoder(c.encoder)
+	encoder := &protobufRsyncEncoder{encoder: c.encoder, flusher: c.flusher}
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Success.
@@ -340,7 +365,7 @@ func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 			Signatures: signatures,
 		},
 	}
-	if err := c.encoder.Encode(request); err != nil {
+	if err := c.encodeAndFlush(request); err != nil {
 		// TODO: Should we find a way to finalize the receiver here? That's a
 		// private rsync method, and there shouldn't be any resources in the
 		// receiver in need of finalizing here, but it would be worth thinking
@@ -358,7 +383,7 @@ func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 	// The endpoint should now forward rsync operations, so we need to decode
 	// and forward them to the receiver. If this operation completes
 	// successfully, supplying is complete and successful.
-	decoder := newProtobufRsyncDecoder(c.decoder)
+	decoder := &protobufRsyncDecoder{decoder: c.decoder}
 	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
@@ -375,7 +400,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 			Transitions: transitions,
 		},
 	}
-	if err := c.encoder.Encode(request); err != nil {
+	if err := c.encodeAndFlush(request); err != nil {
 		return nil, nil, false, fmt.Errorf("unable to send transition request: %w", err)
 	}
 
@@ -388,7 +413,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 	completionSendErrors := make(chan error, 1)
 	go func() {
 		<-completionCtx.Done()
-		if err := c.encoder.Encode(&TransitionCompletionRequest{}); err != nil {
+		if err := c.encodeAndFlush(&TransitionCompletionRequest{}); err != nil {
 			completionSendErrors <- fmt.Errorf("unable to send completion request: %w", err)
 		} else {
 			completionSendErrors <- nil
@@ -450,7 +475,7 @@ func (c *endpointClient) Transition(ctx context.Context, transitions []*core.Cha
 
 // Shutdown implements the Shutdown method for remote endpoints.
 func (c *endpointClient) Shutdown() error {
-	// Close the underlying stream. This will cause all stream reads/writes to
-	// unblock.
+	// Close the compression resources and the control stream. This will cause
+	// all control stream reads/writes to unblock.
 	return c.closer.Close()
 }
