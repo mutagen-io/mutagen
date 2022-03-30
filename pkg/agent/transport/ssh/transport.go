@@ -196,7 +196,7 @@ func (t *sshTransport) ClassifyError(processState *os.ProcessState, errorOutput 
 	// hypothesis (instead of the cmd.exe hypothesis).
 	if process.IsPOSIXShellInvalidCommand(processState) {
 		return true, false, nil
-	} else if process.IsPOSIXShellCommandNotFound(processState) {
+	} else if process.IsPOSIXShellCommandNotFound(processState, errorOutput) {
 		return true, false, nil
 	} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
 		// A Windows invalid command error doesn't necessarily indicate that

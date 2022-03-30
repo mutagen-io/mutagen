@@ -63,6 +63,9 @@ type Configuration struct {
 		// setting ownership of new files and directories in "portable"
 		// permission propagation mode.
 		DefaultGroup string `yaml:"defaultGroup"`
+		// Sudo specifies if the agent should be started with 'sudo'. This can
+		// be useful when root SSH is disabled.
+		Sudo bool `yaml:"sudo"`
 	} `yaml:"permissions"`
 }
 
@@ -86,5 +89,6 @@ func (c *Configuration) Configuration() *synchronization.Configuration {
 		DefaultDirectoryMode:   uint32(c.Permissions.DefaultDirectoryMode),
 		DefaultOwner:           c.Permissions.DefaultOwner,
 		DefaultGroup:           c.Permissions.DefaultGroup,
+		Sudo:                   c.Permissions.Sudo,
 	}
 }

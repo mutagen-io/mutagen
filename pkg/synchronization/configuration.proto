@@ -116,5 +116,9 @@ message Configuration {
     // propagation mode.
     string defaultGroup = 66;
 
-    // Fields 67-80 are reserved for future permission configuration parameters.
+    // Sudo specifies if the agent should be started with 'sudo'. This can
+    // be useful when root SSH is disabled.
+    bool sudo = 67;
+
+    // Fields 68-80 are reserved for future permission configuration parameters.
 }

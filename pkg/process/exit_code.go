@@ -2,6 +2,7 @@ package process
 
 import (
 	"os"
+	"strings"
 )
 
 const (
@@ -35,6 +36,13 @@ func IsPOSIXShellInvalidCommand(state *os.ProcessState) bool {
 
 // IsPOSIXShellCommandNotFound returns whether or not a process state represents
 // a "command not found" error from a POSIX shell.
-func IsPOSIXShellCommandNotFound(state *os.ProcessState) bool {
-	return state.ExitCode() == posixShellCommandNotFoundExitCode
+func IsPOSIXShellCommandNotFound(state *os.ProcessState, errorOutput string) bool {
+	if state.ExitCode() == posixShellCommandNotFoundExitCode {
+		return true
+	}
+	if state.ExitCode() == 1 &&
+		strings.HasSuffix(strings.TrimSpace(errorOutput), "command not found") {
+		return true
+	}
+	return false
 }

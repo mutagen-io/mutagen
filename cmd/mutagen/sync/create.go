@@ -589,6 +589,9 @@ var createConfiguration struct {
 	// permission propagation mode, taking priority over defaultGroup on beta if
 	// specified.
 	defaultGroupBeta string
+	// sudo specifies if the agent should be started with 'sudo'. This can
+	// be useful when root SSH is disabled.
+	sudo bool
 }
 
 func init() {

@@ -161,7 +161,8 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.DefaultFileMode == other.DefaultFileMode &&
 		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
 		c.DefaultOwner == other.DefaultOwner &&
-		c.DefaultGroup == other.DefaultGroup
+		c.DefaultGroup == other.DefaultGroup &&
+		c.Sudo == other.Sudo
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both
@@ -276,6 +277,11 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.DefaultGroup = higher.DefaultGroup
 	} else {
 		result.DefaultGroup = lower.DefaultGroup
+	}
+
+	// Merge sudo.
+	if higher.Sudo || lower.Sudo {
+		result.Sudo = true
 	}
 
 	// Done.
