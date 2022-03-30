@@ -202,8 +202,10 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	// ancestor (with some probabilistic assumptions about filesystem behavior).
 	var baselineBytes []byte
 	if c.lastSnapshotBytes != nil {
+		c.logger.Debug("Using last snapshot bytes as baseline")
 		baselineBytes = c.lastSnapshotBytes
 	} else {
+		c.logger.Debug("Using ancestor-based snapshot as baseline")
 		var err error
 		marshaling := proto.MarshalOptions{Deterministic: true}
 		baselineBytes, err = marshaling.Marshal(&core.Snapshot{
@@ -294,6 +296,22 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 		return nil, fmt.Errorf("unable to patch base snapshot: %w", err), false
 	}
 
+	// If logging is enabled, then compute snapshot transmission statistics.
+	if logging.CurrentLevel() >= logging.LevelDebug {
+		var dataOperations, totalDataSize, blockOperations int
+		for _, operation := range response.SnapshotDelta {
+			if dataSize := len(operation.Data); dataSize > 0 {
+				dataOperations++
+				totalDataSize += dataSize
+			} else {
+				blockOperations++
+			}
+		}
+		c.logger.Debugf("Snapshot delta yielded %d bytes using %d block operation(s) and %d data operation(s) totaling %d byte(s)",
+			len(snapshotBytes), blockOperations, dataOperations, totalDataSize,
+		)
+	}
+
 	// Unmarshal the snapshot.
 	snapshot := &core.Snapshot{}
 	if err := proto.Unmarshal(snapshotBytes, snapshot); err != nil {
@@ -309,8 +327,18 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 		return nil, fmt.Errorf("invalid snapshot received: %w", err), false
 	}
 
-	// Store the bytes that gave us a successful snapshot.
-	c.lastSnapshotBytes = snapshotBytes
+	// Store the bytes that gave us a successful snapshot so that we can use
+	// them as a baseline for receiving the next snapshot, but only do this if
+	// the snapshot content was non-nil (i.e. there were entries on disk). If we
+	// received a snapshot with no entries, then chances are that it's coming
+	// from a remote endpoint that hasn't yet been populated by content, meaning
+	// its next transmission (after being populated) is going to be far closer
+	// to ancestor than to the empty snapshot that it just sent, and thus we'll
+	// want to use the serialized ancestor snapshot as the baseline until we
+	// receive a populated snapshot.
+	if snapshot.Content != nil {
+		c.lastSnapshotBytes = snapshotBytes
+	}
 
 	// Success.
 	return snapshot, nil, false
