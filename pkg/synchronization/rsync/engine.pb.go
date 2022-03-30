@@ -154,11 +154,11 @@ type Operation struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Data contains data for data operations. If its length is 0, the operation
-	// is assumed to be a non-data operation. Operation transmitters and
-	// receivers may thus treat a length-0 buffer as semantically equivalent to
-	// a nil buffer and utilize that fact to efficiently re-use buffer capacity,
-	// e.g. by truncating the buffer and doing a gob receive into it.
+	// Data contains data for data operations. If its length is 0, then the
+	// operation is assumed to be a non-data operation. Operation transmitters
+	// and receivers may thus treat a length-0 buffer as semantically equivalent
+	// to a nil buffer and utilize that fact to efficiently re-use buffer
+	// capacity (e.g. by truncating the buffer but not releasing it).
 	Data []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
 	// Start is the 0-indexed starting block for block operations.
 	Start uint64 `protobuf:"varint,2,opt,name=start,proto3" json:"start,omitempty"`

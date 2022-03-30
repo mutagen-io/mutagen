@@ -20,10 +20,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Transmission represents a single message in a transmission stream. Its
-// internals are public to allow for transmission using a reflection-based
-// encoder (such as gob), but it should otherwise be treated as an opaque type
-// with a private implementation.
+// Transmission represents a single message in a transmission stream. As a
+// Protocol Buffers message type, its internals are inherently public, but it
+// should otherwise be treated as an opaque type with a private implementation.
 type Transmission struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
