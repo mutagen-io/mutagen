@@ -9,12 +9,15 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/multiplexing"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements
 // forwarding.Endpoint itself.
 type client struct {
+	// logger is the underlying logger.
+	logger *logging.Logger
 	// transportErrors is the transport error channel.
 	transportErrors <-chan error
 	// multiplexer is the underlying multiplexer.
@@ -31,6 +34,7 @@ type client struct {
 // endpoint is shut down. The provided stream must unblock read and write
 // operations when closed.
 func NewEndpoint(
+	logger *logging.Logger,
 	stream io.ReadWriteCloser,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
@@ -95,6 +99,7 @@ func NewEndpoint(
 
 	// Success.
 	return &client{
+		logger:          logger,
 		transportErrors: transportErrors,
 		multiplexer:     multiplexer,
 		listener:        source,

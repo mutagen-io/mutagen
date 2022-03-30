@@ -51,6 +51,7 @@ func (h *forwardingProtocolHandler) Connect(
 
 	// Create a client for this endpoint.
 	endpoint, err := remote.NewEndpoint(
+		logger,
 		clientConnection,
 		version,
 		configuration,

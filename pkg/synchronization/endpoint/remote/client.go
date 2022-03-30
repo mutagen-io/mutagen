@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
@@ -19,6 +20,8 @@ import (
 // endpointClient provides an implementation of synchronization.Endpoint by
 // acting as a proxy for a remotely hosted synchronization.Endpoint.
 type endpointClient struct {
+	// logger is the underlying logger.
+	logger *logging.Logger
 	// closer close the compression resources and the control stream.
 	closer io.Closer
 	// flusher flushes the outbound control stream.
@@ -39,6 +42,7 @@ type endpointClient struct {
 // endpoint is shut down. The provided stream must unblock read and write
 // operations when closed.
 func NewEndpoint(
+	logger *logging.Logger,
 	stream io.ReadWriteCloser,
 	root string,
 	session string,
@@ -97,6 +101,7 @@ func NewEndpoint(
 	// Success.
 	successful = true
 	return &endpointClient{
+		logger:  logger,
 		closer:  closer,
 		flusher: flusher,
 		encoder: encoder,

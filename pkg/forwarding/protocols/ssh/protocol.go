@@ -98,7 +98,7 @@ func (p *protocolHandler) Connect(
 	}
 
 	// Create the endpoint.
-	return remote.NewEndpoint(stream, version, configuration, protocol, address, source)
+	return remote.NewEndpoint(logger, stream, version, configuration, protocol, address, source)
 }
 
 func init() {

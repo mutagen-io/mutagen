@@ -9,6 +9,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // DisableLazyListenerInitialization indicates that lazy listener initialization
@@ -21,6 +22,8 @@ var DisableLazyListenerInitialization bool
 // listenerEndpoint implements forwarding.Endpoint for listener endpoints. It
 // optionally support lazy initialization.
 type listenerEndpoint struct {
+	// logger is the underlying logger.
+	logger *logging.Logger
 	// version is the forwarding session version.
 	version forwarding.Version
 	// configuration is the forwarding session configuration.
@@ -65,6 +68,7 @@ type listenerEndpoint struct {
 // refactor the forwarding protocol. In any case, this TODO belongs to the
 // remote endpoint package rather than the local one.
 func NewListenerEndpoint(
+	logger *logging.Logger,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
 	protocol string,
@@ -79,6 +83,7 @@ func NewListenerEndpoint(
 
 	// Create the endpoint.
 	endpoint := &listenerEndpoint{
+		logger:        logger,
 		version:       version,
 		configuration: configuration,
 		protocol:      protocol,
