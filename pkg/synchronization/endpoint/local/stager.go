@@ -11,11 +11,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-const (
-	// numberOfByteValues is the number of values a byte can take.
-	numberOfByteValues = 1 << 8
-)
-
 // existsAndIsDirectory returns true if the target path exists, is readable, and
 // is a directory, otherwise it returns false.
 func existsAndIsDirectory(path string) bool {
@@ -88,14 +83,14 @@ func (s *stagingSink) Close() error {
 	digest := s.digester.Sum(nil)
 
 	// Compute where the file should be relocated.
-	destination, prefix, err := pathForStaging(s.stager.root, s.path, digest)
+	destination, prefixByte, prefix, err := pathForStaging(s.stager.root, s.path, digest)
 	if err != nil {
 		os.Remove(s.storage.Name())
 		return fmt.Errorf("unable to compute staging destination: %w", err)
 	}
 
 	// Ensure the prefix directory exists.
-	if err = s.stager.ensurePrefixExists(prefix); err != nil {
+	if err = s.stager.ensurePrefixExists(prefixByte, prefix); err != nil {
 		os.Remove(s.storage.Name())
 		return fmt.Errorf("unable to create prefix directory: %w", err)
 	}
@@ -128,7 +123,7 @@ type stager struct {
 	// rootExists indicates whether or not the staging root currently exists.
 	rootExists bool
 	// prefixExists tracks whether or not individual prefix directories exist.
-	prefixExists map[string]bool
+	prefixExists [256]bool
 }
 
 // newStager creates a new stager.
@@ -139,15 +134,14 @@ func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize u
 		digester:        digester,
 		maximumFileSize: maximumFileSize,
 		rootExists:      existsAndIsDirectory(root),
-		prefixExists:    make(map[string]bool, numberOfByteValues),
 	}
 }
 
 // ensurePrefixExists ensures that the specified prefix directory exists within
 // the staging root, using a cache to avoid inefficient recreation.
-func (s *stager) ensurePrefixExists(prefix string) error {
+func (s *stager) ensurePrefixExists(prefixByte byte, prefix string) error {
 	// Check if we've already created that prefix.
-	if s.prefixExists[prefix] {
+	if s.prefixExists[prefixByte] {
 		return nil
 	}
 
@@ -156,7 +150,7 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 	if err := mkdirAllowExist(filepath.Join(s.root, prefix), 0700); err != nil {
 		return err
 	}
-	s.prefixExists[prefix] = true
+	s.prefixExists[prefixByte] = true
 
 	// Success.
 	return nil
@@ -165,7 +159,7 @@ func (s *stager) ensurePrefixExists(prefix string) error {
 // wipe removes the staging root.
 func (s *stager) wipe() error {
 	// Reset the prefix creation tracker.
-	s.prefixExists = make(map[string]bool, numberOfByteValues)
+	s.prefixExists = [256]bool{}
 
 	// Reset root creation tracking.
 	s.rootExists = false
@@ -229,7 +223,7 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 	}
 
 	// Compute the expected location of the file.
-	expectedLocation, _, err := pathForStaging(s.root, path, digest)
+	expectedLocation, _, _, err := pathForStaging(s.root, path, digest)
 	if err != nil {
 		return "", fmt.Errorf("unable to compute staging path: %w", err)
 	}
