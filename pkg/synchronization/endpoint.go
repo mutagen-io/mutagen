@@ -34,17 +34,17 @@ type Endpoint interface {
 
 	// Stage performs file staging on the endpoint. It accepts a list of file
 	// paths and a separate list of desired digests corresponding to those
-	// paths. If these lists do not have the same length, this method should
+	// paths. If these lists do not have the same length, then this method must
 	// return an error. For optimal performance, the paths should be passed in
 	// depth-first traversal order. This method will filter the list of required
 	// paths based on what is already available from previously interrupted
 	// staging operations and what can be staged directly from the endpoint
 	// filesystem (e.g. in cases of renames and copies), and then return a list
 	// of paths, their respective signatures, and a receiver to receive them.
-	// The returned path list should maintain depth-first traversal ordering for
-	// its filtered paths, again for performance reasons. If the list of paths
-	// is empty (and the error non-nil), then all paths were either already
-	// staged or able to be staged from the endpoint filesystem, and the
+	// The returned path list must maintain the relative order of elements from
+	// the original list and must be a subset of that list. If the filtered list
+	// of paths is empty (and the error non-nil), then all paths were either
+	// already staged or able to be staged from the endpoint filesystem, and the
 	// receiver must be nil. Otherwise, the receiver must be non-nil and must be
 	// finalized (i.e. transmitted to) before subsequent methods can be invoked
 	// on the endpoint. This method is allowed to modify the provided argument

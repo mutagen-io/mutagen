@@ -190,15 +190,25 @@ func (r *StageRequest) ensureValid() error {
 }
 
 // ensureValid ensures that StageResponse's invariants are respected.
-func (r *StageResponse) ensureValid() error {
+func (r *StageResponse) ensureValid(paths []string) error {
 	// A nil stage response is not valid.
 	if r == nil {
 		return errors.New("nil stage response")
 	}
 
-	// Ensure that the number of paths matches the number of signatures.
-	if len(r.Paths) != len(r.Signatures) {
+	// Verify that path and signature counts are sane. We have to take into
+	// account the shorthand that's used when all paths are requested.
+	p, s := len(r.Paths), len(r.Signatures)
+	if p == 0 && s > 0 {
+		if s != len(paths) {
+			return errors.New("signature count does not match original path count")
+		}
+		p = s
+	}
+	if p != s {
 		return errors.New("number of paths not equal to number of signatures")
+	} else if p > len(paths) {
+		return errors.New("number of paths requested greater than original path count")
 	}
 
 	// Verify that all signatures are valid.

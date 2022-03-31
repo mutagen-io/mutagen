@@ -520,8 +520,10 @@ type StageResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Paths are the paths that need to be staged (relative to the
-	// synchronization root).
+	// Paths are the paths that need to be staged after filtering. If its length
+	// is zero and the length of Signatures is non-zero, then it's assumed that
+	// all paths are required and (in that scenario) the length of Signatures
+	// must be equal to the length of the original path list.
 	Paths []string `protobuf:"bytes,1,rep,name=paths,proto3" json:"paths,omitempty"`
 	// Signatures are the rsync signatures of the paths needing to be staged.
 	Signatures []*rsync.Signature `protobuf:"bytes,2,rep,name=signatures,proto3" json:"signatures,omitempty"`

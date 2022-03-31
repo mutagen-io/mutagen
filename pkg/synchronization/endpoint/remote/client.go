@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"compress/flate"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -346,10 +347,10 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 
 // Stage implements the Stage method for remote endpoints.
 func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*rsync.Signature, rsync.Receiver, error) {
-	// If there are no entries to stage, then we're done. We enforce (in message
-	// validation) that stage requests aren't sent to the server with no entries
-	// present.
-	if len(paths) == 0 {
+	// Validate argument lengths and bail if there's nothing to stage.
+	if len(paths) != len(digests) {
+		return nil, nil, nil, errors.New("path count does not match digest count")
+	} else if len(paths) == 0 {
 		return nil, nil, nil, nil
 	}
 
@@ -368,15 +369,22 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 	response := &StageResponse{}
 	if err := c.decoder.Decode(response); err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to receive stage response: %w", err)
-	} else if err = response.ensureValid(); err != nil {
-		return nil, nil, nil, fmt.Errorf("invalid scan response: %w", err)
+	} else if err = response.ensureValid(paths); err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid stage response: %w", err)
 	} else if response.Error != "" {
 		return nil, nil, nil, fmt.Errorf("remote error: %s", response.Error)
 	}
 
+	// Handle the shorthand mechanism used by the remote to indicate that all
+	// paths are required.
+	requiredPaths := response.Paths
+	if len(response.Paths) == 0 && len(response.Signatures) > 0 {
+		requiredPaths = paths
+	}
+
 	// If everything was already staged, then we can abort the staging
 	// operation.
-	if len(response.Paths) == 0 {
+	if len(requiredPaths) == 0 {
 		return nil, nil, nil, nil
 	}
 
@@ -386,7 +394,7 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Success.
-	return response.Paths, response.Signatures, receiver, nil
+	return requiredPaths, response.Signatures, receiver, nil
 }
 
 // Supply implements the Supply method for remote endpoints.

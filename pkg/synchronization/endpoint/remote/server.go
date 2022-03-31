@@ -351,9 +351,17 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 		return fmt.Errorf("unable to begin staging: %w", err)
 	}
 
+	// If all of the requested paths are required, then we'll signal this in the
+	// response by using an empty path list. This is an important heuristic to
+	// reduce response size on initial staging.
+	responsePaths := paths
+	if len(responsePaths) == len(request.Paths) {
+		responsePaths = nil
+	}
+
 	// Send the response.
 	response := &StageResponse{
-		Paths:      paths,
+		Paths:      responsePaths,
 		Signatures: signatures,
 	}
 	if err = s.encodeAndFlush(response); err != nil {
