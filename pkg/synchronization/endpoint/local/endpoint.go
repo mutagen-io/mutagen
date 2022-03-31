@@ -1231,6 +1231,9 @@ func (e *endpoint) Shutdown() error {
 	<-e.saveCacheDone
 	<-e.watchDone
 
+	// Terminate stager resources.
+	e.stager.shutdown()
+
 	// Done.
 	return nil
 }

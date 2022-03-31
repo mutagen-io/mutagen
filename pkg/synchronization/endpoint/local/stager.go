@@ -1,12 +1,14 @@
 package local
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -31,6 +33,98 @@ func mkdirAllowExist(name string, perm os.FileMode) error {
 	}
 }
 
+// concurrentHash implements a concurrent version of hash.Hash. While it
+// operates concurrently, it is not safe for concurrent usage.
+type concurrentHash struct {
+	// cancel terminates the hashing Goroutine.
+	cancel context.CancelFunc
+	// done tracks termination of the hashing Goroutine.
+	done sync.WaitGroup
+	// resetRequests is used to trigger a reset.
+	resetRequests chan struct{}
+	// writeRequests is used to trigger a write.
+	writeRequests chan []byte
+	// writeResponses is used to wait for write completion.
+	writeResponses chan struct{}
+	// sumRequests is used to trigger a sum operation.
+	sumRequests chan struct{}
+	// sumDone is used to wait for a sum operation to complete.
+	sumResponses chan []byte
+}
+
+// newConcurrentHash creates a new concurrent hash.
+func newConcurrentHash(hasher hash.Hash) *concurrentHash {
+	// Create a cancellable context for the hashing Goroutine.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Create the result.
+	result := &concurrentHash{
+		cancel:         cancel,
+		resetRequests:  make(chan struct{}),
+		writeRequests:  make(chan []byte),
+		writeResponses: make(chan struct{}),
+		sumRequests:    make(chan struct{}),
+		sumResponses:   make(chan []byte),
+	}
+
+	// Track hashing Goroutine completion.
+	result.done.Add(1)
+
+	// Start the hashing Goroutine.
+	go result.run(ctx, hasher)
+
+	// Done.
+	return result
+}
+
+// shutdown terminates the run loop for the concurrent hash and awaits its
+// completion.
+func (h *concurrentHash) shutdown() {
+	h.cancel()
+	h.done.Wait()
+}
+
+// run is the run loop that performs asynchronous digests.
+func (h *concurrentHash) run(ctx context.Context, hasher hash.Hash) {
+	for {
+		select {
+		case <-ctx.Done():
+			h.done.Done()
+			return
+		case <-h.resetRequests:
+			hasher.Reset()
+		case data := <- h.writeRequests:
+			hasher.Write(data)
+			h.writeResponses <- struct{}{}
+		case <-h.sumRequests:
+			h.sumResponses <- hasher.Sum(nil)
+		}
+	}
+}
+
+// reset triggers a resset operation on the hash.
+func (h *concurrentHash) reset() {
+	h.resetRequests <- struct{}{}
+}
+
+// write starts an asynchronous digest operation. It must be paired with a
+// corresponding call to writeWait. The data must not be modified between the
+// two calls.
+func (h *concurrentHash) write(data []byte) {
+	h.writeRequests <- data
+}
+
+// writeWait waits for completion of a write operation.
+func (h *concurrentHash) writeWait() {
+	<-h.writeResponses
+}
+
+// sum performs a sum operation.
+func (h *concurrentHash) sum() []byte {
+	h.sumRequests <- struct{}{}
+	return <-h.sumResponses
+}
+
 // stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
 	// stager is the parent stager.
@@ -40,33 +134,46 @@ type stagingSink struct {
 	path string
 	// storage is the temporary storage for the data.
 	storage *os.File
-	// digester is the hash of the data already written.
-	digester hash.Hash
 	// maximumSize is the maximum number of bytes allowed to be written to the
 	// file.
 	maximumSize uint64
 	// currentSize is the number of bytes that have been written to the file.
 	currentSize uint64
+	// previousWriteError is any previous write error that occurred.
+	previousWriteError error
 }
 
 // Write writes data to the sink.
 func (s *stagingSink) Write(data []byte) (int, error) {
+	// If a previous write error occurred, then don't continue writing, because
+	// the digest and the file may now differ in terms of processed content.
+	if s.previousWriteError != nil {
+		return 0, fmt.Errorf("previous write error: %w", s.previousWriteError)
+	}
+
 	// Watch for size violations.
 	if (s.maximumSize - s.currentSize) < uint64(len(data)) {
 		return 0, errors.New("maximum file size reached")
 	}
 
+	// Starting digesting the data asynchronously.
+	s.stager.digester.write(data)
+
 	// Write to the underlying storage.
 	n, err := s.storage.Write(data)
-
-	// Write as much to the digester as we wrote to the underlying storage. This
-	// can't fail.
-	s.digester.Write(data[:n])
 
 	// Update the current size. We needn't worry about this overflowing, because
 	// the check above is sufficient to ensure that this amount of data won't
 	// overflow the maximum uint64 value.
 	s.currentSize += uint64(n)
+
+	// Record any error that occurred, because the digester and the file now
+	// likely have different data written to them and we can't allow the staging
+	// operation to continue.
+	s.previousWriteError = err
+
+	// Wait for the asynchronous digest operation to complete.
+	s.stager.digester.writeWait()
 
 	// Done.
 	return n, err
@@ -80,7 +187,7 @@ func (s *stagingSink) Close() error {
 	}
 
 	// Compute the final digest.
-	digest := s.digester.Sum(nil)
+	digest := s.stager.digester.sum()
 
 	// Compute where the file should be relocated.
 	destination, prefixByte, prefix, err := pathForStaging(s.stager.root, s.path, digest)
@@ -116,8 +223,8 @@ type stager struct {
 	// hideRoot indicates whether or not the staging root should be marked as
 	// hidden when created.
 	hideRoot bool
-	// digester is the hash function to use when processing files.
-	digester hash.Hash
+	// digester hashes incoming file content.
+	digester *concurrentHash
 	// maximumFileSize is the maximum allowed size for a single staged file.
 	maximumFileSize uint64
 	// rootExists indicates whether or not the staging root currently exists.
@@ -131,10 +238,15 @@ func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize u
 	return &stager{
 		root:            root,
 		hideRoot:        hideRoot,
-		digester:        digester,
+		digester:        newConcurrentHash(digester),
 		maximumFileSize: maximumFileSize,
 		rootExists:      existsAndIsDirectory(root),
 	}
+}
+
+// shutdown terminates stager resources.
+func (s *stager) shutdown() {
+	s.digester.shutdown()
 }
 
 // ensurePrefixExists ensures that the specified prefix directory exists within
@@ -200,14 +312,13 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	}
 
 	// Reset the hash function state.
-	s.digester.Reset()
+	s.digester.reset()
 
 	// Success.
 	return &stagingSink{
 		stager:      s,
 		path:        path,
 		storage:     storage,
-		digester:    s.digester,
 		maximumSize: s.maximumFileSize,
 	}, nil
 }
