@@ -5,10 +5,13 @@ import (
 	"net"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // dialerEndpoint implements forwarding.Endpoint for dialer endpoints.
 type dialerEndpoint struct {
+	// logger is the underlying logger.
+	logger *logging.Logger
 	// dialingContext limits the duration of dialing operations.
 	dialingContext context.Context
 	// dialingCancel cancels the dialing context.
@@ -23,6 +26,7 @@ type dialerEndpoint struct {
 
 // NewDialerEndpoint creates a new forwarding.Endpoint that acts as a dialer.
 func NewDialerEndpoint(
+	logger *logging.Logger,
 	version forwarding.Version,
 	configuration *forwarding.Configuration,
 	protocol string,
@@ -39,6 +43,7 @@ func NewDialerEndpoint(
 
 	// Create the endpoint.
 	return &dialerEndpoint{
+		logger:         logger,
 		dialingContext: dialingContext,
 		dialingCancel:  dialingCancel,
 		dialer:         dialer,

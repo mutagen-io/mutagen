@@ -48,6 +48,11 @@ func (l Level) String() string {
 // currentLevel is the current logging level.
 var currentLevel Level
 
+// CurrentLevel returns the current logging level.
+func CurrentLevel() Level {
+	return currentLevel
+}
+
 func init() {
 	// Set the log level based on the MUTAGEN_LOG_LEVEL environment variable. If
 	// unset (or set to an unknown value), then default to LevelInfo.

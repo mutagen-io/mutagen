@@ -2,6 +2,7 @@ package local
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -115,18 +116,28 @@ func pathForInternalStagingRoot(root, session string, alpha bool) (string, error
 }
 
 // pathForStaging computes the staging path for the specified path/digest
-// relative to the staging root. It returns the prefix directory name but does
-// not ensure that it's been created.
-func pathForStaging(root, path string, digest []byte) (string, string, error) {
-	// Compute the prefix for the entry.
+// relative to the staging root. It also returns the prefix directory byte value
+// and name, though it does not create the prefix directory.
+func pathForStaging(root, path string, digest []byte) (string, byte, string, error) {
+	// Ensure that the digest is non-empty. We need at least one byte for the
+	// staging prefix to be valid, but beyond that we don't know what digest
+	// length is in-use (or might be in use in the future).
 	if len(digest) == 0 {
-		return "", "", errors.New("entry digest too short")
+		return "", 0, "", errors.New("entry digest too short")
 	}
-	prefix := fmt.Sprintf("%x", digest[:1])
+	prefixByte := digest[0]
+
+	// Convert the digest to hexadecimal encoding and extract the prefix.
+	digestHex := hex.EncodeToString(digest)
+	prefix := digestHex[:2]
+
+	// Compute the hexadecimal encoded digest of the path name.
+	pathDigest := sha1.Sum([]byte(path))
+	pathDigestHex := hex.EncodeToString(pathDigest[:])
 
 	// Compute the staging name.
-	stagingName := fmt.Sprintf("%x_%x", sha1.Sum([]byte(path)), digest)
+	stagingName := pathDigestHex + "_" + digestHex
 
 	// Success.
-	return filepath.Join(root, prefix, stagingName), prefix, nil
+	return filepath.Join(root, prefix, stagingName), prefixByte, prefix, nil
 }

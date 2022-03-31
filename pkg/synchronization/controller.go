@@ -224,7 +224,7 @@ func newSession(
 	// loop and mark the endpoints as handed off to that loop so that we don't
 	// defer their shutdown.
 	if !paused {
-		logger.Info("Starting synchronization loop")
+		logger.Info("Starting run loop")
 		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
@@ -765,7 +765,9 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		c.stateLock.UnlockWithoutNotify()
 
 		// Perform synchronization.
+		c.logger.Debug("Entering synchronization loop")
 		err := c.synchronize(ctx, alpha, beta)
+		c.logger.Debug("Exited synchronization loop with error:", err)
 
 		// Indicate that the synchronization loop is no longer synchronizing.
 		// Again, no notification is required here since this is not a
@@ -947,15 +949,18 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			cancelled := false
 			select {
 			case αPollErr = <-αPollResults:
+				c.logger.Debug("Triggered by alpha endpoint")
 				pollCancel()
 				βPollErr = <-βPollResults
 			case βPollErr = <-βPollResults:
+				c.logger.Debug("Triggered by beta endpoint")
 				pollCancel()
 				αPollErr = <-αPollResults
 			case flushRequest = <-c.flushRequests:
 				if cap(flushRequest) < 1 {
 					panic("unbuffered flush request")
 				}
+				c.logger.Debug("Triggered by flush request")
 				pollCancel()
 				αPollErr = <-αPollResults
 				βPollErr = <-βPollResults
@@ -981,6 +986,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// Scan both endpoints in parallel and check for errors. If a flush
 		// request is present, then force both endpoints to perform a full
 		// (warm) re-scan rather than using acceleration.
+		c.logger.Debug("Scanning endpoints")
 		c.stateLock.Lock()
 		c.state.Status = Status_Scanning
 		c.stateLock.Unlock()
@@ -1104,6 +1110,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Perform reconciliation.
+		c.logger.Debug("Performing reconciliation")
 		ancestorChanges, αTransitions, βTransitions, conflicts := core.Reconcile(
 			ancestor,
 			αContent,
@@ -1149,6 +1156,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Stage files on alpha.
+		c.logger.Debug("Staging files on alpha")
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
@@ -1170,6 +1178,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Stage files on beta.
+		c.logger.Debug("Staging files on beta")
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
@@ -1194,6 +1203,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// doesn't completely error out, convert its results to ancestor
 		// changes. Transition errors are checked later, once the ancestor has
 		// been updated.
+		c.logger.Debug("Transitioning endpoints")
 		c.stateLock.Lock()
 		c.state.Status = Status_Transitioning
 		c.stateLock.Unlock()
@@ -1263,6 +1273,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Save the ancestor.
+		c.logger.Debug("Saving ancestor")
 		archive.Content = ancestor
 		if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
 			return fmt.Errorf("unable to save ancestor: %w", err)

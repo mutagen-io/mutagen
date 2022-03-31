@@ -110,8 +110,8 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
-		if path != "" && (len(ancestorContents) > 0 || len(alphaContents) > 0 || len(betaContents) > 0) {
-			contentPathPrefix = path + "/"
+		if len(ancestorContents) > 0 || len(alphaContents) > 0 || len(betaContents) > 0 {
+			contentPathPrefix = pathJoinable(path)
 		}
 
 		// Recursively handle contents.

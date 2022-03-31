@@ -348,8 +348,8 @@ func (s *scanner) directory(
 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
-	if path != "" && len(directoryContents) > 0 {
-		contentPathPrefix = path + "/"
+	if len(directoryContents) > 0 {
+		contentPathPrefix = pathJoinable(path)
 	}
 
 	// Compute entries.
@@ -422,15 +422,46 @@ func (s *scanner) directory(
 
 		// If we have a baseline entry for the content and the content path
 		// isn't marked as dirty, then we can just re-use that baseline entry
-		// directly.
+		// directly. In this case, we'll want to walk down the entry and
+		// propagate the corresponding ignore and digest cache entries that
+		// we're going to avoid generating.
 		if contentBaseline != nil {
 			if _, contentDirty := s.dirtyPaths[contentPath]; !contentDirty {
 				contents[contentName] = contentBaseline
+				var missingCacheEntries bool
+				contentBaseline.walk(contentPath, func(path string, entry *Entry) {
+					// Generate ignore cache entries. This isn't exhaustive,
+					// because we can't include ignored content and we can't
+					// know the directory-ness of unsynchronizable content, but
+					// heuristically it works in vast majority of cases.
+					if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
+						s.newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+					}
+
+					// Propagate digest cache entries. Here we require
+					// exhaustive propagation to verify that the baseline
+					// corresponds to the provided cache, though note that this
+					// is not a full verification (e.g. we don't check that
+					// digests or modes match) because that would be too costly.
+					if entry.Kind == EntryKind_File {
+						if oldCacheEntry, ok := s.cache.Entries[path]; ok {
+							s.newCache.Entries[path] = oldCacheEntry
+						} else {
+							missingCacheEntries = true
+						}
+					}
+				}, false)
+				if missingCacheEntries {
+					return nil, errors.New("old cache entries don't correspond to baseline")
+				}
 				continue
 			}
 		}
 
-		// Handle based on kind.
+		// If we didn't have a baseline, or if the content path was marked as
+		// dirty, then we need to handle it manually. Note that we're still
+		// passing the directory baseline down at this point, because its child
+		// entries may not be marked as dirty and may be reusable.
 		var entry *Entry
 		var err error
 		if contentKind == EntryKind_File {
@@ -722,58 +753,6 @@ func Scan(
 	}
 	if err != nil {
 		return nil, nil, nil, err
-	}
-
-	// If we have a baseline, then backfill the ignore and digest caches to
-	// include entries for paths that exist in our result, but which we may not
-	// have explicitly visited.
-	//
-	// For the ignore cache, we just add false entries for every synchronizable
-	// entry that we see in the scan result (since we know they aren't ignored).
-	// This obviously doesn't transfer true entries, but those are typically far
-	// fewer in number that false entries and will be cheap enough to recompute.
-	//
-	// In the case of the digest cache, we have to ensure correct propagation
-	// from the old cache to the new in the case of entries that we didn't
-	// explicitly revisit, which we can do because we have the paths for all
-	// cache entries which need to be propagated (i.e. those in the result but
-	// not in the new cache). We don't perform total validation that the old
-	// digest cache corresponds to the baseline (e.g. we don't check digest
-	// value matches) because it's too expensive, though we do detect the case
-	// of missing entries since it's relatively cheap. The burden of ensuring
-	// cache/baseline correspondence technically falls on the caller.
-	if baseline != nil {
-		// Track missing cache entries.
-		var missingCacheEntries bool
-
-		// Perform propagation.
-		content.walk("", func(path string, entry *Entry) {
-			// Create an ignore cache entry for this path. We can't record
-			// anything for unsynchronizable content because we don't know
-			// whether or not it's a directory. We probably could if we used
-			// more granular unsynchronizable content kinds that also included
-			// type information, but the microscopic performance gains wouldn't
-			// be worth the additional complexity.
-			if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
-				newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
-			}
-
-			// Propagate digest cache entries.
-			if entry.Kind == EntryKind_File {
-				if _, ok := newCache.Entries[path]; !ok {
-					if oldCacheEntry, ok := cache.Entries[path]; ok {
-						newCache.Entries[path] = oldCacheEntry
-					} else {
-						missingCacheEntries = true
-					}
-				}
-			}
-		}, false)
-
-		// Abort if we encountered missing cache entries.
-		if missingCacheEntries {
-			return nil, nil, nil, errors.New("old cache entries don't correspond to baseline")
-		}
 	}
 
 	// Success.

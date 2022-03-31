@@ -16,7 +16,7 @@ import (
 
 // initializeEndpoint initializes the underlying endpoint based on the provided
 // initialization request.
-func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoint, error) {
+func initializeEndpoint(logger *logging.Logger, request *InitializeForwardingRequest) (forwarding.Endpoint, error) {
 	// If this is a Unix domain socket endpoint, perform normalization on the
 	// socket path.
 	address := request.Address
@@ -31,6 +31,7 @@ func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoi
 	// Create the underlying endpoint based on the initialization parameters.
 	if request.Listener {
 		return local.NewListenerEndpoint(
+			logger,
 			request.Version,
 			request.Configuration,
 			request.Protocol,
@@ -39,6 +40,7 @@ func initializeEndpoint(request *InitializeForwardingRequest) (forwarding.Endpoi
 		)
 	} else {
 		return local.NewDialerEndpoint(
+			logger,
 			request.Version,
 			request.Configuration,
 			request.Protocol,
@@ -75,7 +77,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	} else if err = request.ensureValid(); err != nil {
 		initializationError = fmt.Errorf("invalid initialization request received: %w", err)
 	} else {
-		underlying, initializationError = initializeEndpoint(request)
+		underlying, initializationError = initializeEndpoint(logger, request)
 	}
 
 	// Send the initialization response, indicating any initialization error

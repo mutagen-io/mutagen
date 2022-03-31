@@ -105,6 +105,11 @@ func TestProtobufEncoding(t *testing.T) {
 			t.Error("path mismatch in received message")
 		}
 	}
+
+	// Verify that the stream is left empty.
+	if stream.Len() > 0 {
+		t.Error("stream is still populated")
+	}
 }
 
 func TestProtobufSingleEncoding(t *testing.T) {
@@ -147,5 +152,10 @@ func TestProtobufSingleEncoding(t *testing.T) {
 		} else if message.Path != path {
 			t.Error("path mismatch in received message")
 		}
+	}
+
+	// Verify that the stream is left empty.
+	if stream.Len() > 0 {
+		t.Error("stream is still populated")
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 )
@@ -27,7 +28,7 @@ func Install() error {
 	}
 
 	// Relocate the current executable to the installation path.
-	if err = os.Rename(executablePath, destination); err != nil {
+	if err = filesystem.Rename(nil, executablePath, nil, destination, true); err != nil {
 		return fmt.Errorf("unable to relocate agent executable: %w", err)
 	}
 

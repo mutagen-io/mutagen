@@ -6,10 +6,9 @@ option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/rsync";
 
 import "synchronization/rsync/engine.proto";
 
-// Transmission represents a single message in a transmission stream. Its
-// internals are public to allow for transmission using a reflection-based
-// encoder (such as gob), but it should otherwise be treated as an opaque type
-// with a private implementation.
+// Transmission represents a single message in a transmission stream. As a
+// Protocol Buffers message type, its internals are inherently public, but it
+// should otherwise be treated as an opaque type with a private implementation.
 message Transmission {
     // Done indicates that the operation stream for the current file is
     // finished. If set, there will be no operation in the response, but there

@@ -4,6 +4,17 @@ import (
 	"strings"
 )
 
+// pathJoinable converts a base path to be joinable via string concatenation.
+func pathJoinable(base string) string {
+	// Handle the case of the synchronization root.
+	if base == "" {
+		return ""
+	}
+
+	// Prepare the path for concatenation.
+	return base + "/"
+}
+
 // pathDir is a fast alternative to path.Dir designed specifically for
 // root-relative synchronization paths. It avoids the unnecessary path cleaning
 // overhead incurred by path.Dir. Note that, unlike path.Dir, this function

@@ -91,7 +91,7 @@ func (h *protocolHandler) Connect(
 	}
 
 	// Create the endpoint client.
-	return remote.NewEndpoint(stream, url.Path, session, version, configuration, alpha)
+	return remote.NewEndpoint(logger, stream, url.Path, session, version, configuration, alpha)
 }
 
 func init() {

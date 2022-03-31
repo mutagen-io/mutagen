@@ -73,6 +73,7 @@ func (h *synchronizationProtocolHandler) Connect(
 
 	// Create a client for this endpoint.
 	endpoint, err := remote.NewEndpoint(
+		logger,
 		clientConnection,
 		url.Path,
 		session,

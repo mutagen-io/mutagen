@@ -2,6 +2,7 @@ package remote
 
 import (
 	"bufio"
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -9,10 +10,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/mutagen-io/mutagen/pkg/compression"
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local"
@@ -22,12 +23,14 @@ import (
 // endpointServer wraps a local endpoint instances and dispatches requests to
 // this endpoint from an endpoint client.
 type endpointServer struct {
+	// endpoint is the underlying local endpoint.
+	endpoint synchronization.Endpoint
+	// flusher flushes the outbound control stream.
+	flusher streampkg.Flusher
 	// encoder is the control stream encoder.
 	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
 	decoder *encoding.ProtobufDecoder
-	// endpoint is the underlying local endpoint.
-	endpoint synchronization.Endpoint
 }
 
 // ServeEndpoint creates and serves a endpoint server on the specified stream.
@@ -35,16 +38,21 @@ type endpointServer struct {
 // returns, regardless of failure. The provided stream must unblock read and
 // write operations when closed.
 func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
-	// Defer closure of the stream.
-	defer stream.Close()
+	// Set up compression for the control stream.
+	decompressor := flate.NewReader(bufio.NewReaderSize(stream, controlStreamBufferSize))
+	outbound := bufio.NewWriterSize(stream, controlStreamBufferSize)
+	compressor, _ := flate.NewWriter(outbound, flate.DefaultCompression)
+	flusher := streampkg.MultiFlusher(compressor, outbound)
 
-	// Enable read/write compression on the stream.
-	reader := compression.NewDecompressingReader(stream)
-	writer := compression.NewCompressingWriter(stream)
+	// Set up deferred closure of the control stream and compression resources.
+	closer := streampkg.MultiCloser(compressor, decompressor, stream)
+	defer closer.Close()
 
-	// Create an encoder and decoder.
-	encoder := encoding.NewProtobufEncoder(writer)
-	decoder := encoding.NewProtobufDecoder(bufio.NewReader(reader))
+	// Create an encoder and a decoder for Protocol Buffers messages. The
+	// compressor already implements internal buffering, but the decompressor
+	// requires additional buffering to implement io.ByteReader.
+	encoder := encoding.NewProtobufEncoder(compressor)
+	decoder := encoding.NewProtobufDecoder(bufio.NewReader(decompressor))
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
@@ -52,6 +60,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	if err := decoder.Decode(request); err != nil {
 		err = fmt.Errorf("unable to receive initialize request: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+		flusher.Flush()
 		return err
 	}
 
@@ -59,6 +68,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	if err := request.ensureValid(); err != nil {
 		err = fmt.Errorf("invalid initialize request: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+		flusher.Flush()
 		return err
 	}
 
@@ -66,6 +76,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	if r, err := filesystem.Normalize(request.Root); err != nil {
 		err = fmt.Errorf("unable to normalize synchronization root: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+		flusher.Flush()
 		return err
 	} else {
 		request.Root = r
@@ -84,24 +95,39 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	if err != nil {
 		err = fmt.Errorf("unable to create underlying endpoint: %w", err)
 		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+		flusher.Flush()
 		return err
 	}
 	defer endpoint.Shutdown()
 
 	// Send a successful initialize response.
 	if err = encoder.Encode(&InitializeSynchronizationResponse{}); err != nil {
-		return fmt.Errorf("unable to send initialize response: %w", err)
+		return fmt.Errorf("unable to encode initialize response: %w", err)
+	} else if err = flusher.Flush(); err != nil {
+		return fmt.Errorf("unable to transmit initialize response: %w", err)
 	}
 
 	// Create the server.
 	server := &endpointServer{
 		endpoint: endpoint,
+		flusher:  flusher,
 		encoder:  encoder,
 		decoder:  decoder,
 	}
 
 	// Server until an error occurs.
 	return server.serve()
+}
+
+// encodeAndFlush encodes a Protocol Buffers message using the underlying
+// encoder and then flushes the control stream.
+func (s *endpointServer) encodeAndFlush(message proto.Message) error {
+	if err := s.encoder.Encode(message); err != nil {
+		return err
+	} else if err = s.flusher.Flush(); err != nil {
+		return fmt.Errorf("message transmission failed: %w", err)
+	}
+	return nil
 }
 
 // serve is the main request handling loop.
@@ -186,7 +212,7 @@ func (s *endpointServer) servePoll(request *PollRequest) error {
 		}
 
 		// Send te response.
-		if err := s.encoder.Encode(response); err != nil {
+		if err := s.encodeAndFlush(response); err != nil {
 			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil
@@ -276,7 +302,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 		}
 
 		// Send the response.
-		if err := s.encoder.Encode(response); err != nil {
+		if err := s.encodeAndFlush(response); err != nil {
 			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil
@@ -321,16 +347,24 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.Stage(request.Paths, request.Digests)
 	if err != nil {
-		s.encoder.Encode(&StageResponse{Error: err.Error()})
+		s.encodeAndFlush(&StageResponse{Error: err.Error()})
 		return fmt.Errorf("unable to begin staging: %w", err)
+	}
+
+	// If all of the requested paths are required, then we'll signal this in the
+	// response by using an empty path list. This is an important heuristic to
+	// reduce response size on initial staging.
+	responsePaths := paths
+	if len(responsePaths) == len(request.Paths) {
+		responsePaths = nil
 	}
 
 	// Send the response.
 	response := &StageResponse{
-		Paths:      paths,
+		Paths:      responsePaths,
 		Signatures: signatures,
 	}
-	if err = s.encoder.Encode(response); err != nil {
+	if err = s.encodeAndFlush(response); err != nil {
 		return fmt.Errorf("unable to send stage response: %w", err)
 	}
 
@@ -342,7 +376,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	// The remote side of the connection should now forward rsync operations, so
 	// we need to decode and forward them to the receiver. If this operation
 	// completes successfully, staging is complete and successful.
-	decoder := newProtobufRsyncDecoder(s.decoder)
+	decoder := &protobufRsyncDecoder{decoder: s.decoder}
 	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
 		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
@@ -358,9 +392,8 @@ func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 		return fmt.Errorf("invalid supply request: %w", err)
 	}
 
-	// Create an encoding receiver that can transmit rsync operations to the
-	// remote.
-	encoder := newProtobufRsyncEncoder(s.encoder)
+	// Create an encoding receiver to transmit rsync operations to the remote.
+	encoder := &protobufRsyncEncoder{encoder: s.encoder, flusher: s.flusher}
 	receiver := rsync.NewEncodingReceiver(encoder)
 
 	// Perform supplying.
@@ -372,7 +405,7 @@ func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 	return nil
 }
 
-// serveTransitino serves a transition request.
+// serveTransition serves a transition request.
 func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 	// Ensure the request is valid.
 	if err := request.ensureValid(); err != nil {
@@ -421,7 +454,7 @@ func (s *endpointServer) serveTransition(request *TransitionRequest) error {
 		}
 
 		// Send the response.
-		if err := s.encoder.Encode(response); err != nil {
+		if err := s.encodeAndFlush(response); err != nil {
 			responseSendErrors <- fmt.Errorf("unable to transmit response: %w", err)
 		} else {
 			responseSendErrors <- nil

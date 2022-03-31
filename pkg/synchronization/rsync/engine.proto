@@ -27,11 +27,11 @@ message Signature {
 // Operation represents an rsync operation, which can be either a data operation
 // or a block operation.
 message Operation {
-    // Data contains data for data operations. If its length is 0, the operation
-    // is assumed to be a non-data operation. Operation transmitters and
-    // receivers may thus treat a length-0 buffer as semantically equivalent to
-    // a nil buffer and utilize that fact to efficiently re-use buffer capacity,
-    // e.g. by truncating the buffer and doing a gob receive into it.
+    // Data contains data for data operations. If its length is 0, then the
+    // operation is assumed to be a non-data operation. Operation transmitters
+    // and receivers may thus treat a length-0 buffer as semantically equivalent
+    // to a nil buffer and utilize that fact to efficiently re-use buffer
+    // capacity (e.g. by truncating the buffer but not releasing it).
     bytes data = 1;
     // Start is the 0-indexed starting block for block operations.
     uint64 start = 2;

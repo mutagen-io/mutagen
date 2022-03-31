@@ -24,8 +24,8 @@ func (d *differ) diff(path string, base, target *Entry) {
 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
-	if path != "" && (len(baseContents) > 0 || len(targetContents) > 0) {
-		contentPathPrefix = path + "/"
+	if len(baseContents) > 0 || len(targetContents) > 0 {
+		contentPathPrefix = pathJoinable(path)
 	}
 
 	// The nodes were equal at this path, so check their contents.

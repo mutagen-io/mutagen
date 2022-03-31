@@ -50,9 +50,9 @@ func (p *protocolHandler) Connect(
 
 	// Handle creation based on mode.
 	if source {
-		return local.NewListenerEndpoint(version, configuration, protocol, address, true)
+		return local.NewListenerEndpoint(logger, version, configuration, protocol, address, true)
 	} else {
-		return local.NewDialerEndpoint(version, configuration, protocol, address)
+		return local.NewDialerEndpoint(logger, version, configuration, protocol, address)
 	}
 }
 

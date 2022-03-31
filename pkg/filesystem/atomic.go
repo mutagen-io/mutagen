@@ -43,7 +43,7 @@ func WriteFileAtomic(path string, data []byte, permissions os.FileMode) error {
 	}
 
 	// Rename the file.
-	if err = os.Rename(temporary.Name(), path); err != nil {
+	if err = Rename(nil, temporary.Name(), nil, path, true); err != nil {
 		os.Remove(temporary.Name())
 		return fmt.Errorf("unable to rename file: %w", err)
 	}

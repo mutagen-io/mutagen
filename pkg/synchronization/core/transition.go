@@ -385,8 +385,8 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
-	if path != "" && len(contents) > 0 {
-		contentPathPrefix = path + "/"
+	if len(contents) > 0 {
+		contentPathPrefix = pathJoinable(path)
 	}
 
 	// Loop through contents and remove them. We use the on-disk content listing
@@ -814,8 +814,8 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
-	if path != "" && len(target.Contents) > 0 {
-		contentPathPrefix = path + "/"
+	if len(target.Contents) > 0 {
+		contentPathPrefix = pathJoinable(path)
 	}
 
 	// Attempt to create the target contents. We monitor for cancellation during

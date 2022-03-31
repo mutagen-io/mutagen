@@ -82,8 +82,10 @@ message StageRequest {
 
 // StageResponse encodes the results of staging initialization.
 message StageResponse {
-    // Paths are the paths that need to be staged (relative to the
-    // synchronization root).
+    // Paths are the paths that need to be staged after filtering. If its length
+    // is zero and the length of Signatures is non-zero, then it's assumed that
+    // all paths are required and (in that scenario) the length of Signatures
+    // must be equal to the length of the original path list.
     repeated string paths = 1;
     // Signatures are the rsync signatures of the paths needing to be staged.
     repeated rsync.Signature signatures = 2;

@@ -970,6 +970,13 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 		return nil, nil, nil, errors.New("endpoint is in read-only mode")
 	}
 
+	// Validate argument lengths and bail if there's nothing to stage.
+	if len(paths) != len(digests) {
+		return nil, nil, nil, errors.New("path count does not match digest count")
+	} else if len(paths) == 0 {
+		return nil, nil, nil, nil
+	}
+
 	// Grab the scan lock. We'll need this to verify the last scan entry count
 	// and to generate the reverse lookup map.
 	e.scanLock.Lock()

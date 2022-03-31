@@ -4,94 +4,55 @@ import (
 	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
-const (
-	// rsyncTransmissionGroupSize is the number of rsync transmissions that will
-	// be grouped together and sent at once.
-	rsyncTransmissionGroupSize = 10
-)
-
-// protobufRsyncEncoder adapts a Protocol Buffers encoder to the rsync.Encoder
-// interface.
+// protobufRsyncEncoder implements rsync.Encoder using Protocol Buffers.
 type protobufRsyncEncoder struct {
 	// encoder is the underlying Protocol Buffers encoder.
 	encoder *encoding.ProtobufEncoder
-	// buffered is the number of transmissions currently buffered.
-	buffered int
-	// error indicates any previous encountered transmission error. It renders
-	// the encoder inoperable.
+	// flusher flushes the underlying stream.
+	flusher stream.Flusher
+	// error stores any previously encountered transmission error.
 	error error
 }
 
-func newProtobufRsyncEncoder(encoder *encoding.ProtobufEncoder) *protobufRsyncEncoder {
-	return &protobufRsyncEncoder{encoder: encoder}
-}
-
-// Encode implements transmission encoding.
+// Encode implements rsync.Encoder.Encode.
 func (e *protobufRsyncEncoder) Encode(transmission *rsync.Transmission) error {
 	// Check for previous errors.
 	if e.error != nil {
 		return fmt.Errorf("previous error encountered: %w", e.error)
 	}
 
-	// Encode the transmission without sending.
-	if err := e.encoder.EncodeWithoutFlush(transmission); err != nil {
-		e.error = err
-		return e.error
-	}
-
-	// Increment the buffered message count.
-	e.buffered++
-
-	// If we've reached the maximum number of transmissions that we're willing
-	// to buffer, then flush the buffer and reset the count.
-	if e.buffered == rsyncTransmissionGroupSize {
-		if err := e.encoder.Flush(); err != nil {
-			e.error = fmt.Errorf("unable to flush encoded messages: %w", err)
-			return e.error
-		}
-		e.buffered = 0
-	}
-
-	// Success.
-	return nil
+	// Encode the transmission.
+	e.error = e.encoder.Encode(transmission)
+	return e.error
 }
 
-// Finalize flushes any buffered transmissions.
+// Finalize implements rsync.Encoder.Finalize.
 func (e *protobufRsyncEncoder) Finalize() error {
-	// If there was previously an encoding error, then it will have propagated
-	// up the chain and canceled rsync transmission, but we definitely shouldn't
-	// attempt a flush if we know the stream is bad.
+	// If an error has occurred, then there's nothing to do.
 	if e.error != nil {
-		return fmt.Errorf("previous error encountered: %w", e.error)
+		return nil
 	}
 
-	// Flush any pending messages.
-	if err := e.encoder.Flush(); err != nil {
-		return fmt.Errorf("unable to write encoded messages: %w", err)
+	// Otherwise, attempt to flush the compressor.
+	if err := e.flusher.Flush(); err != nil {
+		return fmt.Errorf("unable to flush encoded messages: %w", err)
 	}
-
-	// Reset the buffered message count, in case this encoder is reused.
-	e.buffered = 0
 
 	// Success.
 	return nil
 }
 
-// protobufRsyncDecoder adapts a Protocol Buffers decoder to the rsync.Decoder
-// interface.
+// protobufRsyncDecoder implements rsync.Decoder using Protocol Buffers.
 type protobufRsyncDecoder struct {
 	// decoder is the underlying Protocol Buffers decoder.
 	decoder *encoding.ProtobufDecoder
 }
 
-func newProtobufRsyncDecoder(decoder *encoding.ProtobufDecoder) *protobufRsyncDecoder {
-	return &protobufRsyncDecoder{decoder: decoder}
-}
-
-// Decode implements transmission decoding.
+// Decode implements rsync.Decoder.Decode.
 func (d *protobufRsyncDecoder) Decode(transmission *rsync.Transmission) error {
 	// TODO: This is not particularly efficient because the Protocol Buffers
 	// decoding implementation doesn't reuse existing capacity in operation data
@@ -101,7 +62,7 @@ func (d *protobufRsyncDecoder) Decode(transmission *rsync.Transmission) error {
 	return d.decoder.Decode(transmission)
 }
 
-// Finalize is a no-op for Protocol Buffers rsync decoders.
+// Finalize implements rsync.Decoder.Finalize.
 func (d *protobufRsyncDecoder) Finalize() error {
 	return nil
 }
