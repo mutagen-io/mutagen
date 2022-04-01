@@ -293,7 +293,7 @@ func (s *endpointServer) serveScan(request *ScanRequest) error {
 			}
 		} else {
 			response = &ScanResponse{
-				SnapshotDelta: engine.DeltafyBytes(
+				SnapshotDelta: engine.DeltifyBytes(
 					snapshotBytes,
 					request.BaselineSnapshotSignature,
 					0,

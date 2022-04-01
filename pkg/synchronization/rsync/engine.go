@@ -153,8 +153,8 @@ const (
 	// permitted per operation. The optimal value for this isn't at all
 	// correlated with block size - it's just what's reasonable to hold
 	// in-memory and pass over the wire in a single transmission. This value
-	// will be used if a zero value is passed into Engine.Deltafy or
-	// Engine.DeltafyBytes for the maxDataOpSize parameter.
+	// will be used if a zero value is passed into Engine.Deltify or
+	// Engine.DeltifyBytes for the maxDataOpSize parameter.
 	DefaultMaximumDataOperationSize = 1 << 14
 )
 
@@ -376,7 +376,7 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (*Signature, error)
 		// still use the full block size when computing the weak hash. We could
 		// alternatively use the short block length, but it doesn't matter - all
 		// that matters is that we keep consistency when we compute the short
-		// block weak hash when searching in Deltafy.
+		// block weak hash when searching in Deltify.
 		weak, _, _ := e.weakHash(buffer[:n], blockSize)
 		strong := e.strongHash(buffer[:n], true)
 
@@ -411,7 +411,7 @@ func (e *Engine) BytesSignature(base []byte, blockSize uint64) *Signature {
 }
 
 // dualModeReader unifies the io.Reader and io.ByteReader interfaces. It is used
-// in deltafy operations to ensure that bytes can be efficiently extracted from
+// in deltify operations to ensure that bytes can be efficiently extracted from
 // targets.
 type dualModeReader interface {
 	io.Reader
@@ -480,7 +480,7 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 	}
 }
 
-// Deltafy computes delta operations to reconstitute the target data stream
+// Deltify computes delta operations to reconstitute the target data stream
 // using the base stream (based on the provided base signature). It streams
 // operations to the provided transmission function. The internal engine buffer
 // will be resized to the sum of the maximum data operation size plus the block
@@ -492,7 +492,7 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 // necessary for signatures generated in the same process, but should be done
 // for signatures received from untrusted locations (e.g. over the network). An
 // invalid signature can result in undefined behavior.
-func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
+func (e *Engine) Deltify(target io.Reader, base *Signature, maxDataOpSize uint64, transmit OperationTransmitter) error {
 	// Verify that the maximum data operation size is sane.
 	if maxDataOpSize == 0 {
 		maxDataOpSize = DefaultMaximumDataOperationSize
@@ -719,8 +719,8 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 	return nil
 }
 
-// DeltafyBytes computes delta operations for a byte slice. Unlike the streaming
-// Deltafy method, it returns a slice of operations, which should be reasonable
+// DeltifyBytes computes delta operations for a byte slice. Unlike the streaming
+// Deltify method, it returns a slice of operations, which should be reasonable
 // since the target data can already fit into memory. The internal engine buffer
 // will be resized to the sum of the maximum data operation size plus the block
 // size, and retained for the lifetime of the engine, so a reasonable value
@@ -731,7 +731,7 @@ func (e *Engine) Deltafy(target io.Reader, base *Signature, maxDataOpSize uint64
 // necessary for signatures generated in the same process, but should be done
 // for signatures received from untrusted locations (e.g. over the network). An
 // invalid signature can result in undefined behavior.
-func (e *Engine) DeltafyBytes(target []byte, base *Signature, maxDataOpSize uint64) []*Operation {
+func (e *Engine) DeltifyBytes(target []byte, base *Signature, maxDataOpSize uint64) []*Operation {
 	// Create an empty result.
 	var delta []*Operation
 
@@ -746,8 +746,8 @@ func (e *Engine) DeltafyBytes(target []byte, base *Signature, maxDataOpSize uint
 
 	// Compute the delta and watch for errors (which shouldn't occur for for
 	// in-memory data).
-	if err := e.Deltafy(reader, base, maxDataOpSize, transmit); err != nil {
-		panic(fmt.Errorf("in-memory deltafication failure: %w", err))
+	if err := e.Deltify(reader, base, maxDataOpSize, transmit); err != nil {
+		panic(fmt.Errorf("in-memory deltification failure: %w", err))
 	}
 
 	// Success.

@@ -1044,7 +1044,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
-	// expect/use an empty base when deltafying/patching.
+	// expect/use an empty base when deltifying/patching.
 	signatures := make([]*rsync.Signature, len(filteredPaths))
 	for p, path := range filteredPaths {
 		if base, err := opener.OpenFile(path); err != nil {
