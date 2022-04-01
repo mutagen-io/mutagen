@@ -55,6 +55,9 @@ func init() {
 	// a console, which it's not when running automatically.
 	cobra.MousetrapHelpText = ""
 
+	// Set the template used by the version flag.
+	rootCommand.SetVersionTemplate("Mutagen version {{ .Version }}\n")
+
 	// Grab a handle for the command line flags.
 	flags := rootCommand.Flags()
 
