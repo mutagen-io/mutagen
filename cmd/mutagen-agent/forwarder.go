@@ -74,6 +74,9 @@ func init() {
 	// Grab a handle for the command line flags.
 	flags := forwarderCommand.Flags()
 
+	// Disable alphabetical sorting of flags in help output.
+	flags.SortFlags = false
+
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&forwarderConfiguration.help, "help", "h", false, "Show help information")
