@@ -7,7 +7,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-// Transmit performs streaming transmission of files (in rsync deltafied form)
+// Transmit performs streaming transmission of files (in rsync deltified form)
 // to the specified receiver. It is the responsibility of the caller to ensure
 // that the provided signatures are valid by invoking their EnsureValid method.
 // In order for this function to perform efficiently, paths should be passed in
@@ -48,7 +48,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			continue
 		}
 
-		// Create an operation transmitter for deltafication and track reception
+		// Create an operation transmitter for deltification and track reception
 		// errors. We can safely set transmitError on each call because as soon
 		// as it's returned non-nil, the transmit function won't be called
 		// again.
@@ -59,8 +59,8 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			return transmitError
 		}
 
-		// Perform deltafication.
-		err = engine.Deltafy(file, signatures[i], 0, transmit)
+		// Perform deltification.
+		err = engine.Deltify(file, signatures[i], 0, transmit)
 
 		// Close the file.
 		file.Close()

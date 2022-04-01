@@ -52,8 +52,14 @@ func init() {
 	// the main CLI, as it's not necessary for the agent.
 	cobra.MousetrapHelpText = ""
 
+	// Set the template used by the version flag.
+	rootCommand.SetVersionTemplate("Mutagen agent version {{ .Version }}\n")
+
 	// Grab a handle for the command line flags.
 	flags := rootCommand.Flags()
+
+	// Disable alphabetical sorting of flags in help output.
+	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.

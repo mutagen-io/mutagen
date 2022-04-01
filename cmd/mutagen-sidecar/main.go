@@ -28,7 +28,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 var rootCommand = &cobra.Command{
 	Use:          "mutagen-sidecar",
 	Version:      mutagen.Version,
-	Short:        "Sidecar entrypoint for creating and controlling Mutagen sessions",
+	Short:        "Sidecar entry point for creating and controlling Mutagen sessions",
 	RunE:         rootMain,
 	SilenceUsage: true,
 }
@@ -48,8 +48,14 @@ func init() {
 	// the main CLI, as it's not necessary for the sidecar.
 	cobra.MousetrapHelpText = ""
 
+	// Set the template used by the version flag.
+	rootCommand.SetVersionTemplate("Mutagen sidecar version {{ .Version }}\n")
+
 	// Grab a handle for the command line flags.
 	flags := rootCommand.Flags()
+
+	// Disable alphabetical sorting of flags in help output.
+	flags.SortFlags = false
 
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.

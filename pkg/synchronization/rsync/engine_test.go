@@ -280,7 +280,7 @@ func (c engineTestCase) run(t *testing.T) {
 	}
 
 	// Compute a delta.
-	delta := engine.DeltafyBytes(target, signature, c.maxDataOpSize)
+	delta := engine.DeltifyBytes(target, signature, c.maxDataOpSize)
 
 	// Determine what we should expect for the maximumd data operation size.
 	expectedMaxDataOpSize := c.maxDataOpSize
