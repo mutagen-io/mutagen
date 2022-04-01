@@ -14,7 +14,7 @@ COPY ["pkg", "/mutagen/pkg/"]
 COPY ["sspl", "/mutagen/sspl/"]
 WORKDIR /mutagen
 
-# Build the sidecar entrypoint and agent binaries.
+# Build the sidecar entry point and agent binaries.
 RUN ["go", "build", "./cmd/mutagen-sidecar"]
 RUN ["go", "build", "./cmd/mutagen-agent"]
 RUN ["go", "build", "-o", "mutagen-agent-enhanced", "-tags", "sspl,fanotify", "./cmd/mutagen-agent"]
@@ -23,7 +23,7 @@ RUN ["go", "build", "-o", "mutagen-agent-enhanced", "-tags", "sspl,fanotify", ".
 # Switch to a vanilla Alpine base for the final image.
 FROM alpine:3.15 AS base
 
-# Copy the sidecar entrypoint from the builder.
+# Copy the sidecar entry point from the builder.
 COPY --from=builder ["/mutagen/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
 
 # Create the parent directory for volume mount points.
@@ -32,7 +32,7 @@ RUN ["mkdir", "/volumes"]
 # Add an indicator that this is a Mutagen sidecar container.
 ENV MUTAGEN_SIDECAR=1
 
-# Set the image entrypoint.
+# Set the image entry point.
 ENTRYPOINT ["mutagen-sidecar"]
 
 

@@ -73,7 +73,7 @@ else
     go run scripts/build.go --mode=slim
 fi
 
-# Ensure that the sidecar entrypoint builds.
+# Ensure that the sidecar entry point builds.
 go build ./cmd/mutagen-sidecar
 
 # Build test scripts to ensure that they are maintained as core packages evolve.

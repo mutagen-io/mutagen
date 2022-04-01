@@ -148,7 +148,7 @@ func Multiplex(carrier Carrier, even bool, configuration *Configuration) *Multip
 	return multiplexer
 }
 
-// run is the primary entrypoint for the multiplexer's background Goroutines.
+// run is the primary entry point for the multiplexer's background Goroutines.
 func (m *Multiplexer) run(carrier Carrier) {
 	// Start the reader Goroutine and monitor for its termination.
 	heartbeats := make(chan struct{}, 1)
@@ -203,7 +203,7 @@ func (m *Multiplexer) run(carrier Carrier) {
 	}
 }
 
-// read is the entrypoint for the reader Goroutine.
+// read is the entry point for the reader Goroutine.
 func (m *Multiplexer) read(reader Carrier, heartbeats chan<- struct{}) error {
 	// Create a buffer for reading stream data lengths, which are encoded as
 	// 16-bit unsigned integers.
@@ -483,7 +483,7 @@ func (m *Multiplexer) read(reader Carrier, heartbeats chan<- struct{}) error {
 	}
 }
 
-// write is the entrypoint for the writer Goroutine.
+// write is the entry point for the writer Goroutine.
 func (m *Multiplexer) write(writer Carrier) error {
 	// If outbound heartbeats are enabled, then create a ticker to regulate
 	// heartbeat transmission, defer its shutdown, and craft a reusable
@@ -516,7 +516,7 @@ func (m *Multiplexer) write(writer Carrier) error {
 	}
 }
 
-// enqueue is the entrypoint for the state accumulation/transmission Goroutine.
+// enqueue is the entry point for the state accumulation/transmission Goroutine.
 func (m *Multiplexer) enqueue() {
 	// Track pending updates.
 	windowIncrements := make(map[uint64]uint64)
