@@ -3,7 +3,7 @@ module github.com/mutagen-io/mutagen
 go 1.18
 
 require (
-	github.com/Microsoft/go-winio v0.5.1
+	github.com/Microsoft/go-winio v0.5.2
 	github.com/bmatcuk/doublestar/v4 v4.0.2
 	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/basex v1.0.1
@@ -19,7 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03
-	golang.org/x/sys v0.0.0-20220111092808-5a964db01320
+	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.43.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
