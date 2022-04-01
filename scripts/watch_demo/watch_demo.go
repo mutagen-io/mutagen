@@ -54,7 +54,7 @@ func main() {
 		case event := <-watcher.Events():
 			fmt.Println("Received event with", len(event), "paths")
 			for path := range event {
-				fmt.Printf("\t%s\n", path)
+				fmt.Printf("\t<%s>\n", path)
 			}
 		case err := <-watcher.Errors():
 			cmd.Fatal(fmt.Errorf("watching failed: %w", err))
