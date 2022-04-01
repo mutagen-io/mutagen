@@ -19,6 +19,7 @@ fi
 go vet ./pkg/... || FAILURE=1
 go vet ./cmd/... || FAILURE=1
 go vet ./scripts/... || FAILURE=1
+go vet ./tools/... || FAILURE=1
 
 # Perform static analysis on SSPL code.
 go vet -tags sspl ./sspl/... || FAILURE=1
