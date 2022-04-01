@@ -14,7 +14,7 @@ import (
 // legalMain is the entry point for the legal command.
 func legalMain(_ *cobra.Command, _ []string) error {
 	// Print license information.
-	fmt.Println(mutagen.Licenses)
+	fmt.Print(mutagen.Licenses)
 
 	// Success.
 	return nil
