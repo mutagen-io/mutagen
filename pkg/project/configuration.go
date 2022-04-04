@@ -59,7 +59,7 @@ func (b FlushOnCreateBehavior) FlushOnCreate() bool {
 }
 
 // UnmarshalYAML implements Unmarshaler.UnmarshalYAML.
-func (b *FlushOnCreateBehavior) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (b *FlushOnCreateBehavior) UnmarshalYAML(unmarshal func(any) error) error {
 	// Call the underlying unmarshaling function.
 	var flush bool
 	if err := unmarshal(&flush); err != nil {

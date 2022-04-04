@@ -66,7 +66,7 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 	}
 
 	// Set the eviction handler.
-	watcher.evictor.OnEvicted = func(key lru.Key, _ interface{}) {
+	watcher.evictor.OnEvicted = func(key lru.Key, _ any) {
 		if path, ok := key.(string); !ok {
 			panic("invalid key type in watch path cache")
 		} else {
