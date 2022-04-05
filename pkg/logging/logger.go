@@ -53,70 +53,70 @@ func (l *Logger) output(level, line string) {
 }
 
 // println provides logging with formatting semantics equivalent to fmt.Println.
-func (l *Logger) println(level Level, v ...interface{}) {
+func (l *Logger) println(level Level, v ...any) {
 	if l != nil && currentLevel >= level {
 		l.output(level.String(), fmt.Sprintln(v...))
 	}
 }
 
 // printf provides logging with formatting semantics equivalent to fmt.Printf.
-func (l *Logger) printf(level Level, format string, v ...interface{}) {
+func (l *Logger) printf(level Level, format string, v ...any) {
 	if l != nil && currentLevel >= level {
 		l.output(level.String(), fmt.Sprintf(format, v...))
 	}
 }
 
 // Error logs errors with formatting semantics equivalent to fmt.Println.
-func (l *Logger) Error(v ...interface{}) {
+func (l *Logger) Error(v ...any) {
 	l.println(LevelError, v...)
 }
 
 // Errorf logs errors with formatting semantics equivalent to fmt.Printf.
-func (l *Logger) Errorf(format string, v ...interface{}) {
+func (l *Logger) Errorf(format string, v ...any) {
 	l.printf(LevelError, format, v...)
 }
 
 // Warning logs warnings with formatting semantics equivalent to fmt.Println.
-func (l *Logger) Warning(v ...interface{}) {
+func (l *Logger) Warning(v ...any) {
 	l.println(LevelWarning, v...)
 }
 
 // Warningf logs warnings with formatting semantics equivalent to fmt.Printf.
-func (l *Logger) Warningf(format string, v ...interface{}) {
+func (l *Logger) Warningf(format string, v ...any) {
 	l.printf(LevelWarning, format, v...)
 }
 
 // Info logs information with formatting semantics equivalent to fmt.Println.
-func (l *Logger) Info(v ...interface{}) {
+func (l *Logger) Info(v ...any) {
 	l.println(LevelInfo, v...)
 }
 
 // Infof logs information with formatting semantics equivalent to fmt.Printf.
-func (l *Logger) Infof(format string, v ...interface{}) {
+func (l *Logger) Infof(format string, v ...any) {
 	l.printf(LevelInfo, format, v...)
 }
 
 // Debug logs debug information with formatting semantics equivalent to
 // fmt.Println.
-func (l *Logger) Debug(v ...interface{}) {
+func (l *Logger) Debug(v ...any) {
 	l.println(LevelDebug, v...)
 }
 
 // Debugf logs debug information with formatting semantics equivalent to
 // fmt.Printf.
-func (l *Logger) Debugf(format string, v ...interface{}) {
+func (l *Logger) Debugf(format string, v ...any) {
 	l.printf(LevelDebug, format, v...)
 }
 
 // Trace logs tracing information with formatting semantics equivalent to
 // fmt.Println.
-func (l *Logger) Trace(v ...interface{}) {
+func (l *Logger) Trace(v ...any) {
 	l.println(LevelTrace, v...)
 }
 
 // Tracef logs tracing information with formatting semantics equivalent to
 // fmt.Printf.
-func (l *Logger) Tracef(format string, v ...interface{}) {
+func (l *Logger) Tracef(format string, v ...any) {
 	l.printf(LevelTrace, format, v...)
 }
 
