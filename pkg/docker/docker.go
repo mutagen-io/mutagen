@@ -24,7 +24,7 @@ func CommandPath() (string, error) {
 
 // Command prepares (but does not start) a Docker command with the specified
 // arguments and scoped to lifetime of the provided context.
-func Command(context context.Context, args ...string) (*exec.Cmd, error) {
+func Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command path.
 	commandPath, err := CommandPath()
 	if err != nil {
@@ -32,5 +32,5 @@ func Command(context context.Context, args ...string) (*exec.Cmd, error) {
 	}
 
 	// Create the command.
-	return exec.CommandContext(context, commandPath, args...), nil
+	return exec.CommandContext(ctx, commandPath, args...), nil
 }

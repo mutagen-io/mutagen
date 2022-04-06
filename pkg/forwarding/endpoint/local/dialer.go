@@ -12,8 +12,8 @@ import (
 type dialerEndpoint struct {
 	// logger is the underlying logger.
 	logger *logging.Logger
-	// dialingContext limits the duration of dialing operations.
-	dialingContext context.Context
+	// dialingCtx limits the duration of dialing operations.
+	dialingCtx context.Context
 	// dialingCancel cancels the dialing context.
 	dialingCancel context.CancelFunc
 	// dialer is the dialer used for TCP and Unix domain socket dialing.
@@ -33,7 +33,7 @@ func NewDialerEndpoint(
 	address string,
 ) (forwarding.Endpoint, error) {
 	// Create a cancellable context that we can use to regulate connections.
-	dialingContext, dialingCancel := context.WithCancel(context.Background())
+	dialingCtx, dialingCancel := context.WithCancel(context.Background())
 
 	// Create the dialer (unless we're targeting a Windows named pipe).
 	var dialer *net.Dialer
@@ -43,12 +43,12 @@ func NewDialerEndpoint(
 
 	// Create the endpoint.
 	return &dialerEndpoint{
-		logger:         logger,
-		dialingContext: dialingContext,
-		dialingCancel:  dialingCancel,
-		dialer:         dialer,
-		protocol:       protocol,
-		address:        address,
+		logger:        logger,
+		dialingCtx:    dialingCtx,
+		dialingCancel: dialingCancel,
+		dialer:        dialer,
+		protocol:      protocol,
+		address:       address,
 	}, nil
 }
 
@@ -62,12 +62,12 @@ func (e *dialerEndpoint) Open() (net.Conn, error) {
 	// If we're dealing with a Windows named pipe target, then perform dialing
 	// using the platform-specific dialing function.
 	if e.protocol == "npipe" {
-		return dialWindowsNamedPipe(e.dialingContext, e.address)
+		return dialWindowsNamedPipe(e.dialingCtx, e.address)
 	}
 
 	// For all other protocols (i.e. TCP and Unix domain sockets), use the
 	// standard dialer.
-	return e.dialer.DialContext(e.dialingContext, e.protocol, e.address)
+	return e.dialer.DialContext(e.dialingCtx, e.protocol, e.address)
 }
 
 // Shutdown implements forwarding.Endpoint.Shutdown.
