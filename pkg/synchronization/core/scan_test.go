@@ -53,8 +53,8 @@ func testingAcceleratedIgnoreCacheIsSubset(accelerated, original IgnoreCache) bo
 // TestScan tests Scan.
 func TestScan(t *testing.T) {
 	// Create contexts to use for tests.
-	background := context.Background()
-	cancelled, cancel := context.WithCancel(background)
+	backgroundCtx := context.Background()
+	cancelledCtx, cancel := context.WithCancel(backgroundCtx)
 	cancel()
 
 	// Check if the platform supports empty symbolic link targets. Unfortunately
@@ -86,8 +86,8 @@ func TestScan(t *testing.T) {
 		// this case, the untweak function can (and should) also be used to fix
 		// changes made by modifier that would prevent content removal.
 		untweak func(string) error
-		// context is the context in which the operation should be performed.
-		context context.Context
+		// ctx is the context in which the operation should be performed.
+		ctx context.Context
 		// ignores are the ignore specifications to use for the test.
 		ignores []string
 		// symbolicLinkMode is the symbolic link mode to use for the test.
@@ -105,16 +105,16 @@ func TestScan(t *testing.T) {
 		modifier func(string) ([]*Change, error)
 	}{
 		// Test an absence of content.
-		{"root absent", nil, nil, nil, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, nil, nil},
+		{"root absent", nil, nil, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, nil, nil},
 
 		// Test a file root.
-		{"file root", nil, tF1, tF1ContentMap, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tF1, nil},
+		{"file root", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tF1, nil},
 
 		// Test an empty directory root.
-		{"empty directory root", nil, tD0, nil, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0, nil},
+		{"empty directory root", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0, nil},
 
 		// Test a populated directory root.
-		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1, nil},
+		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1, nil},
 
 		// Test a populated directory root with complex contents.
 		{
@@ -124,7 +124,7 @@ func TestScan(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
 			false,
@@ -138,7 +138,7 @@ func TestScan(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -152,7 +152,7 @@ func TestScan(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
 			runtime.GOOS == "windows",
@@ -161,12 +161,12 @@ func TestScan(t *testing.T) {
 		},
 
 		// Test a directory root with ignored content.
-		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, background, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, false, nested("file", tU), nil},
+		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, false, nested("file", tU), nil},
 
 		// Test with a cancelled context.
 		// TODO: Figure out a way to cancel the context midway through reading
 		// a file so that we can check for read preemption.
-		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelled, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, true, nil, nil},
+		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelledCtx, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, true, nil, nil},
 
 		// Test a directory with an untracked Unix domain socket.
 		{
@@ -196,7 +196,7 @@ func TestScan(t *testing.T) {
 				return nil
 			},
 			nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -215,7 +215,7 @@ func TestScan(t *testing.T) {
 				return os.Symlink("", filepath.Join(root, "badlink"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -232,7 +232,7 @@ func TestScan(t *testing.T) {
 				return os.Symlink("", filepath.Join(root, "badlink"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
 			false,
@@ -249,7 +249,7 @@ func TestScan(t *testing.T) {
 				return os.Symlink("/", filepath.Join(root, "badlink"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -266,7 +266,7 @@ func TestScan(t *testing.T) {
 				return os.WriteFile(filepath.Join(root, filesystem.TemporaryNamePrefix+"test"), nil, 0600)
 			},
 			nil,
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -275,7 +275,7 @@ func TestScan(t *testing.T) {
 		},
 
 		// Test invalid ignores.
-		{"invalid ignore", nil, tD0, nil, nil, nil, background, []string{""}, SymbolicLinkMode_SymbolicLinkModePortable, true, nil, nil},
+		{"invalid ignore", nil, tD0, nil, nil, nil, backgroundCtx, []string{""}, SymbolicLinkMode_SymbolicLinkModePortable, true, nil, nil},
 
 		// Test unreadable content.
 		{
@@ -290,7 +290,7 @@ func TestScan(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(root, 0600)
 			},
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			true,
@@ -309,7 +309,7 @@ func TestScan(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(root, 0700)
 			},
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			true,
@@ -328,7 +328,7 @@ func TestScan(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "file"), 0600)
 			},
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -347,7 +347,7 @@ func TestScan(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "subdir"), 0700)
 			},
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -358,7 +358,7 @@ func TestScan(t *testing.T) {
 		// Test accelerated scanning with modifications, including cases where
 		// problematic content is generated.
 		{
-			"file created", nil, tD1, tD1ContentMap, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1,
+			"file created", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1,
 			func(root string) ([]*Change, error) {
 				if err := os.WriteFile(filepath.Join(root, "newfile"), []byte(tF2Content), 0600); err != nil {
 					return nil, err
@@ -369,7 +369,7 @@ func TestScan(t *testing.T) {
 			},
 		},
 		{
-			"root type replaced", nil, tD0, nil, nil, nil, background, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0,
+			"root type replaced", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0,
 			func(root string) ([]*Change, error) {
 				if err := os.Remove(root); err != nil {
 					return nil, err
@@ -391,7 +391,7 @@ func TestScan(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "file"), 0600)
 			},
-			background,
+			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			false,
@@ -451,7 +451,7 @@ func TestScan(t *testing.T) {
 
 			// Perform a cold scan and handle failure cases.
 			snapshot, cache, ignoreCache, err := Scan(
-				test.context,
+				test.ctx,
 				root,
 				nil, nil,
 				hasher, nil,
@@ -503,7 +503,7 @@ func TestScan(t *testing.T) {
 
 			// Perform a warm (but non-accelerated) scan.
 			newSnapshot, newCache, newIgnoreCache, err := Scan(
-				test.context,
+				test.ctx,
 				root,
 				nil, nil,
 				rescanHasher, cache,
@@ -550,7 +550,7 @@ func TestScan(t *testing.T) {
 			// Perform an accelerated scan (without any re-check paths) using
 			// the snapshot as a baseline.
 			newSnapshot, newCache, newIgnoreCache, err = Scan(
-				test.context,
+				test.ctx,
 				root,
 				snapshot, nil,
 				hasher, cache,
@@ -624,7 +624,7 @@ func TestScan(t *testing.T) {
 			// Perform an accelerated scan (with re-check paths) using the
 			// snapshot as a baseline.
 			newSnapshot, newCache, newIgnoreCache, err = Scan(
-				test.context,
+				test.ctx,
 				root,
 				snapshot, recheckPaths,
 				hasher, cache,

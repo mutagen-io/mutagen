@@ -51,8 +51,8 @@ func testingNWildcardEntries(n uint) []*Entry {
 // TestTransition tests Transition.
 func TestTransition(t *testing.T) {
 	// Create contexts to use for tests.
-	background := context.Background()
-	cancelled, cancel := context.WithCancel(background)
+	backgroundCtx := context.Background()
+	cancelledCtx, cancel := context.WithCancel(backgroundCtx)
 	cancel()
 
 	// Define test cases.
@@ -80,8 +80,8 @@ func TestTransition(t *testing.T) {
 		// successful removal by os.RemoveAll. For more information about the
 		// role of untweak, see the untweak member in testingContentManager.
 		untweak func(string) error
-		// context is the context in which the operation should be performed.
-		context context.Context
+		// ctx is the context in which the operation should be performed.
+		ctx context.Context
 		// transitions are the transitions to apply
 		transitions []*Change
 		// transitionsContentMap is the content map necessary to perform the
@@ -104,7 +104,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tF1}},
 			tF1ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -117,7 +117,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tD1}},
 			tD1ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -132,7 +132,7 @@ func TestTransition(t *testing.T) {
 			},
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tDM}},
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -147,7 +147,7 @@ func TestTransition(t *testing.T) {
 			},
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			testingDecomposeEntryIntoCreationChanges(tDM),
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -162,7 +162,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tF1, tF1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tF1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -175,7 +175,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tD1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -190,7 +190,7 @@ func TestTransition(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tDM}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -205,7 +205,7 @@ func TestTransition(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			testingDecomposeEntryIntoRemovalChanges(tDM),
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -220,7 +220,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tF1, tF1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tF1, New: tF2}},
 			tF2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -233,7 +233,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file", Old: tF1, New: tF2}},
 			tD2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -248,7 +248,7 @@ func TestTransition(t *testing.T) {
 			},
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file", Old: tF1, New: executable(tF1)}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -263,7 +263,7 @@ func TestTransition(t *testing.T) {
 			},
 			nested("file", executable(tF1)), tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file", Old: executable(tF1), New: tF1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -284,7 +284,7 @@ func TestTransition(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(root, 0700)
 			},
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file", Old: tF1, New: tF2}},
 			tD2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -299,7 +299,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tF1, tF1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "subpath", New: tF2}},
 			tF2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -320,7 +320,7 @@ func TestTransition(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
 			},
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "populated subdir/thing.txt", New: tF2}},
 			testingContentMap{"populated subdir/thing.txt": []byte(tF2Content)},
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -333,7 +333,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "FILE", Old: tF1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -346,7 +346,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nested("subdir", tD1), testingContentMap{"subdir/file": []byte(tF1Content)},
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "SUBdir/file", Old: tF1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -361,7 +361,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: &Entry{Kind: -1}}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -374,7 +374,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: nested("child", &Entry{Kind: -1})}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -387,7 +387,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tF1, tF1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tF2}},
 			tF2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -400,7 +400,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tF1, tF1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tDM}},
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -419,7 +419,7 @@ func TestTransition(t *testing.T) {
 				return os.Symlink("file", filepath.Join(root, "link"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "link", New: tSR}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -434,7 +434,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: &Entry{Kind: -1}}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -447,7 +447,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: nested("file", &Entry{Kind: -1})}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -465,7 +465,7 @@ func TestTransition(t *testing.T) {
 				return os.Chtimes(root, soon, soon)
 			},
 			nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tF1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -499,7 +499,7 @@ func TestTransition(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
 			},
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tDM}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -525,7 +525,7 @@ func TestTransition(t *testing.T) {
 			},
 			tDM, tDMContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file link", Old: tSR}},
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
@@ -547,7 +547,7 @@ func TestTransition(t *testing.T) {
 				return os.Symlink("executable file", filepath.Join(root, "file link"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file link", Old: tSR}},
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -569,7 +569,7 @@ func TestTransition(t *testing.T) {
 				return os.Symlink("/", filepath.Join(root, "file link"))
 			},
 			nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "file link", Old: tSR}},
 			tDMContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -590,7 +590,7 @@ func TestTransition(t *testing.T) {
 			func(root string) error {
 				return os.Chmod(filepath.Join(root, "populated subdir"), 0700)
 			},
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "populated subdir", Old: tD1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -610,7 +610,7 @@ func TestTransition(t *testing.T) {
 				return os.Chtimes(root, soon, soon)
 			},
 			nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Old: tF1, New: tF2}},
 			tF2ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -625,7 +625,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			cancelled,
+			cancelledCtx,
 			[]*Change{{Old: tD1, New: tF1}},
 			tF1ContentMap,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -640,7 +640,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			nil, nil,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{New: tD1}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -655,7 +655,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "link", New: &Entry{Kind: EntryKind_SymbolicLink, Target: "file"}}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
@@ -668,7 +668,7 @@ func TestTransition(t *testing.T) {
 			nil,
 			tD1, tD1ContentMap,
 			nil, nil, nil,
-			background,
+			backgroundCtx,
 			[]*Change{{Path: "link", New: &Entry{Kind: EntryKind_SymbolicLink, Target: "/file"}}},
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
@@ -724,7 +724,7 @@ func TestTransition(t *testing.T) {
 
 			// Perform a scan to extract filesystem behavior and a cache.
 			snapshot, cache, _, err := Scan(
-				background,
+				backgroundCtx,
 				root,
 				nil, nil,
 				hasher, nil,
@@ -756,7 +756,7 @@ func TestTransition(t *testing.T) {
 				hasher:     newTestingHasher(),
 			}
 			results, problems, missingFiles := Transition(
-				test.context,
+				test.ctx,
 				root,
 				test.transitions,
 				cache,

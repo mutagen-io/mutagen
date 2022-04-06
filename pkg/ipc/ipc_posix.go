@@ -11,13 +11,13 @@ import (
 
 // DialContext attempts to establish an IPC connection, timing out if the
 // provided context expires.
-func DialContext(context context.Context, path string) (net.Conn, error) {
+func DialContext(ctx context.Context, path string) (net.Conn, error) {
 	// Create a zero-valued dialer, which will have the same dialing behavior as
 	// the raw dialing functions.
 	dialer := &net.Dialer{}
 
 	// Perform dialing.
-	return dialer.DialContext(context, "unix", path)
+	return dialer.DialContext(ctx, "unix", path)
 }
 
 // NewListener creates a new IPC listener.

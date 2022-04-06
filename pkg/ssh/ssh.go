@@ -64,7 +64,7 @@ func sshCommandPath() (string, error) {
 
 // SSHCommand prepares (but does not start) an SSH command with the specified
 // arguments and scoped to lifetime of the provided context.
-func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
+func SSHCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := sshCommandPath()
 	if err != nil {
@@ -72,7 +72,7 @@ func SSHCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	}
 
 	// Create the command.
-	return exec.CommandContext(context, nameOrPath, args...), nil
+	return exec.CommandContext(ctx, nameOrPath, args...), nil
 }
 
 // scpCommandPath returns the full path to use for invoking scp. It will use the
@@ -90,7 +90,7 @@ func scpCommandPath() (string, error) {
 
 // SCPCommand prepares (but does not start) an SCP command with the specified
 // arguments and scoped to lifetime of the provided context.
-func SCPCommand(context context.Context, args ...string) (*exec.Cmd, error) {
+func SCPCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Identify the command name or path.
 	nameOrPath, err := scpCommandPath()
 	if err != nil {
@@ -98,5 +98,5 @@ func SCPCommand(context context.Context, args ...string) (*exec.Cmd, error) {
 	}
 
 	// Create the command.
-	return exec.CommandContext(context, nameOrPath, args...), nil
+	return exec.CommandContext(ctx, nameOrPath, args...), nil
 }

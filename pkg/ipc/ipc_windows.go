@@ -14,7 +14,7 @@ import (
 
 // DialContext attempts to establish an IPC connection, timing out if the
 // provided context expires.
-func DialContext(context context.Context, path string) (net.Conn, error) {
+func DialContext(ctx context.Context, path string) (net.Conn, error) {
 	// Read the pipe name.
 	pipeNameBytes, err := os.ReadFile(path)
 	if err != nil {
@@ -23,7 +23,7 @@ func DialContext(context context.Context, path string) (net.Conn, error) {
 	pipeName := string(pipeNameBytes)
 
 	// Attempt to connect.
-	return winio.DialPipeContext(context, pipeName)
+	return winio.DialPipeContext(ctx, pipeName)
 }
 
 // listener implements net.Listener but provides additional cleanup facilities

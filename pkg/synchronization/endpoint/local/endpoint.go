@@ -365,7 +365,7 @@ func NewEndpoint(
 
 	// Create a cancellable context in which the endpoint's background worker
 	// Goroutines will operate.
-	workerContext, workerCancel := context.WithCancel(context.Background())
+	workerCtx, workerCancel := context.WithCancel(context.Background())
 
 	// Create channels to monitor background worker Goroutine completion.
 	saveCacheDone := make(chan struct{})
@@ -402,7 +402,7 @@ func NewEndpoint(
 
 	// Start the cache saving Goroutine.
 	go func() {
-		endpoint.saveCacheRegularly(workerContext, cachePath)
+		endpoint.saveCacheRegularly(workerCtx, cachePath)
 		close(saveCacheDone)
 	}()
 
@@ -415,9 +415,9 @@ func NewEndpoint(
 	// Start the watching Goroutine.
 	go func() {
 		if actualWatchMode == reifiedWatchModePoll {
-			endpoint.watchPoll(workerContext, watchPollingInterval, nonRecursiveWatchingAllowed)
+			endpoint.watchPoll(workerCtx, watchPollingInterval, nonRecursiveWatchingAllowed)
 		} else if actualWatchMode == reifiedWatchModeRecursive {
-			go endpoint.watchRecursive(workerContext, watchPollingInterval)
+			go endpoint.watchRecursive(workerCtx, watchPollingInterval)
 		}
 		close(watchDone)
 	}()
@@ -428,7 +428,7 @@ func NewEndpoint(
 
 // saveCacheRegularly serializes the cache and writes the result to disk at
 // regular intervals. It runs as a background Goroutine for all endpoints.
-func (e *endpoint) saveCacheRegularly(context context.Context, cachePath string) {
+func (e *endpoint) saveCacheRegularly(ctx context.Context, cachePath string) {
 	// Create a ticker to regulate cache saving and defer its shutdown.
 	ticker := time.NewTicker(cacheSaveInterval)
 	defer ticker.Stop()
@@ -446,7 +446,7 @@ func (e *endpoint) saveCacheRegularly(context context.Context, cachePath string)
 	// to the controller on the next call to Scan.
 	for {
 		select {
-		case <-context.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			e.scanLock.Lock()
