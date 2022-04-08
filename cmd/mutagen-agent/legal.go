@@ -7,7 +7,6 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 
-	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
@@ -22,7 +21,7 @@ func legalMain(_ *cobra.Command, _ []string) error {
 
 // legalCommand is the legal command.
 var legalCommand = &cobra.Command{
-	Use:          agent.ModeLegal,
+	Use:          "legal",
 	Short:        "Show legal information",
 	Args:         cmd.DisallowArguments,
 	RunE:         legalMain,

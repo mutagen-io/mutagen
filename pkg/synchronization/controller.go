@@ -224,7 +224,6 @@ func newSession(
 	// loop and mark the endpoints as handed off to that loop so that we don't
 	// defer their shutdown.
 	if !paused {
-		logger.Info("Starting run loop")
 		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.flushRequests = make(chan chan error, 1)
@@ -657,12 +656,15 @@ var (
 	errHaltedForSafety = errors.New("synchronization halted")
 )
 
-// run is the main runloop for the controller, managing connectivity and
+// run is the main run loop for the controller, managing connectivity and
 // synchronization.
 func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
+	// Log run loop entry.
+	c.logger.Debug("Run loop commencing")
+
 	// Defer resource and state cleanup.
 	defer func() {
-		// Shutdown any endpoints. These might be non-nil if the runloop was
+		// Shutdown any endpoints. These might be non-nil if the run loop was
 		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
 			alpha.Shutdown()
@@ -677,6 +679,9 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 			Session: c.session,
 		}
 		c.stateLock.Unlock()
+
+		// Log run loop termination.
+		c.logger.Debug("Run loop terminated")
 
 		// Signal completion.
 		close(c.done)
@@ -767,7 +772,7 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		// Perform synchronization.
 		c.logger.Debug("Entering synchronization loop")
 		err := c.synchronize(ctx, alpha, beta)
-		c.logger.Debug("Exited synchronization loop with error:", err)
+		c.logger.Debug("Synchronization loop terminated with error:", err)
 
 		// Indicate that the synchronization loop is no longer synchronizing.
 		// Again, no notification is required here since this is not a
@@ -799,21 +804,17 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		}
 		c.stateLock.Unlock()
 
-		// When synchronization fails, we generally want to restart it as
-		// quickly as possible. Thus, if it's been longer than our usual waiting
-		// period since synchronization failed last, simply try to reconnect
-		// immediately (though still check for cancellation). If it's been less
-		// than our usual waiting period since synchronization failed last, then
-		// something is probably wrong, so wait for our usual waiting period
-		// (while checking and monitoring for cancellation).
+		// If we were cancelled, then return immediately.
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// If less than one auto-reconnect interval has elapsed since the last
+		// synchronization failure, then wait before attempting reconnection.
 		now := time.Now()
-		if now.Sub(lastSynchronizationFailureTime) >= autoReconnectInterval {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-		} else {
+		if now.Sub(lastSynchronizationFailureTime) < autoReconnectInterval {
 			select {
 			case <-ctx.Done():
 				return
@@ -980,6 +981,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				return fmt.Errorf("beta polling error: %w", βPollErr)
 			}
 		} else {
+			c.logger.Debug("Skipping polling")
 			skipPolling = false
 		}
 
@@ -1090,8 +1092,10 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// propagate executability from the preserving side to the
 		// non-preserving side.
 		if αSnapshot.PreservesExecutability && !βSnapshot.PreservesExecutability {
+			c.logger.Debug("Propagating alpha executability to beta")
 			βContent = core.PropagateExecutability(ancestor, αContent, βContent)
 		} else if βSnapshot.PreservesExecutability && !αSnapshot.PreservesExecutability {
+			c.logger.Debug("Propagating beta executability to alpha")
 			αContent = core.PropagateExecutability(ancestor, βContent, αContent)
 		}
 
@@ -1117,6 +1121,17 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			βContent,
 			synchronizationMode,
 		)
+		if c.logger.Level() >= logging.LevelTrace {
+			for _, change := range ancestorChanges {
+				c.logger.Tracef("ancestor change at \"%s\"", change.Path)
+			}
+			for _, transition := range αTransitions {
+				c.logger.Tracef("alpha transition at \"%s\"", transition.Path)
+			}
+			for _, transition := range βTransitions {
+				c.logger.Tracef("beta transition at \"%s\"", transition.Path)
+			}
+		}
 
 		// Store conflicts that arose during reconciliation.
 		c.stateLock.Lock()
@@ -1156,17 +1171,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Stage files on alpha.
-		c.logger.Debug("Staging files on alpha")
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
 		c.stateLock.Unlock()
 		if paths, digests := core.TransitionDependencies(αTransitions); len(paths) > 0 {
+			c.logger.Debugf("Staging %d file(s) on alpha", len(paths))
 			filteredPaths, signatures, receiver, err := alpha.Stage(paths, digests)
 			if err != nil {
 				return fmt.Errorf("unable to begin staging on alpha: %w", err)
 			}
 			if !filteredPathsAreSubset(filteredPaths, paths) {
 				return errors.New("alpha returned incorrect subset of staging paths")
+			}
+			if len(filteredPaths) < len(paths) {
+				c.logger.Debugf("Alpha pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
@@ -1178,17 +1196,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Stage files on beta.
-		c.logger.Debug("Staging files on beta")
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingBeta
 		c.stateLock.Unlock()
 		if paths, digests := core.TransitionDependencies(βTransitions); len(paths) > 0 {
+			c.logger.Debugf("Staging %d file(s) on beta", len(paths))
 			filteredPaths, signatures, receiver, err := beta.Stage(paths, digests)
 			if err != nil {
 				return fmt.Errorf("unable to begin staging on beta: %w", err)
 			}
 			if !filteredPathsAreSubset(filteredPaths, paths) {
 				return errors.New("beta returned incorrect subset of staging paths")
+			}
+			if len(filteredPaths) < len(paths) {
+				c.logger.Debugf("Beta pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
 				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
@@ -1293,6 +1314,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// we're not already in a synchronization cycle that was forced due to
 		// previously missing files.
 		if (αMissingFiles || βMissingFiles) && !skippingPollingDueToMissingFiles {
+			c.logger.Debug("Endpoints missing files after transition, skipping polling")
 			skipPolling = true
 			skippingPollingDueToMissingFiles = true
 		} else {

@@ -47,12 +47,17 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 		return nil, fmt.Errorf("unable to read contents of sessions directory: %w", err)
 	}
 	for _, c := range sessionsDirectoryContents {
-		identifier := c.Name()
-		logger.Info("Loading session", identifier)
-		if controller, err := loadSession(logger.Sublogger(identifier), tracker, identifier); err != nil {
+		id := c.Name()
+		if !identifier.IsValid(id) {
+			logger.Warn("Ignoring invalid session identifier:", id)
+			continue
+		}
+		logger.Info("Loading session", id)
+		if controller, err := loadSession(logger.Sublogger(identifier.Truncated(id)), tracker, id); err != nil {
+			logger.Warnf("Failed to load session %s: %v", err)
 			continue
 		} else {
-			sessions[identifier] = controller
+			sessions[id] = controller
 		}
 	}
 
@@ -175,7 +180,7 @@ func (m *Manager) Shutdown() {
 	for _, controller := range m.sessions {
 		m.logger.Info("Halting session", controller.session.Identifier)
 		if err := controller.halt(context.Background(), controllerHaltModeShutdown, ""); err != nil {
-			// TODO: Log this halt failure.
+			m.logger.Warnf("Failed to halt session %s: %v", controller.session.Identifier, err)
 		}
 	}
 }
@@ -191,17 +196,17 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Create a unique session identifier.
-	identifier, err := identifier.New(identifier.PrefixForwarding)
+	id, err := identifier.New(identifier.PrefixForwarding)
 	if err != nil {
-		return "", fmt.Errorf("unable to generate UUID for session: %w", err)
+		return "", fmt.Errorf("unable to generate identifier for session: %w", err)
 	}
 
 	// Attempt to create a session.
 	controller, err := newSession(
 		ctx,
-		m.logger.Sublogger(identifier),
+		m.logger.Sublogger(identifier.Truncated(id)),
 		m.tracker,
-		identifier,
+		id,
 		source, destination,
 		configuration, configurationSource, configurationDestination,
 		name,

@@ -193,7 +193,6 @@ func newSession(
 	// and mark the endpoints as handed off to that loop so that we don't defer
 	// their shutdown.
 	if !paused {
-		logger.Info("Starting forwarding loop")
 		ctx, cancel := context.WithCancel(context.Background())
 		controller.cancel = cancel
 		controller.done = make(chan struct{})
@@ -467,12 +466,15 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 	return nil
 }
 
-// run is the main runloop for the controller, managing connectivity and
+// run is the main run loop for the controller, managing connectivity and
 // forwarding.
 func (c *controller) run(ctx context.Context, source, destination Endpoint) {
+	// Log run loop entry.
+	c.logger.Debug("Run loop commencing")
+
 	// Defer resource and state cleanup.
 	defer func() {
-		// Shutdown any endpoints. These might be non-nil if the runloop was
+		// Shutdown any endpoints. These might be non-nil if the run loop was
 		// cancelled while partially connected rather than after forwarding
 		// failure.
 		if source != nil {
@@ -488,6 +490,9 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 			Session: c.session,
 		}
 		c.stateLock.Unlock()
+
+		// Log run loop termination.
+		c.logger.Debug("Run loop terminated")
 
 		// Signal completion.
 		close(c.done)
@@ -597,21 +602,28 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// Perform forwarding in a background Goroutine and monitor for errors.
 		forwardingErrors := make(chan error, 1)
 		go func() {
+			c.logger.Debug("Entering forwarding loop")
 			forwardingErrors <- c.forward(source, destination)
 		}()
 
 		// Wait for cancellation, an error from forwarding, or an error from
 		// either transport.
+		var cancelled bool
 		var sessionErr error
 		var forwardingErrorReceived bool
 		select {
 		case <-ctx.Done():
+			c.logger.Debug("Run loop cancelled")
 			sessionErr = errors.New("session cancelled")
+			cancelled = true
 		case sessionErr = <-forwardingErrors:
+			c.logger.Debug("Forwarding loop terminated with error:", sessionErr)
 			forwardingErrorReceived = true
 		case err := <-sourceTransportErrors:
+			c.logger.Debug("Source transport failure:", err)
 			sessionErr = fmt.Errorf("source transport failure: %w", err)
 		case err := <-destinationTransportErrors:
+			c.logger.Debug("Destination transport failure:", err)
 			sessionErr = fmt.Errorf("destination transport failure: %w", err)
 		}
 
@@ -627,6 +639,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// robust.
 		if !forwardingErrorReceived {
 			<-forwardingErrors
+			c.logger.Debug("Forwarding loop terminated")
 		}
 
 		// Nil out endpoints to update our state.
@@ -642,21 +655,15 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		}
 		c.stateLock.Unlock()
 
-		// When forwarding fails, we generally want to restart it as quickly as
-		// possible. Thus, if it's been longer than our usual waiting period
-		// since forwarding failed last, simply try to reconnect immediately
-		// (though still check for cancellation). If it's been less than our
-		// usual waiting period since forwarding failed last, then something is
-		// probably wrong, so wait for our usual waiting period (while checking
-		// and monitoring for cancellation).
+		// If we were cancelled, then return immediately.
+		if cancelled {
+			return
+		}
+
+		// If less than one auto-reconnect interval has elapsed since the last
+		// forwarding failure, then wait before attempting reconnection.
 		now := time.Now()
-		if now.Sub(lastForwardingFailureTime) >= autoReconnectInterval {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-		} else {
+		if now.Sub(lastForwardingFailureTime) < autoReconnectInterval {
 			select {
 			case <-ctx.Done():
 				return

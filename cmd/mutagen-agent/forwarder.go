@@ -23,6 +23,17 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Set up a logger on the standard error stream.
+	logLevel := logging.LevelInfo
+	if forwarderConfiguration.logLevel != "" {
+		if l, ok := logging.NameToLevel(forwarderConfiguration.logLevel); !ok {
+			return fmt.Errorf("invalid log level specified: %s", forwarderConfiguration.logLevel)
+		} else {
+			logLevel = l
+		}
+	}
+	logger := logging.NewLogger(logLevel, os.Stderr)
+
 	// Create a stream using standard input/output.
 	stream := newStdioStream()
 
@@ -40,10 +51,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 	// termination.
 	forwardingTermination := make(chan error, 1)
 	go func() {
-		forwardingTermination <- remote.ServeEndpoint(
-			logging.RootLogger.Sublogger("forwarding"),
-			stream,
-		)
+		forwardingTermination <- remote.ServeEndpoint(logger, stream)
 	}()
 
 	// Wait for termination from a signal or the forwarder.
@@ -57,7 +65,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 
 // forwarderCommand is the forwarder command.
 var forwarderCommand = &cobra.Command{
-	Use:          agent.ModeForwarder,
+	Use:          agent.CommandForwarder,
 	Short:        "Run the agent in forwarder mode",
 	Args:         cmd.DisallowArguments,
 	RunE:         forwarderMain,
@@ -68,6 +76,8 @@ var forwarderCommand = &cobra.Command{
 var forwarderConfiguration struct {
 	// help indicates whether or not to show help information and exit.
 	help bool
+	// logLevel indicates the log level to use.
+	logLevel string
 }
 
 func init() {
@@ -80,4 +90,7 @@ func init() {
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&forwarderConfiguration.help, "help", "h", false, "Show help information")
+
+	// Wire up logging flags.
+	flags.StringVar(&forwarderConfiguration.logLevel, agent.FlagLogLevel, "", "Set the log level")
 }
