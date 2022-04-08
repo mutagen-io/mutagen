@@ -48,6 +48,9 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 	}
 	for _, c := range sessionsDirectoryContents {
 		id := c.Name()
+		if !identifier.IsValid(id) {
+			continue
+		}
 		logger.Info("Loading session", id)
 		if controller, err := loadSession(logger.Sublogger(identifier.Truncated(id)), tracker, id); err != nil {
 			continue
