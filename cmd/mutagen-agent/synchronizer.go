@@ -102,7 +102,7 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 
 // synchronizerCommand is the synchronizer command.
 var synchronizerCommand = &cobra.Command{
-	Use:          agent.ModeSynchronizer,
+	Use:          agent.CommandSynchronizer,
 	Short:        "Run the agent in synchronizer mode",
 	Args:         cmd.DisallowArguments,
 	RunE:         synchronizerMain,

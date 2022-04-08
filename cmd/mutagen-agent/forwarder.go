@@ -65,7 +65,7 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 
 // forwarderCommand is the forwarder command.
 var forwarderCommand = &cobra.Command{
-	Use:          agent.ModeForwarder,
+	Use:          agent.CommandForwarder,
 	Short:        "Run the agent in forwarder mode",
 	Args:         cmd.DisallowArguments,
 	RunE:         forwarderMain,

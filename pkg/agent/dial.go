@@ -180,8 +180,8 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 // connection mode, and prompter.
 func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
 	// Validate that the mode is sane.
-	if !(mode == ModeSynchronizer || mode == ModeForwarder) {
-		panic("invalid agent dial mode")
+	if !(mode == CommandSynchronizer || mode == CommandForwarder) {
+		return nil, errors.New("invalid agent dial mode")
 	}
 
 	// Attempt a connection. If this fails but we detect a Windows cmd.exe

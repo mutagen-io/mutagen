@@ -58,7 +58,7 @@ func (h *protocolHandler) Connect(
 	// cancellation.
 	go func() {
 		// Perform the dialing operation.
-		stream, err := agent.Dial(logger, transport, agent.ModeSynchronizer, prompter)
+		stream, err := agent.Dial(logger, transport, agent.CommandSynchronizer, prompter)
 
 		// Transmit the result or, if cancelled, close the stream.
 		select {

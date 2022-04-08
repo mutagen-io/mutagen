@@ -7,7 +7,6 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd"
 
-	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
@@ -22,7 +21,7 @@ func versionMain(_ *cobra.Command, _ []string) error {
 
 // versionCommand is the version command.
 var versionCommand = &cobra.Command{
-	Use:          agent.ModeVersion,
+	Use:          "version",
 	Short:        "Show version information",
 	Args:         cmd.DisallowArguments,
 	RunE:         versionMain,

@@ -23,7 +23,7 @@ func installMain(_ *cobra.Command, _ []string) error {
 
 // installCommand is the install command.
 var installCommand = &cobra.Command{
-	Use:          agent.ModeInstall,
+	Use:          agent.CommandInstall,
 	Short:        "Perform agent installation",
 	Args:         cmd.DisallowArguments,
 	RunE:         installMain,
