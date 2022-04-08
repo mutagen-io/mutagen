@@ -143,6 +143,7 @@ func (e *listenerEndpoint) initialize(shutdown bool) {
 		}
 
 		// Attempt to remove the conflicting socket.
+		e.logger.Debug("Encountered conflicting socket, attempting removal")
 		if err := os.Remove(e.address); err != nil {
 			e.initializeError = fmt.Errorf("unable to remove conflicting socket: %w", err)
 			return

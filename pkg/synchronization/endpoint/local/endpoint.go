@@ -563,7 +563,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				// Terminate polling.
 				return
 			case <-ticker.C:
-				logger.Trace("Received polling signal")
+				logger.Debug("Received polling signal")
 			case err := <-watchErrors:
 				// Log the error.
 				logger.Debug("Non-recursive watching error:", err)
@@ -581,7 +581,14 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				// Continue polling.
 				continue
 			case event := <-watchEvents:
-				logger.Trace("Received event with", len(event), "paths")
+				// Log the event.
+				if logger.Level() >= logging.LevelTrace {
+					for path := range event {
+						logger.Tracef("Received event path: \"%s\"", path)
+					}
+				} else {
+					logger.Debug("Received event with", len(event), "paths")
+				}
 			}
 		}
 
@@ -595,6 +602,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		// concurrent modification. In that case, release the scan lock and
 		// strobe the poll events channel. The controller can then perform a
 		// full scan.
+		logger.Debug("Performing filesystem scan")
 		if err := e.scan(ctx, nil, nil); err != nil {
 			// Log the error.
 			logger.Debug("Scan failed:", err)
@@ -611,6 +619,9 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		// will be okay to return for the next Scan call, though we only
 		// indicate that acceleration should be used if the endpoint allows it.
 		e.accelerate = e.accelerationAllowed
+		if e.accelerate {
+			logger.Debug("Accelerated scanning now available")
+		}
 
 		// Extract scan parameters so that we can release the scan lock.
 		snapshot := e.snapshot
@@ -621,13 +632,18 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		// Check for modifications.
 		modified := !snapshot.Equal(previous)
 
-		// If we have a working non-recursive watcher, then perform a full diff
-		// to determine new watch paths, and then start the new watches. Any
-		// watch errors will be reported on the watch errors channel.
-		if watcher != nil {
+		// If we have a working non-recursive watcher, or we're performing trace
+		// logging, then perform a full diff to determine what's changed. This
+		// will let us determine the most recently updated paths that we should
+		// watch, as well as establish those watches. Any watch establishment
+		// errors will be reported on the watch errors channel.
+		if watcher != nil || logger.Level() >= logging.LevelTrace {
 			changes := core.Diff(previous.Content, snapshot.Content)
 			for _, change := range changes {
-				watcher.Watch(filepath.Join(e.root, change.Path))
+				if watcher != nil {
+					watcher.Watch(filepath.Join(e.root, change.Path))
+				}
+				logger.Tracef("Observed change at \"%s\"", change.Path)
 			}
 		}
 
@@ -638,13 +654,13 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		// the poll events channel.
 		if modified && !ignoreModifications {
 			// Log the modifications.
-			logger.Trace("Modifications detected")
+			logger.Debug("Modifications detected")
 
 			// Strobe the poll events channel.
 			e.strobePollEvents()
 		} else {
 			// Log the lack of modifications.
-			logger.Trace("No modifications detected")
+			logger.Debug("No modifications detected")
 		}
 	}
 }
@@ -778,7 +794,13 @@ WatchEstablishment:
 				continue WatchEstablishment
 			case event := <-watcher.Events():
 				// Log the event.
-				logger.Trace("Received event with", len(event), "paths")
+				if logger.Level() >= logging.LevelTrace {
+					for path := range event {
+						logger.Tracef("Received event path: \"%s\"", path)
+					}
+				} else {
+					logger.Debug("Received event with", len(event), "paths")
+				}
 
 				// If acceleration is allowed (and available) on the endpoint,
 				// then register the event's paths as re-check paths. We only
