@@ -2,8 +2,6 @@ package integration
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"testing"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
-	"github.com/mutagen-io/mutagen/pkg/logging"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
@@ -48,9 +45,6 @@ var synchronizationManager *synchronization.Manager
 // complete daemon instance for testing, and tear down all of the aforementioned
 // infrastructure after running tests.
 func TestMain(m *testing.M) {
-	// Disable logging.
-	log.SetOutput(io.Discard)
-
 	// Override the expected agent bundle location.
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
@@ -62,14 +56,14 @@ func TestMain(m *testing.M) {
 	defer lock.Release()
 
 	// Create a forwarding session manager and defer its shutdown.
-	forwardingManager, err = forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
+	forwardingManager, err = forwarding.NewManager(nil)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to create forwarding session manager: %w", err))
 	}
 	defer forwardingManager.Shutdown()
 
 	// Create a session manager and defer its shutdown.
-	synchronizationManager, err = synchronization.NewManager(logging.RootLogger.Sublogger("sync"))
+	synchronizationManager, err = synchronization.NewManager(nil)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to create synchronization session manager: %w", err))
 	}

@@ -45,15 +45,26 @@ func runMain(_ *cobra.Command, _ []string) error {
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
+	// Create the root logger.
+	logLevel := logging.LevelInfo
+	if envLogLevel := os.Getenv("MUTAGEN_LOG_LEVEL"); envLogLevel != "" {
+		if l, ok := logging.NameToLevel(envLogLevel); !ok {
+			return fmt.Errorf("invalid log level specified in environment: %s", envLogLevel)
+		} else {
+			logLevel = l
+		}
+	}
+	logger := logging.NewLogger(logLevel, os.Stderr)
+
 	// Create a forwarding session manager and defer its shutdown.
-	forwardingManager, err := forwarding.NewManager(logging.RootLogger.Sublogger("forwarding"))
+	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forward"))
 	if err != nil {
 		return fmt.Errorf("unable to create forwarding session manager: %w", err)
 	}
 	defer forwardingManager.Shutdown()
 
 	// Create a synchronization session manager and defer its shutdown.
-	synchronizationManager, err := synchronization.NewManager(logging.RootLogger.Sublogger("synchronization"))
+	synchronizationManager, err := synchronization.NewManager(logger.Sublogger("sync"))
 	if err != nil {
 		return fmt.Errorf("unable to create synchronization session manager: %w", err)
 	}

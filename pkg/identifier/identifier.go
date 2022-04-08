@@ -95,3 +95,16 @@ func New(prefix string) (string, error) {
 func IsValid(value string) bool {
 	return matcher.MatchString(value) || legacyMatcher.MatchString(value)
 }
+
+// Truncated returns a truncated version of an identifier. The truncated version
+// is not a valid identifier on its own, but it should be suitably unique for
+// identification purposes (e.g. in logging). If the identifier is invalid, then
+// an empty string is returned.
+func Truncated(identifier string) string {
+	if matcher.MatchString(identifier) {
+		return identifier[:requiredPrefixLength+1+8]
+	} else if legacyMatcher.MatchString(identifier) {
+		return identifier[:8]
+	}
+	return ""
+}

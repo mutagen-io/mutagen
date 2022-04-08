@@ -64,12 +64,12 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 		return nil, fmt.Errorf("unable to read contents of sessions directory: %w", err)
 	}
 	for _, c := range sessionsDirectoryContents {
-		identifier := c.Name()
-		logger.Info("Loading session", identifier)
-		if controller, err := loadSession(logger.Sublogger(identifier), tracker, identifier); err != nil {
+		id := c.Name()
+		logger.Info("Loading session", id)
+		if controller, err := loadSession(logger.Sublogger(identifier.Truncated(id)), tracker, id); err != nil {
 			continue
 		} else {
-			sessions[identifier] = controller
+			sessions[id] = controller
 		}
 	}
 
@@ -208,7 +208,7 @@ func (m *Manager) Create(
 	prompter string,
 ) (string, error) {
 	// Create a unique session identifier.
-	identifier, err := identifier.New(identifier.PrefixSynchronization)
+	id, err := identifier.New(identifier.PrefixSynchronization)
 	if err != nil {
 		return "", fmt.Errorf("unable to generate identifier for session: %w", err)
 	}
@@ -216,9 +216,9 @@ func (m *Manager) Create(
 	// Attempt to create a session.
 	controller, err := newSession(
 		ctx,
-		m.logger.Sublogger(identifier),
+		m.logger.Sublogger(identifier.Truncated(id)),
 		m.tracker,
-		identifier,
+		id,
 		alpha, beta,
 		configuration, configurationAlpha, configurationBeta,
 		name,

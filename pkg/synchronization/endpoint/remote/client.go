@@ -298,7 +298,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	}
 
 	// If logging is enabled, then compute snapshot transmission statistics.
-	if logging.CurrentLevel() >= logging.LevelDebug {
+	if c.logger.Level() >= logging.LevelDebug {
 		var dataOperations, totalDataSize, blockOperations int
 		for _, operation := range response.SnapshotDelta {
 			if dataSize := len(operation.Data); dataSize > 0 {

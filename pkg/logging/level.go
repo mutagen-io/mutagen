@@ -1,11 +1,8 @@
 package logging
 
-import (
-	"os"
-)
-
-// Level represents a logging level.
-type Level uint8
+// Level represents a log level. Its value hierarchy is designed to be ordered
+// and comparable by value.
+type Level uint
 
 const (
 	// LevelDisabled indicates that logging is completely disabled.
@@ -25,7 +22,29 @@ const (
 	LevelTrace
 )
 
-// String provides a human-readable representation of a logging level.
+// NameToLevel converts a string-based representation of a log level to the
+// appropriate Level value. It returns a boolean indicating whether or not the
+// conversion was valid. If the name is invalid, LevelDisabled is returned.
+func NameToLevel(name string) (Level, bool) {
+	switch name {
+	case "disabled":
+		return LevelDisabled, true
+	case "error":
+		return LevelError, true
+	case "warning":
+		return LevelWarning, true
+	case "info":
+		return LevelInfo, true
+	case "debug":
+		return LevelDebug, true
+	case "trace":
+		return LevelTrace, true
+	default:
+		return LevelDisabled, false
+	}
+}
+
+// String provides a human-readable representation of a log level.
 func (l Level) String() string {
 	switch l {
 	case LevelDisabled:
@@ -42,34 +61,5 @@ func (l Level) String() string {
 		return "trace"
 	default:
 		return "unknown"
-	}
-}
-
-// currentLevel is the current logging level.
-var currentLevel Level
-
-// CurrentLevel returns the current logging level.
-func CurrentLevel() Level {
-	return currentLevel
-}
-
-func init() {
-	// Set the log level based on the MUTAGEN_LOG_LEVEL environment variable. If
-	// unset (or set to an unknown value), then default to LevelInfo.
-	switch os.Getenv("MUTAGEN_LOG_LEVEL") {
-	case "disabled":
-		currentLevel = LevelDisabled
-	case "error":
-		currentLevel = LevelError
-	case "warning":
-		currentLevel = LevelWarning
-	case "info":
-		currentLevel = LevelInfo
-	case "debug":
-		currentLevel = LevelDebug
-	case "trace":
-		currentLevel = LevelTrace
-	default:
-		currentLevel = LevelInfo
 	}
 }

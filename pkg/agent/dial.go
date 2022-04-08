@@ -65,7 +65,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	}, pathSeparator)
 
 	// Compute the command to invoke.
-	command := fmt.Sprintf("%s %s", agentInvocationPath, mode)
+	command := fmt.Sprintf("%s %s --%s=%s", agentInvocationPath, mode, FlagLogLevel, logger.Level())
 
 	// Set up (but do not start) an agent process.
 	message := "Connecting to agent (POSIX)..."
@@ -96,8 +96,10 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	defer errorValve.Shut()
 
 	// Create a splitter that will forward standard error output to both the
-	// error buffer and the logger.
-	errorTee := io.MultiWriter(errorValve, logger.Sublogger("remote").Writer(logging.LevelInfo))
+	// error buffer and the logger. The error log level we apply here only
+	// applies to non-log messages printed to standard error - all log messages
+	// routed through standard error have their levels forwarded.
+	errorTee := io.MultiWriter(errorValve, logger.Writer(logging.LevelError))
 
 	// Create a transport stream to communicate with the process and forward
 	// standard error output. Set a non-zero termination delay for the stream so

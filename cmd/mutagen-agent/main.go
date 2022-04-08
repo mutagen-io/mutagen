@@ -1,20 +1,12 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
-
-func init() {
-	// Disable logging flags for the standard logger (used by the logging
-	// infrastructure) so that agent standard error output (which is logged by
-	// the daemon) isn't doubly-prefixed.
-	log.SetFlags(0)
-}
 
 // rootMain is the entry point for the root command.
 func rootMain(command *cobra.Command, _ []string) error {
