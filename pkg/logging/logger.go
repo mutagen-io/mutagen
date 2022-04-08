@@ -60,7 +60,7 @@ func (l *Logger) Sublogger(name string) *Logger {
 
 	// Validate the sublogger name.
 	if !nameMatcher.MatchString(name) {
-		l.Warning("attempt to create sublogger with invalid name")
+		l.Warn("attempt to create sublogger with invalid name")
 		return nil
 	}
 
@@ -98,14 +98,23 @@ func (l *Logger) write(timestamp time.Time, level Level, message string) {
 	}
 
 	// Compute the log line.
+	levelName := level.String()
+	var levelPadding string
+	if len(levelName) == 4 {
+		levelPadding = "  "
+	} else if len(levelName) == 5 {
+		levelPadding = " "
+	} else {
+		panic("unhandled level name")
+	}
 	var line string
 	if l.scope != "" {
-		line = fmt.Sprintf("%s [%s] [%s] %s",
-			timestamp.Format(timestampFormat), level, l.scope, message,
+		line = fmt.Sprintf("%s [%s]%s[%s] %s",
+			timestamp.Format(timestampFormat), levelName, levelPadding, l.scope, message,
 		)
 	} else {
-		line = fmt.Sprintf("%s [%s] %s",
-			timestamp.Format(timestampFormat), level, message,
+		line = fmt.Sprintf("%s [%s]%s%s",
+			timestamp.Format(timestampFormat), levelName, levelPadding, message,
 		)
 	}
 
@@ -140,16 +149,16 @@ func (l *Logger) Errorf(format string, v ...any) {
 	l.logf(LevelError, format, v...)
 }
 
-// Warning logs warnings with formatting semantics equivalent to fmt.Sprintln.
-func (l *Logger) Warning(v ...any) {
-	l.log(LevelWarning, v...)
+// Warn logs warnings with formatting semantics equivalent to fmt.Sprintln.
+func (l *Logger) Warn(v ...any) {
+	l.log(LevelWarn, v...)
 }
 
-// Warningf logs warnings with formatting semantics equivalent to fmt.Sprintf. A
+// Warnf logs warnings with formatting semantics equivalent to fmt.Sprintf. A
 // trailing newline is automatically appended and should not be included in the
 // format string.
-func (l *Logger) Warningf(format string, v ...any) {
-	l.logf(LevelWarning, format, v...)
+func (l *Logger) Warnf(format string, v ...any) {
+	l.logf(LevelWarn, format, v...)
 }
 
 // Info logs information with formatting semantics equivalent to fmt.Sprintln.
@@ -191,7 +200,7 @@ func (l *Logger) Tracef(format string, v ...any) {
 }
 
 // linePrefixMatcher matches the timestamp and level prefix of logging lines.
-var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6} \[([a-z]+)\] `)
+var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6} \[([a-z]{4,5})\]( {1,2})`)
 
 // Writer returns an io.Writer that logs incoming lines. If an incoming line is
 // determined to be an output line from another logger, then it will be parsed
@@ -211,17 +220,21 @@ func (l *Logger) Writer(level Level) io.Writer {
 			// Check if the line is output from a logger. If it's not, then we
 			// just log it as if it were any other message.
 			matches := linePrefixMatcher.FindStringSubmatch(line)
-			if len(matches) != 2 {
+			if len(matches) != 3 {
 				l.log(level, line)
 				return
 			}
 
 			// Parse the log level for the line. If the log level that it
-			// specifies is invalid, then just print an indicator that an
-			// invalid line was received. Otherwise, if the line level is beyond
-			// the threshold of this logger, then just ignore it.
+			// specifies is invalid, or the padding afterward is invalid, then
+			// just print an indicator that an invalid line was received.
+			// Otherwise, if the line level is beyond the threshold of this
+			// logger, then just ignore it.
 			if level, ok := NameToLevel(matches[1]); !ok {
-				l.Warning("<invalid incoming log line>")
+				l.Warn("<invalid incoming log line level>")
+				return
+			} else if len(matches[1])+len(matches[2]) != 6 {
+				l.Warn("<invalid incoming log line padding>")
 				return
 			} else if l.level < level {
 				return

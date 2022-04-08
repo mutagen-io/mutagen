@@ -9,8 +9,8 @@ const (
 	LevelDisabled Level = iota
 	// LevelError indicates that only fatal errors are logged.
 	LevelError
-	// LevelWarning indicates that both fatal and non-fatal errors are logged.
-	LevelWarning
+	// LevelWarn indicates that both fatal and non-fatal errors are logged.
+	LevelWarn
 	// LevelInfo indicates that basic execution information is logged (in
 	// addition to all errors).
 	LevelInfo
@@ -31,8 +31,8 @@ func NameToLevel(name string) (Level, bool) {
 		return LevelDisabled, true
 	case "error":
 		return LevelError, true
-	case "warning":
-		return LevelWarning, true
+	case "warn":
+		return LevelWarn, true
 	case "info":
 		return LevelInfo, true
 	case "debug":
@@ -51,8 +51,8 @@ func (l Level) String() string {
 		return "disabled"
 	case LevelError:
 		return "error"
-	case LevelWarning:
-		return "warning"
+	case LevelWarn:
+		return "warn"
 	case LevelInfo:
 		return "info"
 	case LevelDebug:
