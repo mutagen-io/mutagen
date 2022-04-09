@@ -1123,13 +1123,28 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		)
 		if c.logger.Level() >= logging.LevelTrace {
 			for _, change := range ancestorChanges {
-				c.logger.Tracef("ancestor change at \"%s\"", change.Path)
+				c.logger.Tracef("Ancestor change at \"%s\" from %s to %s",
+					formatPathForLogging(change.Path),
+					formatEntryForLogging(change.Old),
+					formatEntryForLogging(change.New),
+				)
 			}
 			for _, transition := range αTransitions {
-				c.logger.Tracef("alpha transition at \"%s\"", transition.Path)
+				c.logger.Tracef("Alpha transition at \"%s\" from %s to %s",
+					formatPathForLogging(transition.Path),
+					formatEntryForLogging(transition.Old),
+					formatEntryForLogging(transition.New),
+				)
 			}
 			for _, transition := range βTransitions {
-				c.logger.Tracef("beta transition at \"%s\"", transition.Path)
+				c.logger.Tracef("Beta transition at \"%s\" from %s to %s",
+					formatPathForLogging(transition.Path),
+					formatEntryForLogging(transition.Old),
+					formatEntryForLogging(transition.New),
+				)
+			}
+			for _, conflict := range conflicts {
+				c.logger.Tracef("Conflict rooted at %s", conflict.Root)
 			}
 		}
 

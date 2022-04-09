@@ -110,9 +110,8 @@ func formatEntry(entry *core.Entry) string {
 		return "Untracked content"
 	} else if entry.Kind == core.EntryKind_Problematic {
 		return fmt.Sprintf("Problematic content (%s)", entry.Problem)
-	} else {
-		return "<unknown>"
 	}
+	return "<unknown>"
 }
 
 // printConflicts prints a list of synchronization conflicts.
