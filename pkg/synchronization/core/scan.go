@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	"golang.org/x/text/unicode/norm"
@@ -368,7 +369,7 @@ func (s *scanner) directory(
 		// If this is an intermediate temporary file, then ignore it. We avoid
 		// recording these files, even as untracked entries, because we know
 		// that they're ephemeral.
-		if filesystem.IsTemporaryFileName(contentName) {
+		if strings.HasPrefix(contentName, filesystem.TemporaryNamePrefix) {
 			continue
 		}
 

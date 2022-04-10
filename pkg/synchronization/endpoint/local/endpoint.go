@@ -7,6 +7,7 @@ import (
 	"hash"
 	"io"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -499,8 +500,15 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 	var watchErrors <-chan error
 	if nonRecursiveWatchingAllowed && watching.NonRecursiveWatchingSupported {
 		// Create the filter that we'll use to exclude Mutagen temporary files.
+		// In the non-recursive watching case, we can't use the fast-path base
+		// name calculation for leaf name calculations (at least not safely)
+		// because our non-recursive watchers don't ensure root-relativity.
+		// TODO: In the non-recursive watching case, it's more difficult to
+		// detect internal staging directories because they won't be at the root
+		// of the path like they will in recursive watching. It would be nice if
+		// they could be ignored, but it's not critical.
 		filter := func(path string) bool {
-			return filesystem.IsTemporaryFileName(filepath.Base(path))
+			return strings.HasPrefix(filepath.Base(path), filesystem.TemporaryNamePrefix)
 		}
 
 		// Attempt to create the watcher and ensure that it will be terminated.
@@ -683,9 +691,13 @@ func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
 	}()
 
 	// Create the filter that we'll use to exclude Mutagen temporary files.
-	// Recursive watchers can use our fast-path base name calculation.
+	// Recursive watchers can use our fast-path base name calculation for leaf
+	// name calculations. We also check the entire path for a temporary prefix
+	// to identify temporary directories (whose contents may have non-temporary
+	// names, such as internal staging directories).
 	filter := func(path string) bool {
-		return filesystem.IsTemporaryFileName(core.PathBase(path))
+		return strings.HasPrefix(path, filesystem.TemporaryNamePrefix) ||
+			strings.HasPrefix(core.PathBase(path), filesystem.TemporaryNamePrefix)
 	}
 
 	// Create a timer, initially stopped and drained, that we can use to
