@@ -12,17 +12,17 @@ type Configuration struct {
 	Socket struct {
 		// OverwriteMode specifies the default socket overwrite mode to use for
 		// Unix domain socket endpoints.
-		OverwriteMode forwarding.SocketOverwriteMode `yaml:"overwriteMode"`
+		OverwriteMode forwarding.SocketOverwriteMode `yaml:"overwriteMode" mapstructure:"overwriteMode"`
 		// Owner specifies the owner identifier to use for Unix domain listener
 		// sockets.
-		Owner string `yaml:"owner"`
+		Owner string `yaml:"owner" mapstructure:"owner"`
 		// Group specifies the group identifier to use for Unix domain listener
 		// sockets.
-		Group string `yaml:"group"`
+		Group string `yaml:"group" mapstructure:"group"`
 		// PermissionMode specifies the permission mode to use for Unix domain
 		// listener sockets.
-		PermissionMode filesystem.Mode `yaml:"permissionMode"`
-	} `yaml:"socket"`
+		PermissionMode filesystem.Mode `yaml:"permissionMode" mapstructure:"permissionMode"`
+	} `yaml:"socket" mapstructure:"socket"`
 }
 
 // Configuration converts a YAML session configuration to a Protocol Buffers
