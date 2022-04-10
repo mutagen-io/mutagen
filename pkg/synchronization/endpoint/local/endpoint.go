@@ -307,12 +307,13 @@ func NewEndpoint(
 		cache = &core.Cache{}
 	}
 
-	// Check if the synchronization root is a volume Mount point in a Mutagen
-	// sidecar container.
-	var rootIsSidecarVolumeMountPoint bool
-	var sidecarVolumeName string
+	// Check if this endpoint is running inside a sidecar container and, if so,
+	// whether or not the root exists beneath a volume mount point (which it
+	// almost certainly does, but that's not guaranteed). We track the latter
+	// condition by whether or not sidecarVolumeMountPoint is non-empty.
+	var sidecarVolumeMountPoint string
 	if sidecar.EnvironmentIsSidecar() {
-		rootIsSidecarVolumeMountPoint, sidecarVolumeName = sidecar.PathIsVolumeMountPoint(root)
+		sidecarVolumeMountPoint = sidecar.VolumeMountPointForPath(root)
 	}
 
 	// Compute the effective staging mode. If no mode has been explicitly set
@@ -321,9 +322,11 @@ func NewEndpoint(
 	// use either the explicitly specified staging mode or the default staging
 	// mode.
 	stageMode := configuration.StageMode
+	var useSidecarVolumeMountPointAsInternalStagingRoot bool
 	if stageMode.IsDefault() {
-		if rootIsSidecarVolumeMountPoint {
+		if sidecarVolumeMountPoint != "" {
 			stageMode = synchronization.StageMode_StageModeInternal
+			useSidecarVolumeMountPointAsInternalStagingRoot = true
 		} else {
 			stageMode = version.DefaultStageMode()
 		}
@@ -338,7 +341,11 @@ func NewEndpoint(
 		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
 		hideStagingRoot = true
 	} else if stageMode == synchronization.StageMode_StageModeInternal {
-		stagingRoot, err = pathForInternalStagingRoot(root, sessionIdentifier, alpha)
+		if useSidecarVolumeMountPointAsInternalStagingRoot {
+			stagingRoot, err = pathForInternalStagingRoot(sidecarVolumeMountPoint, sessionIdentifier, alpha)
+		} else {
+			stagingRoot, err = pathForInternalStagingRoot(root, sessionIdentifier, alpha)
+		}
 		hideStagingRoot = true
 	} else {
 		panic("unhandled staging mode")
@@ -354,9 +361,10 @@ func NewEndpoint(
 	// This is a heuristic to work around the fact that Docker volumes don't
 	// allow ownership specification at creation time, either via the command
 	// line or Compose.
-	if nonDefaultOwnershipOrDirectoryPermissionsSet && rootIsSidecarVolumeMountPoint {
+	// TODO: Should this be restricted to Linux containers?
+	if nonDefaultOwnershipOrDirectoryPermissionsSet && root == sidecarVolumeMountPoint {
 		if err := sidecar.SetVolumeOwnershipAndPermissionsIfEmpty(
-			sidecarVolumeName,
+			filepath.Base(sidecarVolumeMountPoint),
 			defaultOwnership,
 			defaultDirectoryMode,
 		); err != nil {
