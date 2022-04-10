@@ -426,7 +426,7 @@ func NewEndpoint(
 		if actualWatchMode == reifiedWatchModePoll {
 			endpoint.watchPoll(workerCtx, watchPollingInterval, nonRecursiveWatchingAllowed)
 		} else if actualWatchMode == reifiedWatchModeRecursive {
-			go endpoint.watchRecursive(workerCtx, watchPollingInterval)
+			endpoint.watchRecursive(workerCtx, watchPollingInterval)
 		}
 		close(watchDone)
 	}()
