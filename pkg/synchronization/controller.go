@@ -1085,7 +1085,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		αContent := αSnapshot.Content
 		βContent := βSnapshot.Content
 		if c.logger.Level() >= logging.LevelTrace {
-			c.logger.Tracef("Ancestor contains %d entries, alpha contains %d entries, beta contains %s entries",
+			c.logger.Tracef("Ancestor contains %d entries, alpha contains %d entries, beta contains %d entries",
 				ancestor.Count(), αContent.Count(), βContent.Count(),
 			)
 		}
@@ -1344,7 +1344,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// we're not already in a synchronization cycle that was forced due to
 		// previously missing files.
 		if (αMissingFiles || βMissingFiles) && !skippingPollingDueToMissingFiles {
-			c.logger.Debug("Endpoints missing files after transition, skipping polling")
+			c.logger.Debug("Endpoint(s) missing files after transition, skipping polling")
 			skipPolling = true
 			skippingPollingDueToMissingFiles = true
 		} else {
