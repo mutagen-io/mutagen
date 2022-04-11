@@ -1201,17 +1201,28 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 
 	// Ensure that accelerated scanning doesn't return a stale (pre-transition)
 	// snapshot. This is critical, especially in the case of poll-based watching
-	// (where it has a high chance of occurring). If a pre-transition snapshot
-	// is returned by the next call to Scan, then the controller will perform an
+	// (where it has a high chance of occurring), because it leads to the
+	// pathologically bad case of a pre-transition snapshot being returned by
+	// the next call to Scan, which will cause the controller will perform an
 	// inversion (on the opposite endpoint) of the transitions that were just
 	// applied here. In the case of recursive watching, we just need to ensure
 	// that any modified paths get put into the re-check path list, because
-	// there could be a delay in the OS reporting the modifications. In the case
-	// of poll-based watching, we just need to disable accelerated scanning,
-	// which will be automatically re-enabled on the next polling operation. If
+	// there could be a delay in the OS reporting the modifications, or a delay
+	// in the watching Goroutine detecting and handling failure, and thus Scan
+	// could acquire the scan lock before recheck paths are appropriately
+	// updated or acceleration is disabled due to failure. In the case of
+	// poll-based watching, we just need to disable accelerated scanning, which
+	// will be automatically re-enabled on the next polling operation. If
 	// filesystem watching is disabled, then so is acceleration, and thus
-	// there's no way that a stale scan could be returned.
-	if e.accelerate {
+	// there's no way that a stale scan could be returned. Note that, in the
+	// recurisve watching case, we only need to include transition roots because
+	// transition operations will always change the root type and thus scanning
+	// will see any potential content changes. Also, we don't need to worry
+	// about delayed watcher failure reporting due to external (non-transition)
+	// changes because those won't be exact inversions of the operations that
+	// we're applying here. That type of failure is unavoidable anyway, but
+	// still guarded against by Transition's just-in-time modification checks.
+	if e.accelerate && transitionMadeChanges {
 		if e.watchMode == reifiedWatchModePoll {
 			e.accelerate = false
 		} else if e.watchMode == reifiedWatchModeRecursive {
