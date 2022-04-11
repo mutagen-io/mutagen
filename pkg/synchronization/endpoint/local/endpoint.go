@@ -27,7 +27,7 @@ const (
 	// written to disk in the background.
 	cacheSaveInterval = 60 * time.Second
 	// recheckPathsMaximumCapacity is the maximum re-check path set capacity.
-	recheckPathsMaximumCapacity = 10 * 1024
+	recheckPathsMaximumCapacity = 512
 )
 
 // reifiedWatchMode describes a fully reified watch mode based on the watch mode

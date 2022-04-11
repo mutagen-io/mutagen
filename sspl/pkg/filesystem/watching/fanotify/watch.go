@@ -45,7 +45,7 @@ const (
 	watchCoalescingWindow = 20 * time.Millisecond
 	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
 	// will be allowed in a pending coalesced event.
-	watchCoalescingMaximumPendingPaths = 10 * 1024
+	watchCoalescingMaximumPendingPaths = 128
 )
 
 // RecursiveWatcher implements watching.RecursiveWatcher using fanotify.
