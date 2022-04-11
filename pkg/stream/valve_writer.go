@@ -38,7 +38,8 @@ func (w *ValveWriter) Write(buffer []byte) (int, error) {
 
 // Shut closes the valve and prevents future writes to the underlying writer. It
 // is safe to call Shut concurrently with Write, but doing so will not preempt
-// or unblock pending calls to Write.
+// or unblock pending calls to Write. Calling Shut will release the reference to
+// the underlying writer.
 func (w *ValveWriter) Shut() {
 	// Lock the writer and defer its release.
 	w.writerLock.Lock()
