@@ -511,10 +511,11 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		// In the non-recursive watching case, we can't use the fast-path base
 		// name calculation for leaf name calculations (at least not safely)
 		// because our non-recursive watchers don't ensure root-relativity.
-		// TODO: In the non-recursive watching case, it's more difficult to
-		// detect internal staging directories because they won't be at the root
-		// of the path like they will in recursive watching. It would be nice if
-		// they could be ignored, but it's not critical.
+		// Fortunately, we don't need to perform the same total path prefix
+		// check as recursive watching since we know that temporary directories
+		// will never be added to the non-recursive watcher since they'll never
+		// be included in the scan, and thus we'll never see changes to their
+		// contents that would need to be filtered out.
 		filter := func(path string) bool {
 			return strings.HasPrefix(filepath.Base(path), filesystem.TemporaryNamePrefix)
 		}
@@ -655,10 +656,13 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		if watcher != nil || logger.Level() >= logging.LevelTrace {
 			changes := core.Diff(previous.Content, snapshot.Content)
 			for _, change := range changes {
-				if watcher != nil {
-					watcher.Watch(filepath.Join(e.root, change.Path))
-				}
 				logger.Tracef("Observed change at \"%s\"", change.Path)
+				if watcher != nil {
+					if change.New.Kind == core.EntryKind_Directory ||
+						change.New.Kind == core.EntryKind_File {
+						watcher.Watch(filepath.Join(e.root, change.Path))
+					}
+				}
 			}
 		}
 
