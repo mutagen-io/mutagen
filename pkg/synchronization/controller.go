@@ -337,6 +337,9 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 		return errors.New("session is paused")
 	}
 
+	// Perform logging.
+	c.logger.Infof("Forcing synchronization cycle")
+
 	// Check if the session is currently synchronizing and store the channel
 	// that we'll use to track synchronizability.
 	c.stateLock.Lock()
@@ -420,6 +423,9 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 	if c.disabled {
 		return errors.New("controller disabled")
 	}
+
+	// Perform logging.
+	c.logger.Infof("Resuming")
 
 	// Check if there's an existing synchronization loop (i.e. if the session is
 	// unpaused).
@@ -570,6 +576,9 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		return errors.New("controller disabled")
 	}
 
+	// Perform logging.
+	c.logger.Infof(mode.description())
+
 	// Kill any existing synchronization loop.
 	if c.cancel != nil {
 		// Cancel the synchronization loop and wait for it to finish.
@@ -634,6 +643,7 @@ func (c *controller) reset(ctx context.Context, prompter string) error {
 	}
 
 	// Reset the session archive on disk.
+	c.logger.Infof("Resetting ancestor")
 	archive := &core.Archive{}
 	if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
 		return fmt.Errorf("unable to clear session history: %w", err)
@@ -1074,6 +1084,11 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// Extract contents.
 		αContent := αSnapshot.Content
 		βContent := βSnapshot.Content
+		if c.logger.Level() >= logging.LevelTrace {
+			c.logger.Tracef("Ancestor contains %d entries, alpha contains %d entries, beta contains %s entries",
+				ancestor.Count(), αContent.Count(), βContent.Count(),
+			)
+		}
 
 		// Now that we've had a successful scan, clear the last error (if any),
 		// record scan problems (if any), and update the status to reconciling.

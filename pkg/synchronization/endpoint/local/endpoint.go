@@ -598,12 +598,11 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				continue
 			case event := <-watchEvents:
 				// Log the event.
+				logger.Debug("Received event with", len(event), "paths")
 				if logger.Level() >= logging.LevelTrace {
 					for path := range event {
 						logger.Tracef("Received event path: \"%s\"", path)
 					}
-				} else {
-					logger.Debug("Received event with", len(event), "paths")
 				}
 			}
 		}
@@ -676,7 +675,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 			e.strobePollEvents()
 		} else {
 			// Log the lack of modifications.
-			logger.Debug("No modifications detected")
+			logger.Debug("No unignored modifications detected")
 		}
 	}
 }
@@ -814,12 +813,11 @@ WatchEstablishment:
 				continue WatchEstablishment
 			case event := <-watcher.Events():
 				// Log the event.
+				logger.Debug("Received event with", len(event), "paths")
 				if logger.Level() >= logging.LevelTrace {
 					for path := range event {
 						logger.Tracef("Received event path: \"%s\"", path)
 					}
-				} else {
-					logger.Debug("Received event with", len(event), "paths")
 				}
 
 				// If acceleration is allowed (and available) on the endpoint,
@@ -942,13 +940,17 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 	// it's not, that will handled elsewhere).
 	if e.accelerate && !full {
 		if e.watchMode == reifiedWatchModeRecursive {
+			e.logger.Debug("Performing accelerated scan with", len(e.recheckPaths), "recheck paths")
 			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
 				return nil, err, true
 			} else {
 				e.recheckPaths = make(map[string]bool)
 			}
+		} else {
+			e.logger.Debug("Performing accelerated scan with existing snapshot")
 		}
 	} else {
+		e.logger.Debug("Performing full scan")
 		if err := e.scan(ctx, nil, nil); err != nil {
 			return nil, err, true
 		}
@@ -959,6 +961,9 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 	// that we don't hold those entries in memory? Right now this is mostly
 	// concerned with avoiding transmission of the entries over the wire.
 	if e.lastScanEntryCount > e.maximumEntryCount {
+		e.logger.Debugf("Scan count (%d) exceeded maximum allowed entry count (%d)",
+			e.lastScanEntryCount, e.maximumEntryCount,
+		)
 		return nil, errors.New("exceeded allowed entry count"), true
 	}
 

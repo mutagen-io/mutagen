@@ -120,10 +120,13 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// server. We treat termination via the daemon service as a non-error.
 	select {
 	case sig := <-signalTermination:
+		logger.Info("Terminating due to signal:", sig)
 		return fmt.Errorf("terminated by signal: %s", sig)
 	case <-daemonServer.Termination:
+		logger.Info("Daemon termination requested")
 		return nil
 	case err = <-serverErrors:
+		logger.Error("Daemon server failure:", err)
 		return fmt.Errorf("daemon server termination: %w", err)
 	}
 }

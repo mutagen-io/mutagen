@@ -282,6 +282,9 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 		return errors.New("controller disabled")
 	}
 
+	// Perform logging.
+	c.logger.Infof("Resuming")
+
 	// Check if there's an existing forwarding loop (i.e. if the session is
 	// unpaused).
 	if c.cancel != nil {
@@ -424,6 +427,9 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 	if c.disabled {
 		return errors.New("controller disabled")
 	}
+
+	// Perform logging.
+	c.logger.Infof(mode.description())
 
 	// Kill any existing forwarding loop.
 	if c.cancel != nil {
