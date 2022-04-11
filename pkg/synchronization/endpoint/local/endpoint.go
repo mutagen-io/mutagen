@@ -796,13 +796,20 @@ WatchEstablishment:
 				logger.Debug("Recursive watching error:", err)
 
 				// If acceleration is allowed on the endpoint, then disable scan
-				// acceleration and clear out the re-check paths.
+				// acceleration and clear out the re-check paths. Moreover,
+				// always grab the scan lock, even if acceleration isn't allowed
+				// (which we could check without holding the lock) because
+				// there's a very high likelihood that the watch failure was
+				// caused by Transition, and thus waiting for the scan lock to
+				// become available will ensure that we don't rapidly loop and
+				// re-establish watches that are likely to fail while Transition
+				// is still operating.
+				e.scanLock.Lock()
 				if e.accelerationAllowed {
-					e.scanLock.Lock()
 					e.accelerate = false
 					e.recheckPaths = nil
-					e.scanLock.Unlock()
 				}
+				e.scanLock.Unlock()
 
 				// Stop and drain the timer, which may be running.
 				stopAndDrainTimer(timer)
