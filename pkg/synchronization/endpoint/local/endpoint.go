@@ -657,11 +657,10 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 			changes := core.Diff(previous.Content, snapshot.Content)
 			for _, change := range changes {
 				logger.Tracef("Observed change at \"%s\"", change.Path)
-				if watcher != nil {
-					if change.New.Kind == core.EntryKind_Directory ||
-						change.New.Kind == core.EntryKind_File {
-						watcher.Watch(filepath.Join(e.root, change.Path))
-					}
+				if watcher != nil && change.New != nil &&
+					(change.New.Kind == core.EntryKind_Directory ||
+						change.New.Kind == core.EntryKind_File) {
+					watcher.Watch(filepath.Join(e.root, change.Path))
 				}
 			}
 		}
