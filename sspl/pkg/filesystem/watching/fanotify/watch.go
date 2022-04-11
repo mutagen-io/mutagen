@@ -45,7 +45,7 @@ const (
 	watchCoalescingWindow = 20 * time.Millisecond
 	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
 	// will be allowed in a pending coalesced event.
-	watchCoalescingMaximumPendingPaths = 10 * 1024
+	watchCoalescingMaximumPendingPaths = 128
 )
 
 // RecursiveWatcher implements watching.RecursiveWatcher using fanotify.
@@ -264,19 +264,42 @@ func (w *RecursiveWatcher) run(ctx context.Context, target string, filter func(s
 		case <-ctx.Done():
 			return ErrWatchTerminated
 		case path := <-paths:
-			// Convert the event path to be target-relative. With fanotify,
-			// we're watching the entirety of a filesystem, so certain events
-			// may yield paths outside of the mount point that we're watching.
-			// These paths will manifest as "/", which we'll ignore (unless it's
-			// our watch root).
+			// Convert the event path to be target-relative. We have to ignore
+			// anything that doesn't fall at or below our watch target for two
+			// reasons:
+			//
+			// First, our watch and path resolution location is the mount point,
+			// not necessarily the watch target. Much like on Windows, we have
+			// to watch outside of the target in order to ensure a stable watch
+			// and to ensure that we're seeing changes to the target itself
+			// (though, in this case, we do it more for stability since we know
+			// the volume mounts aren't likely to disappear).
+			//
+			// Second, with fanotify, we're watching an entire filesystem, and
+			// thus we may see events that occur outside of the mount point that
+			// we're watching, especially if that mount point isn't mounting the
+			// filesystem root. If the event can't be referenced by a path
+			// beneath the mount point that we're using with open_by_handle_at,
+			// then a read of its path will result in "/". For example, watching
+			// container volumes that are just bind-mounted directories from the
+			// host filesystem will result in a watch of the entire host
+			// filesystem, but a modification to a path outside of the volume
+			// directory on the host filesystem will yield a notification with
+			// a path resolving to "/" (when resolved relative to the mount
+			// point). This is basically designed to indicate that the event
+			// occurred outside the mount point. Fortunately, as long as the
+			// target location can be referenced by a path beneath the mount
+			// point being used as the reference point for open_by_handle_at, a
+			// valid path will be returned. This means (e.g.) that a single
+			// volume mounted in multiple containers (even at different mount
+			// points) will still yield event notifications with paths relative
+			// to the mount point within the container performing the watch.
 			if path == target {
 				path = ""
 			} else if strings.HasPrefix(path, eventPathTrimPrefix) {
 				path = path[len(eventPathTrimPrefix):]
-			} else if path == "/" {
-				continue
 			} else {
-				return errors.New("event path is not watch target and does not have expected prefix")
+				continue
 			}
 
 			// Check if the path should be excluded.

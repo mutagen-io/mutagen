@@ -28,7 +28,7 @@ func rootMain(command *cobra.Command, _ []string) error {
 var rootCommand = &cobra.Command{
 	Use:          "mutagen-sidecar",
 	Version:      mutagen.Version,
-	Short:        "Sidecar entry point for creating and controlling Mutagen sessions",
+	Short:        "Entry point for sidecar containers hosting Mutagen sessions",
 	RunE:         rootMain,
 	SilenceUsage: true,
 }

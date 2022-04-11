@@ -220,9 +220,6 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 			// Convert the event path to be target-relative and replace
 			// backslashes with forward slashes. If the path isn't the target or
 			// a child of the target, then we ignore it.
-			//
-			// TODO: We should raise an error on spurious paths here in order to
-			// keep consistency with other platforms.
 			if path == target {
 				path = ""
 			} else if strings.HasPrefix(path, eventPathTrimPrefix) {

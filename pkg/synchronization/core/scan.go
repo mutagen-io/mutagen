@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	"golang.org/x/text/unicode/norm"
@@ -368,7 +369,7 @@ func (s *scanner) directory(
 		// If this is an intermediate temporary file, then ignore it. We avoid
 		// recording these files, even as untracked entries, because we know
 		// that they're ephemeral.
-		if filesystem.IsTemporaryFileName(contentName) {
+		if strings.HasPrefix(contentName, filesystem.TemporaryNamePrefix) {
 			continue
 		}
 
@@ -409,11 +410,20 @@ func (s *scanner) directory(
 			continue
 		}
 
-		// If we have a baseline, then check if that baseline has content with
-		// the same name and kind as what we see on disk. If so, then we can use
-		// that as a baseline for the content.
+		// If this is a directory, and we have a baseline, then check if that
+		// baseline has content with the same name that is also a directory. If
+		// so, then we can use that as a baseline for this content. While we
+		// could do this for all entry types, we restrict this optimization to
+		// directories because they're the only content types for which
+		// rescanning is not O(1). Moreover, we've already paid the price to
+		// grab file metadata, so we may as well compare it with the cache since
+		// that doesn't require another trip to disk. It's true that we are
+		// incurring additional symbolic link reads that we could potentially
+		// replace with baseline content, but they are statistically rarer, they
+		// only require a single system call, and we're only performing them in
+		// directories marked as dirty, so the additional cost is very low.
 		var contentBaseline *Entry
-		if baseline != nil {
+		if contentIsDirectory && baseline != nil {
 			contentBaseline = baseline.Contents[contentName]
 			if contentBaseline != nil && contentBaseline.Kind != contentKind {
 				contentBaseline = nil

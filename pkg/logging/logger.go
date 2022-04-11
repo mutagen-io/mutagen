@@ -98,23 +98,14 @@ func (l *Logger) write(timestamp time.Time, level Level, message string) {
 	}
 
 	// Compute the log line.
-	levelName := level.String()
-	var levelPadding string
-	if len(levelName) == 4 {
-		levelPadding = "  "
-	} else if len(levelName) == 5 {
-		levelPadding = " "
-	} else {
-		panic("unhandled level name")
-	}
 	var line string
 	if l.scope != "" {
-		line = fmt.Sprintf("%s [%s]%s[%s] %s",
-			timestamp.Format(timestampFormat), levelName, levelPadding, l.scope, message,
+		line = fmt.Sprintf("%s [%c] [%s] %s",
+			timestamp.Format(timestampFormat), level.abbreviation(), l.scope, message,
 		)
 	} else {
-		line = fmt.Sprintf("%s [%s]%s%s",
-			timestamp.Format(timestampFormat), levelName, levelPadding, message,
+		line = fmt.Sprintf("%s [%c] %s",
+			timestamp.Format(timestampFormat), level.abbreviation(), message,
 		)
 	}
 
@@ -200,7 +191,7 @@ func (l *Logger) Tracef(format string, v ...any) {
 }
 
 // linePrefixMatcher matches the timestamp and level prefix of logging lines.
-var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6} \[([a-z]{4,5})\]( {1,2})`)
+var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6} \[([` + abbreviations + `])\] `)
 
 // Writer returns an io.Writer that logs incoming lines. If an incoming line is
 // determined to be an output line from another logger, then it will be parsed
@@ -220,21 +211,19 @@ func (l *Logger) Writer(level Level) io.Writer {
 			// Check if the line is output from a logger. If it's not, then we
 			// just log it as if it were any other message.
 			matches := linePrefixMatcher.FindStringSubmatch(line)
-			if len(matches) != 3 {
+			if len(matches) != 2 {
 				l.log(level, line)
 				return
 			}
 
-			// Parse the log level for the line. If the log level that it
-			// specifies is invalid, or the padding afterward is invalid, then
-			// just print an indicator that an invalid line was received.
-			// Otherwise, if the line level is beyond the threshold of this
-			// logger, then just ignore it.
-			if level, ok := NameToLevel(matches[1]); !ok {
+			// Decode the log level for the line. If the log level that it
+			// specifies is invalid, then just print an indicator that an
+			// invalid line was received. Otherwise, if the line level is beyond
+			// the threshold of this logger, then just ignore it.
+			if len(matches[1]) != 1 {
+				panic("line prefix matcher returned invalid match")
+			} else if level, ok := abbreviationToLevel(matches[1][0]); !ok {
 				l.Warn("<invalid incoming log line level>")
-				return
-			} else if len(matches[1])+len(matches[2]) != 6 {
-				l.Warn("<invalid incoming log line padding>")
 				return
 			} else if l.level < level {
 				return

@@ -1,5 +1,9 @@
 package logging
 
+import (
+	"strings"
+)
+
 // Level represents a log level. Its value hierarchy is designed to be ordered
 // and comparable by value.
 type Level uint
@@ -21,6 +25,24 @@ const (
 	// addition to all other execution information and all errors).
 	LevelTrace
 )
+
+// levelNames are the human-readable representations of log levels.
+var levelNames = [6]string{
+	"disabled",
+	"error",
+	"warn",
+	"info",
+	"debug",
+	"trace",
+}
+
+// String provides a human-readable representation of a log level.
+func (l Level) String() string {
+	if l <= LevelTrace {
+		return levelNames[l]
+	}
+	return "unknown"
+}
 
 // NameToLevel converts a string-based representation of a log level to the
 // appropriate Level value. It returns a boolean indicating whether or not the
@@ -44,22 +66,24 @@ func NameToLevel(name string) (Level, bool) {
 	}
 }
 
-// String provides a human-readable representation of a log level.
-func (l Level) String() string {
-	switch l {
-	case LevelDisabled:
-		return "disabled"
-	case LevelError:
-		return "error"
-	case LevelWarn:
-		return "warn"
-	case LevelInfo:
-		return "info"
-	case LevelDebug:
-		return "debug"
-	case LevelTrace:
-		return "trace"
-	default:
-		return "unknown"
+// abbreviations is the range of appreviations to use for log levels.
+const abbreviations = "_EWIDT"
+
+// abbreviation returns a one-byte prefix to use for the level in log lines.
+func (l Level) abbreviation() byte {
+	if l <= LevelTrace {
+		return abbreviations[l]
 	}
+	return '?'
+}
+
+// abbreviationToLevel converts a one-byte prefix representation of a log level
+// to the appropriate Level value. It returns a boolean indicating whether or
+// not the conversion was valid. If the abbreviation is invalid, LevelDisabled
+// is returned.
+func abbreviationToLevel(abbreviation byte) (Level, bool) {
+	if index := strings.IndexByte(abbreviations, abbreviation); index != -1 {
+		return Level(index), true
+	}
+	return LevelDisabled, false
 }

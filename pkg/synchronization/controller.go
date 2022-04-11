@@ -337,6 +337,9 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 		return errors.New("session is paused")
 	}
 
+	// Perform logging.
+	c.logger.Infof("Forcing synchronization cycle")
+
 	// Check if the session is currently synchronizing and store the channel
 	// that we'll use to track synchronizability.
 	c.stateLock.Lock()
@@ -420,6 +423,9 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 	if c.disabled {
 		return errors.New("controller disabled")
 	}
+
+	// Perform logging.
+	c.logger.Infof("Resuming")
 
 	// Check if there's an existing synchronization loop (i.e. if the session is
 	// unpaused).
@@ -570,6 +576,9 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		return errors.New("controller disabled")
 	}
 
+	// Perform logging.
+	c.logger.Infof(mode.description())
+
 	// Kill any existing synchronization loop.
 	if c.cancel != nil {
 		// Cancel the synchronization loop and wait for it to finish.
@@ -634,6 +643,7 @@ func (c *controller) reset(ctx context.Context, prompter string) error {
 	}
 
 	// Reset the session archive on disk.
+	c.logger.Infof("Resetting ancestor")
 	archive := &core.Archive{}
 	if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
 		return fmt.Errorf("unable to clear session history: %w", err)
@@ -1074,6 +1084,11 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// Extract contents.
 		αContent := αSnapshot.Content
 		βContent := βSnapshot.Content
+		if c.logger.Level() >= logging.LevelTrace {
+			c.logger.Tracef("Ancestor contains %d entries, alpha contains %d entries, beta contains %d entries",
+				ancestor.Count(), αContent.Count(), βContent.Count(),
+			)
+		}
 
 		// Now that we've had a successful scan, clear the last error (if any),
 		// record scan problems (if any), and update the status to reconciling.
@@ -1123,13 +1138,28 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		)
 		if c.logger.Level() >= logging.LevelTrace {
 			for _, change := range ancestorChanges {
-				c.logger.Tracef("ancestor change at \"%s\"", change.Path)
+				c.logger.Tracef("Ancestor change at \"%s\" from %s to %s",
+					formatPathForLogging(change.Path),
+					formatEntryForLogging(change.Old),
+					formatEntryForLogging(change.New),
+				)
 			}
 			for _, transition := range αTransitions {
-				c.logger.Tracef("alpha transition at \"%s\"", transition.Path)
+				c.logger.Tracef("Alpha transition at \"%s\" from %s to %s",
+					formatPathForLogging(transition.Path),
+					formatEntryForLogging(transition.Old),
+					formatEntryForLogging(transition.New),
+				)
 			}
 			for _, transition := range βTransitions {
-				c.logger.Tracef("beta transition at \"%s\"", transition.Path)
+				c.logger.Tracef("Beta transition at \"%s\" from %s to %s",
+					formatPathForLogging(transition.Path),
+					formatEntryForLogging(transition.Old),
+					formatEntryForLogging(transition.New),
+				)
+			}
+			for _, conflict := range conflicts {
+				c.logger.Tracef("Conflict rooted at %s", conflict.Root)
 			}
 		}
 
@@ -1314,7 +1344,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// we're not already in a synchronization cycle that was forced due to
 		// previously missing files.
 		if (αMissingFiles || βMissingFiles) && !skippingPollingDueToMissingFiles {
-			c.logger.Debug("Endpoints missing files after transition, skipping polling")
+			c.logger.Debug("Endpoint(s) missing files after transition, skipping polling")
 			skipPolling = true
 			skippingPollingDueToMissingFiles = true
 		} else {

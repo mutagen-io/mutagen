@@ -298,8 +298,9 @@ func main() {
 
 	// Count snapshot content entries.
 	start = time.Now()
-	snapshot.Content.Count()
+	entryCount := snapshot.Content.Count()
 	stop = time.Now()
+	fmt.Println("Snapshot contained", entryCount, "entries")
 	fmt.Println("Snapshot entry counting took", stop.Sub(start))
 
 	// Perform a deep copy of the snapshot contents.

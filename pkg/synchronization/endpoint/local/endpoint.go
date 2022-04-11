@@ -7,6 +7,7 @@ import (
 	"hash"
 	"io"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,7 +27,7 @@ const (
 	// written to disk in the background.
 	cacheSaveInterval = 60 * time.Second
 	// recheckPathsMaximumCapacity is the maximum re-check path set capacity.
-	recheckPathsMaximumCapacity = 10 * 1024
+	recheckPathsMaximumCapacity = 512
 )
 
 // reifiedWatchMode describes a fully reified watch mode based on the watch mode
@@ -306,12 +307,13 @@ func NewEndpoint(
 		cache = &core.Cache{}
 	}
 
-	// Check if the synchronization root is a volume Mount point in a Mutagen
-	// sidecar container.
-	var rootIsSidecarVolumeMountPoint bool
-	var sidecarVolumeName string
+	// Check if this endpoint is running inside a sidecar container and, if so,
+	// whether or not the root exists beneath a volume mount point (which it
+	// almost certainly does, but that's not guaranteed). We track the latter
+	// condition by whether or not sidecarVolumeMountPoint is non-empty.
+	var sidecarVolumeMountPoint string
 	if sidecar.EnvironmentIsSidecar() {
-		rootIsSidecarVolumeMountPoint, sidecarVolumeName = sidecar.PathIsVolumeMountPoint(root)
+		sidecarVolumeMountPoint = sidecar.VolumeMountPointForPath(root)
 	}
 
 	// Compute the effective staging mode. If no mode has been explicitly set
@@ -320,9 +322,11 @@ func NewEndpoint(
 	// use either the explicitly specified staging mode or the default staging
 	// mode.
 	stageMode := configuration.StageMode
+	var useSidecarVolumeMountPointAsInternalStagingRoot bool
 	if stageMode.IsDefault() {
-		if rootIsSidecarVolumeMountPoint {
+		if sidecarVolumeMountPoint != "" {
 			stageMode = synchronization.StageMode_StageModeInternal
+			useSidecarVolumeMountPointAsInternalStagingRoot = true
 		} else {
 			stageMode = version.DefaultStageMode()
 		}
@@ -337,7 +341,11 @@ func NewEndpoint(
 		stagingRoot, err = pathForNeighboringStagingRoot(root, sessionIdentifier, alpha)
 		hideStagingRoot = true
 	} else if stageMode == synchronization.StageMode_StageModeInternal {
-		stagingRoot, err = pathForInternalStagingRoot(root, sessionIdentifier, alpha)
+		if useSidecarVolumeMountPointAsInternalStagingRoot {
+			stagingRoot, err = pathForInternalStagingRoot(sidecarVolumeMountPoint, sessionIdentifier, alpha)
+		} else {
+			stagingRoot, err = pathForInternalStagingRoot(root, sessionIdentifier, alpha)
+		}
 		hideStagingRoot = true
 	} else {
 		panic("unhandled staging mode")
@@ -353,9 +361,10 @@ func NewEndpoint(
 	// This is a heuristic to work around the fact that Docker volumes don't
 	// allow ownership specification at creation time, either via the command
 	// line or Compose.
-	if nonDefaultOwnershipOrDirectoryPermissionsSet && rootIsSidecarVolumeMountPoint {
+	// TODO: Should this be restricted to Linux containers?
+	if nonDefaultOwnershipOrDirectoryPermissionsSet && root == sidecarVolumeMountPoint {
 		if err := sidecar.SetVolumeOwnershipAndPermissionsIfEmpty(
-			sidecarVolumeName,
+			filepath.Base(sidecarVolumeMountPoint),
 			defaultOwnership,
 			defaultDirectoryMode,
 		); err != nil {
@@ -417,7 +426,7 @@ func NewEndpoint(
 		if actualWatchMode == reifiedWatchModePoll {
 			endpoint.watchPoll(workerCtx, watchPollingInterval, nonRecursiveWatchingAllowed)
 		} else if actualWatchMode == reifiedWatchModeRecursive {
-			go endpoint.watchRecursive(workerCtx, watchPollingInterval)
+			endpoint.watchRecursive(workerCtx, watchPollingInterval)
 		}
 		close(watchDone)
 	}()
@@ -499,8 +508,16 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 	var watchErrors <-chan error
 	if nonRecursiveWatchingAllowed && watching.NonRecursiveWatchingSupported {
 		// Create the filter that we'll use to exclude Mutagen temporary files.
+		// In the non-recursive watching case, we can't use the fast-path base
+		// name calculation for leaf name calculations (at least not safely)
+		// because our non-recursive watchers don't ensure root-relativity.
+		// Fortunately, we don't need to perform the same total path prefix
+		// check as recursive watching since we know that temporary directories
+		// will never be added to the non-recursive watcher since they'll never
+		// be included in the scan, and thus we'll never see changes to their
+		// contents that would need to be filtered out.
 		filter := func(path string) bool {
-			return filesystem.IsTemporaryFileName(filepath.Base(path))
+			return strings.HasPrefix(filepath.Base(path), filesystem.TemporaryNamePrefix)
 		}
 
 		// Attempt to create the watcher and ensure that it will be terminated.
@@ -582,12 +599,11 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				continue
 			case event := <-watchEvents:
 				// Log the event.
+				logger.Debug("Received event with", len(event), "paths")
 				if logger.Level() >= logging.LevelTrace {
 					for path := range event {
 						logger.Tracef("Received event path: \"%s\"", path)
 					}
-				} else {
-					logger.Debug("Received event with", len(event), "paths")
 				}
 			}
 		}
@@ -640,10 +656,12 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 		if watcher != nil || logger.Level() >= logging.LevelTrace {
 			changes := core.Diff(previous.Content, snapshot.Content)
 			for _, change := range changes {
-				if watcher != nil {
+				logger.Tracef("Observed change at \"%s\"", change.Path)
+				if watcher != nil && change.New != nil &&
+					(change.New.Kind == core.EntryKind_Directory ||
+						change.New.Kind == core.EntryKind_File) {
 					watcher.Watch(filepath.Join(e.root, change.Path))
 				}
-				logger.Tracef("Observed change at \"%s\"", change.Path)
 			}
 		}
 
@@ -660,7 +678,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 			e.strobePollEvents()
 		} else {
 			// Log the lack of modifications.
-			logger.Debug("No modifications detected")
+			logger.Debug("No unignored modifications detected")
 		}
 	}
 }
@@ -683,9 +701,13 @@ func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
 	}()
 
 	// Create the filter that we'll use to exclude Mutagen temporary files.
-	// Recursive watchers can use our fast-path base name calculation.
+	// Recursive watchers can use our fast-path base name calculation for leaf
+	// name calculations. We also check the entire path for a temporary prefix
+	// to identify temporary directories (whose contents may have non-temporary
+	// names, such as internal staging directories).
 	filter := func(path string) bool {
-		return filesystem.IsTemporaryFileName(core.PathBase(path))
+		return strings.HasPrefix(path, filesystem.TemporaryNamePrefix) ||
+			strings.HasPrefix(core.PathBase(path), filesystem.TemporaryNamePrefix)
 	}
 
 	// Create a timer, initially stopped and drained, that we can use to
@@ -773,13 +795,20 @@ WatchEstablishment:
 				logger.Debug("Recursive watching error:", err)
 
 				// If acceleration is allowed on the endpoint, then disable scan
-				// acceleration and clear out the re-check paths.
+				// acceleration and clear out the re-check paths. Moreover,
+				// always grab the scan lock, even if acceleration isn't allowed
+				// (which we could check without holding the lock) because
+				// there's a very high likelihood that the watch failure was
+				// caused by Transition, and thus waiting for the scan lock to
+				// become available will ensure that we don't rapidly loop and
+				// re-establish watches that are likely to fail while Transition
+				// is still operating.
+				e.scanLock.Lock()
 				if e.accelerationAllowed {
-					e.scanLock.Lock()
 					e.accelerate = false
 					e.recheckPaths = nil
-					e.scanLock.Unlock()
 				}
+				e.scanLock.Unlock()
 
 				// Stop and drain the timer, which may be running.
 				stopAndDrainTimer(timer)
@@ -794,12 +823,11 @@ WatchEstablishment:
 				continue WatchEstablishment
 			case event := <-watcher.Events():
 				// Log the event.
+				logger.Debug("Received event with", len(event), "paths")
 				if logger.Level() >= logging.LevelTrace {
 					for path := range event {
 						logger.Tracef("Received event path: \"%s\"", path)
 					}
-				} else {
-					logger.Debug("Received event with", len(event), "paths")
 				}
 
 				// If acceleration is allowed (and available) on the endpoint,
@@ -922,13 +950,17 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 	// it's not, that will handled elsewhere).
 	if e.accelerate && !full {
 		if e.watchMode == reifiedWatchModeRecursive {
+			e.logger.Debug("Performing accelerated scan with", len(e.recheckPaths), "recheck paths")
 			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
 				return nil, err, true
 			} else {
 				e.recheckPaths = make(map[string]bool)
 			}
+		} else {
+			e.logger.Debug("Performing accelerated scan with existing snapshot")
 		}
 	} else {
+		e.logger.Debug("Performing full scan")
 		if err := e.scan(ctx, nil, nil); err != nil {
 			return nil, err, true
 		}
@@ -939,6 +971,9 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 	// that we don't hold those entries in memory? Right now this is mostly
 	// concerned with avoiding transmission of the entries over the wire.
 	if e.lastScanEntryCount > e.maximumEntryCount {
+		e.logger.Debugf("Scan count (%d) exceeded maximum allowed entry count (%d)",
+			e.lastScanEntryCount, e.maximumEntryCount,
+		)
 		return nil, errors.New("exceeded allowed entry count"), true
 	}
 
@@ -1181,17 +1216,28 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 
 	// Ensure that accelerated scanning doesn't return a stale (pre-transition)
 	// snapshot. This is critical, especially in the case of poll-based watching
-	// (where it has a high chance of occurring). If a pre-transition snapshot
-	// is returned by the next call to Scan, then the controller will perform an
+	// (where it has a high chance of occurring), because it leads to the
+	// pathologically bad case of a pre-transition snapshot being returned by
+	// the next call to Scan, which will cause the controller will perform an
 	// inversion (on the opposite endpoint) of the transitions that were just
 	// applied here. In the case of recursive watching, we just need to ensure
 	// that any modified paths get put into the re-check path list, because
-	// there could be a delay in the OS reporting the modifications. In the case
-	// of poll-based watching, we just need to disable accelerated scanning,
-	// which will be automatically re-enabled on the next polling operation. If
+	// there could be a delay in the OS reporting the modifications, or a delay
+	// in the watching Goroutine detecting and handling failure, and thus Scan
+	// could acquire the scan lock before recheck paths are appropriately
+	// updated or acceleration is disabled due to failure. In the case of
+	// poll-based watching, we just need to disable accelerated scanning, which
+	// will be automatically re-enabled on the next polling operation. If
 	// filesystem watching is disabled, then so is acceleration, and thus
-	// there's no way that a stale scan could be returned.
-	if e.accelerate {
+	// there's no way that a stale scan could be returned. Note that, in the
+	// recurisve watching case, we only need to include transition roots because
+	// transition operations will always change the root type and thus scanning
+	// will see any potential content changes. Also, we don't need to worry
+	// about delayed watcher failure reporting due to external (non-transition)
+	// changes because those won't be exact inversions of the operations that
+	// we're applying here. That type of failure is unavoidable anyway, but
+	// still guarded against by Transition's just-in-time modification checks.
+	if e.accelerate && transitionMadeChanges {
 		if e.watchMode == reifiedWatchModePoll {
 			e.accelerate = false
 		} else if e.watchMode == reifiedWatchModeRecursive {
