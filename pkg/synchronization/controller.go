@@ -1105,11 +1105,15 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 
 		// If one side preserves executability and the other does not, then
 		// propagate executability from the preserving side to the
-		// non-preserving side.
-		if αSnapshot.PreservesExecutability && !βSnapshot.PreservesExecutability {
+		// non-preserving side. We only do this if the corresponding target
+		// content is non-nil, because (a) PropagateExecutability is a no-op if
+		// it is nil and (b) PreservesExecutability will have defaulted to false
+		// if there's no content and (even though this will be a no-op) we don't
+		// want the spurious logs.
+		if αSnapshot.PreservesExecutability && βContent != nil && !βSnapshot.PreservesExecutability {
 			c.logger.Debug("Propagating alpha executability to beta")
 			βContent = core.PropagateExecutability(ancestor, αContent, βContent)
-		} else if βSnapshot.PreservesExecutability && !αSnapshot.PreservesExecutability {
+		} else if βSnapshot.PreservesExecutability && αContent != nil && !αSnapshot.PreservesExecutability {
 			c.logger.Debug("Propagating beta executability to alpha")
 			αContent = core.PropagateExecutability(ancestor, βContent, αContent)
 		}
