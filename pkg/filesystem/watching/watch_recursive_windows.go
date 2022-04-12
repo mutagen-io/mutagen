@@ -46,7 +46,7 @@ type recursiveWatcher struct {
 	// watch is the underlying ReadDirectoryChangesW-based watcher.
 	watch *winfsnotify.Watcher
 	// events is the event delivery channel.
-	events chan map[string]bool
+	events chan string
 	// errors is the error delivery channel.
 	errors chan error
 	// cancel is the run loop cancellation function.
@@ -56,10 +56,8 @@ type recursiveWatcher struct {
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
-// specified target path. It accepts an optional filter function that can be
-// used to exclude paths from being returned by the watcher. If filter is nil,
-// then no filtering is performed.
-func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error) {
+// specified target path.
+func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 	// Resolve any symbolic links in the watch target. This is necessary because
 	// we're using the parent directory of the target path as the watch root and
 	// ReadDirectoryChangesW doesn't watch across symbolic link boundaries, so
@@ -141,7 +139,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 	// Create the watcher.
 	watcher := &recursiveWatcher{
 		watch:  watch,
-		events: make(chan map[string]bool),
+		events: make(chan string),
 		errors: make(chan error, 1),
 		cancel: cancel,
 	}
@@ -151,7 +149,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 
 	// Start the run loop.
 	go func() {
-		watcher.errors <- watcher.run(ctx, watchRoot, initialWatchRootMetadata, target, filter)
+		watcher.errors <- watcher.run(ctx, watchRoot, initialWatchRootMetadata, target)
 		watcher.done.Done()
 	}()
 
@@ -160,7 +158,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 }
 
 // run implements the event processing run loop for recursiveWatcher.
-func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWatchRootMetadata os.FileInfo, target string, filter Filter) error {
+func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWatchRootMetadata os.FileInfo, target string) error {
 	// Compute the prefix that we'll use to (a) filter events to those occurring
 	// at or under the target and (b) trim off to make paths target-relative
 	// (assuming they aren't the target itself). Note that filepath.EvalSymlinks
@@ -182,22 +180,6 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 	watchRootCheckTimer := time.NewTimer(0)
 	defer watchRootCheckTimer.Stop()
 
-	// Create a coalescing timer, initially stopped and drained, and ensure that
-	// it's stopped once we return.
-	coalescingTimer := time.NewTimer(0)
-	if !coalescingTimer.Stop() {
-		<-coalescingTimer.C
-	}
-	defer coalescingTimer.Stop()
-
-	// Create an empty pending event.
-	pending := make(map[string]bool)
-
-	// Create a separate channel variable to track the target events channel. We
-	// keep it nil to block transmission until the pending event is non-empty
-	// and the coalescing timer has fired.
-	var pendingTarget chan<- map[string]bool
-
 	// Perform event forwarding until cancellation or failure.
 	for {
 		select {
@@ -211,7 +193,7 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 
 			// Watch for event overflows that would invalidate our watch.
 			if event.Mask == winfsnotify.FS_Q_OVERFLOW {
-				return errors.New("internal event overflow")
+				return ErrWatchInternalOverflow
 			}
 
 			// Extract the path.
@@ -229,40 +211,12 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 				continue
 			}
 
-			// Check if the path should be excluded.
-			if filter != nil && filter(path) {
-				continue
+			// Transmit the path.
+			select {
+			case w.events <- path:
+			case <-ctx.Done():
+				return ErrWatchTerminated
 			}
-
-			// Record the path.
-			pending[path] = true
-
-			// Check if we've exceeded the maximum number of allowed pending
-			// paths. We're technically allowing ourselves to go one over the
-			// limit here, but to avoid that we'd have to check whether or not
-			// each path was already in pending before adding it, and that would
-			// be expensive. Since this is a purely internal check for the
-			// purpose of avoiding excessive memory usage, this small transient
-			// overflow is fine.
-			if len(pending) > watchCoalescingMaximumPendingPaths {
-				return ErrTooManyPendingPaths
-			}
-
-			// We may have already had a pending event that was coalesced and
-			// ready to be delivered, but now we've seen more changes and we're
-			// going to create a new coalescing window, so we'll block event
-			// transmission until the new coalescing window is complete.
-			pendingTarget = nil
-
-			// Reset the coalesing timer. We don't know if it was already
-			// running, so we need to drain it in a non-blocking fashion.
-			if !coalescingTimer.Stop() {
-				select {
-				case <-coalescingTimer.C:
-				default:
-				}
-			}
-			coalescingTimer.Reset(watchCoalescingWindow)
 		case <-watchRootCheckTimer.C:
 			// Grab the current watch root parameters. Note that we continue to
 			// use os.Stat for the reasons outlined above.
@@ -278,21 +232,12 @@ func (w *recursiveWatcher) run(ctx context.Context, watchRoot string, initialWat
 
 			// Reset the timer and continue watching.
 			watchRootCheckTimer.Reset(watchRootMetadataPollingInterval)
-		case <-coalescingTimer.C:
-			// Set the target events channel to the actual events channel.
-			pendingTarget = w.events
-		case pendingTarget <- pending:
-			// Create a new pending event.
-			pending = make(map[string]bool)
-
-			// Block event transmission until the event is non-empty.
-			pendingTarget = nil
 		}
 	}
 }
 
 // Events implements RecursiveWatcher.Events.
-func (w *recursiveWatcher) Events() <-chan map[string]bool {
+func (w *recursiveWatcher) Events() <-chan string {
 	return w.events
 }
 
@@ -303,7 +248,7 @@ func (w *recursiveWatcher) Errors() <-chan error {
 
 // Terminate implements RecursiveWatcher.Terminate.
 func (w *recursiveWatcher) Terminate() error {
-	// Signal cancellation.
+	// Signal termination.
 	w.cancel()
 
 	// Wait for the run loop to exit.
