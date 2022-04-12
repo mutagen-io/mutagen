@@ -1163,7 +1163,9 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				)
 			}
 			for _, conflict := range conflicts {
-				c.logger.Tracef("Conflict rooted at %s", conflict.Root)
+				c.logger.Tracef("Conflict rooted at \"%s\"",
+					formatPathForLogging(conflict.Root),
+				)
 			}
 		}
 
