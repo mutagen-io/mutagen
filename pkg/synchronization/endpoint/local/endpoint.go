@@ -123,15 +123,14 @@ type endpoint struct {
 	// safe for concurrent send operations.
 	recursiveWatchRetryEstablish chan struct{}
 	// scanLock serializes access to accelerate, recheckPaths, snapshot, hasher,
-	// cache, ignoreCache, cacheWriteError, lastScanEntryCount,
-	// scannedSinceLastStageCall, and scannedSinceLastTransitionCall. This lock
-	// is not necessitated by the Endpoint interface (which doesn't permit
+	// cache, ignoreCache, cacheWriteError, and lastScanEntryCount. This lock is
+	// not necessitated by the Endpoint interface (which doesn't permit
 	// concurrent usage), but rather the endpoint's background worker Goroutines
 	// for cache saving and filesystem watching. This lock also notably excludes
-	// coverage of lastReturnedScanCache and
-	// lastReturnedScanSnapshotDecomposesUnicode, which are only updated by Scan
-	// and read by Transition, thus making them safe under Endpoint's documented
-	// lack of support for concurrent invocation.
+	// coverage of scannedSinceLastStageCall, scannedSinceLastTransitionCall,
+	// lastReturnedScanCache, lastReturnedScanSnapshotDecomposesUnicode, which
+	// are only updated by Scan and read by Stage and Transition, thus making
+	// them safe under Endpoint's (non-concurrent) interface.
 	scanLock sync.Mutex
 	// accelerate indicates that the Scan function should attempt to accelerate
 	// scanning by using data from a background watcher Goroutine.
@@ -959,10 +958,6 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Snapshot, recheckPat
 	// Update the last scan entry count.
 	e.lastScanEntryCount = snapshot.Content.Count()
 
-	// Update call states.
-	e.scannedSinceLastStageCall = true
-	e.scannedSinceLastTransitionCall = true
-
 	// Trigger an asynchronous cache save operation.
 	select {
 	case e.saveCacheSignal <- struct{}{}:
@@ -1033,6 +1028,10 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 		)
 		return nil, errors.New("exceeded allowed entry count"), true
 	}
+
+	// Update call states.
+	e.scannedSinceLastStageCall = true
+	e.scannedSinceLastTransitionCall = true
 
 	// Store the values corresponding to the snapshot that we'll return.
 	e.lastReturnedScanCache = e.cache
