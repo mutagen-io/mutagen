@@ -29,11 +29,11 @@ const (
 	pollSignalCoalescingWindow = 20 * time.Millisecond
 	// minimumCacheSaveInterval is the minimum interval at which caches are
 	// written to disk asynchronously.
-	minimumCacheSaveInterval = 60 * time.Second
+	minimumCacheSaveInterval = 20 * time.Second
 	// watchPollScanSignalCoalescingWindow is the time interval over which
 	// triggering of scan operations by the non-recursive watch in watchPoll
 	// will be coalesced.
-	watchPollScanSignalCoalescingWindow = 20 * time.Millisecond
+	watchPollScanSignalCoalescingWindow = 10 * time.Millisecond
 )
 
 // reifiedWatchMode describes a fully reified watch mode based on the watch mode

@@ -31,7 +31,7 @@ const (
 	// rapid events together. There won't be a significant impact on perceptible
 	// latency because we use the kFSEventStreamCreateFlagNoDefer flag to avoid
 	// coalescing latency on one-shot events.
-	fseventsLatency = 20 * time.Millisecond
+	fseventsLatency = 10 * time.Millisecond
 	// fseventsFlags are the flags to use for FSEvents watches. The inclusion
 	// of the NoDefer (kFSEventStreamCreateFlagNoDefer) flag means that one-shot
 	// events that occur outside of a coalescing window will be delivered
