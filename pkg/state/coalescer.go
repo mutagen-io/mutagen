@@ -9,10 +9,10 @@ import (
 // within a specified time window. A Coalescer is safe for concurrent usage. It
 // maintains a background Goroutine that must be terminated using Terminate.
 type Coalescer struct {
-	// signals is used to transmit signals to the run loop.
+	// strobes is used to transmit strobes to the run loop.
+	strobes chan struct{}
+	// signals is the channel on which signals are delivered.
 	signals chan struct{}
-	// events is the channel on which events are delivered.
-	events chan struct{}
 	// cancel signals termination to the run loop.
 	cancel context.CancelFunc
 	// done is closed to indicate that the run loop has exited.
@@ -33,8 +33,8 @@ func NewCoalescer(window time.Duration) *Coalescer {
 
 	// Create the coalescer.
 	coalescer := &Coalescer{
-		signals: make(chan struct{}),
-		events:  make(chan struct{}, 1),
+		strobes: make(chan struct{}),
+		signals: make(chan struct{}, 1),
 		cancel:  cancel,
 		done:    make(chan struct{}),
 	}
@@ -61,7 +61,7 @@ func (c *Coalescer) run(ctx context.Context, window time.Duration) {
 			timer.Stop()
 			close(c.done)
 			return
-		case <-c.signals:
+		case <-c.strobes:
 			timer.Stop()
 			select {
 			case <-timer.C:
@@ -70,7 +70,7 @@ func (c *Coalescer) run(ctx context.Context, window time.Duration) {
 			timer.Reset(window)
 		case <-timer.C:
 			select {
-			case c.events <- struct{}{}:
+			case c.signals <- struct{}{}:
 			default:
 			}
 		}
@@ -83,23 +83,23 @@ func (c *Coalescer) run(ctx context.Context, window time.Duration) {
 // been called for the coalescing window period.
 func (c *Coalescer) Strobe() {
 	select {
-	case c.signals <- struct{}{}:
+	case c.strobes <- struct{}{}:
 	case <-c.done:
 	}
 }
 
-// Events returns the signal notification channel. This channel is buffered with
-// a capacity of 1, so no signals will ever be lost if it's not actively polled.
-// The resulting channel is never closed.
-func (c *Coalescer) Events() <-chan struct{} {
-	return c.events
+// Signals returns the signal notification channel. This channel is buffered
+// with a capacity of 1, so no signaling will ever be lost if it's not actively
+// polled. The resulting channel is never closed.
+func (c *Coalescer) Signals() <-chan struct{} {
+	return c.signals
 }
 
 // Terminate shuts down the coalescer's internal run loop and waits for it to
 // terminate. It's safe to continue invoking other methods after invoking
 // Terminate (including Terminate, which is idempotent), though Strobe will have
 // no effect and only previously buffered events will be delivered on the
-// channel returned by Events.
+// channel returned by Signals.
 func (c *Coalescer) Terminate() {
 	c.cancel()
 	<-c.done

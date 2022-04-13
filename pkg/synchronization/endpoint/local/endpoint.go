@@ -620,7 +620,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				return
 			case <-ticker.C:
 				logger.Debug("Received timer-based polling signal")
-			case <-performScanSignal.Events():
+			case <-performScanSignal.Signals():
 				logger.Debug("Received event-driven polling signal")
 			case err := <-watchErrors:
 				// Log the error.
@@ -925,7 +925,7 @@ func (e *endpoint) Poll(ctx context.Context) error {
 	// Wait for either cancellation or an event.
 	select {
 	case <-ctx.Done():
-	case <-e.pollSignal.Events():
+	case <-e.pollSignal.Signals():
 	}
 
 	// Done.
