@@ -1260,7 +1260,6 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// doesn't completely error out, convert its results to ancestor
 		// changes. Transition errors are checked later, once the ancestor has
 		// been updated.
-		c.logger.Debug("Transitioning endpoints")
 		c.stateLock.Lock()
 		c.state.Status = Status_Transitioning
 		c.stateLock.Unlock()
@@ -1277,6 +1276,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			transitionDone.Add(1)
 		}
 		if len(αTransitions) > 0 {
+			c.logger.Debug("Transitioning alpha")
 			go func() {
 				αResults, αProblems, αMissingFiles, αTransitionErr = alpha.Transition(ctx, αTransitions)
 				if αTransitionErr == nil {
@@ -1288,6 +1288,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			}()
 		}
 		if len(βTransitions) > 0 {
+			c.logger.Debug("Transitioning beta")
 			go func() {
 				βResults, βProblems, βMissingFiles, βTransitionErr = beta.Transition(ctx, βTransitions)
 				if βTransitionErr == nil {
