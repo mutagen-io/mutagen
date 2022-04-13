@@ -26,13 +26,11 @@ const (
 	// more than one event.
 	fseventsChannelCapacity = 50
 	// fseventsLatency is the internal latency (coalescing) parameter to use for
-	// FSEvents watches. We still perform our own coalescing on top of what
-	// FSEvents provides, because FSEvents appears to limit its coalescing to a
-	// maximum of 32 paths. However, there's still value in allowing FSEvents to
-	// perform some coalescing to reduce the overhead of transmitting the events
-	// from the kernel to userspace, and there won't be a significant impact on
-	// overall latency because we use the kFSEventStreamCreateFlagNoDefer flag
-	// to avoid latency on one-shot events.
+	// FSEvents watches. Setting this to a non-zero value allows FSEvents to
+	// optimize the transfer of events from kernel to user space by grouping
+	// rapid events together. There won't be a significant impact on perceptible
+	// latency because we use the kFSEventStreamCreateFlagNoDefer flag to avoid
+	// coalescing latency on one-shot events.
 	fseventsLatency = 10 * time.Millisecond
 	// fseventsFlags are the flags to use for FSEvents watches. The inclusion
 	// of the NoDefer (kFSEventStreamCreateFlagNoDefer) flag means that one-shot
@@ -48,7 +46,7 @@ type recursiveWatcher struct {
 	// watch is the underlying FSEvents event stream.
 	watch *fsevents.EventStream
 	// events is the event delivery channel.
-	events chan map[string]bool
+	events chan string
 	// errors is the error delivery channel.
 	errors chan error
 	// cancel is the run loop cancellation function.
@@ -58,10 +56,8 @@ type recursiveWatcher struct {
 }
 
 // NewRecursiveWatcher creates a new FSEvents-based recursive watcher using the
-// specified target path. It accepts an optional filter function that can be
-// used to exclude paths from being returned by the watcher. If filter is nil,
-// then no filtering is performed.
-func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error) {
+// specified target path.
+func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 	// Enforce that the watch target path is absolute. This is necessary because
 	// FSEvents will return event paths as absolute paths rooted at the system
 	// root (at least with the per-host streams that we're using), and thus
@@ -123,7 +119,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 	// Create the watcher.
 	watcher := &recursiveWatcher{
 		watch:  watch,
-		events: make(chan map[string]bool),
+		events: make(chan string),
 		errors: make(chan error, 1),
 		cancel: cancel,
 	}
@@ -133,7 +129,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 
 	// Start the run loop.
 	go func() {
-		watcher.errors <- watcher.run(ctx, target, filter)
+		watcher.errors <- watcher.run(ctx, target)
 		watcher.done.Done()
 	}()
 
@@ -142,7 +138,7 @@ func NewRecursiveWatcher(target string, filter Filter) (RecursiveWatcher, error)
 }
 
 // run implements the event processing run loop for recursiveWatcher.
-func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter) error {
+func (w *recursiveWatcher) run(ctx context.Context, target string) error {
 	// Compute the prefix that we'll need to trim from event paths to make them
 	// target-relative (if they aren't the target itself). Since we called
 	// filepath.EvalSymlinks above, which calls filepath.Clean, we know that
@@ -154,22 +150,6 @@ func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter
 	} else {
 		eventPathTrimPrefix = target + "/"
 	}
-
-	// Create a coalescing timer, initially stopped and drained, and ensure that
-	// it's stopped once we return.
-	coalescingTimer := time.NewTimer(0)
-	if !coalescingTimer.Stop() {
-		<-coalescingTimer.C
-	}
-	defer coalescingTimer.Stop()
-
-	// Create an empty pending event.
-	pending := make(map[string]bool)
-
-	// Create a separate channel variable to track the target events channel. We
-	// keep it nil to block transmission until the pending event is non-empty
-	// and the coalescing timer has fired.
-	var pendingTarget chan<- map[string]bool
 
 	// Perform event forwarding until cancellation or failure.
 	for {
@@ -195,7 +175,7 @@ func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter
 				// described above (target divergence) and something that we
 				// can't do much about in general.
 				if event.Flags&fsevents.MustScanSubDirs != 0 {
-					return errors.New("raw events were coalesced")
+					return ErrWatchInternalOverflow
 				} else if event.Flags&fsevents.Mount != 0 {
 					return errors.New("volume mounted under watch root")
 				} else if event.Flags&fsevents.Unmount != 0 {
@@ -212,63 +192,19 @@ func (w *recursiveWatcher) run(ctx context.Context, target string, filter Filter
 					return errors.New("event path is not watch target and does not have expected prefix")
 				}
 
-				// Check if the path should be excluded.
-				if filter != nil && filter(path) {
-					continue
-				}
-
-				// Record the path.
-				pending[path] = true
-
-				// Check if we've exceeded the maximum number of allowed pending
-				// paths. We're technically allowing ourselves to go one over
-				// the limit here, but to avoid that we'd have to check whether
-				// or not each path was already in pending before adding it, and
-				// that would be expensive. Since this is a purely internal
-				// check for the purpose of avoiding excessive memory usage,
-				// this small transient overflow is fine.
-				if len(pending) > watchCoalescingMaximumPendingPaths {
-					return ErrTooManyPendingPaths
-				}
-			}
-
-			// If the pending event is still empty, then there's nothing that we
-			// need to do and we can continue waiting. In this case, we also
-			// know that the coalescing timer isn't (and wasn't) running.
-			if len(pending) == 0 {
-				continue
-			}
-
-			// We may have already had a pending event that was coalesced and
-			// ready to be delivered, but now we've seen more changes and we're
-			// going to create a new coalescing window, so we'll block event
-			// transmission until the new coalescing window is complete.
-			pendingTarget = nil
-
-			// Reset the coalesing timer. We don't know if it was already
-			// running, so we need to drain it in a non-blocking fashion.
-			if !coalescingTimer.Stop() {
+				// Transmit the path.
 				select {
-				case <-coalescingTimer.C:
-				default:
+				case w.events <- path:
+				case <-ctx.Done():
+					return ErrWatchTerminated
 				}
 			}
-			coalescingTimer.Reset(watchCoalescingWindow)
-		case <-coalescingTimer.C:
-			// Set the target events channel to the actual events channel.
-			pendingTarget = w.events
-		case pendingTarget <- pending:
-			// Create a new pending event.
-			pending = make(map[string]bool)
-
-			// Block event transmission until the event is non-empty.
-			pendingTarget = nil
 		}
 	}
 }
 
 // Events implements RecursiveWatcher.Events.
-func (w *recursiveWatcher) Events() <-chan map[string]bool {
+func (w *recursiveWatcher) Events() <-chan string {
 	return w.events
 }
 
@@ -279,7 +215,7 @@ func (w *recursiveWatcher) Errors() <-chan error {
 
 // Terminate implements RecursiveWatcher.Terminate.
 func (w *recursiveWatcher) Terminate() error {
-	// Signal cancellation.
+	// Signal termination.
 	w.cancel()
 
 	// Wait for the run loop to exit.

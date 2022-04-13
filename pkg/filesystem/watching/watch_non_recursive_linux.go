@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/golang/groupcache/lru"
 
@@ -34,9 +33,7 @@ type nonRecursiveWatcher struct {
 	// evictor performs LRU-based watch eviction.
 	evictor *lru.Cache
 	// events is the event delivery channel.
-	events chan map[string]bool
-	// watchErrors relays watch errors to the run loop.
-	watchErrors chan<- error
+	events chan string
 	// errors is the error delivery channel.
 	errors chan error
 	// cancel is the run loop cancellation function.
@@ -45,11 +42,8 @@ type nonRecursiveWatcher struct {
 	done sync.WaitGroup
 }
 
-// NewNonRecursiveWatcher creates a new inotify-based non-recursive watcher. It
-// accepts an optional filter function that can be used to exclude paths from
-// being returned by the watcher. If filter is nil, then no filtering is
-// performed.
-func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
+// NewNonRecursiveWatcher creates a new inotify-based non-recursive watcher.
+func NewNonRecursiveWatcher() (NonRecursiveWatcher, error) {
 	// Create the raw event channel.
 	rawEvents := make(chan notify.EventInfo, inotifyChannelCapacity)
 
@@ -60,7 +54,7 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 	watcher := &nonRecursiveWatcher{
 		watch:   notify.NewWatcher(rawEvents),
 		evictor: lru.New(inotifyDefaultMaximumWatches),
-		events:  make(chan map[string]bool),
+		events:  make(chan string),
 		errors:  make(chan error, 1),
 		cancel:  cancel,
 	}
@@ -85,7 +79,7 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 	// Start the run loop.
 	go func() {
 		select {
-		case watcher.errors <- watcher.run(ctx, rawEvents, filter):
+		case watcher.errors <- watcher.run(ctx, rawEvents):
 		default:
 		}
 		watcher.done.Done()
@@ -96,23 +90,7 @@ func NewNonRecursiveWatcher(filter Filter) (NonRecursiveWatcher, error) {
 }
 
 // run implements the event processing run loop for nonRecursiveWatcher.
-func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.EventInfo, filter Filter) error {
-	// Create a coalescing timer, initially stopped and drained, and ensure that
-	// it's stopped once we return.
-	coalescingTimer := time.NewTimer(0)
-	if !coalescingTimer.Stop() {
-		<-coalescingTimer.C
-	}
-	defer coalescingTimer.Stop()
-
-	// Create an empty pending event.
-	pending := make(map[string]bool)
-
-	// Create a separate channel variable to track the target events channel. We
-	// keep it nil to block transmission until the pending event is non-empty
-	// and the coalescing timer has fired.
-	var pendingTarget chan<- map[string]bool
-
+func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.EventInfo) error {
 	// Loop indefinitely, polling for cancellation and events.
 	for {
 		select {
@@ -124,52 +102,12 @@ func (w *nonRecursiveWatcher) run(ctx context.Context, rawEvents <-chan notify.E
 				return errors.New("raw events channel closed")
 			}
 
-			// Extract the path.
-			path := e.Path()
-
-			// Check if the path should be excluded.
-			if filter != nil && filter(path) {
-				continue
+			// Transmit the path.
+			select {
+			case w.events <- e.Path():
+			case <-ctx.Done():
+				return ErrWatchTerminated
 			}
-
-			// Record the path.
-			pending[path] = true
-
-			// Check if we've exceeded the maximum number of allowed pending
-			// paths. We're technically allowing ourselves to go one over the
-			// limit here, but to avoid that we'd have to check whether or not
-			// each path was already in pending before adding it, and that would
-			// be expensive. Since this is a purely internal check for the
-			// purpose of avoiding excessive memory usage, this small transient
-			// overflow is fine.
-			if len(pending) > watchCoalescingMaximumPendingPaths {
-				return ErrTooManyPendingPaths
-			}
-
-			// We may have already had a pending event that was coalesced and
-			// ready to be delivered, but now we've seen more changes and we're
-			// going to create a new coalescing window, so we'll block event
-			// transmission until the new coalescing window is complete.
-			pendingTarget = nil
-
-			// Reset the coalesing timer. We don't know if it was already
-			// running, so we need to drain it in a non-blocking fashion.
-			if !coalescingTimer.Stop() {
-				select {
-				case <-coalescingTimer.C:
-				default:
-				}
-			}
-			coalescingTimer.Reset(watchCoalescingWindow)
-		case <-coalescingTimer.C:
-			// Set the target events channel to the actual events channel.
-			pendingTarget = w.events
-		case pendingTarget <- pending:
-			// Create a new pending event.
-			pending = make(map[string]bool)
-
-			// Block event transmission until the event is non-empty.
-			pendingTarget = nil
 		}
 	}
 }
@@ -211,7 +149,7 @@ func (w *nonRecursiveWatcher) Unwatch(path string) {
 }
 
 // Events implements NonRecursiveWatcher.Events.
-func (w *nonRecursiveWatcher) Events() <-chan map[string]bool {
+func (w *nonRecursiveWatcher) Events() <-chan string {
 	return w.events
 }
 
@@ -222,7 +160,7 @@ func (w *nonRecursiveWatcher) Errors() <-chan error {
 
 // Terminate implements NonRecursiveWatcher.Terminate.
 func (w *nonRecursiveWatcher) Terminate() error {
-	// Signal cancellation.
+	// Signal termination.
 	w.cancel()
 
 	// Wait for the run loop to exit.

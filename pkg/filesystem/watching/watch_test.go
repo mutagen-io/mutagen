@@ -29,12 +29,8 @@ func verifyWatchEvent(t *testing.T, watcher RecursiveWatcher, paths map[string]b
 	// Perform the waiting operation.
 	for len(paths) > 0 {
 		select {
-		case event := <-watcher.Events():
-			for path := range paths {
-				if event[path] {
-					delete(paths, path)
-				}
-			}
+		case path := <-watcher.Events():
+			delete(paths, path)
 		case err := <-watcher.Errors():
 			t.Fatal("watcher error:", err)
 		case <-deadline.C:
@@ -55,7 +51,7 @@ func TestRecursiveWatcher(t *testing.T) {
 	directory := t.TempDir()
 
 	// Create the watcher and defer its termination.
-	watcher, err := NewRecursiveWatcher(directory, nil)
+	watcher, err := NewRecursiveWatcher(directory)
 	if err != nil {
 		t.Fatal("unable to establish watch:", err)
 	}
@@ -110,7 +106,7 @@ func TestNonRecursiveWatcher(t *testing.T) {
 	directory := t.TempDir()
 
 	// Create the watcher and defer its termination.
-	watcher, err := NewNonRecursiveWatcher(nil)
+	watcher, err := NewNonRecursiveWatcher()
 	if err != nil {
 		t.Fatal("unable to create watcher:", err)
 	}

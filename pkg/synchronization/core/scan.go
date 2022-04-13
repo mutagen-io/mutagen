@@ -660,7 +660,8 @@ func Scan(
 	// If a baseline has been provided but differs in terms of root kind or
 	// filesystem behavior, then we can just ignore it.
 	if baseline != nil {
-		baselineInvalid := baseline.Content.Kind != rootKind ||
+		baselineInvalid := baseline.Content == nil ||
+			baseline.Content.Kind != rootKind ||
 			baseline.PreservesExecutability != preservesExecutability ||
 			baseline.DecomposesUnicode != decomposesUnicode
 		if baselineInvalid {

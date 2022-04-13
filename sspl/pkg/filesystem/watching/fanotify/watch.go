@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -34,18 +33,11 @@ import (
 )
 
 var (
+	// ErrWatchInternalOverflow indicates that a watcher saw an event buffering
+	// overflow in its underlying watching mechanism.
+	ErrWatchInternalOverflow = errors.New("internal event overflow")
 	// ErrWatchTerminated indicates that a watcher has been terminated.
 	ErrWatchTerminated = errors.New("watch terminated")
-	// ErrTooManyPendingPaths indicates that too many paths were coalesced.
-	ErrTooManyPendingPaths = errors.New("too many pending paths")
-)
-
-const (
-	// watchCoalescingWindow is the time window for event coalescing.
-	watchCoalescingWindow = 20 * time.Millisecond
-	// watchCoalescingMaximumPendingPaths is the maximum number of paths that
-	// will be allowed in a pending coalesced event.
-	watchCoalescingMaximumPendingPaths = 128
 )
 
 // RecursiveWatcher implements watching.RecursiveWatcher using fanotify.
@@ -53,7 +45,7 @@ type RecursiveWatcher struct {
 	// watch is a handle for closing the underlying fanotify watch descriptor.
 	watch io.Closer
 	// events is the event delivery channel.
-	events chan map[string]bool
+	events chan string
 	// writeErrorOnce ensures that only one error is written to errors.
 	writeErrorOnce sync.Once
 	// errors is the error delivery channel.
@@ -65,10 +57,8 @@ type RecursiveWatcher struct {
 }
 
 // NewRecursiveWatcher creates a new fanotify-based recursive watcher using the
-// specified target path. It accepts an optional filter function that can be
-// used to exclude paths from being returned by the watcher. If filter is nil,
-// then no filtering is performed.
-func NewRecursiveWatcher(target string, filter func(string) bool) (*RecursiveWatcher, error) {
+// specified target path.
+func NewRecursiveWatcher(target string) (*RecursiveWatcher, error) {
 	// Enforce that the watch target path is absolute. This is necessary for our
 	// invocation of fanotify_mark and to adjust incoming event paths to be
 	// relative to the watch target.
@@ -157,30 +147,18 @@ func NewRecursiveWatcher(target string, filter func(string) bool) (*RecursiveWat
 	// Create the watcher.
 	watcher := &RecursiveWatcher{
 		watch:  watch,
-		events: make(chan map[string]bool),
+		events: make(chan string),
 		errors: make(chan error, 1),
 		cancel: cancel,
 	}
 
-	// Track poll and run loop termination.
-	watcher.done.Add(2)
-
-	// Create a channel to pass paths from the polling loop to the run loop.
-	paths := make(chan string)
-
-	// Start the polling loop.
-	go func() {
-		err := watcher.poll(ctx, watch, mountDescriptor, paths)
-		unix.Close(mountDescriptor)
-		watcher.writeErrorOnce.Do(func() {
-			watcher.errors <- err
-		})
-		watcher.done.Done()
-	}()
+	// Track run loop termination.
+	watcher.done.Add(1)
 
 	// Start the run loop.
 	go func() {
-		err := watcher.run(ctx, target, filter, paths)
+		err := watcher.run(ctx, watch, mountDescriptor, target)
+		unix.Close(mountDescriptor)
 		watcher.writeErrorOnce.Do(func() {
 			watcher.errors <- err
 		})
@@ -191,8 +169,19 @@ func NewRecursiveWatcher(target string, filter func(string) bool) (*RecursiveWat
 	return watcher, nil
 }
 
-// poll implements the event polling loop for RecursiveWatcher.
-func (w *RecursiveWatcher) poll(ctx context.Context, watch io.Reader, mountDescriptor int, paths chan<- string) error {
+// run implements the event processing run loop for RecursiveWatcher.
+func (w *RecursiveWatcher) run(ctx context.Context, watch io.Reader, mountDescriptor int, target string) error {
+	// Compute the prefix that we'll need to trim from event paths to make them
+	// target-relative (if they aren't the target itself). We know that target
+	// will be clean, and thus lacking a trailing slash (unless it's the system
+	// root path).
+	var eventPathTrimPrefix string
+	if target == "/" {
+		eventPathTrimPrefix = "/"
+	} else {
+		eventPathTrimPrefix = target + "/"
+	}
+
 	// Loop until cancellation or a read error occurs.
 	var buffer [fanotifyReadBufferSize]byte
 	for {
@@ -210,6 +199,9 @@ func (w *RecursiveWatcher) poll(ctx context.Context, watch io.Reader, mountDescr
 			// Process a single event.
 			remaining, path, err := processEvent(mountDescriptor, populated)
 			if err != nil {
+				if err == ErrWatchInternalOverflow {
+					return err
+				}
 				return fmt.Errorf("unable to extract event path: %w", err)
 			}
 			populated = remaining
@@ -219,51 +211,6 @@ func (w *RecursiveWatcher) poll(ctx context.Context, watch io.Reader, mountDescr
 				continue
 			}
 
-			// Forward the path, monitoring for cancellation.
-			select {
-			case paths <- path:
-			case <-ctx.Done():
-				return ErrWatchTerminated
-			}
-		}
-	}
-}
-
-// run implements the event processing run loop for RecursiveWatcher.
-func (w *RecursiveWatcher) run(ctx context.Context, target string, filter func(string) bool, paths <-chan string) error {
-	// Compute the prefix that we'll need to trim from event paths to make them
-	// target-relative (if they aren't the target itself). We know that target
-	// will be clean, and thus lacking a trailing slash (unless it's the system
-	// root path).
-	var eventPathTrimPrefix string
-	if target == "/" {
-		eventPathTrimPrefix = "/"
-	} else {
-		eventPathTrimPrefix = target + "/"
-	}
-
-	// Create a coalescing timer, initially stopped and drained, and ensure that
-	// it's stopped once we return.
-	coalescingTimer := time.NewTimer(0)
-	if !coalescingTimer.Stop() {
-		<-coalescingTimer.C
-	}
-	defer coalescingTimer.Stop()
-
-	// Create an empty pending event.
-	pending := make(map[string]bool)
-
-	// Create a separate channel variable to track the target events channel. We
-	// keep it nil to block transmission until the pending event is non-empty
-	// and the coalescing timer has fired.
-	var pendingTarget chan<- map[string]bool
-
-	// Perform event forwarding until cancellation or failure.
-	for {
-		select {
-		case <-ctx.Done():
-			return ErrWatchTerminated
-		case path := <-paths:
 			// Convert the event path to be target-relative. We have to ignore
 			// anything that doesn't fall at or below our watch target for two
 			// reasons:
@@ -302,55 +249,18 @@ func (w *RecursiveWatcher) run(ctx context.Context, target string, filter func(s
 				continue
 			}
 
-			// Check if the path should be excluded.
-			if filter != nil && filter(path) {
-				continue
+			// Transmit the path.
+			select {
+			case w.events <- path:
+			case <-ctx.Done():
+				return ErrWatchTerminated
 			}
-
-			// Record the path.
-			pending[path] = true
-
-			// Check if we've exceeded the maximum number of allowed pending
-			// paths. We're technically allowing ourselves to go one over the
-			// limit here, but to avoid that we'd have to check whether or not
-			// each path was already in pending before adding it, and that would
-			// be expensive. Since this is a purely internal check for the
-			// purpose of avoiding excessive memory usage, this small transient
-			// overflow is fine.
-			if len(pending) > watchCoalescingMaximumPendingPaths {
-				return ErrTooManyPendingPaths
-			}
-
-			// We may have already had a pending event that was coalesced and
-			// ready to be delivered, but now we've seen more changes and we're
-			// going to create a new coalescing window, so we'll block event
-			// transmission until the new coalescing window is complete.
-			pendingTarget = nil
-
-			// Reset the coalesing timer. We don't know if it was already
-			// running, so we need to drain it in a non-blocking fashion.
-			if !coalescingTimer.Stop() {
-				select {
-				case <-coalescingTimer.C:
-				default:
-				}
-			}
-			coalescingTimer.Reset(watchCoalescingWindow)
-		case <-coalescingTimer.C:
-			// Set the target events channel to the actual events channel.
-			pendingTarget = w.events
-		case pendingTarget <- pending:
-			// Create a new pending event.
-			pending = make(map[string]bool)
-
-			// Block event transmission until the event is non-empty.
-			pendingTarget = nil
 		}
 	}
 }
 
 // Events implements filesystem/watching.RecursiveWatcher.Events.
-func (w *RecursiveWatcher) Events() <-chan map[string]bool {
+func (w *RecursiveWatcher) Events() <-chan string {
 	return w.events
 }
 
@@ -361,20 +271,21 @@ func (w *RecursiveWatcher) Errors() <-chan error {
 
 // Terminate implements filesystem/watching.RecursiveWatcher.Terminate.
 func (w *RecursiveWatcher) Terminate() error {
-	// Write a cancellation error to the errors channel since we don't want a
-	// read error in the polling loop to go through if just due to termination.
+	// Write a termination error to the errors channel since we're going to
+	// close the watch and we don't want a read error in the run loop to appear
+	// to the consumer if it's simply due to termination.
 	w.writeErrorOnce.Do(func() {
 		w.errors <- ErrWatchTerminated
 	})
 
-	// Signal termination to the polling and run loops. The polling loop can
-	// block in multiple ways and thus needs both watch closure and context
-	// cancellation to signal termination. The mount descriptor used for
-	// resolving paths is closed by the polling Goroutine when it exits.
+	// Signal termination to run loop. The run loop can block in multiple ways
+	// and thus needs both watch closure and context cancellation to signal
+	// termination. The mount descriptor used for resolving paths is closed by
+	// the run loop Goroutine when it exits.
 	err := w.watch.Close()
 	w.cancel()
 
-	// Wait for the polling and run loops to exit.
+	// Wait for the run loop to exit.
 	w.done.Wait()
 
 	// Done.

@@ -174,7 +174,7 @@ func processEvent(mountFD int, buffer []byte) ([]byte, string, error) {
 	// event information structure (or at least the fanotify documentation
 	// doesn't indicate that there will be).
 	if eventMetadata.Mask&unix.FAN_Q_OVERFLOW != 0 {
-		return nil, "", errors.New("event overflow")
+		return nil, "", ErrWatchInternalOverflow
 	}
 
 	// Extract the event information header and verify that the event

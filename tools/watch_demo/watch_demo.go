@@ -30,14 +30,14 @@ func main() {
 	// watcher we establish as a RecursiveWatcher.
 	var watcher watching.RecursiveWatcher
 	if watching.RecursiveWatchingSupported {
-		if w, err := watching.NewRecursiveWatcher(watchRoot, nil); err != nil {
+		if w, err := watching.NewRecursiveWatcher(watchRoot); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to establish recursive watch: %w", err))
 		} else {
 			watcher = w
 			fmt.Println("Watching", watchRoot, "with recursive watching")
 		}
 	} else if watching.NonRecursiveWatchingSupported {
-		if w, err := watching.NewNonRecursiveWatcher(nil); err != nil {
+		if w, err := watching.NewNonRecursiveWatcher(); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to establish non-recursive watch: %w", err))
 		} else {
 			w.Watch(watchRoot)
@@ -51,11 +51,8 @@ func main() {
 	// Print events and their paths until watching has terminated.
 	for {
 		select {
-		case event := <-watcher.Events():
-			fmt.Println("Received event with", len(event), "paths")
-			for path := range event {
-				fmt.Printf("\t<%s>\n", path)
-			}
+		case path := <-watcher.Events():
+			fmt.Printf("\"%s\"\n", path)
 		case err := <-watcher.Errors():
 			cmd.Fatal(fmt.Errorf("watching failed: %w", err))
 		case <-signalTermination:
