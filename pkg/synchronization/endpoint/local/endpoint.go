@@ -435,7 +435,7 @@ func NewEndpoint(
 
 	// Start the cache saving Goroutine.
 	go func() {
-		endpoint.saveCacheRegularly(workerCtx, cachePath, saveCacheSignal)
+		endpoint.saveCache(workerCtx, cachePath, saveCacheSignal)
 		close(saveCacheDone)
 	}()
 
@@ -459,9 +459,9 @@ func NewEndpoint(
 	return endpoint, nil
 }
 
-// saveCacheRegularly serializes the cache and writes the result to disk at
-// regular intervals. It runs as a background Goroutine for all endpoints.
-func (e *endpoint) saveCacheRegularly(ctx context.Context, cachePath string, signal <-chan struct{}) {
+// saveCache serializes the cache and writes the result to disk at regular
+// intervals. It runs as a background Goroutine for all endpoints.
+func (e *endpoint) saveCache(ctx context.Context, cachePath string, signal <-chan struct{}) {
 	// Track the last saved cache. If it hasn't changed, there's no point in
 	// rewriting it. It's safe to keep a reference to the cache since caches are
 	// treated as immutable. The only cost is (possibly) keeping an old cache
