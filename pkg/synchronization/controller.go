@@ -1142,9 +1142,8 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		)
 		if c.logger.Level() >= logging.LevelTrace {
 			for _, change := range ancestorChanges {
-				c.logger.Tracef("Ancestor change at \"%s\" from %s to %s",
+				c.logger.Tracef("Ancestor change at \"%s\" to %s",
 					formatPathForLogging(change.Path),
-					formatEntryForLogging(change.Old),
 					formatEntryForLogging(change.New),
 				)
 			}
