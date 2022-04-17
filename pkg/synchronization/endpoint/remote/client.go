@@ -323,7 +323,7 @@ func (c *endpointClient) Scan(ctx context.Context, ancestor *core.Entry, full bo
 	// we'd want this validation to be performed by the ensureValid method of
 	// ScanResponse, but because this method requires rsync-based patching and
 	// Protocol Buffers decoding before it actually has the underlying response,
-	// we can't perform this validation into ScanResponse.ensureValid.
+	// we can't perform this validation in ScanResponse.ensureValid.
 	if err = snapshot.EnsureValid(); err != nil {
 		return nil, fmt.Errorf("invalid snapshot received: %w", err), false
 	}

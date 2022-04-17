@@ -50,7 +50,7 @@ type RecursiveWatcher struct {
 	writeErrorOnce sync.Once
 	// errors is the error delivery channel.
 	errors chan error
-	// cancel is the polling and run loop cancellation function.
+	// cancel is the run loop cancellation function.
 	cancel context.CancelFunc
 	// done is the run loop completion signaling mechanism.
 	done sync.WaitGroup

@@ -29,7 +29,7 @@ const (
 	pollSignalCoalescingWindow = 20 * time.Millisecond
 	// minimumCacheSaveInterval is the minimum interval at which caches are
 	// written to disk asynchronously.
-	minimumCacheSaveInterval = 20 * time.Second
+	minimumCacheSaveInterval = 60 * time.Second
 	// watchPollScanSignalCoalescingWindow is the time interval over which
 	// triggering of scan operations by the non-recursive watch in watchPoll
 	// will be coalesced.
@@ -435,7 +435,7 @@ func NewEndpoint(
 
 	// Start the cache saving Goroutine.
 	go func() {
-		endpoint.saveCacheRegularly(workerCtx, cachePath, saveCacheSignal)
+		endpoint.saveCache(workerCtx, cachePath, saveCacheSignal)
 		close(saveCacheDone)
 	}()
 
@@ -459,9 +459,9 @@ func NewEndpoint(
 	return endpoint, nil
 }
 
-// saveCacheRegularly serializes the cache and writes the result to disk at
-// regular intervals. It runs as a background Goroutine for all endpoints.
-func (e *endpoint) saveCacheRegularly(ctx context.Context, cachePath string, signal <-chan struct{}) {
+// saveCache serializes the cache and writes the result to disk at regular
+// intervals. It runs as a background Goroutine for all endpoints.
+func (e *endpoint) saveCache(ctx context.Context, cachePath string, signal <-chan struct{}) {
 	// Track the last saved cache. If it hasn't changed, there's no point in
 	// rewriting it. It's safe to keep a reference to the cache since caches are
 	// treated as immutable. The only cost is (possibly) keeping an old cache
