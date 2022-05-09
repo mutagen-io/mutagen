@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
@@ -162,6 +164,12 @@ func ListWithSelection(
 	selection *selection.Selection,
 	long bool,
 ) error {
+	// Load the formatting template (if any has been specified).
+	template, err := listConfiguration.TemplateFlags.LoadTemplate()
+	if err != nil {
+		return fmt.Errorf("unable to load formatting template: %w", err)
+	}
+
 	// Perform the list operation.
 	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 	request := &synchronizationsvc.ListRequest{
@@ -174,31 +182,43 @@ func ListWithSelection(
 		return fmt.Errorf("invalid list response received: %w", err)
 	}
 
-	// Handle output based on whether or not any sessions were returned.
-	if len(response.SessionStates) > 0 {
-		for _, state := range response.SessionStates {
-			fmt.Println(cmd.DelimiterLine)
-			printSession(state, long)
-			printEndpointStatus(
-				"Alpha", state.Session.Alpha, state.AlphaConnected,
-				state.AlphaScanProblems, state.ExcludedAlphaScanProblems,
-				state.AlphaTransitionProblems, state.ExcludedAlphaTransitionProblems,
-			)
-			printEndpointStatus(
-				"Beta", state.Session.Beta, state.BetaConnected,
-				state.BetaScanProblems, state.ExcludedBetaScanProblems,
-				state.BetaTransitionProblems, state.ExcludedBetaTransitionProblems,
-			)
-			printSessionStatus(state)
-			if len(state.Conflicts) > 0 {
-				printConflicts(state.Conflicts, state.ExcludedConflicts)
-			}
+	// If a template was specified, then use that to format output, otherwise
+	// use custom formatting code. In the templated case, we replace any nil
+	// session state list with a non-nil, zero-length list because it gives more
+	// canonical output for JSON formatting.
+	if template != nil {
+		if response.SessionStates == nil {
+			response.SessionStates = make([]*synchronization.State, 0)
 		}
-		fmt.Println(cmd.DelimiterLine)
+		if err := template.Execute(os.Stdout, response.SessionStates); err != nil {
+			return fmt.Errorf("unable to execute formatting template: %w", err)
+		}
 	} else {
-		fmt.Println(cmd.DelimiterLine)
-		fmt.Println("No synchronization sessions found")
-		fmt.Println(cmd.DelimiterLine)
+		if len(response.SessionStates) > 0 {
+			for _, state := range response.SessionStates {
+				fmt.Println(cmd.DelimiterLine)
+				printSession(state, long)
+				printEndpointStatus(
+					"Alpha", state.Session.Alpha, state.AlphaConnected,
+					state.AlphaScanProblems, state.ExcludedAlphaScanProblems,
+					state.AlphaTransitionProblems, state.ExcludedAlphaTransitionProblems,
+				)
+				printEndpointStatus(
+					"Beta", state.Session.Beta, state.BetaConnected,
+					state.BetaScanProblems, state.ExcludedBetaScanProblems,
+					state.BetaTransitionProblems, state.ExcludedBetaTransitionProblems,
+				)
+				printSessionStatus(state)
+				if len(state.Conflicts) > 0 {
+					printConflicts(state.Conflicts, state.ExcludedConflicts)
+				}
+			}
+			fmt.Println(cmd.DelimiterLine)
+		} else {
+			fmt.Println(cmd.DelimiterLine)
+			fmt.Println("No synchronization sessions found")
+			fmt.Println(cmd.DelimiterLine)
+		}
 	}
 
 	// Success.
@@ -245,6 +265,8 @@ var listConfiguration struct {
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
+	// TemplateFlags store custom templating behavior.
+	templating.TemplateFlags
 }
 
 func init() {
@@ -261,4 +283,7 @@ func init() {
 	// Wire up list flags.
 	flags.BoolVarP(&listConfiguration.long, "long", "l", false, "Show detailed session information")
 	flags.StringVar(&listConfiguration.labelSelector, "label-selector", "", "List sessions matching the specified label selector")
+
+	// Wire up templating flags.
+	listConfiguration.TemplateFlags.Register(flags)
 }
