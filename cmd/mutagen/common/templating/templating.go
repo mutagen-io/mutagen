@@ -3,6 +3,7 @@ package templating
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"text/template"
 )
 
@@ -15,14 +16,19 @@ func jsonify(value any) (string, error) {
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
 
-	// Marshal the value. Note that every call to Encode also adds a newline
-	// after the value's JSON representation.
+	// Marshal the value.
 	if err := encoder.Encode(value); err != nil {
 		return "", err
 	}
 
 	// Convert the encoded JSON to a string.
-	return buffer.String(), nil
+	result := buffer.String()
+
+	// Remove the trailing newline that's automatically added by Encode.
+	result = strings.TrimSuffix(result, "\n")
+
+	// Success.
+	return result, nil
 }
 
 // builtins are the builtin functions supported in output templates.
