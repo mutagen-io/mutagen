@@ -72,10 +72,9 @@ message State {
     // LastError is the last error to occur during synchronization. It is
     // cleared after a successful synchronization cycle.
     string lastError = 5;
-    // SuccessfulSynchronizationCycles is the number of successful
-    // synchronization cycles to occur since successfully connecting to the
-    // endpoints.
-    uint64 successfulSynchronizationCycles = 6;
+    // SuccessfulCycles is the number of successful synchronization cycles to
+    // occur since successfully connecting to the endpoints.
+    uint64 successfulCycles = 6;
     // StagingStatus is the rsync-based staging status. It is only set if the
     // session status is Status_StagingAlpha or Status_StagingBeta.
     rsync.ReceiverStatus stagingStatus = 7;

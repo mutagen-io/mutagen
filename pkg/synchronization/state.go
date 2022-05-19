@@ -124,7 +124,7 @@ func (s *State) copy() *State {
 		AlphaConnected:                  s.AlphaConnected,
 		BetaConnected:                   s.BetaConnected,
 		LastError:                       s.LastError,
-		SuccessfulSynchronizationCycles: s.SuccessfulSynchronizationCycles,
+		SuccessfulCycles:                s.SuccessfulCycles,
 		StagingStatus:                   s.StagingStatus,
 		AlphaScanProblems:               s.AlphaScanProblems,
 		ExcludedAlphaScanProblems:       s.ExcludedAlphaScanProblems,
