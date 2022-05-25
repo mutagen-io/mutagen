@@ -88,9 +88,7 @@ func ListWithSelection(
 	}
 
 	// If a template was specified, then use that to format output with public
-	// model types, otherwise use custom formatting code. In the templated case,
-	// we replace any nil session slice with a non-nil, zero-length slice
-	// because it gives more canonical output for JSON formatting.
+	// model types, otherwise use custom formatting code.
 	if template != nil {
 		sessions := forwardingmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
 		if err := template.Execute(os.Stdout, sessions); err != nil {

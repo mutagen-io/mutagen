@@ -112,9 +112,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 
 		// If a template has been specified, then use that to format output with
 		// public model types. No validation is necessary here since we don't
-		// require any specific number of sessions. In this case, we replace any
-		// nil session slice with a non-nil, zero-length slice because it gives
-		// more canonical output for JSON formatting.
+		// require any specific number of sessions.
 		if template != nil {
 			sessions := forwardingmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
 			if err := template.Execute(os.Stdout, sessions); err != nil {
