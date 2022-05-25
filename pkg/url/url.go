@@ -82,6 +82,8 @@ func (u *URL) EnsureValid() error {
 			return errors.New("local URL with non-zero port")
 		} else if len(u.Environment) != 0 {
 			return errors.New("local URL with environment variables")
+		} else if len(u.Parameters) != 0 {
+			return errors.New("local URL with parameters")
 		}
 	} else if u.Protocol == Protocol_SSH {
 		if u.Host == "" {
