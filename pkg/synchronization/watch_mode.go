@@ -10,8 +10,24 @@ func (m WatchMode) IsDefault() bool {
 	return m == WatchMode_WatchModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m WatchMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case WatchMode_WatchModeDefault:
+	case WatchMode_WatchModePortable:
+		result = "portable"
+	case WatchMode_WatchModeForcePoll:
+		result = "force-poll"
+	case WatchMode_WatchModeNoWatch:
+		result = "no-watch"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *WatchMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

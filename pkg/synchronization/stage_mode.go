@@ -10,8 +10,24 @@ func (m StageMode) IsDefault() bool {
 	return m == StageMode_StageModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m StageMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case StageMode_StageModeDefault:
+	case StageMode_StageModeMutagen:
+		result = "mutagen"
+	case StageMode_StageModeNeighboring:
+		result = "neighboring"
+	case StageMode_StageModeInternal:
+		result = "internal"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *StageMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

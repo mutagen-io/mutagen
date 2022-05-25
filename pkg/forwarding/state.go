@@ -21,6 +21,24 @@ func (s Status) Description() string {
 	}
 }
 
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (s Status) MarshalText() ([]byte, error) {
+	var result string
+	switch s {
+	case Status_Disconnected:
+		result = "disconnected"
+	case Status_ConnectingSource:
+		result = "connecting-source"
+	case Status_ConnectingDestination:
+		result = "connecting-destination"
+	case Status_ForwardingConnections:
+		result = "forwarding"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
 // EnsureValid ensures that State's invariants are respected.
 func (s *State) EnsureValid() error {
 	// A nil state is not valid.

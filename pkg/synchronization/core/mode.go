@@ -10,13 +10,31 @@ func (m SynchronizationMode) IsDefault() bool {
 	return m == SynchronizationMode_SynchronizationModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m SynchronizationMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case SynchronizationMode_SynchronizationModeDefault:
+	case SynchronizationMode_SynchronizationModeTwoWaySafe:
+		result = "two-way-safe"
+	case SynchronizationMode_SynchronizationModeTwoWayResolved:
+		result = "two-way-resolved"
+	case SynchronizationMode_SynchronizationModeOneWaySafe:
+		result = "one-way-safe"
+	case SynchronizationMode_SynchronizationModeOneWayReplica:
+		result = "one-way-replica"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *SynchronizationMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
-	// Convert to a VCS mode.
+	// Convert to a synchronization mode.
 	switch text {
 	case "two-way-safe":
 		*m = SynchronizationMode_SynchronizationModeTwoWaySafe

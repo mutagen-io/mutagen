@@ -36,7 +36,7 @@ func loadAndValidateGlobalForwardingConfiguration(path string) (*forwarding.Conf
 
 	// Convert the YAML configuration to a Protocol Buffers representation and
 	// validate it.
-	configuration := yamlConfiguration.Forwarding.Defaults.Configuration()
+	configuration := yamlConfiguration.Forwarding.Defaults.ToInternalConfiguration()
 	if err := configuration.EnsureValid(false); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}

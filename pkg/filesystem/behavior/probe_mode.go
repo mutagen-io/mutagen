@@ -10,8 +10,22 @@ func (m ProbeMode) IsDefault() bool {
 	return m == ProbeMode_ProbeModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m ProbeMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case ProbeMode_ProbeModeDefault:
+	case ProbeMode_ProbeModeProbe:
+		result = "probe"
+	case ProbeMode_ProbeModeAssume:
+		result = "assume"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *ProbeMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

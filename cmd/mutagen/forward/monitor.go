@@ -14,6 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
+	forwardingmodels "github.com/mutagen-io/mutagen/pkg/api/models/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
@@ -109,16 +110,14 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		// Update the state tracking index.
 		request.PreviousStateIndex = response.StateIndex
 
-		// If a template has been specified, then just use that to print out
-		// session state information. No validation is necessary here since we
-		// don't require any specific number of sessions. In this case, we
-		// replace any nil session state list with a non-nil, zero-length list
-		// because it gives more canonical output for JSON formatting.
+		// If a template has been specified, then use that to format output with
+		// public model types. No validation is necessary here since we don't
+		// require any specific number of sessions. In this case, we replace any
+		// nil session slice with a non-nil, zero-length slice because it gives
+		// more canonical output for JSON formatting.
 		if template != nil {
-			if response.SessionStates == nil {
-				response.SessionStates = make([]*forwarding.State, 0)
-			}
-			if err := template.Execute(os.Stdout, response.SessionStates); err != nil {
+			sessions := forwardingmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
+			if err := template.Execute(os.Stdout, sessions); err != nil {
 				return fmt.Errorf("unable to execute formatting template: %w", err)
 			}
 			continue

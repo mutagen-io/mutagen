@@ -157,8 +157,8 @@ type State struct {
 	// SuccessfulCycles is the number of successful synchronization cycles to
 	// occur since successfully connecting to the endpoints.
 	SuccessfulCycles uint64 `protobuf:"varint,6,opt,name=successfulCycles,proto3" json:"successfulCycles,omitempty"`
-	// StagingStatus is the rsync-based staging status. It is only set if the
-	// session status is Status_StagingAlpha or Status_StagingBeta.
+	// StagingStatus is the rsync staging status. It is only set if the session
+	// status is Status_StagingAlpha or Status_StagingBeta.
 	StagingStatus *rsync.ReceiverStatus `protobuf:"bytes,7,opt,name=stagingStatus,proto3" json:"stagingStatus,omitempty"`
 	// AlphaScanProblems is the list of non-terminal problems encountered during
 	// scanning on alpha. This list may be a truncated version of the full list

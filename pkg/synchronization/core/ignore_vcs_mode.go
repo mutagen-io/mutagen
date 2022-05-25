@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -10,8 +11,23 @@ func (m IgnoreVCSMode) IsDefault() bool {
 	return m == IgnoreVCSMode_IgnoreVCSModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalJSON implements encoding/json.Marshaler.MarshalJSON.
+func (m IgnoreVCSMode) MarshalJSON() ([]byte, error) {
+	var result string
+	switch m {
+	case IgnoreVCSMode_IgnoreVCSModeDefault:
+		return nil, errors.New("default VCS ignore mode has no JSON representation")
+	case IgnoreVCSMode_IgnoreVCSModeIgnore:
+		result = "true"
+	case IgnoreVCSMode_IgnoreVCSModePropagate:
+		result = "false"
+	default:
+		return nil, fmt.Errorf("invalid VCS ignore mode: %d", m)
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *IgnoreVCSMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

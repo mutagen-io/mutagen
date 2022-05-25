@@ -9,8 +9,7 @@ import (
 // cast to a uint64 value, where it represents a byte count.
 type ByteSize uint64
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (s *ByteSize) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

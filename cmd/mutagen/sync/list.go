@@ -15,6 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
+	synchronizationmodels "github.com/mutagen-io/mutagen/pkg/api/models/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
@@ -182,15 +183,13 @@ func ListWithSelection(
 		return fmt.Errorf("invalid list response received: %w", err)
 	}
 
-	// If a template was specified, then use that to format output, otherwise
-	// use custom formatting code. In the templated case, we replace any nil
-	// session state list with a non-nil, zero-length list because it gives more
-	// canonical output for JSON formatting.
+	// If a template was specified, then use that to format output with public
+	// model types, otherwise use custom formatting code. In the templated case,
+	// we replace any nil session slice with a non-nil, zero-length slice
+	// because it gives more canonical output for JSON formatting.
 	if template != nil {
-		if response.SessionStates == nil {
-			response.SessionStates = make([]*synchronization.State, 0)
-		}
-		if err := template.Execute(os.Stdout, response.SessionStates); err != nil {
+		sessions := synchronizationmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
+		if err := template.Execute(os.Stdout, sessions); err != nil {
 			return fmt.Errorf("unable to execute formatting template: %w", err)
 		}
 	} else {

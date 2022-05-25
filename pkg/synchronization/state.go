@@ -41,6 +41,44 @@ func (s Status) Description() string {
 	}
 }
 
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (s Status) MarshalText() ([]byte, error) {
+	var result string
+	switch s {
+	case Status_Disconnected:
+		result = "disconnected"
+	case Status_HaltedOnRootEmptied:
+		result = "halted-on-root-emptied"
+	case Status_HaltedOnRootDeletion:
+		result = "halted-on-root-deletion"
+	case Status_HaltedOnRootTypeChange:
+		result = "halted-on-root-type-change"
+	case Status_ConnectingAlpha:
+		result = "connecting-alpha"
+	case Status_ConnectingBeta:
+		result = "connecting-beta"
+	case Status_Watching:
+		result = "watching"
+	case Status_Scanning:
+		result = "scanning"
+	case Status_WaitingForRescan:
+		result = "waiting-for-rescan"
+	case Status_Reconciling:
+		result = "reconciling"
+	case Status_StagingAlpha:
+		result = "staging-alpha"
+	case Status_StagingBeta:
+		result = "staging-beta"
+	case Status_Transitioning:
+		result = "transitioning"
+	case Status_Saving:
+		result = "saving"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
 // EnsureValid ensures that State's invariants are respected.
 func (s *State) EnsureValid() error {
 	// A nil state is not valid.

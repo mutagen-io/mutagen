@@ -40,7 +40,7 @@ func loadAndValidateGlobalSynchronizationConfiguration(path string) (*synchroniz
 
 	// Convert the YAML configuration to a Protocol Buffers representation and
 	// validate it.
-	configuration := yamlConfiguration.Synchronization.Defaults.Configuration()
+	configuration := yamlConfiguration.Synchronization.Defaults.ToInternalConfiguration()
 	if err := configuration.EnsureValid(false); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}

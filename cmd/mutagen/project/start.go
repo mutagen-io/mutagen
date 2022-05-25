@@ -135,11 +135,11 @@ func startMain(_ *cobra.Command, _ []string) error {
 				return fmt.Errorf("unable to load global configuration: %w", err)
 			}
 		} else {
-			globalConfigurationForwarding = globalConfiguration.Forwarding.Defaults.Configuration()
+			globalConfigurationForwarding = globalConfiguration.Forwarding.Defaults.ToInternalConfiguration()
 			if err := globalConfigurationForwarding.EnsureValid(false); err != nil {
 				return fmt.Errorf("invalid global forwarding configuration: %w", err)
 			}
-			globalConfigurationSynchronization = globalConfiguration.Synchronization.Defaults.Configuration()
+			globalConfigurationSynchronization = globalConfiguration.Synchronization.Defaults.ToInternalConfiguration()
 			if err := globalConfigurationSynchronization.EnsureValid(false); err != nil {
 				return fmt.Errorf("invalid global synchronization configuration: %w", err)
 			}
@@ -154,15 +154,15 @@ func startMain(_ *cobra.Command, _ []string) error {
 	if defaults, ok := configuration.Forwarding["defaults"]; ok {
 		defaultSource = defaults.Source
 		defaultDestination = defaults.Destination
-		defaultConfigurationForwarding = defaults.Configuration.Configuration()
+		defaultConfigurationForwarding = defaults.Configuration.ToInternalConfiguration()
 		if err := defaultConfigurationForwarding.EnsureValid(false); err != nil {
 			return fmt.Errorf("invalid default forwarding configuration: %w", err)
 		}
-		defaultConfigurationSource = defaults.ConfigurationSource.Configuration()
+		defaultConfigurationSource = defaults.ConfigurationSource.ToInternalConfiguration()
 		if err := defaultConfigurationSource.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid default forwarding source configuration: %w", err)
 		}
-		defaultConfigurationDestination = defaults.ConfigurationDestination.Configuration()
+		defaultConfigurationDestination = defaults.ConfigurationDestination.ToInternalConfiguration()
 		if err := defaultConfigurationDestination.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid default forwarding destination configuration: %w", err)
 		}
@@ -178,15 +178,15 @@ func startMain(_ *cobra.Command, _ []string) error {
 		defaultAlpha = defaults.Alpha
 		defaultBeta = defaults.Beta
 		defaultFlushOnCreate = defaults.FlushOnCreate
-		defaultConfigurationSynchronization = defaults.Configuration.Configuration()
+		defaultConfigurationSynchronization = defaults.Configuration.ToInternalConfiguration()
 		if err := defaultConfigurationSynchronization.EnsureValid(false); err != nil {
 			return fmt.Errorf("invalid default synchronization configuration: %w", err)
 		}
-		defaultConfigurationAlpha = defaults.ConfigurationAlpha.Configuration()
+		defaultConfigurationAlpha = defaults.ConfigurationAlpha.ToInternalConfiguration()
 		if err := defaultConfigurationAlpha.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid default synchronization alpha configuration: %w", err)
 		}
-		defaultConfigurationBeta = defaults.ConfigurationBeta.Configuration()
+		defaultConfigurationBeta = defaults.ConfigurationBeta.ToInternalConfiguration()
 		if err := defaultConfigurationBeta.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid default synchronization beta configuration: %w", err)
 		}
@@ -236,21 +236,21 @@ func startMain(_ *cobra.Command, _ []string) error {
 		}
 
 		// Compute configuration.
-		configuration := session.Configuration.Configuration()
+		configuration := session.Configuration.ToInternalConfiguration()
 		if err := configuration.EnsureValid(false); err != nil {
 			return fmt.Errorf("invalid forwarding session configuration for %s: %v", name, err)
 		}
 		configuration = forwarding.MergeConfigurations(defaultConfigurationForwarding, configuration)
 
 		// Compute source-specific configuration.
-		sourceConfiguration := session.ConfigurationSource.Configuration()
+		sourceConfiguration := session.ConfigurationSource.ToInternalConfiguration()
 		if err := sourceConfiguration.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid forwarding session source configuration for %s: %v", name, err)
 		}
 		sourceConfiguration = forwarding.MergeConfigurations(defaultConfigurationSource, sourceConfiguration)
 
 		// Compute destination-specific configuration.
-		destinationConfiguration := session.ConfigurationDestination.Configuration()
+		destinationConfiguration := session.ConfigurationDestination.ToInternalConfiguration()
 		if err := destinationConfiguration.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid forwarding session destination configuration for %s: %v", name, err)
 		}
@@ -307,21 +307,21 @@ func startMain(_ *cobra.Command, _ []string) error {
 		}
 
 		// Compute configuration.
-		configuration := session.Configuration.Configuration()
+		configuration := session.Configuration.ToInternalConfiguration()
 		if err := configuration.EnsureValid(false); err != nil {
 			return fmt.Errorf("invalid synchronization session configuration for %s: %v", name, err)
 		}
 		configuration = synchronization.MergeConfigurations(defaultConfigurationSynchronization, configuration)
 
 		// Compute alpha-specific configuration.
-		alphaConfiguration := session.ConfigurationAlpha.Configuration()
+		alphaConfiguration := session.ConfigurationAlpha.ToInternalConfiguration()
 		if err := alphaConfiguration.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid synchronization session alpha configuration for %s: %v", name, err)
 		}
 		alphaConfiguration = synchronization.MergeConfigurations(defaultConfigurationAlpha, alphaConfiguration)
 
 		// Compute beta-specific configuration.
-		betaConfiguration := session.ConfigurationBeta.Configuration()
+		betaConfiguration := session.ConfigurationBeta.ToInternalConfiguration()
 		if err := betaConfiguration.EnsureValid(true); err != nil {
 			return fmt.Errorf("invalid synchronization session beta configuration for %s: %v", name, err)
 		}

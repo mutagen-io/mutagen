@@ -16,8 +16,22 @@ func (m SocketOverwriteMode) AttemptOverwrite() bool {
 	return m == SocketOverwriteMode_SocketOverwriteModeOverwrite
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m SocketOverwriteMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case SocketOverwriteMode_SocketOverwriteModeDefault:
+	case SocketOverwriteMode_SocketOverwriteModeLeave:
+		result = "leave"
+	case SocketOverwriteMode_SocketOverwriteModeOverwrite:
+		result = "overwrite"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *SocketOverwriteMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

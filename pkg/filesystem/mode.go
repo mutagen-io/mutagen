@@ -44,10 +44,15 @@ func parseMode(value string, mask Mode) (Mode, error) {
 	}
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files. It requires that the specified mode bits lie within
-// ModePermissionsMask, otherwise an error is returned. If an error is returned,
-// the mode is unmodified.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m Mode) MarshalText() ([]byte, error) {
+	result := "0" + strconv.FormatUint(uint64(m), 8)
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText. It requires
+// that the specified mode bits lie within ModePermissionsMask, otherwise an
+// error is returned. If an error is returned, the mode is unmodified.
 func (m *Mode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
