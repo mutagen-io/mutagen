@@ -385,7 +385,7 @@ func init() {
 
 	// Wire up general configuration flags.
 	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
-	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load session configuration")
+	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load additional default configuration")
 
 	// Wire up socket flags.
 	flags.StringVar(&createConfiguration.socketOverwriteMode, "socket-overwrite-mode", "", "Specify socket overwrite mode (leave|overwrite)")
