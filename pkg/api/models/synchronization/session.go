@@ -22,11 +22,11 @@ type Session struct {
 	// Beta is the beta endpoint URL.
 	Beta *URL `json:"beta"`
 	// Configuration is the session configuration.
-	*Configuration
+	Configuration
 	// ConfigurationAlpha is the alpha endpoint configuration.
-	ConfigurationAlpha *Configuration `json:"configurationAlpha"`
+	ConfigurationAlpha Configuration `json:"configurationAlpha"`
 	// ConfigurationBeta is the beta endpoint configuration.
-	ConfigurationBeta *Configuration `json:"configurationBeta"`
+	ConfigurationBeta Configuration `json:"configurationBeta"`
 	// Name is the session name.
 	Name string `json:"name,omitempty"`
 	// Label are the session labels.
@@ -110,15 +110,17 @@ func NewSessionFromInternalState(state *synchronization.State) *Session {
 			state.Session.CreatingVersionMinor,
 			state.Session.CreatingVersionPatch,
 		),
-		Alpha:              NewURLFromInternalURL(state.Session.Alpha),
-		Beta:               NewURLFromInternalURL(state.Session.Beta),
-		Configuration:      NewConfigurationFromInternalConfiguration(state.Session.Configuration),
-		ConfigurationAlpha: NewConfigurationFromInternalConfiguration(state.Session.ConfigurationAlpha),
-		ConfigurationBeta:  NewConfigurationFromInternalConfiguration(state.Session.ConfigurationBeta),
-		Name:               state.Session.Name,
-		Labels:             state.Session.Labels,
-		Paused:             state.Session.Paused,
+		Alpha:  NewURLFromInternalURL(state.Session.Alpha),
+		Beta:   NewURLFromInternalURL(state.Session.Beta),
+		Name:   state.Session.Name,
+		Labels: state.Session.Labels,
+		Paused: state.Session.Paused,
 	}
+
+	// Propagate configuration information.
+	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)
+	result.ConfigurationAlpha.LoadFromInternalConfiguration(state.Session.ConfigurationAlpha)
+	result.ConfigurationBeta.LoadFromInternalConfiguration(state.Session.ConfigurationBeta)
 
 	// Propagate state information if the session isn't paused.
 	if !state.Session.Paused {

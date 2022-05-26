@@ -22,11 +22,11 @@ type Session struct {
 	// Destination is the destination endpoint URL.
 	Destination *URL `json:"destination"`
 	// Configuration is the session configuration.
-	*Configuration
+	Configuration
 	// ConfigurationSource is the source endpoint configuration.
-	ConfigurationSource *Configuration `json:"configurationSource"`
+	ConfigurationSource Configuration `json:"configurationSource"`
 	// ConfigurationDestination is the destination endpoint configuration.
-	ConfigurationDestination *Configuration `json:"configurationDestination"`
+	ConfigurationDestination Configuration `json:"configurationDestination"`
 	// Name is the session name.
 	Name string `json:"name,omitempty"`
 	// Label are the session labels.
@@ -70,15 +70,17 @@ func NewSessionFromInternalState(state *forwarding.State) *Session {
 			state.Session.CreatingVersionMinor,
 			state.Session.CreatingVersionPatch,
 		),
-		Source:                   NewURLFromInternalURL(state.Session.Source),
-		Destination:              NewURLFromInternalURL(state.Session.Destination),
-		Configuration:            NewConfigurationFromInternalConfiguration(state.Session.Configuration),
-		ConfigurationSource:      NewConfigurationFromInternalConfiguration(state.Session.ConfigurationSource),
-		ConfigurationDestination: NewConfigurationFromInternalConfiguration(state.Session.ConfigurationDestination),
-		Name:                     state.Session.Name,
-		Labels:                   state.Session.Labels,
-		Paused:                   state.Session.Paused,
+		Source:      NewURLFromInternalURL(state.Session.Source),
+		Destination: NewURLFromInternalURL(state.Session.Destination),
+		Name:        state.Session.Name,
+		Labels:      state.Session.Labels,
+		Paused:      state.Session.Paused,
 	}
+
+	// Propagate configuration information.
+	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)
+	result.ConfigurationSource.LoadFromInternalConfiguration(state.Session.ConfigurationSource)
+	result.ConfigurationDestination.LoadFromInternalConfiguration(state.Session.ConfigurationDestination)
 
 	// Propagate state information if the session isn't paused.
 	if !state.Session.Paused {

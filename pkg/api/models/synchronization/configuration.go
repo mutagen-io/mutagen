@@ -65,41 +65,35 @@ type Configuration struct {
 	} `json:"permissions" yaml:"permissions" mapstructure:"permissions"`
 }
 
-// NewConfigurationFromInternalConfiguration creates a new configuration
-// representation from an internal Protocol Buffers representation. The
-// configuration must be valid.
-func NewConfigurationFromInternalConfiguration(configuration *synchronization.Configuration) *Configuration {
-	// Create the result.
-	result := &Configuration{}
-
+// LoadFromInternalConfiguration sets a configuration to match an internal
+// Protocol Buffers representation. The configuration must be valid.
+func (c *Configuration) LoadFromInternalConfiguration(configuration *synchronization.Configuration) {
 	// Propagate top-level configuration.
-	result.Mode = configuration.SynchronizationMode
-	result.MaximumEntryCount = configuration.MaximumEntryCount
-	result.MaximumStagingFileSize = types.ByteSize(configuration.MaximumStagingFileSize)
-	result.ProbeMode = configuration.ProbeMode
-	result.ScanMode = configuration.ScanMode
-	result.StageMode = configuration.StageMode
+	c.Mode = configuration.SynchronizationMode
+	c.MaximumEntryCount = configuration.MaximumEntryCount
+	c.MaximumStagingFileSize = types.ByteSize(configuration.MaximumStagingFileSize)
+	c.ProbeMode = configuration.ProbeMode
+	c.ScanMode = configuration.ScanMode
+	c.StageMode = configuration.StageMode
 
 	// Propagate ignore configuration.
-	result.Ignore.Paths = append(result.Ignore.Paths, configuration.DefaultIgnores...)
-	result.Ignore.Paths = append(result.Ignore.Paths, configuration.Ignores...)
-	result.Ignore.VCS = configuration.IgnoreVCSMode
+	c.Ignore.Paths = make([]string, 0, len(configuration.DefaultIgnores)+len(configuration.Ignores))
+	c.Ignore.Paths = append(c.Ignore.Paths, configuration.DefaultIgnores...)
+	c.Ignore.Paths = append(c.Ignore.Paths, configuration.Ignores...)
+	c.Ignore.VCS = configuration.IgnoreVCSMode
 
 	// Propagate symbolic link configuration.
-	result.Symlink.Mode = configuration.SymbolicLinkMode
+	c.Symlink.Mode = configuration.SymbolicLinkMode
 
 	// Propagate watch configuration.
-	result.Watch.Mode = configuration.WatchMode
-	result.Watch.PollingInterval = configuration.WatchPollingInterval
+	c.Watch.Mode = configuration.WatchMode
+	c.Watch.PollingInterval = configuration.WatchPollingInterval
 
 	// Propagate permission configuration.
-	result.Permissions.DefaultFileMode = filesystem.Mode(configuration.DefaultFileMode)
-	result.Permissions.DefaultDirectoryMode = filesystem.Mode(configuration.DefaultDirectoryMode)
-	result.Permissions.DefaultOwner = configuration.DefaultOwner
-	result.Permissions.DefaultGroup = configuration.DefaultGroup
-
-	// Done.
-	return result
+	c.Permissions.DefaultFileMode = filesystem.Mode(configuration.DefaultFileMode)
+	c.Permissions.DefaultDirectoryMode = filesystem.Mode(configuration.DefaultDirectoryMode)
+	c.Permissions.DefaultOwner = configuration.DefaultOwner
+	c.Permissions.DefaultGroup = configuration.DefaultGroup
 }
 
 // ToInternalConfiguration converts a textual session configuration to an

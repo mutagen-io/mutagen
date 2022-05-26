@@ -24,21 +24,14 @@ type Configuration struct {
 	} `json:"socket" yaml:"socket" mapstructure:"socket"`
 }
 
-// NewConfigurationFromInternalConfiguration creates a new configuration
-// representation from an internal Protocol Buffers representation. The
-// configuration must be valid.
-func NewConfigurationFromInternalConfiguration(configuration *forwarding.Configuration) *Configuration {
-	// Create the result.
-	result := &Configuration{}
-
+// LoadFromInternalConfiguration sets a configuration to match an internal
+// Protocol Buffers representation. The configuration must be valid.
+func (c *Configuration) LoadFromInternalConfiguration(configuration *forwarding.Configuration) {
 	// Propagate socket configuration.
-	result.Socket.OverwriteMode = configuration.SocketOverwriteMode
-	result.Socket.Owner = configuration.SocketOwner
-	result.Socket.Group = configuration.SocketGroup
-	result.Socket.PermissionMode = filesystem.Mode(configuration.SocketPermissionMode)
-
-	// Done.
-	return result
+	c.Socket.OverwriteMode = configuration.SocketOverwriteMode
+	c.Socket.Owner = configuration.SocketOwner
+	c.Socket.Group = configuration.SocketGroup
+	c.Socket.PermissionMode = filesystem.Mode(configuration.SocketPermissionMode)
 }
 
 // ToInternalConfiguration converts a textual session configuration to an
