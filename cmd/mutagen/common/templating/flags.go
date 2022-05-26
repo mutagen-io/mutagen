@@ -26,14 +26,16 @@ func (f *TemplateFlags) Register(flags *pflag.FlagSet) {
 }
 
 // LoadTemplate loads the template specified by the flags. If no template has
-// been specified, then it returns nil with no error. Non-nil templates will
-// always be modified to include a trailing newline.
+// been specified, then it returns nil with no error. Template literals
+// specified via the command line will have a trailing newline added.
 func (f *TemplateFlags) LoadTemplate() (*template.Template, error) {
 	// Figure out if there's a template to be processed. If not, then no valid
-	// template has been specified and we can just return.
+	// template has been specified and we can just return. If a template literal
+	// was provided directly on the command line, then add a trailing newline to
+	// make typical command line usage more friendly.
 	var literal string
 	if f.template != "" {
-		literal = f.template
+		literal = f.template + "\n"
 	} else if f.templateFile != "" {
 		if l, err := os.ReadFile(f.templateFile); err != nil {
 			return nil, fmt.Errorf("unable to load template: %w", err)
@@ -45,9 +47,6 @@ func (f *TemplateFlags) LoadTemplate() (*template.Template, error) {
 	} else {
 		return nil, nil
 	}
-
-	// Add a trailing newline to the literal.
-	literal += "\n"
 
 	// Create the template and register built-in functions.
 	result := template.New("")
