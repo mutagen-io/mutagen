@@ -90,7 +90,7 @@ func ListWithSelection(
 	// If a template was specified, then use that to format output with public
 	// model types, otherwise use custom formatting code.
 	if template != nil {
-		sessions := forwardingmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
+		sessions := forwardingmodels.ExportSessions(response.SessionStates)
 		if err := template.Execute(os.Stdout, sessions); err != nil {
 			return fmt.Errorf("unable to execute formatting template: %w", err)
 		}

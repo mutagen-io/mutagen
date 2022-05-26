@@ -17,12 +17,10 @@ type Change struct {
 	New *Entry `json:"new"`
 }
 
-// NewChangeFromInternalChange creates a new change representation from an
-// internal Protocol Buffers representation. The change must be valid.
-func NewChangeFromInternalChange(change *core.Change) *Change {
-	return &Change{
-		Path: change.Path,
-		Old:  NewEntryFromInternalEntry(change.Old),
-		New:  NewEntryFromInternalEntry(change.New),
-	}
+// loadFromInternal sets a change to match an internal Protocol Buffers
+// representation. The change must be valid.
+func (c *Change) loadFromInternal(change *core.Change) {
+	c.Path = change.Path
+	c.Old = newEntryFromInternalEntry(change.Old)
+	c.New = newEntryFromInternalEntry(change.New)
 }

@@ -38,6 +38,7 @@ type Session struct {
 	*State
 }
 
+// State encodes fields relevant to unpaused sessions.
 type State struct {
 	// Status is the session status.
 	Status forwarding.Status `json:"status"`
@@ -57,36 +58,36 @@ type State struct {
 	TotalConnections uint64 `json:"totalConnections"`
 }
 
-// NewSessionFromInternalState constructs a new session API model from an
-// internal Protocol Buffers state representation. The state must be valid.
-func NewSessionFromInternalState(state *forwarding.State) *Session {
-	// Create the result and propagate basic information.
-	result := &Session{
-		Identifier:   state.Session.Identifier,
-		Version:      state.Session.Version,
-		CreationTime: state.Session.CreationTime.AsTime().Format(time.RFC3339Nano),
-		CreatingVersion: fmt.Sprintf("%d.%d.%d",
-			state.Session.CreatingVersionMajor,
-			state.Session.CreatingVersionMinor,
-			state.Session.CreatingVersionPatch,
-		),
-		Name:   state.Session.Name,
-		Labels: state.Session.Labels,
-		Paused: state.Session.Paused,
-	}
+// loadFromInternal sets a session to match an internal Protocol Buffers session
+// state representation. The session state must be valid.
+func (s *Session) loadFromInternal(state *forwarding.State) {
+	// Propagate basic information.
+	s.Identifier = state.Session.Identifier
+	s.Version = state.Session.Version
+	s.CreationTime = state.Session.CreationTime.AsTime().Format(time.RFC3339Nano)
+	s.CreatingVersion = fmt.Sprintf("%d.%d.%d",
+		state.Session.CreatingVersionMajor,
+		state.Session.CreatingVersionMinor,
+		state.Session.CreatingVersionPatch,
+	)
+	s.Name = state.Session.Name
+	s.Labels = state.Session.Labels
+	s.Paused = state.Session.Paused
 
 	// Propagate endpoint information.
-	result.Source.LoadFromInternalURL(state.Session.Source)
-	result.Destination.LoadFromInternalURL(state.Session.Destination)
+	s.Source.loadFromInternal(state.Session.Source)
+	s.Destination.loadFromInternal(state.Session.Destination)
 
 	// Propagate configuration information.
-	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)
-	result.ConfigurationSource.LoadFromInternalConfiguration(state.Session.ConfigurationSource)
-	result.ConfigurationDestination.LoadFromInternalConfiguration(state.Session.ConfigurationDestination)
+	s.Configuration.loadFromInternal(state.Session.Configuration)
+	s.ConfigurationSource.loadFromInternal(state.Session.ConfigurationSource)
+	s.ConfigurationDestination.loadFromInternal(state.Session.ConfigurationDestination)
 
 	// Propagate state information if the session isn't paused.
-	if !state.Session.Paused {
-		result.State = &State{
+	if state.Session.Paused {
+		s.State = nil
+	} else {
+		s.State = &State{
 			Status:               state.Status,
 			SourceConnected:      state.SourceConnected,
 			DestinationConnected: state.DestinationConnected,
@@ -95,30 +96,21 @@ func NewSessionFromInternalState(state *forwarding.State) *Session {
 			TotalConnections:     state.TotalConnections,
 		}
 	}
-
-	// Done.
-	return result
 }
 
-// NewSessionSliceFromInternalStateSlice is a convenience function that calls
-// NewSessionFromInternalState for a slice of session states. It is guaranteed
-// to return a non-nil value, even in the case of an empty slice.
-func NewSessionSliceFromInternalStateSlice(states []*forwarding.State) []*Session {
-	// If there are no sessions, then return an empty slice. Unlike our other
-	// conversion methods, we return a non-nil value in this case because the
-	// session slice will be used as the root of a templating context and we
-	// don't want it to render as "null" for JSON (or similar).
-	count := len(states)
-	if count == 0 {
-		return make([]*Session, 0)
-	}
-
+// ExportSessions converts a slice of internal session state representations to
+// a slice of public session representations. It is guaranteed to return a
+// non-nil value, even in the case of an empty slice.
+func ExportSessions(states []*forwarding.State) []Session {
 	// Create the resulting slice.
-	result := make([]*Session, count)
+	count := len(states)
+	results := make([]Session, count)
+
+	// Propagate session information
 	for i := 0; i < count; i++ {
-		result[i] = NewSessionFromInternalState(states[i])
+		results[i].loadFromInternal(states[i])
 	}
 
 	// Done.
-	return result
+	return results
 }

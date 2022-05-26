@@ -22,9 +22,9 @@ type URL struct {
 	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
-// LoadFromInternalURL sets a URL to match an internal Protocol Buffers
+// loadFromInternal sets a URL to match an internal Protocol Buffers
 // representation. The URL must be a valid synchronization URL.
-func (u *URL) LoadFromInternalURL(url *url.URL) {
+func (u *URL) loadFromInternal(url *url.URL) {
 	u.Protocol = url.Protocol
 	u.User = url.User
 	u.Host = url.Host

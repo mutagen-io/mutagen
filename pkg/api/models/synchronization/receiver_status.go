@@ -14,10 +14,10 @@ type ReceiverStatus struct {
 	Total uint64 `json:"total"`
 }
 
-// NewReceiverStatusFromInternalReceiverStatus creates a new receiver status
+// newReceiverStatusFromInternalReceiverStatus creates a new receiver status
 // representation from an internal Protocol Buffers representation. The receiver
 // status must be valid.
-func NewReceiverStatusFromInternalReceiverStatus(status *rsync.ReceiverStatus) *ReceiverStatus {
+func newReceiverStatusFromInternalReceiverStatus(status *rsync.ReceiverStatus) *ReceiverStatus {
 	// If the status is nil, then return a nil status.
 	if status == nil {
 		return nil

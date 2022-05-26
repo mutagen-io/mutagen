@@ -65,9 +65,9 @@ type Configuration struct {
 	} `json:"permissions" yaml:"permissions" mapstructure:"permissions"`
 }
 
-// LoadFromInternalConfiguration sets a configuration to match an internal
+// loadFromInternal sets a configuration to match an internal
 // Protocol Buffers representation. The configuration must be valid.
-func (c *Configuration) LoadFromInternalConfiguration(configuration *synchronization.Configuration) {
+func (c *Configuration) loadFromInternal(configuration *synchronization.Configuration) {
 	// Propagate top-level configuration.
 	c.Mode = configuration.SynchronizationMode
 	c.MaximumEntryCount = configuration.MaximumEntryCount
@@ -96,10 +96,10 @@ func (c *Configuration) LoadFromInternalConfiguration(configuration *synchroniza
 	c.Permissions.DefaultGroup = configuration.DefaultGroup
 }
 
-// ToInternalConfiguration converts a textual session configuration to an
-// internal Protocol Buffers session configuration. It does not validate the
-// resulting configuration.
-func (c *Configuration) ToInternalConfiguration() *synchronization.Configuration {
+// ToInternal converts a public configuration representation to an internal
+// Protocol Buffers session configuration. It does not validate the resulting
+// configuration.
+func (c *Configuration) ToInternal() *synchronization.Configuration {
 	return &synchronization.Configuration{
 		SynchronizationMode:    c.Mode,
 		MaximumEntryCount:      c.MaximumEntryCount,

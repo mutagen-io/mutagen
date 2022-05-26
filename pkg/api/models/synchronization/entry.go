@@ -50,9 +50,9 @@ type ProblematicEntry struct {
 	Problem string `json:"problem"`
 }
 
-// NewEntryFromInternalEntry creates a new entry representation from an internal
+// newEntryFromInternalEntry creates a new entry representation from an internal
 // Protocol Buffers representation. The entry must be valid.
-func NewEntryFromInternalEntry(entry *core.Entry) *Entry {
+func newEntryFromInternalEntry(entry *core.Entry) *Entry {
 	// Handle the case of non-existent entries.
 	if entry == nil {
 		return nil
@@ -68,7 +68,7 @@ func NewEntryFromInternalEntry(entry *core.Entry) *Entry {
 		if l := len(entry.Contents); l > 0 {
 			result.Contents = make(map[string]*Entry, l)
 			for n, c := range entry.Contents {
-				result.Contents[n] = NewEntryFromInternalEntry(c)
+				result.Contents[n] = newEntryFromInternalEntry(c)
 			}
 		}
 	case core.EntryKind_File:

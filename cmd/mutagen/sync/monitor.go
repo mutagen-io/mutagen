@@ -131,7 +131,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		// public model types. No validation is necessary here since we don't
 		// require any specific number of sessions.
 		if template != nil {
-			sessions := synchronizationmodels.NewSessionSliceFromInternalStateSlice(response.SessionStates)
+			sessions := synchronizationmodels.ExportSessions(response.SessionStates)
 			if err := template.Execute(os.Stdout, sessions); err != nil {
 				return fmt.Errorf("unable to execute formatting template: %w", err)
 			}

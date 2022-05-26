@@ -13,18 +13,16 @@ type Problem struct {
 	Error string `json:"error"`
 }
 
-// NewProblemFromInternalProblem creates a new problem representation from an
-// internal Protocol Buffers representation. The problem must be valid.
-func NewProblemFromInternalProblem(problem *core.Problem) *Problem {
-	return &Problem{
-		Path:  problem.Path,
-		Error: problem.Error,
-	}
+// loadFromInternal sets a problem to match an internal Protocol Buffers
+// representation. The problem must be valid.
+func (p *Problem) loadFromInternal(problem *core.Problem) {
+	p.Path = problem.Path
+	p.Error = problem.Error
 }
 
-// NewProblemSliceFromInternalProblemSlice is a convenience function that calls
-// NewProblemFromInternalProblem for a slice of problems.
-func NewProblemSliceFromInternalProblemSlice(problems []*core.Problem) []*Problem {
+// exportProblems is a convenience function that calls Problem.loadFromInternal
+// for a slice of problems.
+func exportProblems(problems []*core.Problem) []Problem {
 	// If there are no problems, then just return a nil slice.
 	count := len(problems)
 	if count == 0 {
@@ -32,11 +30,11 @@ func NewProblemSliceFromInternalProblemSlice(problems []*core.Problem) []*Proble
 	}
 
 	// Create the resulting slice.
-	result := make([]*Problem, count)
+	results := make([]Problem, count)
 	for i := 0; i < count; i++ {
-		result[i] = NewProblemFromInternalProblem(problems[i])
+		results[i].loadFromInternal(problems[i])
 	}
 
 	// Done.
-	return result
+	return results
 }

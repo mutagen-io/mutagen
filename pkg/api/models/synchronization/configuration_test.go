@@ -84,7 +84,7 @@ func TestLoadConfiguration(t *testing.T) {
 	}
 
 	// Compute the Protocol Buffers session representation.
-	configuration := yamlConfiguration.ToInternalConfiguration()
+	configuration := yamlConfiguration.ToInternal()
 
 	// Ensure that the resulting configuration is valid.
 	if err := configuration.EnsureValid(false); err != nil {

@@ -56,7 +56,7 @@ type State struct {
 	// AlphaScanProblems is the list of non-terminal problems encountered during
 	// scanning on alpha. This list may be a truncated version of the full list
 	// if too many problems are encountered to report via the API.
-	AlphaScanProblems []*Problem `json:"alphaScanProblems,omitempty"`
+	AlphaScanProblems []Problem `json:"alphaScanProblems,omitempty"`
 	// ExcludedAlphaScanProblems is the number of problems that have been
 	// excluded from AlphaScanProblems due to truncation. This value can only be
 	// non-zero if alphaScanProblems is non-empty.
@@ -64,7 +64,7 @@ type State struct {
 	// BetaScanProblems is the list of non-terminal problems encountered during
 	// scanning on beta. This list may be a truncated version of the full list
 	// if too many problems are encountered to report via the API.
-	BetaScanProblems []*Problem `json:"betaScanProblems,omitempty"`
+	BetaScanProblems []Problem `json:"betaScanProblems,omitempty"`
 	// ExcludedBetaScanProblems is the number of problems that have been
 	// excluded from BetaScanProblems due to truncation. This value can only be
 	// non-zero if betaScanProblems is non-empty.
@@ -72,7 +72,7 @@ type State struct {
 	// Conflicts are the conflicts that identified during reconciliation. This
 	// list may be a truncated version of the full list if too many conflicts
 	// are encountered to report via the API.
-	Conflicts []*Conflict `json:"conflicts,omitempty"`
+	Conflicts []Conflict `json:"conflicts,omitempty"`
 	// ExcludedConflicts is the number of conflicts that have been excluded from
 	// Conflicts due to truncation. This value can only be non-zero if conflicts
 	// is non-empty.
@@ -81,7 +81,7 @@ type State struct {
 	// during transition operations on alpha. This list may be a truncated
 	// version of the full list if too many problems are encountered to report
 	// via the API.
-	AlphaTransitionProblems []*Problem `json:"alphaTransitionProblems,omitempty"`
+	AlphaTransitionProblems []Problem `json:"alphaTransitionProblems,omitempty"`
 	// ExcludedAlphaTransitionProblems is the number of problems that have been
 	// excluded from AlphaTransitionProblems due to truncation. This value can
 	// only be non-zero if alphaTransitionProblems is non-empty.
@@ -90,85 +90,76 @@ type State struct {
 	// during transition operations on beta. This list may be a truncated
 	// version of the full list if too many problems are encountered to report
 	// via the API.
-	BetaTransitionProblems []*Problem `json:"betaTransitionProblems,omitempty"`
+	BetaTransitionProblems []Problem `json:"betaTransitionProblems,omitempty"`
 	// ExcludedBetaTransitionProblems is the number of problems that have been
 	// excluded from BetaTransitionProblems due to truncation. This value can
 	// only be non-zero if betaTransitionProblems is non-empty.
 	ExcludedBetaTransitionProblems uint64 `json:"excludedBetaTransitionProblems,omitempty"`
 }
 
-// NewSessionFromInternalState creates a new session representation from an
-// internal Protocol Buffers representation. The session state must be valid.
-func NewSessionFromInternalState(state *synchronization.State) *Session {
-	// Create the result and propagate basic information.
-	result := &Session{
-		Identifier:   state.Session.Identifier,
-		Version:      state.Session.Version,
-		CreationTime: state.Session.CreationTime.AsTime().Format(time.RFC3339Nano),
-		CreatingVersion: fmt.Sprintf("%d.%d.%d",
-			state.Session.CreatingVersionMajor,
-			state.Session.CreatingVersionMinor,
-			state.Session.CreatingVersionPatch,
-		),
-		Name:   state.Session.Name,
-		Labels: state.Session.Labels,
-		Paused: state.Session.Paused,
-	}
+// loadFromInternal sets a session to match an internal Protocol Buffers session
+// state representation. The session state must be valid.
+func (s *Session) loadFromInternal(state *synchronization.State) {
+	// Propagate basic information.
+	s.Identifier = state.Session.Identifier
+	s.Version = state.Session.Version
+	s.CreationTime = state.Session.CreationTime.AsTime().Format(time.RFC3339Nano)
+	s.CreatingVersion = fmt.Sprintf("%d.%d.%d",
+		state.Session.CreatingVersionMajor,
+		state.Session.CreatingVersionMinor,
+		state.Session.CreatingVersionPatch,
+	)
+	s.Name = state.Session.Name
+	s.Labels = state.Session.Labels
+	s.Paused = state.Session.Paused
 
 	// Propagate endpoint information.
-	result.Alpha.LoadFromInternalURL(state.Session.Alpha)
-	result.Beta.LoadFromInternalURL(state.Session.Beta)
+	s.Alpha.loadFromInternal(state.Session.Alpha)
+	s.Beta.loadFromInternal(state.Session.Beta)
 
 	// Propagate configuration information.
-	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)
-	result.ConfigurationAlpha.LoadFromInternalConfiguration(state.Session.ConfigurationAlpha)
-	result.ConfigurationBeta.LoadFromInternalConfiguration(state.Session.ConfigurationBeta)
+	s.Configuration.loadFromInternal(state.Session.Configuration)
+	s.ConfigurationAlpha.loadFromInternal(state.Session.ConfigurationAlpha)
+	s.ConfigurationBeta.loadFromInternal(state.Session.ConfigurationBeta)
 
 	// Propagate state information if the session isn't paused.
-	if !state.Session.Paused {
-		result.State = &State{
+	if state.Session.Paused {
+		s.State = nil
+	} else {
+		s.State = &State{
 			Status:                          state.Status,
 			AlphaConnected:                  state.AlphaConnected,
 			BetaConnected:                   state.BetaConnected,
 			LastError:                       state.LastError,
 			SuccessfulCycles:                state.SuccessfulCycles,
-			StagingStatus:                   NewReceiverStatusFromInternalReceiverStatus(state.StagingStatus),
-			AlphaScanProblems:               NewProblemSliceFromInternalProblemSlice(state.AlphaScanProblems),
+			StagingStatus:                   newReceiverStatusFromInternalReceiverStatus(state.StagingStatus),
+			AlphaScanProblems:               exportProblems(state.AlphaScanProblems),
 			ExcludedAlphaScanProblems:       state.ExcludedAlphaScanProblems,
-			BetaScanProblems:                NewProblemSliceFromInternalProblemSlice(state.BetaScanProblems),
+			BetaScanProblems:                exportProblems(state.BetaScanProblems),
 			ExcludedBetaScanProblems:        state.ExcludedBetaScanProblems,
-			Conflicts:                       NewConflictSliceFromInternalConflictSlice(state.Conflicts),
+			Conflicts:                       exportConflicts(state.Conflicts),
 			ExcludedConflicts:               state.ExcludedConflicts,
-			AlphaTransitionProblems:         NewProblemSliceFromInternalProblemSlice(state.AlphaTransitionProblems),
+			AlphaTransitionProblems:         exportProblems(state.AlphaTransitionProblems),
 			ExcludedAlphaTransitionProblems: state.ExcludedAlphaTransitionProblems,
-			BetaTransitionProblems:          NewProblemSliceFromInternalProblemSlice(state.BetaTransitionProblems),
+			BetaTransitionProblems:          exportProblems(state.BetaTransitionProblems),
 			ExcludedBetaTransitionProblems:  state.ExcludedBetaTransitionProblems,
 		}
 	}
-
-	// Done.
-	return result
 }
 
-// NewSessionSliceFromInternalStateSlice is a convenience function that calls
-// NewSessionFromInternalState for a slice of session states. It is guaranteed
-// to return a non-nil value, even in the case of an empty slice.
-func NewSessionSliceFromInternalStateSlice(states []*synchronization.State) []*Session {
-	// If there are no sessions, then return an empty slice. Unlike our other
-	// conversion methods, we return a non-nil value in this case because the
-	// session slice will be used as the root of a templating context and we
-	// don't want it to render as "null" for JSON (or similar).
-	count := len(states)
-	if count == 0 {
-		return make([]*Session, 0)
-	}
-
+// ExportSessions converts a slice of internal session state representations to
+// a slice of public session representations. It is guaranteed to return a
+// non-nil value, even in the case of an empty slice.
+func ExportSessions(states []*synchronization.State) []Session {
 	// Create the resulting slice.
-	result := make([]*Session, count)
+	count := len(states)
+	results := make([]Session, count)
+
+	// Propagate session information
 	for i := 0; i < count; i++ {
-		result[i] = NewSessionFromInternalState(states[i])
+		results[i].loadFromInternal(states[i])
 	}
 
 	// Done.
-	return result
+	return results
 }

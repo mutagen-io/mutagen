@@ -10,38 +10,33 @@ type Conflict struct {
 	// root.
 	Root string `json:"root"`
 	// AlphaChanges are the relevant changes on alpha.
-	AlphaChanges []*Change `json:"alphaChanges"`
+	AlphaChanges []Change `json:"alphaChanges"`
 	// BetaChanges are the relevant changes on beta.
-	BetaChanges []*Change `json:"betaChanges"`
+	BetaChanges []Change `json:"betaChanges"`
 }
 
-// NewConflictFromInternalConflict creates a new conflict representation from an
-// internal Protocol Buffers representation. The conflict must be valid.
-func NewConflictFromInternalConflict(conflict *core.Conflict) *Conflict {
-	// Create the new conflict.
-	result := &Conflict{
-		Root: conflict.Root,
-	}
+// loadFromInternal sets a conflict to match an internal Protocol Buffers
+// representation. The conflict must be valid.
+func (c *Conflict) loadFromInternal(conflict *core.Conflict) {
+	// Propagate the conflict root.
+	c.Root = conflict.Root
 
 	// Propagate alpha changes.
-	result.AlphaChanges = make([]*Change, len(conflict.AlphaChanges))
+	c.AlphaChanges = make([]Change, len(conflict.AlphaChanges))
 	for i := 0; i < len(conflict.AlphaChanges); i++ {
-		result.AlphaChanges[i] = NewChangeFromInternalChange(conflict.AlphaChanges[i])
+		c.AlphaChanges[i].loadFromInternal(conflict.AlphaChanges[i])
 	}
 
 	// Propagate beta changes.
-	result.BetaChanges = make([]*Change, len(conflict.BetaChanges))
+	c.BetaChanges = make([]Change, len(conflict.BetaChanges))
 	for i := 0; i < len(conflict.BetaChanges); i++ {
-		result.BetaChanges[i] = NewChangeFromInternalChange(conflict.BetaChanges[i])
+		c.BetaChanges[i].loadFromInternal(conflict.BetaChanges[i])
 	}
-
-	// Done.
-	return result
 }
 
-// NewConflictSliceFromInternalConflictSlice is a convenience function that
-// calls NewConflictFromInternalConflict for a slice of conflicts.
-func NewConflictSliceFromInternalConflictSlice(conflicts []*core.Conflict) []*Conflict {
+// exportConflicts is a convenience function that calls
+// Conflict.loadFromInternal for a slice of conflicts.
+func exportConflicts(conflicts []*core.Conflict) []Conflict {
 	// If there are no conflicts, then just return a nil slice.
 	count := len(conflicts)
 	if count == 0 {
@@ -49,11 +44,11 @@ func NewConflictSliceFromInternalConflictSlice(conflicts []*core.Conflict) []*Co
 	}
 
 	// Create the resulting slice.
-	result := make([]*Conflict, count)
+	results := make([]Conflict, count)
 	for i := 0; i < count; i++ {
-		result[i] = NewConflictFromInternalConflict(conflicts[i])
+		results[i].loadFromInternal(conflicts[i])
 	}
 
 	// Done.
-	return result
+	return results
 }
