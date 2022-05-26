@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -11,8 +12,10 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
+	forwardingmodels "github.com/mutagen-io/mutagen/pkg/api/models/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
@@ -66,6 +69,12 @@ func ListWithSelection(
 	selection *selection.Selection,
 	long bool,
 ) error {
+	// Load the formatting template (if any has been specified).
+	template, err := listConfiguration.TemplateFlags.LoadTemplate()
+	if err != nil {
+		return fmt.Errorf("unable to load formatting template: %w", err)
+	}
+
 	// Perform the list operation.
 	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 	request := &forwardingsvc.ListRequest{
@@ -78,20 +87,28 @@ func ListWithSelection(
 		return fmt.Errorf("invalid list response received: %w", err)
 	}
 
-	// Handle output based on whether or not any sessions were returned.
-	if len(response.SessionStates) > 0 {
-		for _, state := range response.SessionStates {
-			fmt.Println(cmd.DelimiterLine)
-			printSession(state, long)
-			printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
-			printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
-			printSessionStatus(state)
+	// If a template was specified, then use that to format output with public
+	// model types, otherwise use custom formatting code.
+	if template != nil {
+		sessions := forwardingmodels.ExportSessions(response.SessionStates)
+		if err := template.Execute(os.Stdout, sessions); err != nil {
+			return fmt.Errorf("unable to execute formatting template: %w", err)
 		}
-		fmt.Println(cmd.DelimiterLine)
 	} else {
-		fmt.Println(cmd.DelimiterLine)
-		fmt.Println("No forwarding sessions found")
-		fmt.Println(cmd.DelimiterLine)
+		if len(response.SessionStates) > 0 {
+			for _, state := range response.SessionStates {
+				fmt.Println(cmd.DelimiterLine)
+				printSession(state, long)
+				printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
+				printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
+				printSessionStatus(state)
+			}
+			fmt.Println(cmd.DelimiterLine)
+		} else {
+			fmt.Println(cmd.DelimiterLine)
+			fmt.Println("No forwarding sessions found")
+			fmt.Println(cmd.DelimiterLine)
+		}
 	}
 
 	// Success.
@@ -138,6 +155,8 @@ var listConfiguration struct {
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
+	// TemplateFlags store custom templating behavior.
+	templating.TemplateFlags
 }
 
 func init() {
@@ -154,4 +173,7 @@ func init() {
 	// Wire up list flags.
 	flags.BoolVarP(&listConfiguration.long, "long", "l", false, "Show detailed session information")
 	flags.StringVar(&listConfiguration.labelSelector, "label-selector", "", "List sessions matching the specified label selector")
+
+	// Wire up templating flags.
+	listConfiguration.TemplateFlags.Register(flags)
 }

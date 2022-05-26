@@ -10,6 +10,55 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
+// Supported returns whether or not a URL kind is supported.
+func (k Kind) Supported() bool {
+	switch k {
+	case Kind_Synchronization:
+		return true
+	case Kind_Forwarding:
+		return true
+	default:
+		return false
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (p Protocol) MarshalText() ([]byte, error) {
+	var result string
+	switch p {
+	case Protocol_Local:
+		result = "local"
+	case Protocol_SSH:
+		result = "ssh"
+	case Protocol_Docker:
+		result = "docker"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
+func (p *Protocol) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a protocol.
+	switch text {
+	case "local":
+		*p = Protocol_Local
+	case "ssh":
+		*p = Protocol_SSH
+	case "docker":
+		*p = Protocol_Docker
+	default:
+		return fmt.Errorf("unknown protocol specification: %s", text)
+	}
+
+	// Success.
+	return nil
+}
+
 // EnsureValid ensures that URL's invariants are respected.
 func (u *URL) EnsureValid() error {
 	// Ensure that the URL is non-nil.
@@ -33,6 +82,8 @@ func (u *URL) EnsureValid() error {
 			return errors.New("local URL with non-zero port")
 		} else if len(u.Environment) != 0 {
 			return errors.New("local URL with environment variables")
+		} else if len(u.Parameters) != 0 {
+			return errors.New("local URL with parameters")
 		}
 	} else if u.Protocol == Protocol_SSH {
 		if u.Host == "" {
@@ -113,18 +164,6 @@ func (u *URL) EnsureValid() error {
 
 	// Success.
 	return nil
-}
-
-// Supported returns whether or not a URL kind is supported.
-func (k Kind) Supported() bool {
-	switch k {
-	case Kind_Synchronization:
-		return true
-	case Kind_Forwarding:
-		return true
-	default:
-		return false
-	}
 }
 
 // Equal returns whether or not the URL is equivalent to another. The result of

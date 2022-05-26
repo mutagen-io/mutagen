@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
+	forwardingmodels "github.com/mutagen-io/mutagen/pkg/api/models/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
@@ -50,14 +53,8 @@ func computeMonitorStatusLine(state *forwarding.State) string {
 
 // monitorMain is the entry point for the monitor command.
 func monitorMain(_ *cobra.Command, arguments []string) error {
-	// Create a session selection specification that will select our initial
-	// batch of sessions. From this batch, we'll determine which session to
-	// monitor based on creation date. In any case, we only allow one
-	// specification to be provided in order to enforce the notion that this is
-	// a single-session command.
-	if len(arguments) > 1 {
-		return errors.New("multiple session specifications not allowed")
-	}
+	// Create the session selection specification that will select our initial
+	// batch of sessions.
 	selection := &selectionpkg.Selection{
 		All:            len(arguments) == 0 && monitorConfiguration.labelSelector == "",
 		Specifications: arguments,
@@ -65,6 +62,12 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	}
 	if err := selection.EnsureValid(); err != nil {
 		return fmt.Errorf("invalid session selection specification: %w", err)
+	}
+
+	// Load the formatting template (if any has been specified).
+	template, err := monitorConfiguration.TemplateFlags.LoadTemplate()
+	if err != nil {
+		return fmt.Errorf("unable to load formatting template: %w", err)
 	}
 
 	// Connect to the daemon and defer closure of the connection.
@@ -77,23 +80,25 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	// Create a session service client.
 	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
 
-	// Create a status line printer and defer a break.
-	statusLinePrinter := &cmd.StatusLinePrinter{}
-	defer statusLinePrinter.BreakIfNonEmpty()
+	// Create the list request that we'll use.
+	request := &forwardingsvc.ListRequest{
+		Selection: selection,
+	}
+
+	// If no template has been specified, then create a status line printer and
+	// defer a line break operation.
+	var statusLinePrinter *cmd.StatusLinePrinter
+	if template == nil {
+		statusLinePrinter = &cmd.StatusLinePrinter{}
+		defer statusLinePrinter.BreakIfNonEmpty()
+	}
+
+	// Track whether or not we've identified an individual session in the
+	// non-templated case.
+	var identifiedSingleTargetSession bool
 
 	// Loop and print monitoring information indefinitely.
-	var identifier string
-	var previousStateIndex uint64
-	sessionInformationPrinted := false
 	for {
-		// Create the list request. If there's no session specified, then we
-		// need to grab all sessions and identify the most recently created one
-		// for future queries.
-		request := &forwardingsvc.ListRequest{
-			Selection:          selection,
-			PreviousStateIndex: previousStateIndex,
-		}
-
 		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
@@ -102,21 +107,50 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 			return fmt.Errorf("invalid list response received: %w", err)
 		}
 
-		// Validate the response and extract the relevant session state. If we
-		// haven't already selected our target monitoring session, then we
-		// choose the last session in the batch (which will be the one with the
-		// most recent creation date).
+		// Update the state tracking index.
+		request.PreviousStateIndex = response.StateIndex
+
+		// If a template has been specified, then use that to format output with
+		// public model types. No validation is necessary here since we don't
+		// require any specific number of sessions.
+		if template != nil {
+			sessions := forwardingmodels.ExportSessions(response.SessionStates)
+			if err := template.Execute(os.Stdout, sessions); err != nil {
+				return fmt.Errorf("unable to execute formatting template: %w", err)
+			}
+			continue
+		}
+
+		// No template has been specified, but our command line monitoring
+		// interface only supports dynamic status displays for a single session
+		// at a time, so we choose the newest session identified by the initial
+		// criteria and update our selection to target it specifically.
 		var state *forwarding.State
-		previousStateIndex = response.StateIndex
-		if identifier == "" {
+		if !identifiedSingleTargetSession {
 			if len(response.SessionStates) == 0 {
 				err = errors.New("no matching sessions exist")
 			} else {
+				// Select the most recently created session matching the
+				// selection criteria (which are ordered by creation date).
 				state = response.SessionStates[len(response.SessionStates)-1]
-				identifier = state.Session.Identifier
-				selection = &selectionpkg.Selection{
-					Specifications: []string{identifier},
+
+				// Update the selection criteria to target only that session.
+				request.Selection = &selectionpkg.Selection{
+					Specifications: []string{state.Session.Identifier},
 				}
+
+				// Print session information.
+				printSession(state, monitorConfiguration.long)
+
+				// Print endpoint URLs, but only if not in long mode (where
+				// they're already printed in the session metadata).
+				if !monitorConfiguration.long {
+					fmt.Println("Source:", state.Session.Source.Format("\n\t"))
+					fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
+				}
+
+				// Record that we've identified our target session.
+				identifiedSingleTargetSession = true
 			}
 		} else if len(response.SessionStates) != 1 {
 			err = errors.New("invalid list response")
@@ -125,22 +159,6 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		}
 		if err != nil {
 			return err
-		}
-
-		// Print session information the first time through the loop.
-		if !sessionInformationPrinted {
-			// Print session information.
-			printSession(state, monitorConfiguration.long)
-
-			// Print endpoint URLs, but only if not in long mode (where they're
-			// already printed in the session metadata).
-			if !monitorConfiguration.long {
-				fmt.Println("Source:", state.Session.Source.Format("\n\t"))
-				fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
-			}
-
-			// Mark session information as printed.
-			sessionInformationPrinted = true
 		}
 
 		// Compute the status line.
@@ -153,8 +171,8 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 
 // monitorCommand is the monitor command.
 var monitorCommand = &cobra.Command{
-	Use:          "monitor [<session>]",
-	Short:        "Show a dynamic status display for a single session",
+	Use:          "monitor [<session>...]",
+	Short:        "Display streaming session status information",
 	RunE:         monitorMain,
 	SilenceUsage: true,
 }
@@ -168,6 +186,8 @@ var monitorConfiguration struct {
 	// labelSelector encodes a label selector to be used in identifying which
 	// sessions should be paused.
 	labelSelector string
+	// TemplateFlags store custom templating behavior.
+	templating.TemplateFlags
 }
 
 func init() {
@@ -184,4 +204,7 @@ func init() {
 	// Wire up monitor flags.
 	flags.BoolVarP(&monitorConfiguration.long, "long", "l", false, "Show detailed session information")
 	flags.StringVar(&monitorConfiguration.labelSelector, "label-selector", "", "Monitor the most recently created session matching the specified label selector")
+
+	// Wire up templating flags.
+	monitorConfiguration.TemplateFlags.Register(flags)
 }

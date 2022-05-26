@@ -9,8 +9,22 @@ func (m ScanMode) IsDefault() bool {
 	return m == ScanMode_ScanModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m ScanMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case ScanMode_ScanModeDefault:
+	case ScanMode_ScanModeFull:
+		result = "full"
+	case ScanMode_ScanModeAccelerated:
+		result = "accelerated"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *ScanMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)

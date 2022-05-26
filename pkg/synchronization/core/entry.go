@@ -14,6 +14,26 @@ func (k EntryKind) synchronizable() bool {
 		k == EntryKind_SymbolicLink
 }
 
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (k EntryKind) MarshalText() ([]byte, error) {
+	var result string
+	switch k {
+	case EntryKind_Directory:
+		result = "directory"
+	case EntryKind_File:
+		result = "file"
+	case EntryKind_SymbolicLink:
+		result = "symlink"
+	case EntryKind_Untracked:
+		result = "untracked"
+	case EntryKind_Problematic:
+		result = "problematic"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
 // EnsureValid ensures that Entry's invariants are respected. If synchronizable
 // is true, then unsynchronizable content will be considered invalid.
 func (e *Entry) EnsureValid(synchronizable bool) error {

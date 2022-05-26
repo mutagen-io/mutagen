@@ -10,13 +10,29 @@ func (m SymbolicLinkMode) IsDefault() bool {
 	return m == SymbolicLinkMode_SymbolicLinkModeDefault
 }
 
-// UnmarshalText implements the text unmarshalling interface used when loading
-// from TOML files.
+// MarshalText implements encoding.TextMarshaler.MarshalText.
+func (m SymbolicLinkMode) MarshalText() ([]byte, error) {
+	var result string
+	switch m {
+	case SymbolicLinkMode_SymbolicLinkModeDefault:
+	case SymbolicLinkMode_SymbolicLinkModeIgnore:
+		result = "ignore"
+	case SymbolicLinkMode_SymbolicLinkModePortable:
+		result = "portable"
+	case SymbolicLinkMode_SymbolicLinkModePOSIXRaw:
+		result = "posix-raw"
+	default:
+		result = "unknown"
+	}
+	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
 func (m *SymbolicLinkMode) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
-	// Convert to a VCS mode.
+	// Convert to a symbolic link mode.
 	switch text {
 	case "ignore":
 		*m = SymbolicLinkMode_SymbolicLinkModeIgnore

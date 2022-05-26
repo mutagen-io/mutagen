@@ -1363,7 +1363,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 
 		// Increment the synchronization cycle count.
 		c.stateLock.Lock()
-		c.state.SuccessfulSynchronizationCycles++
+		c.state.SuccessfulCycles++
 		c.stateLock.Unlock()
 
 		// If a flush request triggered this synchronization cycle, then tell it

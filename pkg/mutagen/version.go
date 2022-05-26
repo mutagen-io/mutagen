@@ -13,16 +13,18 @@ const (
 	// VersionMajor represents the current major version of Mutagen.
 	VersionMajor = 0
 	// VersionMinor represents the current minor version of Mutagen.
-	VersionMinor = 14
+	VersionMinor = 15
 	// VersionPatch represents the current patch version of Mutagen.
 	VersionPatch = 0
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = ""
-	// DevelopmentModeEnabled indicates that development mode is active.
-	DevelopmentModeEnabled = VersionTag == "dev"
+	VersionTag = "dev"
 )
+
+// DevelopmentModeEnabled indicates that development mode is active. This is
+// regulated via VersionTag and should not be set or updated explicitly.
+const DevelopmentModeEnabled = VersionTag == "dev"
 
 // Version provides a stringified version of the current Mutagen version.
 var Version string
