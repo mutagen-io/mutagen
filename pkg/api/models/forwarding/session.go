@@ -18,9 +18,9 @@ type Session struct {
 	// CreatingVersion is the version of Mutagen that created the session.
 	CreatingVersion string `json:"creatingVersion"`
 	// Source is the source endpoint URL.
-	Source *URL `json:"source"`
+	Source URL `json:"source"`
 	// Destination is the destination endpoint URL.
-	Destination *URL `json:"destination"`
+	Destination URL `json:"destination"`
 	// Configuration is the session configuration.
 	Configuration
 	// ConfigurationSource is the source endpoint configuration.
@@ -70,12 +70,14 @@ func NewSessionFromInternalState(state *forwarding.State) *Session {
 			state.Session.CreatingVersionMinor,
 			state.Session.CreatingVersionPatch,
 		),
-		Source:      NewURLFromInternalURL(state.Session.Source),
-		Destination: NewURLFromInternalURL(state.Session.Destination),
-		Name:        state.Session.Name,
-		Labels:      state.Session.Labels,
-		Paused:      state.Session.Paused,
+		Name:   state.Session.Name,
+		Labels: state.Session.Labels,
+		Paused: state.Session.Paused,
 	}
+
+	// Propagate endpoint information.
+	result.Source.LoadFromInternalURL(state.Session.Source)
+	result.Destination.LoadFromInternalURL(state.Session.Destination)
 
 	// Propagate configuration information.
 	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)

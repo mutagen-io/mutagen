@@ -18,9 +18,9 @@ type Session struct {
 	// CreatingVersion is the version of Mutagen that created the session.
 	CreatingVersion string `json:"creatingVersion"`
 	// Alpha is the alpha endpoint URL.
-	Alpha *URL `json:"alpha"`
+	Alpha URL `json:"alpha"`
 	// Beta is the beta endpoint URL.
-	Beta *URL `json:"beta"`
+	Beta URL `json:"beta"`
 	// Configuration is the session configuration.
 	Configuration
 	// ConfigurationAlpha is the alpha endpoint configuration.
@@ -110,12 +110,14 @@ func NewSessionFromInternalState(state *synchronization.State) *Session {
 			state.Session.CreatingVersionMinor,
 			state.Session.CreatingVersionPatch,
 		),
-		Alpha:  NewURLFromInternalURL(state.Session.Alpha),
-		Beta:   NewURLFromInternalURL(state.Session.Beta),
 		Name:   state.Session.Name,
 		Labels: state.Session.Labels,
 		Paused: state.Session.Paused,
 	}
+
+	// Propagate endpoint information.
+	result.Alpha.LoadFromInternalURL(state.Session.Alpha)
+	result.Beta.LoadFromInternalURL(state.Session.Beta)
 
 	// Propagate configuration information.
 	result.Configuration.LoadFromInternalConfiguration(state.Session.Configuration)
