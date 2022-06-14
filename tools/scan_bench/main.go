@@ -14,6 +14,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/profile"
 
@@ -300,8 +302,14 @@ func main() {
 	start = time.Now()
 	entryCount := snapshot.Content.Count()
 	stop = time.Now()
-	fmt.Println("Snapshot contained", entryCount, "entries")
 	fmt.Println("Snapshot entry counting took", stop.Sub(start))
+	fmt.Println("Snapshot contained", entryCount, "entries")
+
+	// Print snapshot statistics.
+	fmt.Println("Snapshot contained", snapshot.DirectoryCount, "directories")
+	fmt.Println("Snapshot contained", snapshot.FileCount, "files")
+	fmt.Println("Snapshot contained", snapshot.SymbolicLinkCount, "symbolic links")
+	fmt.Println("Snapshot files totaled", humanize.Bytes(snapshot.TotalFileSize))
 
 	// Perform a deep copy of the snapshot contents.
 	start = time.Now()

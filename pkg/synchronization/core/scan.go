@@ -123,6 +123,15 @@ type scanner struct {
 	// preservesExecutability indicates whether or not the synchronization root
 	// filesystem preserves POSIX executability bits.
 	preservesExecutability bool
+	// directoryCount is the number of synchronizable directories encountered.
+	directoryCount uint64
+	// fileCount is the number of synchronizable files encountered.
+	fileCount uint64
+	// symbolicLinkCount is the number of synchronizable symbolic links
+	// encountered.
+	symbolicLinkCount uint64
+	// totalFileSize is the total size of all synchronizable files encountered.
+	totalFileSize uint64
 }
 
 // file performs processing of a file entry. Exactly one of parent or file will
@@ -231,6 +240,10 @@ func (s *scanner) file(
 		}
 	}
 
+	// Increment the total file count and size.
+	s.fileCount++
+	s.totalFileSize += metadata.Size
+
 	// Success.
 	return &Entry{
 		Kind:       EntryKind_File,
@@ -274,6 +287,9 @@ func (s *scanner) symbolicLink(
 			Problem: "symbolic link target is empty",
 		}, nil
 	}
+
+	// Increment the total symbolic link count.
+	s.symbolicLinkCount++
 
 	// Success.
 	return &Entry{
@@ -440,6 +456,15 @@ func (s *scanner) directory(
 				contents[contentName] = contentBaseline
 				var missingCacheEntries bool
 				contentBaseline.walk(contentPath, func(path string, entry *Entry) {
+					// Update total entry counts.
+					if entry.Kind == EntryKind_Directory {
+						s.directoryCount++
+					} else if entry.Kind == EntryKind_File {
+						s.fileCount++
+					} else if entry.Kind == EntryKind_SymbolicLink {
+						s.symbolicLinkCount++
+					}
+
 					// Generate ignore cache entries. This isn't exhaustive,
 					// because we can't include ignored content and we can't
 					// know the directory-ness of unsynchronizable content, but
@@ -448,14 +473,16 @@ func (s *scanner) directory(
 						s.newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
 					}
 
-					// Propagate digest cache entries. Here we require
-					// exhaustive propagation to verify that the baseline
-					// corresponds to the provided cache, though note that this
-					// is not a full verification (e.g. we don't check that
-					// digests or modes match) because that would be too costly.
+					// Propagate digest cache entries and update total file
+					// size. Here we require exhaustive propagation to verify
+					// that the baseline corresponds to the provided cache,
+					// though note that this is not a full verification (e.g. we
+					// don't check that digests or modes match) because that
+					// would be too costly.
 					if entry.Kind == EntryKind_File {
 						if oldCacheEntry, ok := s.cache.Entries[path]; ok {
 							s.newCache.Entries[path] = oldCacheEntry
+							s.totalFileSize += oldCacheEntry.Size
 						} else {
 							missingCacheEntries = true
 						}
@@ -505,6 +532,9 @@ func (s *scanner) directory(
 		// Record the content.
 		contents[contentName] = entry
 	}
+
+	// Increment the total directory count.
+	s.directoryCount++
 
 	// Success.
 	return &Entry{
@@ -675,11 +705,7 @@ func Scan(
 	// correspond to the baseline, because doing so is expensive. We place the
 	// burden of enforcing that invariant on the caller.
 	if baseline != nil && len(recheckPaths) == 0 {
-		return &Snapshot{
-			Content:                baseline.Content,
-			PreservesExecutability: preservesExecutability,
-			DecomposesUnicode:      decomposesUnicode,
-		}, cache, ignoreCache, nil
+		return baseline, cache, ignoreCache, nil
 	}
 
 	// Convert the list of re-check paths into a set of dirty paths. The rule is
@@ -771,5 +797,9 @@ func Scan(
 		Content:                content,
 		PreservesExecutability: preservesExecutability,
 		DecomposesUnicode:      decomposesUnicode,
+		DirectoryCount:         s.directoryCount,
+		FileCount:              s.fileCount,
+		SymbolicLinkCount:      s.symbolicLinkCount,
+		TotalFileSize:          s.totalFileSize,
 	}, newCache, newIgnoreCache, nil
 }
