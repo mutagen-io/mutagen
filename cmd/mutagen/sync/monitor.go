@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
+
+	"github.com/dustin/go-humanize"
 
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
@@ -26,13 +29,13 @@ import (
 // synchronization session.
 func computeMonitorStatusLine(state *synchronization.State) string {
 	// Build the status line.
-	status := "Status: "
+	var status string
 	if state.Session.Paused {
 		status += color.YellowString("[Paused]")
 	} else {
 		// Add a conflict flag if there are conflicts.
 		if len(state.Conflicts) > 0 {
-			status += color.RedString("[Conflicts] ")
+			status += color.YellowString("[C] ")
 		}
 
 		// Add a problems flag if there are problems.
@@ -41,30 +44,55 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 			len(state.AlphaState.TransitionProblems) > 0 ||
 			len(state.BetaState.TransitionProblems) > 0
 		if haveProblems {
-			status += color.RedString("[Problems] ")
+			status += color.YellowString("[!] ")
 		}
 
 		// Add an error flag if there is one present.
 		if state.LastError != "" {
-			status += color.RedString("[Errored] ")
+			status += color.RedString("[X] ")
 		}
 
-		// Add the status.
-		status += state.Status.Description()
-
-		// If we're staging and have sane statistics, add them.
+		// Handle the formatting based on status. If we're in a staging mode,
+		// then extract the relevant progress information. Despite not having a
+		// built-in mechanism for knowing the total expected size of a staging
+		// operation, we do know the number of files that the staging operation
+		// is performing, so if that's equal to the number of files on the
+		// source endpoint, then we know that we can use the total file size on
+		// the source endpoint as an estimate for the total staging size.
 		var stagingProgress *rsync.ReceiverState
+		var totalExpectedSize uint64
 		if state.Status == synchronization.Status_StagingAlpha {
+			status += "Staging [←] "
 			stagingProgress = state.AlphaState.StagingProgress
+			if stagingProgress != nil && stagingProgress.ExpectedFiles == state.BetaState.FileCount {
+				totalExpectedSize = state.BetaState.TotalFileSize
+			}
 		} else if state.Status == synchronization.Status_StagingBeta {
+			status += "Staging [→] "
 			stagingProgress = state.BetaState.StagingProgress
+			if stagingProgress != nil && stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
+				totalExpectedSize = state.AlphaState.TotalFileSize
+			}
+		} else {
+			status += state.Status.Description()
 		}
+
+		// Print staging progress, if available.
 		if stagingProgress != nil {
-			status += fmt.Sprintf(
-				": %.0f%% (%d/%d)",
-				100.0*float32(stagingProgress.ReceivedFiles)/float32(stagingProgress.ExpectedFiles),
-				stagingProgress.ReceivedFiles,
-				stagingProgress.ExpectedFiles,
+			var fractionComplete float32
+			var totalSizeDenominator string
+			if totalExpectedSize != 0 {
+				fractionComplete = float32(stagingProgress.TotalReceivedSize) / float32(totalExpectedSize)
+				totalSizeDenominator = "/" + humanize.Bytes(totalExpectedSize)
+			} else {
+				fractionComplete = float32(stagingProgress.ReceivedFiles) / float32(stagingProgress.ExpectedFiles)
+			}
+			status += fmt.Sprintf("[%d/%d - %s%s - %.0f%%] %s (%s/%s)",
+				stagingProgress.ReceivedFiles, stagingProgress.ExpectedFiles,
+				humanize.Bytes(stagingProgress.TotalReceivedSize), totalSizeDenominator,
+				100.0*fractionComplete,
+				path.Base(stagingProgress.Path),
+				humanize.Bytes(stagingProgress.ReceivedSize), humanize.Bytes(stagingProgress.ExpectedSize),
 			)
 		}
 	}
