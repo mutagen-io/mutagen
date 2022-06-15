@@ -21,6 +21,16 @@ enum Status {
     ForwardingConnections = 3;
 }
 
+// EndpointState encodes the current state of a forwarding endpoint. It is
+// mutable within the context of the daemon, so it should be accessed and
+// modified in a synchronized fashion. Outside of the daemon (e.g. when returned
+// via the API), it should be considered immutable.
+message EndpointState {
+    // Connected indicates whether or not the controller is currently connected
+    // to the endpoint.
+    bool connected = 1;
+}
+
 // State encodes the current state of a forwarding session. It is mutable within
 // the context of the daemon, so it should be accessed and modified in a
 // synchronized fashion. Outside of the daemon (e.g. when returned via the API),
@@ -30,18 +40,18 @@ message State {
     Session session = 1;
     // Status is the status of the session.
     Status status = 2;
-    // SourceConnected indicates whether or not the source endpoint is
-    // connected.
-    bool sourceConnected = 3;
-    // DestinationConnected indicates whether or not the destination endpoint is
-    // connected.
-    bool destinationConnected = 4;
     // LastError indicates the last error that occurred during forwarding.
-    string lastError = 5;
+    string lastError = 3;
     // OpenConnections is the number of connections currently open and being
     // forwarded.
-    uint64 openConnections = 6;
+    uint64 openConnections = 4;
     // TotalConnections is the number of total connections that have been opened
     // and forwarded (including those that are currently open).
-    uint64 totalConnections = 7;
+    uint64 totalConnections = 5;
+    // SourceState encodes the state of the source endpoint. It is always
+    // non-nil.
+    EndpointState sourceState = 6;
+    // DestinationState encodes the state of the destination endpoint. It is
+    // always non-nil.
+    EndpointState destinationState = 7;
 }

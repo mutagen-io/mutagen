@@ -185,7 +185,9 @@ func newSession(
 		mergedSourceConfiguration:      mergedSourceConfiguration,
 		mergedDestinationConfiguration: mergedDestinationConfiguration,
 		state: &State{
-			Session: session,
+			Session:          session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		},
 	}
 
@@ -238,7 +240,9 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 			session.ConfigurationDestination,
 		),
 		state: &State{
-			Session: session,
+			Session:          session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		},
 	}
 
@@ -340,7 +344,7 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 		true,
 	)
 	c.stateLock.Lock()
-	c.state.SourceConnected = (source != nil)
+	c.state.SourceState.Connected = (source != nil)
 	c.stateLock.Unlock()
 
 	// Attempt to connect to destination.
@@ -358,7 +362,7 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 		false,
 	)
 	c.stateLock.Lock()
-	c.state.DestinationConnected = (destination != nil)
+	c.state.DestinationState.Connected = (destination != nil)
 	c.stateLock.Unlock()
 
 	// Start the forwarding loop with what we have. Source or destination may
@@ -493,7 +497,9 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// Reset the state.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session: c.session,
+			Session:          c.session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		}
 		c.stateLock.Unlock()
 
@@ -532,7 +538,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.SourceConnected = (source != nil)
+			c.state.SourceState.Connected = (source != nil)
 			if sourceConnectErr != nil {
 				c.state.LastError = fmt.Errorf("unable to connect to source: %w", sourceConnectErr).Error()
 			}
@@ -565,7 +571,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.DestinationConnected = (destination != nil)
+			c.state.DestinationState.Connected = (destination != nil)
 			if destinationConnectErr != nil {
 				c.state.LastError = fmt.Errorf("unable to connect to destination: %w", destinationConnectErr).Error()
 			}
@@ -656,8 +662,10 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// failure.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session:   c.session,
-			LastError: sessionErr.Error(),
+			Session:          c.session,
+			LastError:        sessionErr.Error(),
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		}
 		c.stateLock.Unlock()
 

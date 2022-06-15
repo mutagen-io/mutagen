@@ -38,16 +38,17 @@ type Session struct {
 	*State
 }
 
+// EndpointState encodes the current state of a forwarding endpoint.
+type EndpointState struct {
+	// Connected indicates whether or not the controller is currently connected
+	// to the endpoint.
+	Connected bool `json:"connected"`
+}
+
 // State encodes fields relevant to unpaused sessions.
 type State struct {
 	// Status is the session status.
 	Status forwarding.Status `json:"status"`
-	// SourceConnected indicates whether or not the source endpoint is
-	// connected.
-	SourceConnected bool `json:"sourceConnected"`
-	// DestinationConnected indicates whether or not the destination endpoint is
-	// connected.
-	DestinationConnected bool `json:"destinationConnected"`
 	// LastError is the last forwarding error to occur.
 	LastError string `json:"lastError,omitempty"`
 	// OpenConnections is the number of connections currently open and being
@@ -56,6 +57,10 @@ type State struct {
 	// TotalConnections is the number of total connections that have been opened
 	// and forwarded (including those that are currently open).
 	TotalConnections uint64 `json:"totalConnections"`
+	// SourceState encodes the state of the source endpoint.
+	SourceState EndpointState `json:"sourceState"`
+	// DestinationState encodes the state of the destination endpoint.
+	DestinationState EndpointState `json:"destinationState"`
 }
 
 // loadFromInternal sets a session to match an internal Protocol Buffers session
@@ -88,12 +93,16 @@ func (s *Session) loadFromInternal(state *forwarding.State) {
 		s.State = nil
 	} else {
 		s.State = &State{
-			Status:               state.Status,
-			SourceConnected:      state.SourceConnected,
-			DestinationConnected: state.DestinationConnected,
-			LastError:            state.LastError,
-			OpenConnections:      state.OpenConnections,
-			TotalConnections:     state.TotalConnections,
+			Status:           state.Status,
+			LastError:        state.LastError,
+			OpenConnections:  state.OpenConnections,
+			TotalConnections: state.TotalConnections,
+			SourceState: EndpointState{
+				Connected: state.SourceState.Connected,
+			},
+			DestinationState: EndpointState{
+				Connected: state.DestinationState.Connected,
+			},
 		}
 	}
 }

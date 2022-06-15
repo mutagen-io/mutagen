@@ -26,13 +26,13 @@ import (
 // formatConnectionStatus formats a connection status for display.
 func formatConnectionStatus(connected bool) string {
 	if connected {
-		return "Connected"
+		return "Yes"
 	}
-	return "Disconnected"
+	return "No"
 }
 
-// printEndpointStatus prints the status of a forwarding endpoint.
-func printEndpointStatus(name string, url *url.URL, connected bool) {
+// printEndpointState prints the state of a forwarding endpoint.
+func printEndpointState(name string, url *url.URL, state *forwarding.EndpointState) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -43,11 +43,11 @@ func printEndpointStatus(name string, url *url.URL, connected bool) {
 	}
 
 	// Print connection status.
-	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
+	fmt.Printf("\tConnected: %s\n", formatConnectionStatus(state.Connected))
 }
 
-// printSessionStatus prints the status of a forwarding session.
-func printSessionStatus(state *forwarding.State) {
+// printSessionState prints the state of a forwarding session.
+func printSessionState(state *forwarding.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
@@ -99,9 +99,9 @@ func ListWithSelection(
 			for _, state := range response.SessionStates {
 				fmt.Println(cmd.DelimiterLine)
 				printSession(state, long)
-				printEndpointStatus("Source", state.Session.Source, state.SourceConnected)
-				printEndpointStatus("Destination", state.Session.Destination, state.DestinationConnected)
-				printSessionStatus(state)
+				printEndpointState("Source", state.Session.Source, state.SourceState)
+				printEndpointState("Destination", state.Session.Destination, state.DestinationState)
+				printSessionState(state)
 			}
 			fmt.Println(cmd.DelimiterLine)
 		} else {
