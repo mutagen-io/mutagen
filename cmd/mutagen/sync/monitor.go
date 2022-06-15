@@ -53,7 +53,7 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		status += state.Status.Description()
 
 		// If we're staging and have sane statistics, add them.
-		var stagingProgress *rsync.ReceiverStatus
+		var stagingProgress *rsync.ReceiverState
 		if state.Status == synchronization.Status_StagingAlpha {
 			stagingProgress = state.AlphaState.StagingProgress
 		} else if state.Status == synchronization.Status_StagingBeta {
@@ -62,9 +62,9 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		if stagingProgress != nil {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
-				100.0*float32(stagingProgress.Received)/float32(stagingProgress.Total),
-				stagingProgress.Received,
-				stagingProgress.Total,
+				100.0*float32(stagingProgress.ReceivedFiles)/float32(stagingProgress.ExpectedFiles),
+				stagingProgress.ReceivedFiles,
+				stagingProgress.ExpectedFiles,
 			)
 		}
 	}

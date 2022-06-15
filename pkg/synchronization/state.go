@@ -170,7 +170,7 @@ func (s *EndpointState) copy() *EndpointState {
 		ExcludedScanProblems:       s.ExcludedScanProblems,
 		TransitionProblems:         s.TransitionProblems,
 		ExcludedTransitionProblems: s.ExcludedTransitionProblems,
-		StagingProgress:            s.StagingProgress,
+		StagingProgress:            s.StagingProgress.Copy(),
 	}
 }
 

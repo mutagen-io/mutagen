@@ -94,7 +94,7 @@ message EndpointState {
     uint64 excludedTransitionProblems = 9;
     // StagingProgress is the rsync staging progress. It is non-nil if and only
     // if the endpoint is currently staging files.
-    rsync.ReceiverStatus stagingProgress = 10;
+    rsync.ReceiverState stagingProgress = 10;
 }
 
 // State encodes the current state of a synchronization session. It is mutable

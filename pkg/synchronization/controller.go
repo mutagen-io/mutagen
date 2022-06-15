@@ -1232,13 +1232,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				c.logger.Debugf("Alpha pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
-				monitor := func(status *rsync.ReceiverStatus) error {
+				monitor := func(state *rsync.ReceiverState) error {
 					c.stateLock.Lock()
-					c.state.AlphaState.StagingProgress = status
+					if state == nil {
+						c.state.AlphaState.StagingProgress = nil
+					} else {
+						if c.state.AlphaState.StagingProgress == nil {
+							c.state.AlphaState.StagingProgress = &rsync.ReceiverState{}
+						}
+						c.state.AlphaState.StagingProgress.SetFrom(state)
+					}
 					c.stateLock.Unlock()
 					return nil
 				}
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on alpha: %w", err)
@@ -1263,13 +1270,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				c.logger.Debugf("Beta pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
-				monitor := func(status *rsync.ReceiverStatus) error {
+				monitor := func(state *rsync.ReceiverState) error {
 					c.stateLock.Lock()
-					c.state.BetaState.StagingProgress = status
+					if state == nil {
+						c.state.BetaState.StagingProgress = nil
+					} else {
+						if c.state.BetaState.StagingProgress == nil {
+							c.state.BetaState.StagingProgress = &rsync.ReceiverState{}
+						}
+						c.state.BetaState.StagingProgress.SetFrom(state)
+					}
 					c.stateLock.Unlock()
 					return nil
 				}
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on beta: %w", err)

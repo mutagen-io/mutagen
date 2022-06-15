@@ -10,23 +10,51 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
-// EnsureValid ensures that ReceiverStatus' invariants are respected.
-func (s *ReceiverStatus) EnsureValid() error {
-	// A nil receiver status is valid - it just represents not currently
-	// receiving.
+// EnsureValid ensures that ReceiverState's invariants are respected.
+func (s *ReceiverState) EnsureValid() error {
+	// A nil receiver state is valid.
 	if s == nil {
 		return nil
 	}
 
-	// Sanity check counts. Any conditions here should be caught by error
-	// handling in the receivers and not passed back to any monitoring
-	// callbacks.
-	if s.Received > s.Total {
-		return errors.New("receiver status indicates too many files received")
+	// We intentionally avoid sanity checking the received byte count for a
+	// particular path because the expected byte count is merely an estimate;
+	// the actual transmission of the file is always susceptible to concurrent
+	// modifications which may yield more bytes transmitted than expected.
+
+	// Sanity check path counts.
+	if s.ReceivedFiles > s.ExpectedFiles {
+		return errors.New("too many files received")
 	}
 
 	// Success.
 	return nil
+}
+
+// Copy creates a copy of a ReceiverState.
+func (s *ReceiverState) Copy() *ReceiverState {
+	// The copy of a nil receiver state is just another nil receiver state.
+	if s == nil {
+		return nil
+	}
+
+	// Create the new receiver state and propagate the existing state's values.
+	result := &ReceiverState{}
+	result.SetFrom(s)
+	return result
+}
+
+// SetFrom propagates field values from state to s. It is designed for use by
+// Monitor implementations. Both s and state must be non-nil.
+func (s *ReceiverState) SetFrom(state *ReceiverState) {
+	// Propagate fields. We avoid using a dereferencing assignment because
+	// Protocol Buffers types have internal fields that we don't want to copy.
+	s.Path = state.Path
+	s.ReceivedSize = state.ReceivedSize
+	s.ExpectedSize = state.ExpectedSize
+	s.ReceivedFiles = state.ReceivedFiles
+	s.ExpectedFiles = state.ExpectedFiles
+	s.TotalReceivedSize = state.TotalReceivedSize
 }
 
 // Receiver manages the streaming reception of multiple files. It should be used
@@ -250,19 +278,13 @@ func (r *receiver) finalize() error {
 	return nil
 }
 
-// Monitor is the interface that monitors must implement to capture status
-// information from a monitoring receiver. The status object provided to this
-// function will be freshly allocated on each update and can be stored by the
-// monitoring callback and treated as immutable. When the monitoring receiver is
-// finalized, the Monitor callback will receive a nil value.
-//
-// There's no point in attempting to re-use the status object because (a) it
-// would be complicated, (b) the callback would most likely just copy it anyway
-// if forced to by the API, and (c) it will only be allocated once per received
-// file, so the per-file allocations are already significantly higher. For all
-// of these reasons, we just document that ReceiverStatus objects should be
-// treated as immutable and allocate a new one on each monitoring callback.
-type Monitor func(*ReceiverStatus) error
+// Monitor is the interface that monitors must implement to capture state
+// information from a monitoring receiver. The state object provided to this
+// function must not be modified or retained. Implementations may wish to use
+// ReceiverState.SetFrom to propagate values from the received state to a
+// separate instance. When the monitoring receiver is finalized, the Monitor
+// callback will receive a nil state value.
+type Monitor func(*ReceiverState) error
 
 // monitoringReceiver is a Receiver implementation that can invoke a callback
 // with information about the status of transmission.
@@ -271,82 +293,95 @@ type monitoringReceiver struct {
 	receiver Receiver
 	// paths is the list of paths the receiver is expecting.
 	paths []string
-	// received is the number of paths received so far.
-	received uint64
-	// total is the total number of files to receive (the number of paths).
-	total uint64
-	// beginning inidicates whether or not we're at the beginning of the message
-	// stream (i.e. that no status updates have yet been sent).
-	beginning bool
+	// signatures are the signatures corresponding to paths.
+	signatures []*Signature
 	// monitor is the monitoring callback.
 	monitor Monitor
+	// startOfFile tracks whether or not the next transmission in the stream is
+	// expected to coincide with the start of a new file.
+	startOfFile bool
+	// state is the current receiver state.
+	state *ReceiverState
 }
 
 // NewMonitoringReceiver wraps a receiver and provides monitoring information
 // via a callback.
-func NewMonitoringReceiver(receiver Receiver, paths []string, monitor Monitor) Receiver {
+func NewMonitoringReceiver(receiver Receiver, paths []string, signatures []*Signature, monitor Monitor) Receiver {
+	// Verify that the path and signature counts match.
+	if len(paths) != len(signatures) {
+		panic("path count does not match signature count")
+	}
+
+	// Create the receiver.
 	return &monitoringReceiver{
-		receiver:  receiver,
-		paths:     paths,
-		total:     uint64(len(paths)),
-		beginning: true,
-		monitor:   monitor,
+		receiver:    receiver,
+		paths:       paths,
+		signatures:  signatures,
+		monitor:     monitor,
+		startOfFile: true,
+		state: &ReceiverState{
+			ExpectedFiles: uint64(len(paths)),
+		},
 	}
 }
 
 // Receive forwards messages to its underlying receiver and performs status
 // updates by invoking the specified monitor.
 func (r *monitoringReceiver) Receive(transmission *Transmission) error {
+	// Make sure that we're not seeing a transmission after receiving all files.
+	// If we are, then it's a terminal error.
+	if r.state.ReceivedFiles == r.state.ExpectedFiles {
+		return errors.New("unexpected file transmission")
+	}
+
 	// Forward the transmission to the underlying receiver.
 	if err := r.receiver.Receive(transmission); err != nil {
 		return err
 	}
 
-	// Make sure that we're not seeing a transmission after receiving all files.
-	// If we are, it's a terminal error.
-	if r.received == r.total {
-		return errors.New("unexpected file transmission")
+	// If we're at the start of a new file, then compute the path and reset the
+	// per-file statistics.
+	if r.startOfFile {
+		r.state.Path = r.paths[r.state.ReceivedFiles]
+		r.state.ReceivedSize = 0
+		r.state.ExpectedSize = transmission.ExpectedSize
 	}
 
-	// Track whether or not we need to send a status update.
-	sendStatusUpdate := false
-
-	// If we're at the start of the stream, i.e. we haven't sent any status
-	// updates yet, then we should send an update so that some status
-	// information comes through before the first file is finished.
-	if r.beginning {
-		r.beginning = false
-		sendStatusUpdate = true
+	// Compute the amount of data contained in this transmission.
+	var dataSize uint64
+	if !transmission.Done {
+		if d := len(transmission.Operation.Data); d > 0 {
+			dataSize = uint64(d)
+		} else {
+			signature := r.signatures[r.state.ReceivedFiles]
+			if transmission.Operation.Start+transmission.Operation.Count == uint64(len(signature.Hashes)) {
+				dataSize += (transmission.Operation.Count - 1) * signature.BlockSize
+				dataSize += signature.LastBlockSize
+			} else {
+				dataSize += transmission.Operation.Count * signature.BlockSize
+			}
+		}
 	}
 
-	// If we're at the end of a file stream, update the receive count and ensure
-	// that we send a status update.
+	// Update received data statistics.
+	r.state.ReceivedSize += dataSize
+	r.state.TotalReceivedSize += dataSize
+
+	// Provide the updated state to the monitor if relevant.
+	if !transmission.Done || r.startOfFile {
+		if err := r.monitor(r.state); err != nil {
+			return fmt.Errorf("unable to send receiver state: %w", err)
+		}
+	}
+
+	// If we're at the end of transmissions for the current file, then update
+	// the received file count.
 	if transmission.Done {
-		r.received++
-		sendStatusUpdate = true
+		r.state.ReceivedFiles++
 	}
 
-	// Send a status update if necessary.
-	if sendStatusUpdate {
-		// Compute the path. We know that received <= total due to our check
-		// above. If received == total, we use an empty string, since all paths
-		// have been received, otherwise we use the path currently being
-		// received.
-		var path string
-		if r.received < r.total {
-			path = r.paths[r.received]
-		}
-
-		// Send the status.
-		status := &ReceiverStatus{
-			Path:     path,
-			Received: r.received,
-			Total:    r.total,
-		}
-		if err := r.monitor(status); err != nil {
-			return fmt.Errorf("unable to send receiving status: %w", err)
-		}
-	}
+	// Update stream position tracking.
+	r.startOfFile = transmission.Done
 
 	// Success.
 	return nil

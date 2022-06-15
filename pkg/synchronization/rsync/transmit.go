@@ -3,9 +3,24 @@ package rsync
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
+
+// seekerLength computes the length of a stream supporting io.Seeker. The stream
+// will be rewound to its starting position.
+func seekerLength(seeker io.Seeker) (uint64, error) {
+	length, err := seeker.Seek(0, io.SeekEnd)
+	if err != nil {
+		return 0, fmt.Errorf("unable to seek to end of stream: %w", err)
+	}
+	_, err = seeker.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, fmt.Errorf("unable to seek to start of stream: %w", err)
+	}
+	return uint64(length), nil
+}
 
 // Transmit performs streaming transmission of files (in rsync deltified form)
 // to the specified receiver. It is the responsibility of the caller to ensure
@@ -48,14 +63,34 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			continue
 		}
 
+		// Compute the file length.
+		// TODO: This doesn't seem like the most performant way to compute the
+		// stream length, but trying to weave stat information up through
+		// filesystem.Opener or filesystem.File seems tedious. In any case, this
+		// doesn't seem to have any visible impact on performance, but it feels
+		// ugly and it would be nicer if we could avoid seek-based computation.
+		fileSize, err := seekerLength(file)
+		if err != nil {
+			*transmission = Transmission{
+				Done:  true,
+				Error: fmt.Errorf("unable to determine file length: %w", err).Error(),
+			}
+			if err = receiver.Receive(transmission); err != nil {
+				receiver.finalize()
+				return fmt.Errorf("unable to send error transmission: %w", err)
+			}
+			continue
+		}
+
 		// Create an operation transmitter for deltification and track reception
 		// errors. We can safely set transmitError on each call because as soon
 		// as it's returned non-nil, the transmit function won't be called
 		// again.
 		var transmitError error
 		transmit := func(o *Operation) error {
-			*transmission = Transmission{Operation: o}
+			*transmission = Transmission{ExpectedSize: fileSize, Operation: o}
 			transmitError = receiver.Receive(transmission)
+			fileSize = 0
 			return transmitError
 		}
 

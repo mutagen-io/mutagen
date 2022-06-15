@@ -76,7 +76,7 @@ type EndpointState struct {
 	ExcludedTransitionProblems uint64 `json:"excludedTransitionProblems,omitempty"`
 	// StagingProgress is the rsync staging progress. It is non-nil if and only
 	// if the endpoint is currently staging files.
-	StagingProgress *ReceiverStatus `json:"stagingProgress,omitempty"`
+	StagingProgress *ReceiverState `json:"stagingProgress,omitempty"`
 }
 
 // State encodes fields relevant to unpaused sessions.
@@ -147,7 +147,7 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 				ExcludedScanProblems:       state.AlphaState.ExcludedScanProblems,
 				TransitionProblems:         exportProblems(state.AlphaState.TransitionProblems),
 				ExcludedTransitionProblems: state.AlphaState.ExcludedTransitionProblems,
-				StagingProgress:            newReceiverStatusFromInternalReceiverStatus(state.AlphaState.StagingProgress),
+				StagingProgress:            newReceiverStateFromInternalReceiverState(state.AlphaState.StagingProgress),
 			},
 			BetaState: EndpointState{
 				Connected:                  state.BetaState.Connected,
@@ -159,7 +159,7 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 				ExcludedScanProblems:       state.BetaState.ExcludedScanProblems,
 				TransitionProblems:         exportProblems(state.BetaState.TransitionProblems),
 				ExcludedTransitionProblems: state.BetaState.ExcludedTransitionProblems,
-				StagingProgress:            newReceiverStatusFromInternalReceiverStatus(state.BetaState.StagingProgress),
+				StagingProgress:            newReceiverStateFromInternalReceiverState(state.BetaState.StagingProgress),
 			},
 		}
 	}
