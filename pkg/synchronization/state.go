@@ -79,6 +79,47 @@ func (s Status) MarshalText() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// ensureValid ensures that EndpointState's invariants are respected.
+func (s *EndpointState) ensureValid() error {
+	// A nil endpoint state is not valid.
+	if s == nil {
+		return errors.New("nil state")
+	}
+
+	// We could perform additional validation based on the session status and
+	// the endpoint connectivity, but it would be prohibitively complex, and all
+	// we're really concerned about here is memory safety and other structural
+	// invariants.
+
+	// Ensure that all scan problems are valid and truncation is sane.
+	for _, p := range s.ScanProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid scan problem detected: %w", err)
+		}
+	}
+	if s.ExcludedScanProblems > 0 && len(s.ScanProblems) == 0 {
+		return errors.New("excluded scan problems reported with no scan problems reported")
+	}
+
+	// Ensure that all transition problems are valid and truncation is sane.
+	for _, p := range s.TransitionProblems {
+		if err := p.EnsureValid(); err != nil {
+			return fmt.Errorf("invalid transition problem detected: %w", err)
+		}
+	}
+	if s.ExcludedTransitionProblems > 0 && len(s.TransitionProblems) == 0 {
+		return errors.New("excluded transition problems reported with no transition problems reported")
+	}
+
+	// Ensure that staging progress is valid.
+	if err := s.StagingProgress.EnsureValid(); err != nil {
+		return fmt.Errorf("invalid staging progress: %w", err)
+	}
+
+	// Success.
+	return nil
+}
+
 // EnsureValid ensures that State's invariants are respected.
 func (s *State) EnsureValid() error {
 	// A nil state is not valid.
@@ -86,93 +127,63 @@ func (s *State) EnsureValid() error {
 		return errors.New("nil state")
 	}
 
-	// We intentionally don't validate the status because we'd have to maintain
-	// a pretty large conditional or data structure and we only use it for
-	// display anyway, where it'll just render as "Unknown" or similar if it's
-	// not valid.
+	// We could perform additional validation based on the session status, but
+	// it would be prohibitively complex, and all we're really concerned about
+	// here is memory safety and other structural invariants.
 
 	// Ensure the session is valid.
 	if err := s.Session.EnsureValid(); err != nil {
 		return fmt.Errorf("invalid session: %w", err)
 	}
 
-	// Ensure the staging status is valid.
-	if err := s.StagingStatus.EnsureValid(); err != nil {
-		return fmt.Errorf("invalid staging status: %w", err)
-	}
-
-	// Ensure that all of alpha's scan problem are valid.
-	for _, p := range s.AlphaScanProblems {
-		if err := p.EnsureValid(); err != nil {
-			return fmt.Errorf("invalid alpha scan problem detected: %w", err)
-		}
-	}
-
-	// Ensure that all of beta's scan problem are valid.
-	for _, p := range s.BetaScanProblems {
-		if err := p.EnsureValid(); err != nil {
-			return fmt.Errorf("invalid beta scan problem detected: %w", err)
-		}
-	}
-
-	// Ensure that all conflicts are valid.
+	// Ensure that all conflicts are valid and truncation is sane.
 	for _, c := range s.Conflicts {
 		if err := c.EnsureValid(); err != nil {
 			return fmt.Errorf("invalid conflict detected: %w", err)
 		}
 	}
-
-	// Ensure that all of alpha's transition problem are valid.
-	for _, p := range s.AlphaTransitionProblems {
-		if err := p.EnsureValid(); err != nil {
-			return fmt.Errorf("invalid alpha transition problem detected: %w", err)
-		}
-	}
-
-	// Ensure that all of beta's transition problem are valid.
-	for _, p := range s.BetaTransitionProblems {
-		if err := p.EnsureValid(); err != nil {
-			return fmt.Errorf("invalid beta transition problem detected: %w", err)
-		}
-	}
-
-	// Ensure that problem and conflict list truncations have only occurred in
-	// cases where the corresponding list(s) are non-empty.
-	if s.ExcludedAlphaScanProblems > 0 && len(s.AlphaScanProblems) == 0 {
-		return errors.New("excluded alpha scan problems reported with no alpha scan problems reported")
-	} else if s.ExcludedBetaScanProblems > 0 && len(s.BetaScanProblems) == 0 {
-		return errors.New("excluded beta scan problems reported with no beta scan problems reported")
-	} else if s.ExcludedConflicts > 0 && len(s.Conflicts) == 0 {
+	if s.ExcludedConflicts > 0 && len(s.Conflicts) == 0 {
 		return errors.New("excluded conflicts reported with no conflicts reported")
-	} else if s.ExcludedAlphaTransitionProblems > 0 && len(s.AlphaTransitionProblems) == 0 {
-		return errors.New("excluded alpha transition problems reported with no alpha transition problems reported")
-	} else if s.ExcludedBetaTransitionProblems > 0 && len(s.BetaTransitionProblems) == 0 {
-		return errors.New("excluded beta transition problems reported with no beta transition problems reported")
+	}
+
+	// Ensure that endpoint states are valid.
+	if err := s.AlphaState.ensureValid(); err != nil {
+		return fmt.Errorf("invalid alpha endpoint state: %w", err)
+	} else if err = s.BetaState.ensureValid(); err != nil {
+		return fmt.Errorf("invalid beta endpoint state: %w", err)
 	}
 
 	// Success.
 	return nil
 }
 
-// copy creates a shallow copy of the state, deep-copying any mutable members.
+// copy creates a shallow copy of an endpoint state, deep-copying any mutable
+// members.
+func (s *EndpointState) copy() *EndpointState {
+	return &EndpointState{
+		Connected:                  s.Connected,
+		DirectoryCount:             s.DirectoryCount,
+		FileCount:                  s.FileCount,
+		SymbolicLinkCount:          s.SymbolicLinkCount,
+		TotalFileSize:              s.TotalFileSize,
+		ScanProblems:               s.ScanProblems,
+		ExcludedScanProblems:       s.ExcludedScanProblems,
+		TransitionProblems:         s.TransitionProblems,
+		ExcludedTransitionProblems: s.ExcludedTransitionProblems,
+		StagingProgress:            s.StagingProgress,
+	}
+}
+
+// copy creates a shallow copy of a state, deep-copying any mutable members.
 func (s *State) copy() *State {
 	return &State{
-		Session:                         s.Session.copy(),
-		Status:                          s.Status,
-		AlphaConnected:                  s.AlphaConnected,
-		BetaConnected:                   s.BetaConnected,
-		LastError:                       s.LastError,
-		SuccessfulCycles:                s.SuccessfulCycles,
-		StagingStatus:                   s.StagingStatus,
-		AlphaScanProblems:               s.AlphaScanProblems,
-		ExcludedAlphaScanProblems:       s.ExcludedAlphaScanProblems,
-		BetaScanProblems:                s.BetaScanProblems,
-		ExcludedBetaScanProblems:        s.ExcludedBetaScanProblems,
-		Conflicts:                       s.Conflicts,
-		ExcludedConflicts:               s.ExcludedConflicts,
-		AlphaTransitionProblems:         s.AlphaTransitionProblems,
-		ExcludedAlphaTransitionProblems: s.ExcludedAlphaTransitionProblems,
-		BetaTransitionProblems:          s.BetaTransitionProblems,
-		ExcludedBetaTransitionProblems:  s.ExcludedBetaTransitionProblems,
+		Session:           s.Session.copy(),
+		Status:            s.Status,
+		LastError:         s.LastError,
+		SuccessfulCycles:  s.SuccessfulCycles,
+		Conflicts:         s.Conflicts,
+		ExcludedConflicts: s.ExcludedConflicts,
+		AlphaState:        s.AlphaState.copy(),
+		BetaState:         s.BetaState.copy(),
 	}
 }

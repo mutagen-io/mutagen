@@ -19,6 +19,7 @@ import (
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 // computeMonitorStatusLine constructs a monitoring status line for a
@@ -35,10 +36,10 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		}
 
 		// Add a problems flag if there are problems.
-		haveProblems := len(state.AlphaScanProblems) > 0 ||
-			len(state.BetaScanProblems) > 0 ||
-			len(state.AlphaTransitionProblems) > 0 ||
-			len(state.BetaTransitionProblems) > 0
+		haveProblems := len(state.AlphaState.ScanProblems) > 0 ||
+			len(state.BetaState.ScanProblems) > 0 ||
+			len(state.AlphaState.TransitionProblems) > 0 ||
+			len(state.BetaState.TransitionProblems) > 0
 		if haveProblems {
 			status += color.RedString("[Problems] ")
 		}
@@ -52,14 +53,18 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		status += state.Status.Description()
 
 		// If we're staging and have sane statistics, add them.
-		if (state.Status == synchronization.Status_StagingAlpha ||
-			state.Status == synchronization.Status_StagingBeta) &&
-			state.StagingStatus != nil {
+		var stagingProgress *rsync.ReceiverStatus
+		if state.Status == synchronization.Status_StagingAlpha {
+			stagingProgress = state.AlphaState.StagingProgress
+		} else if state.Status == synchronization.Status_StagingBeta {
+			stagingProgress = state.BetaState.StagingProgress
+		}
+		if stagingProgress != nil {
 			status += fmt.Sprintf(
 				": %.0f%% (%d/%d)",
-				100.0*float32(state.StagingStatus.Received)/float32(state.StagingStatus.Total),
-				state.StagingStatus.Received,
-				state.StagingStatus.Total,
+				100.0*float32(stagingProgress.Received)/float32(stagingProgress.Total),
+				stagingProgress.Received,
+				stagingProgress.Total,
 			)
 		}
 	}

@@ -40,11 +40,11 @@ func waitForSuccessfulSynchronizationCycle(ctx context.Context, sessionID string
 		} else if len(states) != 1 {
 			return errors.New("invalid number of session states returned")
 		} else if states[0].SuccessfulCycles > 0 {
-			if !allowScanProblems && (len(states[0].AlphaScanProblems) > 0 || len(states[0].BetaScanProblems) > 0) {
+			if !allowScanProblems && (len(states[0].AlphaState.ScanProblems) > 0 || len(states[0].BetaState.ScanProblems) > 0) {
 				return errors.New("scan problems detected (and disallowed)")
 			} else if !allowConflicts && len(states[0].Conflicts) > 0 {
 				return errors.New("conflicts detected (and disallowed)")
-			} else if !allowTransitionProblems && (len(states[0].AlphaTransitionProblems) > 0 || len(states[0].BetaTransitionProblems) > 0) {
+			} else if !allowTransitionProblems && (len(states[0].AlphaState.TransitionProblems) > 0 || len(states[0].BetaState.TransitionProblems) > 0) {
 				return errors.New("transition problems detected (and disallowed)")
 			}
 			return nil

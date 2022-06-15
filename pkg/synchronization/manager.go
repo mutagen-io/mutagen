@@ -288,22 +288,6 @@ func (m *Manager) List(_ context.Context, selection *selection.Selection, previo
 		// Create the state snapshot.
 		state := controller.currentState()
 
-		// Sort and (potentially) truncate alpha scan problems.
-		state.AlphaScanProblems = core.CopyProblems(state.AlphaScanProblems)
-		core.SortProblems(state.AlphaScanProblems)
-		if len(state.AlphaScanProblems) > maximumListScanProblems {
-			state.ExcludedAlphaScanProblems = uint64(len(state.AlphaScanProblems) - maximumListScanProblems)
-			state.AlphaScanProblems = state.AlphaScanProblems[:maximumListScanProblems]
-		}
-
-		// Sort and (potentially) truncate beta scan problems.
-		state.BetaScanProblems = core.CopyProblems(state.BetaScanProblems)
-		core.SortProblems(state.BetaScanProblems)
-		if len(state.BetaScanProblems) > maximumListScanProblems {
-			state.ExcludedBetaScanProblems = uint64(len(state.BetaScanProblems) - maximumListScanProblems)
-			state.BetaScanProblems = state.BetaScanProblems[:maximumListScanProblems]
-		}
-
 		// Sort and (potentially) truncate conflicts, then convert them to their
 		// slim representations.
 		state.Conflicts = core.CopyConflicts(state.Conflicts)
@@ -316,20 +300,36 @@ func (m *Manager) List(_ context.Context, selection *selection.Selection, previo
 			state.Conflicts[c] = conflict.Slim()
 		}
 
-		// Sort and (potentially) truncate alpha transition problems.
-		state.AlphaTransitionProblems = core.CopyProblems(state.AlphaTransitionProblems)
-		core.SortProblems(state.AlphaTransitionProblems)
-		if len(state.AlphaTransitionProblems) > maximumListTransitionProblems {
-			state.ExcludedAlphaTransitionProblems = uint64(len(state.AlphaTransitionProblems) - maximumListTransitionProblems)
-			state.AlphaTransitionProblems = state.AlphaTransitionProblems[:maximumListTransitionProblems]
+		// Sort and (potentially) truncate alpha scan problems.
+		state.AlphaState.ScanProblems = core.CopyProblems(state.AlphaState.ScanProblems)
+		core.SortProblems(state.AlphaState.ScanProblems)
+		if len(state.AlphaState.ScanProblems) > maximumListScanProblems {
+			state.AlphaState.ExcludedScanProblems = uint64(len(state.AlphaState.ScanProblems) - maximumListScanProblems)
+			state.AlphaState.ScanProblems = state.AlphaState.ScanProblems[:maximumListScanProblems]
 		}
 
-		// Sort and (potentially) truncate beta transition problems.
-		state.BetaTransitionProblems = core.CopyProblems(state.BetaTransitionProblems)
-		core.SortProblems(state.BetaTransitionProblems)
-		if len(state.BetaTransitionProblems) > maximumListTransitionProblems {
-			state.ExcludedBetaTransitionProblems = uint64(len(state.BetaTransitionProblems) - maximumListTransitionProblems)
-			state.BetaTransitionProblems = state.BetaTransitionProblems[:maximumListTransitionProblems]
+		// Sort and (potentially) truncate alpha transition problems.
+		state.AlphaState.TransitionProblems = core.CopyProblems(state.AlphaState.TransitionProblems)
+		core.SortProblems(state.AlphaState.TransitionProblems)
+		if len(state.AlphaState.TransitionProblems) > maximumListTransitionProblems {
+			state.AlphaState.ExcludedTransitionProblems = uint64(len(state.AlphaState.TransitionProblems) - maximumListTransitionProblems)
+			state.AlphaState.TransitionProblems = state.AlphaState.TransitionProblems[:maximumListTransitionProblems]
+		}
+
+		// Sort and (potentially) truncate alpha scan problems.
+		state.BetaState.ScanProblems = core.CopyProblems(state.BetaState.ScanProblems)
+		core.SortProblems(state.BetaState.ScanProblems)
+		if len(state.BetaState.ScanProblems) > maximumListScanProblems {
+			state.BetaState.ExcludedScanProblems = uint64(len(state.BetaState.ScanProblems) - maximumListScanProblems)
+			state.BetaState.ScanProblems = state.BetaState.ScanProblems[:maximumListScanProblems]
+		}
+
+		// Sort and (potentially) truncate alpha transition problems.
+		state.BetaState.TransitionProblems = core.CopyProblems(state.BetaState.TransitionProblems)
+		core.SortProblems(state.BetaState.TransitionProblems)
+		if len(state.BetaState.TransitionProblems) > maximumListTransitionProblems {
+			state.BetaState.ExcludedTransitionProblems = uint64(len(state.BetaState.TransitionProblems) - maximumListTransitionProblems)
+			state.BetaState.TransitionProblems = state.BetaState.TransitionProblems[:maximumListTransitionProblems]
 		}
 
 		// Store the state snapshot.

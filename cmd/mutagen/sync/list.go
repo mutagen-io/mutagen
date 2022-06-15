@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/fatih/color"
 
 	"google.golang.org/grpc"
@@ -35,17 +37,13 @@ func formatPath(path string) string {
 // formatConnectionStatus formats a connection status for display.
 func formatConnectionStatus(connected bool) string {
 	if connected {
-		return "Connected"
+		return "Yes"
 	}
-	return "Disconnected"
+	return "No"
 }
 
-// printEndpointStatus prints the status of a synchronization endpoint.
-func printEndpointStatus(
-	name string, url *url.URL, connected bool,
-	scanProblems []*core.Problem, excludedScanProblems uint64,
-	transitionProblems []*core.Problem, excludedTransitionProblems uint64,
-) {
+// printEndpointState prints the state of a synchronization endpoint.
+func printEndpointState(name string, url *url.URL, state *synchronization.EndpointState) {
 	// Print header.
 	fmt.Printf("%s:\n", name)
 
@@ -56,33 +54,39 @@ func printEndpointStatus(
 	}
 
 	// Print connection status.
-	fmt.Printf("\tConnection state: %s\n", formatConnectionStatus(connected))
+	fmt.Printf("\tConnected: %s\n", formatConnectionStatus(state.Connected))
+
+	// Print statistics.
+	fmt.Printf("\tDirectories: %d\n", state.DirectoryCount)
+	fmt.Printf("\tFiles: %d\n", state.FileCount)
+	fmt.Printf("\tSymbolic links: %d\n", state.SymbolicLinkCount)
+	fmt.Println("\tTotal file size:", humanize.Bytes(state.TotalFileSize))
 
 	// Print scan problems, if any.
-	if len(scanProblems) > 0 {
+	if len(state.ScanProblems) > 0 {
 		color.Red("\tScan problems:\n")
-		for _, p := range scanProblems {
+		for _, p := range state.ScanProblems {
 			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
 		}
-		if excludedScanProblems > 0 {
-			color.Red(fmt.Sprintf("\t\t...+%d more...\n", excludedScanProblems))
+		if state.ExcludedScanProblems > 0 {
+			color.Red(fmt.Sprintf("\t\t...+%d more...\n", state.ExcludedScanProblems))
 		}
 	}
 
 	// Print transition problems, if any.
-	if len(transitionProblems) > 0 {
+	if len(state.TransitionProblems) > 0 {
 		color.Red("\tTransition problems:\n")
-		for _, p := range transitionProblems {
+		for _, p := range state.TransitionProblems {
 			color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
 		}
-		if excludedTransitionProblems > 0 {
-			color.Red(fmt.Sprintf("\t\t...+%d more...\n", excludedTransitionProblems))
+		if state.ExcludedTransitionProblems > 0 {
+			color.Red(fmt.Sprintf("\t\t...+%d more...\n", state.ExcludedTransitionProblems))
 		}
 	}
 }
 
-// printSessionStatus prints the status of a synchronization session.
-func printSessionStatus(state *synchronization.State) {
+// printSessionState prints the state of a synchronization session.
+func printSessionState(state *synchronization.State) {
 	// Print status.
 	statusString := state.Status.Description()
 	if state.Session.Paused {
@@ -195,17 +199,9 @@ func ListWithSelection(
 			for _, state := range response.SessionStates {
 				fmt.Println(cmd.DelimiterLine)
 				printSession(state, long)
-				printEndpointStatus(
-					"Alpha", state.Session.Alpha, state.AlphaConnected,
-					state.AlphaScanProblems, state.ExcludedAlphaScanProblems,
-					state.AlphaTransitionProblems, state.ExcludedAlphaTransitionProblems,
-				)
-				printEndpointStatus(
-					"Beta", state.Session.Beta, state.BetaConnected,
-					state.BetaScanProblems, state.ExcludedBetaScanProblems,
-					state.BetaTransitionProblems, state.ExcludedBetaTransitionProblems,
-				)
-				printSessionStatus(state)
+				printEndpointState("Alpha", state.Session.Alpha, state.AlphaState)
+				printEndpointState("Beta", state.Session.Beta, state.BetaState)
+				printSessionState(state)
 				if len(state.Conflicts) > 0 {
 					printConflicts(state.Conflicts, state.ExcludedConflicts)
 				}

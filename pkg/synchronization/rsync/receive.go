@@ -253,13 +253,15 @@ func (r *receiver) finalize() error {
 // Monitor is the interface that monitors must implement to capture status
 // information from a monitoring receiver. The status object provided to this
 // function will be freshly allocated on each update and can be stored by the
-// monitoring callback and treated as immutable. There's no point in attempting
-// to re-use the status object because (a) it would be complicated, (b) the
-// callback would most likely just copy it anyway, and (c) it will only be
-// allocated once per received file, so the per-file allocations are already
-// significantly higher. For all of these reasons, we just document that
-// ReceiverStatus objects should be treated as immutable and allocate a new one
-// on each monitoring callback.
+// monitoring callback and treated as immutable. When the monitoring receiver is
+// finalized, the Monitor callback will receive a nil value.
+//
+// There's no point in attempting to re-use the status object because (a) it
+// would be complicated, (b) the callback would most likely just copy it anyway
+// if forced to by the API, and (c) it will only be allocated once per received
+// file, so the per-file allocations are already significantly higher. For all
+// of these reasons, we just document that ReceiverStatus objects should be
+// treated as immutable and allocate a new one on each monitoring callback.
 type Monitor func(*ReceiverStatus) error
 
 // monitoringReceiver is a Receiver implementation that can invoke a callback
