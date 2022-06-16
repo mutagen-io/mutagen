@@ -77,23 +77,3 @@ func (s *Session) EnsureValid() error {
 	// Success.
 	return nil
 }
-
-// copy creates a static copy of the session, deep-copying any mutable members.
-func (s *Session) copy() *Session {
-	return &Session{
-		Identifier:               s.Identifier,
-		Version:                  s.Version,
-		CreationTime:             s.CreationTime,
-		CreatingVersionMajor:     s.CreatingVersionMajor,
-		CreatingVersionMinor:     s.CreatingVersionMinor,
-		CreatingVersionPatch:     s.CreatingVersionPatch,
-		Source:                   s.Source,
-		Destination:              s.Destination,
-		Configuration:            s.Configuration,
-		ConfigurationSource:      s.ConfigurationSource,
-		ConfigurationDestination: s.ConfigurationDestination,
-		Name:                     s.Name,
-		Labels:                   s.Labels,
-		Paused:                   s.Paused,
-	}
-}

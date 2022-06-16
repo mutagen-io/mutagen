@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -268,7 +269,7 @@ func (c *controller) currentState() *State {
 	defer c.stateLock.UnlockWithoutNotify()
 
 	// Create a static copy of the state.
-	return c.state.copy()
+	return proto.Clone(c.state).(*State)
 }
 
 // resume attempts to reconnect and resume the session if it isn't currently

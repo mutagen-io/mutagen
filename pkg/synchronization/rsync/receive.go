@@ -31,19 +31,6 @@ func (s *ReceiverState) EnsureValid() error {
 	return nil
 }
 
-// Copy creates a copy of a ReceiverState.
-func (s *ReceiverState) Copy() *ReceiverState {
-	// The copy of a nil receiver state is just another nil receiver state.
-	if s == nil {
-		return nil
-	}
-
-	// Create the new receiver state and propagate the existing state's values.
-	result := &ReceiverState{}
-	result.SetFrom(s)
-	return result
-}
-
 // SetFrom propagates field values from state to s. It is designed for use by
 // Monitor implementations. Both s and state must be non-nil.
 func (s *ReceiverState) SetFrom(state *ReceiverState) {

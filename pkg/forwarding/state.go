@@ -86,24 +86,3 @@ func (s *State) EnsureValid() error {
 	// Success.
 	return nil
 }
-
-// copy creates a shallow copy of an endpoint state, deep-copying any mutable
-// members.
-func (s *EndpointState) copy() *EndpointState {
-	return &EndpointState{
-		Connected: s.Connected,
-	}
-}
-
-// copy creates a static copy of the state, deep-copying any mutable members.
-func (s *State) copy() *State {
-	return &State{
-		Session:          s.Session.copy(),
-		Status:           s.Status,
-		LastError:        s.LastError,
-		OpenConnections:  s.OpenConnections,
-		TotalConnections: s.TotalConnections,
-		SourceState:      s.SourceState.copy(),
-		DestinationState: s.DestinationState.copy(),
-	}
-}
