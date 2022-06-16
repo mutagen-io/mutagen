@@ -12,18 +12,18 @@ import (
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
 )
 
-// Open opens a filesystem path for traversal and operations. It will return
-// either a Directory or ReadableFile object (as an io.Closer for convenient
-// closing access without casting), along with Metadata that can be used to
-// determine the type of object being returned. Unless explicitly specified,
-// this function does not allow the leaf component of path to be a symbolic link
+// Open opens a filesystem path for traversal and/or other operations. It will
+// return either a Directory or an io.ReadSeekCloser object (as an io.Closer for
+// convenient closing access without casting), along with Metadata that can be
+// used to determine the type of object being returned. Unless requested, this
+// function does not allow the leaf component of path to be a symbolic link
 // (though intermediate components of the path can be symbolic links and will be
 // resolved in the resolution of the path), and an error will be returned if
 // this is the case. However, if allowSymbolicLinkLeaf is true, then this
 // function will allow resolution of a path leaf component that's a symbolic
 // link. In this case, the referenced object must still be a directory or
-// regular file, and the returned object will still be either a Directory or
-// ReadableFile.
+// regular file, and the returned object will still be either a Directory or an
+// io.ReadSeekCloser.
 func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
 	// Verify that the provided path is absolute. This is a requirement on
 	// Windows, where all of our operations are path-based.
