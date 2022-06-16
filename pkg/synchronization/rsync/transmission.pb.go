@@ -28,7 +28,7 @@ type Transmission struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// expectedSize sets the expected size for the current incoming file. It is
+	// ExpectedSize sets the expected size for the current incoming file. It is
 	// only set alongside the first operation in a file's transmission stream.
 	// If it zero, then the file's size should be treated as unknown, because a
 	// file of zero size will receive an immediate "done" transmission and would

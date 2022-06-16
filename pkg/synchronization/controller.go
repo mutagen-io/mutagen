@@ -1241,7 +1241,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 						if c.state.AlphaState.StagingProgress == nil {
 							c.state.AlphaState.StagingProgress = &rsync.ReceiverState{}
 						}
-						c.state.AlphaState.StagingProgress.SetFrom(state)
+						proto.Merge(c.state.AlphaState.StagingProgress, state)
 					}
 					c.stateLock.Unlock()
 					return nil
@@ -1279,7 +1279,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 						if c.state.BetaState.StagingProgress == nil {
 							c.state.BetaState.StagingProgress = &rsync.ReceiverState{}
 						}
-						c.state.BetaState.StagingProgress.SetFrom(state)
+						proto.Merge(c.state.BetaState.StagingProgress, state)
 					}
 					c.stateLock.Unlock()
 					return nil

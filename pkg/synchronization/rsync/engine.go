@@ -9,6 +9,8 @@ import (
 	"hash"
 	"io"
 	"math"
+
+	"google.golang.org/protobuf/proto"
 )
 
 // EnsureValid verifies that block hash invariants are respected.
@@ -100,26 +102,9 @@ func (o *Operation) EnsureValid() error {
 	return nil
 }
 
-// Copy creates a deep copy of an operation.
-func (o *Operation) Copy() *Operation {
-	// Make a copy of the operation's data buffer if necessary.
-	var data []byte
-	if len(o.Data) > 0 {
-		data = make([]byte, len(o.Data))
-		copy(data, o.Data)
-	}
-
-	// Create the copy.
-	return &Operation{
-		Data:  data,
-		Start: o.Start,
-		Count: o.Count,
-	}
-}
-
-// resetToZero resets an Operation to its zero-value, but leaves capacity in the
-// data slice. It's worth noting that the zero-value state is not a valid state
-// for an Operation.
+// resetToZeroMaintainingCapacity resets an Operation to its zero-value, but
+// leaves capacity in the data slice. It's worth noting that the zero-value
+// state is not a valid state for an Operation.
 func (o *Operation) resetToZeroMaintainingCapacity() {
 	// Reset the data slice, but maintain its capacity.
 	o.Data = o.Data[:0]
@@ -737,7 +722,7 @@ func (e *Engine) DeltifyBytes(target []byte, base *Signature, maxDataOpSize uint
 
 	// Create an operation transmitter to populate the result.
 	transmit := func(o *Operation) error {
-		delta = append(delta, o.Copy())
+		delta = append(delta, proto.Clone(o).(*Operation))
 		return nil
 	}
 

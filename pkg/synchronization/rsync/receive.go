@@ -31,19 +31,6 @@ func (s *ReceiverState) EnsureValid() error {
 	return nil
 }
 
-// SetFrom propagates field values from state to s. It is designed for use by
-// Monitor implementations. Both s and state must be non-nil.
-func (s *ReceiverState) SetFrom(state *ReceiverState) {
-	// Propagate fields. We avoid using a dereferencing assignment because
-	// Protocol Buffers types have internal fields that we don't want to copy.
-	s.Path = state.Path
-	s.ReceivedSize = state.ReceivedSize
-	s.ExpectedSize = state.ExpectedSize
-	s.ReceivedFiles = state.ReceivedFiles
-	s.ExpectedFiles = state.ExpectedFiles
-	s.TotalReceivedSize = state.TotalReceivedSize
-}
-
 // Receiver manages the streaming reception of multiple files. It should be used
 // in conjunction with the Transmit function.
 type Receiver interface {
@@ -267,10 +254,8 @@ func (r *receiver) finalize() error {
 
 // Monitor is the interface that monitors must implement to capture state
 // information from a monitoring receiver. The state object provided to this
-// function must not be modified or retained. Implementations may wish to use
-// ReceiverState.SetFrom to propagate values from the received state to a
-// separate instance. When the monitoring receiver is finalized, the Monitor
-// callback will receive a nil state value.
+// function must not be modified or retained. When the monitoring receiver is
+// finalized, the Monitor callback will receive a nil state value.
 type Monitor func(*ReceiverState) error
 
 // monitoringReceiver is a Receiver implementation that can invoke a callback

@@ -9,7 +9,7 @@ import (
 )
 
 // seekerLength computes the length of a stream supporting io.Seeker. The stream
-// will be rewound to its starting position.
+// position will be rewound to the start of the stream if successful.
 func seekerLength(seeker io.Seeker) (uint64, error) {
 	length, err := seeker.Seek(0, io.SeekEnd)
 	if err != nil {

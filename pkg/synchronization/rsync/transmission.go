@@ -32,8 +32,8 @@ func (t *Transmission) EnsureValid() error {
 		return errors.New("nil transmission")
 	}
 
-	// Handle validation based on whether or not the operation is marked as
-	// done.
+	// Handle validation based on whether or not the transmission is marked as
+	// being the end of a file.
 	if t.Done {
 		if t.ExpectedSize != 0 {
 			return errors.New("non-zero expected file size at end of stream")
