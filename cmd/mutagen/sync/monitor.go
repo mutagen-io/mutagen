@@ -62,15 +62,19 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 		var stagingProgress *rsync.ReceiverState
 		var totalExpectedSize uint64
 		if state.Status == synchronization.Status_StagingAlpha {
-			status += "Staging [←] "
+			status += "[←] "
 			stagingProgress = state.AlphaState.StagingProgress
-			if stagingProgress != nil && stagingProgress.ExpectedFiles == state.BetaState.FileCount {
+			if stagingProgress == nil {
+				status += "Preparing to stage files on alpha"
+			} else if stagingProgress.ExpectedFiles == state.BetaState.FileCount {
 				totalExpectedSize = state.BetaState.TotalFileSize
 			}
 		} else if state.Status == synchronization.Status_StagingBeta {
-			status += "Staging [→] "
+			status += "[→] "
 			stagingProgress = state.BetaState.StagingProgress
-			if stagingProgress != nil && stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
+			if stagingProgress == nil {
+				status += "Preparing to stage files on beta"
+			} else if stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
 				totalExpectedSize = state.AlphaState.TotalFileSize
 			}
 		} else {
