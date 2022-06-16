@@ -205,11 +205,12 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 }
 
 // openHandle is the underlying open implementation shared by OpenDirectory and
-// OpenFile.
-func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows.Handle, error) {
+// OpenFile. It returns the full target path, the Windows file handle
+// corresponding to the target, the target metadata, or any error.
+func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows.Handle, *Metadata, error) {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
-		return "", 0, err
+		return "", 0, nil, err
 	}
 
 	// Compute the full path.
@@ -221,7 +222,7 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 	// Convert the path to UTF-16.
 	path16, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return "", 0, fmt.Errorf("unable to convert path to UTF-16: %w", err)
+		return "", 0, nil, fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
 	// Open the path in a manner that is suitable for reading, doesn't allow for
@@ -239,38 +240,38 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 	)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", 0, err
+			return "", 0, nil, err
 		}
-		return "", 0, fmt.Errorf("unable to open path: %w", err)
+		return "", 0, nil, fmt.Errorf("unable to open path: %w", err)
 	}
 
-	// Query file handle metadata.
-	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
+	// Query handle metadata.
+	metadata, err := queryHandleMetadata(name, handle)
 	if err != nil {
 		windows.CloseHandle(handle)
-		return "", 0, fmt.Errorf("unable to query file handle metadata: %w", err)
+		return "", 0, nil, fmt.Errorf("unable to query file handle metadata: %w", err)
 	}
 
 	// Verify that we're not dealing with a symbolic link.
-	if isSymbolicLink {
+	if metadata.Mode&ModeTypeSymbolicLink != 0 {
 		windows.CloseHandle(handle)
-		return "", 0, errors.New("path pointed to symbolic link")
+		return "", 0, nil, errors.New("path pointed to symbolic link")
 	}
 
 	// Verify that the handle corresponds to a directory (if requested).
-	if wantDirectory && !isDirectory {
+	if wantDirectory && metadata.Mode&ModeTypeDirectory == 0 {
 		windows.CloseHandle(handle)
-		return "", 0, errors.New("path pointed to non-directory location")
+		return "", 0, nil, errors.New("path pointed to non-directory location")
 	}
 
 	// Success.
-	return path, handle, nil
+	return path, handle, metadata, nil
 }
 
 // OpenDirectory opens the directory within the directory specified by name.
 func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// Open the directory handle.
-	path, handle, err := d.openHandle(name, true)
+	path, handle, _, err := d.openHandle(name, true)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open directory handle: %w", err)
 	}
@@ -399,11 +400,11 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 }
 
 // OpenFile opens the file within the directory specified by name.
-func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, error) {
+func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, *Metadata, error) {
 	// Open the file handle.
-	_, handle, err := d.openHandle(name, false)
+	_, handle, metadata, err := d.openHandle(name, false)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open file handle: %w", err)
+		return nil, nil, fmt.Errorf("unable to open file handle: %w", err)
 	}
 
 	// Wrap the file handle in an os.File object. We use the base name for the
@@ -413,7 +414,7 @@ func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, error) {
 	file := os.NewFile(uintptr(handle), name)
 
 	// Success.
-	return file, nil
+	return file, metadata, nil
 }
 
 // ReadSymbolicLink reads the target of the symbolic link within the directory

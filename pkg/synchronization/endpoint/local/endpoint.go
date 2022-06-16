@@ -1056,7 +1056,7 @@ func (e *endpoint) stageFromRoot(
 	}
 
 	// Open the source file and defer its closure.
-	source, err := opener.OpenFile(sourcePath)
+	source, _, err := opener.OpenFile(sourcePath)
 	if err != nil {
 		return false
 	}
@@ -1164,7 +1164,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// expect/use an empty base when deltifying/patching.
 	signatures := make([]*rsync.Signature, len(filteredPaths))
 	for p, path := range filteredPaths {
-		if base, err := opener.OpenFile(path); err != nil {
+		if base, _, err := opener.OpenFile(path); err != nil {
 			signatures[p] = &rsync.Signature{}
 			continue
 		} else if signature, err := engine.Signature(base, 0); err != nil {

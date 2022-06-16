@@ -176,9 +176,11 @@ func (s *scanner) file(
 	if cacheContentMatch {
 		digest = cached.Digest
 	} else {
-		// If the file is not yet opened, then open it and defer its closure.
+		// If the file is not yet opened, then open it and defer its closure. We
+		// can also update the metadata at this point since we'll pay the cost
+		// of accessing it when opening the file.
 		if file == nil {
-			file, err = parent.OpenFile(metadata.Name)
+			file, metadata, err = parent.OpenFile(metadata.Name)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return nil, err

@@ -192,7 +192,7 @@ func (r *receiver) Receive(transmission *Transmission) error {
 		// terminal error.
 		if signature.isEmpty() {
 			r.base = newEmptyReadSeekCloser()
-		} else if base, err := r.opener.OpenFile(path); err != nil {
+		} else if base, _, err := r.opener.OpenFile(path); err != nil {
 			r.burning = true
 			return nil
 		} else {

@@ -53,7 +53,7 @@ func TestDirectoryLongPaths(t *testing.T) {
 	}
 
 	// Access the internal file and ensure that doing so succeeds.
-	if f, err := directory.OpenFile(longFileName); err != nil {
+	if f, _, err := directory.OpenFile(longFileName); err != nil {
 		t.Error("unable to open file with long name:", err)
 	} else {
 		f.Close()
