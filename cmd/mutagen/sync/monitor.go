@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -147,12 +149,24 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		defer statusLinePrinter.BreakIfNonEmpty()
 	}
 
+	// Track the last update time.
+	var lastUpdateTime time.Time
+
 	// Track whether or not we've identified an individual session in the
 	// non-templated case.
 	var identifiedSingleTargetSession bool
 
 	// Loop and print monitoring information indefinitely.
 	for {
+		// Regulate the update frequency (and tame CPU usage in both the monitor
+		// command and the daemon) by enforcing a minimum update cycle interval.
+		now := time.Now()
+		timeSinceLastUpdate := now.Sub(lastUpdateTime)
+		if timeSinceLastUpdate < common.MinimumMonitorUpdateInterval {
+			time.Sleep(common.MinimumMonitorUpdateInterval - timeSinceLastUpdate)
+		}
+		lastUpdateTime = now
+
 		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
