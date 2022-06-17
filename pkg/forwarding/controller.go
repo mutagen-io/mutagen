@@ -710,6 +710,18 @@ func (c *controller) forward(source, destination Endpoint) error {
 	state = c.state
 	c.stateLock.Unlock()
 
+	// Create auditor functions to track data transfer.
+	incomingAuditor := func(amount uint64) {
+		c.stateLock.Lock()
+		state.TotalInboundData += amount
+		c.stateLock.Unlock()
+	}
+	outgoingAuditor := func(amount uint64) {
+		c.stateLock.Lock()
+		state.TotalOutboundData += amount
+		c.stateLock.Unlock()
+	}
+
 	// Accept and forward connections until there's an error.
 	for {
 		// Accept a connection from the source.
@@ -734,7 +746,7 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Perform forwarding and update state in a background Goroutine.
 		go func() {
 			// Perform forwarding.
-			ForwardAndClose(ctx, incoming, outgoing)
+			ForwardAndClose(ctx, incoming, outgoing, incomingAuditor, outgoingAuditor)
 
 			// Decrement open connection counts.
 			c.stateLock.Lock()

@@ -57,6 +57,12 @@ type State struct {
 	// TotalConnections is the number of total connections that have been opened
 	// and forwarded (including those that are currently open).
 	TotalConnections uint64 `json:"totalConnections"`
+	// TotalOutboundData is the total amount of data (in bytes) that has been
+	// transmitted from source to destination across all forwarded connections.
+	TotalOutboundData uint64 `json:"totalOutboundData"`
+	// TotalInboundData is the total amount of data (in bytes) that has been
+	// transmitted from destination to source across all forwarded connections.
+	TotalInboundData uint64 `json:"totalInboundData"`
 	// SourceState encodes the state of the source endpoint.
 	SourceState EndpointState `json:"sourceState"`
 	// DestinationState encodes the state of the destination endpoint.
@@ -93,10 +99,12 @@ func (s *Session) loadFromInternal(state *forwarding.State) {
 		s.State = nil
 	} else {
 		s.State = &State{
-			Status:           state.Status,
-			LastError:        state.LastError,
-			OpenConnections:  state.OpenConnections,
-			TotalConnections: state.TotalConnections,
+			Status:            state.Status,
+			LastError:         state.LastError,
+			OpenConnections:   state.OpenConnections,
+			TotalConnections:  state.TotalConnections,
+			TotalOutboundData: state.TotalOutboundData,
+			TotalInboundData:  state.TotalInboundData,
 			SourceState: EndpointState{
 				Connected: state.SourceState.Connected,
 			},

@@ -11,6 +11,8 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
@@ -27,13 +29,13 @@ import (
 // session.
 func computeMonitorStatusLine(state *forwarding.State) string {
 	// Build the status line.
-	status := "Status: "
+	var status string
 	if state.Session.Paused {
 		status += color.YellowString("[Paused]")
 	} else {
 		// Add an error flag if there is one present.
 		if state.LastError != "" {
-			status += color.RedString("[Errored] ")
+			status += color.RedString("[X] ")
 		}
 
 		// Add the status.
@@ -42,9 +44,11 @@ func computeMonitorStatusLine(state *forwarding.State) string {
 		// If we're forwarding then add connection statistics.
 		if state.Status == forwarding.Status_ForwardingConnections {
 			status += fmt.Sprintf(
-				": %d active, %d total",
+				": %d open, %d total, %s outbound, %s inbound",
 				state.OpenConnections,
 				state.TotalConnections,
+				humanize.Bytes(state.TotalOutboundData),
+				humanize.Bytes(state.TotalInboundData),
 			)
 		}
 	}

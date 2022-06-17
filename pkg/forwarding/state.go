@@ -15,7 +15,7 @@ func (s Status) Description() string {
 	case Status_ConnectingDestination:
 		return "Connecting to destination"
 	case Status_ForwardingConnections:
-		return "Forwarding connections"
+		return "Forwarding"
 	default:
 		return "Unknown"
 	}
