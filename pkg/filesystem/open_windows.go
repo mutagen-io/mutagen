@@ -12,18 +12,18 @@ import (
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
 )
 
-// Open opens a filesystem path for traversal and operations. It will return
-// either a Directory or ReadableFile object (as an io.Closer for convenient
-// closing access without casting), along with Metadata that can be used to
-// determine the type of object being returned. Unless explicitly specified,
-// this function does not allow the leaf component of path to be a symbolic link
+// Open opens a filesystem path for traversal and/or other operations. It will
+// return either a Directory or an io.ReadSeekCloser object (as an io.Closer for
+// convenient closing access without casting), along with Metadata that can be
+// used to determine the type of object being returned. Unless requested, this
+// function does not allow the leaf component of path to be a symbolic link
 // (though intermediate components of the path can be symbolic links and will be
 // resolved in the resolution of the path), and an error will be returned if
 // this is the case. However, if allowSymbolicLinkLeaf is true, then this
 // function will allow resolution of a path leaf component that's a symbolic
 // link. In this case, the referenced object must still be a directory or
-// regular file, and the returned object will still be either a Directory or
-// ReadableFile.
+// regular file, and the returned object will still be either a Directory or an
+// io.ReadSeekCloser.
 func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
 	// Verify that the provided path is absolute. This is a requirement on
 	// Windows, where all of our operations are path-based.
@@ -64,8 +64,8 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return nil, nil, fmt.Errorf("unable to open path: %w", err)
 	}
 
-	// Query file handle metadata.
-	isDirectory, isSymbolicLink, err := queryFileHandle(handle)
+	// Query handle metadata.
+	metadata, err := queryHandleMetadata(filepath.Base(path), handle)
 	if err != nil {
 		windows.CloseHandle(handle)
 		return nil, nil, fmt.Errorf("unable to query file handle metadata: %w", err)
@@ -73,13 +73,14 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 
 	// Verify that we're not dealing with a symbolic link. If we are allowing
 	// symbolic links, then they should have been resolved by CreateFile.
-	if isSymbolicLink {
+	if metadata.Mode&ModeTypeSymbolicLink != 0 {
 		windows.CloseHandle(handle)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 
 	// Handle os.File creation based on type.
 	var file *os.File
+	isDirectory := metadata.Mode&ModeTypeDirectory != 0
 	if isDirectory {
 		file, err = os.Open(path)
 		if err != nil {
@@ -88,30 +89,6 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		}
 	} else {
 		file = os.NewFile(uintptr(handle), path)
-	}
-
-	// Grab filesystem metadata via the os.File object. For directories, this is
-	// path-based under the hood, but it's fine since we're already holding the
-	// directory handle open. Unfortunately we can't easily fold this into our
-	// earlier metadata query on Windows because the mode conversion logic in
-	// the standard library (whose mode values we re-use on Windows) is quite
-	// complex. Fortunately this code is not on the hot path, so we don't incur
-	// too much penalty from the duplicate query operation.
-	fileMetadata, err := file.Stat()
-	if err != nil {
-		if isDirectory {
-			windows.CloseHandle(handle)
-		}
-		file.Close()
-		return nil, nil, fmt.Errorf("unable to query file metadata: %w", err)
-	}
-
-	// Convert metadata.
-	metadata := &Metadata{
-		Name:             fileMetadata.Name(),
-		Mode:             Mode(fileMetadata.Mode()),
-		Size:             uint64(fileMetadata.Size()),
-		ModificationTime: fileMetadata.ModTime(),
 	}
 
 	// Success.

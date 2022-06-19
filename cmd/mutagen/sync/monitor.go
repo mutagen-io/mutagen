@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -19,47 +24,81 @@ import (
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
 // computeMonitorStatusLine constructs a monitoring status line for a
 // synchronization session.
 func computeMonitorStatusLine(state *synchronization.State) string {
 	// Build the status line.
-	status := "Status: "
+	var status string
 	if state.Session.Paused {
 		status += color.YellowString("[Paused]")
 	} else {
 		// Add a conflict flag if there are conflicts.
 		if len(state.Conflicts) > 0 {
-			status += color.RedString("[Conflicts] ")
+			status += color.YellowString("[C] ")
 		}
 
 		// Add a problems flag if there are problems.
-		haveProblems := len(state.AlphaScanProblems) > 0 ||
-			len(state.BetaScanProblems) > 0 ||
-			len(state.AlphaTransitionProblems) > 0 ||
-			len(state.BetaTransitionProblems) > 0
+		haveProblems := len(state.AlphaState.ScanProblems) > 0 ||
+			len(state.BetaState.ScanProblems) > 0 ||
+			len(state.AlphaState.TransitionProblems) > 0 ||
+			len(state.BetaState.TransitionProblems) > 0
 		if haveProblems {
-			status += color.RedString("[Problems] ")
+			status += color.YellowString("[!] ")
 		}
 
 		// Add an error flag if there is one present.
 		if state.LastError != "" {
-			status += color.RedString("[Errored] ")
+			status += color.RedString("[X] ")
 		}
 
-		// Add the status.
-		status += state.Status.Description()
+		// Handle the formatting based on status. If we're in a staging mode,
+		// then extract the relevant progress information. Despite not having a
+		// built-in mechanism for knowing the total expected size of a staging
+		// operation, we do know the number of files that the staging operation
+		// is performing, so if that's equal to the number of files on the
+		// source endpoint, then we know that we can use the total file size on
+		// the source endpoint as an estimate for the total staging size.
+		var stagingProgress *rsync.ReceiverState
+		var totalExpectedSize uint64
+		if state.Status == synchronization.Status_StagingAlpha {
+			status += "[←] "
+			stagingProgress = state.AlphaState.StagingProgress
+			if stagingProgress == nil {
+				status += "Preparing to stage files on alpha"
+			} else if stagingProgress.ExpectedFiles == state.BetaState.FileCount {
+				totalExpectedSize = state.BetaState.TotalFileSize
+			}
+		} else if state.Status == synchronization.Status_StagingBeta {
+			status += "[→] "
+			stagingProgress = state.BetaState.StagingProgress
+			if stagingProgress == nil {
+				status += "Preparing to stage files on beta"
+			} else if stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
+				totalExpectedSize = state.AlphaState.TotalFileSize
+			}
+		} else {
+			status += state.Status.Description()
+		}
 
-		// If we're staging and have sane statistics, add them.
-		if (state.Status == synchronization.Status_StagingAlpha ||
-			state.Status == synchronization.Status_StagingBeta) &&
-			state.StagingStatus != nil {
-			status += fmt.Sprintf(
-				": %.0f%% (%d/%d)",
-				100.0*float32(state.StagingStatus.Received)/float32(state.StagingStatus.Total),
-				state.StagingStatus.Received,
-				state.StagingStatus.Total,
+		// Print staging progress, if available.
+		if stagingProgress != nil {
+			var fractionComplete float32
+			var totalSizeDenominator string
+			if totalExpectedSize != 0 {
+				fractionComplete = float32(stagingProgress.TotalReceivedSize) / float32(totalExpectedSize)
+				totalSizeDenominator = "/" + humanize.Bytes(totalExpectedSize)
+			} else {
+				fractionComplete = float32(stagingProgress.ReceivedFiles) / float32(stagingProgress.ExpectedFiles)
+			}
+			status += fmt.Sprintf("[%d/%d - %s%s - %.0f%%] %s (%s/%s)",
+				stagingProgress.ReceivedFiles, stagingProgress.ExpectedFiles,
+				humanize.Bytes(stagingProgress.TotalReceivedSize), totalSizeDenominator,
+				100.0*fractionComplete,
+				path.Base(stagingProgress.Path),
+				humanize.Bytes(stagingProgress.ReceivedSize), humanize.Bytes(stagingProgress.ExpectedSize),
 			)
 		}
 	}
@@ -87,6 +126,12 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to load formatting template: %w", err)
 	}
 
+	// Determine the listing mode.
+	mode := common.SessionDisplayModeMonitor
+	if monitorConfiguration.long {
+		mode = common.SessionDisplayModeMonitorLong
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
@@ -110,12 +155,24 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		defer statusLinePrinter.BreakIfNonEmpty()
 	}
 
+	// Track the last update time.
+	var lastUpdateTime time.Time
+
 	// Track whether or not we've identified an individual session in the
 	// non-templated case.
 	var identifiedSingleTargetSession bool
 
 	// Loop and print monitoring information indefinitely.
 	for {
+		// Regulate the update frequency (and tame CPU usage in both the monitor
+		// command and the daemon) by enforcing a minimum update cycle interval.
+		now := time.Now()
+		timeSinceLastUpdate := now.Sub(lastUpdateTime)
+		if timeSinceLastUpdate < common.MinimumMonitorUpdateInterval {
+			time.Sleep(common.MinimumMonitorUpdateInterval - timeSinceLastUpdate)
+		}
+		lastUpdateTime = now
+
 		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
@@ -157,14 +214,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 				}
 
 				// Print session information.
-				printSession(state, monitorConfiguration.long)
-
-				// Print endpoint URLs, but only if not in long mode (where
-				// they're already printed in the session metadata).
-				if !monitorConfiguration.long {
-					fmt.Println("Alpha:", state.Session.Alpha.Format("\n\t"))
-					fmt.Println("Beta:", state.Session.Beta.Format("\n\t"))
-				}
+				printSession(state, mode)
 
 				// Record that we've identified our target session.
 				identifiedSingleTargetSession = true

@@ -10,6 +10,9 @@ import (
 // This allows some decoders to re-use the Operation data slice capacity when
 // decoding.
 func (t *Transmission) resetToZeroMaintainingCapacity() {
+	// Reset the expected file size.
+	t.ExpectedSize = 0
+
 	// Reset the Done parameter.
 	t.Done = false
 
@@ -29,10 +32,12 @@ func (t *Transmission) EnsureValid() error {
 		return errors.New("nil transmission")
 	}
 
-	// Handle validation based on whether or not the operation is marked as
-	// done.
+	// Handle validation based on whether or not the transmission is marked as
+	// being the end of a file.
 	if t.Done {
-		if t.Operation != nil && !t.Operation.isZeroValue() {
+		if t.ExpectedSize != 0 {
+			return errors.New("non-zero expected file size at end of stream")
+		} else if t.Operation != nil && !t.Operation.isZeroValue() {
 			return errors.New("operation present at end of stream")
 		}
 	} else {

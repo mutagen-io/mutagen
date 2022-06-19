@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -216,7 +217,9 @@ func newSession(
 		mergedAlphaConfiguration: mergedAlphaConfiguration,
 		mergedBetaConfiguration:  mergedBetaConfiguration,
 		state: &State{
-			Session: session,
+			Session:    session,
+			AlphaState: &EndpointState{},
+			BetaState:  &EndpointState{},
 		},
 	}
 
@@ -284,7 +287,9 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 			session.ConfigurationBeta,
 		),
 		state: &State{
-			Session: session,
+			Session:    session,
+			AlphaState: &EndpointState{},
+			BetaState:  &EndpointState{},
 		},
 	}
 
@@ -311,7 +316,7 @@ func (c *controller) currentState() *State {
 	defer c.stateLock.UnlockWithoutNotify()
 
 	// Create a static copy of the state.
-	return c.state.copy()
+	return proto.Clone(c.state).(*State)
 }
 
 // flush attempts to force a synchronization cycle for the session. If wait is
@@ -483,7 +488,7 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 		true,
 	)
 	c.stateLock.Lock()
-	c.state.AlphaConnected = (alpha != nil)
+	c.state.AlphaState.Connected = (alpha != nil)
 	c.stateLock.Unlock()
 
 	// Attempt to connect to beta.
@@ -501,7 +506,7 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 		false,
 	)
 	c.stateLock.Lock()
-	c.state.BetaConnected = (beta != nil)
+	c.state.BetaState.Connected = (beta != nil)
 	c.stateLock.Unlock()
 
 	// Start the synchronization loop with what we have. Alpha or beta may have
@@ -686,7 +691,9 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		// Reset the state.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session: c.session,
+			Session:    c.session,
+			AlphaState: &EndpointState{},
+			BetaState:  &EndpointState{},
 		}
 		c.stateLock.Unlock()
 
@@ -724,7 +731,7 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.AlphaConnected = (alpha != nil)
+			c.state.AlphaState.Connected = (alpha != nil)
 			c.stateLock.Unlock()
 
 			// Check for cancellation to avoid a spurious connection to beta in
@@ -752,7 +759,7 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.BetaConnected = (beta != nil)
+			c.state.BetaState.Connected = (beta != nil)
 			c.stateLock.Unlock()
 
 			// If both endpoints are connected, we're done. We perform this
@@ -809,8 +816,10 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		// that caused failure.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session:   c.session,
-			LastError: err.Error(),
+			Session:    c.session,
+			LastError:  err.Error(),
+			AlphaState: &EndpointState{},
+			BetaState:  &EndpointState{},
 		}
 		c.stateLock.Unlock()
 
@@ -1091,15 +1100,25 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		}
 
 		// Now that we've had a successful scan, clear the last error (if any),
-		// record scan problems (if any), and update the status to reconciling.
+		// record scan statistics and problems (if any), and update the status
+		// to reconciling.
+		//
 		// We know that it's okay to clear the error here (if there is one)
 		// because we know that it originated from scan (since all other errors
 		// are terminal and any previous terminal error would have been cleared
 		// at the start of this function).
 		c.stateLock.Lock()
 		c.state.LastError = ""
-		c.state.AlphaScanProblems = αContent.Problems()
-		c.state.BetaScanProblems = βContent.Problems()
+		c.state.AlphaState.DirectoryCount = αSnapshot.DirectoryCount
+		c.state.AlphaState.FileCount = αSnapshot.FileCount
+		c.state.AlphaState.SymbolicLinkCount = αSnapshot.SymbolicLinkCount
+		c.state.AlphaState.TotalFileSize = αSnapshot.TotalFileSize
+		c.state.AlphaState.ScanProblems = αContent.Problems()
+		c.state.BetaState.DirectoryCount = βSnapshot.DirectoryCount
+		c.state.BetaState.FileCount = βSnapshot.FileCount
+		c.state.BetaState.SymbolicLinkCount = βSnapshot.SymbolicLinkCount
+		c.state.BetaState.TotalFileSize = βSnapshot.TotalFileSize
+		c.state.BetaState.ScanProblems = βContent.Problems()
 		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
@@ -1197,14 +1216,6 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			return errHaltedForSafety
 		}
 
-		// Create a monitoring callback for rsync staging.
-		monitor := func(status *rsync.ReceiverStatus) error {
-			c.stateLock.Lock()
-			c.state.StagingStatus = status
-			c.stateLock.Unlock()
-			return nil
-		}
-
 		// Stage files on alpha.
 		c.stateLock.Lock()
 		c.state.Status = Status_StagingAlpha
@@ -1222,7 +1233,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				c.logger.Debugf("Alpha pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
+				monitor := func(state *rsync.ReceiverState) error {
+					c.stateLock.Lock()
+					if state == nil {
+						c.state.AlphaState.StagingProgress = nil
+					} else {
+						if c.state.AlphaState.StagingProgress == nil {
+							c.state.AlphaState.StagingProgress = &rsync.ReceiverState{}
+						}
+						proto.Merge(c.state.AlphaState.StagingProgress, state)
+					}
+					c.stateLock.Unlock()
+					return nil
+				}
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on alpha: %w", err)
@@ -1247,7 +1271,20 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 				c.logger.Debugf("Beta pre-staged %d/%d files", len(paths)-len(filteredPaths), len(paths))
 			}
 			if len(filteredPaths) > 0 {
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, monitor)
+				monitor := func(state *rsync.ReceiverState) error {
+					c.stateLock.Lock()
+					if state == nil {
+						c.state.BetaState.StagingProgress = nil
+					} else {
+						if c.state.BetaState.StagingProgress == nil {
+							c.state.BetaState.StagingProgress = &rsync.ReceiverState{}
+						}
+						proto.Merge(c.state.BetaState.StagingProgress, state)
+					}
+					c.stateLock.Unlock()
+					return nil
+				}
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on beta: %w", err)
@@ -1303,8 +1340,8 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// Record transition problems.
 		c.stateLock.Lock()
 		c.state.Status = Status_Saving
-		c.state.AlphaTransitionProblems = αProblems
-		c.state.BetaTransitionProblems = βProblems
+		c.state.AlphaState.TransitionProblems = αProblems
+		c.state.BetaState.TransitionProblems = βProblems
 		c.stateLock.Unlock()
 
 		// Fold applied changes into the ancestor's change list and update the

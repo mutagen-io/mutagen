@@ -145,6 +145,6 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 		}
 
 		// Perform forwarding.
-		go forwarding.ForwardAndClose(context.Background(), incoming, outgoing)
+		go forwarding.ForwardAndClose(context.Background(), incoming, outgoing, nil, nil)
 	}
 }

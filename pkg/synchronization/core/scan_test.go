@@ -50,6 +50,24 @@ func testingAcceleratedIgnoreCacheIsSubset(accelerated, original IgnoreCache) bo
 	return true
 }
 
+// testingSnapshotStatistics computes the statistics fields that would be
+// expected in a snapshot.
+func testingSnapshotStatistics(entry *Entry, cache *Cache) (directoryCount, fileCount, symbolicLinkCount, totalFileSize uint64) {
+	if entry != nil {
+		entry.walk("", func(p string, e *Entry) {
+			if e.Kind == EntryKind_Directory {
+				directoryCount++
+			} else if e.Kind == EntryKind_File {
+				fileCount++
+				totalFileSize += cache.Entries[p].Size
+			} else if e.Kind == EntryKind_SymbolicLink {
+				symbolicLinkCount++
+			}
+		}, false)
+	}
+	return
+}
+
 // TestScan tests Scan.
 func TestScan(t *testing.T) {
 	// Create contexts to use for tests.
@@ -480,6 +498,11 @@ func TestScan(t *testing.T) {
 				snapshot.Content = PropagateExecutability(nil, test.expected, snapshot.Content)
 			}
 
+			// Compute expected statistics.
+			directoryCount, fileCount, symbolicLinkCount, totalFileSize := testingSnapshotStatistics(
+				snapshot.Content, cache,
+			)
+
 			// Check scan results.
 			if !snapshot.Content.Equal(test.expected, true) {
 				t.Errorf("%s: cold scan result not equal to expected on %s filesystem",
@@ -489,6 +512,30 @@ func TestScan(t *testing.T) {
 			if cache == nil {
 				t.Errorf("%s: nil cache returned by cold scan on %s filesystem",
 					test.description, filesystem.name,
+				)
+			}
+			if snapshot.DirectoryCount != directoryCount {
+				t.Errorf("%s: cold scan directory count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					snapshot.DirectoryCount, directoryCount,
+				)
+			}
+			if snapshot.FileCount != fileCount {
+				t.Errorf("%s: cold scan file count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					snapshot.FileCount, fileCount,
+				)
+			}
+			if snapshot.SymbolicLinkCount != symbolicLinkCount {
+				t.Errorf("%s: cold scan symbolic link count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					snapshot.SymbolicLinkCount, symbolicLinkCount,
+				)
+			}
+			if snapshot.TotalFileSize != totalFileSize {
+				t.Errorf("%s: cold scan total file size not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					snapshot.TotalFileSize, totalFileSize,
 				)
 			}
 
@@ -546,6 +593,30 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
+			if newSnapshot.DirectoryCount != directoryCount {
+				t.Errorf("%s: warm scan directory count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.DirectoryCount, directoryCount,
+				)
+			}
+			if newSnapshot.FileCount != fileCount {
+				t.Errorf("%s: warm scan file count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.FileCount, fileCount,
+				)
+			}
+			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+				t.Errorf("%s: warm scan symbolic link count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+				)
+			}
+			if newSnapshot.TotalFileSize != totalFileSize {
+				t.Errorf("%s: warm scan total file size not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.TotalFileSize, totalFileSize,
+				)
+			}
 
 			// Perform an accelerated scan (without any re-check paths) using
 			// the snapshot as a baseline.
@@ -591,6 +662,30 @@ func TestScan(t *testing.T) {
 			if !testingAcceleratedIgnoreCacheIsSubset(newIgnoreCache, ignoreCache) {
 				t.Errorf("%s: accelerated scan (without re-check paths) ignore cache not a subset of baseline on %s filesystem",
 					test.description, filesystem.name,
+				)
+			}
+			if newSnapshot.DirectoryCount != directoryCount {
+				t.Errorf("%s: accelerated scan (without re-check paths) directory count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.DirectoryCount, directoryCount,
+				)
+			}
+			if newSnapshot.FileCount != fileCount {
+				t.Errorf("%s: accelerated scan (without re-check paths) file count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.FileCount, fileCount,
+				)
+			}
+			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+				t.Errorf("%s: accelerated scan (without re-check paths) symbolic link count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+				)
+			}
+			if newSnapshot.TotalFileSize != totalFileSize {
+				t.Errorf("%s: accelerated scan (without re-check paths) total file size not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.TotalFileSize, totalFileSize,
 				)
 			}
 
@@ -647,6 +742,11 @@ func TestScan(t *testing.T) {
 				newSnapshot.Content = PropagateExecutability(nil, modifiedExpected, newSnapshot.Content)
 			}
 
+			// Compute expected statistics.
+			directoryCount, fileCount, symbolicLinkCount, totalFileSize = testingSnapshotStatistics(
+				newSnapshot.Content, newCache,
+			)
+
 			// Check scan results. Since modifiers can perform arbitrary changes
 			// to the root, we have to restrict certain checks to cases where
 			// the filesystem hasn't been modified. We also have to decompose
@@ -679,6 +779,30 @@ func TestScan(t *testing.T) {
 			if test.modifier == nil && !testingAcceleratedIgnoreCacheIsSubset(newIgnoreCache, ignoreCache) {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) ignore cache not a subset of baseline on %s filesystem",
 					test.description, filesystem.name,
+				)
+			}
+			if newSnapshot.DirectoryCount != directoryCount {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) directory count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.DirectoryCount, directoryCount,
+				)
+			}
+			if newSnapshot.FileCount != fileCount {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) file count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.FileCount, fileCount,
+				)
+			}
+			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) symbolic link count not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+				)
+			}
+			if newSnapshot.TotalFileSize != totalFileSize {
+				t.Errorf("%s: accelerated scan (with re-check path(s)) total file size not equal to expected on %s filesystem: %d != %d",
+					test.description, filesystem.name,
+					newSnapshot.TotalFileSize, totalFileSize,
 				)
 			}
 

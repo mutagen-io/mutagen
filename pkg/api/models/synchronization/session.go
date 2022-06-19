@@ -38,37 +38,56 @@ type Session struct {
 	*State
 }
 
+// EndpointState encodes the current state of a synchronization endpoint.
+type EndpointState struct {
+	// Connected indicates whether or not the controller is currently connected
+	// to the endpoint.
+	Connected bool `json:"connected"`
+	// DirectoryCount is the number of synchronizable directory entries
+	// contained in the last snapshot from the endpoint.
+	DirectoryCount uint64 `json:"directoryCount,omitempty"`
+	// FileCount is the number of synchronizable file entries contained in the
+	// last snapshot from the endpoint.
+	FileCount uint64 `json:"fileCount,omitempty"`
+	// SymbolicLinkCount is the number of synchronizable symbolic link entries
+	// contained in the last snapshot from the endpoint.
+	SymbolicLinkCount uint64 `json:"symbolicLinkCount,omitempty"`
+	// TotalFileSize is the total size of all synchronizable files referenced by
+	// the last snapshot from the endpoint.
+	TotalFileSize uint64 `json:"totalFileSize,omitempty"`
+	// ScanProblems is the list of non-terminal problems encountered during the
+	// last scanning operation on the endpoint. This list may be a truncated
+	// version of the full list if too many problems are encountered to report
+	// via the API, in which case ExcludedScanProblems will be non-zero.
+	ScanProblems []Problem `json:"scanProblems,omitempty"`
+	// ExcludedScanProblems is the number of problems that have been excluded
+	// from ScanProblems due to truncation. This value can be non-zero only if
+	// ScanProblems is non-empty.
+	ExcludedScanProblems uint64 `json:"excludedScanProblems,omitempty"`
+	// TransitionProblems is the list of non-terminal problems encountered
+	// during the last transition operation on the endpoint. This list may be a
+	// truncated version of the full list if too many problems are encountered
+	// to report via the API, in which case ExcludedTransitionProblems will be
+	// non-zero.
+	TransitionProblems []Problem `json:"transitionProblems,omitempty"`
+	// ExcludedTransitionProblems is the number of problems that have been
+	// excluded from TransitionProblems due to truncation. This value can be
+	// non-zero only if TransitionProblems is non-empty.
+	ExcludedTransitionProblems uint64 `json:"excludedTransitionProblems,omitempty"`
+	// StagingProgress is the rsync staging progress. It is non-nil if and only
+	// if the endpoint is currently staging files.
+	StagingProgress *ReceiverState `json:"stagingProgress,omitempty"`
+}
+
 // State encodes fields relevant to unpaused sessions.
 type State struct {
 	// Status is the session status.
 	Status synchronization.Status `json:"status"`
-	// AlphaConnected indicates whether or not the alpha endpoint is connected.
-	AlphaConnected bool `json:"alphaConnected"`
-	// BetaConnected indicates whether or not the beta endpoint is connected.
-	BetaConnected bool `json:"betaConnected"`
 	// LastError is the last synchronization error to occur.
 	LastError string `json:"lastError,omitempty"`
 	// SuccessfulCycles is the number of successful synchronization cycles to
 	// occur since successfully connecting to the endpoints.
 	SuccessfulCycles uint64 `json:"successfulCycles,omitempty"`
-	// StagingStatus is the rsync staging status.
-	StagingStatus *ReceiverStatus `json:"stagingStatus,omitempty"`
-	// AlphaScanProblems is the list of non-terminal problems encountered during
-	// scanning on alpha. This list may be a truncated version of the full list
-	// if too many problems are encountered to report via the API.
-	AlphaScanProblems []Problem `json:"alphaScanProblems,omitempty"`
-	// ExcludedAlphaScanProblems is the number of problems that have been
-	// excluded from AlphaScanProblems due to truncation. This value can only be
-	// non-zero if alphaScanProblems is non-empty.
-	ExcludedAlphaScanProblems uint64 `json:"excludedAlphaScanProblems,omitempty"`
-	// BetaScanProblems is the list of non-terminal problems encountered during
-	// scanning on beta. This list may be a truncated version of the full list
-	// if too many problems are encountered to report via the API.
-	BetaScanProblems []Problem `json:"betaScanProblems,omitempty"`
-	// ExcludedBetaScanProblems is the number of problems that have been
-	// excluded from BetaScanProblems due to truncation. This value can only be
-	// non-zero if betaScanProblems is non-empty.
-	ExcludedBetaScanProblems uint64 `json:"excludedBetaScanProblems,omitempty"`
 	// Conflicts are the conflicts that identified during reconciliation. This
 	// list may be a truncated version of the full list if too many conflicts
 	// are encountered to report via the API.
@@ -77,24 +96,10 @@ type State struct {
 	// Conflicts due to truncation. This value can only be non-zero if conflicts
 	// is non-empty.
 	ExcludedConflicts uint64 `json:"excludedConflicts,omitempty"`
-	// AlphaTransitionProblems is the list of non-terminal problems encountered
-	// during transition operations on alpha. This list may be a truncated
-	// version of the full list if too many problems are encountered to report
-	// via the API.
-	AlphaTransitionProblems []Problem `json:"alphaTransitionProblems,omitempty"`
-	// ExcludedAlphaTransitionProblems is the number of problems that have been
-	// excluded from AlphaTransitionProblems due to truncation. This value can
-	// only be non-zero if alphaTransitionProblems is non-empty.
-	ExcludedAlphaTransitionProblems uint64 `json:"excludedAlphaTransitionProblems,omitempty"`
-	// BetaTransitionProblems is the list of non-terminal problems encountered
-	// during transition operations on beta. This list may be a truncated
-	// version of the full list if too many problems are encountered to report
-	// via the API.
-	BetaTransitionProblems []Problem `json:"betaTransitionProblems,omitempty"`
-	// ExcludedBetaTransitionProblems is the number of problems that have been
-	// excluded from BetaTransitionProblems due to truncation. This value can
-	// only be non-zero if betaTransitionProblems is non-empty.
-	ExcludedBetaTransitionProblems uint64 `json:"excludedBetaTransitionProblems,omitempty"`
+	// AlphaState encodes the state of the alpha endpoint.
+	AlphaState EndpointState `json:"alphaState"`
+	// BetaState encodes the state of the beta endpoint.
+	BetaState EndpointState `json:"betaState"`
 }
 
 // loadFromInternal sets a session to match an internal Protocol Buffers session
@@ -127,22 +132,35 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 		s.State = nil
 	} else {
 		s.State = &State{
-			Status:                          state.Status,
-			AlphaConnected:                  state.AlphaConnected,
-			BetaConnected:                   state.BetaConnected,
-			LastError:                       state.LastError,
-			SuccessfulCycles:                state.SuccessfulCycles,
-			StagingStatus:                   newReceiverStatusFromInternalReceiverStatus(state.StagingStatus),
-			AlphaScanProblems:               exportProblems(state.AlphaScanProblems),
-			ExcludedAlphaScanProblems:       state.ExcludedAlphaScanProblems,
-			BetaScanProblems:                exportProblems(state.BetaScanProblems),
-			ExcludedBetaScanProblems:        state.ExcludedBetaScanProblems,
-			Conflicts:                       exportConflicts(state.Conflicts),
-			ExcludedConflicts:               state.ExcludedConflicts,
-			AlphaTransitionProblems:         exportProblems(state.AlphaTransitionProblems),
-			ExcludedAlphaTransitionProblems: state.ExcludedAlphaTransitionProblems,
-			BetaTransitionProblems:          exportProblems(state.BetaTransitionProblems),
-			ExcludedBetaTransitionProblems:  state.ExcludedBetaTransitionProblems,
+			Status:            state.Status,
+			LastError:         state.LastError,
+			SuccessfulCycles:  state.SuccessfulCycles,
+			Conflicts:         exportConflicts(state.Conflicts),
+			ExcludedConflicts: state.ExcludedConflicts,
+			AlphaState: EndpointState{
+				Connected:                  state.AlphaState.Connected,
+				DirectoryCount:             state.AlphaState.DirectoryCount,
+				FileCount:                  state.AlphaState.FileCount,
+				SymbolicLinkCount:          state.AlphaState.SymbolicLinkCount,
+				TotalFileSize:              state.AlphaState.TotalFileSize,
+				ScanProblems:               exportProblems(state.AlphaState.ScanProblems),
+				ExcludedScanProblems:       state.AlphaState.ExcludedScanProblems,
+				TransitionProblems:         exportProblems(state.AlphaState.TransitionProblems),
+				ExcludedTransitionProblems: state.AlphaState.ExcludedTransitionProblems,
+				StagingProgress:            newReceiverStateFromInternalReceiverState(state.AlphaState.StagingProgress),
+			},
+			BetaState: EndpointState{
+				Connected:                  state.BetaState.Connected,
+				DirectoryCount:             state.BetaState.DirectoryCount,
+				FileCount:                  state.BetaState.FileCount,
+				SymbolicLinkCount:          state.BetaState.SymbolicLinkCount,
+				TotalFileSize:              state.BetaState.TotalFileSize,
+				ScanProblems:               exportProblems(state.BetaState.ScanProblems),
+				ExcludedScanProblems:       state.BetaState.ExcludedScanProblems,
+				TransitionProblems:         exportProblems(state.BetaState.TransitionProblems),
+				ExcludedTransitionProblems: state.BetaState.ExcludedTransitionProblems,
+				StagingProgress:            newReceiverStateFromInternalReceiverState(state.BetaState.StagingProgress),
+			},
 		}
 	}
 }

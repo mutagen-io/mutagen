@@ -12,8 +12,10 @@ import (
 // connections. It waits for both directions to see EOF, for one direction to
 // see an error, or for context cancellation. Once one of these events occurs,
 // the connections are closed (terminating forwarding) and the function returns.
-// Both connections must implement CloseWriter or this function will panic.
-func ForwardAndClose(ctx context.Context, first, second net.Conn) {
+// Both connections must implement CloseWriter or this function will panic. If
+// the caller passes non-nil values for firstAuditor and/or secondAuditor, then
+// auditing will be performed on the write end of the respective connection.
+func ForwardAndClose(ctx context.Context, first, second net.Conn, firstAuditor, secondAuditor stream.Auditor) {
 	// Defer closure of the connections.
 	defer func() {
 		first.Close()
@@ -30,21 +32,22 @@ func ForwardAndClose(ctx context.Context, first, second net.Conn) {
 		panic("second connection does not implement write closure")
 	}
 
-	// Forward traffic between the connections in separate Goroutines and track
-	// their termination. We track their termination via the error result,
-	// though this may be nil in the event that the source indicates EOF. If we
-	// do see an EOF from a source, then perform write closure on the
-	// corresponding destination in order to forward the EOF.
+	// Forward traffic between the connections (with optional auditing) in
+	// separate Goroutines and track their termination. We track their
+	// termination via the error result, though this may be nil in the event
+	// that the source indicates EOF. If we do see an EOF from a source, then
+	// perform write closure on the corresponding destination in order to
+	// forward the EOF.
 	copyErrors := make(chan error, 2)
 	go func() {
-		_, err := io.Copy(first, second)
+		_, err := io.Copy(stream.NewAuditWriter(first, firstAuditor), second)
 		if err == nil {
 			firstCloseWriter.CloseWrite()
 		}
 		copyErrors <- err
 	}()
 	go func() {
-		_, err := io.Copy(second, first)
+		_, err := io.Copy(stream.NewAuditWriter(second, secondAuditor), first)
 		if err == nil {
 			secondCloseWriter.CloseWrite()
 		}

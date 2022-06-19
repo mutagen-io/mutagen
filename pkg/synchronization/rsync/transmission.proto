@@ -10,13 +10,20 @@ import "synchronization/rsync/engine.proto";
 // Protocol Buffers message type, its internals are inherently public, but it
 // should otherwise be treated as an opaque type with a private implementation.
 message Transmission {
-    // Done indicates that the operation stream for the current file is
-    // finished. If set, there will be no operation in the response, but there
-    // may be an error.
-    bool done = 1;
-    // Operation is the next operation in the stream for the current file.
+    // ExpectedSize sets the expected size for the current incoming file. It is
+    // only set alongside the first operation in a file's transmission stream.
+    // If it zero, then the file's size should be treated as unknown, because a
+    // file of zero size will receive an immediate "done" transmission and would
+    // not be indicated as having zero size.
+    uint64 expectedSize = 1;
+    // Operation is the next operation in the transmission stream for the
+    // current file.
     Operation operation = 2;
-    // Error indicates that a non-terminal error has occurred. It will only be
+    // Done indicates that the transmission stream for the current file is
+    // finished. If Done is true, then there will be no operation set, but there
+    // may be an error set.
+    bool done = 3;
+    // Error indicates that a non-terminal error has occurred. It can only be
     // present if Done is true.
-    string error = 3;
+    string error = 4;
 }

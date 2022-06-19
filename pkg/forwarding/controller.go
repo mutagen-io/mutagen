@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -185,7 +186,9 @@ func newSession(
 		mergedSourceConfiguration:      mergedSourceConfiguration,
 		mergedDestinationConfiguration: mergedDestinationConfiguration,
 		state: &State{
-			Session: session,
+			Session:          session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		},
 	}
 
@@ -238,7 +241,9 @@ func loadSession(logger *logging.Logger, tracker *state.Tracker, identifier stri
 			session.ConfigurationDestination,
 		),
 		state: &State{
-			Session: session,
+			Session:          session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		},
 	}
 
@@ -264,7 +269,7 @@ func (c *controller) currentState() *State {
 	defer c.stateLock.UnlockWithoutNotify()
 
 	// Create a static copy of the state.
-	return c.state.copy()
+	return proto.Clone(c.state).(*State)
 }
 
 // resume attempts to reconnect and resume the session if it isn't currently
@@ -340,7 +345,7 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 		true,
 	)
 	c.stateLock.Lock()
-	c.state.SourceConnected = (source != nil)
+	c.state.SourceState.Connected = (source != nil)
 	c.stateLock.Unlock()
 
 	// Attempt to connect to destination.
@@ -358,7 +363,7 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 		false,
 	)
 	c.stateLock.Lock()
-	c.state.DestinationConnected = (destination != nil)
+	c.state.DestinationState.Connected = (destination != nil)
 	c.stateLock.Unlock()
 
 	// Start the forwarding loop with what we have. Source or destination may
@@ -493,7 +498,9 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// Reset the state.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session: c.session,
+			Session:          c.session,
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		}
 		c.stateLock.Unlock()
 
@@ -532,7 +539,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.SourceConnected = (source != nil)
+			c.state.SourceState.Connected = (source != nil)
 			if sourceConnectErr != nil {
 				c.state.LastError = fmt.Errorf("unable to connect to source: %w", sourceConnectErr).Error()
 			}
@@ -565,7 +572,7 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 				)
 			}
 			c.stateLock.Lock()
-			c.state.DestinationConnected = (destination != nil)
+			c.state.DestinationState.Connected = (destination != nil)
 			if destinationConnectErr != nil {
 				c.state.LastError = fmt.Errorf("unable to connect to destination: %w", destinationConnectErr).Error()
 			}
@@ -656,8 +663,10 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// failure.
 		c.stateLock.Lock()
 		c.state = &State{
-			Session:   c.session,
-			LastError: sessionErr.Error(),
+			Session:          c.session,
+			LastError:        sessionErr.Error(),
+			SourceState:      &EndpointState{},
+			DestinationState: &EndpointState{},
 		}
 		c.stateLock.Unlock()
 
@@ -701,6 +710,18 @@ func (c *controller) forward(source, destination Endpoint) error {
 	state = c.state
 	c.stateLock.Unlock()
 
+	// Create auditor functions to track data transfer.
+	incomingAuditor := func(amount uint64) {
+		c.stateLock.Lock()
+		state.TotalInboundData += amount
+		c.stateLock.Unlock()
+	}
+	outgoingAuditor := func(amount uint64) {
+		c.stateLock.Lock()
+		state.TotalOutboundData += amount
+		c.stateLock.Unlock()
+	}
+
 	// Accept and forward connections until there's an error.
 	for {
 		// Accept a connection from the source.
@@ -725,7 +746,7 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Perform forwarding and update state in a background Goroutine.
 		go func() {
 			// Perform forwarding.
-			ForwardAndClose(ctx, incoming, outgoing)
+			ForwardAndClose(ctx, incoming, outgoing, incomingAuditor, outgoingAuditor)
 
 			// Decrement open connection counts.
 			c.stateLock.Lock()

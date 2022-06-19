@@ -32,10 +32,10 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 
 	// Handle the requested files.
 	for i, p := range paths {
-		// Open the file. If this fails, it's a non-terminal error, but we
-		// need to inform the receiver. If sending the message fails, that is
+		// Open the file and extract its size. Failure here is non-terminal, but
+		// we need to inform the receiver. If sending the message fails, that is
 		// a terminal error.
-		file, err := opener.OpenFile(p)
+		file, metadata, err := opener.OpenFile(p)
 		if err != nil {
 			*transmission = Transmission{
 				Done:  true,
@@ -47,6 +47,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			}
 			continue
 		}
+		fileSize := metadata.Size
 
 		// Create an operation transmitter for deltification and track reception
 		// errors. We can safely set transmitError on each call because as soon
@@ -54,8 +55,9 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		// again.
 		var transmitError error
 		transmit := func(o *Operation) error {
-			*transmission = Transmission{Operation: o}
+			*transmission = Transmission{ExpectedSize: fileSize, Operation: o}
 			transmitError = receiver.Receive(transmission)
+			fileSize = 0
 			return transmitError
 		}
 

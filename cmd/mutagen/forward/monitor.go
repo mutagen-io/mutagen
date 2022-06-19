@@ -5,12 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
@@ -25,13 +29,13 @@ import (
 // session.
 func computeMonitorStatusLine(state *forwarding.State) string {
 	// Build the status line.
-	status := "Status: "
+	var status string
 	if state.Session.Paused {
 		status += color.YellowString("[Paused]")
 	} else {
 		// Add an error flag if there is one present.
 		if state.LastError != "" {
-			status += color.RedString("[Errored] ")
+			status += color.RedString("[X] ")
 		}
 
 		// Add the status.
@@ -40,9 +44,11 @@ func computeMonitorStatusLine(state *forwarding.State) string {
 		// If we're forwarding then add connection statistics.
 		if state.Status == forwarding.Status_ForwardingConnections {
 			status += fmt.Sprintf(
-				": %d active, %d total",
+				": %d open, %d total, %s outbound, %s inbound",
 				state.OpenConnections,
 				state.TotalConnections,
+				humanize.Bytes(state.TotalOutboundData),
+				humanize.Bytes(state.TotalInboundData),
 			)
 		}
 	}
@@ -70,6 +76,12 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to load formatting template: %w", err)
 	}
 
+	// Determine the listing mode.
+	mode := common.SessionDisplayModeMonitor
+	if monitorConfiguration.long {
+		mode = common.SessionDisplayModeMonitorLong
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
@@ -93,12 +105,24 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		defer statusLinePrinter.BreakIfNonEmpty()
 	}
 
+	// Track the last update time.
+	var lastUpdateTime time.Time
+
 	// Track whether or not we've identified an individual session in the
 	// non-templated case.
 	var identifiedSingleTargetSession bool
 
 	// Loop and print monitoring information indefinitely.
 	for {
+		// Regulate the update frequency (and tame CPU usage in both the monitor
+		// command and the daemon) by enforcing a minimum update cycle interval.
+		now := time.Now()
+		timeSinceLastUpdate := now.Sub(lastUpdateTime)
+		if timeSinceLastUpdate < common.MinimumMonitorUpdateInterval {
+			time.Sleep(common.MinimumMonitorUpdateInterval - timeSinceLastUpdate)
+		}
+		lastUpdateTime = now
+
 		// Perform a list operation.
 		response, err := sessionService.List(context.Background(), request)
 		if err != nil {
@@ -140,14 +164,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 				}
 
 				// Print session information.
-				printSession(state, monitorConfiguration.long)
-
-				// Print endpoint URLs, but only if not in long mode (where
-				// they're already printed in the session metadata).
-				if !monitorConfiguration.long {
-					fmt.Println("Source:", state.Session.Source.Format("\n\t"))
-					fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
-				}
+				printSession(state, mode)
 
 				// Record that we've identified our target session.
 				identifiedSingleTargetSession = true

@@ -4,15 +4,26 @@ package rsync;
 
 option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/rsync";
 
-// ReceivingStatus encodes that status of an rsync receiver. It should be
+// ReceiverState encodes that status of an rsync receiver. It should be
 // considered immutable.
-message ReceiverStatus {
+message ReceiverState {
     // Path is the path currently being received.
     string path = 1;
-    // Received is the number of paths that have already been received.
-    uint64 received = 2;
-    // Total is the total number of paths expected.
-    uint64 total = 3;
-    // TODO: Expand this struct with more detailed status information, e.g.
-    // failed requests, bandwidth, internal statistics, speedup factor, etc.
+    // ReceivedSize is the number of bytes that have been received for the
+    // current path from both block and data operations.
+    uint64 receivedSize = 2;
+    // ExpectedSize is the number of bytes expected for the current path.
+    uint64 expectedSize = 3;
+    // ReceivedFiles is the number of files that have already been received.
+    uint64 receivedFiles = 4;
+    // ExpectedFiles is the total number of files expected.
+    uint64 expectedFiles = 5;
+    // TotalReceivedSize is the total number of bytes that have been received
+    // for all files from both block and data operations.
+    uint64 totalReceivedSize = 6;
+    // TODO: We may want to add statistics on the speedup offered by the rsync
+    // algorithm in terms of data volume, though obviously this can't account
+    // for any savings that might come from compression at the transport layer.
+    // It would also be really nice to have TotalExpectedSize, but this is
+    // prohibitively difficult and expensive to compute.
 }

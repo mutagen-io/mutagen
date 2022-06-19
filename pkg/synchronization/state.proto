@@ -53,6 +53,50 @@ enum Status {
     Saving = 13;
 }
 
+// EndpointState encodes the current state of a synchronization endpoint. It is
+// mutable within the context of the daemon, so it should be accessed and
+// modified in a synchronized fashion. Outside of the daemon (e.g. when returned
+// via the API), it should be considered immutable.
+message EndpointState {
+    // Connected indicates whether or not the controller is currently connected
+    // to the endpoint.
+    bool connected = 1;
+    // DirectoryCount is the number of synchronizable directory entries
+    // contained in the last snapshot from the endpoint.
+    uint64 directoryCount = 2;
+    // FileCount is the number of synchronizable file entries contained in the
+    // last snapshot from the endpoint.
+    uint64 fileCount = 3;
+    // SymbolicLinkCount is the number of synchronizable symbolic link entries
+    // contained in the last snapshot from the endpoint.
+    uint64 symbolicLinkCount = 4;
+    // TotalFileSize is the total size of all synchronizable files referenced by
+    // the last snapshot from the endpoint.
+    uint64 totalFileSize = 5;
+    // ScanProblems is the list of non-terminal problems encountered during the
+    // last scanning operation on the endpoint. This list may be a truncated
+    // version of the full list if too many problems are encountered to report
+    // via the API, in which case ExcludedScanProblems will be non-zero.
+    repeated core.Problem scanProblems = 6;
+    // ExcludedScanProblems is the number of problems that have been excluded
+    // from ScanProblems due to truncation. This value can be non-zero only if
+    // ScanProblems is non-empty.
+    uint64 excludedScanProblems = 7;
+    // TransitionProblems is the list of non-terminal problems encountered
+    // during the last transition operation on the endpoint. This list may be a
+    // truncated version of the full list if too many problems are encountered
+    // to report via the API, in which case ExcludedTransitionProblems will be
+    // non-zero.
+    repeated core.Problem transitionProblems = 8;
+    // ExcludedTransitionProblems is the number of problems that have been
+    // excluded from TransitionProblems due to truncation. This value can be
+    // non-zero only if TransitionProblems is non-empty.
+    uint64 excludedTransitionProblems = 9;
+    // StagingProgress is the rsync staging progress. It is non-nil if and only
+    // if the endpoint is currently staging files.
+    rsync.ReceiverState stagingProgress = 10;
+}
+
 // State encodes the current state of a synchronization session. It is mutable
 // within the context of the daemon, so it should be accessed and modified in a
 // synchronized fashion. Outside of the daemon (e.g. when returned via the API),
@@ -63,61 +107,23 @@ message State {
     Session session = 1;
     // Status is the session status.
     Status status = 2;
-    // AlphaConnected indicates whether or not the session controller is
-    // currently connected to the alpha endpoint.
-    bool alphaConnected = 3;
-    // BetaConnected indicates whether or not the session controller is
-    // currently connected to the beta endpoint.
-    bool betaConnected = 4;
     // LastError is the last error to occur during synchronization. It is
     // cleared after a successful synchronization cycle.
-    string lastError = 5;
+    string lastError = 3;
     // SuccessfulCycles is the number of successful synchronization cycles to
     // occur since successfully connecting to the endpoints.
-    uint64 successfulCycles = 6;
-    // StagingStatus is the rsync staging status. It is only set if the session
-    // status is Status_StagingAlpha or Status_StagingBeta.
-    rsync.ReceiverStatus stagingStatus = 7;
-    // AlphaScanProblems is the list of non-terminal problems encountered during
-    // scanning on alpha. This list may be a truncated version of the full list
-    // if too many problems are encountered to report via the RPC API.
-    repeated core.Problem alphaScanProblems = 8;
-    // ExcludedAlphaScanProblems is the number of problems that have been
-    // excluded from AlphaScanProblems due to truncation. This value can only be
-    // non-zero if alphaScanProblems is non-empty.
-    uint64 excludedAlphaScanProblems = 9;
-    // BetaScanProblems is the list of non-terminal problems encountered during
-    // scanning on beta. This list may be a truncated version of the full list
-    // if too many problems are encountered to report via the RPC API.
-    repeated core.Problem betaScanProblems = 10;
-    // ExcludedBetaScanProblems is the number of problems that have been
-    // excluded from BetaScanProblems due to truncation. This value can only be
-    // non-zero if betaScanProblems is non-empty.
-    uint64 excludedBetaScanProblems = 11;
-    // Conflicts are the conflicts that identified during reconciliation. This
-    // list may be a truncated version of the full list if too many conflicts
-    // are encountered to report via the RPC API.
-    repeated core.Conflict conflicts = 12;
+    uint64 successfulCycles = 4;
+    // Conflicts are the content conflicts identified during reconciliation.
+    // This list may be a truncated version of the full list if too many
+    // conflicts are encountered to report via the API, in which case
+    // ExcludedConflicts will be non-zero.
+    repeated core.Conflict conflicts = 5;
     // ExcludedConflicts is the number of conflicts that have been excluded from
-    // Conflicts due to truncation. This value can only be non-zero if conflicts
+    // Conflicts due to truncation. This value can be non-zero only if conflicts
     // is non-empty.
-    uint64 excludedConflicts = 13;
-    // AlphaTransitionProblems is the list of non-terminal problems encountered
-    // during transition operations on alpha. This list may be a truncated
-    // version of the full list if too many problems are encountered to report
-    // via the RPC API.
-    repeated core.Problem alphaTransitionProblems = 14;
-    // ExcludedAlphaTransitionProblems is the number of problems that have been
-    // excluded from AlphaTransitionProblems due to truncation. This value can
-    // only be non-zero if alphaTransitionProblems is non-empty.
-    uint64 excludedAlphaTransitionProblems = 15;
-    // BetaTransitionProblems is the list of non-terminal problems encountered
-    // during transition operations on beta. This list may be a truncated
-    // version of the full list if too many problems are encountered to report
-    // via the RPC API.
-    repeated core.Problem betaTransitionProblems = 16;
-    // ExcludedBetaTransitionProblems is the number of problems that have been
-    // excluded from BetaTransitionProblems due to truncation. This value can
-    // only be non-zero if betaTransitionProblems is non-empty.
-    uint64 excludedBetaTransitionProblems = 17;
+    uint64 excludedConflicts = 6;
+    // AlphaState encodes the state of the alpha endpoint. It is always non-nil.
+    EndpointState alphaState = 7;
+    // BetaState encodes the state of the beta endpoint. It is always non-nil.
+    EndpointState betaState = 8;
 }
