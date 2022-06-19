@@ -76,6 +76,12 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to load formatting template: %w", err)
 	}
 
+	// Determine the listing mode.
+	mode := common.SessionDisplayModeMonitor
+	if monitorConfiguration.long {
+		mode = common.SessionDisplayModeMonitorLong
+	}
+
 	// Connect to the daemon and defer closure of the connection.
 	daemonConnection, err := daemon.Connect(true, true)
 	if err != nil {
@@ -158,14 +164,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 				}
 
 				// Print session information.
-				printSession(state, monitorConfiguration.long)
-
-				// Print endpoint URLs, but only if not in long mode (where
-				// they're already printed in the session metadata).
-				if !monitorConfiguration.long {
-					fmt.Println("Source:", state.Session.Source.Format("\n\t"))
-					fmt.Println("Destination:", state.Session.Destination.Format("\n\t"))
-				}
+				printSession(state, mode)
 
 				// Record that we've identified our target session.
 				identifiedSingleTargetSession = true

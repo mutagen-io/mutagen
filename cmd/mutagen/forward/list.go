@@ -7,59 +7,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"google.golang.org/grpc"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common/templating"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 
 	forwardingmodels "github.com/mutagen-io/mutagen/pkg/api/models/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
-	"github.com/mutagen-io/mutagen/pkg/url"
 )
-
-// formatConnectionStatus formats a connection status for display.
-func formatConnectionStatus(connected bool) string {
-	if connected {
-		return "Yes"
-	}
-	return "No"
-}
-
-// printEndpointState prints the state of a forwarding endpoint.
-func printEndpointState(name string, url *url.URL, state *forwarding.EndpointState) {
-	// Print header.
-	fmt.Printf("%s:\n", name)
-
-	// Print URL if we're not in long-listing mode (otherwise it will be
-	// printed elsewhere).
-	if !listConfiguration.long {
-		fmt.Println("\tURL:", url.Format("\n\t\t"))
-	}
-
-	// Print connection status.
-	fmt.Printf("\tConnected: %s\n", formatConnectionStatus(state.Connected))
-}
-
-// printSessionState prints the state of a forwarding session.
-func printSessionState(state *forwarding.State) {
-	// Print status.
-	statusString := state.Status.Description()
-	if state.Session.Paused {
-		statusString = color.YellowString("[Paused]")
-	}
-	fmt.Fprintln(color.Output, "Status:", statusString)
-
-	// Print the last error, if any.
-	if state.LastError != "" {
-		color.Red("Last error: %s\n", state.LastError)
-	}
-}
 
 // ListWithSelection is an orchestration convenience method that performs a list
 // operation using the provided daemon connection and session selection and then
@@ -73,6 +32,12 @@ func ListWithSelection(
 	template, err := listConfiguration.TemplateFlags.LoadTemplate()
 	if err != nil {
 		return fmt.Errorf("unable to load formatting template: %w", err)
+	}
+
+	// Determine the listing mode.
+	mode := common.SessionDisplayModeList
+	if long {
+		mode = common.SessionDisplayModeListLong
 	}
 
 	// Perform the list operation.
@@ -98,10 +63,7 @@ func ListWithSelection(
 		if len(response.SessionStates) > 0 {
 			for _, state := range response.SessionStates {
 				fmt.Println(cmd.DelimiterLine)
-				printSession(state, long)
-				printEndpointState("Source", state.Session.Source, state.SourceState)
-				printEndpointState("Destination", state.Session.Destination, state.DestinationState)
-				printSessionState(state)
+				printSession(state, mode)
 			}
 			fmt.Println(cmd.DelimiterLine)
 		} else {
