@@ -1109,11 +1109,13 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// at the start of this function).
 		c.stateLock.Lock()
 		c.state.LastError = ""
+		c.state.AlphaState.Scanned = true
 		c.state.AlphaState.DirectoryCount = αSnapshot.DirectoryCount
 		c.state.AlphaState.FileCount = αSnapshot.FileCount
 		c.state.AlphaState.SymbolicLinkCount = αSnapshot.SymbolicLinkCount
 		c.state.AlphaState.TotalFileSize = αSnapshot.TotalFileSize
 		c.state.AlphaState.ScanProblems = αContent.Problems()
+		c.state.BetaState.Scanned = true
 		c.state.BetaState.DirectoryCount = βSnapshot.DirectoryCount
 		c.state.BetaState.FileCount = βSnapshot.FileCount
 		c.state.BetaState.SymbolicLinkCount = βSnapshot.SymbolicLinkCount

@@ -43,6 +43,9 @@ type EndpointState struct {
 	// Connected indicates whether or not the controller is currently connected
 	// to the endpoint.
 	Connected bool `json:"connected"`
+	// Scanned indicates whether or not at least one scan has been performed on
+	// the endpoint.
+	Scanned bool `json:"scanned"`
 	// DirectoryCount is the number of synchronizable directory entries
 	// contained in the last snapshot from the endpoint.
 	DirectoryCount uint64 `json:"directoryCount,omitempty"`
@@ -139,6 +142,7 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 			ExcludedConflicts: state.ExcludedConflicts,
 			AlphaState: EndpointState{
 				Connected:                  state.AlphaState.Connected,
+				Scanned:                    state.AlphaState.Scanned,
 				DirectoryCount:             state.AlphaState.DirectoryCount,
 				FileCount:                  state.AlphaState.FileCount,
 				SymbolicLinkCount:          state.AlphaState.SymbolicLinkCount,
@@ -151,6 +155,7 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 			},
 			BetaState: EndpointState{
 				Connected:                  state.BetaState.Connected,
+				Scanned:                    state.BetaState.Scanned,
 				DirectoryCount:             state.BetaState.DirectoryCount,
 				FileCount:                  state.BetaState.FileCount,
 				SymbolicLinkCount:          state.BetaState.SymbolicLinkCount,

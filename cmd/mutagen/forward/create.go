@@ -74,10 +74,10 @@ func CreateWithSpecification(
 	promptingCancel()
 	<-promptingErrors
 	if err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return "", grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return "", fmt.Errorf("invalid create response received: %w", err)
 	}
 
