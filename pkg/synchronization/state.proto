@@ -61,40 +61,43 @@ message EndpointState {
     // Connected indicates whether or not the controller is currently connected
     // to the endpoint.
     bool connected = 1;
+    // Scanned indicates whether or not at least one scan has been performed on
+    // the endpoint.
+    bool scanned = 2;
     // DirectoryCount is the number of synchronizable directory entries
     // contained in the last snapshot from the endpoint.
-    uint64 directoryCount = 2;
+    uint64 directoryCount = 3;
     // FileCount is the number of synchronizable file entries contained in the
     // last snapshot from the endpoint.
-    uint64 fileCount = 3;
+    uint64 fileCount = 4;
     // SymbolicLinkCount is the number of synchronizable symbolic link entries
     // contained in the last snapshot from the endpoint.
-    uint64 symbolicLinkCount = 4;
+    uint64 symbolicLinkCount = 5;
     // TotalFileSize is the total size of all synchronizable files referenced by
     // the last snapshot from the endpoint.
-    uint64 totalFileSize = 5;
+    uint64 totalFileSize = 6;
     // ScanProblems is the list of non-terminal problems encountered during the
     // last scanning operation on the endpoint. This list may be a truncated
     // version of the full list if too many problems are encountered to report
     // via the API, in which case ExcludedScanProblems will be non-zero.
-    repeated core.Problem scanProblems = 6;
+    repeated core.Problem scanProblems = 7;
     // ExcludedScanProblems is the number of problems that have been excluded
     // from ScanProblems due to truncation. This value can be non-zero only if
     // ScanProblems is non-empty.
-    uint64 excludedScanProblems = 7;
+    uint64 excludedScanProblems = 8;
     // TransitionProblems is the list of non-terminal problems encountered
     // during the last transition operation on the endpoint. This list may be a
     // truncated version of the full list if too many problems are encountered
     // to report via the API, in which case ExcludedTransitionProblems will be
     // non-zero.
-    repeated core.Problem transitionProblems = 8;
+    repeated core.Problem transitionProblems = 9;
     // ExcludedTransitionProblems is the number of problems that have been
     // excluded from TransitionProblems due to truncation. This value can be
     // non-zero only if TransitionProblems is non-empty.
-    uint64 excludedTransitionProblems = 9;
+    uint64 excludedTransitionProblems = 10;
     // StagingProgress is the rsync staging progress. It is non-nil if and only
     // if the endpoint is currently staging files.
-    rsync.ReceiverState stagingProgress = 10;
+    rsync.ReceiverState stagingProgress = 11;
 }
 
 // State encodes the current state of a synchronization session. It is mutable

@@ -177,12 +177,14 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 	// Print connection status.
 	fmt.Println("\tConnected:", common.FormatConnectionStatus(state.Connected))
 
-	// Print content information.
-	fmt.Printf("\tContents: %s | %s | %s\n",
-		formatDirectoryCount(state.DirectoryCount),
-		formatFileCountAndSize(state.FileCount, state.TotalFileSize),
-		formatSymbolicLinkCount(state.SymbolicLinkCount),
-	)
+	// Print content information, if available.
+	if state.Scanned {
+		fmt.Printf("\tSynchronizable contents:\n\t\t%s\n\t\t%s\n\t\t%s\n",
+			formatDirectoryCount(state.DirectoryCount),
+			formatFileCountAndSize(state.FileCount, state.TotalFileSize),
+			formatSymbolicLinkCount(state.SymbolicLinkCount),
+		)
+	}
 
 	// Print scan problems, if any.
 	if len(state.ScanProblems) > 0 {
