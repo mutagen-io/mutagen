@@ -147,11 +147,13 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		Selection: selection,
 	}
 
-	// If no template has been specified, then create a status line printer and
-	// defer a line break operation.
+	// If no template has been specified, then create a status line printer with
+	// bold text and defer a line break operation.
 	var statusLinePrinter *cmd.StatusLinePrinter
 	if template == nil {
-		statusLinePrinter = &cmd.StatusLinePrinter{}
+		statusLinePrinter = &cmd.StatusLinePrinter{
+			Color: color.New(color.Bold),
+		}
 		defer statusLinePrinter.BreakIfPopulated()
 	}
 

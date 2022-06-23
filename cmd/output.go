@@ -15,6 +15,8 @@ type StatusLinePrinter struct {
 	// UseStandardError causes the printer to use standard error for its output
 	// instead of standard output (the default).
 	UseStandardError bool
+	// Color, if non-nil, will be used for colorizing output (if possible).
+	Color *color.Color
 	// populated indicates whether or not the printer has printed any non-empty
 	// content to the status line.
 	populated bool
@@ -32,7 +34,11 @@ func (p *StatusLinePrinter) Print(message string) {
 	}
 
 	// Print the message.
-	fmt.Fprintf(output, statusLineFormat, message)
+	if p.Color != nil {
+		p.Color.Fprintf(output, statusLineFormat, message)
+	} else {
+		fmt.Fprintf(output, statusLineFormat, message)
+	}
 
 	// Update our populated status. The line is always populated in this case
 	// because even an empty message will be padded with spaces.
