@@ -45,10 +45,10 @@ func PauseWithSelection(
 	promptingCancel()
 	<-promptingErrors
 	if err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return fmt.Errorf("invalid pause response received: %w", err)
 	}
 

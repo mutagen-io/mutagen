@@ -46,10 +46,10 @@ func TerminateWithSelection(
 	promptingCancel()
 	<-promptingErrors
 	if err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return grpcutil.PeelAwayRPCErrorLayer(err)
 	} else if err = response.EnsureValid(); err != nil {
-		statusLinePrinter.BreakIfNonEmpty()
+		statusLinePrinter.BreakIfPopulated()
 		return fmt.Errorf("invalid terminate response received: %w", err)
 	}
 

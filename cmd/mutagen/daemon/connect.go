@@ -56,7 +56,7 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 
 	// Create a status line printer and defer a clear.
 	statusLinePrinter := &cmd.StatusLinePrinter{UseStandardError: true}
-	defer statusLinePrinter.BreakIfNonEmpty()
+	defer statusLinePrinter.BreakIfPopulated()
 
 	// Perform dialing in a loop until failure or success.
 	remainingPostAutostatAttempts := autostartRetryCount

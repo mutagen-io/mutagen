@@ -15,64 +15,59 @@ type StatusLinePrinter struct {
 	// UseStandardError causes the printer to use standard error for its output
 	// instead of standard output (the default).
 	UseStandardError bool
-	// nonEmpty indicates whether or not the printer has printed any non-empty
+	// populated indicates whether or not the printer has printed any non-empty
 	// content to the status line.
-	nonEmpty bool
+	populated bool
 }
 
 // Print prints a message to the status line, overwriting any existing content.
 // Color escape sequences are supported. Messages will be truncated to a
 // platform-dependent maximum length and padded appropriately.
 func (p *StatusLinePrinter) Print(message string) {
-	// Determine output stream.
+	// Determine the output stream to use. We print to color-supporting output
+	// streams to ensure that color escape sequences are properly handled.
 	output := color.Output
 	if p.UseStandardError {
 		output = color.Error
 	}
 
-	// Print the message, prefixed with a carriage return to wipe out the
-	// previous line (if any). Ensure that the status prints as a specified
-	// width, truncating or right-padding with space as necessary. On POSIX
-	// systems, this width is 80 characters and on Windows it's 79. The reason
-	// for 79 on Windows is that for cmd.exe consoles the line width needs to be
-	// narrower than the console (which is 80 columns by default) for carriage
-	// return wipes to work (if it's the same width, the next carriage return
-	// overflows to the next line, behaving exactly like a newline). We print to
-	// the color output so that color escape sequences are properly handled - in
-	// all other cases this will behave just like standard output.
-	// TODO: We should probably try to detect the console width.
+	// Print the message.
 	fmt.Fprintf(output, statusLineFormat, message)
 
-	// Update our non-empty status. We're always non-empty after printing
-	// because we print padding as well.
-	p.nonEmpty = true
+	// Update our populated status. The line is always populated in this case
+	// because even an empty message will be padded with spaces.
+	// TODO: We could possibly make this more precise, e.g. tracking whether or
+	// not message is empty or contains only spaces. In cases like these,
+	// BreakIfPopulated could potentially just return the cursor to the beginning
+	// of the line instead of printing a newline. But it's a bit unclear what
+	// the semantics of this should look like, what types of whitespace should
+	// be classified as empty, etc. For example, an empty line might be used as
+	// a visual delimiter, or a message could contain tabs and/or newlines.
+	p.populated = true
 }
 
 // Clear clears any content on the status line and moves the cursor back to the
 // beginning of the line.
 func (p *StatusLinePrinter) Clear() {
-	// Write over any existing data.
-	p.Print("")
-
-	// Determine output stream.
+	// Determine the output stream to use.
 	output := os.Stdout
 	if p.UseStandardError {
 		output = os.Stderr
 	}
 
-	// Wipe out any existing line.
-	fmt.Fprint(output, "\r")
+	// Wipe out any existing content and return the cursor to the beginning of
+	// the line.
+	fmt.Fprintf(output, statusLineClearFormat, "")
 
-	// Update our non-empty status.
-	p.nonEmpty = false
+	// Update our populated status.
+	p.populated = false
 }
 
-// BreakIfNonEmpty prints a newline character if the current line is non-empty.
-func (p *StatusLinePrinter) BreakIfNonEmpty() {
-	// If the status line contents are non-empty, then print a newline and mark
-	// ourselves as empty.
-	if p.nonEmpty {
-		// Determine output stream.
+// BreakIfPopulated prints a newline character if the current line is non-empty.
+func (p *StatusLinePrinter) BreakIfPopulated() {
+	// Only perform an operation if the status line is populated with content.
+	if p.populated {
+		// Determine the output stream to use.
 		output := os.Stdout
 		if p.UseStandardError {
 			output = os.Stderr
@@ -81,8 +76,8 @@ func (p *StatusLinePrinter) BreakIfNonEmpty() {
 		// Print a line break.
 		fmt.Fprintln(output)
 
-		// Update our non-empty status.
-		p.nonEmpty = false
+		// Update our populated status.
+		p.populated = false
 	}
 }
 
@@ -111,7 +106,7 @@ func (p *StatusLinePrompter) Prompt(message string) (string, error) {
 	//
 	// HACK: This is somewhat of a heuristic that relies on knowledge of how
 	// Mutagen's internal prompting/messaging works in practice.
-	p.Printer.BreakIfNonEmpty()
+	p.Printer.BreakIfPopulated()
 
 	// Perform command line prompting.
 	//

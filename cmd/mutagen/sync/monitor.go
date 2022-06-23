@@ -152,7 +152,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	var statusLinePrinter *cmd.StatusLinePrinter
 	if template == nil {
 		statusLinePrinter = &cmd.StatusLinePrinter{}
-		defer statusLinePrinter.BreakIfNonEmpty()
+		defer statusLinePrinter.BreakIfPopulated()
 	}
 
 	// Track the last update time.
