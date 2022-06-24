@@ -129,37 +129,35 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		// which is all we care about.
 		stream.Close()
 
-		// Extract error output and ensure it's UTF-8.
+		// Extract any error output, ensure that it's UTF-8, and strip out any
+		// whitespace (primarily trailing newlines).
 		errorOutput := errorBuffer.String()
 		if !utf8.ValidString(errorOutput) {
 			return nil, false, false, errors.New("remote did not return UTF-8 output")
 		}
+		errorOutput = strings.TrimSpace(errorOutput)
 
-		// See if we can understand the exact nature of the failure. In
+		// Wrap up the handshake error with additional context.
+		if errorOutput != "" {
+			err = fmt.Errorf("unable to handshake with agent process: %w (error output: %s)", err, errorOutput)
+		} else {
+			err = fmt.Errorf("unable to handshake with agent process: %w", err)
+		}
+
+		// See if we can classify the exact nature of the handshake failure. In
 		// particular, we want to identify whether or not we should try to
 		// (re-)install the agent binary and whether or not we're talking to a
 		// Windows cmd.exe environment. We have to delegate this responsibility
-		// to the transport, because each has different error classification
-		// mechanisms. If the transport can't figure it out but we have some
-		// error output, then give it to the user, because they're probably in a
-		// better place to interpret the error output then they are to interpret
-		// the transport's reason for classification failure. If we don't have
-		// error output, then just tell the user why the transport failed to
-		// classify the failure.
-		tryInstall, cmdExe, err := transport.ClassifyError(agentProcess.ProcessState, errorOutput)
-		if err != nil {
-			if errorOutput != "" {
-				return nil, false, false, fmt.Errorf(
-					"agent handshake failed with error output:\n%s",
-					strings.TrimSpace(errorOutput),
-				)
-			}
-			return nil, false, false, fmt.Errorf("unable to classify agent handshake error: %w", err)
+		// to the transport, because each transport has different error
+		// classification mechanisms. We don't bother returning classification
+		// failure errors because they don't contain any useful information; the
+		// user is far better off trying to interpret the original error and
+		// error output from the handshake failure.
+		tryInstall, cmdExe, classifyErr := transport.ClassifyError(agentProcess.ProcessState, errorOutput)
+		if classifyErr != nil {
+			return nil, false, false, err
 		}
-
-		// The transport was able to classify the error, so return that
-		// information.
-		return nil, tryInstall, cmdExe, errors.New("unable to handshake with agent process")
+		return nil, tryInstall, cmdExe, err
 	}
 
 	// Now that we've successfully connected, disable the termination delay on
