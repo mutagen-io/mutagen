@@ -3,6 +3,8 @@ package project
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/fatih/color"
+
 	// Explicitly import packages that need to register protocol handlers.
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/docker"
 	_ "github.com/mutagen-io/mutagen/pkg/forwarding/protocols/local"
@@ -24,7 +26,7 @@ func projectMain(command *cobra.Command, _ []string) error {
 // ProjectCommand is the project command.
 var ProjectCommand = &cobra.Command{
 	Use:          "project",
-	Short:        "Orchestrate sessions for a Mutagen project [Experimental]",
+	Short:        "Orchestrate sessions for a Mutagen project " + color.YellowString("[Deprecated]"),
 	RunE:         projectMain,
 	SilenceUsage: true,
 }
