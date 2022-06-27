@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -79,25 +78,9 @@ func init() {
 		generateCommand,
 	)
 
-	// HACK If we're on Windows, enable color support for command usage and
-	// error output by recursively replacing the output streams for Cobra
-	// commands.
-	if runtime.GOOS == "windows" {
-		enableColorForCommand(rootCommand)
-	}
-}
-
-// enableColorForCommand recursively enables colorized usage and error output
-// for a command and all of its child commands.
-func enableColorForCommand(command *cobra.Command) {
-	// Enable color support for the command itself.
-	command.SetOut(color.Output)
-	command.SetErr(color.Error)
-
-	// Recursively enable color support for child commands.
-	for _, c := range command.Commands() {
-		enableColorForCommand(c)
-	}
+	// Enable color output support for all commands in the hierarchy.
+	rootCommand.SetOut(color.Output)
+	rootCommand.SetErr(color.Error)
 }
 
 func main() {
