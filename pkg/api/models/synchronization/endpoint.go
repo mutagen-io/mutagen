@@ -36,15 +36,15 @@ type EndpointState struct {
 	// Scanned indicates whether or not at least one scan has been performed on
 	// the endpoint.
 	Scanned bool `json:"scanned"`
-	// DirectoryCount is the number of synchronizable directory entries
+	// Directories is the number of synchronizable directory entries contained
+	// in the last snapshot from the endpoint.
+	Directories uint64 `json:"directories,omitempty"`
+	// Files is the number of synchronizable file entries contained in the last
+	// snapshot from the endpoint.
+	Files uint64 `json:"files,omitempty"`
+	// SymbolicLinks is the number of synchronizable symbolic link entries
 	// contained in the last snapshot from the endpoint.
-	DirectoryCount uint64 `json:"directoryCount,omitempty"`
-	// FileCount is the number of synchronizable file entries contained in the
-	// last snapshot from the endpoint.
-	FileCount uint64 `json:"fileCount,omitempty"`
-	// SymbolicLinkCount is the number of synchronizable symbolic link entries
-	// contained in the last snapshot from the endpoint.
-	SymbolicLinkCount uint64 `json:"symbolicLinkCount,omitempty"`
+	SymbolicLinks uint64 `json:"symbolicLinks,omitempty"`
 	// TotalFileSize is the total size of all synchronizable files referenced by
 	// the last snapshot from the endpoint.
 	TotalFileSize uint64 `json:"totalFileSize,omitempty"`
@@ -96,9 +96,9 @@ func (e *Endpoint) loadFromInternal(url *url.URL, configuration *synchronization
 	} else {
 		e.EndpointState = &EndpointState{
 			Scanned:                    state.Scanned,
-			DirectoryCount:             state.DirectoryCount,
-			FileCount:                  state.FileCount,
-			SymbolicLinkCount:          state.SymbolicLinkCount,
+			Directories:                state.Directories,
+			Files:                      state.Files,
+			SymbolicLinks:              state.SymbolicLinks,
 			TotalFileSize:              state.TotalFileSize,
 			ScanProblems:               exportProblems(state.ScanProblems),
 			ExcludedScanProblems:       state.ExcludedScanProblems,

@@ -123,13 +123,12 @@ type scanner struct {
 	// preservesExecutability indicates whether or not the synchronization root
 	// filesystem preserves POSIX executability bits.
 	preservesExecutability bool
-	// directoryCount is the number of synchronizable directories encountered.
-	directoryCount uint64
-	// fileCount is the number of synchronizable files encountered.
-	fileCount uint64
-	// symbolicLinkCount is the number of synchronizable symbolic links
-	// encountered.
-	symbolicLinkCount uint64
+	// directories is the number of synchronizable directories encountered.
+	directories uint64
+	// files is the number of synchronizable files encountered.
+	files uint64
+	// symbolicLinks is the number of synchronizable symbolic links encountered.
+	symbolicLinks uint64
 	// totalFileSize is the total size of all synchronizable files encountered.
 	totalFileSize uint64
 }
@@ -243,7 +242,7 @@ func (s *scanner) file(
 	}
 
 	// Increment the total file count and size.
-	s.fileCount++
+	s.files++
 	s.totalFileSize += metadata.Size
 
 	// Success.
@@ -291,7 +290,7 @@ func (s *scanner) symbolicLink(
 	}
 
 	// Increment the total symbolic link count.
-	s.symbolicLinkCount++
+	s.symbolicLinks++
 
 	// Success.
 	return &Entry{
@@ -460,11 +459,11 @@ func (s *scanner) directory(
 				contentBaseline.walk(contentPath, func(path string, entry *Entry) {
 					// Update total entry counts.
 					if entry.Kind == EntryKind_Directory {
-						s.directoryCount++
+						s.directories++
 					} else if entry.Kind == EntryKind_File {
-						s.fileCount++
+						s.files++
 					} else if entry.Kind == EntryKind_SymbolicLink {
-						s.symbolicLinkCount++
+						s.symbolicLinks++
 					}
 
 					// Generate ignore cache entries. This isn't exhaustive,
@@ -536,7 +535,7 @@ func (s *scanner) directory(
 	}
 
 	// Increment the total directory count.
-	s.directoryCount++
+	s.directories++
 
 	// Success.
 	return &Entry{
@@ -799,9 +798,9 @@ func Scan(
 		Content:                content,
 		PreservesExecutability: preservesExecutability,
 		DecomposesUnicode:      decomposesUnicode,
-		DirectoryCount:         s.directoryCount,
-		FileCount:              s.fileCount,
-		SymbolicLinkCount:      s.symbolicLinkCount,
+		Directories:            s.directories,
+		Files:                  s.files,
+		SymbolicLinks:          s.symbolicLinks,
 		TotalFileSize:          s.totalFileSize,
 	}, newCache, newIgnoreCache, nil
 }

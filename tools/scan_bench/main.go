@@ -306,9 +306,9 @@ func main() {
 	fmt.Println("Snapshot contained", entryCount, "entries")
 
 	// Print snapshot statistics.
-	fmt.Println("Snapshot contained", snapshot.DirectoryCount, "directories")
-	fmt.Println("Snapshot contained", snapshot.FileCount, "files")
-	fmt.Println("Snapshot contained", snapshot.SymbolicLinkCount, "symbolic links")
+	fmt.Println("Snapshot contained", snapshot.Directories, "directories")
+	fmt.Println("Snapshot contained", snapshot.Files, "files")
+	fmt.Println("Snapshot contained", snapshot.SymbolicLinks, "symbolic links")
 	fmt.Println("Snapshot files totaled", humanize.Bytes(snapshot.TotalFileSize))
 
 	// Perform a deep copy of the snapshot contents.

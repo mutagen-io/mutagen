@@ -18,15 +18,15 @@ message Snapshot {
     // DecomposesUnicode indicates whether or not the associated filesystem
     // decomposes Unicode names.
     bool decomposesUnicode = 3;
-    // DirectoryCount is the number of synchronizable directory entries
-    // contained in the snapshot.
-    uint64 directoryCount = 4;
-    // FileCount is the number of synchronizable file entries contained in the
+    // Directories is the number of synchronizable directory entries contained
+    // in the snapshot.
+    uint64 directories = 4;
+    // Files is the number of synchronizable file entries contained in the
     // snapshot.
-    uint64 fileCount = 5;
-    // SymbolicLinkCount is the number of synchronizable symbolic link entries
+    uint64 files = 5;
+    // SymbolicLinks is the number of synchronizable symbolic link entries
     // contained in the snapshot.
-    uint64 symbolicLinkCount = 6;
+    uint64 symbolicLinks = 6;
     // TotalFileSize is the total size of all synchronizable files referenced by
     // the snapshot.
     uint64 totalFileSize = 7;
