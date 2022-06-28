@@ -17,36 +17,25 @@ type Session struct {
 	CreationTime string `json:"creationTime"`
 	// CreatingVersion is the version of Mutagen that created the session.
 	CreatingVersion string `json:"creatingVersion"`
-	// Source is the source endpoint URL.
-	Source URL `json:"source"`
-	// Destination is the destination endpoint URL.
-	Destination URL `json:"destination"`
+	// Source stores the source endpoint's configuration and state.
+	Source Endpoint `json:"source"`
+	// Destination stores the destination endpoint's configuration and state.
+	Destination Endpoint `json:"destination"`
 	// Configuration is the session configuration.
 	Configuration
-	// ConfigurationSource is the source endpoint configuration.
-	ConfigurationSource Configuration `json:"configurationSource"`
-	// ConfigurationDestination is the destination endpoint configuration.
-	ConfigurationDestination Configuration `json:"configurationDestination"`
 	// Name is the session name.
 	Name string `json:"name,omitempty"`
 	// Label are the session labels.
 	Labels map[string]string `json:"labels,omitempty"`
 	// Paused indicates whether or not the session is paused.
 	Paused bool `json:"paused"`
-	// State stores state fields relevant to running sessions. It is non-nil if
-	// and only if the session is unpaused.
-	*State
+	// SessionState stores state fields relevant to running sessions. It is
+	// non-nil if and only if the session is unpaused.
+	*SessionState
 }
 
-// EndpointState encodes the current state of a forwarding endpoint.
-type EndpointState struct {
-	// Connected indicates whether or not the controller is currently connected
-	// to the endpoint.
-	Connected bool `json:"connected"`
-}
-
-// State encodes fields relevant to unpaused sessions.
-type State struct {
+// SessionState encodes fields relevant to unpaused sessions.
+type SessionState struct {
 	// Status is the session status.
 	Status forwarding.Status `json:"status"`
 	// LastError is the last forwarding error to occur.
@@ -63,10 +52,6 @@ type State struct {
 	// TotalInboundData is the total amount of data (in bytes) that has been
 	// transmitted from destination to source across all forwarded connections.
 	TotalInboundData uint64 `json:"totalInboundData"`
-	// SourceState encodes the state of the source endpoint.
-	SourceState EndpointState `json:"sourceState"`
-	// DestinationState encodes the state of the destination endpoint.
-	DestinationState EndpointState `json:"destinationState"`
 }
 
 // loadFromInternal sets a session to match an internal Protocol Buffers session
@@ -86,31 +71,31 @@ func (s *Session) loadFromInternal(state *forwarding.State) {
 	s.Paused = state.Session.Paused
 
 	// Propagate endpoint information.
-	s.Source.loadFromInternal(state.Session.Source)
-	s.Destination.loadFromInternal(state.Session.Destination)
+	s.Source.loadFromInternal(
+		state.Session.Source,
+		state.Session.ConfigurationSource,
+		state.SourceState,
+	)
+	s.Destination.loadFromInternal(
+		state.Session.Destination,
+		state.Session.ConfigurationDestination,
+		state.DestinationState,
+	)
 
 	// Propagate configuration information.
 	s.Configuration.loadFromInternal(state.Session.Configuration)
-	s.ConfigurationSource.loadFromInternal(state.Session.ConfigurationSource)
-	s.ConfigurationDestination.loadFromInternal(state.Session.ConfigurationDestination)
 
 	// Propagate state information if the session isn't paused.
 	if state.Session.Paused {
-		s.State = nil
+		s.SessionState = nil
 	} else {
-		s.State = &State{
+		s.SessionState = &SessionState{
 			Status:            state.Status,
 			LastError:         state.LastError,
 			OpenConnections:   state.OpenConnections,
 			TotalConnections:  state.TotalConnections,
 			TotalOutboundData: state.TotalOutboundData,
 			TotalInboundData:  state.TotalInboundData,
-			SourceState: EndpointState{
-				Connected: state.SourceState.Connected,
-			},
-			DestinationState: EndpointState{
-				Connected: state.DestinationState.Connected,
-			},
 		}
 	}
 }

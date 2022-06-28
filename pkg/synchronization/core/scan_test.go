@@ -514,22 +514,22 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
-			if snapshot.DirectoryCount != directoryCount {
+			if snapshot.Directories != directoryCount {
 				t.Errorf("%s: cold scan directory count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					snapshot.DirectoryCount, directoryCount,
+					snapshot.Directories, directoryCount,
 				)
 			}
-			if snapshot.FileCount != fileCount {
+			if snapshot.Files != fileCount {
 				t.Errorf("%s: cold scan file count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					snapshot.FileCount, fileCount,
+					snapshot.Files, fileCount,
 				)
 			}
-			if snapshot.SymbolicLinkCount != symbolicLinkCount {
+			if snapshot.SymbolicLinks != symbolicLinkCount {
 				t.Errorf("%s: cold scan symbolic link count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					snapshot.SymbolicLinkCount, symbolicLinkCount,
+					snapshot.SymbolicLinks, symbolicLinkCount,
 				)
 			}
 			if snapshot.TotalFileSize != totalFileSize {
@@ -593,22 +593,22 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
-			if newSnapshot.DirectoryCount != directoryCount {
+			if newSnapshot.Directories != directoryCount {
 				t.Errorf("%s: warm scan directory count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.DirectoryCount, directoryCount,
+					newSnapshot.Directories, directoryCount,
 				)
 			}
-			if newSnapshot.FileCount != fileCount {
+			if newSnapshot.Files != fileCount {
 				t.Errorf("%s: warm scan file count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.FileCount, fileCount,
+					newSnapshot.Files, fileCount,
 				)
 			}
-			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+			if newSnapshot.SymbolicLinks != symbolicLinkCount {
 				t.Errorf("%s: warm scan symbolic link count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+					newSnapshot.SymbolicLinks, symbolicLinkCount,
 				)
 			}
 			if newSnapshot.TotalFileSize != totalFileSize {
@@ -664,22 +664,22 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
-			if newSnapshot.DirectoryCount != directoryCount {
+			if newSnapshot.Directories != directoryCount {
 				t.Errorf("%s: accelerated scan (without re-check paths) directory count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.DirectoryCount, directoryCount,
+					newSnapshot.Directories, directoryCount,
 				)
 			}
-			if newSnapshot.FileCount != fileCount {
+			if newSnapshot.Files != fileCount {
 				t.Errorf("%s: accelerated scan (without re-check paths) file count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.FileCount, fileCount,
+					newSnapshot.Files, fileCount,
 				)
 			}
-			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+			if newSnapshot.SymbolicLinks != symbolicLinkCount {
 				t.Errorf("%s: accelerated scan (without re-check paths) symbolic link count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+					newSnapshot.SymbolicLinks, symbolicLinkCount,
 				)
 			}
 			if newSnapshot.TotalFileSize != totalFileSize {
@@ -781,22 +781,22 @@ func TestScan(t *testing.T) {
 					test.description, filesystem.name,
 				)
 			}
-			if newSnapshot.DirectoryCount != directoryCount {
+			if newSnapshot.Directories != directoryCount {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) directory count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.DirectoryCount, directoryCount,
+					newSnapshot.Directories, directoryCount,
 				)
 			}
-			if newSnapshot.FileCount != fileCount {
+			if newSnapshot.Files != fileCount {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) file count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.FileCount, fileCount,
+					newSnapshot.Files, fileCount,
 				)
 			}
-			if newSnapshot.SymbolicLinkCount != symbolicLinkCount {
+			if newSnapshot.SymbolicLinks != symbolicLinkCount {
 				t.Errorf("%s: accelerated scan (with re-check path(s)) symbolic link count not equal to expected on %s filesystem: %d != %d",
 					test.description, filesystem.name,
-					newSnapshot.SymbolicLinkCount, symbolicLinkCount,
+					newSnapshot.SymbolicLinks, symbolicLinkCount,
 				)
 			}
 			if newSnapshot.TotalFileSize != totalFileSize {

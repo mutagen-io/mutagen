@@ -180,9 +180,9 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 	// Print content information, if available.
 	if state.Scanned {
 		fmt.Printf("\tSynchronizable contents:\n\t\t%s\n\t\t%s\n\t\t%s\n",
-			formatDirectoryCount(state.DirectoryCount),
-			formatFileCountAndSize(state.FileCount, state.TotalFileSize),
-			formatSymbolicLinkCount(state.SymbolicLinkCount),
+			formatDirectoryCount(state.Directories),
+			formatFileCountAndSize(state.Files, state.TotalFileSize),
+			formatSymbolicLinkCount(state.SymbolicLinks),
 		)
 	}
 
@@ -429,12 +429,12 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 	var totalExpectedSize uint64
 	if state.Status == synchronization.Status_StagingAlpha {
 		stagingProgress = state.AlphaState.StagingProgress
-		if stagingProgress != nil && stagingProgress.ExpectedFiles == state.BetaState.FileCount {
+		if stagingProgress != nil && stagingProgress.ExpectedFiles == state.BetaState.Files {
 			totalExpectedSize = state.BetaState.TotalFileSize
 		}
 	} else if state.Status == synchronization.Status_StagingBeta {
 		stagingProgress = state.BetaState.StagingProgress
-		if stagingProgress != nil && stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
+		if stagingProgress != nil && stagingProgress.ExpectedFiles == state.AlphaState.Files {
 			totalExpectedSize = state.AlphaState.TotalFileSize
 		}
 	}

@@ -64,15 +64,15 @@ message EndpointState {
     // Scanned indicates whether or not at least one scan has been performed on
     // the endpoint.
     bool scanned = 2;
-    // DirectoryCount is the number of synchronizable directory entries
+    // Directories is the number of synchronizable directory entries contained
+    // in the last snapshot from the endpoint.
+    uint64 directories = 3;
+    // Files is the number of synchronizable file entries contained in the last
+    // snapshot from the endpoint.
+    uint64 files = 4;
+    // SymbolicLinks is the number of synchronizable symbolic link entries
     // contained in the last snapshot from the endpoint.
-    uint64 directoryCount = 3;
-    // FileCount is the number of synchronizable file entries contained in the
-    // last snapshot from the endpoint.
-    uint64 fileCount = 4;
-    // SymbolicLinkCount is the number of synchronizable symbolic link entries
-    // contained in the last snapshot from the endpoint.
-    uint64 symbolicLinkCount = 5;
+    uint64 symbolicLinks = 5;
     // TotalFileSize is the total size of all synchronizable files referenced by
     // the last snapshot from the endpoint.
     uint64 totalFileSize = 6;

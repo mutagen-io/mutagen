@@ -68,7 +68,7 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 			stagingProgress = state.AlphaState.StagingProgress
 			if stagingProgress == nil {
 				status += "Preparing to stage files on alpha"
-			} else if stagingProgress.ExpectedFiles == state.BetaState.FileCount {
+			} else if stagingProgress.ExpectedFiles == state.BetaState.Files {
 				totalExpectedSize = state.BetaState.TotalFileSize
 			}
 		} else if state.Status == synchronization.Status_StagingBeta {
@@ -76,7 +76,7 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 			stagingProgress = state.BetaState.StagingProgress
 			if stagingProgress == nil {
 				status += "Preparing to stage files on beta"
-			} else if stagingProgress.ExpectedFiles == state.AlphaState.FileCount {
+			} else if stagingProgress.ExpectedFiles == state.AlphaState.Files {
 				totalExpectedSize = state.AlphaState.TotalFileSize
 			}
 		} else {
