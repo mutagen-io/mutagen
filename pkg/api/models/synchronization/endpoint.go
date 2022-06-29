@@ -16,7 +16,7 @@ type Endpoint struct {
 	// Port is the endpoint port.
 	Port uint16 `json:"port,omitempty"`
 	// Path is the synchronization root on the endpoint.
-	Path string `json:"path,omitempty"`
+	Path string `json:"path"`
 	// Environment is the environment variable map to use for the transport.
 	Environment map[string]string `json:"environment,omitempty"`
 	// Parameters is the parameter map to use for the transport.

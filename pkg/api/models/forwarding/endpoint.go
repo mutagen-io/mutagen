@@ -16,7 +16,7 @@ type Endpoint struct {
 	// Port is the endpoint port.
 	Port uint16 `json:"port,omitempty"`
 	// Endpoint is the listening or dialing address on the endpoint.
-	Endpoint string `json:"endpoint,omitempty"`
+	Endpoint string `json:"endpoint"`
 	// Environment is the environment variable map to use for the transport.
 	Environment map[string]string `json:"environment,omitempty"`
 	// Parameters is the parameter map to use for the transport.
