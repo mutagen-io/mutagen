@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
 	"github.com/mutagen-io/mutagen/pkg/project"
@@ -121,7 +119,7 @@ func runMain(_ *cobra.Command, arguments []string) error {
 // runCommand is the run command.
 var runCommand = &cobra.Command{
 	Use:          "run <command-name>",
-	Short:        "Run a project command " + color.YellowString("[Deprecated]"),
+	Short:        "Run a project command",
 	RunE:         runMain,
 	SilenceUsage: true,
 }

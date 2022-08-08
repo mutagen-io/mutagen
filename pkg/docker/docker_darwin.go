@@ -1,7 +1,7 @@
 package docker
 
 import (
-	"os/exec"
+	"golang.org/x/sys/execabs"
 
 	"github.com/mutagen-io/mutagen/pkg/process"
 )
@@ -17,7 +17,7 @@ var commandSearchPaths = []string{
 func commandPathForPlatform() (string, error) {
 	// First, attempt to find the docker executable using the PATH environment
 	// variable. If that works, use that result.
-	if path, err := exec.LookPath("docker"); err == nil {
+	if path, err := execabs.LookPath("docker"); err == nil {
 		return path, nil
 	}
 

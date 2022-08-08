@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -149,7 +147,7 @@ func pauseMain(_ *cobra.Command, _ []string) error {
 // pauseCommand is the pause command.
 var pauseCommand = &cobra.Command{
 	Use:          "pause",
-	Short:        "Pause project sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Pause project sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         pauseMain,
 	SilenceUsage: true,

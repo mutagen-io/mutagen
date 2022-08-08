@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
@@ -121,7 +119,7 @@ func resetMain(_ *cobra.Command, _ []string) error {
 // resetCommand is the reset command.
 var resetCommand = &cobra.Command{
 	Use:          "reset",
-	Short:        "Reset project synchronization sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Reset project synchronization sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         resetMain,
 	SilenceUsage: true,

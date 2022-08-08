@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/sync"
@@ -121,7 +119,7 @@ func flushMain(_ *cobra.Command, _ []string) error {
 // flushCommand is the flush command.
 var flushCommand = &cobra.Command{
 	Use:          "flush",
-	Short:        "Flush project synchronization sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Flush project synchronization sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         flushMain,
 	SilenceUsage: true,

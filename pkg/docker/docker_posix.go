@@ -3,10 +3,10 @@
 package docker
 
 import (
-	"os/exec"
+	"golang.org/x/sys/execabs"
 )
 
 // commandPathForPlatform searches for the docker command in the user's path.
 func commandPathForPlatform() (string, error) {
-	return exec.LookPath("docker")
+	return execabs.LookPath("docker")
 }

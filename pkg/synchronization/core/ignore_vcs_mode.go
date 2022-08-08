@@ -46,6 +46,11 @@ func (m *IgnoreVCSMode) UnmarshalText(textBytes []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements encoding/json.Unmarshaler.UnmarshalJSON.
+func (m *IgnoreVCSMode) UnmarshalJSON(textBytes []byte) error {
+	return m.UnmarshalText(textBytes)
+}
+
 // Supported indicates whether or not a particular VCS ignore mode is a valid,
 // non-default value.
 func (m IgnoreVCSMode) Supported() bool {
