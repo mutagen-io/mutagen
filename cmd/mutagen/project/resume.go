@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -149,7 +147,7 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 // resumeCommand is the resume command.
 var resumeCommand = &cobra.Command{
 	Use:          "resume",
-	Short:        "Resume project sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Resume project sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         resumeMain,
 	SilenceUsage: true,

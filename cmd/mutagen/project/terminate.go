@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -152,7 +150,7 @@ func terminateMain(_ *cobra.Command, _ []string) error {
 // terminateCommand is the terminate command.
 var terminateCommand = &cobra.Command{
 	Use:          "terminate",
-	Short:        "Terminate project sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Terminate project sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         terminateMain,
 	SilenceUsage: true,
