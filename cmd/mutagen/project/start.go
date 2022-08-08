@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -415,7 +413,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 // startCommand is the start command.
 var startCommand = &cobra.Command{
 	Use:          "start",
-	Short:        "Start project sessions " + color.YellowString("[Deprecated]"),
+	Short:        "Start project sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         startMain,
 	SilenceUsage: true,

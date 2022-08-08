@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fatih/color"
-
 	"github.com/mutagen-io/mutagen/cmd"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/daemon"
 	"github.com/mutagen-io/mutagen/cmd/mutagen/forward"
@@ -132,7 +130,7 @@ func listMain(_ *cobra.Command, _ []string) error {
 // listCommand is the list command.
 var listCommand = &cobra.Command{
 	Use:          "list",
-	Short:        "List project sessions " + color.YellowString("[Deprecated]"),
+	Short:        "List project sessions",
 	Args:         cmd.DisallowArguments,
 	RunE:         listMain,
 	SilenceUsage: true,
