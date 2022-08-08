@@ -90,54 +90,54 @@ func (e Event) String() string {
 //
 // The value of Sys if system-dependent and can be nil.
 //
-// Sys
+// # Sys
 //
 // Under Darwin (FSEvents) Sys() always returns a non-nil *notify.FSEvent value,
 // which is defined as:
 //
-//   type FSEvent struct {
-//       Path  string // real path of the file or directory
-//       ID    uint64 // ID of the event (FSEventStreamEventId)
-//       Flags uint32 // joint FSEvents* flags (FSEventStreamEventFlags)
-//   }
+//	type FSEvent struct {
+//	    Path  string // real path of the file or directory
+//	    ID    uint64 // ID of the event (FSEventStreamEventId)
+//	    Flags uint32 // joint FSEvents* flags (FSEventStreamEventFlags)
+//	}
 //
 // For possible values of Flags see Darwin godoc for notify or FSEvents
 // documentation for FSEventStreamEventFlags constants:
 //
-//    https://developer.apple.com/library/mac/documentation/Darwin/Reference/FSEvents_Ref/index.html#//apple_ref/doc/constant_group/FSEventStreamEventFlags
+//	https://developer.apple.com/library/mac/documentation/Darwin/Reference/FSEvents_Ref/index.html#//apple_ref/doc/constant_group/FSEventStreamEventFlags
 //
 // Under Linux (inotify) Sys() always returns a non-nil *unix.InotifyEvent
 // value, defined as:
 //
-//   type InotifyEvent struct {
-//       Wd     int32    // Watch descriptor
-//       Mask   uint32   // Mask describing event
-//       Cookie uint32   // Unique cookie associating related events (for rename(2))
-//       Len    uint32   // Size of name field
-//       Name   [0]uint8 // Optional null-terminated name
-//   }
+//	type InotifyEvent struct {
+//	    Wd     int32    // Watch descriptor
+//	    Mask   uint32   // Mask describing event
+//	    Cookie uint32   // Unique cookie associating related events (for rename(2))
+//	    Len    uint32   // Size of name field
+//	    Name   [0]uint8 // Optional null-terminated name
+//	}
 //
 // More information about inotify masks and the usage of inotify_event structure
 // can be found at:
 //
-//    http://man7.org/linux/man-pages/man7/inotify.7.html
+//	http://man7.org/linux/man-pages/man7/inotify.7.html
 //
 // Under Darwin, DragonFlyBSD, FreeBSD, NetBSD, OpenBSD (kqueue) Sys() always
 // returns a non-nil *notify.Kevent value, which is defined as:
 //
-//   type Kevent struct {
-//       Kevent *syscall.Kevent_t // Kevent is a kqueue specific structure
-//       FI     os.FileInfo       // FI describes file/dir
-//   }
+//	type Kevent struct {
+//	    Kevent *syscall.Kevent_t // Kevent is a kqueue specific structure
+//	    FI     os.FileInfo       // FI describes file/dir
+//	}
 //
 // More information about syscall.Kevent_t can be found at:
 //
-//    https://www.freebsd.org/cgi/man.cgi?query=kqueue
+//	https://www.freebsd.org/cgi/man.cgi?query=kqueue
 //
 // Under Windows (ReadDirectoryChangesW) Sys() always returns nil. The documentation
 // of watcher's WinAPI function can be found at:
 //
-//    https://msdn.microsoft.com/en-us/library/windows/desktop/aa365465%28v=vs.85%29.aspx
+//	https://msdn.microsoft.com/en-us/library/windows/desktop/aa365465%28v=vs.85%29.aspx
 type EventInfo interface {
 	Event() Event // event value for the filesystem action
 	Path() string // real path of the file or directory
