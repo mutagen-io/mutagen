@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"runtime"
 
+	"golang.org/x/sys/execabs"
+
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -31,7 +33,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	if !external.UsePathBasedLookupForDaemonStart {
 		executablePath, err = os.Executable()
 	} else {
-		executablePath, err = exec.LookPath(process.ExecutableName("mutagen", runtime.GOOS))
+		executablePath, err = execabs.LookPath(process.ExecutableName("mutagen", runtime.GOOS))
 	}
 	if err != nil {
 		return fmt.Errorf("unable to determine executable path: %w", err)

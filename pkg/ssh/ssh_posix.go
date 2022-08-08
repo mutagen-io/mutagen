@@ -3,15 +3,15 @@
 package ssh
 
 import (
-	"os/exec"
+	"golang.org/x/sys/execabs"
 )
 
 // sshCommandPathForPlatform searches for the ssh command in the user's path.
 func sshCommandPathForPlatform() (string, error) {
-	return exec.LookPath("ssh")
+	return execabs.LookPath("ssh")
 }
 
 // scpCommandPathForPlatform searches for the scp command in the user's path.
 func scpCommandPathForPlatform() (string, error) {
-	return exec.LookPath("scp")
+	return execabs.LookPath("scp")
 }

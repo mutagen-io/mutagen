@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 
+	"golang.org/x/sys/execabs"
+
 	isatty "github.com/mattn/go-isatty"
 )
 
@@ -22,7 +24,7 @@ func HandleTerminalCompatibility() {
 
 	// Since we're running inside a mintty-based terminal, we need to relaunch
 	// using winpty, so first attempt to locate it.
-	winpty, err := exec.LookPath("winpty")
+	winpty, err := execabs.LookPath("winpty")
 	if err != nil {
 		Fatal(errors.New("running inside mintty terminal and unable to locate winpty"))
 	}
