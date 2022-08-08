@@ -15,7 +15,7 @@ require (
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
 	golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb
@@ -30,7 +30,7 @@ require (
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
