@@ -264,6 +264,14 @@ var targets = []Target{
 	{"linux", "amd64"},
 	{"linux", "arm"},
 	{"linux", "arm64"},
+	// TODO: Assess whether or not we want to support LoongArch. Support was
+	// added in Go 1.19, but it sounds like most real-world deployments use a
+	// Linux kernel that's too old to support binaries compiled by the official
+	// Go toolchain. If this situation changes, then it's certainly worth
+	// enabling support. The code does build successfully on this architecture.
+	// In this case, we'll also need to update platform detection with the
+	// appropriate uname -m value.
+	// {"linux", "loong64"},
 	{"linux", "ppc64"},
 	{"linux", "ppc64le"},
 	{"linux", "mips"},
