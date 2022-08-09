@@ -9,15 +9,15 @@ import (
 // of Marker is unmarked.
 type Marker struct {
 	// storage is the underlying marker storage.
-	storage uint32
+	storage atomic.Bool
 }
 
 // Mark idempotently marks the marker.
 func (m *Marker) Mark() {
-	atomic.StoreUint32(&m.storage, 1)
+	m.storage.Store(true)
 }
 
 // Marked returns whether or not the marker is marked.
 func (m *Marker) Marked() bool {
-	return atomic.LoadUint32(&m.storage) == 1
+	return m.storage.Load()
 }
