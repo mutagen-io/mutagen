@@ -12,7 +12,7 @@ import (
 )
 
 // rootMain is the entry point for the root command.
-func rootMain(command *cobra.Command, _ []string) error {
+func rootMain(_ *cobra.Command, _ []string) error {
 	// Set up signal handling.
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
