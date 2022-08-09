@@ -90,15 +90,13 @@ func (t Target) ExecutableName(base string) string {
 	return base
 }
 
-// goEnv generates an environment that can be used when invoking the Go
-// toolchain to generate output for the target.
-func (t Target) goEnv() ([]string, error) {
-	// Duplicate the existing environment.
-	result := os.Environ()
-
+// appendGoEnv modifies an environment specification to make the Go toolchain
+// generate output for the target. It assumes that the resulting environment
+// will be used with os/exec.Cmd and thus doesn't avoid duplicate variables.
+func (t Target) appendGoEnv(environment []string) []string {
 	// Override GOOS/GOARCH.
-	result = append(result, fmt.Sprintf("GOOS=%s", t.GOOS))
-	result = append(result, fmt.Sprintf("GOARCH=%s", t.GOARCH))
+	environment = append(environment, fmt.Sprintf("GOOS=%s", t.GOOS))
+	environment = append(environment, fmt.Sprintf("GOARCH=%s", t.GOARCH))
 
 	// If we're building a macOS binary on macOS, then we enable cgo because
 	// we'll need it to access the FSEvents API. We have to enable it explicitly
@@ -122,22 +120,22 @@ func (t Target) goEnv() ([]string, error) {
 	// the release agent binaries will also have cgo disabled (except on macOS),
 	// and we'll want to faithfully recreate that.
 	if t.GOOS == "darwin" && runtime.GOOS == "darwin" {
-		result = append(result, "CGO_ENABLED=1")
-		result = append(result, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
-		result = append(result, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+		environment = append(environment, "CGO_ENABLED=1")
+		environment = append(environment, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
+		environment = append(environment, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", minimumMacOSVersion))
 	} else {
-		result = append(result, "CGO_ENABLED=0")
+		environment = append(environment, "CGO_ENABLED=0")
 	}
 
 	// Set up ARM target support. See notes for definition of minimumARMSupport.
 	// We don't need to unset any existing GOARM variables since they simply
 	// won't be used if we're not targeting (non-64-bit) ARM systems.
 	if t.GOARCH == "arm" {
-		result = append(result, fmt.Sprintf("GOARM=%s", minimumARMSupport))
+		environment = append(environment, fmt.Sprintf("GOARM=%s", minimumARMSupport))
 	}
 
 	// Done.
-	return result, nil
+	return environment
 }
 
 // IsCrossTarget determines whether or not the target represents a
@@ -186,11 +184,7 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 	builder := exec.Command("go", arguments...)
 
 	// Set the environment.
-	environment, err := t.goEnv()
-	if err != nil {
-		return fmt.Errorf("unable to create build environment: %w", err)
-	}
-	builder.Env = environment
+	builder.Env = t.appendGoEnv(builder.Environ())
 
 	// Forward input, output, and error streams.
 	builder.Stdin = os.Stdin
