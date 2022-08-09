@@ -56,8 +56,8 @@ func forwarderMain(_ *cobra.Command, _ []string) error {
 
 	// Wait for termination from a signal or the forwarder.
 	select {
-	case sig := <-signalTermination:
-		return fmt.Errorf("terminated by signal: %s", sig)
+	case s := <-signalTermination:
+		return fmt.Errorf("terminated by signal: %s", s)
 	case err := <-forwardingTermination:
 		return fmt.Errorf("forwarding terminated: %w", err)
 	}
