@@ -128,8 +128,8 @@ func (t *dockerTransport) command(command, workingDirectory, user string) (*exec
 	// Set the process attributes.
 	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
-	// Create a copy of the current environment.
-	environment := os.Environ()
+	// Compute the default environment for the process.
+	environment := dockerCommand.Environ()
 
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)
@@ -307,8 +307,8 @@ func (t *dockerTransport) changeContainerStatus(stop bool) error {
 	// Set the process attributes.
 	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
-	// Create a copy of the current environment.
-	environment := os.Environ()
+	// Compute the default environment for the process
+	environment := dockerCommand.Environ()
 
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)
@@ -393,8 +393,8 @@ func (t *dockerTransport) Copy(localPath, remoteName string) error {
 	// Set the process attributes.
 	dockerCommand.SysProcAttr = transport.ProcessAttributes()
 
-	// Create a copy of the current environment.
-	environment := os.Environ()
+	// Compute the default environment for the process
+	environment := dockerCommand.Environ()
 
 	// Set Docker environment variables.
 	environment = setDockerVariables(environment, t.environment)

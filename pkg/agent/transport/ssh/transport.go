@@ -115,8 +115,8 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 	// Set the process attributes.
 	scpCommand.SysProcAttr = transport.ProcessAttributes()
 
-	// Create a copy of the current environment.
-	environment := os.Environ()
+	// Compute the default environment for the process.
+	environment := scpCommand.Environ()
 
 	// Add locale environment variables.
 	environment = addLocaleVariables(environment)
@@ -168,8 +168,8 @@ func (t *sshTransport) Command(command string) (*exec.Cmd, error) {
 	// Force it to run detached.
 	sshCommand.SysProcAttr = transport.ProcessAttributes()
 
-	// Create a copy of the current environment.
-	environment := os.Environ()
+	// Compute the default environment for the process.
+	environment := sshCommand.Environ()
 
 	// Add locale environment variables.
 	environment = addLocaleVariables(environment)
