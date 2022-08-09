@@ -67,6 +67,9 @@ func init() {
 	// still implement its logic automatically.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
 
+	// Hide Cobra's completion command.
+	rootCommand.CompletionOptions.HiddenDefaultCmd = true
+
 	// Register commands.
 	rootCommand.AddCommand(
 		sync.SyncCommand,

@@ -12,7 +12,7 @@ import (
 )
 
 // rootMain is the entry point for the root command.
-func rootMain(command *cobra.Command, _ []string) error {
+func rootMain(_ *cobra.Command, _ []string) error {
 	// Set up signal handling.
 	signalTermination := make(chan os.Signal, 1)
 	signal.Notify(signalTermination, cmd.TerminationSignals...)
@@ -60,6 +60,9 @@ func init() {
 	// Manually add a help flag to override the default message. Cobra will
 	// still implement its logic automatically.
 	flags.BoolVarP(&rootConfiguration.help, "help", "h", false, "Show help information")
+
+	// Hide Cobra's completion command.
+	rootCommand.CompletionOptions.HiddenDefaultCmd = true
 
 	// Register commands. We do this here (rather than in individual init
 	// functions) so that we can control the order.

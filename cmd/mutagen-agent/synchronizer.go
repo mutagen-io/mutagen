@@ -93,8 +93,8 @@ func synchronizerMain(_ *cobra.Command, _ []string) error {
 
 	// Wait for termination from a signal or the synchronizer.
 	select {
-	case sig := <-signalTermination:
-		return fmt.Errorf("terminated by signal: %s", sig)
+	case s := <-signalTermination:
+		return fmt.Errorf("terminated by signal: %s", s)
 	case err := <-synchronizationTermination:
 		return fmt.Errorf("synchronization terminated: %w", err)
 	}

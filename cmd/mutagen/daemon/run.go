@@ -119,9 +119,9 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Wait for termination from a signal, the daemon service, or the gRPC
 	// server. We treat termination via the daemon service as a non-error.
 	select {
-	case sig := <-signalTermination:
-		logger.Info("Terminating due to signal:", sig)
-		return fmt.Errorf("terminated by signal: %s", sig)
+	case s := <-signalTermination:
+		logger.Info("Terminating due to signal:", s)
+		return fmt.Errorf("terminated by signal: %s", s)
 	case <-daemonServer.Termination:
 		logger.Info("Daemon termination requested")
 		return nil
