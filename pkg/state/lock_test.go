@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -18,16 +19,16 @@ func TestTrackingLock(t *testing.T) {
 	// Start a Goroutine with which we'll coordinate.
 	go func() {
 		// Wait for a successful change from the initial tracker state (1).
-		firstState, poisoned := tracker.WaitForChange(1)
-		if poisoned || firstState != 2 {
+		firstState, err := tracker.WaitForChange(context.Background(), 1)
+		if err != nil || firstState != 2 {
 			handoff <- false
 			return
 		}
 		handoff <- true
 
-		// Wait for poisoning.
-		_, poisoned = tracker.WaitForChange(firstState)
-		handoff <- poisoned
+		// Wait for termination and ensure that the state doesn't change.
+		finalState, err := tracker.WaitForChange(context.Background(), firstState)
+		handoff <- (finalState == firstState && err == ErrTrackingTerminated)
 	}()
 
 	// Acquire and release the lock in a way that will change the state, and
@@ -43,28 +44,20 @@ func TestTrackingLock(t *testing.T) {
 		t.Fatal("timeout failure on state tracking")
 	}
 
-	// Sleep for enough time that the Goroutine can invoke the condition
-	// variable wait.
-	time.Sleep(trackerTestSleep)
-
 	// Acquire and release the lock in a way that won't change the state. We
-	// don't expect a response here, but our poison response will be invalid if
-	// this does change the state.
+	// don't expect a response here, but our termination response will be
+	// invalid if this does change the state.
 	lock.Lock()
 	lock.UnlockWithoutNotify()
 
-	// Sleep for enough time that the Goroutine can invoke the condition
-	// variable wait.
-	time.Sleep(trackerTestSleep)
-
-	// Poison the tracker and wait for a response.
-	tracker.Poison()
+	// Terminate tracking and wait for a response.
+	tracker.Terminate()
 	select {
 	case value := <-handoff:
 		if !value {
-			t.Fatal("received failure on state poisoning")
+			t.Fatal("received failure on tracking termination")
 		}
 	case <-time.After(trackerTestTimeout):
-		t.Fatal("timeout failure on state poisoning")
+		t.Fatal("timeout failure on tracking termination")
 	}
 }

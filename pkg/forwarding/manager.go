@@ -168,8 +168,8 @@ func (m *Manager) Shutdown() {
 	// Log the shutdown.
 	m.logger.Info("Shutting down")
 
-	// Poison state tracking to terminate monitoring.
-	m.tracker.Poison()
+	// Terminate state tracking to terminate monitoring.
+	m.tracker.Terminate()
 
 	// Grab the registry lock and defer its release.
 	m.sessionsLock.Lock()
@@ -228,15 +228,11 @@ func (m *Manager) Create(
 }
 
 // List requests a state snapshot for the specified sessions.
-func (m *Manager) List(_ context.Context, selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
+func (m *Manager) List(ctx context.Context, selection *selection.Selection, previousStateIndex uint64) (uint64, []*State, error) {
 	// Wait for a state change from the previous index.
-	// TODO: Figure out if we can use the provided context to preempt this wait.
-	// Unfortunately this will be tricky to implement since state tracking is
-	// implemented via condition variables whereas contexts are implemented via
-	// channels.
-	stateIndex, poisoned := m.tracker.WaitForChange(previousStateIndex)
-	if poisoned {
-		return 0, nil, errors.New("state tracking terminated")
+	stateIndex, err := m.tracker.WaitForChange(ctx, previousStateIndex)
+	if err != nil {
+		return 0, nil, fmt.Errorf("unable to track state changes: %w", err)
 	}
 
 	// Extract the controllers for the sessions of interest.
