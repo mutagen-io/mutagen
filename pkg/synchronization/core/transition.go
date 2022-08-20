@@ -64,12 +64,13 @@ type transitioner struct {
 	cache *Cache
 	// symbolicLinkMode is the symbolic link mode being used.
 	symbolicLinkMode SymbolicLinkMode
-	// defaultFilePermissionMode is the default file permission mode to use in
-	// "portable" permission propagation.
-	defaultFilePermissionMode filesystem.Mode
-	// defaultDirectoryPermissionMode is the default directory permission mode
-	// to use in "portable" permission propagation.
-	defaultDirectoryPermissionMode filesystem.Mode
+	// defaultFileMode is the default file permission mode to use when creating
+	// and updating files. If executability information is being propagated,
+	// then it will be used as a base to construct final file permissions.
+	defaultFileMode filesystem.Mode
+	// defaultDirectoryMode is the default directory permission mode to use when
+	// creating directories.
+	defaultDirectoryMode filesystem.Mode
 	// defaultOwnership is the default ownership specification to use in
 	// "portable" permission propagation.
 	defaultOwnership *filesystem.OwnershipSpecification
@@ -559,10 +560,14 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	name string,
 	replace bool,
 ) error {
-	// Compute the new file mode based on the new entry's executability. We
-	// enforce that default file modes don't have executability bits set, so we
-	// don't need to strip them out in the event that executability isn't set.
-	mode := t.defaultFilePermissionMode
+	// Compute the new file mode. If we're in a mode where executability
+	// information is being propagated, then we'll already have enforced that
+	// the default file mode doesn't contain executability bits, and therefore
+	// we don't need to strip them out in the event that executability isn't
+	// set for the entry. If we're in a mode where executability information
+	// isn't being propagated, then no entries will be marked as executable and
+	// we'll use the default file mode, which will also have been validated.
+	mode := t.defaultFileMode
 	if target.Executable {
 		mode = markExecutableForReaders(mode)
 	}
@@ -687,11 +692,13 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	// then we won't have staged the file, so we just change the permissions on
 	// the existing file.
 	if bytes.Equal(oldEntry.Digest, newEntry.Digest) {
-		// Compute the new file mode based on the new entry's executability. We
-		// enforce that default file modes don't have executability bits set, so
-		// we don't need to strip them out in the event that executability isn't
-		// set.
-		mode := t.defaultFilePermissionMode
+		// Compute the new file mode. If we're in a mode where executability
+		// information is being propagated (which is the only type of mode that
+		// we could be in on this particular code branch), then we'll already
+		// have enforced that the default file mode doesn't contain
+		// executability bits, and therefore we don't need to strip them out in
+		// the event that executability isn't set.
+		mode := t.defaultFileMode
 		if newEntry.Executable {
 			mode = markExecutableForReaders(mode)
 		}
@@ -752,7 +759,7 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 	// seems to be something that Linux doesn't support in general (though it
 	// does support symbolic link ownership). Thus, we zero-out the mode bits on
 	// Linux to skip permission setting (while retaining ownership setting).
-	mode := markExecutableForReaders(t.defaultDirectoryPermissionMode)
+	mode := markExecutableForReaders(t.defaultFileMode)
 	if runtime.GOOS == "linux" {
 		mode = 0
 	}
@@ -789,7 +796,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 	// operation because it's indicative of the fact that something's wrong.
 	// However, since we did succeed in creating the directory, we return that
 	// portion.
-	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultDirectoryPermissionMode); err != nil {
+	if err := parent.SetPermissions(name, t.defaultOwnership, t.defaultDirectoryMode); err != nil {
 		t.recordProblem(path, fmt.Errorf("unable to set directory permissions: %w", err))
 		return created
 	}
@@ -912,8 +919,8 @@ func Transition(
 	transitions []*Change,
 	cache *Cache,
 	symbolicLinkMode SymbolicLinkMode,
-	defaultFilePermissionMode filesystem.Mode,
-	defaultDirectoryPermissionMode filesystem.Mode,
+	defaultFileMode filesystem.Mode,
+	defaultDirectoryMode filesystem.Mode,
 	defaultOwnership *filesystem.OwnershipSpecification,
 	recomposeUnicode bool,
 	provider Provider,
@@ -923,16 +930,16 @@ func Transition(
 
 	// Create the transitioner.
 	transitioner := &transitioner{
-		cancelled:                      cancelled,
-		root:                           root,
-		cache:                          cache,
-		symbolicLinkMode:               symbolicLinkMode,
-		defaultFilePermissionMode:      defaultFilePermissionMode,
-		defaultDirectoryPermissionMode: defaultDirectoryPermissionMode,
-		defaultOwnership:               defaultOwnership,
-		copyBuffer:                     make([]byte, transitionCopyBufferSize),
-		recomposeUnicode:               recomposeUnicode,
-		provider:                       provider,
+		cancelled:            cancelled,
+		root:                 root,
+		cache:                cache,
+		symbolicLinkMode:     symbolicLinkMode,
+		defaultFileMode:      defaultFileMode,
+		defaultDirectoryMode: defaultDirectoryMode,
+		defaultOwnership:     defaultOwnership,
+		copyBuffer:           make([]byte, transitionCopyBufferSize),
+		recomposeUnicode:     recomposeUnicode,
+		provider:             provider,
 	}
 
 	// Set up results.

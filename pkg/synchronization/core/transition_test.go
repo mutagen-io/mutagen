@@ -731,6 +731,7 @@ func TestTransition(t *testing.T) {
 				nil, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
+				PermissionsMode_PermissionsModePortable,
 			)
 			if err != nil {
 				t.Errorf("%s: unable to perform scan of baseline on %s filesystem: %v",

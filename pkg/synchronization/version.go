@@ -10,6 +10,9 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
+// DefaultVersion is the default session version.
+const DefaultVersion Version = Version_Version1
+
 // Supported indicates whether or not the session version is supported.
 func (v Version) Supported() bool {
 	switch v {
@@ -131,6 +134,35 @@ func (v Version) DefaultIgnoreVCSMode() core.IgnoreVCSMode {
 	switch v {
 	case Version_Version1:
 		return core.IgnoreVCSMode_IgnoreVCSModePropagate
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+// DefaultPermissionsMode returns the default permissions mode for the session
+// version.
+func (v Version) DefaultPermissionsMode() core.PermissionsMode {
+	// NOTE: Due to the hack listed in Configuration.EnsureValid (regarding the
+	// computation of the default permissions mode), it would be advisable to
+	// keep the default here the same for all session versions. If we want this
+	// behavior to differ in the future, then we'd need to thread the session
+	// version information into Configuration.EnsureValid, because the default
+	// can affect the validation of default file and directory modes. It's kind
+	// of an ugly (and somewhat unique) situation, motivated by the fact that
+	// this particular configuration parameter affects the validation of other
+	// configuration parameters. In the future, this hack could be replaced by
+	// looser validation on the default file and directory modes, at least in
+	// the scenario where a default permissions mode is used (which is most
+	// cases, unfortunately), but since we don't have any foreseeable reason to
+	// change this default across future session versions, we're best off
+	// keeping the stricter validation for now. We could also change the
+	// signature of Configuration.EnsureValid to accept a session version, but
+	// that rapidly spirals into other APIs and it's not even clear how to
+	// enforce that the daemon's default session version is what's being used
+	// for validation in the command line interface or external tools.
+	switch v {
+	case Version_Version1:
+		return core.PermissionsMode_PermissionsModePortable
 	default:
 		panic("unknown or unsupported session version")
 	}

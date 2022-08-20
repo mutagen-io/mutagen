@@ -15,10 +15,8 @@ func anyExecutableBitSet(mode filesystem.Mode) bool {
 }
 
 // EnsureDefaultFileModeValid validates that a user-provided default file mode
-// is valid in the context of "portable" permission propagation. In particular,
-// it enforces that the mode is non-0 and that no executable bits are set (since
-// these should be regulated by the synchronization algorithm).
-func EnsureDefaultFileModeValid(mode filesystem.Mode) error {
+// is valid in the context of a given permissions mode.
+func EnsureDefaultFileModeValid(permissionsMode PermissionsMode, mode filesystem.Mode) error {
 	// Verify that the mode is non-zero. This should never be the case, because
 	// we treat a zero-value mode as unspecified.
 	if mode == 0 {
@@ -32,8 +30,9 @@ func EnsureDefaultFileModeValid(mode filesystem.Mode) error {
 
 	// Verify that no executability bits are set since they're controlled by
 	// Mutagen when propagating executability.
-	if anyExecutableBitSet(mode) {
-		return errors.New("executability bits detected in file mode")
+	if permissionsMode == PermissionsMode_PermissionsModePortable &&
+		anyExecutableBitSet(mode) {
+		return errors.New("executability bits detected in file mode in portable permissions propagation mode")
 	}
 
 	// Success.
@@ -41,9 +40,8 @@ func EnsureDefaultFileModeValid(mode filesystem.Mode) error {
 }
 
 // EnsureDefaultDirectoryModeValid validates that a user-provided default
-// directory mode is valid in the context of Mutagen's synchronization
-// algorithms.
-func EnsureDefaultDirectoryModeValid(mode filesystem.Mode) error {
+// directory mode is valid in the context of a given permissions mode.
+func EnsureDefaultDirectoryModeValid(permissionsMode PermissionsMode, mode filesystem.Mode) error {
 	// Verify that the mode is non-zero. This should never be the case, because
 	// we treat a zero-value mode as unspecified.
 	if mode == 0 {

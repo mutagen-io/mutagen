@@ -108,6 +108,8 @@ type scanner struct {
 	ignoreCache IgnoreCache
 	// symbolicLinkMode is the symbolic link mode being used.
 	symbolicLinkMode SymbolicLinkMode
+	// permissionsMode is the permissions mode being used.
+	permissionsMode PermissionsMode
 	// newCache is the new file digest cache to populate.
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
@@ -147,7 +149,10 @@ func (s *scanner) file(
 	file io.ReadSeekCloser,
 ) (*Entry, error) {
 	// Compute executability.
-	executable := s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
+	var executable bool
+	if s.permissionsMode == PermissionsMode_PermissionsModePortable {
+		executable = s.preservesExecutability && anyExecutableBitSet(metadata.Mode)
+	}
 
 	// Try to find cached data for this path.
 	cached, cacheHit := s.cache.Entries[path]
@@ -556,6 +561,7 @@ func Scan(
 	ignores []string, ignoreCache IgnoreCache,
 	probeMode behavior.ProbeMode,
 	symbolicLinkMode SymbolicLinkMode,
+	permissionsMode PermissionsMode,
 ) (*Snapshot, *Cache, IgnoreCache, error) {
 	// Verify that the symbolic link mode is valid for this platform.
 	if symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw && runtime.GOOS == "windows" {
@@ -768,6 +774,7 @@ func Scan(
 		ignorer:                ignorer,
 		ignoreCache:            ignoreCache,
 		symbolicLinkMode:       symbolicLinkMode,
+		permissionsMode:        permissionsMode,
 		newCache:               newCache,
 		newIgnoreCache:         newIgnoreCache,
 		copyBuffer:             make([]byte, scannerCopyBufferSize),

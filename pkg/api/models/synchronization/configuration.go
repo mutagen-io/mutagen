@@ -48,6 +48,8 @@ type Configuration struct {
 	} `json:"watch" yaml:"watch" mapstructure:"watch"`
 	// Permissions contains parameters related to permission handling.
 	Permissions struct {
+		// Mode specifies the permissions mode.
+		Mode core.PermissionsMode `json:"mode,omitempty" yaml:"mode" mapstructure:"mode"`
 		// DefaultFileMode specifies the default permission mode to use for new
 		// files in "portable" permission propagation mode.
 		DefaultFileMode filesystem.Mode `json:"defaultFileMode,omitempty" yaml:"defaultFileMode" mapstructure:"defaultFileMode"`
@@ -90,6 +92,7 @@ func (c *Configuration) loadFromInternal(configuration *synchronization.Configur
 	c.Watch.PollingInterval = configuration.WatchPollingInterval
 
 	// Propagate permission configuration.
+	c.Permissions.Mode = configuration.PermissionsMode
 	c.Permissions.DefaultFileMode = filesystem.Mode(configuration.DefaultFileMode)
 	c.Permissions.DefaultDirectoryMode = filesystem.Mode(configuration.DefaultDirectoryMode)
 	c.Permissions.DefaultOwner = configuration.DefaultOwner
@@ -112,6 +115,7 @@ func (c *Configuration) ToInternal() *synchronization.Configuration {
 		WatchPollingInterval:   c.Watch.PollingInterval,
 		Ignores:                c.Ignore.Paths,
 		IgnoreVCSMode:          c.Ignore.VCS,
+		PermissionsMode:        c.Permissions.Mode,
 		DefaultFileMode:        uint32(c.Permissions.DefaultFileMode),
 		DefaultDirectoryMode:   uint32(c.Permissions.DefaultDirectoryMode),
 		DefaultOwner:           c.Permissions.DefaultOwner,
