@@ -752,7 +752,7 @@ func (t *transitioner) createSymbolicLink(parent *filesystem.Directory, name, pa
 	// seems to be something that Linux doesn't support in general (though it
 	// does support symbolic link ownership). Thus, we zero-out the mode bits on
 	// Linux to skip permission setting (while retaining ownership setting).
-	mode := markExecutableForReaders(t.defaultDirectoryPermissionMode)
+	mode := markExecutableForReaders(t.defaultFilePermissionMode)
 	if runtime.GOOS == "linux" {
 		mode = 0
 	}

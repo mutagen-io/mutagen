@@ -9,7 +9,7 @@ import (
 func (s Status) Description() string {
 	switch s {
 	case Status_Disconnected:
-		return "Waiting to connect"
+		return "Disconnected"
 	case Status_HaltedOnRootEmptied:
 		return "Halted due to one-sided root emptying"
 	case Status_HaltedOnRootDeletion:

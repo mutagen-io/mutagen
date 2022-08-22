@@ -29,6 +29,8 @@ type Session struct {
 	Labels map[string]string `json:"labels,omitempty"`
 	// Paused indicates whether or not the session is paused.
 	Paused bool `json:"paused"`
+	// Status is the session status.
+	Status synchronization.Status `json:"status"`
 	// SessionState stores state fields relevant to running sessions. It is
 	// non-nil if and only if the session is unpaused.
 	*SessionState
@@ -36,8 +38,6 @@ type Session struct {
 
 // SessionState encodes fields relevant to unpaused sessions.
 type SessionState struct {
-	// Status is the session status.
-	Status synchronization.Status `json:"status"`
 	// LastError is the last synchronization error to occur.
 	LastError string `json:"lastError,omitempty"`
 	// SuccessfulCycles is the number of successful synchronization cycles to
@@ -68,6 +68,7 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 	s.Name = state.Session.Name
 	s.Labels = state.Session.Labels
 	s.Paused = state.Session.Paused
+	s.Status = state.Status
 
 	// Propagate endpoint information.
 	s.Alpha.loadFromInternal(
@@ -89,7 +90,6 @@ func (s *Session) loadFromInternal(state *synchronization.State) {
 		s.SessionState = nil
 	} else {
 		s.SessionState = &SessionState{
-			Status:            state.Status,
 			LastError:         state.LastError,
 			SuccessfulCycles:  state.SuccessfulCycles,
 			Conflicts:         exportConflicts(state.Conflicts),
