@@ -9,7 +9,7 @@ import (
 func (s Status) Description() string {
 	switch s {
 	case Status_Disconnected:
-		return "Waiting to connect"
+		return "Disconnected"
 	case Status_ConnectingSource:
 		return "Connecting to source"
 	case Status_ConnectingDestination:
