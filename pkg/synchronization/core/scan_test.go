@@ -110,6 +110,8 @@ func TestScan(t *testing.T) {
 		ignores []string
 		// symbolicLinkMode is the symbolic link mode to use for the test.
 		symbolicLinkMode SymbolicLinkMode
+		// permissionsMode is the permissions mode to use for the test.
+		permissionsMode PermissionsMode
 		// expectFailure indicates whether or not scan failure is expected.
 		expectFailure bool
 		// expected is the expected result of the scan.
@@ -123,16 +125,28 @@ func TestScan(t *testing.T) {
 		modifier func(string) ([]*Change, error)
 	}{
 		// Test an absence of content.
-		{"root absent", nil, nil, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, nil, nil},
+		{"root absent", nil, nil, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nil, nil},
+		{"root absent (manual permissions)", nil, nil, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, nil, nil},
 
 		// Test a file root.
-		{"file root", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tF1, nil},
+		{"file root", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF1, nil},
+		{"file root (manual permissions)", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF1, nil},
+
+		// Test an executable file root.
+		{"executable file root", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF3E, nil},
+		{"executable file root (manual permissions)", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF3, nil},
 
 		// Test an empty directory root.
-		{"empty directory root", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0, nil},
+		{"empty directory root", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0, nil},
+		{"empty directory root (manual permissions)", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD0, nil},
 
 		// Test a populated directory root.
-		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1, nil},
+		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1, nil},
+		{"single file directory (manual permissions)", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD1, nil},
+
+		// Test a populated directory root with executable contents.
+		{"executable file directory", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD3E, nil},
+		{"executable file directory (manual permissions)", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD3, nil},
 
 		// Test a populated directory root with complex contents.
 		{
@@ -145,6 +159,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			tDMSU,
 			nil,
@@ -159,6 +174,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			tDM,
 			nil,
@@ -173,18 +189,19 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
+			PermissionsMode_PermissionsModePortable,
 			runtime.GOOS == "windows",
 			tDM,
 			nil,
 		},
 
 		// Test a directory root with ignored content.
-		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, false, nested("file", tU), nil},
+		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nested("file", tU), nil},
 
 		// Test with a cancelled context.
 		// TODO: Figure out a way to cancel the context midway through reading
 		// a file so that we can check for read preemption.
-		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelledCtx, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, true, nil, nil},
+		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelledCtx, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, PermissionsMode_PermissionsModePortable, true, nil, nil},
 
 		// Test a directory with an untracked Unix domain socket.
 		{
@@ -217,6 +234,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("socket.sock", tU),
 			nil,
@@ -236,6 +254,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("badlink", &Entry{Kind: EntryKind_Problematic, Problem: "*"}),
 			nil,
@@ -253,6 +272,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("badlink", &Entry{Kind: EntryKind_Problematic, Problem: "*"}),
 			nil,
@@ -270,6 +290,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("badlink", &Entry{Kind: EntryKind_Problematic, Problem: "*"}),
 			nil,
@@ -287,13 +308,14 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			tD0,
 			nil,
 		},
 
 		// Test invalid ignores.
-		{"invalid ignore", nil, tD0, nil, nil, nil, backgroundCtx, []string{""}, SymbolicLinkMode_SymbolicLinkModePortable, true, nil, nil},
+		{"invalid ignore", nil, tD0, nil, nil, nil, backgroundCtx, []string{""}, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, true, nil, nil},
 
 		// Test unreadable content.
 		{
@@ -311,6 +333,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			true,
 			nil,
 			nil,
@@ -330,6 +353,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			true,
 			nil,
 			nil,
@@ -349,6 +373,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("file", &Entry{Kind: EntryKind_Problematic, Problem: "*"}),
 			nil,
@@ -368,6 +393,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			nested("subdir", &Entry{Kind: EntryKind_Problematic, Problem: "*"}),
 			nil,
@@ -376,7 +402,7 @@ func TestScan(t *testing.T) {
 		// Test accelerated scanning with modifications, including cases where
 		// problematic content is generated.
 		{
-			"file created", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1,
+			"file created", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1,
 			func(root string) ([]*Change, error) {
 				if err := os.WriteFile(filepath.Join(root, "newfile"), []byte(tF2Content), 0600); err != nil {
 					return nil, err
@@ -387,7 +413,7 @@ func TestScan(t *testing.T) {
 			},
 		},
 		{
-			"root type replaced", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD0,
+			"root type replaced", nil, tD0, nil, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0,
 			func(root string) ([]*Change, error) {
 				if err := os.Remove(root); err != nil {
 					return nil, err
@@ -412,6 +438,7 @@ func TestScan(t *testing.T) {
 			backgroundCtx,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
 			false,
 			tD1,
 			func(root string) ([]*Change, error) {
@@ -476,6 +503,7 @@ func TestScan(t *testing.T) {
 				test.ignores, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
+				test.permissionsMode,
 			)
 			if test.expectFailure {
 				if err == nil {
@@ -557,6 +585,7 @@ func TestScan(t *testing.T) {
 				test.ignores, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
+				test.permissionsMode,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -628,6 +657,7 @@ func TestScan(t *testing.T) {
 				test.ignores, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
+				test.permissionsMode,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -726,6 +756,7 @@ func TestScan(t *testing.T) {
 				test.ignores, ignoreCache,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
+				test.permissionsMode,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -838,6 +869,7 @@ func TestScanCrossFilesystemBoundary(t *testing.T) {
 		[]string{"*", "!" + name}, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		SymbolicLinkMode_SymbolicLinkModePortable,
+		PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		t.Fatalf("unable to perform scan: %v", err)

@@ -80,6 +80,9 @@ type endpoint struct {
 	// ignores are the path ignore specifications. This field is static and thus
 	// safe for concurrent reads.
 	ignores []string
+	// permissionsMode is the permissions mode. This field is static and thus
+	// safe for concurrent reads.
+	permissionsMode core.PermissionsMode
 	// defaultFileMode is the default file permission mode to use in "portable"
 	// permission propagation. This field is static and thus safe for concurrent
 	// reads.
@@ -271,6 +274,12 @@ func NewEndpoint(
 	// sidecar containers.
 	var nonDefaultOwnershipOrDirectoryPermissionsSet bool
 
+	// Compute the effective permissions mode.
+	permissionsMode := configuration.PermissionsMode
+	if permissionsMode.IsDefault() {
+		permissionsMode = version.DefaultPermissionsMode()
+	}
+
 	// Compute the effective default file mode.
 	defaultFileMode := filesystem.Mode(configuration.DefaultFileMode)
 	if defaultFileMode == 0 {
@@ -414,6 +423,7 @@ func NewEndpoint(
 		probeMode:                    probeMode,
 		symbolicLinkMode:             symbolicLinkMode,
 		ignores:                      ignores,
+		permissionsMode:              permissionsMode,
 		defaultFileMode:              defaultFileMode,
 		defaultDirectoryMode:         defaultDirectoryMode,
 		defaultOwnership:             defaultOwnership,
@@ -943,6 +953,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Snapshot, recheckPat
 		e.ignores, e.ignoreCache,
 		e.probeMode,
 		e.symbolicLinkMode,
+		e.permissionsMode,
 	)
 	if err != nil {
 		return err

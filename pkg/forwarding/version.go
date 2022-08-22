@@ -4,6 +4,9 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
 
+// DefaultVersion is the default session version.
+const DefaultVersion Version = Version_Version1
+
 // Supported indicates whether or not the session version is supported.
 func (v Version) Supported() bool {
 	switch v {

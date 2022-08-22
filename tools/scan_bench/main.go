@@ -114,6 +114,7 @@ func main() {
 		ignores, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
+		core.PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform cold scan: %w", err))
@@ -148,6 +149,7 @@ func main() {
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
+		core.PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform warm scan: %w", err))
@@ -190,6 +192,7 @@ func main() {
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
+		core.PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform second warm scan: %w", err))
@@ -230,6 +233,7 @@ func main() {
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
+		core.PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (with re-check paths): %w", err))
@@ -268,6 +272,7 @@ func main() {
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
+		core.PermissionsMode_PermissionsModePortable,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (without re-check paths): %w", err))

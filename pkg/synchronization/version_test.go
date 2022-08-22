@@ -49,20 +49,26 @@ func TestDefaultWatchPollingIntervalNonZero(t *testing.T) {
 }
 
 // TestDefaultFileModeValid verifies that DefaultFileMode results are valid for
-// use in "portable" permission propagation.
+// use in the default permissions mode.
 func TestDefaultFileModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := core.EnsureDefaultFileModeValid(version.DefaultFileMode()); err != nil {
+		if err := core.EnsureDefaultFileModeValid(
+			version.DefaultPermissionsMode(),
+			version.DefaultFileMode(),
+		); err != nil {
 			t.Error("invalid default file mode:", err)
 		}
 	}
 }
 
 // TestDefaultDirectoryModeValid verifies that DefaultDirectoryMode results are
-// valid for use in "portable" permission propagation.
+// valid for use in the default permissions mode.
 func TestDefaultDirectoryModeValid(t *testing.T) {
 	for _, version := range supportedSessionVersions {
-		if err := core.EnsureDefaultDirectoryModeValid(version.DefaultDirectoryMode()); err != nil {
+		if err := core.EnsureDefaultDirectoryModeValid(
+			version.DefaultPermissionsMode(),
+			version.DefaultDirectoryMode(),
+		); err != nil {
 			t.Error("invalid default directory mode:", err)
 		}
 	}

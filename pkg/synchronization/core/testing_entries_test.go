@@ -299,6 +299,9 @@ var tD1ContentMap = testingContentMap{"file": []byte(tF1Content)}
 // tD2ContentMap is a content map for tD2.
 var tD2ContentMap = testingContentMap{"file": []byte(tF2Content)}
 
+// tD3ContentMap is a content map for tD3 and tD3E.
+var tD3ContentMap = testingContentMap{"file": []byte(tF3Content)}
+
 // tDMContentMap is a content map for tDM and tDMU.
 var tDMContentMap = testingContentMap{
 	"file":                          []byte(tF1Content),

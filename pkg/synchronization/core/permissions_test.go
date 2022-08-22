@@ -41,28 +41,43 @@ func TestAnyExecutableBitSet(t *testing.T) {
 func TestEnsureDefaultFileModeValid(t *testing.T) {
 	// Define test cases.
 	tests := []struct {
-		value    filesystem.Mode
-		expected bool
+		permissionsMode PermissionsMode
+		value           filesystem.Mode
+		expected        bool
 	}{
-		{0, false},
-		{01000, false},
-		{0100, false},
-		{0010, false},
-		{0001, false},
-		{0111, false},
-		{0222, true},
-		{0444, true},
-		{0666, true},
-		{0644, true},
-		{0777, false},
-		{0766, false},
-		{0676, false},
-		{0667, false},
+		{PermissionsMode_PermissionsModePortable, 0, false},
+		{PermissionsMode_PermissionsModePortable, 01000, false},
+		{PermissionsMode_PermissionsModePortable, 0100, false},
+		{PermissionsMode_PermissionsModePortable, 0010, false},
+		{PermissionsMode_PermissionsModePortable, 0001, false},
+		{PermissionsMode_PermissionsModePortable, 0111, false},
+		{PermissionsMode_PermissionsModePortable, 0222, true},
+		{PermissionsMode_PermissionsModePortable, 0444, true},
+		{PermissionsMode_PermissionsModePortable, 0666, true},
+		{PermissionsMode_PermissionsModePortable, 0644, true},
+		{PermissionsMode_PermissionsModePortable, 0777, false},
+		{PermissionsMode_PermissionsModePortable, 0766, false},
+		{PermissionsMode_PermissionsModePortable, 0676, false},
+		{PermissionsMode_PermissionsModePortable, 0667, false},
+		{PermissionsMode_PermissionsModeManual, 0, false},
+		{PermissionsMode_PermissionsModeManual, 01000, false},
+		{PermissionsMode_PermissionsModeManual, 0100, true},
+		{PermissionsMode_PermissionsModeManual, 0010, true},
+		{PermissionsMode_PermissionsModeManual, 0001, true},
+		{PermissionsMode_PermissionsModeManual, 0111, true},
+		{PermissionsMode_PermissionsModeManual, 0222, true},
+		{PermissionsMode_PermissionsModeManual, 0444, true},
+		{PermissionsMode_PermissionsModeManual, 0666, true},
+		{PermissionsMode_PermissionsModeManual, 0644, true},
+		{PermissionsMode_PermissionsModeManual, 0777, true},
+		{PermissionsMode_PermissionsModeManual, 0766, true},
+		{PermissionsMode_PermissionsModeManual, 0676, true},
+		{PermissionsMode_PermissionsModeManual, 0667, true},
 	}
 
 	// Process test cases.
 	for i, test := range tests {
-		if err := EnsureDefaultFileModeValid(test.value); err == nil && !test.expected {
+		if err := EnsureDefaultFileModeValid(test.permissionsMode, test.value); err == nil && !test.expected {
 			t.Errorf("test index %d: mode unexpectedly classified as valid", i)
 		} else if err != nil && test.expected {
 			t.Errorf("test index %d: mode unexpectedly classified as invalid: %v", i, err)
@@ -74,27 +89,41 @@ func TestEnsureDefaultFileModeValid(t *testing.T) {
 func TestEnsureDefaultDirectoryModeValid(t *testing.T) {
 	// Define test cases.
 	tests := []struct {
-		value    filesystem.Mode
-		expected bool
+		permissionsMode PermissionsMode
+		value           filesystem.Mode
+		expected        bool
 	}{
-		{0, false},
-		{01000, false},
-		{0100, true},
-		{0010, true},
-		{0001, true},
-		{0111, true},
-		{0222, true},
-		{0444, true},
-		{0666, true},
-		{0777, true},
-		{0766, true},
-		{0676, true},
-		{0667, true},
+		{PermissionsMode_PermissionsModePortable, 0, false},
+		{PermissionsMode_PermissionsModePortable, 01000, false},
+		{PermissionsMode_PermissionsModePortable, 0100, true},
+		{PermissionsMode_PermissionsModePortable, 0010, true},
+		{PermissionsMode_PermissionsModePortable, 0001, true},
+		{PermissionsMode_PermissionsModePortable, 0111, true},
+		{PermissionsMode_PermissionsModePortable, 0222, true},
+		{PermissionsMode_PermissionsModePortable, 0444, true},
+		{PermissionsMode_PermissionsModePortable, 0666, true},
+		{PermissionsMode_PermissionsModePortable, 0777, true},
+		{PermissionsMode_PermissionsModePortable, 0766, true},
+		{PermissionsMode_PermissionsModePortable, 0676, true},
+		{PermissionsMode_PermissionsModePortable, 0667, true},
+		{PermissionsMode_PermissionsModeManual, 0, false},
+		{PermissionsMode_PermissionsModeManual, 01000, false},
+		{PermissionsMode_PermissionsModeManual, 0100, true},
+		{PermissionsMode_PermissionsModeManual, 0010, true},
+		{PermissionsMode_PermissionsModeManual, 0001, true},
+		{PermissionsMode_PermissionsModeManual, 0111, true},
+		{PermissionsMode_PermissionsModeManual, 0222, true},
+		{PermissionsMode_PermissionsModeManual, 0444, true},
+		{PermissionsMode_PermissionsModeManual, 0666, true},
+		{PermissionsMode_PermissionsModeManual, 0777, true},
+		{PermissionsMode_PermissionsModeManual, 0766, true},
+		{PermissionsMode_PermissionsModeManual, 0676, true},
+		{PermissionsMode_PermissionsModeManual, 0667, true},
 	}
 
 	// Process test cases.
 	for i, test := range tests {
-		if err := EnsureDefaultDirectoryModeValid(test.value); err == nil && !test.expected {
+		if err := EnsureDefaultDirectoryModeValid(test.permissionsMode, test.value); err == nil && !test.expected {
 			t.Errorf("test index %d: mode unexpectedly classified as valid", i)
 		} else if err != nil && test.expected {
 			t.Errorf("test index %d: mode unexpectedly classified as invalid: %v", i, err)

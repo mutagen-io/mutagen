@@ -105,16 +105,47 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Verify the default file mode.
+	// Verify that the permissions mode is unspecified or supported for usage.
+	// Also determine the effective permissions mode for validating file and
+	// directory modes.
+	var effectivePermissionsMode core.PermissionsMode
+	if endpointSpecific {
+		if !c.PermissionsMode.IsDefault() {
+			return errors.New("permissions mode cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if c.PermissionsMode.IsDefault() {
+			// HACK: We don't have a reference to the session version in this
+			// method, so we compute the permissions mode default by using the
+			// default session version for the current version of Mutagen. For
+			// more information on the reasoning behind this, see the note in
+			// Version.DefaultPermissionsMode.
+			effectivePermissionsMode = DefaultVersion.DefaultPermissionsMode()
+		} else if c.PermissionsMode.Supported() {
+			effectivePermissionsMode = c.PermissionsMode
+		} else {
+			return errors.New("unknown or unsupported permissions mode")
+		}
+	}
+
+	// Verify that the default file mode is valid for the effective permissions
+	// mode.
 	if c.DefaultFileMode != 0 {
-		if err := core.EnsureDefaultFileModeValid(filesystem.Mode(c.DefaultFileMode)); err != nil {
+		if err := core.EnsureDefaultFileModeValid(
+			effectivePermissionsMode,
+			filesystem.Mode(c.DefaultFileMode),
+		); err != nil {
 			return fmt.Errorf("invalid default file permission mode specified: %w", err)
 		}
 	}
 
-	// Verify the default directory mode.
+	// Verify that the default directory mode is valid for the effective
+	// permissions mode.
 	if c.DefaultDirectoryMode != 0 {
-		if err := core.EnsureDefaultDirectoryModeValid(filesystem.Mode(c.DefaultDirectoryMode)); err != nil {
+		if err := core.EnsureDefaultDirectoryModeValid(
+			effectivePermissionsMode,
+			filesystem.Mode(c.DefaultDirectoryMode),
+		); err != nil {
 			return fmt.Errorf("invalid default directory permission mode specified: %w", err)
 		}
 	}

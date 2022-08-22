@@ -109,7 +109,7 @@ func newSession(
 	prompting.Message(prompter, "Creating session...")
 
 	// Set the session version.
-	version := Version_Version1
+	version := DefaultVersion
 
 	// Compute the creation time and check that it's valid for Protocol Buffers.
 	creationTime := timestamppb.Now()
@@ -877,6 +877,12 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		synchronizationMode = c.session.Version.DefaultSynchronizationMode()
 	}
 
+	// Compute the effective permissions mode.
+	permissionsMode := c.session.Configuration.PermissionsMode
+	if permissionsMode.IsDefault() {
+		permissionsMode = c.session.Version.DefaultPermissionsMode()
+	}
+
 	// Compute, on a per-endpoint basis, whether or not polling should be
 	// disabled.
 	αWatchMode := c.mergedAlphaConfiguration.WatchMode
@@ -1124,19 +1130,22 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.state.Status = Status_Reconciling
 		c.stateLock.Unlock()
 
-		// If one side preserves executability and the other does not, then
-		// propagate executability from the preserving side to the
+		// If we're propagating executability bits and one endpoint preserves
+		// executability information while the the other does not, then
+		// propagate executability information from the preserving side to the
 		// non-preserving side. We only do this if the corresponding target
 		// content is non-nil, because (a) PropagateExecutability is a no-op if
 		// it is nil and (b) PreservesExecutability will have defaulted to false
 		// if there's no content and (even though this will be a no-op) we don't
 		// want the spurious logs.
-		if αSnapshot.PreservesExecutability && βContent != nil && !βSnapshot.PreservesExecutability {
-			c.logger.Debug("Propagating alpha executability to beta")
-			βContent = core.PropagateExecutability(ancestor, αContent, βContent)
-		} else if βSnapshot.PreservesExecutability && αContent != nil && !αSnapshot.PreservesExecutability {
-			c.logger.Debug("Propagating beta executability to alpha")
-			αContent = core.PropagateExecutability(ancestor, βContent, αContent)
+		if permissionsMode == core.PermissionsMode_PermissionsModePortable {
+			if αSnapshot.PreservesExecutability && βContent != nil && !βSnapshot.PreservesExecutability {
+				c.logger.Debug("Propagating alpha executability to beta")
+				βContent = core.PropagateExecutability(ancestor, αContent, βContent)
+			} else if βSnapshot.PreservesExecutability && αContent != nil && !αSnapshot.PreservesExecutability {
+				c.logger.Debug("Propagating beta executability to alpha")
+				αContent = core.PropagateExecutability(ancestor, βContent, αContent)
+			}
 		}
 
 		// Check if the root is a directory that's been emptied (by deleting a

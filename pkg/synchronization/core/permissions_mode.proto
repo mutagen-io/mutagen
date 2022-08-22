@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
+
+// PermissionsMode specifies the mode for handling permission propagation.
+enum PermissionsMode {
+    // PermissionsMode_PermissionsModeDefault represents an unspecified
+    // permissions mode. It is not valid for use with Scan. It should be
+    // converted to one of the following values based on the desired default
+    // behavior.
+    PermissionsModeDefault = 0;
+    // PermissionsMode_PermissionsModePortable specifies that permissions should
+    // be propagated in a portable fashion. This means that only executability
+    // bits are managed by Mutagen and that manual specifications for ownership
+    // and base file permissions are used.
+    PermissionsModePortable = 1;
+    // PermissionsMode_PermissionsModeManual specifies that only manual
+    // permission specifications should be used. In this case, Mutagen does not
+    // perform any propagation of permissions.
+    PermissionsModeManual = 2;
+}

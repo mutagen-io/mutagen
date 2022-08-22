@@ -10,6 +10,7 @@ import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
 import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
+import "synchronization/core/permissions_mode.proto";
 import "synchronization/core/symbolic_link_mode.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
@@ -92,11 +93,13 @@ message Configuration {
     // Fields 34-60 are reserved for future ignore configuration parameters.
 
 
-    // Permission configuration parameters (fields 61-80).
+    // Permissions configuration parameters (fields 61-80).
 
-    // Field 61 is reserved for PermissionMode.
+    // PermissionsMode species the manner in which permissions should be
+    // propagated between endpoints.
+    core.PermissionsMode permissionsMode = 61;
 
-    // Field 62 is reserved for PermissionPreservationMode.
+    // Field 62 is reserved for PermissionsPreservationMode.
 
     // DefaultFileMode specifies the default permission mode to use for new
     // files in "portable" permission propagation mode.

@@ -285,26 +285,47 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		ignoreVCSMode = core.IgnoreVCSMode_IgnoreVCSModePropagate
 	}
 
+	// Validate and convert the permissions mode specification.
+	var permissionsMode core.PermissionsMode
+	if createConfiguration.permissionsMode != "" {
+		if err := permissionsMode.UnmarshalText([]byte(createConfiguration.permissionsMode)); err != nil {
+			return fmt.Errorf("unable to parse permissions mode: %w", err)
+		}
+	}
+
+	// Compute the effective permissions mode.
+	// HACK: We technically don't know the daemon's default session version, so
+	// we compute the default permissions mode using the default session version
+	// for this executable, which (given our current distribution strategy) will
+	// be the same as that of the daemon. Of course, the daemon API will
+	// re-validate this, so validation here is merely best-effort and
+	// informational in any case. For more information on the reasoning behind
+	// this, see the note in synchronization.Version.DefaultPermissionsMode.
+	effectivePermissionsMode := permissionsMode
+	if effectivePermissionsMode.IsDefault() {
+		effectivePermissionsMode = synchronization.DefaultVersion.DefaultPermissionsMode()
+	}
+
 	// Validate and convert default file mode specifications.
 	var defaultFileMode, defaultFileModeAlpha, defaultFileModeBeta filesystem.Mode
 	if createConfiguration.defaultFileMode != "" {
 		if err := defaultFileMode.UnmarshalText([]byte(createConfiguration.defaultFileMode)); err != nil {
 			return fmt.Errorf("unable to parse default file mode: %w", err)
-		} else if err = core.EnsureDefaultFileModeValid(defaultFileMode); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(effectivePermissionsMode, defaultFileMode); err != nil {
 			return fmt.Errorf("invalid default file mode: %w", err)
 		}
 	}
 	if createConfiguration.defaultFileModeAlpha != "" {
 		if err := defaultFileModeAlpha.UnmarshalText([]byte(createConfiguration.defaultFileModeAlpha)); err != nil {
 			return fmt.Errorf("unable to parse default file mode for alpha: %w", err)
-		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeAlpha); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(effectivePermissionsMode, defaultFileModeAlpha); err != nil {
 			return fmt.Errorf("invalid default file mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.defaultFileModeBeta != "" {
 		if err := defaultFileModeBeta.UnmarshalText([]byte(createConfiguration.defaultFileModeBeta)); err != nil {
 			return fmt.Errorf("unable to parse default file mode for beta: %w", err)
-		} else if err = core.EnsureDefaultFileModeValid(defaultFileModeBeta); err != nil {
+		} else if err = core.EnsureDefaultFileModeValid(effectivePermissionsMode, defaultFileModeBeta); err != nil {
 			return fmt.Errorf("invalid default file mode for beta: %w", err)
 		}
 	}
@@ -314,21 +335,21 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	if createConfiguration.defaultDirectoryMode != "" {
 		if err := defaultDirectoryMode.UnmarshalText([]byte(createConfiguration.defaultDirectoryMode)); err != nil {
 			return fmt.Errorf("unable to parse default directory mode: %w", err)
-		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryMode); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(effectivePermissionsMode, defaultDirectoryMode); err != nil {
 			return fmt.Errorf("invalid default directory mode: %w", err)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeAlpha != "" {
 		if err := defaultDirectoryModeAlpha.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeAlpha)); err != nil {
 			return fmt.Errorf("unable to parse default directory mode for alpha: %w", err)
-		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeAlpha); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(effectivePermissionsMode, defaultDirectoryModeAlpha); err != nil {
 			return fmt.Errorf("invalid default directory mode for alpha: %w", err)
 		}
 	}
 	if createConfiguration.defaultDirectoryModeBeta != "" {
 		if err := defaultDirectoryModeBeta.UnmarshalText([]byte(createConfiguration.defaultDirectoryModeBeta)); err != nil {
 			return fmt.Errorf("unable to parse default directory mode for beta: %w", err)
-		} else if err = core.EnsureDefaultDirectoryModeValid(defaultDirectoryModeBeta); err != nil {
+		} else if err = core.EnsureDefaultDirectoryModeValid(effectivePermissionsMode, defaultDirectoryModeBeta); err != nil {
 			return fmt.Errorf("invalid default directory mode for beta: %w", err)
 		}
 	}
@@ -537,6 +558,8 @@ var createConfiguration struct {
 	// noIgnoreVCS specifies whether or not to disable VCS ignores for the
 	// session.
 	noIgnoreVCS bool
+	// permissionsMode specifies the permissions mdoe to use for the session.
+	permissionsMode string
 	// defaultFileMode specifies the default permission mode to use for new
 	// files in "portable" permission propagation mode, with endpoint-specific
 	// specifications taking priority.
@@ -644,6 +667,7 @@ func init() {
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")
 
 	// Wire up permission flags.
+	flags.StringVar(&createConfiguration.permissionsMode, "permissions-mode", "", "Specify permissions mode (portable|manual)")
 	flags.StringVar(&createConfiguration.defaultFileMode, "default-file-mode", "", "Specify default file permission mode")
 	flags.StringVar(&createConfiguration.defaultFileModeAlpha, "default-file-mode-alpha", "", "Specify default file permission mode for alpha")
 	flags.StringVar(&createConfiguration.defaultFileModeBeta, "default-file-mode-beta", "", "Specify default file permission mode for beta")
