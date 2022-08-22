@@ -28,12 +28,13 @@ func NewListener(path string) (net.Listener, error) {
 		return nil, err
 	}
 
-	// Explicitly set socket permissions.
+	// Explicitly set socket permissions. Unfortunately we can't do this
+	// atomically on socket creation, but we can do it quickly.
 	if err := os.Chmod(path, 0600); err != nil {
 		listener.Close()
 		return nil, fmt.Errorf("unable to set socket permissions: %w", err)
 	}
 
-	// Create the listener.
+	// Success.
 	return listener, nil
 }
