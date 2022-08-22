@@ -198,6 +198,8 @@ func (t *sshTransport) ClassifyError(processState *os.ProcessState, errorOutput 
 		return true, false, nil
 	} else if process.IsPOSIXShellCommandNotFound(processState) {
 		return true, false, nil
+	} else if process.OutputIsPOSIXCommandNotFound(errorOutput) {
+		return true, false, nil
 	} else if process.OutputIsWindowsInvalidCommand(errorOutput) {
 		// A Windows invalid command error doesn't necessarily indicate that
 		// the agent isn't installed, but instead usually indicates that we were
