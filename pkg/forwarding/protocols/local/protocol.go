@@ -2,7 +2,6 @@ package local
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
@@ -32,14 +31,6 @@ func (p *protocolHandler) Connect(
 		panic("non-forwarding URL dispatched to forwarding protocol handler")
 	} else if url.Protocol != urlpkg.Protocol_Local {
 		panic("non-local URL dispatched to local protocol handler")
-	}
-
-	// Ensure that no environment variables or parameters are specified. These
-	// are neither expected nor supported for local URLs.
-	if len(url.Environment) > 0 {
-		return nil, errors.New("local URL contains environment variables")
-	} else if len(url.Parameters) > 0 {
-		return nil, errors.New("local URL contains internal parameters")
 	}
 
 	// Parse the target specification from the URL's Path component.
