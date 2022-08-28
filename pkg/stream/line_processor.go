@@ -43,6 +43,11 @@ type LineProcessor struct {
 // Write implements io.Writer.Write.
 func (p *LineProcessor) Write(data []byte) (int, error) {
 	// Ensure that storing the data won't exceed buffer size limits.
+	// TODO: We could truncate data here if any capacity remains. A partial
+	// fragment could (in theory) contain a newline that would allow the buffer
+	// to be cleared out, though it's hard to imagine such an optimization is
+	// critical given the relatively large default maximum buffer size and the
+	// typical line size of most newline-delimited data.
 	if p.MaximumBufferSize == 0 && len(p.buffer)+len(data) > defaultLineProcessorMaximumBufferSize {
 		return 0, ErrMaximumBufferSizeExceeded
 	} else if p.MaximumBufferSize > 0 && len(p.buffer)+len(data) > p.MaximumBufferSize {
