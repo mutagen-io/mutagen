@@ -2,7 +2,6 @@ package ssh
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -45,14 +44,6 @@ func (h *protocolHandler) Connect(
 		panic("non-SSH URL dispatched to SSH protocol handler")
 	}
 
-	// Ensure that no environment variables or parameters are specified. These
-	// are neither expected nor supported for SSH URLs.
-	if len(url.Environment) > 0 {
-		return nil, errors.New("SSH URL contains environment variables")
-	} else if len(url.Parameters) > 0 {
-		return nil, errors.New("SSH URL contains internal parameters")
-	}
-
 	// Create an SSH agent transport.
 	transport, err := ssh.NewTransport(url.User, url.Host, uint16(url.Port), prompter)
 	if err != nil {
@@ -87,7 +78,7 @@ func (h *protocolHandler) Connect(
 		}
 		stream = result.stream
 	case <-ctx.Done():
-		return nil, errors.New("connect operation cancelled")
+		return nil, context.Canceled
 	}
 
 	// Create the endpoint client.

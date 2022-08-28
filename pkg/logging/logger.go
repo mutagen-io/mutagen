@@ -109,7 +109,14 @@ func (l *Logger) write(timestamp time.Time, level Level, message string) {
 		)
 	}
 
-	// Write the line.
+	// Write the line. We can't do much with the error here, so we don't try.
+	// Practically speaking, most io.Writer implementations perform retries if a
+	// short write occurs, so retrying here (on top of that logic) probably
+	// wouldn't help much. Even if we wanted to, we'd be better off wrapping the
+	// writer in a hypothetical RetryingWriter in order to better encapsulate
+	// that logic and to avoid having to add a lock outside the writer. In any
+	// case, Go's standard log package also discards analogous errors, so we'll
+	// do the same for the time being.
 	l.writer.Write([]byte(line))
 }
 
@@ -199,6 +206,10 @@ var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}
 // this logger, and the combined line will be written. Otherwise, if an incoming
 // line is not determined to be from another logger, than it will be written as
 // a message with the specificed level.
+//
+// Note that unlike the Logger itself, the writer returned from this method is
+// not safe for concurrent use by multiple Goroutines. An external locking
+// mechanism should be added if concurrent use is necessary.
 func (l *Logger) Writer(level Level) io.Writer {
 	// If the current logger is nil, then we can just discard all output.
 	if l == nil {

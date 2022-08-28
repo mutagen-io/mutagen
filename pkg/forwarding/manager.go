@@ -54,7 +54,7 @@ func NewManager(logger *logging.Logger) (*Manager, error) {
 		}
 		logger.Info("Loading session", id)
 		if controller, err := loadSession(logger.Sublogger(identifier.Truncated(id)), tracker, id); err != nil {
-			logger.Warnf("Failed to load session %s: %v", err)
+			logger.Warnf("Failed to load session %s: %v", id, err)
 			continue
 		} else {
 			sessions[id] = controller

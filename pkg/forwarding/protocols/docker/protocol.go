@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -86,7 +85,7 @@ func (p *protocolHandler) Connect(
 		}
 		stream = result.stream
 	case <-ctx.Done():
-		return nil, errors.New("connect operation cancelled")
+		return nil, context.Canceled
 	}
 
 	// Create the endpoint.
