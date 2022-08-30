@@ -42,7 +42,7 @@ type SessionState struct {
 	LastError string `json:"lastError,omitempty"`
 	// SuccessfulCycles is the number of successful synchronization cycles to
 	// occur since successfully connecting to the endpoints.
-	SuccessfulCycles uint64 `json:"successfulCycles"`
+	SuccessfulCycles uint64 `json:"successfulCycles,omitempty"`
 	// Conflicts are the conflicts that identified during reconciliation. This
 	// list may be a truncated version of the full list if too many conflicts
 	// are encountered to report via the API.
