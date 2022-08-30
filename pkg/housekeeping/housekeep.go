@@ -18,9 +18,9 @@ const (
 	// is allowed to sit on disk without being executed before being deleted.
 	maximumAgentIdlePeriod = 30 * 24 * time.Hour
 	// maximumCacheAge is the maximum allowed cache age.
-	maximumCacheAge = 30 * 24 * time.Hour
+	maximumCacheAge = 7 * 24 * time.Hour
 	// maximumStagingRootAge is the maximum allowed staging root age.
-	maximumStagingRootAge = 30 * 24 * time.Hour
+	maximumStagingRootAge = 7 * 24 * time.Hour
 )
 
 // Housekeep invokes housekeeping functions on the Mutagen data directory.
