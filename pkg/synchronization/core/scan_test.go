@@ -144,6 +144,38 @@ func TestScan(t *testing.T) {
 		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1, nil},
 		{"single file directory (manual permissions)", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD1, nil},
 
+		// Test a directory with invalid filenames.
+		{
+			"directory with non-UTF-8 filename",
+			func(f testingFilesystem) bool {
+				// Most operating systems are too pedantic to allow this to
+				// work, so we'll only run this on Linux with ext4.
+				return !(runtime.GOOS == "linux" && f.name == "OS")
+			},
+			tD0, nil,
+			func(root string) error {
+				// We have to use tweaks to create the invalid filenames because
+				// our transition infrastructure won't allow them.
+				return os.WriteFile(
+					// This is hellÖ encoded in ISO/IEC 8859-15 (the first four
+					// characters of which are also valid ASCII/UTF-8).
+					filepath.Join(root, string([]byte{0x68, 0x65, 0x6C, 0x6C, 0xD6})),
+					[]byte(tF1Content),
+					0600,
+				)
+			},
+			nil,
+			backgroundCtx,
+			nil,
+			SymbolicLinkMode_SymbolicLinkModePortable,
+			PermissionsMode_PermissionsModePortable,
+			false,
+			&Entry{Contents: map[string]*Entry{
+				"hell�": tPInvalidUTF8,
+			}},
+			nil,
+		},
+
 		// Test a populated directory root with executable contents.
 		{"executable file directory", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD3E, nil},
 		{"executable file directory (manual permissions)", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD3, nil},

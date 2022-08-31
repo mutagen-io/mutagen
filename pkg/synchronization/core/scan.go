@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 
@@ -392,6 +393,21 @@ func (s *scanner) directory(
 		// recording these files, even as untracked entries, because we know
 		// that they're ephemeral.
 		if strings.HasPrefix(contentName, filesystem.TemporaryNamePrefix) {
+			continue
+		}
+
+		// If the filename is not valid UTF-8, then flag it as problematic
+		// content. This is important for both (a) enforcing that comparisons
+		// are performed using a common encoding and (b) allowing the name to be
+		// encoded with Protocol Buffers (which enforces that strings are UTF-8
+		// encoded when marshaling). Since the file name isn't valid for storing
+		// in the content map, we'll replace all unknown byte sequences with a
+		// (hopefully) non-coliding character sequence.
+		if !utf8.ValidString(contentName) {
+			contents[strings.ToValidUTF8(contentName, "�")] = &Entry{
+				Kind:    EntryKind_Problematic,
+				Problem: "non-UTF-8 filename",
+			}
 			continue
 		}
 
