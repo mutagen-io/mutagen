@@ -414,6 +414,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		WatchPollingInterval:   createConfiguration.watchPollingInterval,
 		Ignores:                createConfiguration.ignores,
 		IgnoreVCSMode:          ignoreVCSMode,
+		PermissionsMode:        permissionsMode,
 		DefaultFileMode:        uint32(defaultFileMode),
 		DefaultDirectoryMode:   uint32(defaultDirectoryMode),
 		DefaultOwner:           createConfiguration.defaultOwner,
