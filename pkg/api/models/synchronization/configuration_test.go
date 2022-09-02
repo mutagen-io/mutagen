@@ -33,6 +33,7 @@ ignore:
   vcs: true
 
 permissions:
+  mode: "portable"
   defaultFileMode: 644
   defaultDirectoryMode: 0755
   defaultOwner: "george"
@@ -58,6 +59,7 @@ var expectedConfiguration = &synchronization.Configuration{
 		"!ignore/this/that",
 	},
 	IgnoreVCSMode:        core.IgnoreVCSMode_IgnoreVCSModeIgnore,
+	PermissionsMode:      core.PermissionsMode_PermissionsModePortable,
 	DefaultFileMode:      0644,
 	DefaultDirectoryMode: 0755,
 	DefaultOwner:         "george",
@@ -130,6 +132,9 @@ func TestLoadConfiguration(t *testing.T) {
 	}
 	if configuration.IgnoreVCSMode != expectedConfiguration.IgnoreVCSMode {
 		t.Error("ignore VCS mode mismatch:", configuration.IgnoreVCSMode, "!=", expectedConfiguration.IgnoreVCSMode)
+	}
+	if configuration.PermissionsMode != expectedConfiguration.PermissionsMode {
+		t.Errorf("permissions mode mismatch: %o != %o", configuration.PermissionsMode, expectedConfiguration.PermissionsMode)
 	}
 	if configuration.DefaultFileMode != expectedConfiguration.DefaultFileMode {
 		t.Errorf("default file mode mismatch: %o != %o", configuration.DefaultFileMode, expectedConfiguration.DefaultFileMode)
