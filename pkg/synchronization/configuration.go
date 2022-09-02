@@ -189,6 +189,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
 		comparison.StringSlicesEqual(c.Ignores, other.Ignores) &&
 		c.IgnoreVCSMode == other.IgnoreVCSMode &&
+		c.PermissionsMode == other.PermissionsMode &&
 		c.DefaultFileMode == other.DefaultFileMode &&
 		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
 		c.DefaultOwner == other.DefaultOwner &&
@@ -279,6 +280,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.IgnoreVCSMode = higher.IgnoreVCSMode
 	} else {
 		result.IgnoreVCSMode = lower.IgnoreVCSMode
+	}
+
+	// Merge permissions mode.
+	if !higher.PermissionsMode.IsDefault() {
+		result.PermissionsMode = higher.PermissionsMode
+	} else {
+		result.PermissionsMode = lower.PermissionsMode
 	}
 
 	// Merge default file mode.

@@ -335,7 +335,7 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		}
 		fmt.Println("\tMaximum staging file size:", maximumStagingFileSizeDescription)
 
-		// Compute and print symlink mode.
+		// Compute and print symbolic link mode.
 		symbolicLinkModeDescription := configuration.SymbolicLinkMode.Description()
 		if configuration.SymbolicLinkMode.IsDefault() {
 			defaultSymbolicLinkMode := state.Session.Version.DefaultSymbolicLinkMode()
@@ -369,6 +369,14 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		} else {
 			fmt.Println("\tIgnores: None")
 		}
+
+		// Compute and print permissions mode.
+		permissionsModeDescription := configuration.PermissionsMode.Description()
+		if configuration.PermissionsMode.IsDefault() {
+			defaultPermissionsMode := state.Session.Version.DefaultPermissionsMode()
+			permissionsModeDescription += fmt.Sprintf(" (%s)", defaultPermissionsMode.Description())
+		}
+		fmt.Println("\tPermissions mode:", permissionsModeDescription)
 	}
 
 	// Compute and print alpha-specific configuration.
