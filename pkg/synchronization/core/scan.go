@@ -567,9 +567,9 @@ func (s *scanner) directory(
 }
 
 // Scan creates a new filesystem snapshot at the specified root. The only
-// required arguments are ctx, root, hasher, ignores, probeMode, and
-// symbolicLinkMode. The baseline, recheckPaths, cache, and ignoreCache fields
-// merely provide acceleration options.
+// required arguments are ctx, root, hasher, ignores, probeMode,
+// symbolicLinkMode, and permissionsMode. The baseline, recheckPaths, cache, and
+// ignoreCache fields merely provide acceleration options.
 func Scan(
 	ctx context.Context,
 	root string,
