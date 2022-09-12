@@ -41,7 +41,7 @@ func EnsureDefaultFileModeValid(permissionsMode PermissionsMode, mode filesystem
 
 // EnsureDefaultDirectoryModeValid validates that a user-provided default
 // directory mode is valid in the context of a given permissions mode.
-func EnsureDefaultDirectoryModeValid(permissionsMode PermissionsMode, mode filesystem.Mode) error {
+func EnsureDefaultDirectoryModeValid(_ PermissionsMode, mode filesystem.Mode) error {
 	// Verify that the mode is non-zero. This should never be the case, because
 	// we treat a zero-value mode as unspecified.
 	if mode == 0 {
