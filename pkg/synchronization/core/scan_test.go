@@ -171,7 +171,7 @@ func TestScan(t *testing.T) {
 			PermissionsMode_PermissionsModePortable,
 			false,
 			&Entry{Contents: map[string]*Entry{
-				"hell�": tPInvalidUTF8,
+				"hell� (non-UTF-8)": tPInvalidUTF8,
 			}},
 			nil,
 		},
