@@ -22,4 +22,6 @@ relevant information such as:
 
 The more information you provide, the easier it will be to diagnose the problem.
 
+Thanks for taking the time to submit a report!
+
 -->
