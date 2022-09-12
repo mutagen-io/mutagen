@@ -265,17 +265,18 @@ func (t *transitioner) ensureExpectedFile(parent *filesystem.Directory, name, pa
 	//
 	// Notably absent from this comparison is an explicit equality check of the
 	// Executability property of the expected entry with some computed
-	// executability value. Unfortunately this can't be done directly, because
+	// executability value. Unfortunately, this can't be done directly because
 	// we may be on a filesystem that does not preserve exectuability
 	// information. Indeed, the Executability property may have been set by the
-	// executability propagation algorithm before reconciliation. Instead, we
-	// take an indirect comparison approach and simply compare permission bits
-	// (as part of the mode equivalence check) from the current metadata and the
-	// cache. If these match, we take it as an indication that the permission
-	// bits which (via some mechanism in the synchronization algorithm)
-	// generated the current Executability property value are unchanged, and
-	// hence the Executability property value would be unchanged as well if we
-	// were able to compute and compare it directly.
+	// executability propagation algorithm before reconciliation. We may also be
+	// in a permissions mode where we're not recording executability information
+	// in entries. Thus, we take an indirect comparison approach and simply
+	// compare permission bits (as part a broader mode equivalence check) from
+	// the current metadata and the cache. If these match, then we take it as an
+	// indication that the permission bits which (via some mechanism in the
+	// synchronization algorithm) generated the current Executability property
+	// value are unchanged, and hence the Executability property value would be
+	// unchanged as well if we were able to compute and compare it directly.
 	match := metadata.Mode == filesystem.Mode(cached.Mode) &&
 		metadata.ModificationTime.Equal(cached.ModificationTime.AsTime()) &&
 		metadata.Size == cached.Size &&

@@ -7,6 +7,8 @@ these guidelines cannot be merged.
 If you're not quite ready for a final review, please feel free to open a draft
 pull request.
 
+Thanks for taking the time to open a pull request!
+
 -->
 
 **What does this pull request do and why is it needed?**

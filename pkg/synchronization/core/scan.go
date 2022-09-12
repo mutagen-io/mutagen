@@ -402,9 +402,10 @@ func (s *scanner) directory(
 		// encoded with Protocol Buffers (which enforces that strings are UTF-8
 		// encoded when marshaling). Since the file name isn't valid for storing
 		// in the content map, we'll replace all unknown byte sequences with a
-		// (hopefully) non-coliding character sequence.
+		// replacement character and store the entry with a (hopefully)
+		// non-coliding derivative name.
 		if !utf8.ValidString(contentName) {
-			contents[strings.ToValidUTF8(contentName, "�")] = &Entry{
+			contents[strings.ToValidUTF8(contentName, "�")+" (non-UTF-8)"] = &Entry{
 				Kind:    EntryKind_Problematic,
 				Problem: "non-UTF-8 filename",
 			}
@@ -566,9 +567,9 @@ func (s *scanner) directory(
 }
 
 // Scan creates a new filesystem snapshot at the specified root. The only
-// required arguments are ctx, root, hasher, ignores, probeMode, and
-// symbolicLinkMode. The baseline, recheckPaths, cache, and ignoreCache fields
-// merely provide acceleration options.
+// required arguments are ctx, root, hasher, ignores, probeMode,
+// symbolicLinkMode, and permissionsMode. The baseline, recheckPaths, cache, and
+// ignoreCache fields merely provide acceleration options.
 func Scan(
 	ctx context.Context,
 	root string,

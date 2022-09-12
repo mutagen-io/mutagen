@@ -30,8 +30,8 @@ type pollRequest struct {
 // Tracker provides index-based state tracking using a condition variable.
 type Tracker struct {
 	// change is the condition variable used to track changes. It is used to
-	// signal state changes to index and terminated. Its lock also guards the
-	// pollRequests map.
+	// signal state changes to index and terminated. It is also used to
+	// serialize and signal changes to pollRequests.
 	change *sync.Cond
 	// index is the current state index.
 	// NOTE: In theory, we should track and handle overflow on this index, but
@@ -194,8 +194,10 @@ func (t *Tracker) WaitForChange(ctx context.Context, previousIndex uint64) (uint
 	// Release the state lock.
 	t.change.L.Unlock()
 
-	// Wait for a state change or cancellation. If the polling operation
-	// succeeds, then the tracking loop will deregister the request.
+	// Wait for a state change or cancellation. If the request is cancelled,
+	// then we'll deregister it ourselves (in which case there's no need to
+	// notify the tracking loop). If the polling operation succeeds, then the
+	// tracking loop will deregister the request.
 	select {
 	case <-ctx.Done():
 		t.change.L.Lock()
