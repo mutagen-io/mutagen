@@ -57,6 +57,9 @@ var tP1 = &Entry{Kind: EntryKind_Problematic, Problem: "something bad happened"}
 // tP2 is an alternate problematic entry for testing.
 var tP2 = &Entry{Kind: EntryKind_Problematic, Problem: "another bad thing happened"}
 
+// tPInvalidUTF8 is a problematic entry indicating non-UTF-8 filename encoding.
+var tPInvalidUTF8 = &Entry{Kind: EntryKind_Problematic, Problem: "non-UTF-8 filename"}
+
 // tD0 is an empty directory entry for testing.
 var tD0 = &Entry{}
 

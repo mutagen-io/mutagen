@@ -134,6 +134,37 @@ func TestScan(t *testing.T) {
 		// Test a populated directory root.
 		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, nil, SymbolicLinkMode_SymbolicLinkModePortable, false, tD1, nil},
 
+		// Test a directory with invalid filenames.
+		{
+			"directory with non-UTF-8 filename",
+			func(f testingFilesystem) bool {
+				// Most operating systems are too pedantic to allow this to
+				// work, so we'll only run this on Linux with ext4.
+				return !(runtime.GOOS == "linux" && f.name == "OS")
+			},
+			tD0, nil,
+			func(root string) error {
+				// We have to use tweaks to create the invalid filenames because
+				// our transition infrastructure won't allow them.
+				return os.WriteFile(
+					// This is hellÖ encoded in ISO/IEC 8859-15 (the first four
+					// characters of which are also valid ASCII/UTF-8).
+					filepath.Join(root, string([]byte{0x68, 0x65, 0x6C, 0x6C, 0xD6})),
+					[]byte(tF1Content),
+					0600,
+				)
+			},
+			nil,
+			backgroundCtx,
+			nil,
+			SymbolicLinkMode_SymbolicLinkModePortable,
+			false,
+			&Entry{Contents: map[string]*Entry{
+				"hell� (non-UTF-8)": tPInvalidUTF8,
+			}},
+			nil,
+		},
+
 		// Test a populated directory root with complex contents.
 		{
 			"complex directory (symbolic links ignored)",
