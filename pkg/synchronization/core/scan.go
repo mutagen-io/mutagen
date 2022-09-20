@@ -469,8 +469,23 @@ func (s *scanner) directory(
 		// directly. In this case, we'll want to walk down the entry and
 		// propagate the corresponding ignore and digest cache entries that
 		// we're going to avoid generating.
+		//
+		// On Linux, there's one additional heuristic used here: if the parent
+		// path is marked as dirty, then we also consider this path dirty. That
+		// makes accelerated scanning slightly less efficient on Linux, but it's
+		// a necessity because fanotify only reports the parent path if a file
+		// or directory is created, deleted, or renamed into place. This becomes
+		// a problem in the case where a directory is deleted and then another
+		// directory with a duplicate name is renamed into its place. The only
+		// path reported in that scenario will be the parent path of those
+		// directories, meaning that no changes will be detected for the new
+		// child. FSEvents and ReadDirectoryChangesW don't have this problem.
 		if contentBaseline != nil {
-			if _, contentDirty := s.dirtyPaths[contentPath]; !contentDirty {
+			contentDirty := s.dirtyPaths[contentPath]
+			if runtime.GOOS == "linux" && !contentDirty {
+				contentDirty = s.dirtyPaths[path]
+			}
+			if !contentDirty {
 				contents[contentName] = contentBaseline
 				var missingCacheEntries bool
 				contentBaseline.walk(contentPath, func(path string, entry *Entry) {
