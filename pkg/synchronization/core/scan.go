@@ -461,11 +461,11 @@ func (s *scanner) directory(
 		// replace with baseline content, but they are statistically rarer, they
 		// only require a single system call, and we're only performing them in
 		// directories marked as dirty, so the additional cost is very low.
-		var contentBaseline *Entry
+		var directoryBaseline *Entry
 		if contentIsDirectory && baseline != nil {
-			contentBaseline = baseline.Contents[contentName]
-			if contentBaseline != nil && contentBaseline.Kind != contentKind {
-				contentBaseline = nil
+			directoryBaseline = baseline.Contents[contentName]
+			if directoryBaseline != nil && directoryBaseline.Kind != EntryKind_Directory {
+				directoryBaseline = nil
 			}
 		}
 
@@ -475,25 +475,34 @@ func (s *scanner) directory(
 		// propagate the corresponding ignore and digest cache entries that
 		// we're going to avoid generating.
 		//
-		// On Linux, there's one additional heuristic used here: if the parent
-		// path is marked as dirty, then we also consider this path dirty. That
-		// makes accelerated scanning slightly less efficient on Linux, but it's
-		// a necessity because fanotify only reports the parent path if a file
-		// or directory is created, deleted, or renamed into place. This becomes
-		// a problem in the case where a directory is deleted and then another
-		// directory with a duplicate name is renamed into its place. The only
-		// path reported in that scenario will be the parent path of those
-		// directories, meaning that no changes will be detected for the new
-		// child. FSEvents and ReadDirectoryChangesW don't have this problem.
-		if contentBaseline != nil {
+		// On Linux, there's one additional heuristic used here: if the content
+		// path is not marked as dirty, but the baseline is a directory with no
+		// contents and the parent path is marked as dirty (which we can assume
+		// here implicitly), then we mark the content as dirty. The reason for
+		// this is that fanotify only sees the parent path for operations where
+		// a filesystem entry is created, deleted, or renamed into place. For
+		// files and symbolic links, we always perform a recheck anyway (since
+		// we've already paid for their metadata), but for directories, there's
+		// one corner case that has to be handled: the case where an empty
+		// directory is deleted and then a different directory with the same
+		// name and non-zero contents is renamed into its place. In this case,
+		// no events would be generated for the deleted directory (since it
+		// would have no content to remove) or the renamed directory (since the
+		// operation is atomic and only affects the parent directory) and thus
+		// only the parent path would be seen, with no indication that the child
+		// directory had been modified. FSEvents and ReadDirectoryChangesW don't
+		// have this problem, because they would report the path for the
+		// directory being deleted and/or renamed.
+		if directoryBaseline != nil {
 			contentDirty := s.dirtyPaths[contentPath]
-			if runtime.GOOS == "linux" && !contentDirty {
-				contentDirty = s.dirtyPaths[path]
+			if runtime.GOOS == "linux" && !contentDirty &&
+				len(directoryBaseline.Contents) == 0 {
+				contentDirty = true
 			}
 			if !contentDirty {
-				contents[contentName] = contentBaseline
+				contents[contentName] = directoryBaseline
 				var missingCacheEntries bool
-				contentBaseline.walk(contentPath, func(path string, entry *Entry) {
+				directoryBaseline.walk(contentPath, func(path string, entry *Entry) {
 					// Update total entry counts.
 					if entry.Kind == EntryKind_Directory {
 						s.directories++
@@ -552,7 +561,7 @@ func (s *scanner) directory(
 				panic("unsupported symbolic link mode")
 			}
 		} else if contentKind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, directory, contentMetadata, nil, contentBaseline)
+			entry, err = s.directory(contentPath, directory, contentMetadata, nil, directoryBaseline)
 		} else {
 			panic("unhandled entry kind")
 		}
