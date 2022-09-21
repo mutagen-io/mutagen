@@ -6,6 +6,9 @@ set -e
 # Load test parameters.
 source scripts/ci/test_parameters.sh
 
+# Disable Docker tests for 386.
+export MUTAGEN_TEST_DOCKER="false"
+
 # Perform a local-only build so that we have an agent bundle for testing.
 GOARCH=386 go run scripts/build.go --mode=local
 
