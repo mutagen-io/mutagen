@@ -30,6 +30,27 @@ found online at https://opensource.org/licenses/BSD-3-Clause.
 Also used under the terms of the Google Go IP Rights Grant. A copy of this
 rights grant can be found later in this text.
 
+Portions of the Go standard library are derived from sources with the following
+copyright statements:
+
+Copyright © 1994-1999 Lucent Technologies Inc. All rights reserved.
+Revisions Copyright © 2000-2007 Vita Nuova Holdings Limited (www.vitanuova.com).
+All rights reserved.
+Portions Copyright 2009 The Go Authors. All rights reserved.
+
+These portions are used under the terms of the MIT License. A copy of this
+license can be found later in this text or online at
+https://opensource.org/licenses/MIT.
+
+Portions of the Go standard library are derived from sources with the following
+copyright and license statements:
+
+Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+Developed at SunPro, a Sun Microsystems, Inc. business. Permission to use, copy,
+modify, and distribute this software is freely granted, provided that this
+notice is preserved.
+
 --------------------------------------------------------------------------------
 
 groupcache
@@ -49,6 +70,8 @@ Cobra
 https://github.com/spf13/cobra
 
 Copyright 2013 Steve Francia <spf@spf13.com>
+Copyright 2015 Red Hat Inc. All rights reserved.
+Copyright 2016 French Ben. All rights reserved.
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
@@ -62,6 +85,7 @@ https://github.com/spf13/pflag
 
 Original version available at https://github.com/ogier/pflag.
 
+Copyright 2009 The Go Authors. All rights reserved.
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
 
@@ -86,7 +110,7 @@ mousestrap
 
 https://github.com/inconshreveable/mousetrap
 
-Copyright 2014 Alan Shreve
+Copyright 2022 Alan Shreve
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
@@ -151,6 +175,18 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 Go support for Protocol Buffers
 
+https://github.com/golang/protobuf
+
+Copyright 2010 The Go Authors. All rights reserved.
+
+Used under the terms of the 3-Clause BSD License (Google version). A copy of
+this license can be found later in this text and a templated version can be
+found online at https://opensource.org/licenses/BSD-3-Clause.
+
+--------------------------------------------------------------------------------
+
+Go support for Protocol Buffers
+
 https://github.com/protocolbuffers/protobuf-go
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
@@ -165,7 +201,7 @@ Go support for gRPC
 
 https://github.com/grpc/grpc-go
 
-Copyright 2014-2018 gRPC authors
+Copyright 2014 gRPC authors.
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
@@ -177,7 +213,8 @@ Go-generated Protocol Buffers Packages
 
 https://github.com/google/go-genproto
 
-Copyright 2016 Google Inc.
+Copyright (c) 2015, Google Inc.
+Copyright 2015 Google LLC
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
@@ -313,21 +350,7 @@ https://github.com/kubernetes/apimachinery
 
 Forked and modified at https://github.com/mutagen-io/apimachinery.
 
-Copyright (c) 2014 The Kubernetes Authors.
-
-Used under the terms of the Apache License, Version 2.0. A copy of this license
-can be found later in this text or online at
-http://www.apache.org/licenses/LICENSE-2.0.
-
---------------------------------------------------------------------------------
-
-klog
-
-https://github.com/kubernetes/klog
-
-Fork of glog (https://github.com/golang/glog)
-
-Copyright 2013 Google Inc. All Rights Reserved.
+Copyright 2014 The Kubernetes Authors.
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
