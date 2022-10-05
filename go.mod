@@ -17,7 +17,7 @@ require (
 	github.com/mutagen-io/gopass v0.0.0-20170602182606-9a121bec1ae7
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20220805013720-a33c5aa5df48
+	golang.org/x/net v0.0.0-20221004154528-8021a29435af
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.48.0
@@ -32,8 +32,8 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
-	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b // indirect
+	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
 	google.golang.org/genproto v0.0.0-20220808145710-bf34ca4dd83a // indirect
 )
 
