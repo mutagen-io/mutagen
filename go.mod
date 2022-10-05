@@ -20,7 +20,7 @@ require (
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 	golang.org/x/text v0.3.7
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.49.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -34,7 +34,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b // indirect
 	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
-	google.golang.org/genproto v0.0.0-20220808145710-bf34ca4dd83a // indirect
+	google.golang.org/genproto v0.0.0-20220930163606-c98284e70a91 // indirect
 )
 
 replace k8s.io/apimachinery v0.21.3 => github.com/mutagen-io/apimachinery v0.21.3-mutagen1
