@@ -1,6 +1,6 @@
 // Subset of https://github.com/rjeczalik/notify extracted and modified to
-// expose watcher functionality directly. Originally extracted from the
-// following revision:
+// expose watcher functionality directly. This file has also been modified to
+// allow for dropped events. Originally extracted from the following revision:
 // https://github.com/rjeczalik/notify/tree/e2a77dcc14cf6732bfa4c361554f27dc696d5d79
 //
 // The original code license:
@@ -279,7 +279,10 @@ func (i *inotify) send(esch <-chan []*event) {
 	for es := range esch {
 		for _, e := range i.transform(es) {
 			if e != nil {
-				i.c <- e
+				select {
+				case i.c <- e:
+				default:
+				}
 			}
 		}
 	}
