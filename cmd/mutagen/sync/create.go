@@ -154,11 +154,11 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// If a configuration file has been specified, then load it and merge it
-	// into our cumulative configuration.
-	if createConfiguration.configurationFile != "" {
-		if c, err := loadAndValidateGlobalSynchronizationConfiguration(createConfiguration.configurationFile); err != nil {
-			return fmt.Errorf("unable to load configuration file: %w", err)
+	// If additional default configuration files have been specified, then load
+	// them and merge them into the cumulative configuration.
+	for _, configurationFile := range createConfiguration.configurationFiles {
+		if c, err := loadAndValidateGlobalSynchronizationConfiguration(configurationFile); err != nil {
+			return fmt.Errorf("unable to load configuration file (%s): %w", configurationFile, err)
 		} else {
 			configuration = synchronization.MergeConfigurations(configuration, c)
 		}
@@ -495,9 +495,9 @@ var createConfiguration struct {
 	// noGlobalConfiguration specifies whether or not the global configuration
 	// file should be ignored.
 	noGlobalConfiguration bool
-	// configurationFile specifies a file from which to load configuration. It
-	// should be a path relative to the working directory.
-	configurationFile string
+	// configurationFiles stores paths of additional files from which to load
+	// default configuration.
+	configurationFiles []string
 	// synchronizationMode specifies the synchronization mode for the session.
 	synchronizationMode string
 	// maximumEntryCount specifies the maximum number of filesystem entries that
@@ -635,7 +635,7 @@ func init() {
 
 	// Wire up general configuration flags.
 	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
-	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load additional default configuration")
+	flags.StringSliceVarP(&createConfiguration.configurationFiles, "configuration-file", "c", nil, "Specify additional files from which to load (and merge) default configuration parameters")
 
 	// Wire up synchronization flags.
 	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
