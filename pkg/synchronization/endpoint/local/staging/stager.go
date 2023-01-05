@@ -1,6 +1,8 @@
-package local
+package staging
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
@@ -31,10 +33,37 @@ func mkdirAllowExist(name string, perm os.FileMode) error {
 	}
 }
 
+// pathForStaging computes the staging path for the specified path/digest
+// relative to the staging root. It also returns the prefix directory byte value
+// and name, though it does not create the prefix directory.
+func pathForStaging(root, path string, digest []byte) (string, byte, string, error) {
+	// Ensure that the digest is non-empty. We need at least one byte for the
+	// staging prefix to be valid, but beyond that we don't know what digest
+	// length is in-use (or might be in use in the future).
+	if len(digest) == 0 {
+		return "", 0, "", errors.New("entry digest too short")
+	}
+	prefixByte := digest[0]
+
+	// Convert the digest to hexadecimal encoding and extract the prefix.
+	digestHex := hex.EncodeToString(digest)
+	prefix := digestHex[:2]
+
+	// Compute the hexadecimal encoded digest of the path name.
+	pathDigest := sha1.Sum([]byte(path))
+	pathDigestHex := hex.EncodeToString(pathDigest[:])
+
+	// Compute the staging name.
+	stagingName := pathDigestHex + "_" + digestHex
+
+	// Success.
+	return filepath.Join(root, prefix, stagingName), prefixByte, prefix, nil
+}
+
 // stagingSink is an io.WriteCloser designed to be returned by stager.
 type stagingSink struct {
 	// stager is the parent stager.
-	stager *stager
+	stager *Stager
 	// path is the path that is being staged. It is not the path to the storage
 	// or the staging destination.
 	path string
@@ -105,12 +134,12 @@ func (s *stagingSink) Close() error {
 	return nil
 }
 
-// stager is an ephemeral content-addressable store implementation. It allows
-// files to be staged in a load-balanced fashion in a temporary directory and
-// then rapidly located by their digests. It implements both rsync.Sinker and
-// sync.Provider. It is not safe for concurrent access, and each sink that it
+// Stager is an implementation of the local.Stager interface. It uses an
+// ephemeral content-addressable store, allowing files to be staged in a
+// load-balanced fashion in a temporary directory and then rapidly located by
+// their digests. It is not safe for concurrent access, and each sink that it
 // produces should be closed before any other method is invoked.
-type stager struct {
+type Stager struct {
 	// root is the staging root path.
 	root string
 	// hideRoot indicates whether or not the staging root should be marked as
@@ -123,12 +152,13 @@ type stager struct {
 	// rootExists indicates whether or not the staging root currently exists.
 	rootExists bool
 	// prefixExists tracks whether or not individual prefix directories exist.
+	// It may contain false negatives but will never contain false positives.
 	prefixExists [256]bool
 }
 
-// newStager creates a new stager.
-func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *stager {
-	return &stager{
+// NewStager creates a new stager.
+func NewStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize uint64) *Stager {
+	return &Stager{
 		root:            root,
 		hideRoot:        hideRoot,
 		digester:        digester,
@@ -137,9 +167,33 @@ func newStager(root string, hideRoot bool, digester hash.Hash, maximumFileSize u
 	}
 }
 
+// Prepare implements local.Stager.Prepare.
+func (s *Stager) Prepare() error {
+	// Create the staging root if it doesn't already exist.
+	if !s.rootExists {
+		// Attempt to create the root directory.
+		if err := os.Mkdir(s.root, 0700); err != nil {
+			return fmt.Errorf("unable to create staging root: %w", err)
+		}
+
+		// Mark the directory as hidden, if requested.
+		if s.hideRoot {
+			if err := filesystem.MarkHidden(s.root); err != nil {
+				return fmt.Errorf("unable to make staging root as hidden: %w", err)
+			}
+		}
+
+		// Update our tracking.
+		s.rootExists = true
+	}
+
+	// Success.
+	return nil
+}
+
 // ensurePrefixExists ensures that the specified prefix directory exists within
 // the staging root, using a cache to avoid inefficient recreation.
-func (s *stager) ensurePrefixExists(prefixByte byte, prefix string) error {
+func (s *Stager) ensurePrefixExists(prefixByte byte, prefix string) error {
 	// Check if we've already created that prefix.
 	if s.prefixExists[prefixByte] {
 		return nil
@@ -156,43 +210,8 @@ func (s *stager) ensurePrefixExists(prefixByte byte, prefix string) error {
 	return nil
 }
 
-// wipe removes the staging root.
-func (s *stager) wipe() error {
-	// Reset the prefix creation tracker.
-	s.prefixExists = [256]bool{}
-
-	// Reset root creation tracking.
-	s.rootExists = false
-
-	// Remove the staging root.
-	if err := os.RemoveAll(s.root); err != nil {
-		return fmt.Errorf("unable to remove staging directory: %w", err)
-	}
-
-	// Success.
-	return nil
-}
-
-// Sink implements the Sink method of rsync.Sinker.
-func (s *stager) Sink(path string) (io.WriteCloser, error) {
-	// Create the staging root if we haven't already.
-	if !s.rootExists {
-		// Attempt to create the root directory.
-		if err := os.Mkdir(s.root, 0700); err != nil {
-			return nil, fmt.Errorf("unable to create staging root: %w", err)
-		}
-
-		// Mark the directory as hidden, if requested.
-		if s.hideRoot {
-			if err := filesystem.MarkHidden(s.root); err != nil {
-				return nil, fmt.Errorf("unable to make staging root as hidden: %w", err)
-			}
-		}
-
-		// Update our tracking.
-		s.rootExists = true
-	}
-
+// Sink implements rsync.Sinker.Sink.
+func (s *Stager) Sink(path string) (io.WriteCloser, error) {
 	// Create a temporary storage file in the staging root.
 	storage, err := os.CreateTemp(s.root, "staging")
 	if err != nil {
@@ -212,8 +231,8 @@ func (s *stager) Sink(path string) (io.WriteCloser, error) {
 	}, nil
 }
 
-// Provide implements the Provide method of sync.Provider.
-func (s *stager) Provide(path string, digest []byte) (string, error) {
+// Provide implements core.Provider.Provide.
+func (s *Stager) Provide(path string, digest []byte) (string, error) {
 	// If the root doesn't exist, then there's no way the file exists, and we
 	// can simply return. This is an important optimization path for initial
 	// synchronization of a large directories, where we don't want to perform a
@@ -239,4 +258,21 @@ func (s *stager) Provide(path string, digest []byte) (string, error) {
 
 	// Success.
 	return expectedLocation, nil
+}
+
+// Finalize implements local.Stager.Finalize.
+func (s *Stager) Finalize() error {
+	// Reset the prefix creation tracker.
+	s.prefixExists = [256]bool{}
+
+	// Reset root creation tracking.
+	s.rootExists = false
+
+	// Remove the staging root.
+	if err := os.RemoveAll(s.root); err != nil {
+		return fmt.Errorf("unable to remove staging directory: %w", err)
+	}
+
+	// Success.
+	return nil
 }

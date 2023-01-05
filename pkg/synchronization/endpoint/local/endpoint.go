@@ -176,7 +176,7 @@ type endpoint struct {
 	// but since Endpoint doesn't allow concurrent usage, we know that the
 	// stager will only be used in at most one of Stage or Transition methods at
 	// any given time.
-	stager *stager
+	stager stager
 }
 
 // NewEndpoint creates a new local endpoint instance using the specified session
@@ -438,7 +438,7 @@ func NewEndpoint(
 		stager: newStager(
 			stagingRoot,
 			hideStagingRoot,
-			version.Hasher(),
+			version.Hasher,
 			maximumStagingFileSize,
 		),
 	}
@@ -1136,6 +1136,12 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Release the scan lock.
 	e.scanLock.Unlock()
 
+	// Inform the stager that we're about to begin staging and transition
+	// operations.
+	if err := e.stager.Prepare(); err != nil {
+		return nil, nil, nil, fmt.Errorf("unable to initialize stager: %w", err)
+	}
+
 	// Create an opener that we can use file opening and defer its closure. We
 	// can't cache this across synchronization cycles since its path references
 	// may become invalidated or may prevent modifications.
@@ -1350,16 +1356,16 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.pollSignal.Strobe()
 	}
 
-	// Wipe the staging directory. We don't monitor for errors here, because we
-	// need to return the results and problems no matter what, but if there's
-	// something weird going on with the filesystem, we'll see it the next time
-	// we scan or stage.
+	// Finalize the stager, which will also wipe the staging directory. We don't
+	// monitor for errors here, because we need to return the results and
+	// problems no matter what, but if there's something weird going on with the
+	// filesystem, we'll see it the next time we scan or stage.
 	//
 	// TODO: If we see a large number of problems, should we avoid wiping the
 	// staging directory? It could be due to an easily correctable error, at
 	// which point you wouldn't want to restage if you're talking about lots of
 	// files.
-	e.stager.wipe()
+	e.stager.Finalize()
 
 	// Done.
 	return results, problems, stagerMissingFiles, nil
