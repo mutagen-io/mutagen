@@ -1,7 +1,6 @@
 package staging
 
 import (
-	"crypto/sha1"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -9,6 +8,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
+
+	"github.com/zeebo/xxh3"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -33,6 +35,13 @@ func mkdirAllowExist(name string, perm os.FileMode) error {
 	}
 }
 
+// pathHashPool is a pool of hash functions used for hashing paths.
+var pathHashPool = sync.Pool{
+	New: func() any {
+		return xxh3.New()
+	},
+}
+
 // pathForStaging computes the staging path for the specified path/digest
 // relative to the staging root. It also returns the prefix directory byte value
 // and name, though it does not create the prefix directory.
@@ -49,9 +58,20 @@ func pathForStaging(root, path string, digest []byte) (string, byte, string, err
 	digestHex := hex.EncodeToString(digest)
 	prefix := digestHex[:2]
 
+	// Grab a path hasher and ensure that it's reset.
+	pathHasher := pathHashPool.Get().(*xxh3.Hasher)
+	pathHasher.Reset()
+
+	// Compute the path digest.
+	pathHasher.WriteString(path)
+	pathDigest := pathHasher.Sum128()
+
+	// Return the path hasher to the pool.
+	pathHashPool.Put(pathHasher)
+
 	// Compute the hexadecimal encoded digest of the path name.
-	pathDigest := sha1.Sum([]byte(path))
-	pathDigestHex := hex.EncodeToString(pathDigest[:])
+	pathDigestBytes := pathDigest.Bytes()
+	pathDigestHex := hex.EncodeToString(pathDigestBytes[:])
 
 	// Compute the staging name.
 	stagingName := pathDigestHex + "_" + digestHex
