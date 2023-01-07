@@ -438,8 +438,8 @@ func NewEndpoint(
 		stager: newStager(
 			stagingRoot,
 			hideStagingRoot,
-			version.Hasher,
 			maximumStagingFileSize,
+			version.Hasher,
 		),
 	}
 
@@ -1086,9 +1086,10 @@ func (e *endpoint) stageFromRoot(
 		return false
 	}
 
-	// Ensure that everything staged correctly.
-	_, err = e.stager.Provide(path, digest)
-	return err == nil
+	// Verify that everything staged correctly, ensuring that the source file
+	// wasn't modified during the copy operation.
+	success, _ := e.stager.Contains(path, digest)
+	return success
 }
 
 // Stage implements the Stage method for local endpoints.
@@ -1138,7 +1139,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 
 	// Inform the stager that we're about to begin staging and transition
 	// operations.
-	if err := e.stager.Prepare(); err != nil {
+	if err := e.stager.Initialize(); err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to initialize stager: %w", err)
 	}
 
@@ -1161,7 +1162,9 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	filteredPaths := paths[:0]
 	for p, path := range paths {
 		digest := digests[p]
-		if _, err := e.stager.Provide(path, digest); err == nil {
+		if available, err := e.stager.Contains(path, digest); err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to query file staging status: %w", err)
+		} else if available {
 			continue
 		} else if e.stageFromRoot(path, digest, reverseLookupMap, opener) {
 			continue

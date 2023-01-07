@@ -9,6 +9,6 @@ import (
 )
 
 // newStager creates a new stager using the standard staging implementation.
-func newStager(root string, hideRoot bool, hashFactory func() hash.Hash, maximumFileSize uint64) stager {
-	return staging.NewStager(root, hideRoot, hashFactory(), maximumFileSize)
+func newStager(root string, hideRoot bool, maximumFileSize uint64, hasherFactory func() hash.Hash) stager {
+	return staging.NewStager(root, hideRoot, maximumFileSize, hasherFactory)
 }

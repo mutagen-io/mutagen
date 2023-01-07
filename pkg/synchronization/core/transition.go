@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,11 +47,9 @@ var (
 // Provider defines the interface that higher-level logic can use to provide
 // files to transition algorithms.
 type Provider interface {
-	// Provide returns a filesystem path to a file containing the contents for
-	// the path given as the first argument with the digest specified by the
-	// second argument. If the provider is unable to locate a file matching the
-	// specified parameters in its internal storage, it should return an error
-	// for which os.IsNotExist evaluates to true.
+	// Provide returns a filesystem path to a file containing the contents
+	// with the expected path and content digest. The provider does not need to
+	// ensure that the file exists.
 	Provide(path string, digest []byte) (string, error)
 }
 
@@ -573,31 +572,41 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 		mode = markExecutableForReaders(mode)
 	}
 
-	// Compute the path to the staged file. If the provider indicates that no
-	// staged file exists with the specified parameters, then update our missing
-	// file tracking.
+	// Compute the path to the staged file. This does not ensure that the file
+	// exists, which we'll instead detect when setting permissions or attempting
+	// to rename or copy the file into place.
 	stagedPath, err := t.provider.Provide(path, target.Digest)
 	if err != nil {
-		if os.IsNotExist(err) {
-			t.providerMissingFiles = true
-		}
-		return fmt.Errorf("unable to locate staged file: %w", err)
+		return fmt.Errorf("unable to compute staged file path: %w", err)
 	}
 
-	// Set permissions for the staged file.
+	// Set permissions for the staged file. When performing this operation, we
+	// check for non-existence of the file, because Provide doesn't guarantee
+	// that it exists.
 	if err := filesystem.SetPermissionsByPath(stagedPath, t.defaultOwnership, mode); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			t.providerMissingFiles = true
+		}
 		return fmt.Errorf("unable to set staged file permissions: %w", err)
 	}
 
-	// Attempt to atomically rename the file. If we succeed, we're done.
+	// Attempt to atomically rename the file into place. If the atomic rename
+	// fails, then check if it was due to a cross-device rename. If not, then
+	// there's nothing else we can do.
+	//
+	// We also check for non-existence here, just in case it isn't caught by
+	// SetPermissionsByPath (which can be a no-op). Note that a non-existence
+	// error on a rename operation can also result from the destination path not
+	// existing, but that can't be the case here given that our destination is
+	// targeted by an open handle and thus must exist (even if unlinked from the
+	// filesystem).
 	renameErr := filesystem.Rename(nil, stagedPath, parent, name, replace)
 	if renameErr == nil {
 		return nil
-	}
-
-	// If the atomic rename failed, check if it was due to a cross-device
-	// rename. If not, then there's nothing else we can do.
-	if !filesystem.IsCrossDeviceError(renameErr) {
+	} else if !filesystem.IsCrossDeviceError(renameErr) {
+		if errors.Is(renameErr, fs.ErrNotExist) {
+			t.providerMissingFiles = true
+		}
 		return fmt.Errorf("unable to relocate staged file: %w", renameErr)
 	}
 
@@ -609,8 +618,19 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// Open the staged file. We can't defer its closure because we need to be
 	// able to remove it after a successful rename, which we can't do (on some
 	// platforms, notably Windows) if the file handle is open.
+	//
+	// This is also the last place we check for non-existence, because
+	// SetPermissionsByPath can be a no-op and the rename operation may
+	// prioritize the cross-device error over any non-existence error (even
+	// though that seems unlikely, since the OS be assuming cross-device copying
+	// based on the source and destination directories alone). In any case,
+	// we're now opening the actual target file, so if it doesn't exist, we'll
+	// know for sure.
 	stagedFile, err := os.Open(stagedPath)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			t.providerMissingFiles = true
+		}
 		return fmt.Errorf("unable to open staged file: %w", err)
 	}
 
