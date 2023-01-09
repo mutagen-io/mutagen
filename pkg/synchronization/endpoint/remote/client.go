@@ -51,14 +51,27 @@ func NewEndpoint(
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
-	// Set up compression for the control stream.
-	decompressor := flate.NewReader(bufio.NewReaderSize(stream, controlStreamBufferSize))
-	outbound := bufio.NewWriterSize(stream, controlStreamBufferSize)
-	compressor, _ := flate.NewWriter(outbound, flate.DefaultCompression)
-	flusher := streampkg.MultiFlusher(compressor, outbound)
+	// Set up inbound buffering and decompression.
+	compressedInbound := bufio.NewReaderSize(stream, controlStreamCompressedBufferSize)
+	decompressor := flate.NewReader(compressedInbound)
+	inbound := bufio.NewReaderSize(decompressor, controlStreamUncompressedBufferSize)
+
+	// Set up outbound buffering and compression.
+	compressedOutbound := bufio.NewWriterSize(stream, controlStreamCompressedBufferSize)
+	compressor, _ := flate.NewWriter(compressedOutbound, flate.DefaultCompression)
+	outbound := bufio.NewWriterSize(compressor, controlStreamUncompressedBufferSize)
+
+	// Create a mechanism to flush the outbound pipeline.
+	flusher := streampkg.NewMultiFlusher(outbound, compressor, compressedOutbound)
 
 	// Create a closer for the control stream and compression resources.
-	closer := streampkg.MultiCloser(compressor, decompressor, stream)
+	closer := streampkg.NewMultiCloser(
+		streampkg.NewFlushCloser(outbound),
+		compressor,
+		streampkg.NewFlushCloser(compressedOutbound),
+		stream,
+		decompressor,
+	)
 
 	// Set up deferred closure of the control stream and compression resources
 	// in the event that initialization fails.
@@ -69,11 +82,9 @@ func NewEndpoint(
 		}
 	}()
 
-	// Create an encoder and a decoder for Protocol Buffers messages. The
-	// compressor already implements internal buffering, but the decompressor
-	// requires additional buffering to implement io.ByteReader.
-	encoder := encoding.NewProtobufEncoder(compressor)
-	decoder := encoding.NewProtobufDecoder(bufio.NewReader(decompressor))
+	// Create an encoder and a decoder for Protocol Buffers messages.
+	encoder := encoding.NewProtobufEncoder(outbound)
+	decoder := encoding.NewProtobufDecoder(inbound)
 
 	// Create and send the initialize request.
 	request := &InitializeSynchronizationRequest{

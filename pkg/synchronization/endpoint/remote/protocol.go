@@ -10,7 +10,11 @@ const (
 	// buffering. It should be ideally large enough to fill the kernel buffer
 	// for whatever stream is being used as a transport, which in our case is
 	// typically an OS pipe.
-	controlStreamBufferSize = 64 * 1024
+	controlStreamCompressedBufferSize = 64 * 1024
+	// controlStreamCompressorBufferSize is the buffer size to use for
+	// compressor input and decompressor output. It should ideally be large
+	// enough to fill the compressor's window buffer.
+	controlStreamUncompressedBufferSize = 64 * 1024
 )
 
 // ensureValid ensures that the InitializeSynchronizationRequest's invariants
