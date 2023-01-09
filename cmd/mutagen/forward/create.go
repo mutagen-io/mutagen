@@ -150,11 +150,11 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// If a configuration file has been specified, then load it and merge it
-	// into our cumulative configuration.
-	if createConfiguration.configurationFile != "" {
-		if c, err := loadAndValidateGlobalForwardingConfiguration(createConfiguration.configurationFile); err != nil {
-			return fmt.Errorf("unable to load configuration file: %w", err)
+	// If additional default configuration files have been specified, then load
+	// them and merge them into the cumulative configuration.
+	for _, configurationFile := range createConfiguration.configurationFiles {
+		if c, err := loadAndValidateGlobalForwardingConfiguration(configurationFile); err != nil {
+			return fmt.Errorf("unable to load configuration file (%s): %w", configurationFile, err)
 		} else {
 			configuration = forwarding.MergeConfigurations(configuration, c)
 		}
@@ -315,9 +315,9 @@ var createConfiguration struct {
 	// noGlobalConfiguration specifies whether or not the global configuration
 	// file should be ignored.
 	noGlobalConfiguration bool
-	// configurationFile specifies a file from which to load configuration. It
-	// should be a path relative to the working directory.
-	configurationFile string
+	// configurationFiles stores paths of additional files from which to load
+	// default configuration.
+	configurationFiles []string
 	// socketOverwriteMode specifies the socket overwrite mode to use for the
 	// session.
 	socketOverwriteMode string
@@ -385,7 +385,7 @@ func init() {
 
 	// Wire up general configuration flags.
 	flags.BoolVar(&createConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
-	flags.StringVarP(&createConfiguration.configurationFile, "configuration-file", "c", "", "Specify a file from which to load additional default configuration")
+	flags.StringSliceVarP(&createConfiguration.configurationFiles, "configuration-file", "c", nil, "Specify additional files from which to load (and merge) default configuration parameters")
 
 	// Wire up socket flags.
 	flags.StringVar(&createConfiguration.socketOverwriteMode, "socket-overwrite-mode", "", "Specify socket overwrite mode (leave|overwrite)")
