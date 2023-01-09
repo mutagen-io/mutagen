@@ -1182,15 +1182,20 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltifying/patching.
+	//
+	// If the root doesn't exist or doesn't contain any files, then we can just
+	// use an empty signature straight away.
+	rootExistsAndHasFileContents := reverseLookupMap.Length() > 0
+	emptySignature := &rsync.Signature{}
 	signatures := make([]*rsync.Signature, len(filteredPaths))
 	for p, path := range filteredPaths {
-		if base, _, err := opener.OpenFile(path); err != nil {
-			signatures[p] = &rsync.Signature{}
-			continue
+		if !rootExistsAndHasFileContents {
+			signatures[p] = emptySignature
+		} else if base, _, err := opener.OpenFile(path); err != nil {
+			signatures[p] = emptySignature
 		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
-			signatures[p] = &rsync.Signature{}
-			continue
+			signatures[p] = emptySignature
 		} else {
 			base.Close()
 			signatures[p] = signature

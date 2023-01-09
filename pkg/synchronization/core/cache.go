@@ -91,6 +91,11 @@ type ReverseLookupMap struct {
 	map20 map[[20]byte]string
 }
 
+// Length returns the number of entries in the map.
+func (m *ReverseLookupMap) Length() int {
+	return len(m.map20)
+}
+
 // Lookup attempts a lookup in the map.
 func (m *ReverseLookupMap) Lookup(digest []byte) (string, bool) {
 	// Handle based on digest length.
