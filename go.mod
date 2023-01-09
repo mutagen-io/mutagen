@@ -11,6 +11,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/uuid v1.3.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
+	github.com/klauspost/compress v1.15.14
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434

@@ -2,11 +2,12 @@ package remote
 
 import (
 	"bufio"
-	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/klauspost/compress/flate"
 
 	"google.golang.org/protobuf/proto"
 

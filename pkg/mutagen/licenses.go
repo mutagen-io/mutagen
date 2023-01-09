@@ -176,6 +176,20 @@ https://opensource.org/licenses/BSD-2-Clause.
 
 --------------------------------------------------------------------------------
 
+compress
+
+http://github.com/klauspost/compress
+
+Copyright (c) 2009-2016 The Go Authors. All rights reserved.
+Copyright (c) 2015-2019 Klaus Post. All rights reserved.
+Copyright 2011 The Snappy-Go Authors. All rights reserved.
+
+Used under the terms of the 3-Clause BSD License (Google version). A copy of
+this license can be found later in this text and a templated version can be
+found online at https://opensource.org/licenses/BSD-3-Clause.
+
+--------------------------------------------------------------------------------
+
 cpuid
 
 http://github.com/klauspost/cpuid
