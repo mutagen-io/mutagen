@@ -1,10 +1,12 @@
 package store
 
 import (
+	"bufio"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"github.com/zeebo/xxh3"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
 var (
@@ -22,6 +25,11 @@ var (
 	// errDigestEmpty is returned when an empty digest is provided or a hash
 	// function generates an empty digest.
 	errDigestEmpty = errors.New("digest empty")
+)
+
+const (
+	// storageWriteBufferSize is the buffer size to use for storage writes.
+	storageWriteBufferSize = 64 * 1024
 )
 
 // Store implements content-addressable storage for staging files. In addition
@@ -40,10 +48,13 @@ type Store struct {
 	hidden bool
 	// maximumFileSize is the maximum allowed size for a single storage file.
 	maximumFileSize uint64
-	// pathHasherPool is a pool of hashes for computing path digests.
-	pathHasherPool sync.Pool
-	// contentHasherPool is a pool of hashes for computing content digests.
+	// writeBufferPool is a pool of bufio.Writer for buffering storage writes.
+	// When not in use, their writer is set to io.Discard.
+	writeBufferPool sync.Pool
+	// contentHasherPool is a pool of hash.Hash for computing content digests.
 	contentHasherPool sync.Pool
+	// pathHasherPool is a pool of hash.Hash for computing path digests.
+	pathHasherPool sync.Pool
 	// initialized indicates whether or not the store has been initialized. If
 	// this field is true, then the root directory exists and the values in
 	// prefixExists are correct. If this field is false, then the state of the
@@ -65,14 +76,19 @@ func NewStore(root string, hidden bool, maximumFileSize uint64, contentHasherFac
 		root:            root,
 		hidden:          hidden,
 		maximumFileSize: maximumFileSize,
-		pathHasherPool: sync.Pool{
+		writeBufferPool: sync.Pool{
 			New: func() any {
-				return xxh3.New()
+				return bufio.NewWriterSize(io.Discard, storageWriteBufferSize)
 			},
 		},
 		contentHasherPool: sync.Pool{
 			New: func() any {
 				return contentHasherFactory()
+			},
+		},
+		pathHasherPool: sync.Pool{
+			New: func() any {
+				return xxh3.New()
 			},
 		},
 	}
@@ -182,11 +198,20 @@ func (s *Store) Allocate() (*Storage, error) {
 	hasher := s.contentHasherPool.Get().(hash.Hash)
 	hasher.Reset()
 
+	// Create a hashed writer targeting storage.
+	writer := stream.NewHashedWriter(storage, hasher)
+
+	// Acquire and reset a write buffer to target the writer.
+	buffer := s.writeBufferPool.Get().(*bufio.Writer)
+	buffer.Reset(writer)
+
 	// Success.
 	return &Storage{
 		store:   s,
 		storage: storage,
 		hasher:  hasher,
+		writer:  writer,
+		buffer:  buffer,
 	}, nil
 }
 
@@ -309,6 +334,10 @@ type Storage struct {
 	storage *os.File
 	// hasher computes the digest of the storage content.
 	hasher hash.Hash
+	// writer is the hashed writer targeting storage and hasher.
+	writer io.Writer
+	// buffer is the write buffer targeting writer.
+	buffer *bufio.Writer
 	// currentSize is the number of bytes that have been written to the file.
 	currentSize uint64
 }
@@ -320,12 +349,8 @@ func (s *Storage) Write(data []byte) (int, error) {
 		return 0, errors.New("maximum file size reached")
 	}
 
-	// Write to the underlying storage.
-	n, err := s.storage.Write(data)
-
-	// Write as much to the hasher as we wrote to the underlying storage. This
-	// write can't fail.
-	s.hasher.Write(data[:n])
+	// Write to the buffer.
+	n, err := s.buffer.Write(data)
 
 	// Update the current size. We needn't worry about this overflowing, because
 	// the check above is sufficient to ensure that this amount of data won't
@@ -340,12 +365,18 @@ func (s *Storage) Write(data []byte) (int, error) {
 // computed by a combination of the content digest and the specified path.
 func (s *Storage) Commit(path string) error {
 	// Close the underlying storage.
-	if err := s.storage.Close(); err != nil {
+	if err := s.buffer.Flush(); err != nil {
+		return fmt.Errorf("unable to flush content to disk: %w", err)
+	} else if err = s.storage.Close(); err != nil {
 		return fmt.Errorf("unable to close underlying storage: %w", err)
 	}
 
 	// Compute the final content digest.
 	digest := s.hasher.Sum(nil)
+
+	// Return the buffer to the pool.
+	s.buffer.Reset(io.Discard)
+	s.store.writeBufferPool.Put(s.buffer)
 
 	// Return the hasher to the pool.
 	s.store.contentHasherPool.Put(s.hasher)
@@ -388,6 +419,10 @@ func (s *Storage) Discard() error {
 	if err := s.storage.Close(); err != nil {
 		return fmt.Errorf("unable to close underlying storage: %w", err)
 	}
+
+	// Return the buffer to the pool.
+	s.buffer.Reset(io.Discard)
+	s.store.writeBufferPool.Put(s.buffer)
 
 	// Return the hasher to the pool.
 	s.store.contentHasherPool.Put(s.hasher)
