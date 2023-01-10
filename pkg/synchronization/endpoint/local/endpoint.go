@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local/staging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
@@ -176,7 +177,7 @@ type endpoint struct {
 	// but since Endpoint doesn't allow concurrent usage, we know that the
 	// stager will only be used in at most one of Stage or Transition methods at
 	// any given time.
-	stager *stager
+	stager stager
 }
 
 // NewEndpoint creates a new local endpoint instance using the specified session
@@ -435,11 +436,11 @@ func NewEndpoint(
 		recursiveWatchRetryEstablish: make(chan struct{}),
 		hasher:                       version.Hasher(),
 		cache:                        cache,
-		stager: newStager(
+		stager: staging.NewStager(
 			stagingRoot,
 			hideStagingRoot,
-			version.Hasher(),
 			maximumStagingFileSize,
+			version.Hasher,
 		),
 	}
 
@@ -1086,9 +1087,10 @@ func (e *endpoint) stageFromRoot(
 		return false
 	}
 
-	// Ensure that everything staged correctly.
-	_, err = e.stager.Provide(path, digest)
-	return err == nil
+	// Verify that everything staged correctly, ensuring that the source file
+	// wasn't modified during the copy operation.
+	success, _ := e.stager.Contains(path, digest)
+	return success
 }
 
 // Stage implements the Stage method for local endpoints.
@@ -1136,6 +1138,12 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Release the scan lock.
 	e.scanLock.Unlock()
 
+	// Inform the stager that we're about to begin staging and transition
+	// operations.
+	if err := e.stager.Initialize(); err != nil {
+		return nil, nil, nil, fmt.Errorf("unable to initialize stager: %w", err)
+	}
+
 	// Create an opener that we can use file opening and defer its closure. We
 	// can't cache this across synchronization cycles since its path references
 	// may become invalidated or may prevent modifications.
@@ -1155,7 +1163,9 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	filteredPaths := paths[:0]
 	for p, path := range paths {
 		digest := digests[p]
-		if _, err := e.stager.Provide(path, digest); err == nil {
+		if available, err := e.stager.Contains(path, digest); err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to query file staging status: %w", err)
+		} else if available {
 			continue
 		} else if e.stageFromRoot(path, digest, reverseLookupMap, opener) {
 			continue
@@ -1173,15 +1183,20 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Compute signatures for each of the unstaged paths. For paths that don't
 	// exist or that can't be read, just use an empty signature, which means to
 	// expect/use an empty base when deltifying/patching.
+	//
+	// If the root doesn't exist or doesn't contain any files, then we can just
+	// use an empty signature straight away.
+	rootExistsAndHasFileContents := reverseLookupMap.Length() > 0
+	emptySignature := &rsync.Signature{}
 	signatures := make([]*rsync.Signature, len(filteredPaths))
 	for p, path := range filteredPaths {
-		if base, _, err := opener.OpenFile(path); err != nil {
-			signatures[p] = &rsync.Signature{}
-			continue
+		if !rootExistsAndHasFileContents {
+			signatures[p] = emptySignature
+		} else if base, _, err := opener.OpenFile(path); err != nil {
+			signatures[p] = emptySignature
 		} else if signature, err := engine.Signature(base, 0); err != nil {
 			base.Close()
-			signatures[p] = &rsync.Signature{}
-			continue
+			signatures[p] = emptySignature
 		} else {
 			base.Close()
 			signatures[p] = signature
@@ -1350,16 +1365,16 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.pollSignal.Strobe()
 	}
 
-	// Wipe the staging directory. We don't monitor for errors here, because we
-	// need to return the results and problems no matter what, but if there's
-	// something weird going on with the filesystem, we'll see it the next time
-	// we scan or stage.
+	// Finalize the stager, which will also wipe the staging directory. We don't
+	// monitor for errors here, because we need to return the results and
+	// problems no matter what, but if there's something weird going on with the
+	// filesystem, we'll see it the next time we scan or stage.
 	//
 	// TODO: If we see a large number of problems, should we avoid wiping the
 	// staging directory? It could be due to an easily correctable error, at
 	// which point you wouldn't want to restage if you're talking about lots of
 	// files.
-	e.stager.wipe()
+	e.stager.Finalize()
 
 	// Done.
 	return results, problems, stagerMissingFiles, nil

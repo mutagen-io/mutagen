@@ -140,7 +140,7 @@ const (
 	// in-memory and pass over the wire in a single transmission. This value
 	// will be used if a zero value is passed into Engine.Deltify or
 	// Engine.DeltifyBytes for the maxDataOpSize parameter.
-	DefaultMaximumDataOperationSize = 1 << 14
+	DefaultMaximumDataOperationSize = 1 << 16
 )
 
 // OptimalBlockSizeForBaseLength uses a simpler heuristic to choose a block

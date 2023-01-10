@@ -2,11 +2,12 @@ package remote
 
 import (
 	"bufio"
-	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/klauspost/compress/flate"
 
 	"google.golang.org/protobuf/proto"
 
@@ -38,21 +39,36 @@ type endpointServer struct {
 // returns, regardless of failure. The provided stream must unblock read and
 // write operations when closed.
 func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
-	// Set up compression for the control stream.
-	decompressor := flate.NewReader(bufio.NewReaderSize(stream, controlStreamBufferSize))
-	outbound := bufio.NewWriterSize(stream, controlStreamBufferSize)
-	compressor, _ := flate.NewWriter(outbound, flate.DefaultCompression)
-	flusher := streampkg.MultiFlusher(compressor, outbound)
+	// Set up inbound buffering and decompression. While the decompressor does
+	// have some internal buffering, we need the inbound stream to support
+	// io.ByteReader for our Protocol Buffer decoding, so we add a bufio.Reader
+	// around it with additional buffering.
+	compressedInbound := bufio.NewReaderSize(stream, controlStreamCompressedBufferSize)
+	decompressor := flate.NewReader(compressedInbound)
+	inbound := bufio.NewReaderSize(decompressor, controlStreamUncompressedBufferSize)
 
-	// Set up deferred closure of the control stream and compression resources.
-	closer := streampkg.MultiCloser(compressor, decompressor, stream)
+	// Set up outbound buffering and compression.
+	compressedOutbound := bufio.NewWriterSize(stream, controlStreamCompressedBufferSize)
+	compressor, _ := flate.NewWriter(compressedOutbound, flate.DefaultCompression)
+	outbound := bufio.NewWriterSize(compressor, controlStreamUncompressedBufferSize)
+
+	// Create a mechanism to flush the outbound pipeline.
+	flusher := streampkg.NewMultiFlusher(outbound, compressor, compressedOutbound)
+
+	// Create a closer for the control stream and compression resources and
+	// defer its invocation.
+	closer := streampkg.NewMultiCloser(
+		streampkg.NewFlushCloser(outbound),
+		compressor,
+		streampkg.NewFlushCloser(compressedOutbound),
+		stream,
+		decompressor,
+	)
 	defer closer.Close()
 
-	// Create an encoder and a decoder for Protocol Buffers messages. The
-	// compressor already implements internal buffering, but the decompressor
-	// requires additional buffering to implement io.ByteReader.
-	encoder := encoding.NewProtobufEncoder(compressor)
-	decoder := encoding.NewProtobufDecoder(bufio.NewReader(decompressor))
+	// Create an encoder and a decoder for Protocol Buffers messages.
+	encoder := encoding.NewProtobufEncoder(outbound)
+	decoder := encoding.NewProtobufDecoder(inbound)
 
 	// Receive the initialize request. If this fails, then send a failure
 	// response (even though the pipe is probably broken) and abort.
