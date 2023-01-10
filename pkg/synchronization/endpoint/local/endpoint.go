@@ -20,6 +20,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local/staging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
 
@@ -435,7 +436,7 @@ func NewEndpoint(
 		recursiveWatchRetryEstablish: make(chan struct{}),
 		hasher:                       version.Hasher(),
 		cache:                        cache,
-		stager: newStager(
+		stager: staging.NewStager(
 			stagingRoot,
 			hideStagingRoot,
 			maximumStagingFileSize,
