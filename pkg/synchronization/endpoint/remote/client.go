@@ -52,7 +52,10 @@ func NewEndpoint(
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
-	// Set up inbound buffering and decompression.
+	// Set up inbound buffering and decompression. While the decompressor does
+	// have some internal buffering, we need the inbound stream to support
+	// io.ByteReader for our Protocol Buffer decoding, so we add a bufio.Reader
+	// around it with additional buffering.
 	compressedInbound := bufio.NewReaderSize(stream, controlStreamCompressedBufferSize)
 	decompressor := flate.NewReader(compressedInbound)
 	inbound := bufio.NewReaderSize(decompressor, controlStreamUncompressedBufferSize)
