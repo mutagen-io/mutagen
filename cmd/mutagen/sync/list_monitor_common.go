@@ -306,6 +306,14 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		}
 		fmt.Println("\tSynchronization mode:", synchronizationMode)
 
+		// Compute and print the digest algorithm.
+		digestDescription := configuration.Digest.Description()
+		if configuration.Digest.IsDefault() {
+			defaultDigest := state.Session.Version.DefaultDigest()
+			digestDescription += fmt.Sprintf(" (%s)", defaultDigest.Description())
+		}
+		fmt.Println("\tDigest algorithm:", digestDescription)
+
 		// Compute and print maximum entry count.
 		var maximumEntryCountDescription string
 		if configuration.MaximumEntryCount == 0 {

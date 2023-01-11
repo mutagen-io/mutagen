@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"os/signal"
@@ -28,7 +30,8 @@ const (
 	cacheFile    = "cache_test"
 )
 
-var usage = `scan_bench [-h|--help] [-p|--profile] [-i|--ignore=<pattern>] <path>
+var usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFlagOptions + `)]
+           [-i|--ignore=<pattern>] <path>
 `
 
 // ignoreCachesIntersectionEqual compares two ignore caches, ensuring that keys
@@ -60,8 +63,10 @@ func main() {
 	flagSet.SetOutput(io.Discard)
 	var ignores []string
 	var enableProfile bool
+	var digest string
 	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
+	flagSet.StringVarP(&digest, "digest", "d", "", "specify digest algorithm")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -93,6 +98,21 @@ func main() {
 		cancel()
 	}()
 
+	// Create a hasher that we can use.
+	var hasher hash.Hash
+	switch digest {
+	case "sha1":
+		hasher = sha1.New()
+	case "sha256":
+		hasher = sha256.New()
+	case "xxh128":
+		if xxh128Supported {
+			hasher = newXXH128Hasher()
+		} else {
+			cmd.Fatal(errors.New("XXH128 hashing not supported"))
+		}
+	}
+
 	// Print information.
 	fmt.Println("Analyzing", path)
 
@@ -110,7 +130,7 @@ func main() {
 		ctx,
 		path,
 		nil, nil,
-		sha1.New(), nil,
+		hasher, nil,
 		ignores, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
@@ -145,7 +165,7 @@ func main() {
 		ctx,
 		path,
 		nil, nil,
-		sha1.New(), cache,
+		hasher, cache,
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
@@ -188,7 +208,7 @@ func main() {
 		ctx,
 		path,
 		nil, nil,
-		sha1.New(), cache,
+		hasher, cache,
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
@@ -229,7 +249,7 @@ func main() {
 		ctx,
 		path,
 		snapshot, map[string]bool{"fake path": true},
-		sha1.New(), cache,
+		hasher, cache,
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
@@ -268,7 +288,7 @@ func main() {
 		ctx,
 		path,
 		snapshot, nil,
-		sha1.New(), cache,
+		hasher, cache,
 		ignores, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
@@ -400,9 +420,11 @@ func main() {
 
 	// Checksum it.
 	start = time.Now()
-	sha1.Sum(serializedSnapshot)
+	hasher.Reset()
+	hasher.Write(serializedSnapshot)
+	hasher.Sum(nil)
 	stop = time.Now()
-	fmt.Println("SHA-1 snapshot digest took", stop.Sub(start))
+	fmt.Println("Snapshot digest took", stop.Sub(start))
 
 	// Serialize the cache.
 	if enableProfile {

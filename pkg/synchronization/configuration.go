@@ -29,6 +29,17 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
+	// Validate the digest algorithm.
+	if endpointSpecific {
+		if !c.Digest.IsDefault() {
+			return errors.New("digest algorithm cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if !(c.Digest.IsDefault() || c.Digest.Supported()) {
+			return errors.New("unknown or unsupported digest algorithm")
+		}
+	}
+
 	// The maximum entry count doesn't need to be validated - any of its values
 	// are technically valid regardless of the source.
 
@@ -178,6 +189,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 
 	// Perform an equivalence check.
 	return c.SynchronizationMode == other.SynchronizationMode &&
+		c.Digest == other.Digest &&
 		c.MaximumEntryCount == other.MaximumEntryCount &&
 		c.MaximumStagingFileSize == other.MaximumStagingFileSize &&
 		c.ProbeMode == other.ProbeMode &&
@@ -207,6 +219,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.SynchronizationMode = higher.SynchronizationMode
 	} else {
 		result.SynchronizationMode = lower.SynchronizationMode
+	}
+
+	// Merge digest algorithm.
+	if !higher.Digest.IsDefault() {
+		result.Digest = higher.Digest
+	} else {
+		result.Digest = lower.Digest
 	}
 
 	// Merge maximum entry count.

@@ -84,41 +84,39 @@ func (c *Cache) Equal(other *Cache) bool {
 	return true
 }
 
+// byteLookupMap is the interface implemented by all byteLookupMap types.
+type byteLookupMap interface {
+	// length returns the length of the map.
+	length() int
+	// insert adds a key-value pair to the map.
+	insert(k []byte, v string)
+	// find looks for a key in the map, returning the associated value
+	// (defaulting to an empty string if the key was not present) and whether or
+	// not the key was found.
+	find(k []byte) (string, bool)
+}
+
 // ReverseLookupMap provides facilities for doing reverse lookups to avoid
 // expensive staging operations in the case of renames and copies.
 type ReverseLookupMap struct {
-	// map20 provides mappings for SHA-1 hashes.
-	map20 map[[20]byte]string
+	// lookupMap is the underlying map.
+	lookupMap byteLookupMap
 }
 
 // Length returns the number of entries in the map.
 func (m *ReverseLookupMap) Length() int {
-	return len(m.map20)
+	return m.lookupMap.length()
 }
 
 // Lookup attempts a lookup in the map.
 func (m *ReverseLookupMap) Lookup(digest []byte) (string, bool) {
-	// Handle based on digest length.
-	if len(digest) == 20 {
-		// Create a key.
-		var key [20]byte
-		copy(key[:], digest)
-
-		// Attempt a lookup.
-		result, ok := m.map20[key]
-
-		// Done.
-		return result, ok
-	}
-
-	// If the digest wasn't of a supported length, then there's no harm.
-	return "", false
+	return m.lookupMap.find(digest)
 }
 
 // GenerateReverseLookupMap creates a reverse lookup map from a cache.
 func (c *Cache) GenerateReverseLookupMap() (*ReverseLookupMap, error) {
-	// Create the map.
-	result := &ReverseLookupMap{}
+	// Create a placeholder for the map that we're going to initialize.
+	var lookupMap byteLookupMap
 
 	// Track the digest size and ensure it's consistent.
 	digestSize := -1
@@ -129,7 +127,11 @@ func (c *Cache) GenerateReverseLookupMap() (*ReverseLookupMap, error) {
 		if digestSize == -1 {
 			digestSize = len(e.Digest)
 			if digestSize == 20 {
-				result.map20 = make(map[[20]byte]string, len(c.Entries))
+				lookupMap = make(byteLookupMap20, len(c.Entries))
+			} else if digestSize == 32 {
+				lookupMap = make(byteLookupMap32, len(c.Entries))
+			} else if digestSize == 16 {
+				lookupMap = make(byteLookupMap16, len(c.Entries))
 			} else {
 				return nil, errors.New("unsupported digest size")
 			}
@@ -137,16 +139,15 @@ func (c *Cache) GenerateReverseLookupMap() (*ReverseLookupMap, error) {
 			return nil, errors.New("inconsistent digest sizes")
 		}
 
-		// Handle the entry based on digest size.
-		if digestSize == 20 {
-			var key [20]byte
-			copy(key[:], e.Digest)
-			result.map20[key] = p
-		} else {
-			panic("invalid digest size allowed")
-		}
+		// Insert the entry.
+		lookupMap.insert(e.Digest, p)
+	}
+
+	// If there are no entries, then we'll still need a lookup map.
+	if len(c.Entries) == 0 {
+		lookupMap = &emptyByteLookupMap{}
 	}
 
 	// Success.
-	return result, nil
+	return &ReverseLookupMap{lookupMap}, nil
 }

@@ -12,6 +12,8 @@ import (
 type Configuration struct {
 	// Mode specifies the default synchronization mode.
 	Mode core.SynchronizationMode `json:"mode,omitempty" yaml:"mode" mapstructure:"mode"`
+	// Digest specifies the digest algorithm to use for content.
+	Digest synchronization.Digest `json:"digest,omitempty" yaml:"digest" mapstructure:"digest"`
 	// MaximumEntryCount specifies the maximum number of filesystem entries
 	// that endpoints will tolerate managing.
 	MaximumEntryCount uint64 `json:"maxEntryCount,omitempty" yaml:"maxEntryCount" mapstructure:"maxEntryCount"`
@@ -72,6 +74,7 @@ type Configuration struct {
 func (c *Configuration) loadFromInternal(configuration *synchronization.Configuration) {
 	// Propagate top-level configuration.
 	c.Mode = configuration.SynchronizationMode
+	c.Digest = configuration.Digest
 	c.MaximumEntryCount = configuration.MaximumEntryCount
 	c.MaximumStagingFileSize = types.ByteSize(configuration.MaximumStagingFileSize)
 	c.ProbeMode = configuration.ProbeMode
@@ -105,6 +108,7 @@ func (c *Configuration) loadFromInternal(configuration *synchronization.Configur
 func (c *Configuration) ToInternal() *synchronization.Configuration {
 	return &synchronization.Configuration{
 		SynchronizationMode:    c.Mode,
+		Digest:                 c.Digest,
 		MaximumEntryCount:      c.MaximumEntryCount,
 		MaximumStagingFileSize: uint64(c.MaximumStagingFileSize),
 		ProbeMode:              c.ProbeMode,
