@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
+	"github.com/klauspost/compress/gzip"
 
 	"github.com/mutagen-io/mutagen/cmd"
 
