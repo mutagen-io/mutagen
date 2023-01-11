@@ -5,6 +5,7 @@ package synchronization;
 option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization";
 
 import "filesystem/behavior/probe_mode.proto";
+import "synchronization/digest.proto";
 import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
@@ -21,11 +22,16 @@ message Configuration {
     // Synchronization parameters (fields 11-20).
     // NOTE: These run from field indices 11-20 (rather than 1-10, which are
     // reserved for symbolic link configuration parameters) due to the
-    // historical order in which these fields were added.
+    // historical order in which these fields were added. Field 17 (the digest
+    // algorithm) is also listed out of its chronological order of addition due
+    // to its relative importance in the configuration.
 
     // SynchronizationMode specifies the synchronization mode that should be
     // used in synchronization.
     core.SynchronizationMode synchronizationMode = 11;
+
+    // Digest specifies the content digest algorithm.
+    Digest digest = 17;
 
     // MaximumEntryCount specifies the maximum number of filesystem entries that
     // endpoints will tolerate managing. A zero value indicates no limit.
@@ -44,7 +50,7 @@ message Configuration {
     // StageMode specifies the file staging mode.
     StageMode stageMode = 16;
 
-    // Fields 17-20 are reserved for future synchronization configuration
+    // Fields 18-20 are reserved for future synchronization configuration
     // parameters.
 
 

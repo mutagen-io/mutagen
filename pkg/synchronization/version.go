@@ -1,8 +1,6 @@
 package synchronization
 
 import (
-	"crypto/sha1"
-	"hash"
 	"math"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -23,22 +21,22 @@ func (v Version) Supported() bool {
 	}
 }
 
-// Hasher creates an appropriate hash function for the session version.
-func (v Version) Hasher() hash.Hash {
-	switch v {
-	case Version_Version1:
-		return sha1.New()
-	default:
-		panic("unknown or unsupported session version")
-	}
-}
-
 // DefaultSynchronizationMode returns the default synchronization mode for the
 // session version.
 func (v Version) DefaultSynchronizationMode() core.SynchronizationMode {
 	switch v {
 	case Version_Version1:
 		return core.SynchronizationMode_SynchronizationModeTwoWaySafe
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+// DefaultDigest returns the default digest algorithm for the session version.
+func (v Version) DefaultDigest() Digest {
+	switch v {
+	case Version_Version1:
+		return Digest_DigestSHA1
 	default:
 		panic("unknown or unsupported session version")
 	}

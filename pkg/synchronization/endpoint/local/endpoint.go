@@ -199,6 +199,13 @@ func NewEndpoint(
 		synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWayReplica
 	readOnly := alpha && unidirectional
 
+	// Compute the effective digest algorithm and create the hasher factory.
+	digest := configuration.Digest
+	if digest.IsDefault() {
+		digest = version.DefaultDigest()
+	}
+	hasherFactory := digest.Factory()
+
 	// Determine the maximum entry count.
 	maximumEntryCount := configuration.MaximumEntryCount
 	if maximumEntryCount == 0 {
@@ -434,13 +441,13 @@ func NewEndpoint(
 		watchDone:                    watchDone,
 		pollSignal:                   state.NewCoalescer(pollSignalCoalescingWindow),
 		recursiveWatchRetryEstablish: make(chan struct{}),
-		hasher:                       version.Hasher(),
+		hasher:                       hasherFactory(),
 		cache:                        cache,
 		stager: staging.NewStager(
 			stagingRoot,
 			hideStagingRoot,
 			maximumStagingFileSize,
-			version.Hasher,
+			hasherFactory,
 		),
 	}
 
