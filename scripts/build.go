@@ -293,7 +293,13 @@ var targets = []Target{
 	// TODO: The openbsd/mips64 port was added in Go 1.16, but for some reason
 	// isn't documented at https://golang.org/doc/install/source. Submit a pull
 	// request to add it to the Go documentation.
-	{"openbsd", "mips64"},
+	// TODO: The openbsd/mips64 port seems to be broken when using the Go sys
+	// subrepository after v0.1.0 - the Go linker crashes with a segfault. The
+	// port also doesn't seem to have been tested on the Go build dashboard for
+	// quite some time, so its reliability at this point is suspect. Until the
+	// picture there clarifies a bit, it's not worth letting this one port hold
+	// back the others from receiving updates.
+	// {"openbsd", "mips64"},
 
 	// Define Plan 9 targets. We disable support for Plan 9 because it's missing
 	// too many system calls and other APIs necessary for Mutagen to build. It
