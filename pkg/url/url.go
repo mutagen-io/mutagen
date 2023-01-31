@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/mutagen-io/mutagen/pkg/comparison"
+	"github.com/mutagen-io/mutagen/pkg/extension"
 	"github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
 
@@ -116,8 +117,18 @@ func (u *URL) EnsureValid() error {
 		}
 
 		// If this is a local URL, then ensure that the path is absolute.
-		if u.Protocol == Protocol_Local && !filepath.IsAbs(u.Path) {
-			return errors.New("local URL with relative path")
+		//
+		// HACK: The Mutagen Extension for Docker Desktop needs to avoid this
+		// check because of its internal faux-local URLs. In particular, Windows
+		// absolute paths will appear as non-absolute in the extension's
+		// Linux-based backend container. Technically we only need to avoid this
+		// check for alpha URLs, but since we control all of the extension's
+		// URLs, and since we don't know which endpoint this URL is targeting,
+		// we just disable it entirely when running in the extension.
+		if !extension.EnvironmentIsExtension() {
+			if u.Protocol == Protocol_Local && !filepath.IsAbs(u.Path) {
+				return errors.New("local URL with relative path")
+			}
 		}
 
 		// If this is a Docker URL, we can actually do a bit of additional
