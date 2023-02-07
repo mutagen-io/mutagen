@@ -21,7 +21,7 @@ RUN ["go", "build", "-o", "mutagen-agent-mit", "./cmd/mutagen-agent"]
 
 
 # Switch to a vanilla Alpine base for the final image.
-FROM alpine:3.16 AS base
+FROM alpine:3.17 AS base
 
 # Copy the sidecar entry point from the builder.
 COPY --from=builder ["/mutagen/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
