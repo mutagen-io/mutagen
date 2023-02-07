@@ -35,15 +35,17 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
         rm "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}"
         security set-key-partition-list -S apple-tool:,apple: -s -k "${MUTAGEN_KEYCHAIN_PASSWORD}" "${MUTAGEN_KEYCHAIN_PATH}" > /dev/null
 
-        # Perform a full release build with code signing.
-        go run scripts/build.go --mode=release --macos-codesign-identity="${MACOS_CODESIGN_IDENTITY}"
+        # Perform a full release build with code signing. We enable
+        # SSPL-licensed extensions by default.
+        go run scripts/build.go --mode=release --sspl --macos-codesign-identity="${MACOS_CODESIGN_IDENTITY}"
 
         # Reset the default keychain and remove the temporary keychain.
         security default-keychain -s "${PREVIOUS_DEFAULT_KEYCHAIN}"
         security delete-keychain "${MUTAGEN_KEYCHAIN_PATH}"
     else
-        # Perform a full release build without code signing.
-        go run scripts/build.go --mode=release
+        # Perform a full release build without code signing. We enable
+        # SSPL-licensed extensions by default.
+        go run scripts/build.go --mode=release --sspl
     fi
 
     # Determine the Mutagen version.
@@ -69,13 +71,19 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     zip "build/release/mutagen_windows_arm64_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
     rm mutagen.exe mutagen-agents.tar.gz
 else
-    # Perform a slim build.
-    go run scripts/build.go --mode=slim
+    # Perform a slim build. We enable SSPL-licensed extensions by default.
+    go run scripts/build.go --mode=slim --sspl
 fi
 
-# Ensure that the sidecar entry point builds.
+# Ensure that the sidecar entry point builds, both with and without SSPL code.
+# We only need this command to build on Linux, but it's best to keep it
+# maintained in a portable fashion.
+go build -tags sspl ./cmd/mutagen-sidecar
 go build ./cmd/mutagen-sidecar
 
-# Build tools to ensure that they are maintained as core packages evolve.
+# Build tools, both with and without SSPL code, to ensure that they are
+# maintained as core packages evolve.
+go build -tags sspl ./tools/scan_bench
+go build -tags sspl ./tools/watch_demo
 go build ./tools/scan_bench
 go build ./tools/watch_demo

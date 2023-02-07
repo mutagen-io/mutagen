@@ -140,9 +140,8 @@ jobs:
       - uses: docker/build-push-action@v2
         with:
           file: images/sidecar/linux/Dockerfile
-          target: enhanced
-          tags: ${{ steps.tag.outputs.tag }}-enhanced
-          push: ${{ github.ref_type == 'tag' }}
+          target: mit
+          tags: ${{ steps.tag.outputs.tag }}-mit
           platforms: |
             linux/386
             linux/amd64

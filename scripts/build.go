@@ -167,7 +167,7 @@ func (t Target) BuildBundleInReleaseSlimMode() bool {
 
 // Build executes a module-aware build of the specified package URL, storing the
 // output of the build at the specified path.
-func (t Target) Build(url, output string, disableDebug bool) error {
+func (t Target) Build(url, output string, enableSSPLEnhancements, disableDebug bool) error {
 	// Compute the build command. If we don't need debugging, then we use the -s
 	// and -w linker flags to omit the symbol table and debugging information.
 	// This shaves off about 25% of the binary size and only disables debugging
@@ -176,6 +176,9 @@ func (t Target) Build(url, output string, disableDebug bool) error {
 	// In this case, we also trim the code paths stored in the executable, as
 	// there's no use in having the full paths available.
 	arguments := []string{"build", "-o", output}
+	if enableSSPLEnhancements {
+		arguments = append(arguments, "-tags", "sspl")
+	}
 	if disableDebug {
 		arguments = append(arguments, "-ldflags=-s -w", "-trimpath")
 	}
@@ -493,7 +496,7 @@ func copyFile(sourcePath, destinationPath string) error {
 	return nil
 }
 
-var usage = `usage: build [-h|--help] [-m|--mode=<mode>]
+var usage = `usage: build [-h|--help] [-m|--mode=<mode>] [--sspl]
        [--macos-codesign-identity=<identity>]
 
 The mode flag accepts four values: 'local', 'slim', 'release', and
@@ -503,6 +506,9 @@ agents for a common subset of platforms. 'release' will build CLI and agent
 binaries for all platforms and package for release. 'release-slim' is the same
 as release but only builds release bundles for a small subset of platforms. The
 default mode is 'slim'.
+
+If --sspl is specified, then SSPL-licensed enhancements will be included in the
+build output. By default, only MIT-licensed code is included in builds.
 
 If --macos-codesign-identity specifies a non-empty value, then it will be used
 to perform code signing on all macOS binaries in a fashion suitable for
@@ -517,8 +523,10 @@ func build() error {
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
 	var mode, macosCodesignIdentity string
+	var enableSSPLEnhancements bool
 	flagSet.StringVarP(&mode, "mode", "m", "slim", "specify the build mode")
 	flagSet.StringVar(&macosCodesignIdentity, "macos-codesign-identity", "", "specify the macOS code signing identity")
+	flagSet.BoolVar(&enableSSPLEnhancements, "sspl", false, "enable SSPL-licensed enhancements")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -627,7 +635,7 @@ func build() error {
 	for _, target := range agentTargets {
 		log.Println("Building agent for", target)
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
-		if err := target.Build(agentPackage, agentBuildPath, disableDebug); err != nil {
+		if err := target.Build(agentPackage, agentBuildPath, enableSSPLEnhancements, disableDebug); err != nil {
 			return fmt.Errorf("unable to build agent: %w", err)
 		}
 		if macosCodesignIdentity != "" && target.GOOS == "darwin" {
@@ -642,7 +650,7 @@ func build() error {
 	for _, target := range cliTargets {
 		log.Println("Build CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
-		if err := target.Build(cliPackage, cliBuildPath, disableDebug); err != nil {
+		if err := target.Build(cliPackage, cliBuildPath, enableSSPLEnhancements, disableDebug); err != nil {
 			return fmt.Errorf("unable to build CLI: %w", err)
 		}
 		if macosCodesignIdentity != "" && target.GOOS == "darwin" {
