@@ -1,5 +1,5 @@
 # Use an Alpine-based Go builder.
-FROM golang:1.19.5-alpine3.17 AS builder
+FROM golang:1.20.0-alpine3.17 AS builder
 
 # Disable cgo in order to match the behavior of our release binaries (and to
 # avoid the need for gcc on certain architectures).
@@ -21,7 +21,7 @@ RUN ["go", "build", "-o", "mutagen-agent-mit", "./cmd/mutagen-agent"]
 
 
 # Switch to a vanilla Alpine base for the final image.
-FROM alpine:3.16 AS base
+FROM alpine:3.17 AS base
 
 # Copy the sidecar entry point from the builder.
 COPY --from=builder ["/mutagen/mutagen-sidecar", "/usr/bin/mutagen-sidecar"]
