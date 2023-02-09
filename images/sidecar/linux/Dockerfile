@@ -16,7 +16,7 @@ WORKDIR /mutagen
 
 # Build the sidecar entry point and agent binaries.
 RUN ["go", "build", "./cmd/mutagen-sidecar"]
-RUN ["go", "build", "-tags", "sspl", "./cmd/mutagen-agent"]
+RUN ["go", "build", "-tags", "sspl,fanotify", "./cmd/mutagen-agent"]
 RUN ["go", "build", "-o", "mutagen-agent-mit", "./cmd/mutagen-agent"]
 
 

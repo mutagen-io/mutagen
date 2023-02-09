@@ -1,4 +1,4 @@
-//go:build !(darwin && cgo) && !(linux && sspl) && !windows
+//go:build !(darwin && cgo) && !(linux && sspl && fanotify) && !windows
 
 package watching
 
