@@ -7,6 +7,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
 // DefaultVersion is the default session version.
@@ -33,11 +34,12 @@ func (v Version) DefaultSynchronizationMode() core.SynchronizationMode {
 	}
 }
 
-// DefaultDigest returns the default digest algorithm for the session version.
-func (v Version) DefaultDigest() Digest {
+// DefaultHashingAlgorithm returns the default hashing algorithm for the session
+// version.
+func (v Version) DefaultHashingAlgorithm() hashing.Algorithm {
 	switch v {
 	case Version_Version1:
-		return Digest_DigestSHA1
+		return hashing.Algorithm_AlgorithmSHA1
 	default:
 		panic("unknown or unsupported session version")
 	}

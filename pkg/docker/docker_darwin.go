@@ -3,7 +3,7 @@ package docker
 import (
 	"os/exec"
 
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 // commandSearchPaths specifies locations on macOS where we might find the
@@ -28,5 +28,5 @@ func commandPathForPlatform() (string, error) {
 	// installation path for Docker for Mac. This fallback is only necessary in
 	// the context of running the Mutagen daemon as a launchd service, so it's
 	// not necessary for (say) Docker Compose, which isn't used by the daemon.
-	return process.FindCommand("docker", commandSearchPaths)
+	return platform.FindCommand("docker", commandSearchPaths)
 }

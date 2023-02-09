@@ -10,7 +10,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 const (
@@ -53,7 +53,7 @@ func housekeepAgents() {
 	}
 
 	// Compute the name of the agent binary.
-	agentName := process.ExecutableName(agent.BaseName, runtime.GOOS)
+	agentName := platform.ExecutableName(agent.BaseName, runtime.GOOS)
 
 	// Grab the current time.
 	now := time.Now()

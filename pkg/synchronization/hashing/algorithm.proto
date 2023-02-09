@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package hashing;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/hashing";
+
+// Algorithm specifies a hashing algorithm.
+enum Algorithm {
+    // Algorithm_AlgorithmDefault represents an unspecified hashing algorithm.
+    // It should be converted to one of the following values based on the
+    // desired default behavior.
+    AlgorithmDefault = 0;
+    // Algorithm_AlgorithmSHA1 specifies that SHA-1 hashing should be used.
+    AlgorithmSHA1 = 1;
+    // Algorithm_AlgorithmSHA256 specifies that SHA-256 hashing should be used.
+    AlgorithmSHA256 = 2;
+    // Algorithm_AlgorithmXXH128 specifies that XXH128 hashing should be used.
+    AlgorithmXXH128 = 3;
+}

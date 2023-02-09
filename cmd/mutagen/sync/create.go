@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"google.golang.org/grpc"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
@@ -173,11 +175,11 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Validate and convert the digest algorithm specification.
-	var digest synchronization.Digest
-	if createConfiguration.digest != "" {
-		if err := digest.UnmarshalText([]byte(createConfiguration.digest)); err != nil {
-			return fmt.Errorf("unable to parse digest algorithm: %w", err)
+	// Validate and convert the hashing algorithm specification.
+	var hashingAlgorithm hashing.Algorithm
+	if createConfiguration.hash != "" {
+		if err := hashingAlgorithm.UnmarshalText([]byte(createConfiguration.hash)); err != nil {
+			return fmt.Errorf("unable to parse hashing algorithm: %w", err)
 		}
 	}
 
@@ -431,7 +433,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// configuration.
 	configuration = synchronization.MergeConfigurations(configuration, &synchronization.Configuration{
 		SynchronizationMode:    synchronizationMode,
-		Digest:                 digest,
+		HashingAlgorithm:       hashingAlgorithm,
 		MaximumEntryCount:      createConfiguration.maximumEntryCount,
 		MaximumStagingFileSize: maximumStagingFileSize,
 		ProbeMode:              probeMode,
@@ -531,8 +533,8 @@ var createConfiguration struct {
 	configurationFiles []string
 	// synchronizationMode specifies the synchronization mode for the session.
 	synchronizationMode string
-	// digest specifies the digest algorithm to use for the session.
-	digest string
+	// hash specifies the hashing algorithm to use for the session.
+	hash string
 	// maximumEntryCount specifies the maximum number of filesystem entries that
 	// endpoints will tolerate managing.
 	maximumEntryCount uint64
@@ -680,8 +682,8 @@ func init() {
 	flags.StringSliceVarP(&createConfiguration.configurationFiles, "configuration-file", "c", nil, "Specify additional files from which to load (and merge) default configuration parameters")
 
 	// Wire up synchronization flags.
-	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
-	flags.StringVarP(&createConfiguration.digest, "digest", "d", "", "Specify content digest algorithm ("+digestFlagOptions+")")
+	flags.StringVarP(&createConfiguration.synchronizationMode, "mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
+	flags.StringVarP(&createConfiguration.hash, "hash", "H", "", "Specify content hashing algorithm ("+hashFlagOptions+")")
 	flags.Uint64Var(&createConfiguration.maximumEntryCount, "max-entry-count", 0, "Specify the maximum number of entries that endpoints will manage")
 	flags.StringVar(&createConfiguration.maximumStagingFileSize, "max-staging-file-size", "", "Specify the maximum (individual) file size that endpoints will stage")
 	flags.StringVar(&createConfiguration.probeMode, "probe-mode", "", "Specify probe mode (probe|assume)")
@@ -726,7 +728,15 @@ func init() {
 	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file/directory group for beta")
 
 	// Wire up compression flags.
-	flags.StringVar(&createConfiguration.compression, "compression", "", "Specify compression algorithm ("+compressionFlagOptions+")")
+	flags.StringVarP(&createConfiguration.compression, "compression", "C", "", "Specify compression algorithm ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionAlpha, "compression-alpha", "", "Specify compression algorithm for alpha ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionBeta, "compression-beta", "", "Specify compression algorithm for beta ("+compressionFlagOptions+")")
+
+	// Set up flag normalization. This is only required to handle aliases.
+	flags.SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "sync-mode" {
+			name = "mode"
+		}
+		return pflag.NormalizedName(name)
+	})
 }

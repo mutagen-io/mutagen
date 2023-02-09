@@ -1,4 +1,4 @@
-//go:build linux && sspl
+//go:build linux && sspl && fanotify
 
 package watching
 

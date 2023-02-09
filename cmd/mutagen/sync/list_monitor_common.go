@@ -313,13 +313,13 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		}
 		fmt.Println("\tSynchronization mode:", synchronizationMode)
 
-		// Compute and print the digest algorithm.
-		digestDescription := configuration.Digest.Description()
-		if configuration.Digest.IsDefault() {
-			defaultDigest := state.Session.Version.DefaultDigest()
-			digestDescription += fmt.Sprintf(" (%s)", defaultDigest.Description())
+		// Compute and print the hashing algorithm.
+		hashingAlgorithmDescription := configuration.HashingAlgorithm.Description()
+		if configuration.HashingAlgorithm.IsDefault() {
+			defaultHashingAlgorithm := state.Session.Version.DefaultHashingAlgorithm()
+			hashingAlgorithmDescription += fmt.Sprintf(" (%s)", defaultHashingAlgorithm.Description())
 		}
-		fmt.Println("\tDigest algorithm:", digestDescription)
+		fmt.Println("\tHashing algorithm:", hashingAlgorithmDescription)
 
 		// Compute and print maximum entry count.
 		var maximumEntryCountDescription string

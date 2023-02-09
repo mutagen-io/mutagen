@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 // CommandPath returns the absolute path specification to use for invoking
@@ -15,7 +15,7 @@ import (
 func CommandPath() (string, error) {
 	// If MUTAGEN_DOCKER_PATH is specified, then use it to perform the lookup.
 	if searchPath := os.Getenv("MUTAGEN_DOCKER_PATH"); searchPath != "" {
-		return process.FindCommand("docker", []string{searchPath})
+		return platform.FindCommand("docker", []string{searchPath})
 	}
 
 	// Otherwise fall back to the platform-specific implementation.

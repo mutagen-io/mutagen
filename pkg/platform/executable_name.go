@@ -1,4 +1,4 @@
-package process
+package platform
 
 // ExecutableName computes the name for an executable for a given base name on a
 // specified operating system.
