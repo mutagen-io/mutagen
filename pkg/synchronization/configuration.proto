@@ -5,7 +5,6 @@ package synchronization;
 option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization";
 
 import "filesystem/behavior/probe_mode.proto";
-import "synchronization/digest.proto";
 import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
@@ -14,6 +13,7 @@ import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/permissions_mode.proto";
 import "synchronization/core/symbolic_link_mode.proto";
+import "synchronization/hashing/algorithm.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
 // commands to specify configuration options, for loading global configuration
@@ -31,8 +31,9 @@ message Configuration {
     // used in synchronization.
     core.SynchronizationMode synchronizationMode = 11;
 
-    // Digest specifies the content digest algorithm.
-    Digest digest = 17;
+    // HashingAlgorithm specifies the content hashing algorithm used to track
+    // content and perform differential transfers.
+    hashing.Algorithm hashingAlgorithm = 17;
 
     // MaximumEntryCount specifies the maximum number of filesystem entries that
     // endpoints will tolerate managing. A zero value indicates no limit.

@@ -3,8 +3,8 @@
 package sync
 
 const (
-	// digestFlagOptions are the value options to display for the digest flag.
-	digestFlagOptions = "sha1|sha256|xxh128"
+	// hashFlagOptions are the value options to display for the hash flag.
+	hashFlagOptions = "sha1|sha256|xxh128"
 	// compressionFlagOptions are the value options to display for the
 	// compression flag.
 	compressionFlagOptions = "none|deflate|zstandard"

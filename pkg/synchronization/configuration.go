@@ -29,14 +29,14 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Validate the digest algorithm.
+	// Validate the hashing algorithm.
 	if endpointSpecific {
-		if !c.Digest.IsDefault() {
-			return errors.New("digest algorithm cannot be specified on an endpoint-specific basis")
+		if !c.HashingAlgorithm.IsDefault() {
+			return errors.New("hashing algorithm cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if !(c.Digest.IsDefault() || c.Digest.Supported()) {
-			return errors.New("unknown or unsupported digest algorithm")
+		if !(c.HashingAlgorithm.IsDefault() || c.HashingAlgorithm.Supported()) {
+			return errors.New("unknown or unsupported hashing algorithm")
 		}
 	}
 
@@ -195,7 +195,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 
 	// Perform an equivalence check.
 	return c.SynchronizationMode == other.SynchronizationMode &&
-		c.Digest == other.Digest &&
+		c.HashingAlgorithm == other.HashingAlgorithm &&
 		c.MaximumEntryCount == other.MaximumEntryCount &&
 		c.MaximumStagingFileSize == other.MaximumStagingFileSize &&
 		c.ProbeMode == other.ProbeMode &&
@@ -228,11 +228,11 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.SynchronizationMode = lower.SynchronizationMode
 	}
 
-	// Merge the digest algorithm.
-	if !higher.Digest.IsDefault() {
-		result.Digest = higher.Digest
+	// Merge the hashing algorithm.
+	if !higher.HashingAlgorithm.IsDefault() {
+		result.HashingAlgorithm = higher.HashingAlgorithm
 	} else {
-		result.Digest = lower.Digest
+		result.HashingAlgorithm = lower.HashingAlgorithm
 	}
 
 	// Merge the maximum entry count.

@@ -199,12 +199,12 @@ func NewEndpoint(
 		synchronizationMode == core.SynchronizationMode_SynchronizationModeOneWayReplica
 	readOnly := alpha && unidirectional
 
-	// Compute the effective digest algorithm and create the hasher factory.
-	digest := configuration.Digest
-	if digest.IsDefault() {
-		digest = version.DefaultDigest()
+	// Compute the effective hashing algorithm and create the hasher factory.
+	hashingAlgorithm := configuration.HashingAlgorithm
+	if hashingAlgorithm.IsDefault() {
+		hashingAlgorithm = version.DefaultHashingAlgorithm()
 	}
-	hasherFactory := digest.Factory()
+	hasherFactory := hashingAlgorithm.Factory()
 
 	// Determine the maximum entry count.
 	maximumEntryCount := configuration.MaximumEntryCount
