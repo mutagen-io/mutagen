@@ -9,6 +9,7 @@ import "synchronization/digest.proto";
 import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
+import "synchronization/compression/algorithm.proto";
 import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/permissions_mode.proto";
@@ -126,4 +127,14 @@ message Configuration {
     string defaultGroup = 66;
 
     // Fields 67-80 are reserved for future permission configuration parameters.
+
+
+    // Compression configuration parameters (fields 81-90).
+
+    // CompressionAlgorithm specifies the compression algorithm to use when
+    // communicating with the endpoint. This only applies to remote endpoints.
+    compression.Algorithm compressionAlgorithm = 81;
+
+    // Fields 82-90 are reserved for future compression configuration
+    // parameters.
 }

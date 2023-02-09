@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/klauspost/compress/flate"
-
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 )
@@ -52,17 +51,29 @@ func NewEndpoint(
 	configuration *synchronization.Configuration,
 	alpha bool,
 ) (synchronization.Endpoint, error) {
+	// Compute the effective compression algorithm.
+	compressionAlgorithm := configuration.CompressionAlgorithm
+	if compressionAlgorithm.IsDefault() {
+		compressionAlgorithm = version.DefaultCompressionAlgorithm()
+	}
+
+	// Perform the compression handshake.
+	if err := compression.ClientHandshake(stream, compressionAlgorithm); err != nil {
+		stream.Close()
+		return nil, fmt.Errorf("compression handshake failed: %w", err)
+	}
+
 	// Set up inbound buffering and decompression. While the decompressor does
 	// have some internal buffering, we need the inbound stream to support
 	// io.ByteReader for our Protocol Buffer decoding, so we add a bufio.Reader
 	// around it with additional buffering.
 	compressedInbound := bufio.NewReaderSize(stream, controlStreamCompressedBufferSize)
-	decompressor := flate.NewReader(compressedInbound)
+	decompressor := compressionAlgorithm.Decompress(compressedInbound)
 	inbound := bufio.NewReaderSize(decompressor, controlStreamUncompressedBufferSize)
 
 	// Set up outbound buffering and compression.
 	compressedOutbound := bufio.NewWriterSize(stream, controlStreamCompressedBufferSize)
-	compressor, _ := flate.NewWriter(compressedOutbound, flate.DefaultCompression)
+	compressor := compressionAlgorithm.Compress(compressedOutbound)
 	outbound := bufio.NewWriterSize(compressor, controlStreamUncompressedBufferSize)
 
 	// Create a mechanism to flush the outbound pipeline.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
@@ -208,6 +209,17 @@ func (v Version) DefaultGroupSpecification() string {
 	switch v {
 	case Version_Version1:
 		return ""
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
+// DefaultCompressionAlgorithm returns the default compression algorithm for the
+// session version.
+func (v Version) DefaultCompressionAlgorithm() compression.Algorithm {
+	switch v {
+	case Version_Version1:
+		return compression.Algorithm_AlgorithmDeflate
 	default:
 		panic("unknown or unsupported session version")
 	}

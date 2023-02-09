@@ -183,6 +183,8 @@ http://github.com/klauspost/compress
 Copyright (c) 2009-2016 The Go Authors. All rights reserved.
 Copyright (c) 2015-2019 Klaus Post. All rights reserved.
 Copyright 2011 The Snappy-Go Authors. All rights reserved.
+Based on work Copyright (c) 2013, Yann Collet, released under BSD License.
+Based on work by Yann Collet, released under BSD License.
 
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
 this license can be found later in this text and a templated version can be
@@ -407,7 +409,7 @@ Copyright (c) 2015 Yoshiki Shibukawa
 
 Used under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.
-
+` + licensesSSPL + `
 
 ================================================================================
 Mutagen is compatible with the following third-party software:

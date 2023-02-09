@@ -5,6 +5,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 )
 
@@ -67,6 +68,11 @@ type Configuration struct {
 		// permission propagation mode.
 		DefaultGroup string `json:"defaultGroup,omitempty" yaml:"defaultGroup" mapstructure:"defaultGroup"`
 	} `json:"permissions" yaml:"permissions" mapstructure:"permissions"`
+	// Compression contains parameters related to compression.
+	Compression struct {
+		// Algorithm specifies the compression algorithm.
+		Algorithm compression.Algorithm `json:"algorithm,omitempty" yaml:"algorithm" mapstructure:"algorithm"`
+	} `json:"compression" yaml:"compression" mapstructure:"compression"`
 }
 
 // loadFromInternal sets a configuration to match an internal
@@ -100,6 +106,9 @@ func (c *Configuration) loadFromInternal(configuration *synchronization.Configur
 	c.Permissions.DefaultDirectoryMode = filesystem.Mode(configuration.DefaultDirectoryMode)
 	c.Permissions.DefaultOwner = configuration.DefaultOwner
 	c.Permissions.DefaultGroup = configuration.DefaultGroup
+
+	// Propagate compression configuration.
+	c.Compression.Algorithm = configuration.CompressionAlgorithm
 }
 
 // ToInternal converts a public configuration representation to an internal
@@ -124,5 +133,6 @@ func (c *Configuration) ToInternal() *synchronization.Configuration {
 		DefaultDirectoryMode:   uint32(c.Permissions.DefaultDirectoryMode),
 		DefaultOwner:           c.Permissions.DefaultOwner,
 		DefaultGroup:           c.Permissions.DefaultGroup,
+		CompressionAlgorithm:   c.Compression.Algorithm,
 	}
 }

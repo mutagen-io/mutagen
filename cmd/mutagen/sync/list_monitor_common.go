@@ -165,6 +165,13 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 			defaultGroupDescription = configuration.DefaultGroup
 		}
 		fmt.Println("\t\tDefault file/directory group:", defaultGroupDescription)
+
+		// Compute and print the compression algorithm.
+		compressionAlgorithm := configuration.CompressionAlgorithm.Description()
+		if configuration.CompressionAlgorithm.IsDefault() {
+			compressionAlgorithm += fmt.Sprintf(" (%s)", version.DefaultCompressionAlgorithm().Description())
+		}
+		fmt.Println("\t\tCompression:", compressionAlgorithm)
 	}
 
 	// At this point, there's no other status information that will be displayed
