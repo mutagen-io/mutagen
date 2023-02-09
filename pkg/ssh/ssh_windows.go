@@ -1,7 +1,7 @@
 package ssh
 
 import (
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 // commandSearchPaths specifies locations on Windows where we might find ssh.exe
@@ -18,10 +18,10 @@ var commandSearchPaths = []string{
 
 // sshCommandPathForPlatform will search for a suitable ssh command on Windows.
 func sshCommandPathForPlatform() (string, error) {
-	return process.FindCommand("ssh", commandSearchPaths)
+	return platform.FindCommand("ssh", commandSearchPaths)
 }
 
 // scpCommandPathForPlatform will search for a suitable scp command on Windows.
 func scpCommandPathForPlatform() (string, error) {
-	return process.FindCommand("scp", commandSearchPaths)
+	return platform.FindCommand("scp", commandSearchPaths)
 }

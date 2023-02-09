@@ -7,7 +7,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 const (
@@ -27,7 +27,7 @@ func installPath() (string, error) {
 	}
 
 	// Compute the target executable name.
-	executableName := process.ExecutableName(BaseName, runtime.GOOS)
+	executableName := platform.ExecutableName(BaseName, runtime.GOOS)
 
 	// Compute the installation path.
 	return filepath.Join(parent, executableName), nil

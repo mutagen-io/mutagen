@@ -13,7 +13,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 const (
@@ -138,7 +138,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	if outputPath != "" {
 		file, err = os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	} else {
-		file, err = os.CreateTemp("", process.ExecutableName(BaseName+".*", goos))
+		file, err = os.CreateTemp("", platform.ExecutableName(BaseName+".*", goos))
 	}
 	if err != nil {
 		return "", fmt.Errorf("unable to create output file: %w", err)

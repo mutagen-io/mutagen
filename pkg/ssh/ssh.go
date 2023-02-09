@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/mutagen-io/mutagen/pkg/process"
+	"github.com/mutagen-io/mutagen/pkg/platform"
 )
 
 // CompressionFlag returns a flag that can be passed to scp or ssh to enable
@@ -55,7 +55,7 @@ func ServerAliveFlags(interval, countMax int) []string {
 func sshCommandPath() (string, error) {
 	// If MUTAGEN_SSH_PATH is specified, then use it to perform the lookup.
 	if searchPath := os.Getenv("MUTAGEN_SSH_PATH"); searchPath != "" {
-		return process.FindCommand("ssh", []string{searchPath})
+		return platform.FindCommand("ssh", []string{searchPath})
 	}
 
 	// Otherwise fall back to the platform-specific implementation.
@@ -81,7 +81,7 @@ func SSHCommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
 func scpCommandPath() (string, error) {
 	// If MUTAGEN_SSH_PATH is specified, then use it to perform the lookup.
 	if searchPath := os.Getenv("MUTAGEN_SSH_PATH"); searchPath != "" {
-		return process.FindCommand("scp", []string{searchPath})
+		return platform.FindCommand("scp", []string{searchPath})
 	}
 
 	// Otherwise fall back to the platform-specific implementation.
