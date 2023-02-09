@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"google.golang.org/grpc"
 
@@ -681,8 +682,8 @@ func init() {
 	flags.StringSliceVarP(&createConfiguration.configurationFiles, "configuration-file", "c", nil, "Specify additional files from which to load (and merge) default configuration parameters")
 
 	// Wire up synchronization flags.
-	flags.StringVarP(&createConfiguration.synchronizationMode, "sync-mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
-	flags.StringVar(&createConfiguration.hash, "hash", "", "Specify content hashing algorithm ("+hashFlagOptions+")")
+	flags.StringVarP(&createConfiguration.synchronizationMode, "mode", "m", "", "Specify synchronization mode (two-way-safe|two-way-resolved|one-way-safe|one-way-replica)")
+	flags.StringVarP(&createConfiguration.hash, "hash", "H", "", "Specify content hashing algorithm ("+hashFlagOptions+")")
 	flags.Uint64Var(&createConfiguration.maximumEntryCount, "max-entry-count", 0, "Specify the maximum number of entries that endpoints will manage")
 	flags.StringVar(&createConfiguration.maximumStagingFileSize, "max-staging-file-size", "", "Specify the maximum (individual) file size that endpoints will stage")
 	flags.StringVar(&createConfiguration.probeMode, "probe-mode", "", "Specify probe mode (probe|assume)")
@@ -727,7 +728,15 @@ func init() {
 	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file/directory group for beta")
 
 	// Wire up compression flags.
-	flags.StringVar(&createConfiguration.compression, "compression", "", "Specify compression algorithm ("+compressionFlagOptions+")")
+	flags.StringVarP(&createConfiguration.compression, "compression", "C", "", "Specify compression algorithm ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionAlpha, "compression-alpha", "", "Specify compression algorithm for alpha ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionBeta, "compression-beta", "", "Specify compression algorithm for beta ("+compressionFlagOptions+")")
+
+	// Set up flag normalization. This is only required to handle aliases.
+	flags.SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "sync-mode" {
+			name = "mode"
+		}
+		return pflag.NormalizedName(name)
+	})
 }
