@@ -21,6 +21,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
@@ -221,8 +222,13 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 			CompressionAlgorithm: compression.Algorithm_AlgorithmNone,
 		},
 		{
-			CompressionAlgorithm: compression.Algorithm_AlgorithmDeflate,
+			HashingAlgorithm: hashing.Algorithm_AlgorithmSHA256,
 		},
+	}
+	if hashing.Algorithm_AlgorithmXXH128.Supported() {
+		testCases = append(testCases, &synchronization.Configuration{
+			HashingAlgorithm: hashing.Algorithm_AlgorithmXXH128,
+		})
 	}
 	if compression.Algorithm_AlgorithmZstandard.Supported() {
 		testCases = append(testCases, &synchronization.Configuration{
