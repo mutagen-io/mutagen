@@ -175,6 +175,12 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
+	// Verify that the compression algorithm is unspecified or supported for
+	// usage.
+	if !(c.CompressionAlgorithm.IsDefault() || c.CompressionAlgorithm.Supported()) {
+		return errors.New("unknown or unsupported compression algorithm")
+	}
+
 	// Success.
 	return nil
 }
@@ -205,7 +211,8 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.DefaultFileMode == other.DefaultFileMode &&
 		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
 		c.DefaultOwner == other.DefaultOwner &&
-		c.DefaultGroup == other.DefaultGroup
+		c.DefaultGroup == other.DefaultGroup &&
+		c.CompressionAlgorithm == other.CompressionAlgorithm
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both
@@ -214,70 +221,70 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 	// Create the resulting configuration.
 	result := &Configuration{}
 
-	// Merge synchronization mode.
+	// Merge the synchronization mode.
 	if !higher.SynchronizationMode.IsDefault() {
 		result.SynchronizationMode = higher.SynchronizationMode
 	} else {
 		result.SynchronizationMode = lower.SynchronizationMode
 	}
 
-	// Merge digest algorithm.
+	// Merge the digest algorithm.
 	if !higher.Digest.IsDefault() {
 		result.Digest = higher.Digest
 	} else {
 		result.Digest = lower.Digest
 	}
 
-	// Merge maximum entry count.
+	// Merge the maximum entry count.
 	if higher.MaximumEntryCount != 0 {
 		result.MaximumEntryCount = higher.MaximumEntryCount
 	} else {
 		result.MaximumEntryCount = lower.MaximumEntryCount
 	}
 
-	// Merge maximum staging file size.
+	// Merge the maximum staging file size.
 	if higher.MaximumStagingFileSize != 0 {
 		result.MaximumStagingFileSize = higher.MaximumStagingFileSize
 	} else {
 		result.MaximumStagingFileSize = lower.MaximumStagingFileSize
 	}
 
-	// Merge probing mode.
+	// Merge the probing mode.
 	if !higher.ProbeMode.IsDefault() {
 		result.ProbeMode = higher.ProbeMode
 	} else {
 		result.ProbeMode = lower.ProbeMode
 	}
 
-	// Merge scanning mode.
+	// Merge the scanning mode.
 	if !higher.ScanMode.IsDefault() {
 		result.ScanMode = higher.ScanMode
 	} else {
 		result.ScanMode = lower.ScanMode
 	}
 
-	// Merge staging mode.
+	// Merge the staging mode.
 	if !higher.StageMode.IsDefault() {
 		result.StageMode = higher.StageMode
 	} else {
 		result.StageMode = lower.StageMode
 	}
 
-	// Merge symbolic link mode.
+	// Merge the symbolic link mode.
 	if !higher.SymbolicLinkMode.IsDefault() {
 		result.SymbolicLinkMode = higher.SymbolicLinkMode
 	} else {
 		result.SymbolicLinkMode = lower.SymbolicLinkMode
 	}
 
-	// Merge watching mode.
+	// Merge the watching mode.
 	if !higher.WatchMode.IsDefault() {
 		result.WatchMode = higher.WatchMode
 	} else {
 		result.WatchMode = lower.WatchMode
 	}
 
-	// Merge polling interval.
+	// Merge the polling interval.
 	if higher.WatchPollingInterval != 0 {
 		result.WatchPollingInterval = higher.WatchPollingInterval
 	} else {
@@ -294,46 +301,53 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 	result.Ignores = append(result.Ignores, lower.Ignores...)
 	result.Ignores = append(result.Ignores, higher.Ignores...)
 
-	// Merge VCS ignore mode.
+	// Merge the VCS ignore mode.
 	if !higher.IgnoreVCSMode.IsDefault() {
 		result.IgnoreVCSMode = higher.IgnoreVCSMode
 	} else {
 		result.IgnoreVCSMode = lower.IgnoreVCSMode
 	}
 
-	// Merge permissions mode.
+	// Merge the permissions mode.
 	if !higher.PermissionsMode.IsDefault() {
 		result.PermissionsMode = higher.PermissionsMode
 	} else {
 		result.PermissionsMode = lower.PermissionsMode
 	}
 
-	// Merge default file mode.
+	// Merge the default file mode.
 	if higher.DefaultFileMode != 0 {
 		result.DefaultFileMode = higher.DefaultFileMode
 	} else {
 		result.DefaultFileMode = lower.DefaultFileMode
 	}
 
-	// Merge default directory mode.
+	// Merge the default directory mode.
 	if higher.DefaultDirectoryMode != 0 {
 		result.DefaultDirectoryMode = higher.DefaultDirectoryMode
 	} else {
 		result.DefaultDirectoryMode = lower.DefaultDirectoryMode
 	}
 
-	// Merge default owner.
+	// Merge the default owner.
 	if higher.DefaultOwner != "" {
 		result.DefaultOwner = higher.DefaultOwner
 	} else {
 		result.DefaultOwner = lower.DefaultOwner
 	}
 
-	// Merge default group.
+	// Merge the default group.
 	if higher.DefaultGroup != "" {
 		result.DefaultGroup = higher.DefaultGroup
 	} else {
 		result.DefaultGroup = lower.DefaultGroup
+	}
+
+	// Merge the compression algorithm.
+	if !higher.CompressionAlgorithm.IsDefault() {
+		result.CompressionAlgorithm = higher.CompressionAlgorithm
+	} else {
+		result.CompressionAlgorithm = lower.CompressionAlgorithm
 	}
 
 	// Done.

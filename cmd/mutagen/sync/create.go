@@ -24,6 +24,7 @@ import (
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -408,6 +409,24 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
+	// Validate and convert compression algorithm specifications.
+	var compressionAlgorithm, compressionAlgorithmAlpha, compressionAlgorithmBeta compression.Algorithm
+	if createConfiguration.compression != "" {
+		if err := compressionAlgorithm.UnmarshalText([]byte(createConfiguration.compression)); err != nil {
+			return fmt.Errorf("unable to parse compression algorithm: %w", err)
+		}
+	}
+	if createConfiguration.compressionAlpha != "" {
+		if err := compressionAlgorithmAlpha.UnmarshalText([]byte(createConfiguration.compressionAlpha)); err != nil {
+			return fmt.Errorf("unable to parse compression algorithm for alpha: %w", err)
+		}
+	}
+	if createConfiguration.compressionBeta != "" {
+		if err := compressionAlgorithmBeta.UnmarshalText([]byte(createConfiguration.compressionBeta)); err != nil {
+			return fmt.Errorf("unable to parse compression algorithm for beta: %w", err)
+		}
+	}
+
 	// Create the command line configuration and merge it into our cumulative
 	// configuration.
 	configuration = synchronization.MergeConfigurations(configuration, &synchronization.Configuration{
@@ -428,6 +447,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		DefaultDirectoryMode:   uint32(defaultDirectoryMode),
 		DefaultOwner:           createConfiguration.defaultOwner,
 		DefaultGroup:           createConfiguration.defaultGroup,
+		CompressionAlgorithm:   compressionAlgorithm,
 	})
 
 	// Create the creation specification.
@@ -445,6 +465,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			DefaultDirectoryMode: uint32(defaultDirectoryModeAlpha),
 			DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
+			CompressionAlgorithm: compressionAlgorithmAlpha,
 		},
 		ConfigurationBeta: &synchronization.Configuration{
 			ProbeMode:            probeModeBeta,
@@ -456,6 +477,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			DefaultDirectoryMode: uint32(defaultDirectoryModeBeta),
 			DefaultOwner:         createConfiguration.defaultOwnerBeta,
 			DefaultGroup:         createConfiguration.defaultGroupBeta,
+			CompressionAlgorithm: compressionAlgorithmBeta,
 		},
 		Name:   createConfiguration.name,
 		Labels: labels,
@@ -624,6 +646,15 @@ var createConfiguration struct {
 	// permission propagation mode, taking priority over defaultGroup on beta if
 	// specified.
 	defaultGroupBeta string
+	// compression specifies the compression algorithm to use when communicating
+	// with remote endpoints.
+	compression string
+	// compressionAlpha specifies the compression algorithm to use when
+	// communicating with a remote alpha endpoint.
+	compressionAlpha string
+	// compressionBeta specifies the compression algorithm to use when
+	// communicating with a remote beta endpoint.
+	compressionBeta string
 }
 
 func init() {
@@ -693,4 +724,9 @@ func init() {
 	flags.StringVar(&createConfiguration.defaultGroup, "default-group", "", "Specify default file/directory group")
 	flags.StringVar(&createConfiguration.defaultGroupAlpha, "default-group-alpha", "", "Specify default file/directory group for alpha")
 	flags.StringVar(&createConfiguration.defaultGroupBeta, "default-group-beta", "", "Specify default file/directory group for beta")
+
+	// Wire up compression flags.
+	flags.StringVar(&createConfiguration.compression, "compression", "", "Specify compression algorithm ("+compressionFlagOptions+")")
+	flags.StringVar(&createConfiguration.compressionAlpha, "compression-alpha", "", "Specify compression algorithm for alpha ("+compressionFlagOptions+")")
+	flags.StringVar(&createConfiguration.compressionBeta, "compression-beta", "", "Specify compression algorithm for beta ("+compressionFlagOptions+")")
 }

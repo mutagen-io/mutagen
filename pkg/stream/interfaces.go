@@ -18,3 +18,18 @@ type CloseWriter interface {
 	// receiving end of the stream. It must unblock any pending calls to Write.
 	CloseWrite() error
 }
+
+// Flusher represents a stream that performs internal buffering that may need to
+// be flushed to ensure transmission.
+type Flusher interface {
+	// Flush forces transmission of any buffered stream data.
+	Flush() error
+}
+
+// WriteFlushCloser represents a stream with writing, flushing, and closing
+// functionality.
+type WriteFlushCloser interface {
+	io.Writer
+	Flusher
+	io.Closer
+}

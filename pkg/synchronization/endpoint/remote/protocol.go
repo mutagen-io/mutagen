@@ -12,8 +12,7 @@ const (
 	// typically an OS pipe.
 	controlStreamCompressedBufferSize = 64 * 1024
 	// controlStreamCompressorBufferSize is the buffer size to use for
-	// compressor input and decompressor output. It should ideally be large
-	// enough to fill the compressor's window buffer.
+	// compressor input and decompressor output.
 	controlStreamUncompressedBufferSize = 64 * 1024
 )
 

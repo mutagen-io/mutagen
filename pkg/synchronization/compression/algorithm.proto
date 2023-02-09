@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package compression;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/compression";
+
+// Algorithm specifies a compression algorithm.
+enum Algorithm {
+    // Algorithm_AlgorithmDefault represents an unspecified compression
+    // algorithm. It should be converted to one of the following values based on
+    // the desired default behavior.
+    AlgorithmDefault = 0;
+    // Algorithm_AlgorithmNone specifies that no compression should be used.
+    AlgorithmNone = 1;
+    // Algorithm_AlgorithmDeflate specifies that DEFLATE compression should be
+    // used.
+    AlgorithmDeflate = 2;
+    // Algorithm_AlgorithmZstandard specifies that Zstandard compression should
+    // be used.
+    AlgorithmZstandard = 3;
+}

@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/klauspost/compress/flate"
-
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -16,6 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
@@ -39,17 +38,24 @@ type endpointServer struct {
 // returns, regardless of failure. The provided stream must unblock read and
 // write operations when closed.
 func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
+	// Perform the compression handshake.
+	compressionAlgorithm, err := compression.ServerHandshake(stream)
+	if err != nil {
+		stream.Close()
+		return fmt.Errorf("compression handshake failed: %w", err)
+	}
+
 	// Set up inbound buffering and decompression. While the decompressor does
 	// have some internal buffering, we need the inbound stream to support
 	// io.ByteReader for our Protocol Buffer decoding, so we add a bufio.Reader
 	// around it with additional buffering.
 	compressedInbound := bufio.NewReaderSize(stream, controlStreamCompressedBufferSize)
-	decompressor := flate.NewReader(compressedInbound)
+	decompressor := compressionAlgorithm.Decompress(compressedInbound)
 	inbound := bufio.NewReaderSize(decompressor, controlStreamUncompressedBufferSize)
 
 	// Set up outbound buffering and compression.
 	compressedOutbound := bufio.NewWriterSize(stream, controlStreamCompressedBufferSize)
-	compressor, _ := flate.NewWriter(compressedOutbound, flate.DefaultCompression)
+	compressor := compressionAlgorithm.Compress(compressedOutbound)
 	outbound := bufio.NewWriterSize(compressor, controlStreamUncompressedBufferSize)
 
 	// Create a mechanism to flush the outbound pipeline.
