@@ -8,9 +8,10 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
-// zstandardSupported indicates whether or not Zstandard compression is
-// supported.
-const zstandardSupported = false
+// zstandardSupportStatus returns Zstandard compression support status.
+func zstandardSupportStatus() AlgorithmSupportStatus {
+	return AlgorithmSupportStatusUnsupported
+}
 
 // compressZstandard implements compression for Zstandard streams.
 func compressZstandard(compressed io.Writer) stream.WriteFlushCloser {

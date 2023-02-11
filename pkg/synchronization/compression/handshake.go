@@ -55,7 +55,7 @@ func ServerHandshake(stream io.ReadWriter) (Algorithm, error) {
 
 	// Convert the algorithm specification and ensure that it's supported.
 	algorithm := Algorithm(data[0])
-	supported := algorithm.Supported()
+	supported := algorithm.SupportStatus() == AlgorithmSupportStatusSupported
 
 	// Format and transmit the response.
 	if supported {

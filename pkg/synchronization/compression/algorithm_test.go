@@ -39,27 +39,27 @@ func TestAlgorithmUnmarshal(t *testing.T) {
 	}
 }
 
-// TestAlgorithmSupported tests that Algorithm support detection works as
+// TestAlgorithmSupportStatus tests that Algorithm support detection works as
 // expected.
-func TestAlgorithmSupported(t *testing.T) {
+func TestAlgorithmSupportStatus(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
 		algorithm Algorithm
-		expected  bool
+		expected  AlgorithmSupportStatus
 	}{
-		{Algorithm_AlgorithmDefault, false},
-		{Algorithm_AlgorithmNone, true},
-		{Algorithm_AlgorithmDeflate, true},
-		{Algorithm_AlgorithmZstandard, zstandardSupported},
-		{(Algorithm_AlgorithmZstandard + 1), false},
+		{Algorithm_AlgorithmDefault, AlgorithmSupportStatusUnsupported},
+		{Algorithm_AlgorithmNone, AlgorithmSupportStatusSupported},
+		{Algorithm_AlgorithmDeflate, AlgorithmSupportStatusSupported},
+		{Algorithm_AlgorithmZstandard, zstandardSupportStatus()},
+		{(Algorithm_AlgorithmZstandard + 1), AlgorithmSupportStatusUnsupported},
 	}
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if supported := testCase.algorithm.Supported(); supported != testCase.expected {
+		if supportStatus := testCase.algorithm.SupportStatus(); supportStatus != testCase.expected {
 			t.Errorf(
-				"algorithm support status (%t) does not match expected (%t)",
-				supported,
+				"algorithm support status (%d) does not match expected (%d)",
+				supportStatus,
 				testCase.expected,
 			)
 		}

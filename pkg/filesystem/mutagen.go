@@ -56,8 +56,16 @@ const (
 	MutagenForwardingDirectoryName = "forwarding"
 
 	// MutagenIODirectoryName is the name of the mutagen.io data directory
-	// within the Mutagen data directory.
+	// within the Mutagen data directory. This directory is no longer used. It
+	// was originally added to support the tunnel transport, but that no longer
+	// exists. This constant is left in-place as a reminder to avoid using this
+	// particular name for future functionality (at least without taking care to
+	// avoid collision with any existing files).
 	MutagenIODirectoryName = "mutagen.io"
+
+	// MutagenLicensingDirectoryName is the name of the licensing data directory
+	// within the Mutagen data directory.
+	MutagenLicensingDirectoryName = "licensing"
 )
 
 // Mutagen computes (and optionally creates) subdirectories inside the Mutagen

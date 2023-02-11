@@ -176,8 +176,18 @@ func (t Target) Build(url, output string, enableSSPLEnhancements, disableDebug b
 	// In this case, we also trim the code paths stored in the executable, as
 	// there's no use in having the full paths available.
 	arguments := []string{"build", "-o", output}
+	var tags []string
 	if enableSSPLEnhancements {
-		arguments = append(arguments, "-tags", "sspl")
+		tags = append(tags, "sspl")
+	}
+	if url == cliPackage {
+		tags = append(tags, "cli")
+	}
+	if url == agentPackage {
+		tags = append(tags, "agent")
+	}
+	if len(tags) > 0 {
+		arguments = append(arguments, "-tags", strings.Join(tags, ","))
 	}
 	if disableDebug {
 		arguments = append(arguments, "-ldflags=-s -w", "-trimpath")

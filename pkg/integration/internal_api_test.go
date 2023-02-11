@@ -225,12 +225,12 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 			HashingAlgorithm: hashing.Algorithm_AlgorithmSHA256,
 		},
 	}
-	if hashing.Algorithm_AlgorithmXXH128.Supported() {
+	if hashing.Algorithm_AlgorithmXXH128.SupportStatus() == hashing.AlgorithmSupportStatusSupported {
 		testCases = append(testCases, &synchronization.Configuration{
 			HashingAlgorithm: hashing.Algorithm_AlgorithmXXH128,
 		})
 	}
-	if compression.Algorithm_AlgorithmZstandard.Supported() {
+	if compression.Algorithm_AlgorithmZstandard.SupportStatus() == compression.AlgorithmSupportStatusSupported {
 		testCases = append(testCases, &synchronization.Configuration{
 			CompressionAlgorithm: compression.Algorithm_AlgorithmZstandard,
 		})

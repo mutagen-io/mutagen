@@ -10,10 +10,6 @@ import (
 	"github.com/mutagen-io/mutagen/sspl/pkg/compression/zstd"
 )
 
-// zstandardSupported indicates whether or not Zstandard compression is
-// supported.
-const zstandardSupported = true
-
 // compressZstandard implements compression for Zstandard streams.
 func compressZstandard(compressed io.Writer) stream.WriteFlushCloser {
 	return zstd.NewCompressor(compressed)
