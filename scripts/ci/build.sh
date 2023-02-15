@@ -78,8 +78,8 @@ fi
 # Ensure that the sidecar entry point builds, both with and without SSPL code.
 # We only need this command to build on Linux, but it's best to keep it
 # maintained in a portable fashion.
-go build -tags mutagensspl ./cmd/mutagen-sidecar
-go build ./cmd/mutagen-sidecar
+go build -tags mutagensidecar,mutagensspl ./cmd/mutagen-sidecar
+go build -tags mutagensidecar ./cmd/mutagen-sidecar
 
 # Build tools, both with and without SSPL code, to ensure that they are
 # maintained as core packages evolve.
