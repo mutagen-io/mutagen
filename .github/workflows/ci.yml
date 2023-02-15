@@ -130,7 +130,7 @@ jobs:
       - uses: docker/build-push-action@v2
         with:
           file: images/sidecar/linux/Dockerfile
-          target: standard
+          target: mit
           tags: ${{ steps.tag.outputs.tag }}
           push: ${{ github.ref_type == 'tag' }}
           platforms: |
@@ -143,8 +143,9 @@ jobs:
       - uses: docker/build-push-action@v2
         with:
           file: images/sidecar/linux/Dockerfile
-          target: mit
-          tags: ${{ steps.tag.outputs.tag }}-mit
+          target: sspl
+          tags: ${{ steps.tag.outputs.tag }}-sspl
+          push: ${{ github.ref_type == 'tag' }}
           platforms: |
             linux/386
             linux/amd64
