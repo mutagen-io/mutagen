@@ -1,4 +1,4 @@
-//go:build sspl
+//go:build mutagensspl
 
 // Copyright (c) 2023-present Mutagen IO, Inc.
 //

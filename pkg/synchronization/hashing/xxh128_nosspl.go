@@ -1,4 +1,4 @@
-//go:build !sspl
+//go:build !mutagensspl
 
 package hashing
 

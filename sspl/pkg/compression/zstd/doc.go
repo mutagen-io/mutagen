@@ -16,7 +16,7 @@
 // Package zstd provides adapters for integrating Zstandard compression.
 package zstd
 
-// NOTE: The sspl build tag has been intentionally omitted from this file in
-// order for go fmt to operate on the other files in this directory:
+// NOTE: The mutagensspl build tag has been intentionally omitted from this file
+// in order for go fmt to operate on the other files in this directory:
 //
 // https://github.com/golang/go/issues/4007#issuecomment-66069684

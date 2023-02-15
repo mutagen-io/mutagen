@@ -22,7 +22,7 @@ go vet ./scripts/... || FAILURE=1
 go vet ./tools/... || FAILURE=1
 
 # Perform static analysis on SSPL code.
-go vet -tags sspl ./sspl/... || FAILURE=1
+go vet -tags mutagensspl ./sspl/... || FAILURE=1
 
 # TODO: Add spell checking. The https://github.com/client9/misspell tool is what
 # we've used historically (via Go Report Card), but it seems like it's no longer

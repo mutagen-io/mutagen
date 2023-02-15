@@ -16,8 +16,8 @@ WORKDIR /mutagen
 
 # Build the sidecar entry point and agent binaries.
 RUN ["go", "build", "./cmd/mutagen-sidecar"]
-RUN ["go", "build", "-o", "mutagen-agent-mit", "-tags", "agent", "./cmd/mutagen-agent"]
-RUN ["go", "build", "-o", "mutagen-agent-sspl", "-tags", "agent,sspl,fanotify", "./cmd/mutagen-agent"]
+RUN ["go", "build", "-o", "mutagen-agent-mit", "-tags", "mutagenagent", "./cmd/mutagen-agent"]
+RUN ["go", "build", "-o", "mutagen-agent-sspl", "-tags", "mutagenagent,mutagensspl,mutagenfanotify", "./cmd/mutagen-agent"]
 
 
 # Switch to a vanilla Alpine base for the final image.

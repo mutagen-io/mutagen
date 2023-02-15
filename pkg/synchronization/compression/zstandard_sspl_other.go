@@ -1,4 +1,4 @@
-//go:build sspl && !cli
+//go:build mutagensspl && !mutagencli
 
 package compression
 
