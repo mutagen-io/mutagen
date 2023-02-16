@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Microsoft/go-winio v0.5.2
-	github.com/bmatcuk/doublestar/v4 v4.2.0
+	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/eknkc/basex v1.0.1
 	github.com/fatih/color v1.13.0
