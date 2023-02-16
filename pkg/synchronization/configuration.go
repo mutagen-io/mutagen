@@ -6,7 +6,9 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
 // EnsureValid ensures that Configuration's invariants are respected. The
@@ -29,14 +31,19 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Validate the hashing algorithm.
+	// Verify that the hashing algorithm is unspecified or supported.
 	if endpointSpecific {
 		if !c.HashingAlgorithm.IsDefault() {
 			return errors.New("hashing algorithm cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if !(c.HashingAlgorithm.IsDefault() || c.HashingAlgorithm.Supported()) {
-			return errors.New("unknown or unsupported hashing algorithm")
+		if !c.HashingAlgorithm.IsDefault() {
+			supportStatus := c.HashingAlgorithm.SupportStatus()
+			if supportStatus == hashing.AlgorithmSupportStatusUnsupported {
+				return errors.New("unknown or unsupported hashing algorithm")
+			} else if supportStatus == hashing.AlgorithmSupportStatusRequiresLicense {
+				return errors.New("hashing algorithm requires Mutagen Pro license")
+			}
 		}
 	}
 
@@ -46,22 +53,22 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The maximum staging file size doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the probe mode is unspecified or supported for usage.
+	// Verify that the probe mode is unspecified or supported.
 	if !(c.ProbeMode.IsDefault() || c.ProbeMode.Supported()) {
 		return errors.New("unknown or unsupported probe mode")
 	}
 
-	// Verify that the scan mode is unspecified or supported for usage.
+	// Verify that the scan mode is unspecified or supported.
 	if !(c.ScanMode.IsDefault() || c.ScanMode.Supported()) {
 		return errors.New("unknown or unsupported scan mode")
 	}
 
-	// Verify that the staging mode is unspecified or supported for usage.
+	// Verify that the staging mode is unspecified or supported.
 	if !(c.StageMode.IsDefault() || c.StageMode.Supported()) {
 		return errors.New("unknown or unsupported staging mode")
 	}
 
-	// Verify that the symbolic link mode is unspecified or supported for usage.
+	// Verify that the symbolic link mode is unspecified or supported.
 	if endpointSpecific {
 		if !c.SymbolicLinkMode.IsDefault() {
 			return errors.New("symbolic link mode cannot be specified on an endpoint-specific basis")
@@ -72,7 +79,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Verify that the watch mode is unspecified or supported for usage.
+	// Verify that the watch mode is unspecified or supported.
 	if !(c.WatchMode.IsDefault() || c.WatchMode.Supported()) {
 		return errors.New("unknown or unsupported watch mode")
 	}
@@ -105,7 +112,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Verify that the VCS ignore mode is unspecified or supported for usage.
+	// Verify that the VCS ignore mode is unspecified or supported.
 	if endpointSpecific {
 		if !c.IgnoreVCSMode.IsDefault() {
 			return errors.New("VCS ignore mode cannot be specified on an endpoint-specific basis")
@@ -116,8 +123,8 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Verify that the permissions mode is unspecified or supported for usage.
-	// Also determine the effective permissions mode for validating file and
+	// Verify that the permissions mode is unspecified or supported. Also
+	// determine the effective permissions mode for validating file and
 	// directory modes.
 	var effectivePermissionsMode core.PermissionsMode
 	if endpointSpecific {
@@ -175,10 +182,14 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
-	// Verify that the compression algorithm is unspecified or supported for
-	// usage.
-	if !(c.CompressionAlgorithm.IsDefault() || c.CompressionAlgorithm.Supported()) {
-		return errors.New("unknown or unsupported compression algorithm")
+	// Verify that the compression algorithm is unspecified or supported.
+	if !c.CompressionAlgorithm.IsDefault() {
+		supportStatus := c.CompressionAlgorithm.SupportStatus()
+		if supportStatus == compression.AlgorithmSupportStatusUnsupported {
+			return errors.New("unknown or unsupported compression algorithm")
+		} else if supportStatus == compression.AlgorithmSupportStatusRequiresLicense {
+			return errors.New("compression algorithm requires Mutagen Pro license")
+		}
 	}
 
 	// Success.

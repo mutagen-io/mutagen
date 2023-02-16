@@ -15,8 +15,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("nil configuration")
 	}
 
-	// Verify that the socket overwrite mode is unspecified or supported for
-	// usage.
+	// Verify that the socket overwrite mode is unspecified or supported.
 	if !(c.SocketOverwriteMode.IsDefault() || c.SocketOverwriteMode.Supported()) {
 		return errors.New("unknown or unsupported socket overwrite mode")
 	}

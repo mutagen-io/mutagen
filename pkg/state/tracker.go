@@ -141,6 +141,11 @@ func (t *Tracker) NotifyOfChange() {
 	t.change.L.Lock()
 	defer t.change.L.Unlock()
 
+	// If tracking has been terminated, then there's nothing that we need to do.
+	if t.terminated {
+		return
+	}
+
 	// Increment the state index. If we do overflow, then at least set the index
 	// back to 1, because we want 0 to remain the sentinel value that returns an
 	// immediate read of the current state index.

@@ -22,6 +22,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local/staging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
+	"github.com/mutagen-io/mutagen/pkg/timeutil"
 )
 
 const (
@@ -533,17 +534,6 @@ func (e *endpoint) saveCache(ctx context.Context, cachePath string, signal <-cha
 	}
 }
 
-// stopAndDrainTimer stops a timer and performs a non-blocking drain on its
-// channel. This allows a timer to be stopped and drained without any knowledge
-// of its current state.
-func stopAndDrainTimer(timer *time.Timer) {
-	timer.Stop()
-	select {
-	case <-timer.C:
-	default:
-	}
-}
-
 // watchPoll is the watch loop for poll-based watching, with optional support
 // for using native non-recursive watching facilities to reduce notification
 // latency on frequently updated contents.
@@ -775,7 +765,7 @@ func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
 	// Create a timer, initially stopped and drained, that we can use to
 	// regulate waiting periods. Also, ensure that it's stopped when we return.
 	timer := time.NewTimer(0)
-	stopAndDrainTimer(timer)
+	timeutil.StopAndDrainTimer(timer)
 	defer timer.Stop()
 
 	// Loop until cancellation.
@@ -803,7 +793,7 @@ WatchEstablishment:
 				continue
 			case <-e.recursiveWatchRetryEstablish:
 				logger.Debug("Received recursive watch establishment suggestion")
-				stopAndDrainTimer(timer)
+				timeutil.StopAndDrainTimer(timer)
 				continue
 			}
 		}
@@ -875,7 +865,7 @@ WatchEstablishment:
 				}
 
 				// Stop and drain the timer, which may be running.
-				stopAndDrainTimer(timer)
+				timeutil.StopAndDrainTimer(timer)
 
 				// Strobe the poll signal since something has occurred that's
 				// killed our watch.

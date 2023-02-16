@@ -1,4 +1,4 @@
-//go:build sspl
+//go:build mutagensspl
 
 package mutagen
 
@@ -28,6 +28,18 @@ https://github.com/cespare/xxhash
 Vendored inside http://github.com/klauspost/compress.
 
 Copyright (c) 2016 Caleb Spare
+
+Used under the terms of the MIT License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/MIT.
+
+--------------------------------------------------------------------------------
+
+jwt-go
+
+https://github.com/golang-jwt/jwt
+
+Copyright (c) 2012 Dave Grijalva
+Copyright (c) 2021 golang-jwt maintainers
 
 Used under the terms of the MIT License. A copy of this license can be found
 later in this text or online at https://opensource.org/licenses/MIT.

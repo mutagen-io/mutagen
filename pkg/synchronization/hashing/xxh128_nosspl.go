@@ -1,4 +1,4 @@
-//go:build !sspl
+//go:build !mutagensspl
 
 package hashing
 
@@ -6,8 +6,10 @@ import (
 	"hash"
 )
 
-// xxh128Supported indicates whether or not XXH128 hashing is supported.
-const xxh128Supported = false
+// xxh128SupportStatus returns XXH128 hashing support status.
+func xxh128SupportStatus() AlgorithmSupportStatus {
+	return AlgorithmSupportStatusUnsupported
+}
 
 // newXXH128Factory creates a new hasher factory for XXH128 hashers.
 func newXXH128Factory() func() hash.Hash {

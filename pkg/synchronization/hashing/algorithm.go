@@ -51,18 +51,33 @@ func (a *Algorithm) UnmarshalText(textBytes []byte) error {
 	return nil
 }
 
-// Supported indicates whether or not a particular hashing algorithm is a valid,
-// non-default value.
-func (a Algorithm) Supported() bool {
+// AlgorithmSupportStatus encodes support status for a hashing algorithm.
+type AlgorithmSupportStatus uint8
+
+const (
+	// AlgorithmSupportStatusUnsupported indicates that an algorithm is
+	// completely unsupported.
+	AlgorithmSupportStatusUnsupported AlgorithmSupportStatus = iota
+	// AlgorithmSupportStatusRequiresLicense indicates that an algorithm is
+	// supported but requires a (currently absent) Mutagen Pro license.
+	AlgorithmSupportStatusRequiresLicense
+	// AlgorithmSupportStatusSupported indicates that an algorithm is fully
+	// supported, either due to being supported universally in Mutagen or due to
+	// the presence of a Mutagen Pro license.
+	AlgorithmSupportStatusSupported
+)
+
+// SupportStatus returns the support status for a particular algorithm.
+func (a Algorithm) SupportStatus() AlgorithmSupportStatus {
 	switch a {
 	case Algorithm_AlgorithmSHA1:
-		return true
+		return AlgorithmSupportStatusSupported
 	case Algorithm_AlgorithmSHA256:
-		return true
+		return AlgorithmSupportStatusSupported
 	case Algorithm_AlgorithmXXH128:
-		return xxh128Supported
+		return xxh128SupportStatus()
 	default:
-		return false
+		return AlgorithmSupportStatusUnsupported
 	}
 }
 

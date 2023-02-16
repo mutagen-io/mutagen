@@ -14,9 +14,9 @@ later in this text or online at https://opensource.org/licenses/MIT.
 Mutagen depends on the following third-party software:
 ================================================================================
 
-Go, the Go standard library, the Go crypto, net, sys, term, and text
-subrepositories, modified code from the Go standard library, and modified code
-from the build, sys, and exp subrepositories.
+Go, the Go standard library, the Go net, sys, term, and text subrepositories,
+modified code from the Go standard library, and modified code from the build,
+sys, and exp subrepositories.
 
 https://golang.org/
 https://github.com/golang/
@@ -363,14 +363,8 @@ Forked and modified at https://github.com/mutagen-io/gopass.
 
 Copyright (c) 2012 Chris Howey
 
-Portions of this package are derived from Solaris sources distributed under the
-Common Development and Distribution License, Version 1.0. These portions are
-consequently released under the same license. Copies of the license are
-available in the above repositories.
-
-The remainder of the package is used under the terms of the ISC License. A copy
-of this license can be found later in this text or online at
-https://opensource.org/licenses/ISC.
+Used under the terms of the ISC License. A copy of this license can be found
+later in this text or online at https://opensource.org/licenses/ISC.
 
 --------------------------------------------------------------------------------
 

@@ -1,0 +1,43 @@
+//go:build mutagensspl
+
+// Copyright (c) 2023-present Mutagen IO, Inc.
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the Server Side Public License, version 1, as published by
+// MongoDB, Inc.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE. See the Server Side Public License for more
+// details.
+//
+// You should have received a copy of the Server Side Public License along with
+// this program. If not, see
+// <http://www.mongodb.com/licensing/server-side-public-license>.
+
+syntax = "proto3";
+
+package licensing;
+
+option go_package = "github.com/mutagen-io/mutagen/sspl/pkg/licensing";
+
+// Status encodes the status of a license state.
+enum Status {
+    // Status_Unlicensed indicates that neither an API key nor a license token
+    // is present.
+    Unlicensed = 0;
+    // Status_ValidKey indicates that a valid API key is present but that no
+    // license token is available or currently acquirable.
+    ValidKey = 1;
+    // Status_Licensed indicates that both a valid API key and license token are
+    // present.
+    Licensed = 2;
+}
+
+// State encodes the state for a product's license manager.
+message State {
+    // Status stores that licensing status.
+    Status status = 1;
+    // Warning stores any warning from the product's license manager.
+    string warning = 2;
+}

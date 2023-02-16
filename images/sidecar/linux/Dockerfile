@@ -15,9 +15,9 @@ COPY ["sspl", "/mutagen/sspl/"]
 WORKDIR /mutagen
 
 # Build the sidecar entry point and agent binaries.
-RUN ["go", "build", "./cmd/mutagen-sidecar"]
-RUN ["go", "build", "-tags", "sspl,fanotify", "./cmd/mutagen-agent"]
-RUN ["go", "build", "-o", "mutagen-agent-mit", "./cmd/mutagen-agent"]
+RUN ["go", "build", "-tags", "mutagensidecar", "./cmd/mutagen-sidecar"]
+RUN ["go", "build", "-o", "mutagen-agent-mit", "-tags", "mutagenagent", "./cmd/mutagen-agent"]
+RUN ["go", "build", "-o", "mutagen-agent-sspl", "-tags", "mutagenagent,mutagensspl,mutagenfanotify", "./cmd/mutagen-agent"]
 
 
 # Switch to a vanilla Alpine base for the final image.
@@ -36,19 +36,19 @@ ENV MUTAGEN_SIDECAR=1
 ENTRYPOINT ["mutagen-sidecar"]
 
 
-# Define the standard sidecar image.
-FROM base as standard
+# Define the MIT sidecar image.
+FROM base as mit
 
-# Copy the standard agent from the builder and use its installation mechanism to
-# move it to the correct location.
-COPY --from=builder ["/mutagen/mutagen-agent", "/mutagen-agent"]
+# Copy the MIT agent from the builder and use its installation mechanism to move
+# it to the correct location.
+COPY --from=builder ["/mutagen/mutagen-agent-mit", "/mutagen-agent"]
 RUN ["/mutagen-agent", "install"]
 
 
-# Define the MIT-only sidecar image.
-FROM base as mit
+# Define the SSPL sidecar image.
+FROM base as sspl
 
-# Copy the MIT-only agent from the builder and use its installation mechanism to
+# Copy the SSPL agent from the builder and use its installation mechanism to
 # move it to the correct location.
-COPY --from=builder ["/mutagen/mutagen-agent-mit", "/mutagen-agent"]
+COPY --from=builder ["/mutagen/mutagen-agent-sspl", "/mutagen-agent"]
 RUN ["/mutagen-agent", "install"]

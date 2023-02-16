@@ -56,6 +56,15 @@ func runMain(_ *cobra.Command, _ []string) error {
 	}
 	logger := logging.NewLogger(logLevel, os.Stderr)
 
+	// Initialize the licensing manager and defer its shutdown. This must be
+	// done before creating forwarding and synchronization session managers
+	// because those sessions may depend on a Mutagen Pro license. Both of these
+	// operations are no-ops in non-SSPL builds.
+	if err := initializeLicenseManager(logger.Sublogger("license")); err != nil {
+		return fmt.Errorf("unable to initialize license manager: %w", err)
+	}
+	defer shutdownLicenseManager()
+
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forward"))
 	if err != nil {
@@ -82,6 +91,9 @@ func runMain(_ *cobra.Command, _ []string) error {
 	daemonServer := daemonsvc.NewServer()
 	defer daemonServer.Shutdown()
 	daemonsvc.RegisterDaemonServer(server, daemonServer)
+
+	// Register the licensing service. This is a no-op in non-SSPL builds.
+	registerLicensingService(server)
 
 	// Create and register the prompt server.
 	promptingsvc.RegisterPromptingServer(server, promptingsvc.NewServer())
