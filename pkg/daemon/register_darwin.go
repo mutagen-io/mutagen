@@ -6,6 +6,7 @@ package daemon
 // https://developer.apple.com/library/content/technotes/tn2083/_index.html#//apple_ref/doc/uid/DTS10003794-CH1-SUBSECTION44
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -162,6 +163,28 @@ func Unregister() error {
 	return nil
 }
 
+// launchctlSpuriousErrorFragment is a fragment of text that appears in spurious
+// launchctl load/unload command errors when the daemon run command exits due to
+// an existing daemon or the launchctl-hosted daemon isn't running. Ignoring
+// this fragment is important for user-friendly idempotency when using launchd
+// hosting of the daemon.
+const launchctlSpuriousErrorFragment = "failed: 5: Input/output error"
+
+// runLaunchctlIgnoringSpuriousErrors runs a launchctl command and only prints
+// out error text if it doesn't contain launchctlSpuriousErrorFragment. The
+// standard error stream for the command must not be set.
+func runLaunchctlIgnoringSpuriousErrors(command *exec.Cmd) error {
+	err := command.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if bytes.Contains(exitErr.Stderr, []byte(launchctlSpuriousErrorFragment)) {
+				return nil
+			}
+		}
+	}
+	return err
+}
+
 // registered determines whether or not automatic daemon startup is currently
 // registered.
 func registered() (bool, error) {
@@ -221,8 +244,7 @@ func RegisteredStart() (bool, error) {
 	// Attempt to load the daemon.
 	load := exec.Command("launchctl", "load", targetPath)
 	load.Stdout = os.Stdout
-	load.Stderr = os.Stderr
-	if err := load.Run(); err != nil {
+	if err := runLaunchctlIgnoringSpuriousErrors(load); err != nil {
 		return false, fmt.Errorf("unable to load launchd plist: %w", err)
 	}
 
@@ -258,8 +280,7 @@ func RegisteredStop() (bool, error) {
 	// Attempt to unload the daemon.
 	unload := exec.Command("launchctl", "unload", targetPath)
 	unload.Stdout = os.Stdout
-	unload.Stderr = os.Stderr
-	if err := unload.Run(); err != nil {
+	if err := runLaunchctlIgnoringSpuriousErrors(unload); err != nil {
 		return false, fmt.Errorf("unable to unload launchd plist: %w", err)
 	}
 
