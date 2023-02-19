@@ -140,7 +140,7 @@ func TestSynchronizationBothRootsNil(t *testing.T) {
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
+		t.Error("session lifecycle test failed:", err)
 	}
 }
 
@@ -175,7 +175,7 @@ func TestSynchronizationGOROOTSrcToBeta(t *testing.T) {
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
+		t.Error("session lifecycle test failed:", err)
 	}
 }
 
@@ -210,7 +210,7 @@ func TestSynchronizationGOROOTSrcToAlpha(t *testing.T) {
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
+		t.Error("session lifecycle test failed:", err)
 	}
 }
 
@@ -269,7 +269,7 @@ func TestSynchronizationGOROOTSrcToBetaInMemory(t *testing.T) {
 
 		// Test the session lifecycle.
 		if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
-			t.Fatal("session lifecycle test failed:", err)
+			t.Error("session lifecycle test failed:", err)
 		}
 	}
 }
@@ -314,7 +314,7 @@ func TestSynchronizationGOROOTSrcToBetaOverSSH(t *testing.T) {
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(context.Background(), "", alphaURL, betaURL, configuration, false, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
+		t.Error("session lifecycle test failed:", err)
 	}
 }
 
@@ -411,7 +411,7 @@ func TestSynchronizationGOROOTSrcToBetaOverDocker(t *testing.T) {
 
 	// Test the session lifecycle.
 	if err := testSessionLifecycle(context.Background(), prompter, alphaURL, betaURL, configuration, false, false, false); err != nil {
-		t.Fatal("session lifecycle test failed:", err)
+		t.Error("session lifecycle test failed:", err)
 	}
 }
 
