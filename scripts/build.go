@@ -658,7 +658,7 @@ func build() error {
 	// Build CLI binaries.
 	log.Println("Building CLI binaries...")
 	for _, target := range cliTargets {
-		log.Println("Build CLI for", target)
+		log.Println("Building CLI for", target)
 		cliBuildPath := filepath.Join(cliBuildSubdirectoryPath, target.Name())
 		if err := target.Build(cliPackage, cliBuildPath, enableSSPLEnhancements, disableDebug); err != nil {
 			return fmt.Errorf("unable to build CLI: %w", err)

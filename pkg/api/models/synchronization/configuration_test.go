@@ -13,6 +13,7 @@ import (
 const (
 	testYAMLConfiguration = `
 mode: "two-way-resolved"
+hash: sha256
 maxEntryCount: 500
 maxStagingFileSize: "1000 GB"
 probeMode: "assume"
@@ -38,6 +39,9 @@ permissions:
   defaultDirectoryMode: 0755
   defaultOwner: "george"
   defaultGroup: "presidents"
+
+compression:
+  algorithm: deflate
 `
 )
 
