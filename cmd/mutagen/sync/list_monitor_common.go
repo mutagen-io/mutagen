@@ -14,7 +14,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
-	"github.com/mutagen-io/mutagen/pkg/url"
+	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 )
 
 const (
@@ -82,7 +82,7 @@ func formatEntry(entry *core.Entry) string {
 }
 
 // printEndpoint prints the configuration for a synchronization endpoint.
-func printEndpoint(name string, url *url.URL, configuration *synchronization.Configuration, state *synchronization.EndpointState, version synchronization.Version, mode common.SessionDisplayMode) {
+func printEndpoint(name string, url *urlpkg.URL, configuration *synchronization.Configuration, state *synchronization.EndpointState, version synchronization.Version, mode common.SessionDisplayMode) {
 	// Print the endpoint header.
 	fmt.Printf("%s:\n", name)
 
@@ -166,12 +166,15 @@ func printEndpoint(name string, url *url.URL, configuration *synchronization.Con
 		}
 		fmt.Println("\t\tDefault file/directory group:", defaultGroupDescription)
 
-		// Compute and print the compression algorithm.
-		compressionAlgorithm := configuration.CompressionAlgorithm.Description()
-		if configuration.CompressionAlgorithm.IsDefault() {
-			compressionAlgorithm += fmt.Sprintf(" (%s)", version.DefaultCompressionAlgorithm().Description())
+		// If the endpoint is remote, then compute and print the compression
+		// algorithm.
+		if url.Protocol != urlpkg.Protocol_Local {
+			compressionAlgorithm := configuration.CompressionAlgorithm.Description()
+			if configuration.CompressionAlgorithm.IsDefault() {
+				compressionAlgorithm += fmt.Sprintf(" (%s)", version.DefaultCompressionAlgorithm().Description())
+			}
+			fmt.Println("\t\tCompression:", compressionAlgorithm)
 		}
-		fmt.Println("\t\tCompression:", compressionAlgorithm)
 	}
 
 	// At this point, there's no other status information that will be displayed

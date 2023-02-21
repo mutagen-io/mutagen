@@ -10,10 +10,10 @@ of the Server Side Public License, the text of which can be found in
 sspl/LICENSE.
 
 From Mutagen v0.17 onward, SSPL-licensed code is included by default in official
-Mutagen builds, including the Mutagen sidecar image. Users wishing to create a
-Mutagen build with only MIT-licensed code can do so by running the build script
-and omitting the --sspl flag. The sidecar Dockerfile also includes a target that
-will build an image that includes only MIT-licensed Mutagen code.
+Mutagen release builds. Users wishing to create a Mutagen build with only
+MIT-licensed and non-copyleft-licensed code can do so by running the build
+script and omitting the --sspl flag. The sidecar Dockerfile also still defines
+both non-SSPL and SSPL targets, both of which are still currently shipped.
 
 --------------------------------------------------------------------------------
 
