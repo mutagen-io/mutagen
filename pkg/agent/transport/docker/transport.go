@@ -26,6 +26,15 @@ Hyper-V doesn't support copying files into running containers.
 
 Would you like to continue? (yes/no)? `
 
+const (
+	// containerNonExistentFragment is a fragment of text that will appear in
+	// the error output of docker exec commands if the container does not exist.
+	containerNonExistentFragment = "No such container"
+	// containerNotRunningFragment is a fragment of text that will appear in the
+	// error output of docker exec commands if the container is not running.
+	containerNotRunningFragment = "is not running"
+)
+
 // dockerTransport implements the agent.Transport interface using Docker.
 type dockerTransport struct {
 	// container is the target container name.
@@ -171,13 +180,26 @@ func (t *dockerTransport) probeContainer() error {
 	var posixErr, windowsErr error
 
 	// Attempt to run env in the container to probe the user's environment on
-	// POSIX systems and identify the HOME environment variable value. If we
-	// detect a non-UTF-8 output or detect an empty home directory, we treat
-	// that as an error.
+	// POSIX systems and identify the HOME environment variable value. We'll try
+	// to identify two common errors here: the container not existing and the
+	// container being stopped. Also, if we detect a non-UTF-8 output or detect
+	// an empty home directory, then we treat that as an error.
 	if command, err := t.command("env", "", ""); err != nil {
 		return fmt.Errorf("unable to set up Docker invocation: %w", err)
 	} else if envBytes, err := command.Output(); err != nil {
-		posixErr = err
+		if message := process.ExtractExitErrorMessage(err); message != "" {
+			if strings.Contains(message, containerNonExistentFragment) {
+				t.containerProbeError = errors.New("container does not exist")
+				return t.containerProbeError
+			} else if strings.Contains(message, containerNotRunningFragment) {
+				t.containerProbeError = errors.New("container not running")
+				return t.containerProbeError
+			} else {
+				posixErr = errors.New(message)
+			}
+		} else {
+			posixErr = err
+		}
 	} else if !utf8.Valid(envBytes) {
 		t.containerProbeError = errors.New("non-UTF-8 POSIX environment")
 		return t.containerProbeError
@@ -195,12 +217,18 @@ func (t *dockerTransport) probeContainer() error {
 	}
 
 	// If we didn't find a POSIX home directory, attempt to a similar procedure
-	// on Windows to identify the USERPROFILE environment variable.
+	// on Windows to identify the USERPROFILE environment variable. We don't
+	// need to recheck for non-existence and not running errors here, but we
+	// will still attempt to extract a useful error message if possible.
 	if home == "" {
 		if command, err := t.command("cmd /c set", "", ""); err != nil {
 			return fmt.Errorf("unable to set up Docker invocation: %w", err)
 		} else if envBytes, err := command.Output(); err != nil {
-			windowsErr = err
+			if message := process.ExtractExitErrorMessage(err); message != "" {
+				windowsErr = errors.New(message)
+			} else {
+				windowsErr = err
+			}
 		} else if !utf8.Valid(envBytes) {
 			t.containerProbeError = errors.New("non-UTF-8 Windows environment")
 			return t.containerProbeError
