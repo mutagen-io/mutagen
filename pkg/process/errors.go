@@ -1,7 +1,9 @@
 package process
 
 import (
+	"os/exec"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
@@ -34,4 +36,16 @@ func OutputIsWindowsInvalidCommand(output string) bool {
 // represents a command not found error on Windows.
 func OutputIsWindowsCommandNotFound(output string) bool {
 	return strings.Contains(output, windowsCommandNotFoundFragment)
+}
+
+// ExtractExitErrorMessage is a utility function that will attempt to extract
+// the Stderr portion of the specified error, assuming it is an
+// os/exec.ExitError. If the error is not an os/exec.ExitError, or if the Stderr
+// field is not UTF-8 encoded, or if the message in Stderr is empty after
+// stripping surrounding white space, then an empty string is returned.
+func ExtractExitErrorMessage(err error) string {
+	if exitErr, ok := err.(*exec.ExitError); ok && utf8.Valid(exitErr.Stderr) {
+		return strings.TrimSpace(string(exitErr.Stderr))
+	}
+	return ""
 }

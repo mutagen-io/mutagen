@@ -1,7 +1,9 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 
@@ -115,7 +117,9 @@ func runMain(_ *cobra.Command, _ []string) error {
 	// Create the daemon listener and defer its closure. Since we hold the
 	// daemon lock, we preemptively remove any existing socket since it should
 	// be stale.
-	os.Remove(endpoint)
+	if err := os.Remove(endpoint); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("unable to remove existing daemon endpoint: %w", err)
+	}
 	listener, err := ipc.NewListener(endpoint)
 	if err != nil {
 		return fmt.Errorf("unable to create daemon listener: %w", err)
