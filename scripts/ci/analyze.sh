@@ -10,6 +10,7 @@ FAILURE=0
 if [[ "$(go env GOOS)" != "windows" ]]; then
     gofmt -s -l -d . | tee gofmt.log
     if [[ -s gofmt.log ]]; then
+        echo "Code is not go fmt'd" 1>&2
         FAILURE=1
     fi
     rm gofmt.log

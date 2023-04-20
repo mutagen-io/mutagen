@@ -26,6 +26,6 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     # Remove the archives.
     find "${RUNNER_TEMP}" -name 'notarize_*.zip' -exec rm -rf {} \;
 else
-    echo "This script is not supported on this platform"
+    echo "This script is not supported on this platform" 1>&2
     exit 1
 fi
