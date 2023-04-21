@@ -22,7 +22,7 @@ while read commit; do
     if [[ "${MAXIMUM_LINE_LENGTH}" -le "72" ]]; then
         echo "Commit message line length acceptable"
     else
-        echo "Commit message line length too long!"
+        echo "Commit message line length too long!" 1>&2
         exit 1
     fi
 
@@ -31,7 +31,7 @@ while read commit; do
     if git show --format="format:%B" --no-patch "${commit}" | grep -q "${EXPECTED_SIGNOFF}"; then
         echo "Found valid sign-off"
     else
-        echo "Missing sign-off!"
+        echo "Missing sign-off!" 1>&2
         exit 1
     fi
 
@@ -54,7 +54,7 @@ while read commit; do
     if [[ ! -z "$(git cat-file commit "${commit}" | sed "/^$/q" | grep "gpgsig ")" ]]; then
         echo "Found cryptographic signature"
     else
-        echo "Missing or invalid cryptographic signature!"
+        echo "Missing or invalid cryptographic signature!" 1>&2
         exit 1
     fi
 
@@ -67,7 +67,7 @@ done < <(git rev-list "${VERIFY_COMMIT_START}..${VERIFY_COMMIT_END}")
 
 # Enforce that at least one commit was verified.
 if [[ "${PERFORMED_VERIFICATION}" == "false" ]]; then
-    echo "No verification performed!"
+    echo "No verification performed!" 1>&2
     exit 1
 fi
 
