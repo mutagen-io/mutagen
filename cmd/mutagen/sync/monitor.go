@@ -21,6 +21,7 @@ import (
 
 	synchronizationmodels "github.com/mutagen-io/mutagen/pkg/api/models/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	selectionpkg "github.com/mutagen-io/mutagen/pkg/selection"
 	synchronizationsvc "github.com/mutagen-io/mutagen/pkg/service/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -97,7 +98,7 @@ func computeMonitorStatusLine(state *synchronization.State) string {
 				stagingProgress.ReceivedFiles, stagingProgress.ExpectedFiles,
 				humanize.Bytes(stagingProgress.TotalReceivedSize), totalSizeDenominator,
 				100.0*fractionComplete,
-				path.Base(stagingProgress.Path),
+				terminal.NeutralizeControlCharacters(path.Base(stagingProgress.Path)),
 				humanize.Bytes(stagingProgress.ReceivedSize), humanize.Bytes(stagingProgress.ExpectedSize),
 			)
 		}
@@ -140,7 +141,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
+	synchronizationService := synchronizationsvc.NewSynchronizationClient(daemonConnection)
 
 	// Create the list request that we'll use.
 	request := &synchronizationsvc.ListRequest{
@@ -176,7 +177,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		lastUpdateTime = now
 
 		// Perform a list operation.
-		response, err := sessionService.List(context.Background(), request)
+		response, err := synchronizationService.List(context.Background(), request)
 		if err != nil {
 			return fmt.Errorf("list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
 		} else if err = response.EnsureValid(); err != nil {
