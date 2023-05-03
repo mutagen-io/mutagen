@@ -90,7 +90,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 	defer daemonConnection.Close()
 
 	// Create a session service client.
-	sessionService := forwardingsvc.NewForwardingClient(daemonConnection)
+	forwardingService := forwardingsvc.NewForwardingClient(daemonConnection)
 
 	// Create the list request that we'll use.
 	request := &forwardingsvc.ListRequest{
@@ -126,7 +126,7 @@ func monitorMain(_ *cobra.Command, arguments []string) error {
 		lastUpdateTime = now
 
 		// Perform a list operation.
-		response, err := sessionService.List(context.Background(), request)
+		response, err := forwardingService.List(context.Background(), request)
 		if err != nil {
 			return fmt.Errorf("list failed: %w", grpcutil.PeelAwayRPCErrorLayer(err))
 		} else if err = response.EnsureValid(); err != nil {

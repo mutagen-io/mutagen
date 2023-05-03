@@ -10,6 +10,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
@@ -87,7 +88,7 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronization.
 	fmt.Printf("%s:\n", name)
 
 	// Print the URL.
-	fmt.Println("\tURL:", url.Format("\n\t\t"))
+	fmt.Println("\tURL:", terminal.NeutralizeControlCharacters(url.Format("\n\t\t")))
 
 	// Print configuration information if desired.
 	if mode == common.SessionDisplayModeListLong || mode == common.SessionDisplayModeMonitorLong {
@@ -157,14 +158,14 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronization.
 		if configuration.DefaultOwner != "" {
 			defaultOwnerDescription = configuration.DefaultOwner
 		}
-		fmt.Println("\t\tDefault file/directory owner:", defaultOwnerDescription)
+		fmt.Println("\t\tDefault file/directory owner:", terminal.NeutralizeControlCharacters(defaultOwnerDescription))
 
 		// Compute and print the default file/directory group.
 		defaultGroupDescription := "Default"
 		if configuration.DefaultGroup != "" {
 			defaultGroupDescription = configuration.DefaultGroup
 		}
-		fmt.Println("\t\tDefault file/directory group:", defaultGroupDescription)
+		fmt.Println("\t\tDefault file/directory group:", terminal.NeutralizeControlCharacters(defaultGroupDescription))
 
 		// If the endpoint is remote, then compute and print the compression
 		// algorithm.
@@ -205,7 +206,10 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronization.
 		} else if mode == common.SessionDisplayModeListLong {
 			color.Red("\tScan problems:\n")
 			for _, p := range state.ScanProblems {
-				color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
+				color.Red("\t\t%s: %v\n",
+					terminal.NeutralizeControlCharacters(formatPath(p.Path)),
+					terminal.NeutralizeControlCharacters(p.Error),
+				)
 			}
 			if state.ExcludedScanProblems > 0 {
 				color.Red("\t\t...+%d more...\n", state.ExcludedScanProblems)
@@ -222,7 +226,10 @@ func printEndpoint(name string, url *urlpkg.URL, configuration *synchronization.
 		} else if mode == common.SessionDisplayModeListLong {
 			color.Red("\tTransition problems:\n")
 			for _, p := range state.TransitionProblems {
-				color.Red("\t\t%s: %v\n", formatPath(p.Path), p.Error)
+				color.Red("\t\t%s: %v\n",
+					terminal.NeutralizeControlCharacters(formatPath(p.Path)),
+					terminal.NeutralizeControlCharacters(p.Error),
+				)
 			}
 			if state.ExcludedTransitionProblems > 0 {
 				color.Red("\t\t...+%d more...\n", state.ExcludedTransitionProblems)
@@ -247,9 +254,9 @@ func printConflicts(conflicts []*core.Conflict, excludedConflicts uint64) {
 		for _, a := range c.AlphaChanges {
 			color.Red(
 				"\t(alpha) %s (%s -> %s)\n",
-				formatPath(a.Path),
-				formatEntry(a.Old),
-				formatEntry(a.New),
+				terminal.NeutralizeControlCharacters(formatPath(a.Path)),
+				terminal.NeutralizeControlCharacters(formatEntry(a.Old)),
+				terminal.NeutralizeControlCharacters(formatEntry(a.New)),
 			)
 		}
 
@@ -257,9 +264,9 @@ func printConflicts(conflicts []*core.Conflict, excludedConflicts uint64) {
 		for _, b := range c.BetaChanges {
 			color.Red(
 				"\t(beta)  %s (%s -> %s)\n",
-				formatPath(b.Path),
-				formatEntry(b.Old),
-				formatEntry(b.New),
+				terminal.NeutralizeControlCharacters(formatPath(b.Path)),
+				terminal.NeutralizeControlCharacters(formatEntry(b.Old)),
+				terminal.NeutralizeControlCharacters(formatEntry(b.New)),
 			)
 		}
 
@@ -374,7 +381,7 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		if len(configuration.DefaultIgnores) > 0 {
 			fmt.Println("\tDefault ignores:")
 			for _, p := range configuration.DefaultIgnores {
-				fmt.Printf("\t\t%s\n", p)
+				fmt.Printf("\t\t%s\n", terminal.NeutralizeControlCharacters(p))
 			}
 		}
 
@@ -382,7 +389,7 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		if len(configuration.Ignores) > 0 {
 			fmt.Println("\tIgnores:")
 			for _, p := range configuration.Ignores {
-				fmt.Printf("\t\t%s\n", p)
+				fmt.Printf("\t\t%s\n", terminal.NeutralizeControlCharacters(p))
 			}
 		} else {
 			fmt.Println("\tIgnores: None")
@@ -439,7 +446,7 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 
 	// Print the last error, if any.
 	if state.LastError != "" {
-		color.Red("Last error: %s\n", state.LastError)
+		color.Red("Last error: %s\n", terminal.NeutralizeControlCharacters(state.LastError))
 	}
 
 	// Print the session status .
@@ -477,7 +484,7 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 			stagingProgress.ReceivedFiles, stagingProgress.ExpectedFiles,
 			humanize.Bytes(stagingProgress.TotalReceivedSize), totalSizeDenominator,
 			100.0*fractionComplete,
-			stagingProgress.Path,
+			terminal.NeutralizeControlCharacters(stagingProgress.Path),
 			humanize.Bytes(stagingProgress.ReceivedSize), humanize.Bytes(stagingProgress.ExpectedSize),
 		)
 	}
