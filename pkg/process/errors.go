@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 )
 
 const (
@@ -42,10 +44,11 @@ func OutputIsWindowsCommandNotFound(output string) bool {
 // the Stderr portion of the specified error, assuming it is an
 // os/exec.ExitError. If the error is not an os/exec.ExitError, or if the Stderr
 // field is not UTF-8 encoded, or if the message in Stderr is empty after
-// stripping surrounding white space, then an empty string is returned.
+// stripping surrounding white space, then an empty string is returned. This
+// function will perform control character neutralization on any returned value.
 func ExtractExitErrorMessage(err error) string {
 	if exitErr, ok := err.(*exec.ExitError); ok && utf8.Valid(exitErr.Stderr) {
-		return strings.TrimSpace(string(exitErr.Stderr))
+		return terminal.NeutralizeControlCharacters(strings.TrimSpace(string(exitErr.Stderr)))
 	}
 	return ""
 }
