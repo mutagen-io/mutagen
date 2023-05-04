@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"text/template"
+
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 )
 
 // jsonify is the built-in JSON encoder that's made available to templates.
@@ -33,6 +35,7 @@ func jsonify(value any) (string, error) {
 
 // builtins are the builtin functions supported in output templates.
 var builtins = template.FuncMap{
-	"json": jsonify,
+	"json":          jsonify,
+	"shellSanitize": terminal.NeutralizeControlCharacters,
 	// TODO: Figure out what other functions we want to include here, if any.
 }

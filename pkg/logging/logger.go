@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
@@ -24,7 +25,8 @@ type Logger struct {
 
 // NewLogger creates a new logger at the specified log level targeting the
 // specified writer. The writer must be non-nil. The logger and any derived
-// subloggers will coordinate access to the writer.
+// subloggers will coordinate access to the writer. Any terminal control
+// characters will be neutralized before being written to the log.
 func NewLogger(level Level, writer io.Writer) *Logger {
 	return &Logger{
 		level:  level,
@@ -108,6 +110,9 @@ func (l *Logger) write(timestamp time.Time, level Level, message string) {
 			timestamp.Format(timestampFormat), level.abbreviation(), message,
 		)
 	}
+
+	// Neutralize any control characters in the line.
+	line = terminal.NeutralizeControlCharacters(line)
 
 	// Write the line. We can't do much with the error here, so we don't try.
 	// Practically speaking, most io.Writer implementations perform retries if a
@@ -247,6 +252,9 @@ func (l *Logger) Writer(level Level) io.Writer {
 			} else {
 				line = line + "\n"
 			}
+
+			// Neutralize any control characters in the line.
+			line = terminal.NeutralizeControlCharacters(line)
 
 			// Write the line to the underlying writer.
 			l.writer.Write([]byte(line))

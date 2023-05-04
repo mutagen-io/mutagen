@@ -131,7 +131,10 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 	scpCommand.Env = environment
 
 	// Run the operation.
-	if err = scpCommand.Run(); err != nil {
+	if _, err = scpCommand.Output(); err != nil {
+		if message := process.ExtractExitErrorMessage(err); message != "" {
+			return fmt.Errorf("unable to run SCP process: %s", message)
+		}
 		return fmt.Errorf("unable to run SCP process: %w", err)
 	}
 
@@ -194,6 +197,15 @@ func (t *sshTransport) ClassifyError(processState *os.ProcessState, errorOutput 
 	// error codes back even from Windows remotes, but that indicates a POSIX
 	// shell on the remote and thus we should continue connecting under that
 	// hypothesis (instead of the cmd.exe hypothesis).
+	//
+	// NOTE: If advanced SSH options (such as ProxyCommand) are used, then it's
+	// possible that we might misclassify command-not-found errors returned by
+	// SSH itself as command-not-found errors returned by the remote. In this
+	// case, such errors would never be shown to the user, because we would
+	// immediately move to install an agent binary. To mitigate this problem, we
+	// capture and return scp error output above as part of any Copy error,
+	// which will help to inform the user of any SSH transport issues arising
+	// from the SSH configuration.
 	if process.IsPOSIXShellInvalidCommand(processState) {
 		return true, false, nil
 	} else if process.IsPOSIXShellCommandNotFound(processState) {
