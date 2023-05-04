@@ -13,6 +13,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 	streampkg "github.com/mutagen-io/mutagen/pkg/stream"
 )
@@ -129,13 +130,14 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		// which is all we care about.
 		stream.Close()
 
-		// Extract any error output, ensure that it's UTF-8, and strip out any
-		// whitespace (primarily trailing newlines).
+		// Extract any error output, ensure that it's UTF-8, strip out any
+		// whitespace (primarily trailing newlines), and neutralize any control
+		// characters.
 		errorOutput := errorBuffer.String()
 		if !utf8.ValidString(errorOutput) {
 			return nil, false, false, errors.New("remote did not return UTF-8 output")
 		}
-		errorOutput = strings.TrimSpace(errorOutput)
+		errorOutput = terminal.NeutralizeControlCharacters(strings.TrimSpace(errorOutput))
 
 		// Wrap up the handshake error with additional context.
 		if errorOutput != "" {

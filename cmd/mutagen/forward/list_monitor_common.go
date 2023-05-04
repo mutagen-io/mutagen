@@ -10,6 +10,7 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/mutagen/common"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	"github.com/mutagen-io/mutagen/pkg/selection"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -27,7 +28,7 @@ func printEndpoint(name string, url *url.URL, configuration *forwarding.Configur
 	fmt.Printf("%s:\n", name)
 
 	// Print the URL.
-	fmt.Println("\tURL:", url.Format("\n\t\t"))
+	fmt.Println("\tURL:", terminal.NeutralizeControlCharacters(url.Format("\n\t\t")))
 
 	// Print configuration information if desired.
 	if mode == common.SessionDisplayModeListLong || mode == common.SessionDisplayModeMonitorLong {
@@ -142,7 +143,7 @@ func printSession(state *forwarding.State, mode common.SessionDisplayMode) {
 
 	// Print the last error, if any.
 	if state.LastError != "" {
-		color.Red("Last error: %s\n", state.LastError)
+		color.Red("Last error: %s\n", terminal.NeutralizeControlCharacters(state.LastError))
 	}
 
 	// Print the session status .
