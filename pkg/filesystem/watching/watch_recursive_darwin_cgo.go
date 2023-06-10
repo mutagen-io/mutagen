@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mutagen-io/fsevents"
+	"github.com/fsnotify/fsevents"
 )
 
 const (

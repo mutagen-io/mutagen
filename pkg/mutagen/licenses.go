@@ -331,8 +331,6 @@ fsevents
 
 https://github.com/fsnotify/fsevents
 
-Forked and modified at https://github.com/mutagen-io/fsevents.
-
 Copyright (c) 2014 The fsevents Authors. All rights reserved.
 
 Used under the terms of the 3-Clause BSD License (Google version). A copy of
