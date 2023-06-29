@@ -116,8 +116,8 @@ github.com/mutagen-io/apimachinery v0.21.3-mutagen1 h1:7bnH35Ayna8ERRINDJ+J+bRd/
 github.com/mutagen-io/apimachinery v0.21.3-mutagen1/go.mod h1:H/IM+5vH9kZRNJ4l3x/fXP/5bOPJaVP/guptnZPeCFI=
 github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8 h1:NEBqH/oVnWBunxdrdy1vlyGior8smhC6jZjxlWSG2BU=
 github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8/go.mod h1:ZHGnLARFvfv0lUb6FsAS+LJHt9CFemt7K+mWfkw8nVA=
-github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434 h1:PYeqqury0vVzjjUVO6dwtfA2HXOaPYgDclSgKX8u0gs=
-github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434/go.mod h1:kmTyqetTEgYl9KF5JlHLKL6LXnhs2/oK5100pcMZRn8=
+github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc h1:yOGQ0Hc3NfOWYm9aaluKJEOZWEbpCPEm/TbPU87YumM=
+github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc/go.mod h1:kmTyqetTEgYl9KF5JlHLKL6LXnhs2/oK5100pcMZRn8=
 github.com/mutagen-io/gopass v0.0.0-20230214181532-d4b7cdfe054c h1:c0xgZ8mF6PwiDc6aW2MEcdaCXxkt5K30kzylWqkT4oc=
 github.com/mutagen-io/gopass v0.0.0-20230214181532-d4b7cdfe054c/go.mod h1:Q87jWQAqEC/UdnYLd+A0mfR9oZl5gk6g/xvxzTpwLv8=
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
