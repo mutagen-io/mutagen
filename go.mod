@@ -15,7 +15,7 @@ require (
 	github.com/klauspost/compress v1.15.14
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
-	github.com/mutagen-io/fsevents v0.0.0-20180903111129-10556809b434
+	github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc
 	github.com/mutagen-io/gopass v0.0.0-20230214181532-d4b7cdfe054c
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
