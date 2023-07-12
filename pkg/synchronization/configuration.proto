@@ -9,6 +9,7 @@ import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
 import "synchronization/compression/algorithm.proto";
+import "synchronization/core/ignore_syntax.proto";
 import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/permissions_mode.proto";
@@ -83,6 +84,11 @@ message Configuration {
 
     // Ignore configuration parameters (fields 31-60).
 
+    // IgnoreSyntax specifies the syntax and semantics to use for ignores.
+    // NOTE: This field is out of order due to the historical order in which it
+    // was added.
+    core.IgnoreSyntax ignoreSyntax = 34;
+
     // DefaultIgnores specifies the ignore patterns brought in from the global
     // configuration.
     // DEPRECATED: This field is no longer used when loading from global
@@ -98,7 +104,7 @@ message Configuration {
     // synchronization.
     core.IgnoreVCSMode ignoreVCSMode = 33;
 
-    // Fields 34-60 are reserved for future ignore configuration parameters.
+    // Fields 35-60 are reserved for future ignore configuration parameters.
 
 
     // Permissions configuration parameters (fields 61-80).

@@ -129,6 +129,17 @@ func (v Version) DefaultWatchPollingInterval() uint32 {
 	}
 }
 
+// DefaultIgnoreSyntax returns the default ignore syntax for the session
+// version.
+func (v Version) DefaultIgnoreSyntax() core.IgnoreSyntax {
+	switch v {
+	case Version_Version1:
+		return core.IgnoreSyntax_IgnoreSyntaxGit
+	default:
+		panic("unknown or unsupported session version")
+	}
+}
+
 // DefaultIgnoreVCSMode returns the default VCS ignore mode for the session
 // version.
 func (v Version) DefaultIgnoreVCSMode() core.IgnoreVCSMode {

@@ -87,6 +87,18 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
+	// Verify that the ignore syntax is unset for endpoint-specific
+	// configurations and that any specified ignore syntax is valid.
+	if endpointSpecific {
+		if !c.IgnoreSyntax.IsDefault() {
+			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
+			return errors.New("unknown or unsupported ignore syntax")
+		}
+	}
+
 	// Verify that default ignores are unset for endpoint-specific
 	// configurations and that any specified ignores are valid. This field is
 	// deprecated, but existing sessions may have it set, in which case we'll
@@ -215,6 +227,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.SymbolicLinkMode == other.SymbolicLinkMode &&
 		c.WatchMode == other.WatchMode &&
 		c.WatchPollingInterval == other.WatchPollingInterval &&
+		c.IgnoreSyntax == other.IgnoreSyntax &&
 		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
 		comparison.StringSlicesEqual(c.Ignores, other.Ignores) &&
 		c.IgnoreVCSMode == other.IgnoreVCSMode &&
@@ -300,6 +313,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.WatchPollingInterval = higher.WatchPollingInterval
 	} else {
 		result.WatchPollingInterval = lower.WatchPollingInterval
+	}
+
+	// Merge the ignore syntax.
+	if !higher.IgnoreSyntax.IsDefault() {
+		result.IgnoreSyntax = higher.IgnoreSyntax
+	} else {
+		result.IgnoreSyntax = lower.IgnoreSyntax
 	}
 
 	// Merge default ignores. In theory, at most one of these should be
