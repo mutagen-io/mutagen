@@ -594,7 +594,7 @@ var createConfiguration struct {
 	// noIgnoreVCS specifies whether or not to disable VCS ignores for the
 	// session.
 	noIgnoreVCS bool
-	// permissionsMode specifies the permissions mdoe to use for the session.
+	// permissionsMode specifies the permissions mode to use for the session.
 	permissionsMode string
 	// defaultFileMode specifies the default permission mode to use for new
 	// files in "portable" permission propagation mode, with endpoint-specific
