@@ -25,7 +25,7 @@ jobs:
           scripts/ci/verify_commits.sh
   macos:
     name: macOS
-    runs-on: macos-11
+    runs-on: macos-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v2
