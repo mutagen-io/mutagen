@@ -63,7 +63,7 @@ while read commit; do
 
     # Output a separator line.
     echo
-done < <(git rev-list "${VERIFY_COMMIT_START}..${VERIFY_COMMIT_END}")
+done < <(git rev-list --no-merges "${VERIFY_COMMIT_START}..${VERIFY_COMMIT_END}")
 
 # Enforce that at least one commit was verified.
 if [[ "${PERFORMED_VERIFICATION}" == "false" ]]; then

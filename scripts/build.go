@@ -550,11 +550,10 @@ func build() error {
 	}
 
 	// The only platform really suited to cross-compiling for every other
-	// platform at the moment is macOS. This is because its DNS resolution
-	// really has to be done through the system's DNS resolver in order to
-	// function properly and because FSEvents is used for file monitoring and
-	// that is a C-based API, not accessible purely via system calls. All of the
-	// other platforms can survive with pure Go compilation.
+	// platform at the moment is macOS. This is because FSEvents is used for
+	// file monitoring and that is a C-based API, not accessible purely via
+	// system calls. All of the other platforms can operate with pure Go
+	// compilation.
 	if runtime.GOOS != "darwin" {
 		if mode == "release" {
 			return errors.New("macOS is required for release builds")
