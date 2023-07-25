@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 )
 
 // testingDecomposeEntryIntoCreationChanges generates a list of creation changes
@@ -18,7 +19,7 @@ func testingDecomposeEntryIntoCreationChanges(entry *Entry) (changes []*Change) 
 		if e == nil {
 			return
 		}
-		changes = append(changes, &Change{Path: p, New: e.Copy(false)})
+		changes = append(changes, &Change{Path: p, New: e.Copy(EntryCopyBehaviorSlim)})
 	}, false)
 	return
 }
@@ -30,7 +31,7 @@ func testingDecomposeEntryIntoRemovalChanges(entry *Entry) (changes []*Change) {
 		if e == nil {
 			return
 		}
-		changes = append(changes, &Change{Path: p, Old: e.Copy(false)})
+		changes = append(changes, &Change{Path: p, Old: e.Copy(EntryCopyBehaviorSlim)})
 	}, true)
 	return
 }
@@ -722,13 +723,21 @@ func TestTransition(t *testing.T) {
 				}
 			}
 
+			// Create an ignorer that doesn't ignore anything.
+			ignorer, err := mutagenignore.NewIgnorer(nil)
+			if err != nil {
+				t.Fatalf("%s: unable to create ignorer for %s filesystem: %v",
+					test.description, filesystem.name, err,
+				)
+			}
+
 			// Perform a scan to extract filesystem behavior and a cache.
 			snapshot, cache, _, err := Scan(
 				backgroundCtx,
 				root,
 				nil, nil,
 				hasher, nil,
-				nil, nil,
+				ignorer, nil,
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				PermissionsMode_PermissionsModePortable,

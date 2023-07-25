@@ -1,5 +1,9 @@
 package core
 
+import (
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
+)
+
 // extractNonDeletionChanges analyzes a list of changes and generates a new list
 // containing only those changes corresponding to non-deletion operations (i.e.
 // creations or modifications). The original list is not modified.
@@ -103,7 +107,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		if !ancestor.Equal(alpha, false) {
 			r.ancestorChanges = append(r.ancestorChanges, &Change{
 				Path: path,
-				New:  alpha.Copy(false),
+				New:  alpha.Copy(EntryCopyBehaviorSlim),
 			})
 			ancestorContents = nil
 		}
@@ -111,7 +115,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
 		if len(ancestorContents) > 0 || len(alphaContents) > 0 || len(betaContents) > 0 {
-			contentPathPrefix = pathJoinable(path)
+			contentPathPrefix = fastpath.Joinable(path)
 		}
 
 		// Recursively handle contents.

@@ -16,6 +16,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/stream"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
 
 const (
@@ -387,7 +388,7 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
 	if len(contents) > 0 {
-		contentPathPrefix = pathJoinable(path)
+		contentPathPrefix = fastpath.Joinable(path)
 	}
 
 	// Loop through contents and remove them. We use the on-disk content listing
@@ -523,7 +524,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 	// Handle removal based on type.
 	if entry.Kind == EntryKind_Directory {
 		// Create a copy of entry for mutation.
-		entryCopy := entry.Copy(true)
+		entryCopy := entry.Copy(EntryCopyBehaviorDeepPreservingLeaves)
 
 		// Attempt to reduce it.
 		if !t.removeDirectory(parent, name, path, entryCopy) {
@@ -802,9 +803,9 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 		return nil
 	}
 
-	// Create a shallow copy of the target that we'll populate as we create its
+	// Create a slim copy of the target that we'll populate as we create its
 	// contents.
-	created := target.Copy(false)
+	created := target.Copy(EntryCopyBehaviorSlim)
 
 	// RACE: There is a race condition here between the directory creation and
 	// the permission setting and the creation of the directory's contents that
@@ -843,7 +844,7 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
 	if len(target.Contents) > 0 {
-		contentPathPrefix = pathJoinable(path)
+		contentPathPrefix = fastpath.Joinable(path)
 	}
 
 	// Attempt to create the target contents. We monitor for cancellation during

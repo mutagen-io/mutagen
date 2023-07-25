@@ -25,7 +25,7 @@ func stripExecutabilityRecursive(snapshot *Entry) {
 // information removed.
 func stripExecutability(snapshot *Entry) *Entry {
 	// Create a copy of the snapshot that we can mutate.
-	result := snapshot.Copy(true)
+	result := snapshot.Copy(EntryCopyBehaviorDeep)
 
 	// Perform stripping.
 	stripExecutabilityRecursive(result)
@@ -86,7 +86,7 @@ func TestPropagateExecutability(t *testing.T) {
 	stripped = stripExecutability(tDMU)
 	stripped.Contents["executable file"] = tF2
 	fixed = PropagateExecutability(tDMU, tDMU, stripped)
-	expected := tF2.Copy(false)
+	expected := tF2.Copy(EntryCopyBehaviorShallow)
 	expected.Executable = true
 	if !fixed.Contents["executable file"].Equal(expected, true) {
 		t.Error("executability propagation from ancestor and source incorrect")

@@ -7,6 +7,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
@@ -32,11 +33,11 @@ type Configuration struct {
 	// specifications.
 	Ignore struct {
 		// Syntax specifies the ignore syntax and semantics.
-		Syntax core.IgnoreSyntax `json:"ignoreSyntax,omitempty" yaml:"ignoreSyntax" mapstructure:"ignoreSyntax"`
+		Syntax ignore.IgnoreSyntax `json:"syntax,omitempty" yaml:"syntax" mapstructure:"syntax"`
 		// Paths specifies the default list of ignore specifications.
 		Paths []string `json:"paths,omitempty" yaml:"paths" mapstructure:"paths"`
 		// VCS specifies the VCS ignore mode.
-		VCS core.IgnoreVCSMode `json:"vcs,omitempty" yaml:"vcs" mapstructure:"vcs"`
+		VCS ignore.IgnoreVCSMode `json:"vcs,omitempty" yaml:"vcs" mapstructure:"vcs"`
 	} `json:"ignore" yaml:"ignore" mapstructure:"ignore"`
 	// Symlink contains parameters related to symbolic link handling.
 	Symlink struct {

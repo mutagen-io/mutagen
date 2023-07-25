@@ -218,7 +218,7 @@ func TestEntryWalk(t *testing.T) {
 		// Perform walking and record visits.
 		var visits []testEntryWalkVisit
 		test.entry.walk(test.path, func(path string, entry *Entry) {
-			visits = append(visits, testEntryWalkVisit{path, entry.Copy(false)})
+			visits = append(visits, testEntryWalkVisit{path, entry.Copy(EntryCopyBehaviorSlim)})
 		}, test.reverse)
 
 		// Verify that the number of visits was correct.
@@ -342,44 +342,61 @@ func TestEntryEqual(t *testing.T) {
 	}
 }
 
-// TestEntryCopy tests Entry.copy.
+// TestEntryCopy tests Entry.Copy.
 func TestEntryCopy(t *testing.T) {
 	// Define test cases.
 	tests := []struct {
-		entry    *Entry
-		deep     bool
-		expected *Entry
+		entry        *Entry
+		copyBehavior EntryCopyBehavior
+		expected     *Entry
 	}{
-		{tN, false, tN},
-		{tN, true, tN},
-		{tF1, false, tF1},
-		{tF1, true, tF1},
-		{tF3E, false, tF3E},
-		{tF3E, true, tF3E},
-		{tSA, false, tSA},
-		{tSA, true, tSA},
-		{tD0, false, tD0},
-		{tD0, true, tD0},
-		{tD1, false, tD0},
-		{tD1, true, tD1},
-		{tU, false, tU},
-		{tU, true, tU},
-		{tP1, false, tP1},
-		{tP1, true, tP1},
+		{tN, EntryCopyBehaviorDeep, tN},
+		{tN, EntryCopyBehaviorDeepPreservingLeaves, tN},
+		{tN, EntryCopyBehaviorShallow, tN},
+		{tN, EntryCopyBehaviorSlim, tN},
+
+		{tF1, EntryCopyBehaviorDeep, tF1},
+		{tF1, EntryCopyBehaviorDeepPreservingLeaves, tF1},
+		{tF1, EntryCopyBehaviorShallow, tF1},
+		{tF1, EntryCopyBehaviorSlim, tF1},
+
+		{tF3E, EntryCopyBehaviorDeep, tF3E},
+		{tF3E, EntryCopyBehaviorDeepPreservingLeaves, tF3E},
+		{tF3E, EntryCopyBehaviorShallow, tF3E},
+		{tF3E, EntryCopyBehaviorSlim, tF3E},
+
+		{tSA, EntryCopyBehaviorDeep, tSA},
+		{tSA, EntryCopyBehaviorDeepPreservingLeaves, tSA},
+		{tSA, EntryCopyBehaviorShallow, tSA},
+		{tSA, EntryCopyBehaviorSlim, tSA},
+
+		{tD0, EntryCopyBehaviorDeep, tD0},
+		{tD0, EntryCopyBehaviorDeepPreservingLeaves, tD0},
+		{tD0, EntryCopyBehaviorShallow, tD0},
+		{tD0, EntryCopyBehaviorSlim, tD0},
+
+		{tD1, EntryCopyBehaviorDeep, tD1},
+		{tD1, EntryCopyBehaviorDeepPreservingLeaves, tD1},
+		{tD1, EntryCopyBehaviorShallow, tD1},
+		{tD1, EntryCopyBehaviorSlim, tD0},
+
+		{tU, EntryCopyBehaviorDeep, tU},
+		{tU, EntryCopyBehaviorDeepPreservingLeaves, tU},
+		{tU, EntryCopyBehaviorShallow, tU},
+		{tU, EntryCopyBehaviorSlim, tU},
+
+		{tP1, EntryCopyBehaviorDeep, tP1},
+		{tP1, EntryCopyBehaviorDeepPreservingLeaves, tP1},
+		{tP1, EntryCopyBehaviorShallow, tP1},
+		{tP1, EntryCopyBehaviorSlim, tP1},
 	}
 
 	// Process test cases.
 	for i, test := range tests {
-		// Compute a description for the test in case we need it.
-		description := "shallow"
-		if test.deep {
-			description = "deep"
-		}
-
 		// Perform copying and verify that the result matches what's expected.
-		result := test.entry.Copy(test.deep)
+		result := test.entry.Copy(test.copyBehavior)
 		if !result.Equal(test.expected, true) {
-			t.Errorf("test index %d: (%s) copy result does not match expected", i, description)
+			t.Errorf("test index %d: copy result does not match expected", i)
 		}
 	}
 }

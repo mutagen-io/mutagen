@@ -9,11 +9,11 @@ import "synchronization/scan_mode.proto";
 import "synchronization/stage_mode.proto";
 import "synchronization/watch_mode.proto";
 import "synchronization/compression/algorithm.proto";
-import "synchronization/core/ignore_syntax.proto";
-import "synchronization/core/ignore_vcs_mode.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/permissions_mode.proto";
 import "synchronization/core/symbolic_link_mode.proto";
+import "synchronization/core/ignore/ignore_syntax.proto";
+import "synchronization/core/ignore/ignore_vcs_mode.proto";
 import "synchronization/hashing/algorithm.proto";
 
 // Configuration encodes session configuration parameters. It is used for create
@@ -87,7 +87,7 @@ message Configuration {
     // IgnoreSyntax specifies the syntax and semantics to use for ignores.
     // NOTE: This field is out of order due to the historical order in which it
     // was added.
-    core.IgnoreSyntax ignoreSyntax = 34;
+    ignore.IgnoreSyntax ignoreSyntax = 34;
 
     // DefaultIgnores specifies the ignore patterns brought in from the global
     // configuration.
@@ -102,7 +102,7 @@ message Configuration {
 
     // IgnoreVCSMode specifies the VCS ignore mode that should be used in
     // synchronization.
-    core.IgnoreVCSMode ignoreVCSMode = 33;
+    ignore.IgnoreVCSMode ignoreVCSMode = 33;
 
     // Fields 35-60 are reserved for future ignore configuration parameters.
 

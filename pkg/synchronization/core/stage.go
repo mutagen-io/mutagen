@@ -2,6 +2,8 @@ package core
 
 import (
 	"bytes"
+
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
 
 // stagingPathFinder recursively identifies paths/entries that need be staged in
@@ -22,7 +24,7 @@ func (f *stagingPathFinder) find(path string, entry *Entry) {
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
 		if len(entry.Contents) > 0 {
-			contentPathPrefix = pathJoinable(path)
+			contentPathPrefix = fastpath.Joinable(path)
 		}
 
 		// Process contents.

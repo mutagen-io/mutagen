@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package core;
+package ignore;
 
-option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core";
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore";
 
 // IgnoreVCSMode specifies the mode for ignoring VCS directories.
 enum IgnoreVCSMode {

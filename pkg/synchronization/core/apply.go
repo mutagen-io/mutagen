@@ -20,7 +20,7 @@ func Apply(base *Entry, changes []*Change) (*Entry, error) {
 	}
 
 	// Create a deep copy of the base entry for mutation.
-	result := base.Copy(true)
+	result := base.Copy(EntryCopyBehaviorDeepPreservingLeaves)
 
 	// Apply changes.
 	for _, change := range changes {
@@ -28,7 +28,7 @@ func Apply(base *Entry, changes []*Change) (*Entry, error) {
 		// occur mid-change-list, so we don't optimize for this case here in the
 		// same way that we do above.
 		if change.Path == "" {
-			result = change.New.Copy(true)
+			result = change.New.Copy(EntryCopyBehaviorDeepPreservingLeaves)
 			continue
 		}
 
@@ -53,7 +53,7 @@ func Apply(base *Entry, changes []*Change) (*Entry, error) {
 			if parent.Contents == nil {
 				parent.Contents = make(map[string]*Entry)
 			}
-			parent.Contents[components[0]] = change.New.Copy(true)
+			parent.Contents[components[0]] = change.New.Copy(EntryCopyBehaviorDeepPreservingLeaves)
 		}
 	}
 

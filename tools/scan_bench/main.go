@@ -21,6 +21,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 )
 
 const (
@@ -36,7 +38,7 @@ const usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFla
 // which are present in both caches have the same value. It's the closest we can
 // get to the core package's testAcceleratedCacheIsSubset without having access
 // to the members of IgnoreCacheKey.
-func ignoreCachesIntersectionEqual(first, second core.IgnoreCache) bool {
+func ignoreCachesIntersectionEqual(first, second ignore.IgnoreCache) bool {
 	// Check matches from first in second.
 	for key, firstValue := range first {
 		if secondValue, ok := second[key]; ok && secondValue != firstValue {
@@ -57,6 +59,7 @@ func ignoreCachesIntersectionEqual(first, second core.IgnoreCache) bool {
 
 func main() {
 	// Parse command line arguments.
+	// TODO: Implement support for ignore syntax specification.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
 	var ignores []string
@@ -105,13 +108,18 @@ func main() {
 	}
 	hasher := hashingAlgorithm.Factory()()
 
+	// Create an ignorer.
+	ignorer, err := mutagenignore.NewIgnorer(ignores)
+	if err != nil {
+		cmd.Fatal(fmt.Errorf("unable to create ignorer: %w", err))
+	}
+
 	// Print information.
 	fmt.Println("Analyzing", path)
 
 	// Perform a full (cold) scan. If requested, enable CPU and memory
 	// profiling.
 	var profiler *profile.Profile
-	var err error
 	if enableProfile {
 		if profiler, err = profile.New("scan_full_cold"); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
@@ -123,7 +131,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, nil,
-		ignores, nil,
+		ignorer, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -158,7 +166,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -201,7 +209,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -242,7 +250,7 @@ func main() {
 		path,
 		snapshot, map[string]bool{"fake path": true},
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -281,7 +289,7 @@ func main() {
 		path,
 		snapshot, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -330,7 +338,7 @@ func main() {
 
 	// Perform a deep copy of the snapshot contents.
 	start = time.Now()
-	snapshot.Content.Copy(true)
+	snapshot.Content.Copy(core.EntryCopyBehaviorDeep)
 	stop = time.Now()
 	fmt.Println("Snapshot entry copying took", stop.Sub(start))
 

@@ -1,4 +1,4 @@
-package core
+package ignore
 
 import (
 	"fmt"

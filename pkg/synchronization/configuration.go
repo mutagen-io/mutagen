@@ -8,6 +8,9 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
+	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
@@ -87,16 +90,37 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the ignore syntax is unset for endpoint-specific
-	// configurations and that any specified ignore syntax is valid.
+	// Verify that the ignore syntax is unspecified or supported. Also determine
+	// the effective syntax for validating ignore patterns.
+	var effectiveIgnoreSyntax ignore.IgnoreSyntax
 	if endpointSpecific {
 		if !c.IgnoreSyntax.IsDefault() {
 			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
+		if c.IgnoreSyntax.IsDefault() {
+			// HACK: We don't have a reference to the session version in this
+			// method, so we compute the ignore syntax default by using the
+			// default session version for the current version of Mutagen. For
+			// more information on the reasoning behind this, see the note in
+			// Version.DefaultIgnoreSyntax.
+			effectiveIgnoreSyntax = DefaultVersion.DefaultIgnoreSyntax()
+		} else if c.IgnoreSyntax.Supported() {
+			effectiveIgnoreSyntax = c.IgnoreSyntax
+		} else {
 			return errors.New("unknown or unsupported ignore syntax")
 		}
+	}
+
+	// Determine the appropriate validator for ignore patterns.
+	var ignoreValidator func(string) error
+	switch effectiveIgnoreSyntax {
+	case ignore.IgnoreSyntax_IgnoreSyntaxGit:
+		ignoreValidator = mutagenignore.EnsurePatternValid
+	case ignore.IgnoreSyntax_IgnoreSyntaxDocker:
+		ignoreValidator = dockerignore.EnsurePatternValid
+	default:
+		panic("unhandled ignore syntax")
 	}
 
 	// Verify that default ignores are unset for endpoint-specific
@@ -108,8 +132,8 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
 	}
 	for _, ignore := range c.DefaultIgnores {
-		if !core.ValidIgnorePattern(ignore) {
-			return fmt.Errorf("invalid default ignore pattern: %s", ignore)
+		if err := ignoreValidator(ignore); err != nil {
+			return fmt.Errorf("invalid default ignore pattern (%s): %w", ignore, err)
 		}
 	}
 
@@ -119,8 +143,8 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		return errors.New("ignores cannot be specified on an endpoint-specific basis")
 	}
 	for _, ignore := range c.Ignores {
-		if !core.ValidIgnorePattern(ignore) {
-			return fmt.Errorf("invalid ignore pattern: %s", ignore)
+		if err := ignoreValidator(ignore); err != nil {
+			return fmt.Errorf("invalid ignore pattern (%s): %w", ignore, err)
 		}
 	}
 

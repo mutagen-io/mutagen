@@ -34,6 +34,13 @@ enum EntryKind {
     // directories that are also mount points). This type of entry is not
     // synchronizable.
     Problematic = 101;
+    // EntryKind_PhantomDirectory indicates a directory that was recorded with
+    // an ignore mask. This type is used to support Docker-style ignore syntax
+    // and semantics, which allow directories to be unignored by child content
+    // that is explicitly unignored. This type is pseudo-synchronizable; entries
+    // containing phantom contents must have those contents reified (to tracked
+    // or ignored directories) using ReifyPhantomDirectories before Reconcile.
+    PhantomDirectory = 102;
 
     // Values 102 - 199 are reserved for future unsynchronizable entry types.
 }

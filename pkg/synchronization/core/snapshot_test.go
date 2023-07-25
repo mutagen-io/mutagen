@@ -69,7 +69,7 @@ func TestSnapshotConsistentSerialization(t *testing.T) {
 	// Create two entries, one of which is a deep copy of the other. We could
 	// also just serialize the same entry twice, but this is more rigorous.
 	firstEntry := tDM
-	secondEntry := firstEntry.Copy(true)
+	secondEntry := firstEntry.Copy(EntryCopyBehaviorDeep)
 
 	// Configure Protocol Buffers marshaling to be deterministic.
 	marshaling := proto.MarshalOptions{Deterministic: true}
