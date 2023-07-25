@@ -59,7 +59,8 @@ const (
 // Ignorer performs ignore evaluation during filesystem traversal. It takes the
 // path being traversed and an indication of whether or not traversal should
 // continue to child entries due to the possibility of content being unignored
-// at a lower depth.
+// at a lower depth. Ignorer implementations need not be safe concurrent usage
+// by multiple Goroutines.
 type Ignorer interface {
 	// Ignore determines whether or not a filesystem entry should be ignored
 	// based on its path and nature as a directory. It returns the ignore status
