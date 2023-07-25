@@ -20,9 +20,10 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
-	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
 	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 )
 
 const usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFlagOptions + `)]
-           [-i|--ignore=<pattern>] <path>
+           [--ignore-syntax=(mutagen|docker)] [-i|--ignore=<pattern>] <path>
 `
 
 // ignoreCachesIntersectionEqual compares two ignore caches, ensuring that keys
@@ -62,12 +63,14 @@ func main() {
 	// TODO: Implement support for ignore syntax specification.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
-	var ignores []string
 	var enableProfile bool
 	var digest string
-	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
+	var ignoreSyntaxName string
+	var ignores []string
 	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
 	flagSet.StringVarP(&digest, "digest", "d", "sha1", "specify digest algorithm")
+	flagSet.StringVar(&ignoreSyntaxName, "ignore-syntax", "mutagen", "specify ignore syntax")
+	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -108,10 +111,28 @@ func main() {
 	}
 	hasher := hashingAlgorithm.Factory()()
 
+	// Parse the ignore syntax.
+	var ignoreSyntax ignore.Syntax
+	if err := ignoreSyntax.UnmarshalText([]byte(ignoreSyntaxName)); err != nil {
+		cmd.Fatal(fmt.Errorf("unable to parse ignore syntax: %w", err))
+	}
+
 	// Create an ignorer.
-	ignorer, err := mutagenignore.NewIgnorer(ignores)
-	if err != nil {
-		cmd.Fatal(fmt.Errorf("unable to create ignorer: %w", err))
+	var ignorer ignore.Ignorer
+	if ignoreSyntax == ignore.Syntax_SyntaxMutagen {
+		if i, err := mutagenignore.NewIgnorer(ignores); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to create Mutagen-style ignorer: %w", err))
+		} else {
+			ignorer = i
+		}
+	} else if ignoreSyntax == ignore.Syntax_SyntaxDocker {
+		if i, err := dockerignore.NewIgnorer(ignores); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to create Docker-style ignorer: %w", err))
+		} else {
+			ignorer = i
+		}
+	} else {
+		panic("unhandled ignore syntax")
 	}
 
 	// Print information.
@@ -121,8 +142,10 @@ func main() {
 	// profiling.
 	var profiler *profile.Profile
 	if enableProfile {
-		if profiler, err = profile.New("scan_full_cold"); err != nil {
+		if p, err := profile.New("scan_full_cold"); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
+		} else {
+			profiler = p
 		}
 	}
 	start := time.Now()
