@@ -359,6 +359,17 @@ func main() {
 	fmt.Println("Snapshot contained", snapshot.SymbolicLinks, "symbolic links")
 	fmt.Println("Snapshot files totaled", humanize.Bytes(snapshot.TotalFileSize))
 
+	// Measure how long phantom reification would take on snapshots of this size
+	// and print reified directory counts for comparison.
+	start = time.Now()
+	_, _, αDirectoryCount, βDirectoryCount := core.ReifyPhantomDirectories(
+		snapshot.Content, snapshot.Content, snapshot.Content,
+	)
+	stop = time.Now()
+	fmt.Println("Phantom directory reification took", stop.Sub(start))
+	fmt.Println("Reified alpha snapshot contained", αDirectoryCount, "directories")
+	fmt.Println("Reified beta snapshot contained", βDirectoryCount, "directories")
+
 	// Perform a deep copy of the snapshot contents.
 	start = time.Now()
 	snapshot.Content.Copy(core.EntryCopyBehaviorDeep)
