@@ -379,6 +379,21 @@ later in this text or online at https://opensource.org/licenses/MIT.
 
 --------------------------------------------------------------------------------
 
+patternmatcher
+
+https://github.com/moby/patternmatcher
+
+A subset of this library has been extracted, modified, and vendored inside
+Mutagen at https://github.com/mutagen-io/mutagen.
+
+Copyright 2012-2017 Docker, Inc.
+
+Used under the terms of the Apache License, Version 2.0. A copy of this license
+can be found later in this text or online at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+--------------------------------------------------------------------------------
+
 apimachinery
 
 https://github.com/kubernetes/apimachinery
