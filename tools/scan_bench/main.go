@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/sha1"
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"os/signal"
@@ -23,6 +20,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
 const (
@@ -30,7 +28,7 @@ const (
 	cacheFile    = "cache_test"
 )
 
-var usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFlagOptions + `)]
+const usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFlagOptions + `)]
            [-i|--ignore=<pattern>] <path>
 `
 
@@ -66,7 +64,7 @@ func main() {
 	var digest string
 	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
-	flagSet.StringVarP(&digest, "digest", "d", "", "specify digest algorithm")
+	flagSet.StringVarP(&digest, "digest", "d", "sha1", "specify digest algorithm")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -98,20 +96,14 @@ func main() {
 		cancel()
 	}()
 
-	// Create a hasher that we can use.
-	var hasher hash.Hash
-	switch digest {
-	case "sha1":
-		hasher = sha1.New()
-	case "sha256":
-		hasher = sha256.New()
-	case "xxh128":
-		if xxh128Supported {
-			hasher = newXXH128Hasher()
-		} else {
-			cmd.Fatal(errors.New("XXH128 hashing not supported"))
-		}
+	// Parse the hashing algorithm and create a hasher.
+	var hashingAlgorithm hashing.Algorithm
+	if err := hashingAlgorithm.UnmarshalText([]byte(digest)); err != nil {
+		cmd.Fatal(fmt.Errorf("unable to parse hashing algorithm: %w", err))
+	} else if hashingAlgorithm.SupportStatus() != hashing.AlgorithmSupportStatusSupported {
+		cmd.Fatal(fmt.Errorf("%s hashing not supported", hashingAlgorithm.Description()))
 	}
+	hasher := hashingAlgorithm.Factory()()
 
 	// Print information.
 	fmt.Println("Analyzing", path)
