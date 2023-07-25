@@ -12,7 +12,7 @@ import "synchronization/compression/algorithm.proto";
 import "synchronization/core/mode.proto";
 import "synchronization/core/permissions_mode.proto";
 import "synchronization/core/symbolic_link_mode.proto";
-import "synchronization/core/ignore/ignore_syntax.proto";
+import "synchronization/core/ignore/syntax.proto";
 import "synchronization/core/ignore/ignore_vcs_mode.proto";
 import "synchronization/hashing/algorithm.proto";
 
@@ -87,7 +87,7 @@ message Configuration {
     // IgnoreSyntax specifies the syntax and semantics to use for ignores.
     // NOTE: This field is out of order due to the historical order in which it
     // was added.
-    ignore.IgnoreSyntax ignoreSyntax = 34;
+    ignore.Syntax ignoreSyntax = 34;
 
     // DefaultIgnores specifies the ignore patterns brought in from the global
     // configuration.

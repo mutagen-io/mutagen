@@ -4,18 +4,18 @@ import (
 	"testing"
 )
 
-// TestIgnoreSyntaxIsDefault tests IgnoreSyntax.IsDefault.
-func TestIgnoreSyntaxIsDefault(t *testing.T) {
+// TestSyntaxIsDefault tests Syntax.IsDefault.
+func TestSyntaxIsDefault(t *testing.T) {
 	// Define test cases.
 	tests := []struct {
-		value    IgnoreSyntax
+		value    Syntax
 		expected bool
 	}{
-		{IgnoreSyntax_IgnoreSyntaxDefault - 1, false},
-		{IgnoreSyntax_IgnoreSyntaxDefault, true},
-		{IgnoreSyntax_IgnoreSyntaxGit, false},
-		{IgnoreSyntax_IgnoreSyntaxDocker, false},
-		{IgnoreSyntax_IgnoreSyntaxDocker + 1, false},
+		{Syntax_SyntaxDefault - 1, false},
+		{Syntax_SyntaxDefault, true},
+		{Syntax_SyntaxMutagen, false},
+		{Syntax_SyntaxDocker, false},
+		{Syntax_SyntaxDocker + 1, false},
 	}
 
 	// Process test cases.
@@ -28,23 +28,23 @@ func TestIgnoreSyntaxIsDefault(t *testing.T) {
 	}
 }
 
-// TestIgnoreSyntaxUnmarshalText tests IgnoreSyntax.UnmarshalText.
-func TestIgnoreSyntaxUnmarshalText(t *testing.T) {
+// TestSyntaxUnmarshalText tests Syntax.UnmarshalText.
+func TestSyntaxUnmarshalText(t *testing.T) {
 	// Define test cases.
 	tests := []struct {
 		text          string
-		expectedMode  IgnoreSyntax
+		expectedMode  Syntax
 		expectFailure bool
 	}{
-		{"", IgnoreSyntax_IgnoreSyntaxDefault, true},
-		{"asdf", IgnoreSyntax_IgnoreSyntaxDefault, true},
-		{"git", IgnoreSyntax_IgnoreSyntaxGit, false},
-		{"docker", IgnoreSyntax_IgnoreSyntaxDocker, false},
+		{"", Syntax_SyntaxDefault, true},
+		{"asdf", Syntax_SyntaxDefault, true},
+		{"mutagen", Syntax_SyntaxMutagen, false},
+		{"docker", Syntax_SyntaxDocker, false},
 	}
 
 	// Process test cases.
 	for _, test := range tests {
-		var mode IgnoreSyntax
+		var mode Syntax
 		if err := mode.UnmarshalText([]byte(test.text)); err != nil {
 			if !test.expectFailure {
 				t.Errorf("unable to unmarshal text (%s): %s", test.text, err)
@@ -61,17 +61,17 @@ func TestIgnoreSyntaxUnmarshalText(t *testing.T) {
 	}
 }
 
-// TestIgnoreSyntaxSupported tests IgnoreSyntax.Supported.
-func TestIgnoreSyntaxSupported(t *testing.T) {
+// TestSyntaxSupported tests Syntax.Supported.
+func TestSyntaxSupported(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		mode            IgnoreSyntax
+		mode            Syntax
 		expectSupported bool
 	}{
-		{IgnoreSyntax_IgnoreSyntaxDefault, false},
-		{IgnoreSyntax_IgnoreSyntaxGit, true},
-		{IgnoreSyntax_IgnoreSyntaxDocker, true},
-		{(IgnoreSyntax_IgnoreSyntaxDocker + 1), false},
+		{Syntax_SyntaxDefault, false},
+		{Syntax_SyntaxMutagen, true},
+		{Syntax_SyntaxDocker, true},
+		{(Syntax_SyntaxDocker + 1), false},
 	}
 
 	// Process test cases.
@@ -86,17 +86,17 @@ func TestIgnoreSyntaxSupported(t *testing.T) {
 	}
 }
 
-// TestIgnoreSyntaxDescription tests IgnoreSyntax.Description.
-func TestIgnoreSyntaxDescription(t *testing.T) {
+// TestSyntaxDescription tests Syntax.Description.
+func TestSyntaxDescription(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
-		mode                IgnoreSyntax
+		mode                Syntax
 		expectedDescription string
 	}{
-		{IgnoreSyntax_IgnoreSyntaxDefault, "Default"},
-		{IgnoreSyntax_IgnoreSyntaxGit, "Git"},
-		{IgnoreSyntax_IgnoreSyntaxDocker, "Docker"},
-		{(IgnoreSyntax_IgnoreSyntaxDocker + 1), "Unknown"},
+		{Syntax_SyntaxDefault, "Default"},
+		{Syntax_SyntaxMutagen, "Mutagen"},
+		{Syntax_SyntaxDocker, "Docker"},
+		{(Syntax_SyntaxDocker + 1), "Unknown"},
 	}
 
 	// Process test cases.

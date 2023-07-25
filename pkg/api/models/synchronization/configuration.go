@@ -33,7 +33,7 @@ type Configuration struct {
 	// specifications.
 	Ignore struct {
 		// Syntax specifies the ignore syntax and semantics.
-		Syntax ignore.IgnoreSyntax `json:"syntax,omitempty" yaml:"syntax" mapstructure:"syntax"`
+		Syntax ignore.Syntax `json:"syntax,omitempty" yaml:"syntax" mapstructure:"syntax"`
 		// Paths specifies the default list of ignore specifications.
 		Paths []string `json:"paths,omitempty" yaml:"paths" mapstructure:"paths"`
 		// VCS specifies the VCS ignore mode.

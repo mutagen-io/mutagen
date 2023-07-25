@@ -110,7 +110,7 @@ func TestScan(t *testing.T) {
 		// ctx is the context in which the operation should be performed.
 		ctx context.Context
 		// ignoreSyntax is the ignore syntax to use for the test.
-		ignoreSyntax ignore.IgnoreSyntax
+		ignoreSyntax ignore.Syntax
 		// ignores are the ignore specifications to use for the test.
 		ignores []string
 		// symbolicLinkMode is the symbolic link mode to use for the test.
@@ -130,24 +130,24 @@ func TestScan(t *testing.T) {
 		modifier func(string) ([]*Change, error)
 	}{
 		// Test an absence of content.
-		{"root absent", nil, nil, nil, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nil, nil},
-		{"root absent (manual permissions)", nil, nil, nil, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, nil, nil},
+		{"root absent", nil, nil, nil, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nil, nil},
+		{"root absent (manual permissions)", nil, nil, nil, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, nil, nil},
 
 		// Test a file root.
-		{"file root", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF1, nil},
-		{"file root (manual permissions)", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF1, nil},
+		{"file root", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF1, nil},
+		{"file root (manual permissions)", nil, tF1, tF1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF1, nil},
 
 		// Test an executable file root.
-		{"executable file root", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF3E, nil},
-		{"executable file root (manual permissions)", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF3, nil},
+		{"executable file root", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tF3E, nil},
+		{"executable file root (manual permissions)", nil, tF3E, tF3ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tF3, nil},
 
 		// Test an empty directory root.
-		{"empty directory root", nil, tD0, nil, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0, nil},
-		{"empty directory root (manual permissions)", nil, tD0, nil, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD0, nil},
+		{"empty directory root", nil, tD0, nil, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0, nil},
+		{"empty directory root (manual permissions)", nil, tD0, nil, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD0, nil},
 
 		// Test a populated directory root.
-		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1, nil},
-		{"single file directory (manual permissions)", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD1, nil},
+		{"single file directory", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1, nil},
+		{"single file directory (manual permissions)", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD1, nil},
 
 		// Test a directory with invalid filenames.
 		{
@@ -171,7 +171,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -183,8 +183,8 @@ func TestScan(t *testing.T) {
 		},
 
 		// Test a populated directory root with executable contents.
-		{"executable file directory", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD3E, nil},
-		{"executable file directory (manual permissions)", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD3, nil},
+		{"executable file directory", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD3E, nil},
+		{"executable file directory (manual permissions)", nil, tD3E, tD3ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModeManual, false, tD3, nil},
 
 		// Test a populated directory root with complex contents.
 		{
@@ -195,7 +195,7 @@ func TestScan(t *testing.T) {
 			tDM, tDMContentMap,
 			nil, nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModeIgnore,
 			PermissionsMode_PermissionsModePortable,
@@ -211,7 +211,7 @@ func TestScan(t *testing.T) {
 			tDM, tDMContentMap,
 			nil, nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -227,7 +227,7 @@ func TestScan(t *testing.T) {
 			tDM, tDMContentMap,
 			nil, nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
 			PermissionsMode_PermissionsModePortable,
@@ -237,12 +237,12 @@ func TestScan(t *testing.T) {
 		},
 
 		// Test a directory root with ignored content.
-		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nested("file", tU), nil},
+		{"directory root with ignored content", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, []string{"file"}, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, nested("file", tU), nil},
 
 		// Test with a cancelled context.
 		// TODO: Figure out a way to cancel the context midway through reading
 		// a file so that we can check for read preemption.
-		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelledCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, PermissionsMode_PermissionsModePortable, true, nil, nil},
+		{"cancelled context", nil, tD1, tD1ContentMap, nil, nil, cancelledCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModeIgnore, PermissionsMode_PermissionsModePortable, true, nil, nil},
 
 		// Test a directory with an untracked Unix domain socket.
 		{
@@ -273,7 +273,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -294,7 +294,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -313,7 +313,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePOSIXRaw,
 			PermissionsMode_PermissionsModePortable,
@@ -332,7 +332,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -351,7 +351,7 @@ func TestScan(t *testing.T) {
 			},
 			nil,
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -374,7 +374,7 @@ func TestScan(t *testing.T) {
 				return os.Chmod(root, 0600)
 			},
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -395,7 +395,7 @@ func TestScan(t *testing.T) {
 				return os.Chmod(root, 0700)
 			},
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -416,7 +416,7 @@ func TestScan(t *testing.T) {
 				return os.Chmod(filepath.Join(root, "file"), 0600)
 			},
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -437,7 +437,7 @@ func TestScan(t *testing.T) {
 				return os.Chmod(filepath.Join(root, "subdir"), 0700)
 			},
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -449,7 +449,7 @@ func TestScan(t *testing.T) {
 		// Test accelerated scanning with modifications, including cases where
 		// problematic content is generated.
 		{
-			"file created", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1,
+			"file created", nil, tD1, tD1ContentMap, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD1,
 			func(root string) ([]*Change, error) {
 				if err := os.WriteFile(filepath.Join(root, "newfile"), []byte(tF2Content), 0600); err != nil {
 					return nil, err
@@ -460,7 +460,7 @@ func TestScan(t *testing.T) {
 			},
 		},
 		{
-			"root type replaced", nil, tD0, nil, nil, nil, backgroundCtx, ignore.IgnoreSyntax_IgnoreSyntaxGit, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0,
+			"root type replaced", nil, tD0, nil, nil, nil, backgroundCtx, ignore.Syntax_SyntaxMutagen, nil, SymbolicLinkMode_SymbolicLinkModePortable, PermissionsMode_PermissionsModePortable, false, tD0,
 			func(root string) ([]*Change, error) {
 				if err := os.Remove(root); err != nil {
 					return nil, err
@@ -483,7 +483,7 @@ func TestScan(t *testing.T) {
 				return os.Chmod(filepath.Join(root, "file"), 0600)
 			},
 			backgroundCtx,
-			ignore.IgnoreSyntax_IgnoreSyntaxGit,
+			ignore.Syntax_SyntaxMutagen,
 			nil,
 			SymbolicLinkMode_SymbolicLinkModePortable,
 			PermissionsMode_PermissionsModePortable,
@@ -544,7 +544,7 @@ func TestScan(t *testing.T) {
 
 			// Create the ignorer.
 			var ignorer ignore.Ignorer
-			if test.ignoreSyntax == ignore.IgnoreSyntax_IgnoreSyntaxGit {
+			if test.ignoreSyntax == ignore.Syntax_SyntaxMutagen {
 				if i, err := mutagenignore.NewIgnorer(test.ignores); err != nil {
 					t.Errorf("%s: unable to create Mutagen-style ignorer for %s filesystem: %v",
 						test.description, filesystem.name, err,
@@ -553,7 +553,7 @@ func TestScan(t *testing.T) {
 				} else {
 					ignorer = i
 				}
-			} else if test.ignoreSyntax == ignore.IgnoreSyntax_IgnoreSyntaxDocker {
+			} else if test.ignoreSyntax == ignore.Syntax_SyntaxDocker {
 				if i, err := dockerignore.NewIgnorer(test.ignores); err != nil {
 					t.Errorf("%s: unable to create Docker-style ignorer for %s filesystem: %v",
 						test.description, filesystem.name, err,

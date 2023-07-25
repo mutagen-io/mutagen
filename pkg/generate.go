@@ -13,7 +13,7 @@
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/configuration.proto synchronization/scan_mode.proto synchronization/session.proto synchronization/stage_mode.proto synchronization/state.proto synchronization/version.proto synchronization/watch_mode.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/compression/algorithm.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/core/archive.proto synchronization/core/cache.proto synchronization/core/change.proto synchronization/core/conflict.proto synchronization/core/entry.proto synchronization/core/mode.proto synchronization/core/permissions_mode.proto synchronization/core/problem.proto synchronization/core/snapshot.proto synchronization/core/symbolic_link_mode.proto
-//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/core/ignore/ignore_syntax.proto synchronization/core/ignore/ignore_vcs_mode.proto
+//go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/core/ignore/ignore_vcs_mode.proto synchronization/core/ignore/syntax.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/endpoint/remote/protocol.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/hashing/algorithm.proto
 //go:generate protoc --plugin=./protoc-gen-go -I. --go_out=. --go_opt=paths=source_relative synchronization/rsync/engine.proto synchronization/rsync/receive.proto synchronization/rsync/transmission.proto

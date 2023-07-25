@@ -92,7 +92,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 
 	// Verify that the ignore syntax is unspecified or supported. Also determine
 	// the effective syntax for validating ignore patterns.
-	var effectiveIgnoreSyntax ignore.IgnoreSyntax
+	var effectiveIgnoreSyntax ignore.Syntax
 	if endpointSpecific {
 		if !c.IgnoreSyntax.IsDefault() {
 			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
@@ -115,9 +115,9 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// Determine the appropriate validator for ignore patterns.
 	var ignoreValidator func(string) error
 	switch effectiveIgnoreSyntax {
-	case ignore.IgnoreSyntax_IgnoreSyntaxGit:
+	case ignore.Syntax_SyntaxMutagen:
 		ignoreValidator = mutagenignore.EnsurePatternValid
-	case ignore.IgnoreSyntax_IgnoreSyntaxDocker:
+	case ignore.Syntax_SyntaxDocker:
 		ignoreValidator = dockerignore.EnsurePatternValid
 	default:
 		panic("unhandled ignore syntax")

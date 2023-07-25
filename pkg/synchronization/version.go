@@ -132,7 +132,7 @@ func (v Version) DefaultWatchPollingInterval() uint32 {
 
 // DefaultIgnoreSyntax returns the default ignore syntax for the session
 // version.
-func (v Version) DefaultIgnoreSyntax() ignore.IgnoreSyntax {
+func (v Version) DefaultIgnoreSyntax() ignore.Syntax {
 	// NOTE: Due to the hack listed in Configuration.EnsureValid (regarding the
 	// computation of the default ignore syntax), it would be advisable to keep
 	// the default here the same for all session versions. If we want this
@@ -150,7 +150,7 @@ func (v Version) DefaultIgnoreSyntax() ignore.IgnoreSyntax {
 	// the command line interface or external tools.
 	switch v {
 	case Version_Version1:
-		return ignore.IgnoreSyntax_IgnoreSyntaxGit
+		return ignore.Syntax_SyntaxMutagen
 	default:
 		panic("unknown or unsupported session version")
 	}

@@ -4,20 +4,19 @@ import (
 	"fmt"
 )
 
-// IsDefault indicates whether or not the ignore syntax is
-// IgnoreSyntax_IgnoreSyntaxDefault.
-func (s IgnoreSyntax) IsDefault() bool {
-	return s == IgnoreSyntax_IgnoreSyntaxDefault
+// IsDefault indicates whether or not the ignore syntax is Syntax_SyntaxDefault.
+func (s Syntax) IsDefault() bool {
+	return s == Syntax_SyntaxDefault
 }
 
 // MarshalText implements encoding.TextMarshaler.MarshalText.
-func (s IgnoreSyntax) MarshalText() ([]byte, error) {
+func (s Syntax) MarshalText() ([]byte, error) {
 	var result string
 	switch s {
-	case IgnoreSyntax_IgnoreSyntaxDefault:
-	case IgnoreSyntax_IgnoreSyntaxGit:
-		result = "git"
-	case IgnoreSyntax_IgnoreSyntaxDocker:
+	case Syntax_SyntaxDefault:
+	case Syntax_SyntaxMutagen:
+		result = "mutagen"
+	case Syntax_SyntaxDocker:
 		result = "docker"
 	default:
 		result = "unknown"
@@ -26,16 +25,16 @@ func (s IgnoreSyntax) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
-func (s *IgnoreSyntax) UnmarshalText(textBytes []byte) error {
+func (s *Syntax) UnmarshalText(textBytes []byte) error {
 	// Convert the bytes to a string.
 	text := string(textBytes)
 
 	// Convert to an ignore syntax.
 	switch text {
-	case "git":
-		*s = IgnoreSyntax_IgnoreSyntaxGit
+	case "mutagen":
+		*s = Syntax_SyntaxMutagen
 	case "docker":
-		*s = IgnoreSyntax_IgnoreSyntaxDocker
+		*s = Syntax_SyntaxDocker
 	default:
 		return fmt.Errorf("unknown ignore syntax specification: %s", text)
 	}
@@ -46,11 +45,11 @@ func (s *IgnoreSyntax) UnmarshalText(textBytes []byte) error {
 
 // Supported indicates whether or not a particular ignore syntax is a valid,
 // non-default value.
-func (s IgnoreSyntax) Supported() bool {
+func (s Syntax) Supported() bool {
 	switch s {
-	case IgnoreSyntax_IgnoreSyntaxGit:
+	case Syntax_SyntaxMutagen:
 		return true
-	case IgnoreSyntax_IgnoreSyntaxDocker:
+	case Syntax_SyntaxDocker:
 		return true
 	default:
 		return false
@@ -58,13 +57,13 @@ func (s IgnoreSyntax) Supported() bool {
 }
 
 // Description returns a human-readable description of an ignore syntax.
-func (s IgnoreSyntax) Description() string {
+func (s Syntax) Description() string {
 	switch s {
-	case IgnoreSyntax_IgnoreSyntaxDefault:
+	case Syntax_SyntaxDefault:
 		return "Default"
-	case IgnoreSyntax_IgnoreSyntaxGit:
-		return "Git"
-	case IgnoreSyntax_IgnoreSyntaxDocker:
+	case Syntax_SyntaxMutagen:
+		return "Mutagen"
+	case Syntax_SyntaxDocker:
 		return "Docker"
 	default:
 		return "Unknown"

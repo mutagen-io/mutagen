@@ -1118,7 +1118,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		// tracked or ignored.
 		αDirectoryCount := αSnapshot.Directories
 		βDirectoryCount := βSnapshot.Directories
-		if ignoreSyntax == ignore.IgnoreSyntax_IgnoreSyntaxDocker {
+		if ignoreSyntax == ignore.Syntax_SyntaxDocker {
 			αContent, βContent, αDirectoryCount, βDirectoryCount = core.ReifyPhantomDirectories(
 				ancestor, αContent, βContent,
 			)

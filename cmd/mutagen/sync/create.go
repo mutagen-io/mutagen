@@ -283,7 +283,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// values are valid.
 
 	// Validate and convert the ignore syntax specification.
-	var ignoreSyntax ignore.IgnoreSyntax
+	var ignoreSyntax ignore.Syntax
 	if createConfiguration.ignoreSyntax != "" {
 		if err := ignoreSyntax.UnmarshalText([]byte(createConfiguration.ignoreSyntax)); err != nil {
 			return fmt.Errorf("unable to parse ignore syntax: %w", err)
@@ -306,9 +306,9 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// Determine the appropriate validator for ignore patterns.
 	var ignoreValidator func(string) error
 	switch effectiveIgnoreSyntax {
-	case ignore.IgnoreSyntax_IgnoreSyntaxGit:
+	case ignore.Syntax_SyntaxMutagen:
 		ignoreValidator = mutagenignore.EnsurePatternValid
-	case ignore.IgnoreSyntax_IgnoreSyntaxDocker:
+	case ignore.Syntax_SyntaxDocker:
 		ignoreValidator = dockerignore.EnsurePatternValid
 	default:
 		panic("unhandled ignore syntax")
@@ -746,7 +746,7 @@ func init() {
 	flags.Uint32Var(&createConfiguration.watchPollingIntervalBeta, "watch-polling-interval-beta", 0, "Specify watch polling interval in seconds for beta")
 
 	// Wire up ignore flags.
-	flags.StringVar(&createConfiguration.ignoreSyntax, "ignore-syntax", "", "Specify ignore syntax (git|docker)")
+	flags.StringVar(&createConfiguration.ignoreSyntax, "ignore-syntax", "", "Specify ignore syntax (mutagen|docker)")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")

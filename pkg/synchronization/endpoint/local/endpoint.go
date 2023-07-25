@@ -277,13 +277,13 @@ func NewEndpoint(
 	ignores = append(ignores, configuration.DefaultIgnores...)
 	ignores = append(ignores, configuration.Ignores...)
 	var ignorer ignore.Ignorer
-	if ignoreSyntax == ignore.IgnoreSyntax_IgnoreSyntaxGit {
+	if ignoreSyntax == ignore.Syntax_SyntaxMutagen {
 		if i, err := mutagenignore.NewIgnorer(ignores); err != nil {
 			return nil, fmt.Errorf("unable to create Mutagen-style ignorer: %w", err)
 		} else {
 			ignorer = i
 		}
-	} else if ignoreSyntax == ignore.IgnoreSyntax_IgnoreSyntaxDocker {
+	} else if ignoreSyntax == ignore.Syntax_SyntaxDocker {
 		if i, err := dockerignore.NewIgnorer(ignores); err != nil {
 			return nil, fmt.Errorf("unable to create Docker-style ignorer: %w", err)
 		} else {
