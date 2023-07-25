@@ -1,7 +1,6 @@
 package mutagen
 
 import (
-	"errors"
 	"fmt"
 	pathpkg "path"
 	"strings"
@@ -34,17 +33,9 @@ type ignorePattern struct {
 
 // newIgnorePattern validates and parses a user-provided ignore pattern.
 func newIgnorePattern(pattern string) (*ignorePattern, error) {
-	// Check for invalid patterns, specifically those that would leave us with
-	// an empty string after parsing or those that would exclude the entire
-	// synchronization root. Obviously we can't perform complete validation for
-	// all patterns, but if they pass this parsing, they should be sane enough
-	// to at least try to parse and match.
-	if pattern == "" || pattern == "!" {
-		return nil, errors.New("empty pattern")
-	} else if pattern == "/" || pattern == "!/" {
-		return nil, errors.New("root pattern")
-	} else if pattern == "//" || pattern == "!//" {
-		return nil, errors.New("root directory pattern")
+	// Perform general syntax validation.
+	if err := ignore.EnsurePatternValid(pattern); err != nil {
+		return nil, err
 	}
 
 	// Check if this is a negated pattern. If so, remove the exclamation point

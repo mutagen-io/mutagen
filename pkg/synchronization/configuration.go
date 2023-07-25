@@ -90,31 +90,27 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the ignore syntax is unspecified or supported. Also determine
-	// the effective syntax for validating ignore patterns.
-	var effectiveIgnoreSyntax ignore.Syntax
+	// Verify that the ignore syntax is unspecified or supported.
 	if endpointSpecific {
 		if !c.IgnoreSyntax.IsDefault() {
 			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if c.IgnoreSyntax.IsDefault() {
-			// HACK: We don't have a reference to the session version in this
-			// method, so we compute the ignore syntax default by using the
-			// default session version for the current version of Mutagen. For
-			// more information on the reasoning behind this, see the note in
-			// Version.DefaultIgnoreSyntax.
-			effectiveIgnoreSyntax = DefaultVersion.DefaultIgnoreSyntax()
-		} else if c.IgnoreSyntax.Supported() {
-			effectiveIgnoreSyntax = c.IgnoreSyntax
-		} else {
+		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
 			return errors.New("unknown or unsupported ignore syntax")
 		}
 	}
 
-	// Determine the appropriate validator for ignore patterns.
+	// Determine the appropriate validator for ignore patterns. If we don't have
+	// a fully reified ignore syntax (due to this being an endpoint-specific
+	// configuration or simply because we lack the version information needed to
+	// reify the default), then we'll just use generic validation. Note that in
+	// the endpoint-specific case, there won't (or shouldn't) be any ignore
+	// specifications anyway, and thus validation won't be performed.
 	var ignoreValidator func(string) error
-	switch effectiveIgnoreSyntax {
+	switch c.IgnoreSyntax {
+	case ignore.Syntax_SyntaxDefault:
+		ignoreValidator = ignore.EnsurePatternValid
 	case ignore.Syntax_SyntaxMutagen:
 		ignoreValidator = mutagenignore.EnsurePatternValid
 	case ignore.Syntax_SyntaxDocker:

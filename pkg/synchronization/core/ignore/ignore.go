@@ -1,5 +1,45 @@
 package ignore
 
+import (
+	"errors"
+	"unicode"
+)
+
+// EnsurePatternValid ensures that the provided pattern is valid under general
+// ignore syntax rules. A specific syntax may enforce additional validation, but
+// should always use this function to perform a baseline validation. This
+// function can also serve to perform validation in cases where the ignore
+// syntax is not known or available.
+func EnsurePatternValid(pattern string) error {
+	// Check for invalid patterns, specifically those that would leave us with
+	// an empty string after parsing or those that would exclude the entire
+	// synchronization root. Obviously we can't perform complete validation for
+	// all patterns, but if they pass this parsing, they should be sane enough
+	// to at least try to parse and match.
+	if pattern == "" || pattern == "!" {
+		return errors.New("empty pattern")
+	} else if pattern == "/" || pattern == "!/" {
+		return errors.New("root pattern")
+	} else if pattern == "//" || pattern == "!//" {
+		return errors.New("root directory pattern")
+	}
+
+	// Ensure that the pattern is not entirely space characters.
+	var haveNonSpace bool
+	for _, r := range pattern {
+		if !unicode.IsSpace(r) {
+			haveNonSpace = true
+			break
+		}
+	}
+	if !haveNonSpace {
+		return errors.New("pattern is entirely space characters")
+	}
+
+	// Success.
+	return nil
+}
+
 // IgnoreStatus encodes the different potential ignoredness states of content
 // during filesystem traversal.
 type IgnoreStatus uint8

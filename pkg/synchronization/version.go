@@ -133,21 +133,6 @@ func (v Version) DefaultWatchPollingInterval() uint32 {
 // DefaultIgnoreSyntax returns the default ignore syntax for the session
 // version.
 func (v Version) DefaultIgnoreSyntax() ignore.Syntax {
-	// NOTE: Due to the hack listed in Configuration.EnsureValid (regarding the
-	// computation of the default ignore syntax), it would be advisable to keep
-	// the default here the same for all session versions. If we want this
-	// behavior to differ in the future, then we'd need to thread the session
-	// version information into Configuration.EnsureValid, because the default
-	// can affect the validation of ignore patterns. This hack could be replaced
-	// by looser, more general validation on ignore patterns, at least in the
-	// scenario where a default ignore syntax is used (which is most cases,
-	// unfortunately), but since we don't have any foreseeable reason to change
-	// this default across future session versions, we're best off keeping the
-	// stricter validation for now. We could also change the signature of
-	// Configuration.EnsureValid to accept a session version, but that rapidly
-	// spirals into other APIs and it's not even clear how to enforce that the
-	// daemon's default session version is what's being used for validation in
-	// the command line interface or external tools.
 	switch v {
 	case Version_Version1:
 		return ignore.Syntax_SyntaxMutagen

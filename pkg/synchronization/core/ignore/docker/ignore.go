@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
@@ -11,15 +10,9 @@ import (
 // EnsurePatternValid ensures that the provided pattern is valid under
 // Docker-style ignore syntax.
 func EnsurePatternValid(pattern string) error {
-	// Check for invalid patterns, specifically those that would leave us with
-	// an empty string after parsing or those that would exclude the entire
-	// synchronization root. Obviously we can't perform complete validation for
-	// all patterns, but if they pass this parsing, they should be sane enough
-	// to at least try to parse and match.
-	if pattern == "" || pattern == "!" {
-		return errors.New("empty pattern")
-	} else if pattern == "/" || pattern == "!/" {
-		return errors.New("root pattern")
+	// Perform general syntax validation.
+	if err := ignore.EnsurePatternValid(pattern); err != nil {
+		return err
 	}
 
 	// Verify that the pattern meets the requirements of the patternmatcher
@@ -44,6 +37,13 @@ type ignorer struct {
 
 // NewIgnorer creates a new ignorer using Docker-style ignore patterns.
 func NewIgnorer(patterns []string) (ignore.Ignorer, error) {
+	// Perform general syntax validation.
+	for _, pattern := range patterns {
+		if err := ignore.EnsurePatternValid(pattern); err != nil {
+			return nil, fmt.Errorf("invalid pattern (%s): %w", pattern, err)
+		}
+	}
+
 	// Create the pattern matcher.
 	matcher, err := patternmatcher.New(patterns)
 	if err != nil {

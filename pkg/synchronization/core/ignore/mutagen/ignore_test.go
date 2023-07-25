@@ -223,37 +223,33 @@ func TestIgnorePathWildcard(t *testing.T) {
 	test.run(t)
 }
 
-func TestIgnoreEmptyPatternsInvalid(t *testing.T) {
-	if EnsurePatternValid("") == nil {
-		t.Error("empty pattern should be invalid")
+// TestEnsurePatternValid tests that EnsurePatternValid behaves as expected.
+func TestEnsurePatternValid(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		pattern     string
+		expectValid bool
+	}{
+		{"", false},
+		{"!", false},
+		{"/", false},
+		{"!/", false},
+		{"//", false},
+		{"!//", false},
+		{"\t \n", false},
+		{"some pattern", true},
+		{"some/pattern", true},
+		{"/some/pattern", true},
+		{"/some/pattern/", true},
+		{"\\", false},
 	}
-	if EnsurePatternValid("!") == nil {
-		t.Error("negated empty pattern should be invalid")
-	}
-	if EnsurePatternValid("/") == nil {
-		t.Error("root pattern should be invalid")
-	}
-	if EnsurePatternValid("!/") == nil {
-		t.Error("negated root pattern should be invalid")
-	}
-	if EnsurePatternValid("//") == nil {
-		t.Error("root directory pattern should be invalid")
-	}
-	if EnsurePatternValid("!//") == nil {
-		t.Error("negated root directory pattern should be invalid")
-	}
-}
 
-func TestIgnoreInvalidPatternInvalid(t *testing.T) {
-	if EnsurePatternValid("\\") == nil {
-		t.Fatal("invalid pattern should be invalid")
-	}
-}
-
-func TestIgnoreInvalidPatternOnIgnorerConstruction(t *testing.T) {
-	if ignorer, err := NewIgnorer([]string{"\\"}); err == nil {
-		t.Error("ignorer creation should fail on invalid pattern")
-	} else if ignorer != nil {
-		t.Error("ignorer should be nil on failed creation")
+	// Process test cases.
+	for i, test := range tests {
+		if err := EnsurePatternValid(test.pattern); err != nil && test.expectValid {
+			t.Errorf("test index %d: pattern was unexpectedly classified as invalid: %v", i, err)
+		} else if err == nil && !test.expectValid {
+			t.Errorf("test index %d: pattern was unexpectedly classified as valid", i)
+		}
 	}
 }
