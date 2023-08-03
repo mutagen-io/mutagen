@@ -146,7 +146,7 @@ func (e *Entry) EnsureValid(synchronizable bool) error {
 	} else if e.Kind == EntryKind_PhantomDirectory {
 		// Verify that unsynchronizable content is allowed.
 		if synchronizable {
-			return errors.New("phantom directories are not fully synchronizable")
+			return errors.New("phantom directory is not fully synchronizable")
 		}
 
 		// Ensure that no invalid fields are set.
@@ -170,8 +170,6 @@ func (e *Entry) EnsureValid(synchronizable bool) error {
 				return errors.New("content name contains path separator")
 			} else if entry == nil {
 				return errors.New("nil content detected")
-			} else if entry.Kind != EntryKind_PhantomDirectory {
-				return errors.New("non-phantom directory content in phantom directory")
 			} else if err := entry.EnsureValid(synchronizable); err != nil {
 				return err
 			}
