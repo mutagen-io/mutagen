@@ -60,7 +60,6 @@ func ignoreCachesIntersectionEqual(first, second ignore.IgnoreCache) bool {
 
 func main() {
 	// Parse command line arguments.
-	// TODO: Implement support for ignore syntax specification.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
 	var enableProfile bool
