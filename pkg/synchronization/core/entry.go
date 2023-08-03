@@ -328,7 +328,7 @@ func (e *Entry) Equal(other *Entry, deep bool) bool {
 
 // EntryCopyBehavior indicates the type of Copy operation to perform for an
 // Entry. All copy types behave the same for scalar entries - they only vary the
-// behavior of directory entries (including phantom directories).
+// behavior of directory entry copies (including phantom directories).
 type EntryCopyBehavior uint8
 
 const (

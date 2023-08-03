@@ -101,9 +101,11 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		// ancestor changes necessary to create parent entries for this entry
 		// will already have been recorded and will be performed by Apply first.
 		//
-		// Finally, since we'll be wiping out the old ancestor value at this
-		// path, we don't want to recursively add deletion changes for its old
-		// child entries as well, so we nil them out at this point.
+		// Finally, because we'll be wiping out the old ancestor value at this
+		// path, we don't want to recursively add deletion changes for its
+		// descendants (if any), and we don't need to because of the
+		// aforementioned Apply behavior, so we'll nil out the old ancestor
+		// contents to prevent them from driving further traversal.
 		if !ancestor.Equal(alpha, false) {
 			r.ancestorChanges = append(r.ancestorChanges, &Change{
 				Path: path,
