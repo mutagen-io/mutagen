@@ -399,8 +399,17 @@ func (s *scanner) directory(
 			continue
 		}
 
-		// If the filename is not valid UTF-8, then flag it as problematic
-		// content. This is important for both (a) enforcing that comparisons
+		// If the filename is not valid UTF-8, then flag it as either untracked
+		// or problematic content, depending on the ignore mask. The reason for
+		// this distinction is that all non-UTF-8-named content inherently falls
+		// into the "nominal" ignore status (because the name couldn't possibly
+		// match any ignore (or unignore) specification). Moreover, we wouldn't
+		// want a non-UTF-8-named entry to be the sole trigger that reified a
+		// phantom directory into existence, and even if other content were to
+		// trigger a phantom directory into existence, we wouldn't care about
+		// the non-UTF-8-named entry because it would be ignore masked out.
+		//
+		// UTF-8 enforcement is important for both (a) ensuring that comparisons
 		// are performed using a common encoding and (b) allowing the name to be
 		// encoded with Protocol Buffers (which enforces that strings are UTF-8
 		// encoded when marshaling). Since the file name isn't valid for storing
@@ -408,9 +417,14 @@ func (s *scanner) directory(
 		// replacement character and store the entry with a (hopefully)
 		// non-coliding derivative name.
 		if !utf8.ValidString(contentName) {
-			contents[strings.ToValidUTF8(contentName, "�")+" (non-UTF-8)"] = &Entry{
-				Kind:    EntryKind_Problematic,
-				Problem: "non-UTF-8 filename",
+			escapedContentName := strings.ToValidUTF8(contentName, "�") + " (non-UTF-8)"
+			if ignoreMask {
+				contents[escapedContentName] = &Entry{Kind: EntryKind_Untracked}
+			} else {
+				contents[escapedContentName] = &Entry{
+					Kind:    EntryKind_Problematic,
+					Problem: "non-UTF-8 filename",
+				}
 			}
 			continue
 		}
