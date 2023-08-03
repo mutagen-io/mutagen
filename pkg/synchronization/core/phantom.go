@@ -3,16 +3,17 @@ package core
 // reifyPhantomDirectories is the underlying recursive implementation of
 // ReifyPhantomDirectories. It performs the conjoined, reverse-DFS traversal and
 // returns whether or not trackable (though not necessarily synchronizable)
-// content is present at this level.
+// content is present at this level, along with updated directory counts for
+// alpha and beta, respectively.
 func reifyPhantomDirectories(ancestor, alpha, beta *Entry) (bool, uint64, uint64) {
 	// If neither alpha nor beta is a directory kind, then we won't continue
 	// recursion any further. In this case, we'll return an indication of
-	// whether either alpha or beta represents non-nil, tracked content (note
-	// that at least one of alpha or beta must be non-nil here). This indication
-	// will tell the parents of alpha and beta whether or not to reify to
-	// tracked or ignored (assuming reification is necessary). Note that we
-	// don't require synchronizability to indicate that the parents should be
-	// reified to tracked, because a problematic entry must be a tracked entry.
+	// whether either alpha or beta represents non-nil, tracked content. This
+	// indication will tell the parents of alpha and beta whether or not to
+	// reify to tracked or ignored (assuming reification is necessary). Note
+	// that we don't require synchronizability to indicate that the parents
+	// should be reified to tracked, because a problematic entry is implicitly a
+	// tracked entry.
 	alphaIsDirectoryKind := alpha != nil &&
 		(alpha.Kind == EntryKind_Directory || alpha.Kind == EntryKind_PhantomDirectory)
 	betaIsDirectoryKind := beta != nil &&
@@ -24,12 +25,13 @@ func reifyPhantomDirectories(ancestor, alpha, beta *Entry) (bool, uint64, uint64
 	}
 
 	// At this point, we know that one or both of alpha and beta are directory
-	// kinds. Thus, we need to recurse regardless of whether they're phantoms or
-	// not, because they could contain phantoms at a lower depth. As we recurse,
-	// we'll track whether or not tracked content exists at lower levels. Note
-	// that, unlike in the reconcile case, we don't let ancestorContents drive
-	// recursion, because that's only necessary to generate deletion changes to
-	// the ancestor (whereas here we're not modifying the ancestor).
+	// kinds (tracked or phantom). Thus, we need to recurse (regardless of their
+	// tracked/phantom status), because they could contain phantoms at a lower
+	// depth. As we recurse, we'll track whether or not tracked content exists
+	// at lower levels. Note that, unlike in the reconcile case, we don't let
+	// ancestorContents drive recursion, because that's only necessary to
+	// generate deletion changes to the ancestor (whereas here we're not
+	// modifying the ancestor).
 	ancestorContents := ancestor.GetContents()
 	alphaContents := alpha.GetContents()
 	betaContents := beta.GetContents()
@@ -48,39 +50,43 @@ func reifyPhantomDirectories(ancestor, alpha, beta *Entry) (bool, uint64, uint64
 		betaDirectoryCount += betaCount
 	}
 
-	// Update initial counts for the current level.
-	if alphaIsDirectoryKind {
-		alphaDirectoryCount++
-	}
-	if betaIsDirectoryKind {
-		betaDirectoryCount++
-	}
-
 	// Determine how to reify any phantom directories at this level. Any tracked
 	// content at lower levels indicates that we should reify phantom
 	// directories to tracked directories, as does the presence of a tracked
-	// directory in the ancestor.
+	// directory in the ancestor. We also take this opportunity to update the
+	// directory counts to include this level. In the case that we reify to
+	// untracked, we could theoretically lean into the invariant that if both
+	// alpha and beta are directory kinds, then they must both be either tracked
+	// or phantom, which might allow us to save a few comparisons, but that
+	// invariant relies on endpoints behaving correctly, but relying on that
+	// would make this code somewhat fragile.
 	ancestorIsDirectory := ancestor != nil && ancestor.Kind == EntryKind_Directory
 	reifyToTracked := trackedContentExistsAtLowerLevels || ancestorIsDirectory
-	alphaIsPhantom := alpha != nil && alpha.Kind == EntryKind_PhantomDirectory
-	betaIsPhantom := beta != nil && beta.Kind == EntryKind_PhantomDirectory
 	if reifyToTracked {
-		if alphaIsPhantom {
+		if alphaIsDirectoryKind {
 			alpha.Kind = EntryKind_Directory
+			alphaDirectoryCount++
 		}
-		if betaIsPhantom {
+		if betaIsDirectoryKind {
 			beta.Kind = EntryKind_Directory
+			betaDirectoryCount++
 		}
 	} else {
-		if alphaIsPhantom {
-			alpha.Kind = EntryKind_Untracked
-			alpha.Contents = nil
-			alphaDirectoryCount--
+		if alphaIsDirectoryKind {
+			if alpha.Kind == EntryKind_PhantomDirectory {
+				alpha.Kind = EntryKind_Untracked
+				alpha.Contents = nil
+			} else {
+				alphaDirectoryCount++
+			}
 		}
-		if betaIsPhantom {
-			beta.Kind = EntryKind_Untracked
-			beta.Contents = nil
-			betaDirectoryCount--
+		if betaIsDirectoryKind {
+			if beta.Kind == EntryKind_PhantomDirectory {
+				beta.Kind = EntryKind_Untracked
+				beta.Contents = nil
+			} else {
+				betaDirectoryCount++
+			}
 		}
 	}
 
