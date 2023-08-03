@@ -66,14 +66,14 @@ type Ignorer interface {
 	// based on its path and nature as a directory. It returns the ignore status
 	// for the entry, as well as whether or not any inverted ignores indicate
 	// that content beneath the entry could be explicitly unignored (and thus
-	// that traversal should continue across this entry if it's a directory).
-	// The path provided to Ignore will be relative to the synchronization root
-	// and suitable for use with the fastpath package. The Ignore method should
-	// always return the same results for a given set of arguments. Traversal
-	// continuation should only be suggested if the entry is a directory and
-	// should be suggested correctly regardless of ignore status, including in
-	// the case of ignoreStatusNominal, where an ignore mask on the traversal
-	// stack could cause the directory to be ignored.
+	// that traversal should continue across this entry). The path provided to
+	// Ignore will be relative to the synchronization root and suitable for use
+	// with the fastpath package. The Ignore method should always return the
+	// same results for a given set of arguments. Traversal continuation must
+	// only be suggested if the entry is a directory and should be suggested
+	// correctly regardless of ignore status, including in the case of
+	// IgnoreStatusNominal, where an ignore mask on the traversal stack could
+	// cause the directory to be ignored.
 	Ignore(path string, directory bool) (IgnoreStatus, bool)
 }
 

@@ -402,12 +402,12 @@ func (s *scanner) directory(
 		// If the filename is not valid UTF-8, then flag it as either untracked
 		// or problematic content, depending on the ignore mask. The reason for
 		// this distinction is that all non-UTF-8-named content inherently falls
-		// into the "nominal" ignore status (because the name couldn't possibly
-		// match any ignore (or unignore) specification). Moreover, we wouldn't
-		// want a non-UTF-8-named entry to be the sole trigger that reified a
-		// phantom directory into existence, and even if other content were to
-		// trigger a phantom directory into existence, we wouldn't care about
-		// the non-UTF-8-named entry because it would be ignore masked out.
+		// under IgnoreStatusNominal (because the name couldn't possibly match
+		// any ignore (or unignore) specification). Moreover, we wouldn't want a
+		// non-UTF-8-named entry to be the sole trigger that reified a phantom
+		// directory into existence, and even if other content were to trigger a
+		// phantom directory into existence, we wouldn't care about the
+		// non-UTF-8-named entry because it would be ignore masked out.
 		//
 		// UTF-8 enforcement is important for both (a) ensuring that comparisons
 		// are performed using a common encoding and (b) allowing the name to be
@@ -464,12 +464,12 @@ func (s *scanner) directory(
 		s.newIgnoreCache[ignoreCacheKey] = ignoreBehavior
 		contentIgnoreMask := ignoreMask
 		if ignoreBehavior.Status == ignore.IgnoreStatusNominal {
-			if ignoreMask && (!contentIsDirectory || !ignoreBehavior.ContinueTraversal) {
+			if ignoreMask && !ignoreBehavior.ContinueTraversal {
 				contents[contentName] = &Entry{Kind: EntryKind_Untracked}
 				continue
 			}
 		} else if ignoreBehavior.Status == ignore.IgnoreStatusIgnored {
-			if !contentIsDirectory || !ignoreBehavior.ContinueTraversal {
+			if !ignoreBehavior.ContinueTraversal {
 				contents[contentName] = &Entry{Kind: EntryKind_Untracked}
 				continue
 			}

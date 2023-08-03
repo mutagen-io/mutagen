@@ -427,10 +427,8 @@ func (pm *PatternMatcher) MatchesForMutagen(path string, directory bool) (MatchS
 	}
 
 	// If we're dealing with a directory that is explicitly inverted, then we
-	// can immediately recommend continued traversal. This is a bit redundant
-	// and doesn't have any effect on real code paths, but it is a requirement
-	// of the ignorer interface that we're supporting. Note that, unlike with
-	// Mutagen-style ignores, we don't return a blanket continue traversal
+	// can immediately recommend continued traversal. Note that, unlike with
+	// Mutagen-style ignores, we don't return a blanket traversal continuation
 	// directive on nominal content because we don't want to walk down nominal
 	// (but ignore-masked) directories during traversal, so we still need to
 	// check those for prefix matches.
