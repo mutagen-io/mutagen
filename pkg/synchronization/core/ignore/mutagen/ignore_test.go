@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/internal/ignoretest"
 )
 
 // TestCleanPreservingTrailingSlash tests that cleanPreservingTrailingSlash
@@ -49,6 +50,8 @@ func TestEnsurePatternValid(t *testing.T) {
 		{"!/", false},
 		{"//", false},
 		{"!//", false},
+		{"///", false},
+		{"!///", false},
 		{"\\", false},
 
 		{"some pattern", true},
@@ -68,48 +71,12 @@ func TestEnsurePatternValid(t *testing.T) {
 	}
 }
 
-type ignoreTestValue struct {
-	path                      string
-	directory                 bool
-	expectedStatus            ignore.IgnoreStatus
-	expectedContinueTraversal bool
-}
-
-type ignoreTestCase struct {
-	ignores []string
-	tests   []ignoreTestValue
-}
-
-func (c *ignoreTestCase) run(t *testing.T) {
-	// Ensure that all patterns are valid.
-	for _, p := range c.ignores {
-		if err := EnsurePatternValid(p); err != nil {
-			t.Fatalf("invalid ignore pattern (%s): %v", p, err)
-		}
-	}
-
-	// Create an ignorer.
-	ignorer, err := NewIgnorer(c.ignores)
-	if err != nil {
-		t.Fatal("unable to create ignorer:", err)
-	}
-
-	// Verify test values.
-	for _, p := range c.tests {
-		status, continueTraversal := ignorer.Ignore(p.path, p.directory)
-		if status != p.expectedStatus {
-			t.Error("ignore status not as expected for", p.path)
-		}
-		if continueTraversal != p.expectedContinueTraversal {
-			t.Error("ignore traversal continuation not as expected for", p.path)
-		}
-	}
-}
-
 func TestIgnoreNone(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: nil,
-		tests: []ignoreTestValue{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores:          nil,
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"something", false, ignore.IgnoreStatusNominal, false},
@@ -118,18 +85,20 @@ func TestIgnoreNone(t *testing.T) {
 			{"some/path", true, ignore.IgnoreStatusNominal, true},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnorerBasic(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"something",
 			"otherthing",
 			"!something",
 			"somedir/",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"something", false, ignore.IgnoreStatusUnignored, false},
@@ -150,16 +119,18 @@ func TestIgnorerBasic(t *testing.T) {
 			{"subpath/somedir", true, ignore.IgnoreStatusIgnored, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnoreGroup(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"*.py[cod]",
 			"*.dir[cod]/",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"run.py", false, ignore.IgnoreStatusNominal, false},
@@ -175,18 +146,20 @@ func TestIgnoreGroup(t *testing.T) {
 			{"subpath/run.dird", true, ignore.IgnoreStatusIgnored, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnoreRootRelative(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"/abspath",
 			"/absdir/",
 			"/name",
 			"!*/**/name",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"abspath", false, ignore.IgnoreStatusIgnored, false},
@@ -203,17 +176,19 @@ func TestIgnoreRootRelative(t *testing.T) {
 			{"subpath/name", true, ignore.IgnoreStatusUnignored, true},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnoreDoublestar(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"some/*",
 			"some/**/*",
 			"!some/other",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"something", false, ignore.IgnoreStatusNominal, false},
@@ -223,17 +198,19 @@ func TestIgnoreDoublestar(t *testing.T) {
 			{"some/other/path", false, ignore.IgnoreStatusIgnored, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnoreNegateOrdering(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"!something",
 			"otherthing",
 			"something",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"something", false, ignore.IgnoreStatusIgnored, false},
@@ -242,16 +219,18 @@ func TestIgnoreNegateOrdering(t *testing.T) {
 			{"some/path", false, ignore.IgnoreStatusNominal, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnoreWildcard(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"some*",
 			"!someone",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"som", false, ignore.IgnoreStatusNominal, false},
@@ -261,17 +240,19 @@ func TestIgnoreWildcard(t *testing.T) {
 			{"some/path", false, ignore.IgnoreStatusNominal, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }
 
 func TestIgnorePathWildcard(t *testing.T) {
-	test := &ignoreTestCase{
-		ignores: []string{
+	test := &ignoretest.TestCase{
+		PatternValidator: EnsurePatternValid,
+		Constructor:      NewIgnorer,
+		Ignores: []string{
 			"some/*",
 			"some/**/*",
 			"!some/other",
 		},
-		tests: []ignoreTestValue{
+		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, true},
 			{"something", false, ignore.IgnoreStatusNominal, false},
@@ -282,5 +263,5 @@ func TestIgnorePathWildcard(t *testing.T) {
 			{"subdir/some/other/path", false, ignore.IgnoreStatusNominal, false},
 		},
 	}
-	test.run(t)
+	test.Run(t)
 }

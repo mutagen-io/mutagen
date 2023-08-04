@@ -15,15 +15,59 @@ import (
 // validation for EnsurePatternValid and NewIgnorer, which is complicated due to
 // the fact that patternmatcher.Pattern isn't designed to be used individually.
 func newValidatedPatternMatcher(patterns []string) (*patternmatcher.PatternMatcher, error) {
-	// Disable escaping since we need our patterns to be portable.
+	// Perform initial validation and cleaning. The modifications we make here
+	// are primarily to keep alignment with .dockerignore parsing, which does
+	// some preprocessing to remove whitespace and slash prefixes:
+	// https://github.com/moby/buildkit/blob/18fc875d9bfd6e065cd8211abc639434ba65aa56/frontend/dockerfile/dockerignore/dockerignore.go#L38-L57
+	// Additional cleaning and processing is performed when constructing a
+	// PatternMatcher, but observable .dockerignore behavior relies on both.
+	cleanedPatterns := make([]string, 0, len(patterns))
 	for _, pattern := range patterns {
+		// Disable escaping since we need our patterns to be portable. This also
+		// means that paths containing backslash separators, which are normally
+		// tolerated (though rarely used) in a .dockerignore file on Windows,
+		// will be rejected here in favor of portability.
 		if strings.IndexByte(pattern, '\\') >= 0 {
 			return nil, errors.New("escape sequences disallowed in portable .dockerignore patterns")
 		}
+
+		// Trim whitespace from the pattern and check for empty patterns. Docker
+		// will just ignore these, but since they have no meaning, we'll raise
+		// an error to avoid misconfiguration.
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			return nil, errors.New("whitespace-only pattern")
+		}
+
+		// If the pattern is negated, then strip off the negation before doing
+		// any additional cleaning.
+		negated := pattern[0] == '!'
+		if negated {
+			pattern = strings.TrimSpace(pattern[1:])
+			if pattern == "" {
+				return nil, errors.New("whitespace-only negated pattern")
+			}
+		}
+
+		// Remove any prefix slash on the pattern. All Docker-style matching is
+		// inherently root-relative, but it won't match if a slash prefix is
+		// present, instead relying on that slash having been removed when the
+		// .dockerignore file was loaded.
+		if len(pattern) > 1 && pattern[0] == '/' {
+			pattern = pattern[1:]
+		}
+
+		// Replace the negation, if necessary.
+		if negated {
+			pattern = "!" + pattern
+		}
+
+		// Record the cleaned pattern.
+		cleanedPatterns = append(cleanedPatterns, pattern)
 	}
 
 	// Create the resulting matcher and enforce pre-compilation.
-	matcher, err := patternmatcher.New(patterns)
+	matcher, err := patternmatcher.New(cleanedPatterns)
 	if err != nil {
 		return nil, err
 	} else if err = matcher.PrecompileForMutagen(); err != nil {
