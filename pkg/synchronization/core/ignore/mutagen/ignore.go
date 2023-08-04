@@ -1,6 +1,7 @@
 package mutagen
 
 import (
+	"errors"
 	"fmt"
 	pathpkg "path"
 	"strings"
@@ -9,6 +10,24 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 )
+
+// cleanPreservingTrailingSlash is a variant of path.Clean that preserves
+// trailing slashes.
+func cleanPreservingTrailingSlash(path string) string {
+	// Determine whether or not a trailing slash exists. We enforce a minimum
+	// length to ensure that we're not dealing with "/".
+	var needTrailingSlash bool
+	if l := len(path); l > 1 {
+		needTrailingSlash = path[l-1] == '/'
+	}
+
+	// Perform a clean operation, adjusting the result as necessary.
+	if result := pathpkg.Clean(path); needTrailingSlash {
+		return result + "/"
+	} else {
+		return result
+	}
+}
 
 // EnsurePatternValid ensures that the provided pattern is valid under
 // Mutagen-style ignore syntax.
@@ -33,22 +52,38 @@ type ignorePattern struct {
 
 // newIgnorePattern validates and parses a user-provided ignore pattern.
 func newIgnorePattern(pattern string) (*ignorePattern, error) {
-	// Perform general syntax validation.
-	if err := ignore.EnsurePatternValid(pattern); err != nil {
-		return nil, err
+	// Ensure that the pattern is not empty.
+	if len(pattern) == 0 {
+		return nil, errors.New("empty pattern")
 	}
 
 	// Check if this is a negated pattern. If so, remove the exclamation point
-	// prefix, since it won't enter into pattern matching.
-	negated := false
+	// prefix, since it won't enter into pattern matching. Take this opportunity
+	// to ensure that we didn't receive an empty negated pattern.
+	var negated bool
 	if pattern[0] == '!' {
 		negated = true
 		pattern = pattern[1:]
 	}
+	if pattern == "" {
+		return nil, errors.New("negated empty pattern")
+	}
+
+	// Perform a cleaning operation on the pattern, making sure to preserve any
+	// trailing slashes.
+	pattern = cleanPreservingTrailingSlash(pattern)
+
+	// Ensure that we haven't received a pattern targeting the synchronization
+	// root.
+	if pattern == "/" {
+		return nil, errors.New("root pattern")
+	} else if pattern == "//" {
+		return nil, errors.New("root directory pattern")
+	}
 
 	// Check if this is an absolute pattern. If so, remove the forward slash
 	// prefix, since it won't enter into pattern matching.
-	absolute := false
+	var absolute bool
 	if pattern[0] == '/' {
 		absolute = true
 		pattern = pattern[1:]
@@ -56,7 +91,7 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 
 	// Check if this is a directory-only pattern. If so, remove the trailing
 	// slash, since it won't enter into pattern matching.
-	directoryOnly := false
+	var directoryOnly bool
 	if pattern[len(pattern)-1] == '/' {
 		directoryOnly = true
 		pattern = pattern[:len(pattern)-1]

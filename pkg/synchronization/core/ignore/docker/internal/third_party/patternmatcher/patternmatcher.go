@@ -275,6 +275,22 @@ func New(patterns []string) (*PatternMatcher, error) {
 	return pm, nil
 }
 
+// PrecompileForMutagen is a utility function that will pre-compile patterns to
+// watch for validation errors.
+func (pm *PatternMatcher) PrecompileForMutagen() error {
+	// Pre-compile any as-of-yet uncompiled patterns.
+	for _, pattern := range pm.patterns {
+		if pattern.matchType == unknownMatch {
+			if pattern.compile(string(os.PathSeparator)) != nil {
+				return filepath.ErrBadPattern
+			}
+		}
+	}
+
+	// Success.
+	return nil
+}
+
 // Matches returns true if "file" matches any of the patterns
 // and isn't excluded by any of the subsequent patterns.
 //

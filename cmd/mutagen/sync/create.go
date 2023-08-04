@@ -290,13 +290,22 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Determine the appropriate validator for ignore patterns. In the default
-	// case, we won't have daemon session version information, so we won't be
-	// able to reify the ignore syntax and will have to use generic validation.
+	// Compute the effective ignore syntax and Determine the appropriate
+	// validator for ignore patterns.
+	//
+	// HACK: We technically don't know the daemon's default session version, so
+	// we compute the default ignore syntax using the default session version
+	// for this executable, which (given our current distribution strategy) will
+	// be the same as that of the daemon. Of course, the daemon API will
+	// re-validate this, so validation here is merely best-effort and
+	// informational in any case. For more information on the reasoning behind
+	// this, see the note in synchronization.Version.DefaultIgnoreSyntax.
+	effectiveIgnoreSyntax := ignoreSyntax
+	if effectiveIgnoreSyntax.IsDefault() {
+		effectiveIgnoreSyntax = synchronization.DefaultVersion.DefaultIgnoreSyntax()
+	}
 	var ignoreValidator func(string) error
-	switch ignoreSyntax {
-	case ignore.Syntax_SyntaxDefault:
-		ignoreValidator = ignore.EnsurePatternValid
+	switch effectiveIgnoreSyntax {
 	case ignore.Syntax_SyntaxMutagen:
 		ignoreValidator = mutagenignore.EnsurePatternValid
 	case ignore.Syntax_SyntaxDocker:

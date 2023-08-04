@@ -90,33 +90,39 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the ignore syntax is unspecified or supported.
+	// Verify that the ignore syntax is unspecified or supported. Also, compute
+	// the effective ignore syntax in the case of a non-endpoint-specific
+	// configuration, because we'll want to validate ignore patterns.
+	var effectiveIgnoreSyntax ignore.Syntax
 	if endpointSpecific {
 		if !c.IgnoreSyntax.IsDefault() {
 			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
+		if c.IgnoreSyntax.IsDefault() {
+			// HACK: We don't have a reference to the session version in this
+			// method, so we compute the default ignore syntax by using the
+			// default session version for the current version of Mutagen. For
+			// more information on the reasoning behind this, see the note in
+			// Version.DefaultIgnoreSyntax.
+			effectiveIgnoreSyntax = DefaultVersion.DefaultIgnoreSyntax()
+		} else if c.IgnoreSyntax.Supported() {
+			effectiveIgnoreSyntax = c.IgnoreSyntax
+		} else {
 			return errors.New("unknown or unsupported ignore syntax")
 		}
 	}
 
-	// Determine the appropriate validator for ignore patterns. If we don't have
-	// a fully reified ignore syntax (due to this being an endpoint-specific
-	// configuration or simply because we lack the version information needed to
-	// reify the default), then we'll just use generic validation. Note that in
-	// the endpoint-specific case, there won't (or shouldn't) be any ignore
-	// specifications anyway, and thus validation won't be performed.
+	// If we know the effective ignore syntax (which we should for non-endpoint-
+	// specific configurations), then compute an ignore validator. We'll leave
+	// this validator nil in the case of endpoint-specific validation (where we
+	// enforce that no patterns are specified).
 	var ignoreValidator func(string) error
-	switch c.IgnoreSyntax {
-	case ignore.Syntax_SyntaxDefault:
-		ignoreValidator = ignore.EnsurePatternValid
+	switch effectiveIgnoreSyntax {
 	case ignore.Syntax_SyntaxMutagen:
 		ignoreValidator = mutagenignore.EnsurePatternValid
 	case ignore.Syntax_SyntaxDocker:
 		ignoreValidator = dockerignore.EnsurePatternValid
-	default:
-		panic("unhandled ignore syntax")
 	}
 
 	// Verify that default ignores are unset for endpoint-specific
@@ -166,7 +172,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	} else {
 		if c.PermissionsMode.IsDefault() {
 			// HACK: We don't have a reference to the session version in this
-			// method, so we compute the permissions mode default by using the
+			// method, so we compute the default permissions mode by using the
 			// default session version for the current version of Mutagen. For
 			// more information on the reasoning behind this, see the note in
 			// Version.DefaultPermissionsMode.

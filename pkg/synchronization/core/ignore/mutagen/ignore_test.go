@@ -6,6 +6,68 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 )
 
+// TestCleanPreservingTrailingSlash tests that cleanPreservingTrailingSlash
+// behaves as expected.
+func TestCleanPreservingTrailingSlash(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"", "."},
+		{"/", "/"},
+		{"//", "//"},
+		{"///", "//"},
+		{"/a", "/a"},
+		{" /a", " /a"},
+		{" /a/", " /a/"},
+		{"a/", "a/"},
+		{"a//", "a/"},
+		{"a", "a"},
+		{" ", " "},
+		{" //", " /"},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if output := cleanPreservingTrailingSlash(test.input); output != test.expected {
+			t.Errorf("test index %d: output did not match expected: \"%s\" != \"%s\"", i, output, test.expected)
+		}
+	}
+}
+
+// TestEnsurePatternValid tests that EnsurePatternValid behaves as expected.
+func TestEnsurePatternValid(t *testing.T) {
+	// Define test cases.
+	tests := []struct {
+		pattern     string
+		expectValid bool
+	}{
+		{"", false},
+		{"!", false},
+		{"/", false},
+		{"!/", false},
+		{"//", false},
+		{"!//", false},
+		{"\\", false},
+
+		{"some pattern", true},
+		{"some/pattern", true},
+		{"/some/pattern", true},
+		{"/some/pattern/", true},
+		{"\t \n", true},
+	}
+
+	// Process test cases.
+	for i, test := range tests {
+		if err := EnsurePatternValid(test.pattern); err != nil && test.expectValid {
+			t.Errorf("test index %d: pattern (%s) was unexpectedly classified as invalid: %v", i, test.pattern, err)
+		} else if err == nil && !test.expectValid {
+			t.Errorf("test index %d: pattern (%s) was unexpectedly classified as valid", i, test.pattern)
+		}
+	}
+}
+
 type ignoreTestValue struct {
 	path                      string
 	directory                 bool
@@ -221,35 +283,4 @@ func TestIgnorePathWildcard(t *testing.T) {
 		},
 	}
 	test.run(t)
-}
-
-// TestEnsurePatternValid tests that EnsurePatternValid behaves as expected.
-func TestEnsurePatternValid(t *testing.T) {
-	// Define test cases.
-	tests := []struct {
-		pattern     string
-		expectValid bool
-	}{
-		{"", false},
-		{"!", false},
-		{"/", false},
-		{"!/", false},
-		{"//", false},
-		{"!//", false},
-		{"\t \n", false},
-		{"some pattern", true},
-		{"some/pattern", true},
-		{"/some/pattern", true},
-		{"/some/pattern/", true},
-		{"\\", false},
-	}
-
-	// Process test cases.
-	for i, test := range tests {
-		if err := EnsurePatternValid(test.pattern); err != nil && test.expectValid {
-			t.Errorf("test index %d: pattern was unexpectedly classified as invalid: %v", i, err)
-		} else if err == nil && !test.expectValid {
-			t.Errorf("test index %d: pattern was unexpectedly classified as valid", i)
-		}
-	}
 }
