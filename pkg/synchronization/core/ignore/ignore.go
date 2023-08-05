@@ -24,16 +24,14 @@ const (
 type Ignorer interface {
 	// Ignore determines whether or not a filesystem entry should be ignored
 	// based on its path and nature as a directory. It returns the ignore status
-	// for the entry, as well as whether or not any inverted ignores indicate
-	// that content beneath the entry could be explicitly unignored (and thus
-	// that traversal should continue across this entry). The path provided to
-	// Ignore will be relative to the synchronization root and suitable for use
-	// with the fastpath package. The Ignore method should always return the
-	// same results for a given set of arguments. Traversal continuation must
-	// only be suggested if the entry is a directory and should be suggested
-	// correctly regardless of ignore status, including in the case of
-	// IgnoreStatusNominal, where an ignore mask on the traversal stack could
-	// cause the directory to be ignored.
+	// for the entry, as well as a traversal continuation directive. The
+	// traversal continuation directive should be true only if (a) the path is a
+	// directory, (b) the ignore status is nominal (in which case it might be
+	// ignore-masked) or ignored, and (c) an inverted ignore indicates that
+	// content beneath the entry could be explicitly unignored. The path
+	// provided to Ignore will be relative to the synchronization root and
+	// suitable for use with the fastpath package. The Ignore method should
+	// always return the same results for a given set of arguments.
 	Ignore(path string, directory bool) (IgnoreStatus, bool)
 }
 
