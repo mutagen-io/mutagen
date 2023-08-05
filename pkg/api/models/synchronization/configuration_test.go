@@ -128,6 +128,9 @@ func TestLoadConfiguration(t *testing.T) {
 	if configuration.WatchPollingInterval != expectedConfiguration.WatchPollingInterval {
 		t.Error("watch polling interval mismatch:", configuration.WatchPollingInterval, "!=", expectedConfiguration.WatchPollingInterval)
 	}
+	if configuration.IgnoreSyntax != expectedConfiguration.IgnoreSyntax {
+		t.Error("ignore syntax mismatch:", configuration.IgnoreSyntax, "!=", expectedConfiguration.IgnoreSyntax)
+	}
 	if len(configuration.Ignores) != len(expectedConfiguration.Ignores) {
 		t.Error("ignore count mismatch:", len(configuration.Ignores), "!=", len(expectedConfiguration.Ignores))
 	} else {
