@@ -16,6 +16,7 @@ func TestEntryKindSynchronizable(t *testing.T) {
 		{EntryKind_SymbolicLink, true},
 		{EntryKind_Untracked, false},
 		{EntryKind_Problematic, false},
+		{EntryKind_PhantomDirectory, false},
 	}
 
 	// Process test cases.
@@ -36,9 +37,13 @@ func init() {
 // entryEnsureValidTestCases are test cases shared between TestEntryEnsureValid,
 // TestArchiveEnsureValid, and TestChangeEnsureValid.
 var entryEnsureValidTestCases = []struct {
-	entry          *Entry
+	// entry is the entry to validate.
+	entry *Entry
+	// synchronizable is the synchronizability condition under which to run
+	// validation.
 	synchronizable bool
-	expected       bool
+	// expected is the expected validity.
+	expected bool
 }{
 	// Test synchronizable content.
 	{tN, false, true},
@@ -75,6 +80,10 @@ var entryEnsureValidTestCases = []struct {
 	{tDU, true, false},
 	{tDP1, false, true},
 	{tDP1, true, false},
+	{tPD0, false, true},
+	{tPD0, true, false},
+	{tDPD0, false, true},
+	{tDPD0, true, false},
 
 	// Test invalid content.
 	{tIDDE, false, false},
@@ -312,6 +321,8 @@ func TestEntryEqual(t *testing.T) {
 		{tDU, tDU, true, true},
 		{tDP1, tDP1, false, true},
 		{tDP1, tDP1, true, true},
+		{tPD0, tPD0, false, true},
+		{tPD0, tPD0, true, true},
 	}
 
 	// Process test cases.

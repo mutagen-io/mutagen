@@ -183,6 +183,9 @@ var tDP1 = &Entry{Contents: map[string]*Entry{"problematic": tP1}}
 // testing.
 var tDP2 = &Entry{Contents: map[string]*Entry{"problematic": tP2}}
 
+// tDPD0 is a directory entry (containing tPD0 with name "phantom") for testing.
+var tDPD0 = &Entry{Contents: map[string]*Entry{"phantom": tPD0}}
+
 // tIDDE is an invalid directory entry (with an empty but non-nil file digest)
 // for testing.
 var tIDDE = &Entry{Digest: []byte{}}
