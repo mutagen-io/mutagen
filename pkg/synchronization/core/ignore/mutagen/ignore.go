@@ -75,6 +75,15 @@ func newIgnorePattern(pattern string) (*ignorePattern, error) {
 
 	// Ensure that we haven't received a pattern targeting the synchronization
 	// root.
+	//
+	// We could potentially allow "!/" or "!//" patterns (i.e. allow a root path
+	// or root directory path specification if this is a negated pattern), but
+	// there's no reason to do that because we don't allow the root to be
+	// excluded. Thus, it's best to flag this odd specification. It also saves
+	// us the complexity the empty string edge case (after the slash/slashes
+	// is/are stripped off). In any case, such a pattern would never end up
+	// matching anything because the root path is never evaluated for ignoring
+	// in Scan.
 	if pattern == "/" {
 		return nil, errors.New("root pattern")
 	} else if pattern == "//" {

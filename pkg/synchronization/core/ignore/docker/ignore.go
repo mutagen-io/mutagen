@@ -3,7 +3,7 @@ package docker
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+	pathpkg "path"
 	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
@@ -28,7 +28,7 @@ func newValidatedPatternMatcher(patterns []string) (*patternmatcher.PatternMatch
 		// tolerated (though rarely used) in a .dockerignore file on Windows,
 		// will be rejected here in favor of portability.
 		if strings.IndexByte(pattern, '\\') >= 0 {
-			return nil, errors.New("escape sequences disallowed in portable .dockerignore patterns")
+			return nil, errors.New("escape sequences and backslash-separated paths disallowed in portable .dockerignore patterns")
 		}
 
 		// Trim whitespace from the pattern and check for empty patterns. Docker
@@ -47,6 +47,23 @@ func newValidatedPatternMatcher(patterns []string) (*patternmatcher.PatternMatch
 			if pattern == "" {
 				return nil, errors.New("whitespace-only negated pattern")
 			}
+		}
+
+		// Perform a cleaning operation on the path and watch out for root
+		// paths. We already assume that we're working with forward slashes
+		// given that we exclude backslashes above, so we can just perform a
+		// standard path.Clean.
+		//
+		// We could potentially allow "!/" patterns (i.e. allow a root path
+		// specification if this is a negated pattern), but there's no reason to
+		// do that because we don't allow the root to be excluded. Thus, it's
+		// best to flag this odd specification. It also saves us the complexity
+		// the empty string edge case (after the slash is stripped off). In any
+		// case, such a pattern would never end up matching anything because the
+		// root path is never evaluated for ignoring in Scan.
+		pattern = pathpkg.Clean(pattern)
+		if pattern == "/" {
+			return nil, errors.New("root pattern")
 		}
 
 		// Remove any prefix slash on the pattern. All Docker-style matching is
@@ -72,15 +89,6 @@ func newValidatedPatternMatcher(patterns []string) (*patternmatcher.PatternMatch
 		return nil, err
 	} else if err = matcher.PrecompileForMutagen(); err != nil {
 		return nil, err
-	}
-
-	// Enforce that none of the resulting patterns target a root path. Note that
-	// the patternmatcher library will convert to platform-native slashes
-	// internally, so we have to check for standalone separator accordingly.
-	for _, pattern := range matcher.Patterns() {
-		if pattern.String() == string(filepath.Separator) {
-			return nil, errors.New("root pattern")
-		}
 	}
 
 	// Success.
