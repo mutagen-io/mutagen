@@ -58,7 +58,7 @@ func reifyPhantomDirectories(ancestor, alpha, beta *Entry) (bool, uint64, uint64
 	// untracked, we could theoretically lean into the invariant that if both
 	// alpha and beta are directory kinds, then they must both be either tracked
 	// or phantom, which might allow us to save a few comparisons, but that
-	// invariant relies on endpoints behaving correctly, but relying on that
+	// invariant relies on endpoints behaving correctly, and relying on that
 	// would make this code somewhat fragile.
 	ancestorIsDirectory := ancestor != nil && ancestor.Kind == EntryKind_Directory
 	reifyToTracked := trackedContentExistsAtLowerLevels || ancestorIsDirectory
@@ -90,12 +90,12 @@ func reifyPhantomDirectories(ancestor, alpha, beta *Entry) (bool, uint64, uint64
 		}
 	}
 
+	// Determine whether or not tracked content exists at or below this level.
+	trackedContentExistsAtOrBelowThisLevel := alphaDirectoryCount >= 1 || betaDirectoryCount >= 1
+
 	// Return an indication of whether or not tracked content exists at or below
-	// this level. Note that we still want ancestorIsDirectory folded in to this
-	// return value because we know at this point that one of alpha or beta is a
-	// directory type, either tracked or phantom, and in the latter case the
-	// ancestorIsDirectory condition would have reified it to tracked.
-	return reifyToTracked, alphaDirectoryCount, betaDirectoryCount
+	// this level, as well as new directory counts.
+	return trackedContentExistsAtOrBelowThisLevel, alphaDirectoryCount, betaDirectoryCount
 }
 
 // ReifyPhantomDirectories performs a conjoined, reverse-DFS traversal of the
