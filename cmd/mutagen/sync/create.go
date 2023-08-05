@@ -28,8 +28,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
-	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
-	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -290,36 +288,12 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		}
 	}
 
-	// Compute the effective ignore syntax and Determine the appropriate
-	// validator for ignore patterns.
-	//
-	// HACK: We technically don't know the daemon's default session version, so
-	// we compute the default ignore syntax using the default session version
-	// for this executable, which (given our current distribution strategy) will
-	// be the same as that of the daemon. Of course, the daemon API will
-	// re-validate this, so validation here is merely best-effort and
-	// informational in any case. For more information on the reasoning behind
-	// this, see the note in synchronization.Version.DefaultIgnoreSyntax.
-	effectiveIgnoreSyntax := ignoreSyntax
-	if effectiveIgnoreSyntax.IsDefault() {
-		effectiveIgnoreSyntax = synchronization.DefaultVersion.DefaultIgnoreSyntax()
-	}
-	var ignoreValidator func(string) error
-	switch effectiveIgnoreSyntax {
-	case ignore.Syntax_SyntaxMutagen:
-		ignoreValidator = mutagenignore.EnsurePatternValid
-	case ignore.Syntax_SyntaxDocker:
-		ignoreValidator = dockerignore.EnsurePatternValid
-	default:
-		panic("unhandled ignore syntax")
-	}
-
-	// Validate ignore specifications.
-	for _, ignore := range createConfiguration.ignores {
-		if err := ignoreValidator(ignore); err != nil {
-			return fmt.Errorf("invalid ignore pattern (%s): %w", ignore, err)
-		}
-	}
+	// Unfortunately we can't validate ignore specifications in any meaningful
+	// way because we don't yet know the ignore syntax being used. This could be
+	// specified by the global YAML configuration or (more likely) determined by
+	// the default session version within the daemon. These ignores will
+	// eventually be validated at endpoint initialization time, but there's no
+	// convenient way to do it earlier in the session creation process.
 
 	// Validate and convert the VCS ignore mode specification.
 	var ignoreVCSMode ignore.IgnoreVCSMode

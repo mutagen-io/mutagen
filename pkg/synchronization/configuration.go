@@ -8,9 +8,6 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
-	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
-	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
-	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
@@ -90,64 +87,40 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that the ignore syntax is unspecified or supported. Also, compute
-	// the effective ignore syntax in the case of a non-endpoint-specific
-	// configuration, because we'll want to validate ignore patterns.
-	var effectiveIgnoreSyntax ignore.Syntax
+	// Verify that the ignore syntax is unspecified or supported.
 	if endpointSpecific {
 		if !c.IgnoreSyntax.IsDefault() {
 			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
 		}
 	} else {
-		if c.IgnoreSyntax.IsDefault() {
-			// HACK: We don't have a reference to the session version in this
-			// method, so we compute the default ignore syntax by using the
-			// default session version for the current version of Mutagen. For
-			// more information on the reasoning behind this, see the note in
-			// Version.DefaultIgnoreSyntax.
-			effectiveIgnoreSyntax = DefaultVersion.DefaultIgnoreSyntax()
-		} else if c.IgnoreSyntax.Supported() {
-			effectiveIgnoreSyntax = c.IgnoreSyntax
-		} else {
+		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
 			return errors.New("unknown or unsupported ignore syntax")
 		}
 	}
 
-	// If we know the effective ignore syntax (which we should for non-endpoint-
-	// specific configurations), then compute an ignore validator. We'll leave
-	// this validator nil in the case of endpoint-specific validation (where we
-	// enforce that no patterns are specified).
-	var ignoreValidator func(string) error
-	switch effectiveIgnoreSyntax {
-	case ignore.Syntax_SyntaxMutagen:
-		ignoreValidator = mutagenignore.EnsurePatternValid
-	case ignore.Syntax_SyntaxDocker:
-		ignoreValidator = dockerignore.EnsurePatternValid
-	}
-
 	// Verify that default ignores are unset for endpoint-specific
-	// configurations and that any specified ignores are valid. This field is
-	// deprecated, but existing sessions may have it set, in which case we'll
-	// just prepend it to the nominal list of ignores when running the session.
-	// We don't bother rejecting its presence based on source.
+	// configurations. This field is deprecated, but existing sessions may have
+	// it set, in which case we'll just prepend it to the nominal list of
+	// ignores when running the session. We don't bother rejecting its presence
+	// based on source. This is the only meaningful validation that we can do
+	// here because we don't yet know the ignore syntax being used (even if it's
+	// not a default value, it could be overridden in a different configuration
+	// that will be merged on top of this one). These ignores will eventually be
+	// validated at endpoint initialization time, but there's no convenient way
+	// to do it earlier in the session creation or loading process.
 	if endpointSpecific && len(c.DefaultIgnores) > 0 {
 		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
 	}
-	for _, ignore := range c.DefaultIgnores {
-		if err := ignoreValidator(ignore); err != nil {
-			return fmt.Errorf("invalid default ignore pattern (%s): %w", ignore, err)
-		}
-	}
 
-	// Verify that ignores are unset for endpoint-specific configurations and
-	// that any specified ignores are valid.
+	// Verify that ignores are unset for endpoint-specific configurations. This
+	// is the only meaningful validation that we can do here because we don't
+	// yet know the ignore syntax being used (even if it's not a default value,
+	// it could be overridden in a different configuration that will be merged
+	// on top of this one). These ignores will eventually be validated at
+	// endpoint initialization time, but there's no convenient way to do it
+	// earlier in the session creation or loading process.
 	if endpointSpecific && len(c.Ignores) > 0 {
 		return errors.New("ignores cannot be specified on an endpoint-specific basis")
-	}
-	for _, ignore := range c.Ignores {
-		if err := ignoreValidator(ignore); err != nil {
-			return fmt.Errorf("invalid ignore pattern (%s): %w", ignore, err)
-		}
 	}
 
 	// Verify that the VCS ignore mode is unspecified or supported.
