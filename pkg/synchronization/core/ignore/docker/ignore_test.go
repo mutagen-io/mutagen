@@ -67,12 +67,15 @@ func TestIgnorerBasic(t *testing.T) {
 			"otherthing",
 			"!something",
 			"somedir/",
+			"ignored",
+			"!ignored/subpath",
+			"!ignored/subpath2/content",
 		},
 		Tests: []ignoretest.TestValue{
 			{"", false, ignore.IgnoreStatusNominal, false},
 			{"", true, ignore.IgnoreStatusNominal, false},
 			{"something", false, ignore.IgnoreStatusUnignored, false},
-			{"something", true, ignore.IgnoreStatusUnignored, true},
+			{"something", true, ignore.IgnoreStatusUnignored, false},
 			{"subpath/something", false, ignore.IgnoreStatusNominal, false},
 			{"subpath/something", true, ignore.IgnoreStatusNominal, false},
 			{"otherthing", false, ignore.IgnoreStatusIgnored, false},
@@ -87,6 +90,10 @@ func TestIgnorerBasic(t *testing.T) {
 			{"somedir", true, ignore.IgnoreStatusIgnored, false},
 			{"subpath/somedir", false, ignore.IgnoreStatusNominal, false},
 			{"subpath/somedir", true, ignore.IgnoreStatusNominal, false},
+			{"ignored", false, ignore.IgnoreStatusIgnored, false},
+			{"ignored", true, ignore.IgnoreStatusIgnored, true},
+			{"ignored/subpath2", false, ignore.IgnoreStatusNominal, false},
+			{"ignored/subpath2", true, ignore.IgnoreStatusNominal, true},
 		},
 	}
 	test.Run(t)
@@ -143,7 +150,7 @@ func TestIgnoreRootRelative(t *testing.T) {
 			{"name", false, ignore.IgnoreStatusIgnored, false},
 			{"name", true, ignore.IgnoreStatusIgnored, false},
 			{"subpath/name", false, ignore.IgnoreStatusUnignored, false},
-			{"subpath/name", true, ignore.IgnoreStatusUnignored, true},
+			{"subpath/name", true, ignore.IgnoreStatusUnignored, false},
 		},
 	}
 	test.Run(t)

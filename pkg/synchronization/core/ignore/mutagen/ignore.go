@@ -224,13 +224,8 @@ func (i *ignorer) Ignore(path string, directory bool) (ignore.IgnoreStatus, bool
 		}
 	}
 
-	// For Mutagen-style ignores, we always continue traversal in the case of
-	// nominal or unignored content.
-	if directory && (status == ignore.IgnoreStatusNominal || status == ignore.IgnoreStatusUnignored) {
-		return status, true
-	}
-
-	// For non-directory types, or ignored directories, traversal continuation
-	// is always false.
+	// For Mutagen-style ignores, we never issue traversal continuation
+	// directives because we never continue traversal once content is explicitly
+	// ignored (and thus never encounter ignore masks either).
 	return status, false
 }
