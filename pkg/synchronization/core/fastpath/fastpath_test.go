@@ -1,11 +1,11 @@
-package core
+package fastpath
 
 import (
 	"testing"
 )
 
-// pathDirPanicFree is a wrapper around pathDir that tracks panics.
-func pathDirPanicFree(path string, panicked *bool) string {
+// dirPanicFree is a wrapper around Dir that tracks panics.
+func dirPanicFree(path string, panicked *bool) string {
 	// Track panics.
 	defer func() {
 		if recover() != nil {
@@ -13,12 +13,12 @@ func pathDirPanicFree(path string, panicked *bool) string {
 		}
 	}()
 
-	// Invoke pathDir.
-	return pathDir(path)
+	// Invoke Dir.
+	return Dir(path)
 }
 
-// TestPathDir verifies that pathDir behaves correctly.
-func TestPathDir(t *testing.T) {
+// TestDir verifies that Dir behaves correctly.
+func TestDir(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
 		path        string
@@ -36,21 +36,21 @@ func TestPathDir(t *testing.T) {
 	for _, testCase := range testCases {
 		// Compute the result and track panics.
 		var panicked bool
-		if result := pathDirPanicFree(testCase.path, &panicked); result != testCase.expected {
-			t.Error("pathDir result did not match expected:", result, "!=", testCase.expected)
+		if result := dirPanicFree(testCase.path, &panicked); result != testCase.expected {
+			t.Error("Dir result did not match expected:", result, "!=", testCase.expected)
 		}
 
 		// Check panic behavior.
 		if panicked && !testCase.expectPanic {
-			t.Error("pathDir panicked unexpectedly")
+			t.Error("Dir panicked unexpectedly")
 		} else if !panicked && testCase.expectPanic {
-			t.Error("pathDir did not panic as expected")
+			t.Error("Dir did not panic as expected")
 		}
 	}
 }
 
-// pathBasePanicFree is a wrapper around PathBase that tracks panics.
-func pathBasePanicFree(path string, panicked *bool) string {
+// basePanicFree is a wrapper around Base that tracks panics.
+func basePanicFree(path string, panicked *bool) string {
 	// Track panics.
 	defer func() {
 		if recover() != nil {
@@ -58,12 +58,12 @@ func pathBasePanicFree(path string, panicked *bool) string {
 		}
 	}()
 
-	// Invoke PathBase.
-	return PathBase(path)
+	// Invoke Base.
+	return Base(path)
 }
 
-// TestPathBase verifies that PathBase behaves correctly.
-func TestPathBase(t *testing.T) {
+// TestBase verifies that Base behaves correctly.
+func TestBase(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
 		path        string
@@ -81,21 +81,21 @@ func TestPathBase(t *testing.T) {
 	for _, testCase := range testCases {
 		// Compute the result and track panics.
 		var panicked bool
-		if result := pathBasePanicFree(testCase.path, &panicked); result != testCase.expected {
-			t.Error("PathBase result did not match expected:", result, "!=", testCase.expected)
+		if result := basePanicFree(testCase.path, &panicked); result != testCase.expected {
+			t.Error("Base result did not match expected:", result, "!=", testCase.expected)
 		}
 
 		// Check panic behavior.
 		if panicked && !testCase.expectPanic {
-			t.Error("PathBase panicked unexpectedly")
+			t.Error("Base panicked unexpectedly")
 		} else if !panicked && testCase.expectPanic {
-			t.Error("PathBase did not panic as expected")
+			t.Error("Base did not panic as expected")
 		}
 	}
 }
 
-// TestPathLess verifies that pathLess behaves correctly.
-func TestPathLess(t *testing.T) {
+// TestLess verifies that Less behaves correctly.
+func TestLess(t *testing.T) {
 	// Set up test cases.
 	testCases := []struct {
 		first    string
@@ -123,8 +123,8 @@ func TestPathLess(t *testing.T) {
 
 	// Process test cases.
 	for _, testCase := range testCases {
-		if result := pathLess(testCase.first, testCase.second); result != testCase.expected {
-			t.Errorf("pathLess result did not match expected for \"%s\" < \"%s\": %t != %t",
+		if result := Less(testCase.first, testCase.second); result != testCase.expected {
+			t.Errorf("Less result did not match expected for \"%s\" < \"%s\": %t != %t",
 				testCase.first, testCase.second,
 				result, testCase.expected,
 			)

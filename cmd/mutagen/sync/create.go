@@ -27,6 +27,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -279,21 +280,29 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	// There's no need to validate the watch polling intervals - any uint32
 	// values are valid.
 
-	// Validate ignore specifications.
-	for _, ignore := range createConfiguration.ignores {
-		if !core.ValidIgnorePattern(ignore) {
-			return fmt.Errorf("invalid ignore pattern: %s", ignore)
+	// Validate and convert the ignore syntax specification.
+	var ignoreSyntax ignore.Syntax
+	if createConfiguration.ignoreSyntax != "" {
+		if err := ignoreSyntax.UnmarshalText([]byte(createConfiguration.ignoreSyntax)); err != nil {
+			return fmt.Errorf("unable to parse ignore syntax: %w", err)
 		}
 	}
 
+	// Unfortunately we can't validate ignore specifications in any meaningful
+	// way because we don't yet know the ignore syntax being used. This could be
+	// specified by the global YAML configuration or (more likely) determined by
+	// the default session version within the daemon. These ignores will
+	// eventually be validated at endpoint initialization time, but there's no
+	// convenient way to do it earlier in the session creation process.
+
 	// Validate and convert the VCS ignore mode specification.
-	var ignoreVCSMode core.IgnoreVCSMode
+	var ignoreVCSMode ignore.IgnoreVCSMode
 	if createConfiguration.ignoreVCS && createConfiguration.noIgnoreVCS {
 		return errors.New("conflicting VCS ignore behavior specified")
 	} else if createConfiguration.ignoreVCS {
-		ignoreVCSMode = core.IgnoreVCSMode_IgnoreVCSModeIgnore
+		ignoreVCSMode = ignore.IgnoreVCSMode_IgnoreVCSModeIgnore
 	} else if createConfiguration.noIgnoreVCS {
-		ignoreVCSMode = core.IgnoreVCSMode_IgnoreVCSModePropagate
+		ignoreVCSMode = ignore.IgnoreVCSMode_IgnoreVCSModePropagate
 	}
 
 	// Validate and convert the permissions mode specification.
@@ -442,6 +451,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		SymbolicLinkMode:       symbolicLinkMode,
 		WatchMode:              watchMode,
 		WatchPollingInterval:   createConfiguration.watchPollingInterval,
+		IgnoreSyntax:           ignoreSyntax,
 		Ignores:                createConfiguration.ignores,
 		IgnoreVCSMode:          ignoreVCSMode,
 		PermissionsMode:        permissionsMode,
@@ -587,6 +597,8 @@ var createConfiguration struct {
 	// poll-based or hybrid watching, taking priority over watchPollingInterval
 	// on beta if specified.
 	watchPollingIntervalBeta uint32
+	// ignoreSyntax specifies the ignore syntax and semantics for the session.
+	ignoreSyntax string
 	// ignores is the list of ignore specifications for the session.
 	ignores []string
 	// ignoreVCS specifies whether or not to enable VCS ignores for the session.
@@ -708,6 +720,7 @@ func init() {
 	flags.Uint32Var(&createConfiguration.watchPollingIntervalBeta, "watch-polling-interval-beta", 0, "Specify watch polling interval in seconds for beta")
 
 	// Wire up ignore flags.
+	flags.StringVar(&createConfiguration.ignoreSyntax, "ignore-syntax", "", "Specify ignore syntax (mutagen|docker)")
 	flags.StringSliceVarP(&createConfiguration.ignores, "ignore", "i", nil, "Specify ignore paths")
 	flags.BoolVar(&createConfiguration.ignoreVCS, "ignore-vcs", false, "Ignore VCS directories")
 	flags.BoolVar(&createConfiguration.noIgnoreVCS, "no-ignore-vcs", false, "Propagate VCS directories")

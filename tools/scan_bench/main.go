@@ -20,6 +20,9 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
+	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
@@ -29,14 +32,14 @@ const (
 )
 
 const usage = `scan_bench [-h|--help] [-p|--profile] [-d|--digest=(` + digestFlagOptions + `)]
-           [-i|--ignore=<pattern>] <path>
+           [--ignore-syntax=(mutagen|docker)] [-i|--ignore=<pattern>] <path>
 `
 
 // ignoreCachesIntersectionEqual compares two ignore caches, ensuring that keys
 // which are present in both caches have the same value. It's the closest we can
 // get to the core package's testAcceleratedCacheIsSubset without having access
 // to the members of IgnoreCacheKey.
-func ignoreCachesIntersectionEqual(first, second core.IgnoreCache) bool {
+func ignoreCachesIntersectionEqual(first, second ignore.IgnoreCache) bool {
 	// Check matches from first in second.
 	for key, firstValue := range first {
 		if secondValue, ok := second[key]; ok && secondValue != firstValue {
@@ -59,12 +62,14 @@ func main() {
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
-	var ignores []string
 	var enableProfile bool
 	var digest string
-	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
+	var ignoreSyntaxName string
+	var ignores []string
 	flagSet.BoolVarP(&enableProfile, "profile", "p", false, "enable profiling")
 	flagSet.StringVarP(&digest, "digest", "d", "sha1", "specify digest algorithm")
+	flagSet.StringVar(&ignoreSyntaxName, "ignore-syntax", "mutagen", "specify ignore syntax")
+	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
 			fmt.Fprint(os.Stdout, usage)
@@ -105,16 +110,41 @@ func main() {
 	}
 	hasher := hashingAlgorithm.Factory()()
 
+	// Parse the ignore syntax.
+	var ignoreSyntax ignore.Syntax
+	if err := ignoreSyntax.UnmarshalText([]byte(ignoreSyntaxName)); err != nil {
+		cmd.Fatal(fmt.Errorf("unable to parse ignore syntax: %w", err))
+	}
+
+	// Create an ignorer.
+	var ignorer ignore.Ignorer
+	if ignoreSyntax == ignore.Syntax_SyntaxMutagen {
+		if i, err := mutagenignore.NewIgnorer(ignores); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to create Mutagen-style ignorer: %w", err))
+		} else {
+			ignorer = i
+		}
+	} else if ignoreSyntax == ignore.Syntax_SyntaxDocker {
+		if i, err := dockerignore.NewIgnorer(ignores); err != nil {
+			cmd.Fatal(fmt.Errorf("unable to create Docker-style ignorer: %w", err))
+		} else {
+			ignorer = i
+		}
+	} else {
+		panic("unhandled ignore syntax")
+	}
+
 	// Print information.
 	fmt.Println("Analyzing", path)
 
 	// Perform a full (cold) scan. If requested, enable CPU and memory
 	// profiling.
 	var profiler *profile.Profile
-	var err error
 	if enableProfile {
-		if profiler, err = profile.New("scan_full_cold"); err != nil {
+		if p, err := profile.New("scan_full_cold"); err != nil {
 			cmd.Fatal(fmt.Errorf("unable to create profiler: %w", err))
+		} else {
+			profiler = p
 		}
 	}
 	start := time.Now()
@@ -123,7 +153,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, nil,
-		ignores, nil,
+		ignorer, nil,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -158,7 +188,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -201,7 +231,7 @@ func main() {
 		path,
 		nil, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -242,7 +272,7 @@ func main() {
 		path,
 		snapshot, map[string]bool{"fake path": true},
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -281,7 +311,7 @@ func main() {
 		path,
 		snapshot, nil,
 		hasher, cache,
-		ignores, ignoreCache,
+		ignorer, ignoreCache,
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
@@ -328,9 +358,20 @@ func main() {
 	fmt.Println("Snapshot contained", snapshot.SymbolicLinks, "symbolic links")
 	fmt.Println("Snapshot files totaled", humanize.Bytes(snapshot.TotalFileSize))
 
+	// Measure how long phantom reification would take on snapshots of this size
+	// and print reified directory counts for comparison.
+	start = time.Now()
+	_, _, αDirectoryCount, βDirectoryCount := core.ReifyPhantomDirectories(
+		snapshot.Content, snapshot.Content, snapshot.Content,
+	)
+	stop = time.Now()
+	fmt.Println("Phantom directory reification took", stop.Sub(start))
+	fmt.Println("Reified alpha snapshot contained", αDirectoryCount, "directories")
+	fmt.Println("Reified beta snapshot contained", βDirectoryCount, "directories")
+
 	// Perform a deep copy of the snapshot contents.
 	start = time.Now()
-	snapshot.Content.Copy(true)
+	snapshot.Content.Copy(core.EntryCopyBehaviorDeep)
 	stop = time.Now()
 	fmt.Println("Snapshot entry copying took", stop.Sub(start))
 

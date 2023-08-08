@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package ignore;
+
+option go_package = "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore";
+
+// Syntax specifies the syntax and semantics for ignore specifications.
+enum Syntax {
+    // Syntax_SyntaxDefault represents an unspecified ignore syntax. It is not
+    // valid for use with core synchronization functions. It should be converted
+    // to one of the following values based on the desired default behavior.
+    SyntaxDefault = 0;
+    // Syntax_SyntaxMutagen specifies that Mutagen-style ignore syntax and
+    // semantics should be used.
+    SyntaxMutagen = 1;
+    // Syntax_SyntaxDocker specifies that Docker-style ignore syntax and
+    // semantics should be used.
+    SyntaxDocker = 2;
+}

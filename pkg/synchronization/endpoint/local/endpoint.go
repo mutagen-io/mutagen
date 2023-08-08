@@ -20,6 +20,10 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
+	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
+	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local/staging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 	"github.com/mutagen-io/mutagen/pkg/timeutil"
@@ -79,9 +83,6 @@ type endpoint struct {
 	// symbolicLinkMode is the symbolic link mode. This field is static and thus
 	// safe for concurrent reads.
 	symbolicLinkMode core.SymbolicLinkMode
-	// ignores are the path ignore specifications. This field is static and thus
-	// safe for concurrent reads.
-	ignores []string
 	// permissionsMode is the permissions mode. This field is static and thus
 	// safe for concurrent reads.
 	permissionsMode core.PermissionsMode
@@ -128,10 +129,10 @@ type endpoint struct {
 	// safe for concurrent send operations.
 	recursiveWatchRetryEstablish chan struct{}
 	// scanLock serializes access to accelerate, recheckPaths, snapshot, hasher,
-	// cache, ignoreCache, cacheWriteError, and lastScanEntryCount. This lock is
-	// not necessitated by the Endpoint interface (which doesn't permit
+	// cache, ignorer, ignoreCache, cacheWriteError, and lastScanEntryCount.
+	// This lock is not required by the Endpoint interface (which doesn't permit
 	// concurrent usage), but rather the endpoint's background worker Goroutines
-	// for cache saving and filesystem watching. This lock also notably excludes
+	// for cache saving and filesystem watching. This lock notably excludes
 	// coverage of scannedSinceLastStageCall, scannedSinceLastTransitionCall,
 	// lastReturnedScanCache, lastReturnedScanSnapshotDecomposesUnicode, which
 	// are only updated by Scan and read by Stage and Transition, thus making
@@ -150,9 +151,11 @@ type endpoint struct {
 	hasher hash.Hash
 	// cache is the cache from the last successful scan on the endpoint.
 	cache *core.Cache
+	// ignorer is the ignorer to use for scans.
+	ignorer ignore.Ignorer
 	// ignoreCache is the ignore cache from the last successful scan on the
 	// endpoint.
-	ignoreCache core.IgnoreCache
+	ignoreCache ignore.IgnoreCache
 	// cacheWriteError is the last error encountered when trying to write the
 	// cache to disk, if any.
 	cacheWriteError error
@@ -263,19 +266,41 @@ func NewEndpoint(
 		symbolicLinkMode = version.DefaultSymbolicLinkMode()
 	}
 
-	// Compute the effective VCS ignore mode.
+	// Compute the effective ignore syntax.
+	ignoreSyntax := configuration.IgnoreSyntax
+	if ignoreSyntax.IsDefault() {
+		ignoreSyntax = version.DefaultIgnoreSyntax()
+	}
+
+	// Compute a combined ignore list and create the ignorer.
+	var ignores []string
+	ignores = append(ignores, configuration.DefaultIgnores...)
+	ignores = append(ignores, configuration.Ignores...)
+	var ignorer ignore.Ignorer
+	if ignoreSyntax == ignore.Syntax_SyntaxMutagen {
+		if i, err := mutagenignore.NewIgnorer(ignores); err != nil {
+			return nil, fmt.Errorf("unable to create Mutagen-style ignorer: %w", err)
+		} else {
+			ignorer = i
+		}
+	} else if ignoreSyntax == ignore.Syntax_SyntaxDocker {
+		if i, err := dockerignore.NewIgnorer(ignores); err != nil {
+			return nil, fmt.Errorf("unable to create Docker-style ignorer: %w", err)
+		} else {
+			ignorer = i
+		}
+	} else {
+		panic("unhandled ignore syntax")
+	}
+
+	// Compute the effective VCS ignore mode and add VCS ignores if necessary.
 	ignoreVCSMode := configuration.IgnoreVCSMode
 	if ignoreVCSMode.IsDefault() {
 		ignoreVCSMode = version.DefaultIgnoreVCSMode()
 	}
-
-	// Compute a combined ignore list.
-	var ignores []string
-	if ignoreVCSMode == core.IgnoreVCSMode_IgnoreVCSModeIgnore {
-		ignores = append(ignores, core.DefaultVCSIgnores...)
+	if ignoreVCSMode == ignore.IgnoreVCSMode_IgnoreVCSModeIgnore {
+		ignorer = ignore.IgnoreVCS(ignorer)
 	}
-	ignores = append(ignores, configuration.DefaultIgnores...)
-	ignores = append(ignores, configuration.Ignores...)
 
 	// Track whether or not any non-default ownership or directory permissions
 	// are set. We don't care about non-default file permissions since we're
@@ -431,7 +456,6 @@ func NewEndpoint(
 		accelerationAllowed:          accelerationAllowed,
 		probeMode:                    probeMode,
 		symbolicLinkMode:             symbolicLinkMode,
-		ignores:                      ignores,
 		permissionsMode:              permissionsMode,
 		defaultFileMode:              defaultFileMode,
 		defaultDirectoryMode:         defaultDirectoryMode,
@@ -444,6 +468,7 @@ func NewEndpoint(
 		recursiveWatchRetryEstablish: make(chan struct{}),
 		hasher:                       hasherFactory(),
 		cache:                        cache,
+		ignorer:                      ignorer,
 		stager: staging.NewStager(
 			stagingRoot,
 			hideStagingRoot,
@@ -899,7 +924,7 @@ WatchEstablishment:
 				// temporary directories (whose contents may have non-temporary
 				// names, such as in the case of internal staging directories).
 				ignore := strings.HasPrefix(path, filesystem.TemporaryNamePrefix) ||
-					strings.HasPrefix(core.PathBase(path), filesystem.TemporaryNamePrefix)
+					strings.HasPrefix(fastpath.Base(path), filesystem.TemporaryNamePrefix)
 				if ignore {
 					logger.Tracef("Ignoring event path: \"%s\"", path)
 					continue
@@ -948,7 +973,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Snapshot, recheckPat
 		e.root,
 		baseline, recheckPaths,
 		e.hasher, e.cache,
-		e.ignores, e.ignoreCache,
+		e.ignorer, e.ignoreCache,
 		e.probeMode,
 		e.symbolicLinkMode,
 		e.permissionsMode,

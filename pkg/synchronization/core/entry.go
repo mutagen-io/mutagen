@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"strings"
+
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
 
 // synchronizable returns true if the entry kind is synchronizable and false if
@@ -28,6 +30,8 @@ func (k EntryKind) MarshalText() ([]byte, error) {
 		result = "untracked"
 	case EntryKind_Problematic:
 		result = "problematic"
+	case EntryKind_PhantomDirectory:
+		result = "phantom-directory"
 	default:
 		result = "unknown"
 	}
@@ -139,6 +143,37 @@ func (e *Entry) EnsureValid(synchronizable bool) error {
 		if e.Problem == "" {
 			return errors.New("empty problem detected for problematic content")
 		}
+	} else if e.Kind == EntryKind_PhantomDirectory {
+		// Verify that unsynchronizable content is allowed.
+		if synchronizable {
+			return errors.New("phantom directory is not fully synchronizable")
+		}
+
+		// Ensure that no invalid fields are set.
+		if e.Digest != nil {
+			return errors.New("non-nil phantom directory digest detected")
+		} else if e.Executable {
+			return errors.New("executable phantom directory detected")
+		} else if e.Target != "" {
+			return errors.New("non-empty symbolic link target detected for phantom directory")
+		} else if e.Problem != "" {
+			return errors.New("non-empty problem detected for phantom directory")
+		}
+
+		// Validate contents. Nil entries are not considered valid for contents.
+		for name, entry := range e.Contents {
+			if name == "" {
+				return errors.New("empty content name detected")
+			} else if name == "." || name == ".." {
+				return errors.New("dot name detected")
+			} else if strings.IndexByte(name, '/') != -1 {
+				return errors.New("content name contains path separator")
+			} else if entry == nil {
+				return errors.New("nil content detected")
+			} else if err := entry.EnsureValid(synchronizable); err != nil {
+				return err
+			}
+		}
 	} else {
 		return errors.New("unknown entry kind detected")
 	}
@@ -170,7 +205,7 @@ func (e *Entry) walk(path string, visitor entryVisitor, reverse bool) {
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
 		if len(e.Contents) > 0 {
-			contentPathPrefix = pathJoinable(path)
+			contentPathPrefix = fastpath.Joinable(path)
 		}
 
 		// Process the child entries.
@@ -246,7 +281,7 @@ func (e *Entry) Equal(other *Entry, deep bool) bool {
 		return false
 	}
 
-	// Compare all properties except for problem messages..
+	// Compare all properties except for problem messages.
 	propertiesEquivalent := e.Kind == other.Kind &&
 		e.Executable == other.Executable &&
 		bytes.Equal(e.Digest, other.Digest) &&
@@ -291,16 +326,37 @@ func (e *Entry) Equal(other *Entry, deep bool) bool {
 	return true
 }
 
-// Copy creates a copy of the entry. If deep is true, then a deep copy of the
-// entry is created, otherwise a "slim" copy is created, which is a shallow copy
-// that excludes the content map. In general, entries are considered immutable
-// (by convention) and should be copied by pointer. However, when creating
-// derived entries (e.g. using Apply), a copy operation may be necessary to
-// create a temporarily mutable entry that can be modified (until returned).
-// That is the role of this method. Although exported for benchmarking, there
-// should generally be no need for code outside of this package to use it,
-// except perhaps to convert a full snapshot to a slim snapshot.
-func (e *Entry) Copy(deep bool) *Entry {
+// EntryCopyBehavior indicates the type of Copy operation to perform for an
+// Entry. All copy types behave the same for scalar entries - they only vary the
+// behavior of directory entry copies (including phantom directories).
+type EntryCopyBehavior uint8
+
+const (
+	// EntryCopyBehaviorDeep indicates that a deep copy of the entry should be
+	// created.
+	EntryCopyBehaviorDeep EntryCopyBehavior = iota
+	// EntryCopyBehaviorDeepPreservingLeaves indicates that a deep copy of the
+	// entry should be created, but that all leaf (non-directory) entry types
+	// should be copied by value (i.e. by their Entry pointer) to avoid
+	// allocation. This copy type can be useful if only directories in the copy
+	// are going to be mutated.
+	EntryCopyBehaviorDeepPreservingLeaves
+	// EntryCopyBehaviorShallow indicates that a shallow copy of the entry
+	// should be created.
+	EntryCopyBehaviorShallow
+	// EntryCopyBehaviorSlim indicates that a "slim" copy of the entry should be
+	// created, which is a shallow copy that excludes the content map.
+	EntryCopyBehaviorSlim
+)
+
+// Copy creates a copy of the entry using the specified copy behavior. In
+// general, entries are considered immutable (by convention) and should be
+// copied by pointer. However, when creating derived entries (e.g. using Apply),
+// a copy operation may be necessary to create a temporarily mutable entry that
+// can be modified (until returned). That is the role of this method. Although
+// exported for benchmarking, there should generally be no need for code outside
+// of this package to use it, except to convert a full entry to a slim entry.
+func (e *Entry) Copy(behavior EntryCopyBehavior) *Entry {
 	// If the entry is nil, then the copy is nil.
 	if e == nil {
 		return nil
@@ -315,8 +371,8 @@ func (e *Entry) Copy(deep bool) *Entry {
 		Problem:    e.Problem,
 	}
 
-	// If a deep copy wasn't requested, then we're done.
-	if !deep {
+	// If a slim copy was requested, then we're done.
+	if behavior == EntryCopyBehaviorSlim {
 		return result
 	}
 
@@ -328,8 +384,24 @@ func (e *Entry) Copy(deep bool) *Entry {
 
 	// Copy the entry contents.
 	result.Contents = make(map[string]*Entry, len(e.Contents))
-	for name, child := range e.Contents {
-		result.Contents[name] = child.Copy(true)
+	if behavior == EntryCopyBehaviorDeep {
+		for name, child := range e.Contents {
+			result.Contents[name] = child.Copy(EntryCopyBehaviorDeep)
+		}
+	} else if behavior == EntryCopyBehaviorDeepPreservingLeaves {
+		for name, child := range e.Contents {
+			if child.Kind == EntryKind_Directory || child.Kind == EntryKind_PhantomDirectory {
+				result.Contents[name] = child.Copy(EntryCopyBehaviorDeepPreservingLeaves)
+			} else {
+				result.Contents[name] = child
+			}
+		}
+	} else if behavior == EntryCopyBehaviorShallow {
+		for name, child := range e.Contents {
+			result.Contents[name] = child
+		}
+	} else {
+		panic("unhandled entry copy behavior")
 	}
 
 	// Done.

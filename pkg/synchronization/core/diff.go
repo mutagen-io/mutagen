@@ -1,5 +1,9 @@
 package core
 
+import (
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
+)
+
 // differ provides recursive diffing infrastructure.
 type differ struct {
 	// changes is the list of changes being tracked by the diff.
@@ -25,7 +29,7 @@ func (d *differ) diff(path string, base, target *Entry) {
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
 	if len(baseContents) > 0 || len(targetContents) > 0 {
-		contentPathPrefix = pathJoinable(path)
+		contentPathPrefix = fastpath.Joinable(path)
 	}
 
 	// The nodes were equal at this path, so check their contents.

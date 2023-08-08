@@ -1,5 +1,9 @@
 package core
 
+import (
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
+)
+
 // extractNonDeletionChanges analyzes a list of changes and generates a new list
 // containing only those changes corresponding to non-deletion operations (i.e.
 // creations or modifications). The original list is not modified.
@@ -97,13 +101,15 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		// ancestor changes necessary to create parent entries for this entry
 		// will already have been recorded and will be performed by Apply first.
 		//
-		// Finally, since we'll be wiping out the old ancestor value at this
-		// path, we don't want to recursively add deletion changes for its old
-		// child entries as well, so we nil them out at this point.
+		// Finally, because we'll be wiping out the old ancestor value at this
+		// path, we don't want to recursively add deletion changes for its
+		// descendants (if any), and we don't need to because of the
+		// aforementioned Apply behavior, so we'll nil out the old ancestor
+		// contents to prevent them from driving further traversal.
 		if !ancestor.Equal(alpha, false) {
 			r.ancestorChanges = append(r.ancestorChanges, &Change{
 				Path: path,
-				New:  alpha.Copy(false),
+				New:  alpha.Copy(EntryCopyBehaviorSlim),
 			})
 			ancestorContents = nil
 		}
@@ -111,7 +117,7 @@ func (r *reconciler) reconcile(path string, ancestor, alpha, beta *Entry) {
 		// Compute the prefix to add to content names to compute their paths.
 		var contentPathPrefix string
 		if len(ancestorContents) > 0 || len(alphaContents) > 0 || len(betaContents) > 0 {
-			contentPathPrefix = pathJoinable(path)
+			contentPathPrefix = fastpath.Joinable(path)
 		}
 
 		// Recursively handle contents.

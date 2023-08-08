@@ -87,29 +87,40 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// The watch polling interval doesn't need to be validated - any of its
 	// values are technically valid regardless of the source.
 
-	// Verify that default ignores are unset for endpoint-specific
-	// configurations and that any specified ignores are valid. This field is
-	// deprecated, but existing sessions may have it set, in which case we'll
-	// just prepend it to the nominal list of ignores when running the session.
-	// We don't bother rejecting its presence based on source.
-	if endpointSpecific && len(c.DefaultIgnores) > 0 {
-		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
-	}
-	for _, ignore := range c.DefaultIgnores {
-		if !core.ValidIgnorePattern(ignore) {
-			return fmt.Errorf("invalid default ignore pattern: %s", ignore)
+	// Verify that the ignore syntax is unspecified or supported.
+	if endpointSpecific {
+		if !c.IgnoreSyntax.IsDefault() {
+			return errors.New("ignore syntax cannot be specified on an endpoint-specific basis")
+		}
+	} else {
+		if !(c.IgnoreSyntax.IsDefault() || c.IgnoreSyntax.Supported()) {
+			return errors.New("unknown or unsupported ignore syntax")
 		}
 	}
 
-	// Verify that ignores are unset for endpoint-specific configurations and
-	// that any specified ignores are valid.
+	// Verify that default ignores are unset for endpoint-specific
+	// configurations. This field is deprecated, but existing sessions may have
+	// it set, in which case we'll just prepend it to the nominal list of
+	// ignores when running the session. We don't bother rejecting its presence
+	// based on source. This is the only meaningful validation that we can do
+	// here because we don't yet know the ignore syntax being used (even if it's
+	// not a default value, it could be overridden in a different configuration
+	// that will be merged on top of this one). These ignores will eventually be
+	// validated at endpoint initialization time, but there's no convenient way
+	// to do it earlier in the session creation or loading process.
+	if endpointSpecific && len(c.DefaultIgnores) > 0 {
+		return errors.New("default ignores cannot be specified on an endpoint-specific basis (and are deprecated)")
+	}
+
+	// Verify that ignores are unset for endpoint-specific configurations. This
+	// is the only meaningful validation that we can do here because we don't
+	// yet know the ignore syntax being used (even if it's not a default value,
+	// it could be overridden in a different configuration that will be merged
+	// on top of this one). These ignores will eventually be validated at
+	// endpoint initialization time, but there's no convenient way to do it
+	// earlier in the session creation or loading process.
 	if endpointSpecific && len(c.Ignores) > 0 {
 		return errors.New("ignores cannot be specified on an endpoint-specific basis")
-	}
-	for _, ignore := range c.Ignores {
-		if !core.ValidIgnorePattern(ignore) {
-			return fmt.Errorf("invalid ignore pattern: %s", ignore)
-		}
 	}
 
 	// Verify that the VCS ignore mode is unspecified or supported.
@@ -134,7 +145,7 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	} else {
 		if c.PermissionsMode.IsDefault() {
 			// HACK: We don't have a reference to the session version in this
-			// method, so we compute the permissions mode default by using the
+			// method, so we compute the default permissions mode by using the
 			// default session version for the current version of Mutagen. For
 			// more information on the reasoning behind this, see the note in
 			// Version.DefaultPermissionsMode.
@@ -215,6 +226,7 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.SymbolicLinkMode == other.SymbolicLinkMode &&
 		c.WatchMode == other.WatchMode &&
 		c.WatchPollingInterval == other.WatchPollingInterval &&
+		c.IgnoreSyntax == other.IgnoreSyntax &&
 		comparison.StringSlicesEqual(c.DefaultIgnores, other.DefaultIgnores) &&
 		comparison.StringSlicesEqual(c.Ignores, other.Ignores) &&
 		c.IgnoreVCSMode == other.IgnoreVCSMode &&
@@ -300,6 +312,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.WatchPollingInterval = higher.WatchPollingInterval
 	} else {
 		result.WatchPollingInterval = lower.WatchPollingInterval
+	}
+
+	// Merge the ignore syntax.
+	if !higher.IgnoreSyntax.IsDefault() {
+		result.IgnoreSyntax = higher.IgnoreSyntax
+	} else {
+		result.IgnoreSyntax = lower.IgnoreSyntax
 	}
 
 	// Merge default ignores. In theory, at most one of these should be

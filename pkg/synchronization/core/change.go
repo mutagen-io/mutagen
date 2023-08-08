@@ -36,8 +36,8 @@ func (c *Change) EnsureValid(synchronizable bool) error {
 func (c *Change) slim() *Change {
 	return &Change{
 		Path: c.Path,
-		Old:  c.Old.Copy(false),
-		New:  c.New.Copy(false),
+		Old:  c.Old.Copy(EntryCopyBehaviorSlim),
+		New:  c.New.Copy(EntryCopyBehaviorSlim),
 	}
 }
 

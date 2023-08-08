@@ -368,13 +368,13 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		}
 		fmt.Println("\tSymbolic link mode:", symbolicLinkModeDescription)
 
-		// Compute and print the VCS ignore mode.
-		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
-		if configuration.IgnoreVCSMode.IsDefault() {
-			defaultIgnoreVCSMode := state.Session.Version.DefaultIgnoreVCSMode()
-			ignoreVCSModeDescription += fmt.Sprintf(" (%s)", defaultIgnoreVCSMode.Description())
+		// Compute and print the ignore syntax.
+		ignoreSyntaxDescription := configuration.IgnoreSyntax.Description()
+		if configuration.IgnoreSyntax.IsDefault() {
+			defaultIgnoreSyntax := state.Session.Version.DefaultIgnoreSyntax()
+			ignoreSyntaxDescription += fmt.Sprintf(" (%s)", defaultIgnoreSyntax.Description())
 		}
-		fmt.Println("\tIgnore VCS mode:", ignoreVCSModeDescription)
+		fmt.Println("\tIgnore syntax:", ignoreSyntaxDescription)
 
 		// Print default ignores. Since this field is deprecated, we don't print
 		// it if it's not set.
@@ -394,6 +394,14 @@ func printSession(state *synchronization.State, mode common.SessionDisplayMode) 
 		} else {
 			fmt.Println("\tIgnores: None")
 		}
+
+		// Compute and print the VCS ignore mode.
+		ignoreVCSModeDescription := configuration.IgnoreVCSMode.Description()
+		if configuration.IgnoreVCSMode.IsDefault() {
+			defaultIgnoreVCSMode := state.Session.Version.DefaultIgnoreVCSMode()
+			ignoreVCSModeDescription += fmt.Sprintf(" (%s)", defaultIgnoreVCSMode.Description())
+		}
+		fmt.Println("\tIgnore VCS mode:", ignoreVCSModeDescription)
 
 		// Compute and print permissions mode.
 		permissionsModeDescription := configuration.PermissionsMode.Description()

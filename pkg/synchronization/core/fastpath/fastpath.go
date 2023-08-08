@@ -1,11 +1,11 @@
-package core
+package fastpath
 
 import (
 	"strings"
 )
 
-// pathJoinable converts a base path to be joinable via string concatenation.
-func pathJoinable(base string) string {
+// Joinable converts a base path to be joinable via string concatenation.
+func Joinable(base string) string {
 	// Handle the case of the synchronization root.
 	if base == "" {
 		return ""
@@ -15,13 +15,13 @@ func pathJoinable(base string) string {
 	return base + "/"
 }
 
-// pathDir is a fast alternative to path.Dir designed specifically for
-// root-relative synchronization paths. It avoids the unnecessary path cleaning
-// overhead incurred by path.Dir. Note that, unlike path.Dir, this function
-// isn't equivalent to returning the first return value from path.Split, because
-// in that case the trailing slash remains in the directory path. The provided
-// path must be non-empty, otherwise this function will panic.
-func pathDir(path string) string {
+// Dir is a fast alternative to path.Dir designed specifically for root-relative
+// synchronization paths. It avoids the unnecessary path cleaning overhead
+// incurred by path.Dir. Note that, unlike path.Dir, this function isn't
+// equivalent to returning the first return value from path.Split, because in
+// that case the trailing slash remains in the directory path. The provided path
+// must be non-empty, otherwise this function will panic.
+func Dir(path string) string {
 	// Disallow synchronization root paths.
 	if path == "" {
 		panic("empty path")
@@ -45,13 +45,13 @@ func pathDir(path string) string {
 	return path[:lastSlashIndex]
 }
 
-// PathBase is a fast alternative to path.Base designed specifically for
+// Base is a fast alternative to path.Base designed specifically for
 // root-relative synchronization paths. If the provided path is empty (i.e. the
 // root path), this function returns an empty string. If the provided path
 // contains no slashes, then it is returned directly. If the path ends with a
 // slash, this function panics, because that represents an invalid root-relative
 // path.
-func PathBase(path string) string {
+func Base(path string) string {
 	// If this is the root path, then just return an empty string.
 	if path == "" {
 		return ""
@@ -79,9 +79,10 @@ func PathBase(path string) string {
 	return path[lastSlashIndex+1:]
 }
 
-// pathLess performs a sort comparison between two root-relative synchronization
-// paths. It returns true if first comes before second in DFS traversal.
-func pathLess(first, second string) bool {
+// Less performs a sort comparison between two root-relative synchronization
+// paths. It returns true if first comes before second in DFS traversal (under
+// lexicographical ordering).
+func Less(first, second string) bool {
 	// Handle trivial cases first.
 	if first == second {
 		return false

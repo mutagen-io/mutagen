@@ -36,10 +36,11 @@ if [[ "$(go env GOOS)" != "windows" ]]; then
 fi
 
 # Perform static analysis.
-go vet ./pkg/... || FAILURE=1
-go vet ./cmd/... || FAILURE=1
-go vet ./scripts/... || FAILURE=1
-go vet ./tools/... || FAILURE=1
+VETFLAGS="-composites=false"
+go vet ${VETFLAGS} ./pkg/... || FAILURE=1
+go vet ${VETFLAGS} ./cmd/... || FAILURE=1
+go vet ${VETFLAGS} ./scripts/... || FAILURE=1
+go vet ${VETFLAGS} ./tools/... || FAILURE=1
 
 # Perform static analysis on SSPL code.
 go vet -tags mutagensspl ./sspl/... || FAILURE=1

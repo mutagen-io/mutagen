@@ -3,6 +3,8 @@ package core
 import (
 	"errors"
 	"sort"
+
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
 
 // EnsureValid ensures that Problem's invariants are respected.
@@ -49,7 +51,7 @@ func (l sortableProblemList) Len() int {
 
 // Less implements sort.Interface.Less.
 func (l sortableProblemList) Less(i, j int) bool {
-	return pathLess(l[i].Path, l[j].Path)
+	return fastpath.Less(l[i].Path, l[j].Path)
 }
 
 // Swap implements sort.Interface.Swap.

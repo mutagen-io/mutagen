@@ -17,6 +17,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/rsync"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
@@ -877,6 +878,12 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		synchronizationMode = c.session.Version.DefaultSynchronizationMode()
 	}
 
+	// Compute the effective ignore syntax.
+	ignoreSyntax := c.session.Configuration.IgnoreSyntax
+	if ignoreSyntax.IsDefault() {
+		ignoreSyntax = c.session.Version.DefaultIgnoreSyntax()
+	}
+
 	// Compute the effective permissions mode.
 	permissionsMode := c.session.Configuration.PermissionsMode
 	if permissionsMode.IsDefault() {
@@ -1105,6 +1112,18 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			)
 		}
 
+		// If we're using Docker-style ignore syntax and semantics, then
+		// snapshots may include phantom directories. In this case, we need to
+		// perform a pre-processing step to reify these directories to either
+		// tracked or ignored.
+		αDirectoryCount := αSnapshot.Directories
+		βDirectoryCount := βSnapshot.Directories
+		if ignoreSyntax == ignore.Syntax_SyntaxDocker {
+			αContent, βContent, αDirectoryCount, βDirectoryCount = core.ReifyPhantomDirectories(
+				ancestor, αContent, βContent,
+			)
+		}
+
 		// Now that we've had a successful scan, clear the last error (if any),
 		// record scan statistics and problems (if any), and update the status
 		// to reconciling.
@@ -1116,13 +1135,13 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 		c.stateLock.Lock()
 		c.state.LastError = ""
 		c.state.AlphaState.Scanned = true
-		c.state.AlphaState.Directories = αSnapshot.Directories
+		c.state.AlphaState.Directories = αDirectoryCount
 		c.state.AlphaState.Files = αSnapshot.Files
 		c.state.AlphaState.SymbolicLinks = αSnapshot.SymbolicLinks
 		c.state.AlphaState.TotalFileSize = αSnapshot.TotalFileSize
 		c.state.AlphaState.ScanProblems = αContent.Problems()
 		c.state.BetaState.Scanned = true
-		c.state.BetaState.Directories = βSnapshot.Directories
+		c.state.BetaState.Directories = βDirectoryCount
 		c.state.BetaState.Files = βSnapshot.Files
 		c.state.BetaState.SymbolicLinks = βSnapshot.SymbolicLinks
 		c.state.BetaState.TotalFileSize = βSnapshot.TotalFileSize

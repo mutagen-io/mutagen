@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
 
 // EnsureValid ensures that Conflict's invariants are respected.
@@ -104,7 +106,7 @@ func (l sortableConflictList) Len() int {
 
 // Less implements sort.Interface.Less.
 func (l sortableConflictList) Less(i, j int) bool {
-	return pathLess(l[i].Root, l[j].Root)
+	return fastpath.Less(l[i].Root, l[j].Root)
 }
 
 // Swap implements sort.Interface.Swap.

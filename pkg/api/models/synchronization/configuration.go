@@ -7,6 +7,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/compression"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/hashing"
 )
 
@@ -31,10 +32,12 @@ type Configuration struct {
 	// Ignore contains parameters related to synchronization ignore
 	// specifications.
 	Ignore struct {
+		// Syntax specifies the ignore syntax and semantics.
+		Syntax ignore.Syntax `json:"syntax,omitempty" yaml:"syntax" mapstructure:"syntax"`
 		// Paths specifies the default list of ignore specifications.
 		Paths []string `json:"paths,omitempty" yaml:"paths" mapstructure:"paths"`
 		// VCS specifies the VCS ignore mode.
-		VCS core.IgnoreVCSMode `json:"vcs,omitempty" yaml:"vcs" mapstructure:"vcs"`
+		VCS ignore.IgnoreVCSMode `json:"vcs,omitempty" yaml:"vcs" mapstructure:"vcs"`
 	} `json:"ignore" yaml:"ignore" mapstructure:"ignore"`
 	// Symlink contains parameters related to symbolic link handling.
 	Symlink struct {
@@ -89,6 +92,7 @@ func (c *Configuration) loadFromInternal(configuration *synchronization.Configur
 	c.StageMode = configuration.StageMode
 
 	// Propagate ignore configuration.
+	c.Ignore.Syntax = configuration.IgnoreSyntax
 	c.Ignore.Paths = make([]string, 0, len(configuration.DefaultIgnores)+len(configuration.Ignores))
 	c.Ignore.Paths = append(c.Ignore.Paths, configuration.DefaultIgnores...)
 	c.Ignore.Paths = append(c.Ignore.Paths, configuration.Ignores...)
@@ -127,6 +131,7 @@ func (c *Configuration) ToInternal() *synchronization.Configuration {
 		SymbolicLinkMode:       c.Symlink.Mode,
 		WatchMode:              c.Watch.Mode,
 		WatchPollingInterval:   c.Watch.PollingInterval,
+		IgnoreSyntax:           c.Ignore.Syntax,
 		Ignores:                c.Ignore.Paths,
 		IgnoreVCSMode:          c.Ignore.VCS,
 		PermissionsMode:        c.Permissions.Mode,

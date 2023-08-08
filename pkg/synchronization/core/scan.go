@@ -20,6 +20,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/stream"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
+	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 )
 
 const (
@@ -104,9 +106,9 @@ type scanner struct {
 	// cache is the existing cache to use for fast digest lookups.
 	cache *Cache
 	// ignorer is the ignorer identifying ignored paths.
-	ignorer *ignorer
+	ignorer ignore.Ignorer
 	// ignoreCache is the cache of ignored path behavior.
-	ignoreCache IgnoreCache
+	ignoreCache ignore.IgnoreCache
 	// symbolicLinkMode is the symbolic link mode being used.
 	symbolicLinkMode SymbolicLinkMode
 	// permissionsMode is the permissions mode being used.
@@ -114,7 +116,7 @@ type scanner struct {
 	// newCache is the new file digest cache to populate.
 	newCache *Cache
 	// newIgnoreCache is the new ignored path behavior cache to populate.
-	newIgnoreCache IgnoreCache
+	newIgnoreCache ignore.IgnoreCache
 	// copyBuffer is the copy buffer used for computing file digests.
 	copyBuffer []byte
 	// deviceID is the device ID of the synchronization root filesystem.
@@ -318,6 +320,7 @@ func (s *scanner) directory(
 	metadata *filesystem.Metadata,
 	directory *filesystem.Directory,
 	baseline *Entry,
+	ignoreMask bool,
 ) (*Entry, error) {
 	// Verify that the baseline, if any, is sane.
 	if baseline != nil && baseline.Kind != EntryKind_Directory {
@@ -373,10 +376,10 @@ func (s *scanner) directory(
 	// Compute the prefix to add to content names to compute their paths.
 	var contentPathPrefix string
 	if len(directoryContents) > 0 {
-		contentPathPrefix = pathJoinable(path)
+		contentPathPrefix = fastpath.Joinable(path)
 	}
 
-	// Compute entries.
+	// Compute the entries for the content map.
 	contents := make(map[string]*Entry, len(directoryContents))
 	for _, contentMetadata := range directoryContents {
 		// Check for cancellation.
@@ -396,8 +399,17 @@ func (s *scanner) directory(
 			continue
 		}
 
-		// If the filename is not valid UTF-8, then flag it as problematic
-		// content. This is important for both (a) enforcing that comparisons
+		// If the filename is not valid UTF-8, then flag it as either untracked
+		// or problematic content, depending on the ignore mask. The reason for
+		// this distinction is that all non-UTF-8-named content inherently falls
+		// under IgnoreStatusNominal (because the name couldn't possibly match
+		// any ignore (or unignore) specification). Moreover, we wouldn't want a
+		// non-UTF-8-named entry to be the sole trigger that reified a phantom
+		// directory into existence, and even if other content were to trigger a
+		// phantom directory into existence, we wouldn't care about the
+		// non-UTF-8-named entry because it would be ignore masked out.
+		//
+		// UTF-8 enforcement is important for both (a) ensuring that comparisons
 		// are performed using a common encoding and (b) allowing the name to be
 		// encoded with Protocol Buffers (which enforces that strings are UTF-8
 		// encoded when marshaling). Since the file name isn't valid for storing
@@ -405,9 +417,14 @@ func (s *scanner) directory(
 		// replacement character and store the entry with a (hopefully)
 		// non-coliding derivative name.
 		if !utf8.ValidString(contentName) {
-			contents[strings.ToValidUTF8(contentName, "�")+" (non-UTF-8)"] = &Entry{
-				Kind:    EntryKind_Problematic,
-				Problem: "non-UTF-8 filename",
+			escapedContentName := strings.ToValidUTF8(contentName, "�") + " (non-UTF-8)"
+			if ignoreMask {
+				contents[escapedContentName] = &Entry{Kind: EntryKind_Untracked}
+			} else {
+				contents[escapedContentName] = &Entry{
+					Kind:    EntryKind_Problematic,
+					Problem: "non-UTF-8 filename",
+				}
 			}
 			continue
 		}
@@ -438,15 +455,29 @@ func (s *scanner) directory(
 		// Determine whether or not this path is ignored and update the new
 		// ignore cache. If the path is ignored, then record an untracked entry.
 		contentIsDirectory := contentKind == EntryKind_Directory
-		ignoreCacheKey := IgnoreCacheKey{contentPath, contentIsDirectory}
-		ignored, ok := s.ignoreCache[ignoreCacheKey]
+		ignoreCacheKey := ignore.IgnoreCacheKey{contentPath, contentIsDirectory}
+		ignoreBehavior, ok := s.ignoreCache[ignoreCacheKey]
 		if !ok {
-			ignored = s.ignorer.ignored(contentPath, contentIsDirectory)
+			ignoreStatus, continueTraversal := s.ignorer.Ignore(contentPath, contentIsDirectory)
+			ignoreBehavior = ignore.IgnoreCacheValue{ignoreStatus, continueTraversal}
 		}
-		s.newIgnoreCache[ignoreCacheKey] = ignored
-		if ignored {
-			contents[contentName] = &Entry{Kind: EntryKind_Untracked}
-			continue
+		s.newIgnoreCache[ignoreCacheKey] = ignoreBehavior
+		contentIgnoreMask := ignoreMask
+		if ignoreBehavior.Status == ignore.IgnoreStatusNominal {
+			if ignoreMask && !ignoreBehavior.ContinueTraversal {
+				contents[contentName] = &Entry{Kind: EntryKind_Untracked}
+				continue
+			}
+		} else if ignoreBehavior.Status == ignore.IgnoreStatusIgnored {
+			if !ignoreBehavior.ContinueTraversal {
+				contents[contentName] = &Entry{Kind: EntryKind_Untracked}
+				continue
+			}
+			contentIgnoreMask = true
+		} else if ignoreBehavior.Status == ignore.IgnoreStatusUnignored {
+			contentIgnoreMask = false
+		} else {
+			panic("unhandled ignore status")
 		}
 
 		// If this is a directory, and we have a baseline, then check if that
@@ -504,7 +535,9 @@ func (s *scanner) directory(
 				var missingCacheEntries bool
 				directoryBaseline.walk(contentPath, func(path string, entry *Entry) {
 					// Update total entry counts.
-					if entry.Kind == EntryKind_Directory {
+					entryIsDirectoryKind := entry.Kind == EntryKind_Directory ||
+						entry.Kind == EntryKind_PhantomDirectory
+					if entryIsDirectoryKind {
 						s.directories++
 					} else if entry.Kind == EntryKind_File {
 						s.files++
@@ -512,12 +545,12 @@ func (s *scanner) directory(
 						s.symbolicLinks++
 					}
 
-					// Generate ignore cache entries. This isn't exhaustive,
-					// because we can't include ignored content and we can't
-					// know the directory-ness of unsynchronizable content, but
-					// heuristically it works in vast majority of cases.
+					// Propagate any ignore cache entries that we can.
 					if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
-						s.newIgnoreCache[IgnoreCacheKey{path, entry.Kind == EntryKind_Directory}] = false
+						ignoreCacheKey := ignore.IgnoreCacheKey{path, entryIsDirectoryKind}
+						if ignoreBehavior, ok := s.ignoreCache[ignoreCacheKey]; ok {
+							s.newIgnoreCache[ignoreCacheKey] = ignoreBehavior
+						}
 					}
 
 					// Propagate digest cache entries and update total file
@@ -561,7 +594,12 @@ func (s *scanner) directory(
 				panic("unsupported symbolic link mode")
 			}
 		} else if contentKind == EntryKind_Directory {
-			entry, err = s.directory(contentPath, directory, contentMetadata, nil, directoryBaseline)
+			entry, err = s.directory(
+				contentPath,
+				directory, contentMetadata, nil,
+				directoryBaseline,
+				contentIgnoreMask,
+			)
 		} else {
 			panic("unhandled entry kind")
 		}
@@ -580,12 +618,28 @@ func (s *scanner) directory(
 		contents[contentName] = entry
 	}
 
-	// Increment the total directory count.
+	// Determine the kind of directory that we'll yield. We could do more
+	// aggressive reification of phantom directories here (converting them to
+	// tracked if we already know that they contain trackable content), but
+	// given that we still have to walk snapshots in their entirety during
+	// reification (to handle cases where we don't know for sure either way
+	// until we have both snapshots), it doesn't make sense to add the
+	// additional complexity of managing that tracking during scanning, nor
+	// would it save us any transfer size (since we'd only be able to reify to
+	// tracked here, not ignored).
+	directoryKind := EntryKind_Directory
+	if ignoreMask {
+		directoryKind = EntryKind_PhantomDirectory
+	}
+
+	// Increment the total directory count. We still include phantom directories
+	// in this count since we're paying the cost of transmitting them. The count
+	// will be updated during reification, if necessary.
 	s.directories++
 
 	// Success.
 	return &Entry{
-		Kind:     EntryKind_Directory,
+		Kind:     directoryKind,
 		Contents: contents,
 	}, nil
 }
@@ -599,11 +653,11 @@ func Scan(
 	root string,
 	baseline *Snapshot, recheckPaths map[string]bool,
 	hasher hash.Hash, cache *Cache,
-	ignores []string, ignoreCache IgnoreCache,
+	ignorer ignore.Ignorer, ignoreCache ignore.IgnoreCache,
 	probeMode behavior.ProbeMode,
 	symbolicLinkMode SymbolicLinkMode,
 	permissionsMode PermissionsMode,
-) (*Snapshot, *Cache, IgnoreCache, error) {
+) (*Snapshot, *Cache, ignore.IgnoreCache, error) {
 	// Verify that the symbolic link mode is valid for this platform.
 	if symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw && runtime.GOOS == "windows" {
 		return nil, nil, nil, errors.New("raw POSIX symbolic links not supported on Windows")
@@ -768,7 +822,7 @@ func Scan(
 				if path == "" {
 					break
 				}
-				path = pathDir(path)
+				path = fastpath.Dir(path)
 			}
 		}
 	}
@@ -777,12 +831,6 @@ func Scan(
 	// version to avoid needing to use the GetEntries accessor everywhere.
 	if cache == nil {
 		cache = &Cache{}
-	}
-
-	// Create the ignorer.
-	ignorer, err := newIgnorer(ignores)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("unable to create ignorer: %w", err)
 	}
 
 	// Create a new cache to populate. Estimate its capacity based on the
@@ -803,7 +851,7 @@ func Scan(
 	if ignoreCacheLength := len(ignoreCache); ignoreCacheLength != 0 {
 		initialIgnoreCacheCapacity = ignoreCacheLength
 	}
-	newIgnoreCache := make(IgnoreCache, initialIgnoreCacheCapacity)
+	newIgnoreCache := make(ignore.IgnoreCache, initialIgnoreCacheCapacity)
 
 	// Create a scanner.
 	s := &scanner{
@@ -831,7 +879,7 @@ func Scan(
 		if baseline != nil {
 			directoryBaseline = baseline.Content
 		}
-		content, err = s.directory("", nil, metadata, directoryRoot, directoryBaseline)
+		content, err = s.directory("", nil, metadata, directoryRoot, directoryBaseline, false)
 	} else if rootKind == EntryKind_File {
 		content, err = s.file("", nil, metadata, fileRoot)
 	} else {

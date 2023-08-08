@@ -60,6 +60,29 @@ var tP2 = &Entry{Kind: EntryKind_Problematic, Problem: "another bad thing happen
 // tPInvalidUTF8 is a problematic entry indicating non-UTF-8 filename encoding.
 var tPInvalidUTF8 = &Entry{Kind: EntryKind_Problematic, Problem: "non-UTF-8 filename"}
 
+// tPD0 is an empty phantom directory for testing.
+var tPD0 = &Entry{Kind: EntryKind_PhantomDirectory}
+
+// tPD1 is a phantom directory entry (containing tF1 with name "file") for
+// testing.
+var tPD1 = &Entry{Kind: EntryKind_PhantomDirectory, Contents: map[string]*Entry{"file": tF1}}
+
+// tPDU is a phantom directory entry (containing tU with name "untracked") for
+// testing.
+var tPDU = &Entry{Kind: EntryKind_PhantomDirectory, Contents: map[string]*Entry{"untracked": tU}}
+
+// tPDP1 is a phantom directory entry (containing tP1 with name "problematic")
+// for testing.
+var tPDP1 = &Entry{Kind: EntryKind_PhantomDirectory, Contents: map[string]*Entry{"problematic": tP1}}
+
+// tPDPD0 is a phantom directory entry (containing tPD0 with name "phantom")
+// for testing.
+var tPDPD0 = &Entry{Kind: EntryKind_PhantomDirectory, Contents: map[string]*Entry{"phantom": tPD0}}
+
+// tPDD0 is a phantom directory entry (containing tD0 with name "directory") for
+// testing.
+var tPDD0 = &Entry{Kind: EntryKind_PhantomDirectory, Contents: map[string]*Entry{"directory": tD0}}
+
 // tD0 is an empty directory entry for testing.
 var tD0 = &Entry{}
 
@@ -107,6 +130,9 @@ var tDSAP = &Entry{Contents: map[string]*Entry{"symlink": {
 	// TODO: Is there a better way to compute this error message?
 	Problem: "invalid symbolic link: target is absolute",
 }}}
+
+// tDD0 is a directory entry (containing tD0 with name "directory") for testing.
+var tDD0 = &Entry{Contents: map[string]*Entry{"directory": tD0}}
 
 // tDM is a directory entry (containing multiple elements with assorted names,
 // but no unsynchronizable content) for testing.
@@ -156,6 +182,9 @@ var tDP1 = &Entry{Contents: map[string]*Entry{"problematic": tP1}}
 // tDP2 is a directory entry (containing tP2 with name "problematic") for
 // testing.
 var tDP2 = &Entry{Contents: map[string]*Entry{"problematic": tP2}}
+
+// tDPD0 is a directory entry (containing tPD0 with name "phantom") for testing.
+var tDPD0 = &Entry{Contents: map[string]*Entry{"phantom": tPD0}}
 
 // tIDDE is an invalid directory entry (with an empty but non-nil file digest)
 // for testing.
