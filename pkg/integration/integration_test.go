@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
 	// Acquire the daemon lock and defer its release.
-	lock, err := daemon.AcquireLock()
+	lock, err := daemon.AcquireLock("")
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to acquire daemon lock: %w", err))
 	}

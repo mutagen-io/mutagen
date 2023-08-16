@@ -7,7 +7,7 @@ import (
 // TestLockCycle tests an acquisition/release cycle of the daemon lock.
 func TestLockCycle(t *testing.T) {
 	// Attempt to acquire the daemon lock.
-	lock, err := AcquireLock()
+	lock, err := AcquireLock("")
 	if err != nil {
 		t.Fatal("unable to acquire lock:", err)
 	}

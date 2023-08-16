@@ -76,7 +76,7 @@ func Register() error {
 	// start and stop mechanism depending on whether or not we're registered, so
 	// we need to make sure we don't try to stop a daemon started using a
 	// different mechanism.
-	lock, err := AcquireLock()
+	lock, err := AcquireLock("")
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
@@ -132,7 +132,7 @@ func Unregister() error {
 	// start and stop mechanism depending on whether or not we're registered, so
 	// we need to make sure we don't try to stop a daemon started using a
 	// different mechanism.
-	lock, err := AcquireLock()
+	lock, err := AcquireLock("")
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}

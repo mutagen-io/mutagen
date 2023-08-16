@@ -14,11 +14,15 @@ type Lock struct {
 }
 
 // AcquireLock attempts to acquire the global daemon lock.
-func AcquireLock() (*Lock, error) {
-	// Compute the lock path.
-	lockPath, err := subpath(lockName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to compute daemon lock path: %w", err)
+func AcquireLock(path string) (*Lock, error) {
+	var err error
+	lockPath := path
+	if lockPath == "" {
+		// Compute the lock path.
+		lockPath, err = subpath(lockName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to compute daemon lock path: %w", err)
+		}
 	}
 
 	// Create the locker and attempt to acquire the lock.

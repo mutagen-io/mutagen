@@ -35,7 +35,7 @@ import (
 // runMain is the entry point for the run command.
 func runMain(_ *cobra.Command, _ []string) error {
 	// Attempt to acquire the daemon lock and defer its release.
-	lock, err := daemon.AcquireLock()
+	lock, err := daemon.AcquireLock("")
 	if err != nil {
 		return fmt.Errorf("unable to acquire daemon lock: %w", err)
 	}
