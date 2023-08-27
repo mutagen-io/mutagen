@@ -66,7 +66,7 @@ func NameToLevel(name string) (Level, bool) {
 	}
 }
 
-// abbreviations is the range of appreviations to use for log levels.
+// abbreviations is the range of abbreviations to use for log levels.
 const abbreviations = "_EWIDT"
 
 // abbreviation returns a one-byte prefix to use for the level in log lines.
