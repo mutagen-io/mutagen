@@ -72,8 +72,10 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 			grpc.WithInsecure(),
 			grpc.WithContextDialer(ipc.DialContext),
 			grpc.WithBlock(),
-			grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(grpcutil.MaximumMessageSize)),
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(grpcutil.MaximumMessageSize)),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallSendMsgSize(grpcutil.MaximumMessageSize),
+				grpc.MaxCallRecvMsgSize(grpcutil.MaximumMessageSize),
+			),
 		)
 
 		// Cancel the dialing context. If the dialing operation has already
