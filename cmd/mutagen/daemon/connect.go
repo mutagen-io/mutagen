@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/mutagen-io/mutagen/cmd"
+	"github.com/mutagen-io/mutagen/cmd/external"
 
 	"github.com/mutagen-io/mutagen/pkg/daemon"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
@@ -30,16 +31,6 @@ const (
 	autostartRetryCount = 10
 )
 
-// autostartDisabled controls whether or not daemon autostart is disabled for
-// Mutagen. It is set automatically based on the MUTAGEN_DISABLE_AUTOSTART
-// environment variable.
-var autostartDisabled bool
-
-func init() {
-	// Check whether or not autostart should be disabled.
-	autostartDisabled = os.Getenv("MUTAGEN_DISABLE_AUTOSTART") == "1"
-}
-
 // Connect creates a new daemon client connection and optionally verifies that
 // the daemon version matches the current process' version.
 func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
@@ -49,8 +40,9 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("unable to compute endpoint path: %w", err)
 	}
 
-	// Check if autostart has been disabled by an environment variable.
-	if autostartDisabled {
+	// Check if autostart has been disabled programmatically or by an
+	// environment variable.
+	if external.DisableDaemonAutostart || os.Getenv("MUTAGEN_DISABLE_AUTOSTART") == "1" {
 		autostart = false
 	}
 
