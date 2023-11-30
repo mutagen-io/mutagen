@@ -12,7 +12,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/uuid v1.4.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
-	github.com/klauspost/compress v1.15.14
+	github.com/klauspost/compress v1.17.3
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc
