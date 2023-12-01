@@ -69,9 +69,7 @@ Cobra
 
 https://github.com/spf13/cobra
 
-Copyright 2013 Steve Francia <spf@spf13.com>
-Copyright 2015 Red Hat Inc. All rights reserved.
-Copyright 2016 French Ben. All rights reserved.
+Copyright 2013-2023 The Cobra Authors
 
 Used under the terms of the Apache License, Version 2.0. A copy of this license
 can be found later in this text or online at
@@ -181,7 +179,7 @@ compress
 http://github.com/klauspost/compress
 
 Copyright (c) 2009-2016 The Go Authors. All rights reserved.
-Copyright (c) 2015-2019 Klaus Post. All rights reserved.
+Copyright (c) 2015-2023 Klaus Post. All rights reserved.
 Copyright 2011 The Snappy-Go Authors. All rights reserved.
 Based on work Copyright (c) 2013, Yann Collet, released under BSD License.
 Based on work by Yann Collet, released under BSD License.
