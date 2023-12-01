@@ -15,7 +15,7 @@ const (
 	// VersionMinor represents the current minor version of Mutagen.
 	VersionMinor = 17
 	// VersionPatch represents the current patch version of Mutagen.
-	VersionPatch = 2
+	VersionPatch = 3
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
