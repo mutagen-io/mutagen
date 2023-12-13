@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -29,6 +30,15 @@ const (
 	// rescanWaitDuration is the period of time to wait before attempting to
 	// rescan after an ephemeral scan failure.
 	rescanWaitDuration = 5 * time.Second
+	// synchronizationLongLivedThreshold is the duration that a synchronization
+	// loop must run in order to be considered long-lived.
+	synchronizationLongLivedThreshold = 10 * time.Second
+	// backoffFactorBase is the base to use when calculating the backoff factor.
+	backoffFactorBase = 2
+	// backoffFactorMaximumExponent is the the maximum backoff factor exponent.
+	// The exponent is calculated using the number of sequential short-lived
+	// synchronization loops.
+	backoffFactorMaximumExponent = 4
 )
 
 // controller manages and executes a single session.
@@ -678,6 +688,9 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 	// Log run loop entry.
 	c.logger.Debug("Run loop commencing")
 
+	// Track the number of short-lived synchronization loops.
+	var shortLivedSynchronizationLoops uint
+
 	// Defer resource and state cleanup.
 	defer func() {
 		// Shutdown any endpoints. These might be non-nil if the run loop was
@@ -789,8 +802,17 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 
 		// Perform synchronization.
 		c.logger.Debug("Entering synchronization loop")
+		synchronizationStartTime := time.Now()
 		err := c.synchronize(ctx, alpha, beta)
+		synchronizationDuration := time.Since(synchronizationStartTime)
 		c.logger.Debug("Synchronization loop terminated with error:", err)
+
+		// Calculate the number of sequential short-lived synchronization loops.
+		if synchronizationDuration >= synchronizationLongLivedThreshold {
+			shortLivedSynchronizationLoops = 0
+		} else {
+			shortLivedSynchronizationLoops++
+		}
 
 		// Indicate that the synchronization loop is no longer synchronizing.
 		// Again, no notification is required here since this is not a
@@ -831,14 +853,25 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		default:
 		}
 
+		// Calculate the backoff-adjusted auto-reconnect interval. We calculate
+		// the backoff factor exponent using the number of sequential,
+		// short-lived synchronization loops (i.e. the more unstable the
+		// synchronization operations, the more aggressively we back off).
+		backoffFactorExponent := float64(shortLivedSynchronizationLoops)
+		if backoffFactorExponent > backoffFactorMaximumExponent {
+			backoffFactorExponent = backoffFactorMaximumExponent
+		}
+		backoffFactor := int64(math.Pow(backoffFactorBase, backoffFactorExponent))
+		backedOffAutoReconnectInterval := time.Duration(backoffFactor) * autoReconnectInterval
+
 		// If less than one auto-reconnect interval has elapsed since the last
 		// synchronization failure, then wait before attempting reconnection.
 		now := time.Now()
-		if now.Sub(lastSynchronizationFailureTime) < autoReconnectInterval {
+		if now.Sub(lastSynchronizationFailureTime) < backedOffAutoReconnectInterval {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(autoReconnectInterval):
+			case <-time.After(backedOffAutoReconnectInterval):
 			}
 		}
 		lastSynchronizationFailureTime = now
