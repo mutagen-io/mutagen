@@ -80,7 +80,6 @@ func init() {
 		legalCommand,
 		generateCommand,
 	)
-	registerLicenseCommand()
 
 	// Enable color output support for all commands in the hierarchy.
 	rootCommand.SetOut(color.Output)
