@@ -1,5 +1,7 @@
 package project
 
+import "os"
+
 const (
 	// DefaultConfigurationFileName is the name of the Mutagen project
 	// configuration file.
@@ -8,3 +10,11 @@ const (
 	// order to compute the corresponding lock file.
 	LockFileExtension = ".lock"
 )
+
+func ConfigurationFileName() string {
+  fileName := os.Getenv("MUTAGEN_PROJECT_FILE")
+  if fileName == "" {
+    return DefaultConfigurationFileName
+  }
+  return fileName
+}
