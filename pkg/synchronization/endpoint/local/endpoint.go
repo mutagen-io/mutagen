@@ -1074,7 +1074,7 @@ func (e *endpoint) Scan(ctx context.Context, _ *core.Entry, full bool) (*core.Sn
 		if e.watchMode == reifiedWatchModeRecursive {
 			e.logger.Debug("Performing accelerated scan with", len(e.recheckPaths), "recheck paths")
 			if err := e.scan(ctx, e.snapshot, e.recheckPaths); err != nil {
-				return nil, err, true
+				return nil, err, !errors.Is(err, core.ErrScanCancelled)
 			} else {
 				e.recheckPaths = make(map[string]bool)
 			}
