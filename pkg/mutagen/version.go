@@ -1,4 +1,4 @@
-//go:build go1.20
+//go:build go1.21
 
 package mutagen
 
@@ -19,7 +19,7 @@ const (
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = "beta2"
+	VersionTag = "rc1"
 )
 
 // DevelopmentModeEnabled indicates that development mode is active. This is

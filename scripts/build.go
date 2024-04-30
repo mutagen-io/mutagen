@@ -48,8 +48,9 @@ const (
 	cliBaseName = "mutagen"
 
 	// minimumMacOSVersion is the minimum version of macOS that we'll support
-	// (currently pinned to the oldest version of macOS that Go supports).
-	minimumMacOSVersion = "10.13"
+	// (currently pinned to the oldest version of macOS that Mutagen's minimum
+	// Go version supports).
+	minimumMacOSVersion = "10.15"
 
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will
