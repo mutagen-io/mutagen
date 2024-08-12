@@ -448,7 +448,7 @@ func (d *Directory) ReadSymbolicLink(name string) (string, error) {
 
 		// Handle errors. If we see ERANGE on AIX systems, it's an indication
 		// that the buffer size is too small.
-		if runtime.GOOS == "aix" && err == unix.ERANGE {
+		if runtime.GOOS == "aix" && errors.Is(err, unix.ERANGE) {
 			continue
 		} else if err != nil {
 			return "", err
@@ -554,7 +554,7 @@ func Rename(
 		)
 		if err == nil || (err != unix.ENOTSUP && err != unix.ENOSYS) {
 			return err
-		} else if err == unix.ENOTSUP && targetDirectory != nil {
+		} else if errors.Is(err, unix.ENOTSUP) && targetDirectory != nil {
 			targetDirectory.renameatNoReplaceUnsupported.Mark()
 		}
 	}
@@ -588,5 +588,5 @@ func Rename(
 // IsCrossDeviceError checks whether or not an error returned from rename
 // represents a cross-device error.
 func IsCrossDeviceError(err error) bool {
-	return err == unix.EXDEV
+	return errors.Is(err, unix.EXDEV)
 }

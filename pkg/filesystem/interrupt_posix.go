@@ -3,6 +3,7 @@
 package filesystem
 
 import (
+	"errors"
 	"io"
 
 	"golang.org/x/sys/unix"
@@ -15,7 +16,7 @@ import (
 func openatRetryingOnEINTR(directory int, path string, flags int, mode uint32) (int, error) {
 	for {
 		result, err := unix.Openat(directory, path, flags, mode)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return result, err
@@ -27,7 +28,7 @@ func openatRetryingOnEINTR(directory int, path string, flags int, mode uint32) (
 func readRetryingOnEINTR(file int, buffer []byte) (int, error) {
 	for {
 		result, err := unix.Read(file, buffer)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		} else if err == nil && result == 0 {
 			return 0, io.EOF
@@ -64,7 +65,7 @@ func closeConsideringEINTR(file int) error {
 func mkdiratRetryingOnEINTR(directory int, path string, mode uint32) error {
 	for {
 		err := unix.Mkdirat(directory, path, mode)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -77,7 +78,7 @@ func mkdiratRetryingOnEINTR(directory int, path string, mode uint32) error {
 func renameatRetryingOnEINTR(oldDirectory int, oldPath string, newDirectory int, newPath string) error {
 	for {
 		err := unix.Renameat(oldDirectory, oldPath, newDirectory, newPath)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -90,7 +91,7 @@ func renameatRetryingOnEINTR(oldDirectory int, oldPath string, newDirectory int,
 func unlinkatRetryingOnEINTR(directory int, path string, flags int) error {
 	for {
 		err := unix.Unlinkat(directory, path, flags)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -102,7 +103,7 @@ func unlinkatRetryingOnEINTR(directory int, path string, flags int) error {
 func fstatRetryingOnEINTR(file int, metadata *unix.Stat_t) error {
 	for {
 		err := unix.Fstat(file, metadata)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -114,7 +115,7 @@ func fstatRetryingOnEINTR(file int, metadata *unix.Stat_t) error {
 func fchmodRetryingOnEINTR(file int, mode uint32) error {
 	for {
 		err := unix.Fchmod(file, mode)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -127,7 +128,7 @@ func fchmodRetryingOnEINTR(file int, mode uint32) error {
 func fstatatRetryingOnEINTR(directory int, path string, metadata *unix.Stat_t, flags int) error {
 	for {
 		err := unix.Fstatat(directory, path, metadata, flags)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -140,7 +141,7 @@ func fstatatRetryingOnEINTR(directory int, path string, metadata *unix.Stat_t, f
 func fchmodatRetryingOnEINTR(directory int, path string, mode uint32, flags int) error {
 	for {
 		err := unix.Fchmodat(directory, path, mode, flags)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -153,7 +154,7 @@ func fchmodatRetryingOnEINTR(directory int, path string, mode uint32, flags int)
 func fchownatRetryingOnEINTR(directory int, path string, uid int, gid int, flags int) error {
 	for {
 		err := unix.Fchownat(directory, path, uid, gid, flags)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -166,7 +167,7 @@ func fchownatRetryingOnEINTR(directory int, path string, uid int, gid int, flags
 func symlinkatRetryingOnEINTR(target string, directory int, path string) error {
 	for {
 		err := syscall.Symlinkat(target, directory, path)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -179,7 +180,7 @@ func symlinkatRetryingOnEINTR(target string, directory int, path string) error {
 func readlinkatRetryingOnEINTR(directory int, path string, buffer []byte) (int, error) {
 	for {
 		result, err := syscall.Readlinkat(directory, path, buffer)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return result, err

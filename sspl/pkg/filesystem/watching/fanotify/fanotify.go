@@ -210,7 +210,7 @@ func processEvent(mountFD int, buffer []byte) ([]byte, string, error) {
 		mountFD, fileHandle, unix.O_PATH|unix.O_CLOEXEC,
 	)
 	if err != nil {
-		if err == unix.ESTALE {
+		if errors.Is(err, unix.ESTALE) {
 			return buffer, pathStale, nil
 		}
 		return nil, "", fmt.Errorf("unable to open event file: %w", err)

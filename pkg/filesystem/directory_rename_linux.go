@@ -1,6 +1,8 @@
 package filesystem
 
 import (
+	"errors"
+
 	"golang.org/x/sys/unix"
 
 	"github.com/mutagen-io/mutagen/pkg/state"
@@ -24,9 +26,9 @@ func renameatNoReplaceRetryingOnEINTR(oldDirectory int, oldPath string, newDirec
 	// Loop until renameat2 completes with a return value other that EINTR.
 	for {
 		err := unix.Renameat2(oldDirectory, oldPath, newDirectory, newPath, unix.RENAME_NOREPLACE)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
-		} else if err == unix.EINVAL {
+		} else if errors.Is(err, unix.EINVAL) {
 			// HACK: On Linux, using RENAME_NOREPLACE with a target filesystem
 			// that doesn't support it will yield EINVAL. To keep consistency
 			// with other renameatNoReplaceRetryingOnEINTR implementations, we
@@ -38,7 +40,7 @@ func renameatNoReplaceRetryingOnEINTR(oldDirectory int, oldPath string, newDirec
 			// invocation of renameat2. The only other error we'd need to
 			// consider would be ENOSYS, but that we don't need to alias.
 			return unix.ENOTSUP
-		} else if err == unix.ENOSYS {
+		} else if errors.Is(err, unix.ENOSYS) {
 			renameat2FailedWithENOSYS.Mark()
 		}
 		return err

@@ -347,10 +347,10 @@ func (e *Engine) Signature(base io.Reader, blockSize uint64) (*Signature, error)
 		// at the end of the file, so we should hash this block but not go
 		// through the loop again. All other errors are terminal.
 		n, err := io.ReadFull(base, buffer)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			result.LastBlockSize = blockSize
 			break
-		} else if err == io.ErrUnexpectedEOF {
+		} else if errors.Is(err, io.ErrUnexpectedEOF) {
 			result.LastBlockSize = uint64(n)
 			eof = true
 		} else if err != nil {
@@ -450,9 +450,9 @@ func (e *Engine) chunkAndTransmitAll(target io.Reader, maxDataOpSize uint64, tra
 
 	// Loop until the entire target has been transmitted as data operations.
 	for {
-		if n, err := io.ReadFull(target, buffer); err == io.EOF {
+		if n, err := io.ReadFull(target, buffer); errors.Is(err, io.EOF) {
 			return nil
-		} else if err == io.ErrUnexpectedEOF {
+		} else if errors.Is(err, io.ErrUnexpectedEOF) {
 			if err = e.transmitData(buffer[:n], transmit); err != nil {
 				return fmt.Errorf("unable to transmit data operation: %w", err)
 			}
@@ -559,11 +559,9 @@ func (e *Engine) Deltify(target io.Reader, base *Signature, maxDataOpSize uint64
 	// each insertion would require a linear search to find the insertion
 	// location within the array.
 	hashes := base.Hashes
-	haveShortLastBlock := false
 	var lastBlockIndex uint64
 	var shortLastBlock *BlockHash
 	if base.LastBlockSize != base.BlockSize {
-		haveShortLastBlock = true
 		lastBlockIndex = uint64(len(hashes) - 1)
 		shortLastBlock = hashes[lastBlockIndex]
 		hashes = hashes[:lastBlockIndex]
@@ -610,7 +608,8 @@ func (e *Engine) Deltify(target io.Reader, base *Signature, maxDataOpSize uint64
 		// we've broken an invariant in our code. Otherwise, we need to move the
 		// search block one byte forward and roll the hash.
 		if occupancy == 0 {
-			if n, err := io.ReadFull(bufferedTarget, buffer[:base.BlockSize]); err == io.EOF || err == io.ErrUnexpectedEOF {
+			n, err := io.ReadFull(bufferedTarget, buffer[:base.BlockSize])
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				occupancy = uint64(n)
 				break
 			} else if err != nil {
@@ -622,7 +621,7 @@ func (e *Engine) Deltify(target io.Reader, base *Signature, maxDataOpSize uint64
 		} else if occupancy < base.BlockSize {
 			panic("buffer contains less than a block worth of data")
 		} else {
-			if b, err := bufferedTarget.ReadByte(); err == io.EOF {
+			if b, err := bufferedTarget.ReadByte(); errors.Is(err, io.EOF) {
 				break
 			} else if err != nil {
 				return fmt.Errorf("unable to read target byte: %w", err)
@@ -669,7 +668,7 @@ func (e *Engine) Deltify(target io.Reader, base *Signature, maxDataOpSize uint64
 
 	// If we have a short last block and the occupancy of the buffer is large
 	// enough that it could match, then check for a match.
-	if haveShortLastBlock && occupancy >= base.LastBlockSize {
+	if shortLastBlock != nil && occupancy >= base.LastBlockSize {
 		potentialLastBlockMatch := buffer[occupancy-base.LastBlockSize : occupancy]
 		// For short blocks, we still use the full block size when computing the
 		// weak hash. We could alternatively use the short block length, but it

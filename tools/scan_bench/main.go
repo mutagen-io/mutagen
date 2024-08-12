@@ -71,7 +71,7 @@ func main() {
 	flagSet.StringVar(&ignoreSyntaxName, "ignore-syntax", "mutagen", "specify ignore syntax")
 	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
-		if err == pflag.ErrHelp {
+		if errors.Is(err, pflag.ErrHelp) {
 			fmt.Fprint(os.Stdout, usage)
 			return
 		} else {

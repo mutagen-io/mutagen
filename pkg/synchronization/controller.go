@@ -808,7 +808,7 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 
 		// If synchronization failed due a halting error, then wait for the
 		// synchronization loop to be manually resumed.
-		if err == errHaltedForSafety {
+		if errors.Is(err, errHaltedForSafety) {
 			<-ctx.Done()
 			return
 		}

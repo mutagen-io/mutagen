@@ -19,7 +19,7 @@ import (
 func fcntlFlockRetryingOnEINTR(file uintptr, command int, specification *unix.Flock_t) error {
 	for {
 		err := unix.FcntlFlock(file, command, specification)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err

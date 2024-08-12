@@ -78,7 +78,7 @@ func Connect(autostart, enforceVersionMatch bool) (*grpc.ClientConn, error) {
 		// Check for errors.
 		if err != nil {
 			// Handle failure due to timeouts.
-			if err == context.DeadlineExceeded {
+			if errors.Is(err, context.DeadlineExceeded) {
 				// If autostart is enabled, and we have attempts remaining, then
 				// try autostarting, waiting, and retrying.
 				if autostart && remainingPostAutostatAttempts > 0 {

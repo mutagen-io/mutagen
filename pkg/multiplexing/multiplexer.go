@@ -381,7 +381,7 @@ func (m *Multiplexer) read(reader Carrier, heartbeats chan<- struct{}) error {
 			stream.receiveBufferLock.Lock()
 			if _, err := stream.receiveBuffer.ReadNFrom(reader, length); err != nil {
 				stream.receiveBufferLock.Unlock()
-				if err == ring.ErrBufferFull {
+				if errors.Is(err, ring.ErrBufferFull) {
 					return errors.New("remote violated stream receive window")
 				}
 				return fmt.Errorf("unable to read stream data into buffer: %w", err)
@@ -694,13 +694,13 @@ func (m *Multiplexer) acceptOneStream(ctx context.Context) (*Stream, error) {
 	return stream, nil
 }
 
-// AcceptContext accepts an incoming stream.
+// AcceptStream accepts an incoming stream.
 func (m *Multiplexer) AcceptStream(ctx context.Context) (*Stream, error) {
 	// Loop until we find a pending stream that's not stale or encounter some
 	// other error.
 	for {
 		stream, err := m.acceptOneStream(ctx)
-		if err == errStaleInboundStream {
+		if errors.Is(err, errStaleInboundStream) {
 			continue
 		}
 		return stream, err

@@ -117,7 +117,7 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	var header *tar.Header
 	for {
 		if h, err := bundleArchive.Next(); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return "", fmt.Errorf("unable to read archive header: %w", err)

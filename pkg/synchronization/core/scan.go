@@ -208,7 +208,7 @@ func (s *scanner) file(
 		// timely cancellation.
 		preemptableHasher := stream.NewPreemptableWriter(s.hasher, s.cancelled, scannerCopyPreemptionInterval)
 		if copied, err := io.CopyBuffer(preemptableHasher, file, s.copyBuffer); err != nil {
-			if err == stream.ErrWritePreempted {
+			if errors.Is(err, stream.ErrWritePreempted) {
 				return nil, ErrScanCancelled
 			}
 			return &Entry{
