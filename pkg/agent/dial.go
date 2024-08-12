@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -26,6 +27,10 @@ const (
 	// agentErrorInMemoryCutoff is the maximum number of bytes that Mutagen will
 	// capture in memory from the standard error output of an agent process.
 	agentErrorInMemoryCutoff = 32 * 1024
+
+	// notExistsFlag will be returns to signal the agent does not exist
+	// and so should be installed
+	notInstalledFlag string = "Agent not installed"
 )
 
 // connect connects to an agent-based endpoint using the specified transport,
@@ -65,8 +70,14 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		BaseName,
 	}, pathSeparator)
 
+	// Add sudo if environment variable says to add sudo
+	var sudo string
+	if os.Getenv("MUTAGEN_USE_SUDO") == "1" {
+		sudo = fmt.Sprintf("test ! -f '%s' && printf '%s' >&2 || sudo ", agentInvocationPath, notInstalledFlag)
+	}
+
 	// Compute the command to invoke.
-	command := fmt.Sprintf("%s %s --%s=%s", agentInvocationPath, mode, FlagLogLevel, logger.Level())
+	command := fmt.Sprintf("%s%s %s --%s=%s", sudo, agentInvocationPath, mode, FlagLogLevel, logger.Level())
 
 	// Set up (but do not start) an agent process.
 	message := "Connecting to agent (POSIX)..."
@@ -134,6 +145,12 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		// whitespace (primarily trailing newlines), and neutralize any control
 		// characters.
 		errorOutput := errorBuffer.String()
+
+		if errorOutput == notInstalledFlag {
+			// true=TryInstall
+			return nil, true, cmdExe, errors.New("agent not installed")
+		}
+
 		if !utf8.ValidString(errorOutput) {
 			return nil, false, false, errors.New("remote did not return UTF-8 output")
 		}
