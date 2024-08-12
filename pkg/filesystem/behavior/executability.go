@@ -6,6 +6,8 @@ import (
 	"runtime"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 const (
@@ -19,7 +21,7 @@ const (
 // executability bits. It allows for the path leaf to be a symbolic link. The
 // second value returned by this function indicates whether or not probe files
 // were used in determining behavior.
-func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool, error) {
+func PreservesExecutabilityByPath(path string, probeMode ProbeMode, logger *logging.Logger) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
 		return assumeExecutabilityPreservation, false, nil
@@ -48,7 +50,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 	// Ensure that the file is cleaned up and removed when we're done.
 	defer func() {
 		file.Close()
-		os.Remove(file.Name())
+		must.OSRemove(file.Name(), logger)
 	}()
 
 	// Mark the file as user-executable. We use the os.File-based Chmod here
@@ -75,7 +77,7 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 // its underlying filesystem) preserves POSIX executability bits. The second
 // value returned by this function indicates whether or not probe files were
 // used in determining behavior.
-func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode) (bool, bool, error) {
+func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode, logger *logging.Logger) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
 		return assumeExecutabilityPreservation, false, nil
@@ -103,8 +105,8 @@ func PreservesExecutability(directory *filesystem.Directory, probeMode ProbeMode
 
 	// Ensure that the file is cleaned up and removed when we're done.
 	defer func() {
-		file.Close()
-		directory.RemoveFile(name)
+		must.Close(file, logger)
+		must.RemoveFile(directory, name, logger)
 	}()
 
 	// HACK: Convert the file to an os.File object for race-free Chmod and Stat

@@ -1,8 +1,8 @@
 package integration
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -13,6 +13,8 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/grpcutil"
 	"github.com/mutagen-io/mutagen/pkg/ipc"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	daemonsvc "github.com/mutagen-io/mutagen/pkg/service/daemon"
 	forwardingsvc "github.com/mutagen-io/mutagen/pkg/service/forwarding"
 	promptingsvc "github.com/mutagen-io/mutagen/pkg/service/prompting"
@@ -45,15 +47,17 @@ var synchronizationManager *synchronization.Manager
 // complete daemon instance for testing, and tear down all of the aforementioned
 // infrastructure after running tests.
 func TestMain(m *testing.M) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Override the expected agent bundle location.
 	agent.ExpectedBundleLocation = agent.BundleLocationBuildDirectory
 
 	// Acquire the daemon lock and defer its release.
-	lock, err := daemon.AcquireLock()
+	lock, err := daemon.AcquireLock(logger)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to acquire daemon lock: %w", err))
 	}
-	defer lock.Release()
+	defer must.Release(lock, logger)
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err = forwarding.NewManager(nil)
@@ -78,7 +82,7 @@ func TestMain(m *testing.M) {
 	defer server.Stop()
 
 	// Create and register the daemon service and defer its shutdown.
-	daemonServer := daemonsvc.NewServer()
+	daemonServer := daemonsvc.NewServer(logger)
 	daemonsvc.RegisterDaemonServer(server, daemonServer)
 	defer daemonServer.Shutdown()
 
@@ -102,17 +106,17 @@ func TestMain(m *testing.M) {
 	// Create the daemon listener and defer its closure. Since we hold the
 	// daemon lock, we preemptively remove any existing socket since it (should)
 	// be stale.
-	os.Remove(endpoint)
-	listener, err := ipc.NewListener(endpoint)
+	must.OSRemove(endpoint, logger)
+	listener, err := ipc.NewListener(endpoint, logger)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to create daemon listener: %w", err))
 	}
-	defer listener.Close()
+	defer must.Close(listener, logger)
 
 	// Serve incoming connections in a separate Goroutine. We don't monitor for
 	// errors since there's nothing that we can do about them and because
 	// they'll likely show up in the test output anyway.
-	go server.Serve(listener)
+	go must.Serve(server, listener, logger)
 
 	// Run tests.
 	m.Run()

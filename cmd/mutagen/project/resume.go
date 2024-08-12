@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -23,6 +25,8 @@ import (
 
 // resumeMain is the entry point for the resume command.
 func resumeMain(_ *cobra.Command, _ []string) error {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -52,9 +56,9 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
-		locker.Close()
+		must.Close(locker, logger)
 		if removeLockFileOnReturn && runtime.GOOS == "windows" {
-			os.Remove(lockPath)
+			must.OSRemove(lockPath, logger)
 		}
 	}()
 
@@ -71,12 +75,12 @@ func resumeMain(_ *cobra.Command, _ []string) error {
 	defer func() {
 		if removeLockFileOnReturn {
 			if runtime.GOOS == "windows" {
-				locker.Truncate(0)
+				must.Truncate(locker, 0, logger)
 			} else {
-				os.Remove(lockPath)
+				must.OSRemove(lockPath, logger)
 			}
 		}
-		locker.Unlock()
+		must.Unlock(locker, logger)
 	}()
 
 	// Read the project identifier from the lock file. If the lock file is

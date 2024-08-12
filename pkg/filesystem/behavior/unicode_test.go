@@ -1,11 +1,14 @@
 package behavior
 
 import (
+	"bytes"
 	"os"
 	"runtime"
 	"testing"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {
@@ -15,13 +18,15 @@ func TestDecomposesUnicodeByPathAssumedHomeDirectory(t *testing.T) {
 		t.Fatal("unable to compute home directory:", err)
 	}
 
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Query the assumed behavior of the home directory and ensure it matches
 	// what's expected.
 	//
 	// TODO: We should perform some validation on the second parameter returned
 	// by DecomposesUnicodeByPath (indicating whether or not probe files were
 	// used).
-	if decomposes, _, err := DecomposesUnicodeByPath(homeDirectory, ProbeMode_ProbeModeAssume); err != nil {
+	if decomposes, _, err := DecomposesUnicodeByPath(homeDirectory, ProbeMode_ProbeModeAssume, logger); err != nil {
 		t.Fatal("unable to query Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -35,6 +40,7 @@ func TestDecomposesUnicodeByPathDarwinHFS(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip()
 	}
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
 
 	// If we don't have the separate HFS+ partition, skip this test.
 	hfsRoot := os.Getenv("MUTAGEN_TEST_HFS_ROOT")
@@ -47,7 +53,7 @@ func TestDecomposesUnicodeByPathDarwinHFS(t *testing.T) {
 	// TODO: We should perform some validation on the second parameter returned
 	// by DecomposesUnicodeByPath (indicating whether or not probe files were
 	// used).
-	if decomposes, _, err := DecomposesUnicodeByPath(hfsRoot, ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, _, err := DecomposesUnicodeByPath(hfsRoot, ProbeMode_ProbeModeProbe, logger); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if !decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -60,13 +66,14 @@ func TestDecomposesUnicodeByPathDarwinAPFS(t *testing.T) {
 	if apfsRoot == "" {
 		t.Skip()
 	}
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
 
 	// Probe the behavior of the root and ensure it matches what's expected.
 	//
 	// TODO: We should perform some validation on the second parameter returned
 	// by DecomposesUnicodeByPath (indicating whether or not probe files were
 	// used).
-	if decomposes, _, err := DecomposesUnicodeByPath(apfsRoot, ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, _, err := DecomposesUnicodeByPath(apfsRoot, ProbeMode_ProbeModeProbe, logger); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -81,6 +88,8 @@ func TestDecomposesUnicodeByPathOSPartition(t *testing.T) {
 		t.Skip()
 	}
 
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Probe the behavior of the root and ensure it matches what's expected. The
 	// only case we expect to decompose is HFS+ on Darwin, which we won't
 	// encounter in this test.
@@ -88,7 +97,7 @@ func TestDecomposesUnicodeByPathOSPartition(t *testing.T) {
 	// TODO: We should perform some validation on the second parameter returned
 	// by DecomposesUnicodeByPath (indicating whether or not probe files were
 	// used).
-	if decomposes, _, err := DecomposesUnicodeByPath(".", ProbeMode_ProbeModeProbe); err != nil {
+	if decomposes, _, err := DecomposesUnicodeByPath(".", ProbeMode_ProbeModeProbe, logger); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -104,6 +113,8 @@ type decomposesUnicodeTestCase struct {
 	assume bool
 	// expected is the expected result of the Unicode decomposition test.
 	expected bool
+
+	logger *logging.Logger
 }
 
 // run executes the test in the provided test context.
@@ -112,11 +123,11 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Open the path, ensure that it's a directory, and defer its closure.
-	directory, _, err := filesystem.OpenDirectory(c.path, false)
+	directory, _, err := filesystem.OpenDirectory(c.path, false, c.logger)
 	if err != nil {
 		t.Fatal("unable to open path:", err)
 	}
-	defer directory.Close()
+	defer must.Close(directory, c.logger)
 
 	// Determine the probing mode.
 	probeMode := ProbeMode_ProbeModeProbe
@@ -128,7 +139,7 @@ func (c *decomposesUnicodeTestCase) run(t *testing.T) {
 	//
 	// TODO: We should perform some validation on the second parameter returned
 	// by DecomposesUnicode (indicating whether or not probe files were used).
-	if decomposes, _, err := DecomposesUnicode(directory, probeMode); err != nil {
+	if decomposes, _, err := DecomposesUnicode(directory, probeMode, c.logger); err != nil {
 		t.Fatal("unable to probe Unicode decomposition:", err)
 	} else if decomposes != c.expected {
 		t.Error("Unicode decomposition behavior does not match expected")
@@ -149,6 +160,7 @@ func TestDecomposesUnicodeAssumedHomeDirectory(t *testing.T) {
 		path:     homeDirectory,
 		assume:   true,
 		expected: false,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -175,6 +187,7 @@ func TestDecomposesUnicodeDarwinHFS(t *testing.T) {
 	testCase := &decomposesUnicodeTestCase{
 		path:     hfsRoot,
 		expected: true,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -194,6 +207,7 @@ func TestDecomposesUnicodeDarwinAPFS(t *testing.T) {
 	testCase := &decomposesUnicodeTestCase{
 		path:     apfsRoot,
 		expected: false,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -220,6 +234,7 @@ func TestDecomposesUnicodeHomeDirectory(t *testing.T) {
 	testCase := &decomposesUnicodeTestCase{
 		path:     homeDirectory,
 		expected: false,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.

@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // RegistrationSupported indicates whether or not daemon registration is
@@ -64,7 +66,7 @@ const (
 )
 
 // Register performs automatic daemon startup registration.
-func Register() error {
+func Register(logger *logging.Logger) error {
 	// If we're already registered, don't do anything.
 	if registered, err := registered(); err != nil {
 		return fmt.Errorf("unable to determine registration status: %w", err)
@@ -76,11 +78,11 @@ func Register() error {
 	// start and stop mechanism depending on whether or not we're registered, so
 	// we need to make sure we don't try to stop a daemon started using a
 	// different mechanism.
-	lock, err := AcquireLock()
+	lock, err := AcquireLock(logger)
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer lock.Release()
+	defer must.Release(lock, logger)
 
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()
@@ -111,7 +113,7 @@ func Register() error {
 
 	// Attempt to write the launchd plist.
 	targetPath = filepath.Join(targetPath, launchdPlistName)
-	if err := filesystem.WriteFileAtomic(targetPath, []byte(plist), launchdPlistPermissions); err != nil {
+	if err := filesystem.WriteFileAtomic(targetPath, []byte(plist), launchdPlistPermissions, logger); err != nil {
 		return fmt.Errorf("unable to write launchd agent plist: %w", err)
 	}
 
@@ -120,7 +122,7 @@ func Register() error {
 }
 
 // Unregister performs automatic daemon startup de-registration.
-func Unregister() error {
+func Unregister(logger *logging.Logger) error {
 	// If we're not registered, don't do anything.
 	if registered, err := registered(); err != nil {
 		return fmt.Errorf("unable to determine registration status: %w", err)
@@ -132,11 +134,11 @@ func Unregister() error {
 	// start and stop mechanism depending on whether or not we're registered, so
 	// we need to make sure we don't try to stop a daemon started using a
 	// different mechanism.
-	lock, err := AcquireLock()
+	lock, err := AcquireLock(logger)
 	if err != nil {
 		return errors.New("unable to alter registration while daemon is running")
 	}
-	defer lock.Release()
+	defer must.Release(lock, logger)
 
 	// Compute the path to the user's home directory.
 	homeDirectory, err := os.UserHomeDir()

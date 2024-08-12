@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/mutagen-io/mutagen/pkg/identifier"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // registryLock is the lock on the global prompter registry.
@@ -119,6 +120,14 @@ func Message(identifier, message string) error {
 
 	// Success.
 	return nil
+}
+
+// MustMessage invokes Message and logs any error received
+func MustMessage(identifier, prompt string, logger *logging.Logger) {
+	err := Message(identifier, prompt)
+	if err != nil {
+		logger.Warnf("Unable to prompt '%s' with message '%s'; %s", identifier, prompt, err.Error())
+	}
 }
 
 // Prompt invokes the Prompt method on a prompter in the global registry.

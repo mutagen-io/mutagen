@@ -5,6 +5,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
@@ -122,7 +123,7 @@ func (l *Logger) write(timestamp time.Time, level Level, message string) {
 	// that logic and to avoid having to add a lock outside the writer. In any
 	// case, Go's standard log package also discards analogous errors, so we'll
 	// do the same for the time being.
-	l.writer.Write([]byte(line))
+	mustWrite(l.writer, []byte(line), l)
 }
 
 // log provides logging with formatting semantics equivalent to fmt.Sprintln.
@@ -210,7 +211,7 @@ var linePrefixMatcher = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}
 // and gated against this logger's level, its scope will be merged with that of
 // this logger, and the combined line will be written. Otherwise, if an incoming
 // line is not determined to be from another logger, than it will be written as
-// a message with the specificed level.
+// a message with the specified level.
 //
 // Note that unlike the Logger itself, the writer returned from this method is
 // not safe for concurrent use by multiple Goroutines. An external locking
@@ -257,7 +258,28 @@ func (l *Logger) Writer(level Level) io.Writer {
 			line = terminal.NeutralizeControlCharacters(line)
 
 			// Write the line to the underlying writer.
-			l.writer.Write([]byte(line))
+			mustWrite(l.writer, []byte(line), l)
 		},
 	}
+}
+
+// recurse is a flag to ensure Write() does not recurse infinitely.
+var recurse atomic.Int32
+
+// Write takes a writer and a buffer and logs an error if writing returns an
+// error or the number of bytes written don't match.
+func mustWrite(w io.Writer, p []byte, logger *Logger) {
+	if recurse.Load() > 1 {
+		// We cannot have an infinite loop on an error
+		return
+	}
+	recurse.Add(1)
+	n, err := w.Write(p)
+	if err != nil {
+		logger.Warnf("Unable to write: %s", err.Error())
+	}
+	if n < len(p) {
+		logger.Warnf("Unable to write all %d bytes", n)
+	}
+	recurse.Add(-1)
 }

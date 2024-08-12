@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/multiplexing/ring"
 )
 
@@ -25,6 +26,7 @@ var (
 // Stream represents a single multiplexed stream. It implements net.Conn but
 // also provides a CloseWrite method for half-closures.
 type Stream struct {
+	logger *logging.Logger
 	// multiplexer is the parent multiplexer.
 	multiplexer *Multiplexer
 	// identifier is the stream identifier.
@@ -377,6 +379,14 @@ func (s *Stream) Write(data []byte) (int, error) {
 	return count, nil
 }
 
+// mustCloseWrite calls closeWrite and logs the error if there is one.
+func (s *Stream) mustCloseWrite(sendCloseWriteMessage bool, logger *logging.Logger) {
+	err := s.closeWrite(sendCloseWriteMessage)
+	if err != nil {
+		logger.Warnf("Unable to close, write message; %s", err.Error())
+	}
+}
+
 // closeWrite is the internal write closure method. It makes transmission of the
 // stream close write message optional.
 func (s *Stream) closeWrite(sendCloseWriteMessage bool) (err error) {
@@ -416,7 +426,7 @@ func (s *Stream) CloseWrite() error {
 func (s *Stream) close(sendCloseMessage bool) (err error) {
 	// Terminate writing if it hasn't been terminated already, but don't queue
 	// a close write message because we're about to send a full close message.
-	s.closeWrite(false)
+	s.mustCloseWrite(false, s.logger)
 
 	// Perform full closure idempotently.
 	s.closeOnce.Do(func() {

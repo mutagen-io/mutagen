@@ -19,6 +19,8 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
@@ -136,6 +138,8 @@ type scanner struct {
 	symbolicLinks uint64
 	// totalFileSize is the total size of all synchronizable files encountered.
 	totalFileSize uint64
+
+	logger *logging.Logger
 }
 
 // file performs processing of a file entry. Exactly one of parent or file will
@@ -197,7 +201,7 @@ func (s *scanner) file(
 					Problem: fmt.Errorf("unable to open file: %w", err).Error(),
 				}, nil
 			}
-			defer file.Close()
+			defer must.Close(file, s.logger)
 		}
 
 		// Reset the hash state.
@@ -339,7 +343,7 @@ func (s *scanner) directory(
 
 	// If the directory is not yet opened, then open it and defer its closure.
 	if directory == nil {
-		if d, err := parent.OpenDirectory(metadata.Name); err != nil {
+		if d, err := parent.OpenDirectory(metadata.Name, s.logger); err != nil {
 			if os.IsNotExist(err) {
 				return nil, err
 			}
@@ -349,7 +353,7 @@ func (s *scanner) directory(
 			}, nil
 		} else {
 			directory = d
-			defer directory.Close()
+			defer must.Close(directory, s.logger)
 		}
 	}
 
@@ -657,6 +661,7 @@ func Scan(
 	probeMode behavior.ProbeMode,
 	symbolicLinkMode SymbolicLinkMode,
 	permissionsMode PermissionsMode,
+	logger *logging.Logger,
 ) (*Snapshot, *Cache, ignore.IgnoreCache, error) {
 	// Verify that the symbolic link mode is valid for this platform.
 	if symbolicLinkMode == SymbolicLinkMode_SymbolicLinkModePOSIXRaw && runtime.GOOS == "windows" {
@@ -665,7 +670,7 @@ func Scan(
 
 	// Open the root and defer its closure. We explicitly disallow symbolic
 	// links at the root path, though intermediate symbolic links are fine.
-	rootObject, metadata, err := filesystem.Open(root, false)
+	rootObject, metadata, err := filesystem.Open(root, false, logger)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &Snapshot{}, &Cache{}, nil, nil
@@ -673,7 +678,7 @@ func Scan(
 			return nil, nil, nil, fmt.Errorf("unable to open synchronization root: %w", err)
 		}
 	}
-	defer rootObject.Close()
+	defer must.Close(rootObject, logger)
 
 	// Determine the root kind and extract the underlying object.
 	var rootKind EntryKind
@@ -713,7 +718,7 @@ func Scan(
 		// Check executability preservation behavior.
 		if cachedPreservesOk {
 			preservesExecutability = cachedPreserves
-		} else if preserves, usedFiles, err := behavior.PreservesExecutability(directoryRoot, probeMode); err != nil {
+		} else if preserves, usedFiles, err := behavior.PreservesExecutability(directoryRoot, probeMode, logger); err != nil {
 			return nil, nil, nil, fmt.Errorf("unable to probe root executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
@@ -723,7 +728,7 @@ func Scan(
 		// Check Unicode decomposition behavior.
 		if cachedDecomposesOk {
 			decomposesUnicode = cachedDecomposes
-		} else if decomposes, usedFiles, err := behavior.DecomposesUnicode(directoryRoot, probeMode); err != nil {
+		} else if decomposes, usedFiles, err := behavior.DecomposesUnicode(directoryRoot, probeMode, logger); err != nil {
 			return nil, nil, nil, fmt.Errorf("unable to probe root Unicode decomposition behavior: %w", err)
 		} else {
 			decomposesUnicode = decomposes
@@ -759,7 +764,7 @@ func Scan(
 		// Check executability preservation behavior for the parent directory.
 		if cachedPreservesOk {
 			preservesExecutability = cachedPreserves
-		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(parent, probeMode); err != nil {
+		} else if preserves, usedFiles, err := behavior.PreservesExecutabilityByPath(parent, probeMode, logger); err != nil {
 			return nil, nil, nil, fmt.Errorf("unable to probe parent executability preservation behavior: %w", err)
 		} else {
 			preservesExecutability = preserves
@@ -769,7 +774,7 @@ func Scan(
 		// Check Unicode decomposition behavior for the parent directory.
 		if cachedDecomposesOk {
 			decomposesUnicode = cachedDecomposes
-		} else if decomposes, usedFiles, err := behavior.DecomposesUnicodeByPath(parent, probeMode); err != nil {
+		} else if decomposes, usedFiles, err := behavior.DecomposesUnicodeByPath(parent, probeMode, logger); err != nil {
 			return nil, nil, nil, fmt.Errorf("unable to probe parent Unicode decomposition behavior: %w", err)
 		} else {
 			decomposesUnicode = decomposes
@@ -870,6 +875,7 @@ func Scan(
 		deviceID:               metadata.DeviceID,
 		recomposeUnicode:       decomposesUnicode,
 		preservesExecutability: preservesExecutability,
+		logger:                 logger,
 	}
 
 	// Handle the scan based on the root type.

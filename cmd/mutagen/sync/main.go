@@ -1,16 +1,22 @@
 package sync
 
 import (
+	"os"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 )
 
 // syncMain is the entry point for the sync command.
 func syncMain(command *cobra.Command, arguments []string) error {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// If no commands were given, then print help information and bail. We don't
 	// have to worry about warning about arguments being present here (which
 	// would be incorrect usage) because arguments can't even reach this point
 	// (they will be mistaken for subcommands and a error will be displayed).
-	command.Help()
+	must.CommandHelp(command, logger)
 
 	// Success.
 	return nil

@@ -12,6 +12,7 @@ import (
 	transportpkg "github.com/mutagen-io/mutagen/pkg/agent/transport"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/platform/terminal"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
@@ -108,7 +109,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// exit with its natural exit code (instead of an exit code due to forced
 	// termination) and will be able to yield some error output for diagnosing
 	// the issue.
-	stream, err := transportpkg.NewStream(agentProcess, errorTee)
+	stream, err := transportpkg.NewStream(agentProcess, errorTee, logger)
 	if err != nil {
 		return nil, false, false, fmt.Errorf("unable to create agent process stream: %w", err)
 	}
@@ -128,7 +129,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 		// we don't want to check it, but transport.Stream guarantees that if
 		// Close returns, then the underlying process has fully terminated,
 		// which is all we care about.
-		stream.Close()
+		must.Close(stream, logger)
 
 		// Extract any error output, ensure that it's UTF-8, strip out any
 		// whitespace (primarily trailing newlines), and neutralize any control
@@ -168,7 +169,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Perform a version handshake.
 	if err := mutagen.ClientVersionHandshake(stream); err != nil {
-		stream.Close()
+		must.Close(stream, logger)
 		return nil, false, false, fmt.Errorf("version handshake error: %w", err)
 	}
 

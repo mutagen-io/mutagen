@@ -15,6 +15,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/sidecar"
 	"github.com/mutagen-io/mutagen/pkg/state"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
@@ -439,6 +440,7 @@ func NewEndpoint(
 			filepath.Base(sidecarVolumeMountPoint),
 			defaultOwnership,
 			defaultDirectoryMode,
+			logger,
 		); err != nil {
 			return nil, fmt.Errorf("unable to set ownership and permissions for sidecar volume: %w", err)
 		}
@@ -488,6 +490,7 @@ func NewEndpoint(
 			hideStagingRoot,
 			maximumStagingFileSize,
 			hasherFactory,
+			logger,
 		),
 	}
 
@@ -575,7 +578,7 @@ func (e *endpoint) saveCache(ctx context.Context, cachePath string, signal <-cha
 
 			// Save the cache.
 			e.logger.Debug("Saving cache to disk")
-			if err := encoding.MarshalAndSaveProtobuf(cachePath, e.cache); err != nil {
+			if err := encoding.MarshalAndSaveProtobuf(cachePath, e.cache, e.logger); err != nil {
 				e.logger.Error("Cache save failed:", err)
 				e.cacheWriteError = err
 				e.unlockScanLock()
@@ -628,7 +631,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 			watchErrors = watcher.Errors()
 			defer func() {
 				if watcher != nil {
-					watcher.Terminate()
+					must.Terminate(watcher, logger)
 				}
 			}()
 		}
@@ -697,7 +700,7 @@ func (e *endpoint) watchPoll(ctx context.Context, pollingInterval uint32, nonRec
 				// case we don't want to trigger this code again on a nil
 				// watcher). We'll allow event channels to continue since they
 				// may contain residual events.
-				watcher.Terminate()
+				must.Terminate(watcher, logger)
 				watcher = nil
 				watchErrors = nil
 
@@ -816,7 +819,7 @@ func (e *endpoint) watchRecursive(ctx context.Context, pollingInterval uint32) {
 	var watcher watching.RecursiveWatcher
 	defer func() {
 		if watcher != nil {
-			watcher.Terminate()
+			must.Terminate(watcher, e.logger)
 		}
 	}()
 
@@ -930,7 +933,7 @@ WatchEstablishment:
 				e.pollSignal.Strobe()
 
 				// Terminate the watcher.
-				watcher.Terminate()
+				must.Terminate(watcher, logger)
 				watcher = nil
 
 				// If the watcher failed due to an internal event overflow, then
@@ -1010,6 +1013,7 @@ func (e *endpoint) scan(ctx context.Context, baseline *core.Snapshot, recheckPat
 		e.probeMode,
 		e.symbolicLinkMode,
 		e.permissionsMode,
+		e.logger,
 	)
 	if err != nil {
 		return err
@@ -1130,7 +1134,7 @@ func (e *endpoint) stageFromRoot(
 	if err != nil {
 		return false
 	}
-	defer source.Close()
+	defer must.Close(source, e.logger)
 
 	// Create a staging sink. We explicitly manage its closure below.
 	sink, err := e.stager.Sink(path)
@@ -1140,7 +1144,7 @@ func (e *endpoint) stageFromRoot(
 
 	// Copy data to the sink and close it, then check for copy errors.
 	_, err = io.Copy(sink, source)
-	sink.Close()
+	must.Close(sink, e.logger)
 	if err != nil {
 		return false
 	}
@@ -1205,8 +1209,8 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 	// Create an opener that we can use file opening and defer its closure. We
 	// can't cache this across synchronization cycles since its path references
 	// may become invalidated or may prevent modifications.
-	opener := filesystem.NewOpener(e.root)
-	defer opener.Close()
+	opener := filesystem.NewOpener(e.root, e.logger)
+	defer must.Close(opener, e.logger)
 
 	// Filter the path list by looking for files that we can source locally.
 	//
@@ -1253,16 +1257,16 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 		} else if base, _, err := opener.OpenFile(path); err != nil {
 			signatures[p] = emptySignature
 		} else if signature, err := engine.Signature(base, 0); err != nil {
-			base.Close()
+			must.Close(base, e.logger)
 			signatures[p] = emptySignature
 		} else {
-			base.Close()
+			must.Close(base, e.logger)
 			signatures[p] = signature
 		}
 	}
 
 	// Create a receiver.
-	receiver, err := rsync.NewReceiver(e.root, filteredPaths, signatures, e.stager)
+	receiver, err := rsync.NewReceiver(e.root, filteredPaths, signatures, e.stager, e.logger)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to create rsync receiver: %w", err)
 	}
@@ -1273,7 +1277,7 @@ func (e *endpoint) Stage(paths []string, digests [][]byte) ([]string, []*rsync.S
 
 // Supply implements the supply method for local endpoints.
 func (e *endpoint) Supply(paths []string, signatures []*rsync.Signature, receiver rsync.Receiver) error {
-	return rsync.Transmit(e.root, paths, signatures, receiver)
+	return rsync.Transmit(e.root, paths, signatures, receiver, e.logger)
 }
 
 // Transition implements the Transition method for local endpoints.
@@ -1344,6 +1348,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 		e.defaultOwnership,
 		e.lastReturnedScanSnapshotDecomposesUnicode,
 		e.stager,
+		e.logger,
 	)
 	e.lockScanLock(context.Background())
 
@@ -1383,7 +1388,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	// will be automatically re-enabled on the next polling operation. If
 	// filesystem watching is disabled, then so is acceleration, and thus
 	// there's no way that a stale scan could be returned. Note that, in the
-	// recurisve watching case, we only need to include transition roots because
+	// recursive watching case, we only need to include transition roots because
 	// transition operations will always change the root type and thus scanning
 	// will see any potential content changes. Also, we don't need to worry
 	// about delayed watcher failure reporting due to external (non-transition)
@@ -1432,7 +1437,7 @@ func (e *endpoint) Transition(ctx context.Context, transitions []*core.Change) (
 	// staging directory? It could be due to an easily correctable error, at
 	// which point you wouldn't want to restage if you're talking about lots of
 	// files.
-	e.stager.Finalize()
+	must.Finalize(e.stager, e.logger)
 
 	// Done.
 	return results, problems, stagerMissingFiles, nil

@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // DialContext attempts to establish an IPC connection, timing out if the
@@ -21,7 +24,7 @@ func DialContext(ctx context.Context, path string) (net.Conn, error) {
 }
 
 // NewListener creates a new IPC listener.
-func NewListener(path string) (net.Listener, error) {
+func NewListener(path string, logger *logging.Logger) (net.Listener, error) {
 	// Create the listener.
 	listener, err := net.Listen("unix", path)
 	if err != nil {
@@ -31,7 +34,7 @@ func NewListener(path string) (net.Listener, error) {
 	// Explicitly set socket permissions. Unfortunately we can't do this
 	// atomically on socket creation, but we can do it quickly.
 	if err := os.Chmod(path, 0600); err != nil {
-		listener.Close()
+		must.Close(listener, logger)
 		return nil, fmt.Errorf("unable to set socket permissions: %w", err)
 	}
 

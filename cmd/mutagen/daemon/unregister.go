@@ -1,16 +1,19 @@
 package daemon
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
-
 	"github.com/mutagen-io/mutagen/pkg/daemon"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // unregisterMain is the entry point for the unregister command.
 func unregisterMain(_ *cobra.Command, _ []string) error {
-	return daemon.Unregister()
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+	return daemon.Unregister(logger)
 }
 
 // unregisterCommand is the unregister command.

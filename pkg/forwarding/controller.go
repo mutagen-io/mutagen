@@ -13,6 +13,7 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 	"github.com/mutagen-io/mutagen/pkg/prompting"
 	"github.com/mutagen-io/mutagen/pkg/state"
@@ -85,7 +86,7 @@ func newSession(
 	prompter string,
 ) (*controller, error) {
 	// Update status.
-	prompting.Message(prompter, "Creating session...")
+	prompting.MustMessage(prompter, "Creating session...", logger)
 
 	// Set the session version.
 	version := DefaultVersion
@@ -107,11 +108,11 @@ func newSession(
 	var err error
 	defer func() {
 		if sourceEndpoint != nil {
-			sourceEndpoint.Shutdown()
+			must.Shutdown(sourceEndpoint, logger)
 			sourceEndpoint = nil
 		}
 		if destinationEndpoint != nil {
-			destinationEndpoint.Shutdown()
+			must.Shutdown(destinationEndpoint, logger)
 			destinationEndpoint = nil
 		}
 	}()
@@ -173,7 +174,7 @@ func newSession(
 	}
 
 	// Save the session to disk.
-	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
+	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session, logger); err != nil {
 		return nil, fmt.Errorf("unable to save session: %w", err)
 	}
 
@@ -276,7 +277,7 @@ func (c *controller) currentState() *State {
 // connected and forwarding.
 func (c *controller) resume(ctx context.Context, prompter string) error {
 	// Update status.
-	prompting.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
+	prompting.MustMessage(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier), c.logger)
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
@@ -327,7 +328,7 @@ func (c *controller) resume(ctx context.Context, prompter string) error {
 	// Mark the session as unpaused and save it to disk.
 	c.stateLock.Lock()
 	c.session.Paused = false
-	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session, c.logger)
 	c.stateLock.Unlock()
 
 	// Attempt to connect to source.
@@ -420,7 +421,10 @@ func (m controllerHaltMode) description() string {
 // halt halts the session with the specified behavior.
 func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string) error {
 	// Update status.
-	prompting.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
+	prompting.MustMessage(prompter,
+		fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier),
+		c.logger,
+	)
 
 	// Lock the controller's lifecycle and defer its release.
 	c.lifecycleLock.Lock()
@@ -452,7 +456,7 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		// Mark the session as paused and save it.
 		c.stateLock.Lock()
 		c.session.Paused = true
-		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session, c.logger)
 		c.stateLock.Unlock()
 		if saveErr != nil {
 			return fmt.Errorf("unable to save session: %w", saveErr)
@@ -489,10 +493,10 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		// cancelled while partially connected rather than after forwarding
 		// failure.
 		if source != nil {
-			source.Shutdown()
+			must.Shutdown(source, c.logger)
 		}
 		if destination != nil {
-			destination.Shutdown()
+			must.Shutdown(destination, c.logger)
 		}
 
 		// Reset the state.
@@ -607,8 +611,8 @@ func (c *controller) run(ctx context.Context, source, destination Endpoint) {
 		shutdownComplete := make(chan struct{})
 		go func() {
 			<-shutdownCtx.Done()
-			source.Shutdown()
-			destination.Shutdown()
+			must.Shutdown(source, c.logger)
+			must.Shutdown(destination, c.logger)
 			close(shutdownComplete)
 		}()
 
@@ -733,7 +737,7 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Open the outgoing connection to which we should forward.
 		outgoing, err := destination.Open()
 		if err != nil {
-			incoming.Close()
+			must.Close(incoming, c.logger)
 			return fmt.Errorf("unable to open forwarding connection: %w", err)
 		}
 
@@ -746,7 +750,7 @@ func (c *controller) forward(source, destination Endpoint) error {
 		// Perform forwarding and update state in a background Goroutine.
 		go func() {
 			// Perform forwarding.
-			ForwardAndClose(ctx, incoming, outgoing, incomingAuditor, outgoingAuditor)
+			ForwardAndClose(ctx, incoming, outgoing, incomingAuditor, outgoingAuditor, c.logger)
 
 			// Decrement open connection counts.
 			c.stateLock.Lock()

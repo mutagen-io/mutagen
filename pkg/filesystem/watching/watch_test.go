@@ -1,11 +1,15 @@
 package watching
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 const (
@@ -47,6 +51,8 @@ func TestRecursiveWatcher(t *testing.T) {
 		t.Skip()
 	}
 
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a temporary directory (that will be automatically removed).
 	directory := t.TempDir()
 
@@ -55,7 +61,7 @@ func TestRecursiveWatcher(t *testing.T) {
 	if err != nil {
 		t.Fatal("unable to establish watch:", err)
 	}
-	defer watcher.Terminate()
+	defer must.Terminate(watcher, logger)
 
 	// Create a subdirectory.
 	subdirectoryRelative := "subdirectory"
@@ -101,6 +107,7 @@ func TestNonRecursiveWatcher(t *testing.T) {
 	if !NonRecursiveWatchingSupported {
 		t.Skip()
 	}
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
 
 	// Create a temporary directory (that will be automatically removed).
 	directory := t.TempDir()
@@ -111,7 +118,7 @@ func TestNonRecursiveWatcher(t *testing.T) {
 		t.Fatal("unable to create watcher:", err)
 	}
 	watcher.Watch(directory)
-	defer watcher.Terminate()
+	defer must.Terminate(watcher, logger)
 
 	// Create a subdirectory.
 	subdirectoryPath := filepath.Join(directory, "subdirectory")

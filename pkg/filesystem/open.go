@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // ErrUnsupportedOpenType indicates that the filesystem entry at the specified
@@ -13,14 +16,14 @@ var ErrUnsupportedOpenType = errors.New("unsupported open type")
 
 // OpenDirectory is a convenience wrapper around Open that requires the result
 // to be a directory.
-func OpenDirectory(path string, allowSymbolicLinkLeaf bool) (*Directory, *Metadata, error) {
-	if d, metadata, err := Open(path, allowSymbolicLinkLeaf); err != nil {
+func OpenDirectory(path string, allowSymbolicLinkLeaf bool, logger *logging.Logger) (*Directory, *Metadata, error) {
+	if d, metadata, err := Open(path, allowSymbolicLinkLeaf, logger); err != nil {
 		return nil, nil, err
 	} else if (metadata.Mode & ModeTypeMask) != ModeTypeDirectory {
-		d.Close()
+		must.Close(d, logger)
 		return nil, nil, errors.New("path is not a directory")
 	} else if directory, ok := d.(*Directory); !ok {
-		d.Close()
+		must.Close(d, logger)
 		panic("invalid directory object returned from open operation")
 	} else {
 		return directory, metadata, nil
@@ -29,14 +32,14 @@ func OpenDirectory(path string, allowSymbolicLinkLeaf bool) (*Directory, *Metada
 
 // OpenFile is a convenience wrapper around Open that requires the result to be
 // a file.
-func OpenFile(path string, allowSymbolicLinkLeaf bool) (io.ReadSeekCloser, *Metadata, error) {
-	if f, metadata, err := Open(path, allowSymbolicLinkLeaf); err != nil {
+func OpenFile(path string, allowSymbolicLinkLeaf bool, logger *logging.Logger) (io.ReadSeekCloser, *Metadata, error) {
+	if f, metadata, err := Open(path, allowSymbolicLinkLeaf, logger); err != nil {
 		return nil, nil, err
 	} else if (metadata.Mode & ModeTypeMask) != ModeTypeFile {
-		f.Close()
+		must.Close(f, logger)
 		return nil, nil, errors.New("path is not a file")
 	} else if file, ok := f.(io.ReadSeekCloser); !ok {
-		f.Close()
+		must.Close(f, logger)
 		panic("invalid file object returned from open operation")
 	} else {
 		return file, metadata, nil
@@ -65,11 +68,16 @@ type Opener struct {
 	// correspond to openParentNames, and likewise it will be empty if
 	// rootDirectory is nil.
 	openParentDirectories []*Directory
+
+	logger *logging.Logger
 }
 
 // NewOpener creates a new Opener for the specified root path.
-func NewOpener(root string) *Opener {
-	return &Opener{root: root}
+func NewOpener(root string, logger *logging.Logger) *Opener {
+	return &Opener{
+		root:   root,
+		logger: logger,
+	}
 }
 
 // OpenFile opens the file at the specified path (relative to the root). On all
@@ -93,7 +101,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, *Metadata, error) {
 		}
 
 		// Attempt to open the file.
-		if file, metadata, err := OpenFile(o.root, false); err != nil {
+		if file, metadata, err := OpenFile(o.root, false, o.logger); err != nil {
 			return nil, nil, fmt.Errorf("unable to open root file: %w", err)
 		} else {
 			return file, metadata, nil
@@ -107,7 +115,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, *Metadata, error) {
 
 	// If it's not already open, open the root directory.
 	if o.rootDirectory == nil {
-		if directory, _, err := OpenDirectory(o.root, false); err != nil {
+		if directory, _, err := OpenDirectory(o.root, false, o.logger); err != nil {
 			return nil, nil, fmt.Errorf("unable to open root directory: %w", err)
 		} else {
 			o.rootDirectory = directory
@@ -144,7 +152,7 @@ func (o *Opener) OpenFile(path string) (io.ReadSeekCloser, *Metadata, error) {
 		}
 
 		// Open the directory ourselves and add it to the parent stacks.
-		if directory, err := parent.OpenDirectory(component); err != nil {
+		if directory, err := parent.OpenDirectory(component, o.logger); err != nil {
 			return nil, nil, fmt.Errorf("unable to open parent directory: %w", err)
 		} else {
 			parent = directory

@@ -4,6 +4,8 @@ package daemon
 
 import (
 	"errors"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // RegistrationSupported indicates whether or not daemon registration is
@@ -11,12 +13,12 @@ import (
 const RegistrationSupported = false
 
 // Register performs automatic daemon startup registration.
-func Register() error {
+func Register(logger *logging.Logger) error {
 	return errors.New("daemon registration not supported on this platform")
 }
 
 // Unregister performs automatic daemon startup de-registration.
-func Unregister() error {
+func Unregister(logger *logging.Logger) error {
 	return errors.New("daemon deregistration not supported on this platform")
 }
 

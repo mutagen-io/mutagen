@@ -9,6 +9,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"golang.org/x/sys/windows"
 
 	aclapi "github.com/hectane/go-acl/api"
@@ -52,14 +54,15 @@ type Directory struct {
 	// function, hence the reason we need to hold open a separate HANDLE. It is
 	// guaranteed that the value returned from the file's Name function will be
 	// an absolute path.
-	file *os.File
+	file   *os.File
+	logger *logging.Logger
 }
 
 // Close closes the directory.
 func (d *Directory) Close() error {
 	// Close the file object.
 	if err := d.file.Close(); err != nil {
-		windows.CloseHandle(d.handle)
+		must.CloseWindowsHandle(d.handle, d.logger)
 		return fmt.Errorf("unable to close file object: %w", err)
 	}
 
@@ -207,7 +210,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 // openHandle is the underlying open implementation shared by OpenDirectory and
 // OpenFile. It returns the full target path, the Windows file handle
 // corresponding to the target, the target metadata, or any error.
-func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows.Handle, *Metadata, error) {
+func (d *Directory) openHandle(name string, wantDirectory bool, logger *logging.Logger) (string, windows.Handle, *Metadata, error) {
 	// Verify that the name is valid.
 	if err := ensureValidName(name); err != nil {
 		return "", 0, nil, err
@@ -248,19 +251,19 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 	// Query handle metadata.
 	metadata, err := queryHandleMetadata(name, handle)
 	if err != nil {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return "", 0, nil, fmt.Errorf("unable to query file handle metadata: %w", err)
 	}
 
 	// Verify that we're not dealing with a symbolic link.
 	if metadata.Mode&ModeTypeSymbolicLink != 0 {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return "", 0, nil, errors.New("path pointed to symbolic link")
 	}
 
 	// Verify that the handle corresponds to a directory (if requested).
 	if wantDirectory && metadata.Mode&ModeTypeDirectory == 0 {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return "", 0, nil, errors.New("path pointed to non-directory location")
 	}
 
@@ -269,9 +272,9 @@ func (d *Directory) openHandle(name string, wantDirectory bool) (string, windows
 }
 
 // OpenDirectory opens the directory within the directory specified by name.
-func (d *Directory) OpenDirectory(name string) (*Directory, error) {
+func (d *Directory) OpenDirectory(name string, logger *logging.Logger) (*Directory, error) {
 	// Open the directory handle.
-	path, handle, _, err := d.openHandle(name, true)
+	path, handle, _, err := d.openHandle(name, true, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open directory handle: %w", err)
 	}
@@ -282,7 +285,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	// this object (and its Name method) isn't exposed anyway.
 	file, err := os.Open(path)
 	if err != nil {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return nil, fmt.Errorf("unable to open file object for directory: %w", err)
 	}
 
@@ -290,6 +293,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	return &Directory{
 		handle: handle,
 		file:   file,
+		logger: logger,
 	}, nil
 }
 
@@ -402,7 +406,7 @@ func (d *Directory) ReadContents() ([]*Metadata, error) {
 // OpenFile opens the file within the directory specified by name.
 func (d *Directory) OpenFile(name string) (io.ReadSeekCloser, *Metadata, error) {
 	// Open the file handle.
-	_, handle, metadata, err := d.openHandle(name, false)
+	_, handle, metadata, err := d.openHandle(name, false, d.logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to open file handle: %w", err)
 	}

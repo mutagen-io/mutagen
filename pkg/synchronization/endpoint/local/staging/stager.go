@@ -4,6 +4,7 @@ import (
 	"hash"
 	"io"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/local/staging/store"
 )
 
@@ -11,12 +12,16 @@ import (
 // store to stage files.
 type Stager struct {
 	// store is the stager's underlying store.
-	store *store.Store
+	store  *store.Store
+	logger *logging.Logger
 }
 
 // NewStager creates a new stager.
-func NewStager(root string, hideRoot bool, maximumFileSize uint64, hasherFactory func() hash.Hash) *Stager {
-	return &Stager{store.NewStore(root, hideRoot, maximumFileSize, hasherFactory)}
+func NewStager(root string, hideRoot bool, maximumFileSize uint64, hasherFactory func() hash.Hash, logger *logging.Logger) *Stager {
+	return &Stager{
+		store:  store.NewStore(root, hideRoot, maximumFileSize, hasherFactory, logger),
+		logger: logger,
+	}
 }
 
 // Initialize implements local.stager.Initialize.
@@ -31,7 +36,7 @@ func (s *Stager) Contains(path string, digest []byte) (bool, error) {
 
 // Sink implements rsync.Sinker.Sink.
 func (s *Stager) Sink(path string) (io.WriteCloser, error) {
-	storage, err := s.store.Allocate()
+	storage, err := s.store.Allocate(s.logger)
 	if err != nil {
 		return nil, err
 	}

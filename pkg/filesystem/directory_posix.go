@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"golang.org/x/sys/unix"
 
 	"github.com/mutagen-io/mutagen/pkg/state"
@@ -61,6 +62,8 @@ type Directory struct {
 	// renameatNoReplaceRetryingOnEINTR is found to be unsupported with this
 	// directory as a target.
 	renameatNoReplaceUnsupported state.Marker
+
+	logger *logging.Logger
 }
 
 // Close closes the directory.
@@ -204,7 +207,7 @@ func (d *Directory) SetPermissions(name string, ownership *OwnershipSpecificatio
 			if f, err := openatRetryingOnEINTR(d.descriptor, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err != nil {
 				return fmt.Errorf("unable to open file: %w", err)
 			} else if err = fchmodRetryingOnEINTR(f, uint32(mode)); err != nil {
-				closeConsideringEINTR(f)
+				mustCloseConsideringEINTR(f, d.logger)
 				return fmt.Errorf("unable to set permission bits on file: %w", err)
 			} else if err = closeConsideringEINTR(f); err != nil {
 				return fmt.Errorf("unable to close file: %w", err)
@@ -258,10 +261,10 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *Metadata, error
 	if !wantDirectory {
 		var rawMetadata unix.Stat_t
 		if err := fstatRetryingOnEINTR(descriptor, &rawMetadata); err != nil {
-			closeConsideringEINTR(descriptor)
+			mustCloseConsideringEINTR(descriptor, d.logger)
 			return -1, nil, fmt.Errorf("unable to query file metadata: %w", err)
 		} else if Mode(rawMetadata.Mode)&ModeTypeMask != ModeTypeFile {
-			closeConsideringEINTR(descriptor)
+			mustCloseConsideringEINTR(descriptor, d.logger)
 			return -1, nil, errors.New("path is not a file")
 		}
 		metadata = &Metadata{
@@ -282,7 +285,7 @@ func (d *Directory) open(name string, wantDirectory bool) (int, *Metadata, error
 // POSIX systems, the directory itself can be re-opened (with a different
 // underlying file handle pointing to the same directory) by passing "." to this
 // function.
-func (d *Directory) OpenDirectory(name string) (*Directory, error) {
+func (d *Directory) OpenDirectory(name string, logger *logging.Logger) (*Directory, error) {
 	// Call the underlying open method.
 	descriptor, _, err := d.open(name, true)
 	if err != nil {
@@ -293,6 +296,7 @@ func (d *Directory) OpenDirectory(name string) (*Directory, error) {
 	return &Directory{
 		descriptor: descriptor,
 		file:       os.NewFile(uintptr(descriptor), name),
+		logger:     logger,
 	}, nil
 }
 

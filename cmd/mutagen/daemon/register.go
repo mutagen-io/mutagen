@@ -1,6 +1,9 @@
 package daemon
 
 import (
+	"os"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -10,7 +13,8 @@ import (
 
 // registerMain is the entry point for the register command.
 func registerMain(_ *cobra.Command, _ []string) error {
-	return daemon.Register()
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+	return daemon.Register(logger)
 }
 
 // registerCommand is the register command.

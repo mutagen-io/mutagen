@@ -5,6 +5,8 @@ import (
 	"io"
 	"net"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
@@ -15,11 +17,11 @@ import (
 // Both connections must implement CloseWriter or this function will panic. If
 // the caller passes non-nil values for firstAuditor and/or secondAuditor, then
 // auditing will be performed on the write end of the respective connection.
-func ForwardAndClose(ctx context.Context, first, second net.Conn, firstAuditor, secondAuditor stream.Auditor) {
+func ForwardAndClose(ctx context.Context, first, second net.Conn, firstAuditor, secondAuditor stream.Auditor, logger *logging.Logger) {
 	// Defer closure of the connections.
 	defer func() {
-		first.Close()
-		second.Close()
+		must.Close(first, logger)
+		must.Close(second, logger)
 	}()
 
 	// Extract write closure interfaces.
@@ -42,14 +44,14 @@ func ForwardAndClose(ctx context.Context, first, second net.Conn, firstAuditor, 
 	go func() {
 		_, err := io.Copy(stream.NewAuditWriter(first, firstAuditor), second)
 		if err == nil {
-			firstCloseWriter.CloseWrite()
+			must.CloseWrite(firstCloseWriter, logger)
 		}
 		copyErrors <- err
 	}()
 	go func() {
 		_, err := io.Copy(stream.NewAuditWriter(second, secondAuditor), first)
 		if err == nil {
-			secondCloseWriter.CloseWrite()
+			must.CloseWrite(secondCloseWriter, logger)
 		}
 		copyErrors <- err
 	}()

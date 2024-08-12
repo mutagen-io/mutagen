@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mutagen-io/mutagen/pkg/housekeeping"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
@@ -20,7 +21,7 @@ type Server struct {
 	UnimplementedDaemonServer
 	// Termination is populated with requests from clients invoking the shutdown
 	// method over RPC. It can be ignored by daemon host processes wishing to
-	// ignore temination requests originating from clients. The channel is
+	// ignore termination requests originating from clients. The channel is
 	// buffered and non-blocking, so it doesn't need to be serviced by the
 	// daemon host-process at all - additional incoming shutdown requests will
 	// just bounce off once the channel is populated. We do this, instead of
@@ -31,10 +32,12 @@ type Server struct {
 	// shutdown is the context cancellation function for the server's internal
 	// operation context.
 	shutdown context.CancelFunc
+
+	logger *logging.Logger
 }
 
 // NewServer creates a new daemon server.
-func NewServer() *Server {
+func NewServer(logger *logging.Logger) *Server {
 	// Create a cancellable context for daemon background operations.
 	workerCtx, shutdown := context.WithCancel(context.Background())
 
@@ -43,6 +46,7 @@ func NewServer() *Server {
 		Termination: make(chan struct{}, 1),
 		workerCtx:   workerCtx,
 		shutdown:    shutdown,
+		logger:      logger,
 	}
 
 	// Start the housekeeping Goroutine.
@@ -56,7 +60,7 @@ func NewServer() *Server {
 func (s *Server) housekeep() {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
-	housekeeping.Housekeep()
+	housekeeping.Housekeep(s.logger)
 
 	// Create a ticker to regulate housekeeping and defer its shutdown.
 	ticker := time.NewTicker(housekeepingInterval)
@@ -68,7 +72,7 @@ func (s *Server) housekeep() {
 		case <-s.workerCtx.Done():
 			return
 		case <-ticker.C:
-			housekeeping.Housekeep()
+			housekeeping.Housekeep(s.logger)
 		}
 	}
 }
