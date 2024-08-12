@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -28,7 +29,7 @@ func TestTrackingLock(t *testing.T) {
 
 		// Wait for termination and ensure that the state doesn't change.
 		finalState, err := tracker.WaitForChange(context.Background(), firstState)
-		handoff <- (finalState == firstState && err == ErrTrackingTerminated)
+		handoff <- (finalState == firstState && errors.Is(err, ErrTrackingTerminated))
 	}()
 
 	// Acquire and release the lock in a way that will change the state, and

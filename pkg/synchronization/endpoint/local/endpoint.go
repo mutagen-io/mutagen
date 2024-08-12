@@ -937,7 +937,7 @@ WatchEstablishment:
 				// events are likely happening on disk faster than we can
 				// process them. In that case, wait one polling interval before
 				// attempting to re-establish the watch.
-				if err == watching.ErrWatchInternalOverflow {
+				if errors.Is(err, watching.ErrWatchInternalOverflow) {
 					logger.Debug("Waiting before watch re-establishment")
 					timer.Reset(pollingDuration)
 					select {

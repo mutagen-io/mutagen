@@ -177,7 +177,7 @@ func (b *Buffer) ReadNFrom(reader io.Reader, n int) (int, error) {
 
 	// If we encountered io.EOF simultaneously with completing the read, then we
 	// can clear the error.
-	if err == io.EOF && n == 0 {
+	if errors.Is(err, io.EOF) && n == 0 {
 		err = nil
 	}
 

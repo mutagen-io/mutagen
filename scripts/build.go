@@ -539,7 +539,7 @@ func build() error {
 	flagSet.StringVar(&macosCodesignIdentity, "macos-codesign-identity", "", "specify the macOS code signing identity")
 	flagSet.BoolVar(&enableSSPLEnhancements, "sspl", false, "enable SSPL-licensed enhancements")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
-		if err == pflag.ErrHelp {
+		if errors.Is(err, pflag.ErrHelp) {
 			fmt.Fprint(os.Stdout, usage)
 			return nil
 		} else {

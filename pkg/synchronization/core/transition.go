@@ -662,7 +662,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// If there was a copy error, then remove the temporary and abort.
 	if copyErr != nil {
 		parent.RemoveFile(temporaryName)
-		if copyErr == stream.ErrWritePreempted {
+		if errors.Is(copyErr, stream.ErrWritePreempted) {
 			return errTransitionCancelled
 		}
 		return fmt.Errorf("unable to copy file contents: %w", copyErr)

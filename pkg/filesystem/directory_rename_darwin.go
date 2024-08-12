@@ -1,6 +1,8 @@
 package filesystem
 
 import (
+	"errors"
+
 	"golang.org/x/sys/unix"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
@@ -15,7 +17,7 @@ import (
 func renameatNoReplaceRetryingOnEINTR(oldDirectory int, oldPath string, newDirectory int, newPath string) error {
 	for {
 		err := syscall.Renameatx_np(oldDirectory, oldPath, newDirectory, newPath, syscall.RENAME_EXCL)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err

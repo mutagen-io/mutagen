@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -45,7 +46,7 @@ func TestTracker(t *testing.T) {
 
 		// Wait for termination and ensure that the state doesn't change.
 		finalState, err := tracker.WaitForChange(context.Background(), secondState)
-		handoff <- (finalState == firstState && err == ErrTrackingTerminated)
+		handoff <- (finalState == firstState && errors.Is(err, ErrTrackingTerminated))
 	}()
 
 	// Notify of a change and wait for a response.

@@ -2,6 +2,7 @@ package multiplexing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -20,7 +21,7 @@ func makeNetTestMakePipe(opener, acceptor *Multiplexer) nettest.MakePipe {
 		var openErr, acceptErr error
 		go func() {
 			opened, openErr = opener.OpenStream(context.Background())
-			if openErr == ErrMultiplexerClosed {
+			if errors.Is(openErr, ErrMultiplexerClosed) {
 				if internalErr := opener.InternalError(); internalErr != nil {
 					openErr = fmt.Errorf("multiplexer closed due to internal error: %w", internalErr)
 				}
@@ -29,7 +30,7 @@ func makeNetTestMakePipe(opener, acceptor *Multiplexer) nettest.MakePipe {
 		}()
 		go func() {
 			accepted, acceptErr = acceptor.AcceptStream(context.Background())
-			if acceptErr == ErrMultiplexerClosed {
+			if errors.Is(acceptErr, ErrMultiplexerClosed) {
 				if internalErr := acceptor.InternalError(); internalErr != nil {
 					acceptErr = fmt.Errorf("multiplexer closed due to internal error: %w", internalErr)
 				}

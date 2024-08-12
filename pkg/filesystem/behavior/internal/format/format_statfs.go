@@ -3,6 +3,7 @@
 package format
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/sys/unix"
@@ -15,7 +16,7 @@ import (
 func statfsRetryingOnEINTR(path string, metadata *unix.Statfs_t) error {
 	for {
 		err := unix.Statfs(path, metadata)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err
@@ -28,7 +29,7 @@ func statfsRetryingOnEINTR(path string, metadata *unix.Statfs_t) error {
 func fstatfsRetryingOnEINTR(fd int, metadata *unix.Statfs_t) error {
 	for {
 		err := unix.Fstatfs(fd, metadata)
-		if err == unix.EINTR {
+		if errors.Is(err, unix.EINTR) {
 			continue
 		}
 		return err

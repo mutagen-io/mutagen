@@ -199,7 +199,7 @@ func (w *RecursiveWatcher) run(ctx context.Context, watch io.Reader, mountDescri
 			// Process a single event.
 			remaining, path, err := processEvent(mountDescriptor, populated)
 			if err != nil {
-				if err == ErrWatchInternalOverflow {
+				if errors.Is(err, ErrWatchInternalOverflow) {
 					return err
 				}
 				return fmt.Errorf("unable to extract event path: %w", err)
