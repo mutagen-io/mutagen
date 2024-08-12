@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
 )
 
@@ -51,6 +53,8 @@ func testingNWildcardEntries(n uint) []*Entry {
 
 // TestTransition tests Transition.
 func TestTransition(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create contexts to use for tests.
 	backgroundCtx := context.Background()
 	cancelledCtx, cancel := context.WithCancel(backgroundCtx)
@@ -705,6 +709,7 @@ func TestTransition(t *testing.T) {
 				baselineContentMap: test.baselineContentMap,
 				tweak:              test.tweak,
 				untweak:            test.untweak,
+				logger:             logger,
 			}
 			root, err := generator.generate()
 			if err != nil {
@@ -741,6 +746,7 @@ func TestTransition(t *testing.T) {
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				PermissionsMode_PermissionsModePortable,
+				logger,
 			)
 			if err != nil {
 				t.Errorf("%s: unable to perform scan of baseline on %s filesystem: %v",
@@ -776,6 +782,7 @@ func TestTransition(t *testing.T) {
 				nil,
 				snapshot.DecomposesUnicode,
 				provider,
+				logger,
 			)
 
 			// Check results.

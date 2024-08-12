@@ -15,6 +15,8 @@ import (
 	"github.com/zeebo/xxh3"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/stream"
 )
 
@@ -68,10 +70,12 @@ type Store struct {
 	// prefixExists tracks whether or not individual prefix directories exist.
 	// It is indexed on the byte value corresponding to the prefix directory.
 	prefixExists [256]bool
+
+	logger *logging.Logger
 }
 
 // NewStore creates a new store instance with the specified parameters.
-func NewStore(root string, hidden bool, maximumFileSize uint64, contentHasherFactory func() hash.Hash) *Store {
+func NewStore(root string, hidden bool, maximumFileSize uint64, contentHasherFactory func() hash.Hash, logger *logging.Logger) *Store {
 	return &Store{
 		root:            root,
 		hidden:          hidden,
@@ -91,6 +95,7 @@ func NewStore(root string, hidden bool, maximumFileSize uint64, contentHasherFac
 				return xxh3.New()
 			},
 		},
+		logger: logger,
 	}
 }
 
@@ -182,7 +187,7 @@ func (s *Store) Initialize() error {
 }
 
 // Allocate allocates temporary storage for receiving data.
-func (s *Store) Allocate() (*Storage, error) {
+func (s *Store) Allocate(logger *logging.Logger) (*Storage, error) {
 	// Verify that the store is initialized.
 	if !s.initialized {
 		return nil, errStoreUninitialized
@@ -212,6 +217,7 @@ func (s *Store) Allocate() (*Storage, error) {
 		hasher:  hasher,
 		writer:  writer,
 		buffer:  buffer,
+		logger:  logger,
 	}, nil
 }
 
@@ -230,7 +236,7 @@ func (s *Store) target(path string, digest []byte) (string, string) {
 	pathHasher.Reset()
 
 	// Compute the path digest.
-	pathHasher.WriteString(path)
+	must.WriteString(pathHasher, path, s.logger)
 	pathDigest := pathHasher.Sum128()
 
 	// Return the path hasher to the pool.
@@ -340,6 +346,8 @@ type Storage struct {
 	buffer *bufio.Writer
 	// currentSize is the number of bytes that have been written to the file.
 	currentSize uint64
+
+	logger *logging.Logger
 }
 
 // Write implements io.Writer.Write for the storage.
@@ -383,7 +391,7 @@ func (s *Storage) Commit(path string) error {
 
 	// Verify that the content digest has sufficient length.
 	if len(digest) == 0 {
-		os.Remove(s.storage.Name())
+		must.OSRemove(s.storage.Name(), s.logger)
 		return errDigestEmpty
 	}
 
@@ -396,7 +404,7 @@ func (s *Storage) Commit(path string) error {
 	if !s.store.prefixExists[prefixByte] {
 		if err := os.Mkdir(filepath.Join(s.store.root, prefix), 0700); err != nil {
 			s.store.prefixLock.Unlock()
-			os.Remove(s.storage.Name())
+			must.OSRemove(s.storage.Name(), s.logger)
 			return fmt.Errorf("unable to create prefix directory (%s): %w", prefix, err)
 		}
 		s.store.prefixExists[prefixByte] = true
@@ -405,7 +413,7 @@ func (s *Storage) Commit(path string) error {
 
 	// Relocate the temporary file to its target destination.
 	if err := filesystem.Rename(nil, s.storage.Name(), nil, target, true); err != nil {
-		os.Remove(s.storage.Name())
+		must.OSRemove(s.storage.Name(), s.logger)
 		return fmt.Errorf("unable to relocate storage: %w", err)
 	}
 

@@ -1,8 +1,12 @@
 package encoding
 
 import (
+	"bytes"
 	"os"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // testMessageYAML is a test structure to use for encoding tests using YAML.
@@ -29,6 +33,8 @@ section:
 // TestLoadAndUnmarshalYAML tests that loading and unmarshaling YAML data
 // succeeds.
 func TestLoadAndUnmarshalYAML(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Write the test YAML to a temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -38,7 +44,7 @@ func TestLoadAndUnmarshalYAML(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Attempt to load and unmarshal.
 	value := &testMessageYAML{}

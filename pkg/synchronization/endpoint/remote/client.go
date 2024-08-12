@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -59,7 +60,7 @@ func NewEndpoint(
 
 	// Perform the compression handshake.
 	if err := compression.ClientHandshake(stream, compressionAlgorithm); err != nil {
-		stream.Close()
+		must.Close(stream, logger)
 		return nil, fmt.Errorf("compression handshake failed: %w", err)
 	}
 
@@ -93,7 +94,7 @@ func NewEndpoint(
 	var successful bool
 	defer func() {
 		if !successful {
-			closer.Close()
+			must.Close(closer, logger)
 		}
 	}()
 
@@ -417,7 +418,7 @@ func (c *endpointClient) Stage(paths []string, digests [][]byte) ([]string, []*r
 	// Create an encoding receiver that can transmit rsync operations to the
 	// remote.
 	encoder := &protobufRsyncEncoder{encoder: c.encoder, flusher: c.flusher}
-	receiver := rsync.NewEncodingReceiver(encoder)
+	receiver := rsync.NewEncodingReceiver(encoder, c.logger)
 
 	// Success.
 	return requiredPaths, response.Signatures, receiver, nil
@@ -451,7 +452,7 @@ func (c *endpointClient) Supply(paths []string, signatures []*rsync.Signature, r
 	// and forward them to the receiver. If this operation completes
 	// successfully, supplying is complete and successful.
 	decoder := &protobufRsyncDecoder{decoder: c.decoder}
-	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
+	if err := rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver, c.logger); err != nil {
 		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
 

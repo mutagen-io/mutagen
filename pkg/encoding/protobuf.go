@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 
@@ -42,8 +43,8 @@ func LoadAndUnmarshalProtobuf(path string, message proto.Message) error {
 
 // MarshalAndSaveProtobuf marshals the specified Protocol Buffers message and
 // saves it to the specified path.
-func MarshalAndSaveProtobuf(path string, message proto.Message) error {
-	return MarshalAndSave(path, func() ([]byte, error) {
+func MarshalAndSaveProtobuf(path string, message proto.Message, logger *logging.Logger) error {
+	return MarshalAndSave(path, logger, func() ([]byte, error) {
 		return proto.Marshal(message)
 	})
 }

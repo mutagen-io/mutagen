@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
 	mutagenignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/mutagen"
@@ -73,6 +76,8 @@ func testingSnapshotStatistics(entry *Entry, cache *Cache) (directoryCount, file
 
 // TestScan tests Scan.
 func TestScan(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create contexts to use for tests.
 	backgroundCtx := context.Background()
 	cancelledCtx, cancel := context.WithCancel(backgroundCtx)
@@ -83,7 +88,7 @@ func TestScan(t *testing.T) {
 	// but not earlier. Linux doesn't seem to have ever supported them and gives
 	// a strange error code when trying to create them. More information can be
 	// found here: https://lwn.net/Articles/551224/. The best option is just to
-	// test for support. Manpages don't seem to accurately describe support.
+	// test for support. Man pages don't seem to accurately describe support.
 	emptySymbolicLinksSupported := os.Symlink("", filepath.Join(t.TempDir(), "l")) == nil
 
 	// Define test cases.
@@ -264,11 +269,11 @@ func TestScan(t *testing.T) {
 				}
 				unixListener, ok := listener.(*net.UnixListener)
 				if !ok {
-					listener.Close()
+					must.Close(listener, logger)
 					return errors.New("listener was not a Unix listener")
 				}
 				unixListener.SetUnlinkOnClose(false)
-				unixListener.Close()
+				must.Close(unixListener, logger)
 				return nil
 			},
 			nil,
@@ -524,6 +529,7 @@ func TestScan(t *testing.T) {
 				baselineContentMap: test.baselineContentMap,
 				tweak:              test.tweak,
 				untweak:            test.untweak,
+				logger:             logger,
 			}
 			root, err := generator.generate()
 			if err != nil {
@@ -577,6 +583,7 @@ func TestScan(t *testing.T) {
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				test.permissionsMode,
+				logger,
 			)
 			if test.expectFailure {
 				if err == nil {
@@ -659,6 +666,7 @@ func TestScan(t *testing.T) {
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				test.permissionsMode,
+				logger,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -731,6 +739,7 @@ func TestScan(t *testing.T) {
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				test.permissionsMode,
+				logger,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -830,6 +839,7 @@ func TestScan(t *testing.T) {
 				behavior.ProbeMode_ProbeModeProbe,
 				test.symbolicLinkMode,
 				test.permissionsMode,
+				logger,
 			)
 
 			// Handle scan failure (which isn't expected at this point).
@@ -922,6 +932,8 @@ func TestScan(t *testing.T) {
 // generate (and mount/unmount) disk images in Go, meaning that this test is
 // hard to do as a tweak/untweak operation in a standard scan test.
 func TestScanCrossFilesystemBoundary(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// If we don't have a filesystem mounted within another filesystem, then
 	// skip this test.
 	crossing := os.Getenv("MUTAGEN_TEST_SUBFS_ROOT")
@@ -949,6 +961,7 @@ func TestScanCrossFilesystemBoundary(t *testing.T) {
 		behavior.ProbeMode_ProbeModeProbe,
 		SymbolicLinkMode_SymbolicLinkModePortable,
 		PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		t.Fatalf("unable to perform scan: %v", err)

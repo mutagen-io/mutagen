@@ -15,6 +15,8 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/stream"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
 )
@@ -87,6 +89,8 @@ type transitioner struct {
 	// providerMissingFiles indicates that the staged file provider returned an
 	// os.IsNotExist error for at least one file that was expected to be staged.
 	providerMissingFiles bool
+
+	logger *logging.Logger
 }
 
 // recordProblem records a new problem.
@@ -169,7 +173,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// Open the parent. We do allow the parent path to be a symbolic link
 		// since we allow symbolic link resolution for parent components of the
 		// synchronization root (just not at the synchronization root itself).
-		if rootParent, _, err := filesystem.OpenDirectory(rootParentPath, true); err != nil {
+		if rootParent, _, err := filesystem.OpenDirectory(rootParentPath, true, t.logger); err != nil {
 			return nil, "", fmt.Errorf("unable to open synchronization root parent directory: %w", err)
 		} else {
 			return rootParent, rootName, nil
@@ -183,7 +187,7 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 
 	// Open the root path. If it's not a directory, then this operation isn't
 	// valid.
-	parent, _, err := filesystem.OpenDirectory(t.root, false)
+	parent, _, err := filesystem.OpenDirectory(t.root, false, t.logger)
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to open synchronization root: %w", err)
 	}
@@ -193,10 +197,10 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 	for _, component := range parentComponents {
 		// Verify that the next component exists with the proper casing.
 		if found, err := t.nameExistsInDirectoryWithProperCase(component, parent); err != nil {
-			parent.Close()
+			must.Close(parent, t.logger)
 			return nil, "", fmt.Errorf("unable to verify parent path casing: %w", err)
 		} else if !found {
-			parent.Close()
+			must.Close(parent, t.logger)
 			return nil, "", errors.New("parent path does not exist or has incorrect casing")
 		}
 
@@ -213,11 +217,11 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 		// correct casing on the next synchronization cycle.
 
 		// Open the next directory.
-		if p, err := parent.OpenDirectory(component); err != nil {
-			parent.Close()
+		if p, err := parent.OpenDirectory(component, t.logger); err != nil {
+			must.Close(parent, t.logger)
 			return nil, "", fmt.Errorf("unable to open parent component: %w", err)
 		} else {
-			parent.Close()
+			must.Close(parent, t.logger)
 			parent = p
 		}
 	}
@@ -226,10 +230,10 @@ func (t *transitioner) walkToParentAndComputeLeafName(
 	// requested.
 	if validateLeafCasing {
 		if found, err := t.nameExistsInDirectoryWithProperCase(leafName, parent); err != nil {
-			parent.Close()
+			must.Close(parent, t.logger)
 			return nil, "", fmt.Errorf("unable to verify path leaf name casing: %w", err)
 		} else if !found {
-			parent.Close()
+			must.Close(parent, t.logger)
 			return nil, "", errors.New("leaf name does not exist or has incorrect casing")
 		}
 	}
@@ -366,7 +370,7 @@ func (t *transitioner) removeSymbolicLink(parent *filesystem.Directory, name, pa
 func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path string, expected *Entry) bool {
 	// Open the directory itself. We don't defer its closure because we'll need
 	// to explicitly close it before being able to remove it.
-	directory, err := parent.OpenDirectory(name)
+	directory, err := parent.OpenDirectory(name, t.logger)
 	if err != nil {
 		t.recordProblem(path, fmt.Errorf("unable to open directory: %w", err))
 		return false
@@ -375,7 +379,7 @@ func (t *transitioner) removeDirectory(parent *filesystem.Directory, name, path 
 	// List the contents for this directory.
 	contents, err := directory.ReadContents()
 	if err != nil {
-		directory.Close()
+		must.Close(directory, t.logger)
 		t.recordProblem(path, fmt.Errorf("unable to read directory contents: %w", err))
 		return false
 	}
@@ -470,7 +474,7 @@ ContentLoop:
 	}
 
 	// Close the directory.
-	directory.Close()
+	must.Close(directory, t.logger)
 
 	// RACE: There is a race condition here that is platform-dependent. On POSIX
 	// platforms, the directory handle we had open (and whose content we
@@ -519,7 +523,7 @@ func (t *transitioner) remove(path string, entry *Entry) *Entry {
 		t.recordProblem(path, fmt.Errorf("unable to walk to transition root: %w", err))
 		return entry
 	}
-	defer parent.Close()
+	defer must.Close(parent, t.logger)
 
 	// Handle removal based on type.
 	if entry.Kind == EntryKind_Directory {
@@ -641,7 +645,7 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	// file handle is open.
 	temporaryName, temporary, err := parent.CreateTemporaryFile(crossDeviceRenameTemporaryNamePrefix)
 	if err != nil {
-		stagedFile.Close()
+		must.Close(stagedFile, t.logger)
 		return fmt.Errorf("unable to create temporary file for cross-device rename: %w", err)
 	}
 
@@ -656,12 +660,12 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 	_, copyErr := io.CopyBuffer(preemptableTemporary, stagedFile, t.copyBuffer)
 
 	// Close out files.
-	stagedFile.Close()
-	temporary.Close()
+	must.Close(stagedFile, t.logger)
+	must.Close(temporary, t.logger)
 
 	// If there was a copy error, then remove the temporary and abort.
 	if copyErr != nil {
-		parent.RemoveFile(temporaryName)
+		must.RemoveFile(parent, temporaryName, t.logger)
 		if copyErr == stream.ErrWritePreempted {
 			return errTransitionCancelled
 		}
@@ -670,19 +674,19 @@ func (t *transitioner) findAndMoveStagedFileIntoPlace(
 
 	// Set permissions on the temporary file.
 	if err := parent.SetPermissions(temporaryName, t.defaultOwnership, mode); err != nil {
-		parent.RemoveFile(temporaryName)
+		must.RemoveFile(parent, temporaryName, t.logger)
 		return fmt.Errorf("unable to set intermediate file permissions: %w", err)
 	}
 
 	// Rename the file.
 	if err := filesystem.Rename(parent, temporaryName, parent, name, replace); err != nil {
-		parent.RemoveFile(temporaryName)
+		must.RemoveFile(parent, temporaryName, t.logger)
 		return fmt.Errorf("unable to relocate intermediate file: %w", err)
 	}
 
 	// Remove the staged file. We don't bother checking for errors because
 	// there's not much we can or need to do about them at this point.
-	os.Remove(stagedPath)
+	must.OSRemove(stagedPath, t.logger)
 
 	// Success.
 	return nil
@@ -697,7 +701,7 @@ func (t *transitioner) swapFile(path string, oldEntry, newEntry *Entry) error {
 	if err != nil {
 		return fmt.Errorf("unable to walk to transition root: %w", err)
 	}
-	defer parent.Close()
+	defer must.Close(parent, t.logger)
 
 	// Ensure that the existing entry hasn't been modified from what we're
 	// expecting.
@@ -832,12 +836,12 @@ func (t *transitioner) createDirectory(parent *filesystem.Directory, name, path 
 		created.Contents = make(map[string]*Entry, len(target.Contents))
 
 		// Open the directory.
-		if d, err := parent.OpenDirectory(name); err != nil {
+		if d, err := parent.OpenDirectory(name, t.logger); err != nil {
 			t.recordProblem(path, fmt.Errorf("unable to open new directory: %w", err))
 			return created
 		} else {
 			directory = d
-			defer directory.Close()
+			defer must.Close(directory, t.logger)
 		}
 	}
 
@@ -904,7 +908,7 @@ func (t *transitioner) create(path string, target *Entry) *Entry {
 		t.recordProblem(path, fmt.Errorf("unable to walk to transition root parent: %w", err))
 		return nil
 	}
-	defer parent.Close()
+	defer must.Close(parent, t.logger)
 
 	// Handle creation based on type.
 	if target.Kind == EntryKind_Directory {
@@ -946,6 +950,7 @@ func Transition(
 	defaultOwnership *filesystem.OwnershipSpecification,
 	recomposeUnicode bool,
 	provider Provider,
+	logger *logging.Logger,
 ) ([]*Entry, []*Problem, bool) {
 	// Extract the cancellation channel.
 	cancelled := ctx.Done()
@@ -962,6 +967,7 @@ func Transition(
 		copyBuffer:           make([]byte, transitionCopyBufferSize),
 		recomposeUnicode:     recomposeUnicode,
 		provider:             provider,
+		logger:               logger,
 	}
 
 	// Set up results.

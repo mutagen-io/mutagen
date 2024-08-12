@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 
 	"google.golang.org/grpc"
@@ -27,18 +28,6 @@ import (
 
 // runMain is the entry point for the run command.
 func runMain(_ *cobra.Command, _ []string) error {
-	// Attempt to acquire the daemon lock and defer its release.
-	lock, err := daemon.AcquireLock()
-	if err != nil {
-		return fmt.Errorf("unable to acquire daemon lock: %w", err)
-	}
-	defer lock.Release()
-
-	// Create a channel to track termination signals. We do this before creating
-	// and starting other infrastructure so that we can ensure things terminate
-	// smoothly, not mid-initialization.
-	signalTermination := make(chan os.Signal, 1)
-	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
 	// Create the root logger.
 	logLevel := logging.LevelInfo
@@ -50,6 +39,19 @@ func runMain(_ *cobra.Command, _ []string) error {
 		}
 	}
 	logger := logging.NewLogger(logLevel, os.Stderr)
+
+	// Attempt to acquire the daemon lock and defer its release.
+	lock, err := daemon.AcquireLock(logger)
+	if err != nil {
+		return fmt.Errorf("unable to acquire daemon lock: %w", err)
+	}
+	defer must.Release(lock, logger)
+
+	// Create a channel to track termination signals. We do this before creating
+	// and starting other infrastructure so that we can ensure things terminate
+	// smoothly, not mid-initialization.
+	signalTermination := make(chan os.Signal, 1)
+	signal.Notify(signalTermination, cmd.TerminationSignals...)
 
 	// Create a forwarding session manager and defer its shutdown.
 	forwardingManager, err := forwarding.NewManager(logger.Sublogger("forward"))
@@ -74,7 +76,7 @@ func runMain(_ *cobra.Command, _ []string) error {
 	defer server.Stop()
 
 	// Create the daemon server, defer its shutdown, and register it.
-	daemonServer := daemonsvc.NewServer()
+	daemonServer := daemonsvc.NewServer(logger)
 	defer daemonServer.Shutdown()
 	daemonsvc.RegisterDaemonServer(server, daemonServer)
 
@@ -101,11 +103,11 @@ func runMain(_ *cobra.Command, _ []string) error {
 	if err := os.Remove(endpoint); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("unable to remove existing daemon endpoint: %w", err)
 	}
-	listener, err := ipc.NewListener(endpoint)
+	listener, err := ipc.NewListener(endpoint, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create daemon listener: %w", err)
 	}
-	defer listener.Close()
+	defer must.Close(listener, logger)
 
 	// Serve incoming requests and watch for server failure.
 	serverErrors := make(chan error, 1)

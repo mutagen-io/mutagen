@@ -1,11 +1,14 @@
 package behavior
 
 import (
+	"bytes"
 	"os"
 	"runtime"
 	"testing"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // preservesExecutabilityByPathTestCase represents a test case for
@@ -18,6 +21,7 @@ type preservesExecutabilityByPathTestCase struct {
 	assume bool
 	// expected is the expected result of the executability preservation test.
 	expected bool
+	logger   *logging.Logger
 }
 
 // run executes the test in the provided test context.
@@ -36,7 +40,7 @@ func (c *preservesExecutabilityByPathTestCase) run(t *testing.T) {
 	// TODO: We should perform some validation on the second parameter returned
 	// by PreservesExecutabilityByPath (indicating whether or not probe files
 	// were used).
-	if preserves, _, err := PreservesExecutabilityByPath(c.path, probeMode); err != nil {
+	if preserves, _, err := PreservesExecutabilityByPath(c.path, probeMode, c.logger); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")
@@ -57,6 +61,7 @@ func TestPreservesExecutabilityByPathAssumedHomeDirectory(t *testing.T) {
 		path:     homeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -76,6 +81,7 @@ func TestPreservesExecutabilityByPathHomeDirectory(t *testing.T) {
 	testCase := &preservesExecutabilityByPathTestCase{
 		path:     homeDirectory,
 		expected: runtime.GOOS != "windows",
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -95,6 +101,7 @@ func TestPreservesExecutabilityByPathFAT32(t *testing.T) {
 	testCase := &preservesExecutabilityByPathTestCase{
 		path:     fat32Root,
 		expected: false,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -111,6 +118,8 @@ type preservesExecutabilityTestCase struct {
 	assume bool
 	// expected is the expected result of the executability preservation test.
 	expected bool
+
+	logger *logging.Logger
 }
 
 // run executes the test in the provided test context.
@@ -119,11 +128,11 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	t.Helper()
 
 	// Open the path, ensure that it's a directory, and defer its closure.
-	directory, _, err := filesystem.OpenDirectory(c.path, false)
+	directory, _, err := filesystem.OpenDirectory(c.path, false, c.logger)
 	if err != nil {
 		t.Fatal("unable to open path:", err)
 	}
-	defer directory.Close()
+	defer must.Close(directory, c.logger)
 
 	// Determine the probing mode.
 	probeMode := ProbeMode_ProbeModeProbe
@@ -136,7 +145,7 @@ func (c *preservesExecutabilityTestCase) run(t *testing.T) {
 	// TODO: We should perform some validation on the second parameter returned
 	// by PreservesExecutability (indicating whether or not probe files were
 	// used).
-	if preserves, _, err := PreservesExecutability(directory, probeMode); err != nil {
+	if preserves, _, err := PreservesExecutability(directory, probeMode, c.logger); err != nil {
 		t.Fatal("unable to probe executability preservation:", err)
 	} else if preserves != c.expected {
 		t.Error("executability preservation behavior does not match expected")
@@ -157,6 +166,7 @@ func TestPreservesExecutabilityAssumedHomeDirectory(t *testing.T) {
 		path:     homeDirectory,
 		assume:   true,
 		expected: runtime.GOOS != "windows",
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -176,6 +186,7 @@ func TestPreservesExecutabilityHomeDirectory(t *testing.T) {
 	testCase := &preservesExecutabilityTestCase{
 		path:     homeDirectory,
 		expected: runtime.GOOS != "windows",
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.
@@ -195,6 +206,7 @@ func TestPreservesExecutabilityFAT32(t *testing.T) {
 	testCase := &preservesExecutabilityTestCase{
 		path:     fat32Root,
 		expected: false,
+		logger:   logging.NewLogger(logging.LevelError, &bytes.Buffer{}),
 	}
 
 	// Run the test case.

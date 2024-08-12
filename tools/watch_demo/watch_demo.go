@@ -9,9 +9,13 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 func main() {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Parse arguments.
 	if len(os.Args) != 2 {
 		cmd.Fatal(errors.New("invalid number of arguments"))
@@ -57,7 +61,7 @@ func main() {
 			cmd.Fatal(fmt.Errorf("watching failed: %w", err))
 		case <-signalTermination:
 			fmt.Println("Received termination signal, terminating watching...")
-			watcher.Terminate()
+			must.Terminate(watcher, logger)
 		}
 	}
 }
