@@ -51,11 +51,11 @@ jobs:
           MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD: ${{ secrets.MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD }}
           MACOS_NOTARIZE_TEAM_ID: ${{ secrets.MACOS_NOTARIZE_TEAM_ID }}
       - run: scripts/ci/sha256sum.sh
-      - uses: crazy-max/ghaction-import-gpg@v3
+      - uses: crazy-max/ghaction-import-gpg@v6
         id: import_gpg
         if: github.ref_type == 'tag'
         with:
-          gpg-private-key: ${{ secrets.GPG_SIGNING_KEY }}
+          gpg_private_key: ${{ secrets.GPG_SIGNING_KEY }}
           passphrase: ${{ secrets.GPG_SIGNING_KEY_PASSWORD }}
       - run: scripts/ci/sha256sign.sh
         if: github.ref_type == 'tag'
