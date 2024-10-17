@@ -164,7 +164,7 @@ jobs:
         with:
           name: bundles
           path: bundles
-      - uses: alexellis/upload-assets@0.2.3
+      - uses: alexellis/upload-assets@0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
