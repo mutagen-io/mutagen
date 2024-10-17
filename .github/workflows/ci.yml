@@ -117,9 +117,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.2'
-      - uses: docker/setup-qemu-action@v1
-      - uses: docker/setup-buildx-action@v1
-      - uses: docker/login-action@v1
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         if: github.ref_type == 'tag'
         with:
           username: ${{ secrets.SIDECAR_DEPLOYMENT_USER }}
@@ -127,7 +127,7 @@ jobs:
       - name: "Determine sidecar tag"
         id: tag
         run: echo ::set-output name=tag::$(go run scripts/ci/sidecar_tag.go)
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v6
         with:
           file: images/sidecar/linux/Dockerfile
           target: mit
@@ -140,7 +140,7 @@ jobs:
             linux/arm/v7
             linux/arm64/v8
             linux/ppc64le
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v6
         with:
           file: images/sidecar/linux/Dockerfile
           target: sspl
