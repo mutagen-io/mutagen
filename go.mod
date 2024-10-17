@@ -1,6 +1,6 @@
 module github.com/mutagen-io/mutagen
 
-go 1.21
+go 1.22
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
