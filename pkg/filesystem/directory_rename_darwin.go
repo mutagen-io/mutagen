@@ -2,8 +2,6 @@ package filesystem
 
 import (
 	"golang.org/x/sys/unix"
-
-	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
 )
 
 // renameatNoReplaceRetryingOnEINTR is a wrapper around platform-specific
@@ -14,7 +12,7 @@ import (
 // returns on the first successful call or non-EINTR error.
 func renameatNoReplaceRetryingOnEINTR(oldDirectory int, oldPath string, newDirectory int, newPath string) error {
 	for {
-		err := syscall.Renameatx_np(oldDirectory, oldPath, newDirectory, newPath, syscall.RENAME_EXCL)
+		err := unix.RenameatxNp(oldDirectory, oldPath, newDirectory, newPath, unix.RENAME_EXCL)
 		if err == unix.EINTR {
 			continue
 		}

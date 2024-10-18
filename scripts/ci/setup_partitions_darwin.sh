@@ -20,17 +20,17 @@ set -e
 # doesn't mount where you expect, so it's best to test the volume name you want
 # manually before scripting it.
 hdiutil create -megabytes 50 -fs "MS-DOS FAT32" -volname FAT32ROOT -o fat32image.dmg
-hdiutil attach fat32image.dmg
+sudo hdiutil attach fat32image.dmg
 
 # Create and mount an HFS+ parition.
 hdiutil create -megabytes 50 -fs "HFS+" -volname "HFSRoot" -o hfsimage.dmg
-hdiutil attach hfsimage.dmg
+sudo hdiutil attach hfsimage.dmg
 
 # Create and mount an APFS partition.
 hdiutil create -megabytes 50 -fs "APFS" -volname "APFSRoot" -o apfsimage.dmg
-hdiutil attach apfsimage.dmg
+sudo hdiutil attach apfsimage.dmg
 
 # Create and mount an additional HFS+ partition inside the APFS partition to
 # test filesystem boundary crossing.
 hdiutil create -megabytes 50 -fs "HFS+" -volname "HFSSub" -o hfssubimage.dmg
-hdiutil attach -mountpoint "/Volumes/APFSRoot/HFSSub" hfssubimage.dmg
+sudo hdiutil attach -mountpoint "/Volumes/APFSRoot/HFSSub" hfssubimage.dmg

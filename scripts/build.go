@@ -240,9 +240,8 @@ var targets = []Target{
 	{"freebsd", "386"},
 	{"freebsd", "amd64"},
 	{"freebsd", "arm"},
-	// TODO: The freebsd/arm64 port was added in Go 1.14, but for some reason
-	// isn't documented at https://golang.org/doc/install/source. Submit a pull
-	// request to add it to the Go documentation.
+	// The freebsd/arm64 port was added in Go 1.14, but for some reason isn't
+	// documented at https://golang.org/doc/install/source.
 	{"freebsd", "arm64"},
 
 	// Define illumos targets. We disable explicit support for illumos because
@@ -256,17 +255,17 @@ var targets = []Target{
 	// as Solaris, so our probing wouldn't be able to identify illumos anyway.
 	// {"illumos", "amd64"},
 
+	// Define iOS/iPadOS/watchOS/tvOS targets. We disable support for these
+	// since they don't make sense as target platforms.
+	// The ios/amd64 port was added in Go 1.16, but for some reason isn't
+	// documented at https://golang.org/doc/install/source.
+	// {"ios", "amd64"},
+	// {"ios", "arm64"},
+
 	// Define WebAssembly targets. We disable support for WebAssembly since it
 	// doesn't make sense as a target platform.
 	// {"js", "wasm"},
-
-	// Define iOS/iPadOS/watchOS/tvOS targets. We disable support for these
-	// since they don't make sense as target platforms.
-	// TODO: The ios/amd64 port was added in Go 1.16, but for some reason isn't
-	// documented at https://golang.org/doc/install/source. Submit a pull
-	// request to add it to the Go documentation.
-	// {"ios", "amd64"},
-	// {"ios", "arm64"},
+	// {"wasip1", "wasm"},
 
 	// Define Linux targets.
 	{"linux", "386"},
@@ -281,12 +280,12 @@ var targets = []Target{
 	// In this case, we'll also need to update platform detection with the
 	// appropriate uname -m value.
 	// {"linux", "loong64"},
-	{"linux", "ppc64"},
-	{"linux", "ppc64le"},
 	{"linux", "mips"},
 	{"linux", "mipsle"},
 	{"linux", "mips64"},
 	{"linux", "mips64le"},
+	{"linux", "ppc64"},
+	{"linux", "ppc64le"},
 	{"linux", "riscv64"},
 	{"linux", "s390x"},
 
@@ -294,9 +293,8 @@ var targets = []Target{
 	{"netbsd", "386"},
 	{"netbsd", "amd64"},
 	{"netbsd", "arm"},
-	// TODO: The netbsd/arm64 port was added in Go 1.16, but for some reason
-	// isn't documented at https://golang.org/doc/install/source. Submit a pull
-	// request to add it to the Go documentation.
+	// The netbsd/arm64 port was added in Go 1.16, but for some reason isn't
+	// documented at https://golang.org/doc/install/source.
 	{"netbsd", "arm64"},
 
 	// Define OpenBSD targets.
@@ -304,16 +302,22 @@ var targets = []Target{
 	{"openbsd", "amd64"},
 	{"openbsd", "arm"},
 	{"openbsd", "arm64"},
-	// TODO: The openbsd/mips64 port was added in Go 1.16, but for some reason
-	// isn't documented at https://golang.org/doc/install/source. Submit a pull
-	// request to add it to the Go documentation.
-	// TODO: The openbsd/mips64 port seems to be broken when using the Go sys
-	// subrepository after v0.1.0 - the Go linker crashes with a segfault. The
-	// port also doesn't seem to have been tested on the Go build dashboard for
-	// quite some time, so its reliability at this point is suspect. Until the
-	// picture there clarifies a bit, it's not worth letting this one port hold
-	// back the others from receiving updates.
+	// The openbsd/mips64 port was added in Go 1.16, but for some reason isn't
+	// documented at https://golang.org/doc/install/source. It is currently
+	// disabled on https://build.golang.org/ due to https://go.dev/issue/36435.
+	// Moreover, it seems to be broken when using the Go sys subrepository after
+	// v0.1.0 - the Go linker crashes with a segfault (possibly due to the
+	// aforementioned issue). Until the picture around this port clarifies a
+	// bit, it's not worth supporting.
 	// {"openbsd", "mips64"},
+	// The openbsd/ppc64 port was added in Go 1.22, but for some reason isn't
+	// documented at https://golang.org/doc/install/source. Let's wait and see
+	// if there's sufficient demand for it. It is still considered experimental.
+	// {"openbsd", "ppc64"},
+	// The openbsd/riscv64 port was added in Go 1.23, but for some reason isn't
+	// documented at https://golang.org/doc/install/source. Let's wait and see
+	// if there's sufficient demand for it. It is still considered experimental.
+	// {"openbsd", "riscv64"},
 
 	// Define Plan 9 targets. We disable support for Plan 9 because it's missing
 	// too many system calls and other APIs necessary for Mutagen to build. It
@@ -330,9 +334,6 @@ var targets = []Target{
 	// Define Windows targets.
 	{"windows", "386"},
 	{"windows", "amd64"},
-	// TODO: The windows/arm port was added in Go 1.12, but for some reason
-	// isn't documented at https://golang.org/doc/install/source. Submit a pull
-	// request to add it to the Go documentation.
 	{"windows", "arm"},
 	{"windows", "arm64"},
 }

@@ -12,6 +12,10 @@ func probeExecutabilityPreservationFastByFormat(f format.Format) (bool, bool) {
 		return true, true
 	case format.FormatHFS:
 		return true, true
+	case format.FormatFAT32:
+		return false, true
+	case format.FormatExFAT:
+		return false, true
 	default:
 		return false, false
 	}

@@ -59,11 +59,12 @@ func PreservesExecutabilityByPath(path string, probeMode ProbeMode) (bool, bool,
 
 	// Grab the file statistics and check for executability. We enforce that
 	// only the user-executable bit is set, because filesystems that don't
-	// preserve executability on POSIX systems (e.g. FAT32 on Darwin) sometimes
-	// mark every file as having every executable bit set, which is another type
-	// of non-preserving behavior. This behavior is not universal (e.g. FAT32 on
-	// Linux marks every file as having no executable bit set), but this test
-	// should be.
+	// preserve executability on POSIX systems (e.g. FAT32 on older versions of
+	// Darwin) sometimes mark every file as having every executable bit set,
+	// which is another type of non-preserving behavior. This behavior is not
+	// universal (e.g. FAT32 on Linux marks every file as having no executable
+	// bit set), but this test should catch many of these cases. It is, however,
+	// susceptible to umask settings (e.g. umask 0022), so it's not foolproof.
 	if info, err := file.Stat(); err != nil {
 		return false, true, fmt.Errorf("unable to check test file executability: %w", err)
 	} else {
