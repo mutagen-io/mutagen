@@ -178,7 +178,7 @@ compress
 
 http://github.com/klauspost/compress
 
-Copyright (c) 2009-2016 The Go Authors. All rights reserved.
+Copyright (c) 2009-2021 The Go Authors. All rights reserved.
 Copyright (c) 2015-2023 Klaus Post. All rights reserved.
 Copyright (c) 2024+ Klaus Post. All rights reserved.
 Copyright 2011 The Snappy-Go Authors. All rights reserved.
