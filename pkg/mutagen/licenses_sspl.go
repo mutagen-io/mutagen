@@ -7,7 +7,7 @@ package mutagen
 const mutagenSSPLEnhancementsHeader = `
 Mutagen SSPL-Licensed Enhancements
 
-Copyright (c) 2020-present Mutagen IO, Inc.
+Copyright (c) 2020-present Docker, Inc.
 
 This executable contains Mutagen enhancements licensed under the terms of the
 Server Side Public License, version 1, as published by MongoDB, Inc. A copy of
