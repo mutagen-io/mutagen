@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
-	github.com/bmatcuk/doublestar/v4 v4.6.1
+	github.com/bmatcuk/doublestar/v4 v4.7.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eknkc/basex v1.0.1
 	github.com/fatih/color v1.16.0
