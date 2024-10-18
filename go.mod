@@ -16,7 +16,7 @@ require (
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
 	github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc
 	github.com/mutagen-io/gopass v0.0.0-20230214181532-d4b7cdfe054c
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/net v0.24.0
