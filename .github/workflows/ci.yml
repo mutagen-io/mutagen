@@ -98,7 +98,18 @@ jobs:
         shell: bash
       - run: scripts/ci/setup_docker.sh
         shell: bash
-      - run: diskpart /s scripts\ci\setup_partitions_windows.txt
+      - name: "Prepare Windows partition script"
+        run: |
+          # Populate the partition setup script with the repository path since
+          # diskpart doesn't support relative paths or environment variable
+          # substitution. While we could hardcode a path into the script, that
+          # breaks CI for mirrors that have a different repository name.
+          REPONAME="$(basename "$(pwd)")"
+          sed -e "s/REPONAME/D:\\\\a\\\\${REPONAME}\\\\${REPONAME}/g" \
+            scripts/ci/setup_partitions_windows_template.txt \
+            > setup_partitions_windows.txt
+        shell: bash
+      - run: diskpart /s setup_partitions_windows.txt
       - run: scripts/ci/analyze.sh
         shell: bash
       - run: scripts/ci/test.sh
