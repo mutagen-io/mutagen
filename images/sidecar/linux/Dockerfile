@@ -37,7 +37,7 @@ ENTRYPOINT ["mutagen-sidecar"]
 
 
 # Define the MIT sidecar image.
-FROM base as mit
+FROM base AS mit
 
 # Copy the MIT agent from the builder and use its installation mechanism to move
 # it to the correct location.
@@ -46,7 +46,7 @@ RUN ["/mutagen-agent", "install"]
 
 
 # Define the SSPL sidecar image.
-FROM base as sspl
+FROM base AS sspl
 
 # Copy the SSPL agent from the builder and use its installation mechanism to
 # move it to the correct location.
