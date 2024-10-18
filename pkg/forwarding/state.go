@@ -39,6 +39,29 @@ func (s Status) MarshalText() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
+func (s *Status) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a forwarding status.
+	switch text {
+	case "disconnected":
+		*s = Status_Disconnected
+	case "connecting-source":
+		*s = Status_ConnectingSource
+	case "connecting-destination":
+		*s = Status_ConnectingDestination
+	case "forwarding":
+		*s = Status_ForwardingConnections
+	default:
+		return fmt.Errorf("unknown forwarding status: %s", text)
+	}
+
+	// Success.
+	return nil
+}
+
 // ensureValid ensures that EndpointState's invariants are respected.
 func (s *EndpointState) ensureValid() error {
 	// A nil endpoint state is not valid.

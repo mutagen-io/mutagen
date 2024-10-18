@@ -29,6 +29,44 @@ func TestEntryKindSynchronizable(t *testing.T) {
 	}
 }
 
+// TestEntryKindUnmarshal tests that unmarshaling from a string specification
+// succeeeds for EntryKind.
+func TestEntryKindUnmarshal(t *testing.T) {
+	// Set up test cases.
+	testCases := []struct {
+		text          string
+		expected      EntryKind
+		expectFailure bool
+	}{
+		{"", EntryKind_Directory, true},
+		{"asdf", EntryKind_Directory, true},
+		{"directory", EntryKind_Directory, false},
+		{"file", EntryKind_File, false},
+		{"symlink", EntryKind_SymbolicLink, false},
+		{"untracked", EntryKind_Untracked, false},
+		{"problematic", EntryKind_Problematic, false},
+		{"phantom-directory", EntryKind_PhantomDirectory, false},
+	}
+
+	// Process test cases.
+	for _, testCase := range testCases {
+		var kind EntryKind
+		if err := kind.UnmarshalText([]byte(testCase.text)); err != nil {
+			if !testCase.expectFailure {
+				t.Errorf("unable to unmarshal text (%s): %s", testCase.text, err)
+			}
+		} else if testCase.expectFailure {
+			t.Error("unmarshaling succeeded unexpectedly for text:", testCase.text)
+		} else if kind != testCase.expected {
+			t.Errorf(
+				"unmarshaled entry kind (%s) does not match expected (%s)",
+				kind,
+				testCase.expected,
+			)
+		}
+	}
+}
+
 func init() {
 	// Enable wildcard problem matching for tests.
 	entryEqualWildcardProblemMatch = true
