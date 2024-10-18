@@ -79,6 +79,49 @@ func (s Status) MarshalText() ([]byte, error) {
 	return []byte(result), nil
 }
 
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
+func (s *Status) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a synchronization status.
+	switch text {
+	case "disconnected":
+		*s = Status_Disconnected
+	case "halted-on-root-emptied":
+		*s = Status_HaltedOnRootEmptied
+	case "halted-on-root-deletion":
+		*s = Status_HaltedOnRootDeletion
+	case "halted-on-root-type-change":
+		*s = Status_HaltedOnRootTypeChange
+	case "connecting-alpha":
+		*s = Status_ConnectingAlpha
+	case "connecting-beta":
+		*s = Status_ConnectingBeta
+	case "watching":
+		*s = Status_Watching
+	case "scanning":
+		*s = Status_Scanning
+	case "waiting-for-rescan":
+		*s = Status_WaitingForRescan
+	case "reconciling":
+		*s = Status_Reconciling
+	case "staging-alpha":
+		*s = Status_StagingAlpha
+	case "staging-beta":
+		*s = Status_StagingBeta
+	case "transitioning":
+		*s = Status_Transitioning
+	case "saving":
+		*s = Status_Saving
+	default:
+		return fmt.Errorf("unknown synchronization status: %s", text)
+	}
+
+	// Success.
+	return nil
+}
+
 // ensureValid ensures that EndpointState's invariants are respected.
 func (s *EndpointState) ensureValid() error {
 	// A nil endpoint state is not valid.

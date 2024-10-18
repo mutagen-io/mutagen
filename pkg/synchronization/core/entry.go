@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/fastpath"
@@ -36,6 +37,33 @@ func (k EntryKind) MarshalText() ([]byte, error) {
 		result = "unknown"
 	}
 	return []byte(result), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.UnmarshalText.
+func (k *EntryKind) UnmarshalText(textBytes []byte) error {
+	// Convert the bytes to a string.
+	text := string(textBytes)
+
+	// Convert to a forwarding status.
+	switch text {
+	case "directory":
+		*k = EntryKind_Directory
+	case "file":
+		*k = EntryKind_File
+	case "symlink":
+		*k = EntryKind_SymbolicLink
+	case "untracked":
+		*k = EntryKind_Untracked
+	case "problematic":
+		*k = EntryKind_Problematic
+	case "phantom-directory":
+		*k = EntryKind_PhantomDirectory
+	default:
+		return fmt.Errorf("unknown entry kind: %s", text)
+	}
+
+	// Success.
+	return nil
 }
 
 // EnsureValid ensures that Entry's invariants are respected. If synchronizable
