@@ -1,6 +1,6 @@
 //go:build linux && mutagensspl
 
-// Copyright (c) 2022-present Mutagen IO, Inc.
+// Copyright (c) 2022-present Docker, Inc.
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the Server Side Public License, version 1, as published by
