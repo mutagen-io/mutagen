@@ -19,7 +19,7 @@ const (
 	// VersionTag represents a tag to be appended to the Mutagen version string.
 	// It must not contain spaces. If empty, no tag is appended to the version
 	// string.
-	VersionTag = "rc2"
+	VersionTag = "rc3"
 )
 
 // DevelopmentModeEnabled indicates that development mode is active. This is
