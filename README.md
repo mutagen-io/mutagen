@@ -66,7 +66,7 @@ If you'd like to contribute to Mutagen, please see the
 
 Mutagen takes security very seriously. If you believe you have found a security
 issue with Mutagen, please practice responsible disclosure practices and send an
-email directly to [security@mutagen.io](mailto:security@mutagen.io) instead of
+email directly to [security@docker.com](mailto:security@docker.com) instead of
 opening a GitHub issue. For more information, please see the
 [security documentation](SECURITY.md).
 
