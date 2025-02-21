@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"golang.org/x/sys/windows"
 
 	osvendor "github.com/mutagen-io/mutagen/pkg/filesystem/internal/third_party/os"
@@ -24,7 +26,7 @@ import (
 // link. In this case, the referenced object must still be a directory or
 // regular file, and the returned object will still be either a Directory or an
 // io.ReadSeekCloser.
-func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
+func Open(path string, allowSymbolicLinkLeaf bool, logger *logging.Logger) (io.Closer, *Metadata, error) {
 	// Verify that the provided path is absolute. This is a requirement on
 	// Windows, where all of our operations are path-based.
 	if !filepath.IsAbs(path) {
@@ -67,14 +69,14 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// Query handle metadata.
 	metadata, err := queryHandleMetadata(filepath.Base(path), handle)
 	if err != nil {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return nil, nil, fmt.Errorf("unable to query file handle metadata: %w", err)
 	}
 
 	// Verify that we're not dealing with a symbolic link. If we are allowing
 	// symbolic links, then they should have been resolved by CreateFile.
 	if metadata.Mode&ModeTypeSymbolicLink != 0 {
-		windows.CloseHandle(handle)
+		must.CloseWindowsHandle(handle, logger)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 
@@ -84,7 +86,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	if isDirectory {
 		file, err = os.Open(path)
 		if err != nil {
-			windows.CloseHandle(handle)
+			must.CloseWindowsHandle(handle, logger)
 			return nil, nil, fmt.Errorf("unable to open file object for directory: %w", err)
 		}
 	} else {
@@ -96,6 +98,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 		return &Directory{
 			handle: handle,
 			file:   file,
+			logger: logger,
 		}, metadata, nil
 	} else {
 		return file, metadata, nil

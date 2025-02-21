@@ -5,6 +5,7 @@ package filesystem
 import (
 	"io"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"golang.org/x/sys/unix"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/internal/syscall"
@@ -56,6 +57,15 @@ func seekConsideringEINTR(file int, offset int64, whence int) (int64, error) {
 // is the same policy adopted by the Go standard library and runtime.
 func closeConsideringEINTR(file int) error {
 	return unix.Close(file)
+}
+
+// mustCloseConsideringEINTR calls closeConsideringEINTR and logs if there is an
+// error.
+func mustCloseConsideringEINTR(file int, logger *logging.Logger) {
+	err := unix.Close(file)
+	if err != nil {
+		logger.Warnf("Unable to close considering EINTR file %d; %s", file, err.Error())
+	}
 }
 
 // mkdiratRetryingOnEINTR is a wrapper around the mkdirat system call that

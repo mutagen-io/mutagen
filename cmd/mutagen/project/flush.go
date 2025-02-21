@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -22,6 +24,8 @@ import (
 
 // flushMain is the entry point for the flush command.
 func flushMain(_ *cobra.Command, _ []string) error {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -51,9 +55,9 @@ func flushMain(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
-		locker.Close()
+		must.Close(locker, logger)
 		if removeLockFileOnReturn && runtime.GOOS == "windows" {
-			os.Remove(lockPath)
+			must.OSRemove(lockPath, logger)
 		}
 	}()
 
@@ -70,12 +74,12 @@ func flushMain(_ *cobra.Command, _ []string) error {
 	defer func() {
 		if removeLockFileOnReturn {
 			if runtime.GOOS == "windows" {
-				locker.Truncate(0)
+				must.Truncate(locker, 0, logger)
 			} else {
-				os.Remove(lockPath)
+				must.OSRemove(lockPath, logger)
 			}
 		}
-		locker.Unlock()
+		must.Unlock(locker, logger)
 	}()
 
 	// Read the project identifier from the lock file. If the lock file is
@@ -100,7 +104,7 @@ func flushMain(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
-	defer daemonConnection.Close()
+	defer must.Close(daemonConnection, logger)
 
 	// Compute the selection that we're going to use to flush sessions.
 	selection := &selection.Selection{
@@ -132,7 +136,7 @@ var flushConfiguration struct {
 	// projectFile is the path to the project file, if non-default.
 	projectFile string
 	// skipWait indicates whether or not the flush operation should block until
-	// a synchronization cycle completes for each sesion requested.
+	// a synchronization cycle completes for each session requested.
 	skipWait bool
 }
 

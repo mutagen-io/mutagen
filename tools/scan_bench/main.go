@@ -19,6 +19,8 @@ import (
 	"github.com/mutagen-io/mutagen/cmd/profile"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/behavior"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore"
 	dockerignore "github.com/mutagen-io/mutagen/pkg/synchronization/core/ignore/docker"
@@ -59,6 +61,7 @@ func ignoreCachesIntersectionEqual(first, second ignore.IgnoreCache) bool {
 }
 
 func main() {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("scan_bench", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
@@ -72,7 +75,7 @@ func main() {
 	flagSet.StringSliceVarP(&ignores, "ignore", "i", nil, "specify ignore paths")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
-			fmt.Fprint(os.Stdout, usage)
+			must.Fprint(os.Stdout, logger, usage)
 			return
 		} else {
 			cmd.Fatal(fmt.Errorf("unable to parse command line: %w", err))
@@ -157,6 +160,7 @@ func main() {
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform cold scan: %w", err))
@@ -192,6 +196,7 @@ func main() {
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform warm scan: %w", err))
@@ -235,6 +240,7 @@ func main() {
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform second warm scan: %w", err))
@@ -276,6 +282,7 @@ func main() {
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (with re-check paths): %w", err))
@@ -315,6 +322,7 @@ func main() {
 		behavior.ProbeMode_ProbeModeProbe,
 		core.SymbolicLinkMode_SymbolicLinkModePortable,
 		core.PermissionsMode_PermissionsModePortable,
+		logger,
 	)
 	if err != nil {
 		cmd.Fatal(fmt.Errorf("unable to perform accelerated scan (without re-check paths): %w", err))

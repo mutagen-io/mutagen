@@ -10,6 +10,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/remote"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
 	forwardingurlpkg "github.com/mutagen-io/mutagen/pkg/url/forwarding"
 )
@@ -38,6 +39,10 @@ func (p *protocolHandler) Connect(
 	configuration *forwarding.Configuration,
 	source bool,
 ) (forwarding.Endpoint, error) {
+
+	// Added trace to bypass "unused parameter `session` warning
+	logger.Tracef("Connecting to %s  for session %s", url.String(), session)
+
 	// Verify that the URL is of the correct kind and protocol.
 	if url.Kind != urlpkg.Kind_Forwarding {
 		panic("non-forwarding URL dispatched to forwarding protocol handler")
@@ -71,7 +76,7 @@ func (p *protocolHandler) Connect(
 		case results <- dialResult{stream, err}:
 		case <-ctx.Done():
 			if stream != nil {
-				stream.Close()
+				must.Close(stream, logger)
 			}
 		}
 	}()

@@ -12,11 +12,15 @@ import (
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem/locking"
 	"github.com/mutagen-io/mutagen/pkg/identifier"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/project"
 )
 
 // runMain is the entry point for the run command.
 func runMain(_ *cobra.Command, arguments []string) error {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Validate arguments.
 	var commandName string
 	if len(arguments) == 0 {
@@ -56,9 +60,9 @@ func runMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
-		locker.Close()
+		must.Close(locker, logger)
 		if removeLockFileOnReturn && runtime.GOOS == "windows" {
-			os.Remove(lockPath)
+			must.OSRemove(lockPath, logger)
 		}
 	}()
 
@@ -75,12 +79,12 @@ func runMain(_ *cobra.Command, arguments []string) error {
 	defer func() {
 		if removeLockFileOnReturn {
 			if runtime.GOOS == "windows" {
-				locker.Truncate(0)
+				must.Truncate(locker, 0, logger)
 			} else {
-				os.Remove(lockPath)
+				must.OSRemove(lockPath, logger)
 			}
 		}
-		locker.Unlock()
+		must.Unlock(locker, logger)
 	}()
 
 	// Read the project identifier from the lock file. If the lock file is

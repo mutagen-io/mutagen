@@ -1,21 +1,27 @@
 package ipc
 
 import (
+	"bytes"
 	"context"
 	"encoding/gob"
 	"path/filepath"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // TestDialContextNoEndpoint tests that DialContext fails if there is no
 // endpoint at the specified path.
 func TestDialTimeoutNoEndpoint(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Compute the IPC endpoint path.
 	endpoint := filepath.Join(t.TempDir(), "test.sock")
 
 	// Attempt to dial the listener and ensure that doing so fails.
 	if c, err := DialContext(context.Background(), endpoint); err == nil {
-		c.Close()
+		must.Close(c, logger)
 		t.Error("IPC connection succeeded unexpectedly")
 	}
 }
@@ -34,6 +40,8 @@ type testIPCMessage struct {
 // TestIPC tests that an IPC connection can be established between a listener
 // and a dialer.
 func TestIPC(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a test message.
 	expected := testIPCMessage{"George", 67}
 
@@ -41,11 +49,11 @@ func TestIPC(t *testing.T) {
 	endpoint := filepath.Join(t.TempDir(), "test.sock")
 
 	// Create a listener and defer its closure.
-	listener, err := NewListener(endpoint)
+	listener, err := NewListener(endpoint, logger)
 	if err != nil {
 		t.Fatal("unable to create listener:", err)
 	}
-	defer listener.Close()
+	defer must.Close(listener, logger)
 
 	// Perform dialing and message sending in a separate Goroutine.
 	go func() {
@@ -54,13 +62,13 @@ func TestIPC(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer connection.Close()
+		defer must.Close(connection, logger)
 
 		// Create an encoder.
 		encoder := gob.NewEncoder(connection)
 
 		// Send a test message.
-		encoder.Encode(expected)
+		must.Encode(encoder, expected, logger)
 	}()
 
 	// Accept a connection and defer its closure.
@@ -68,7 +76,7 @@ func TestIPC(t *testing.T) {
 	if err != nil {
 		t.Fatal("unable to accept connection:", err)
 	}
-	defer connection.Close()
+	defer must.Close(connection, logger)
 
 	// Create a decoder.
 	decoder := gob.NewDecoder(connection)

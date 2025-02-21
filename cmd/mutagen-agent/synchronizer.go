@@ -29,7 +29,7 @@ func housekeepRegularly(ctx context.Context, logger *logging.Logger) {
 	// Perform an initial housekeeping operation since the ticker won't fire
 	// straight away.
 	logger.Info("Performing initial housekeeping")
-	housekeeping.Housekeep()
+	housekeeping.Housekeep(logger)
 
 	// Create a ticker to regulate housekeeping and defer its shutdown.
 	ticker := time.NewTicker(housekeepingInterval)
@@ -42,7 +42,7 @@ func housekeepRegularly(ctx context.Context, logger *logging.Logger) {
 			return
 		case <-ticker.C:
 			logger.Info("Performing regular housekeeping")
-			housekeeping.Housekeep()
+			housekeeping.Housekeep(logger)
 		}
 	}
 }

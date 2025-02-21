@@ -1,11 +1,14 @@
 package forwarding
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 const (
@@ -29,6 +32,8 @@ var expectedConfiguration = &forwarding.Configuration{
 
 // TestLoadConfiguration tests loading a YAML-based session configuration.
 func TestLoadConfiguration(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Write a valid configuration to a temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_configuration")
 	if err != nil {
@@ -38,7 +43,7 @@ func TestLoadConfiguration(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Attempt to load.
 	yamlConfiguration := &Configuration{}

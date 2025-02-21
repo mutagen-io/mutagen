@@ -8,6 +8,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // Stream implements io.ReadWriteCloser using the standard input and output
@@ -16,6 +19,7 @@ import (
 // guarantees that its Close method unblocks pending Read and Write calls. It
 // also provides optional forwarding of the process' standard error stream.
 type Stream struct {
+	logger *logging.Logger
 	// process is the underlying process.
 	process *exec.Cmd
 	// standardInput is the process' standard input stream.
@@ -34,7 +38,7 @@ type Stream struct {
 // other I/O redirection should be performed for the process. If this function
 // fails, the command should be considered unusable. If standardErrorReceiver is
 // non-nil, then the process' standard error output will be forwarded to it.
-func NewStream(process *exec.Cmd, standardErrorReceiver io.Writer) (*Stream, error) {
+func NewStream(process *exec.Cmd, standardErrorReceiver io.Writer, logger *logging.Logger) (*Stream, error) {
 	// Create a pipe to the process' standard input stream.
 	standardInput, err := process.StdinPipe()
 	if err != nil {
@@ -44,7 +48,7 @@ func NewStream(process *exec.Cmd, standardErrorReceiver io.Writer) (*Stream, err
 	// Create a pipe from the process' standard output stream.
 	standardOutput, err := process.StdoutPipe()
 	if err != nil {
-		standardInput.Close()
+		must.Close(standardInput, logger)
 		return nil, fmt.Errorf("unable to redirect process output: %w", err)
 	}
 
@@ -57,13 +61,13 @@ func NewStream(process *exec.Cmd, standardErrorReceiver io.Writer) (*Stream, err
 	if standardErrorReceiver != nil {
 		standardError, err := process.StderrPipe()
 		if err != nil {
-			standardInput.Close()
-			standardOutput.Close()
+			must.Close(standardInput, logger)
+			must.Close(standardOutput, logger)
 			return nil, fmt.Errorf("unable to redirect process error output: %w", err)
 		}
 		go func() {
-			io.Copy(standardErrorReceiver, standardError)
-			standardError.Close()
+			must.IOCopy(standardErrorReceiver, standardError, logger)
+			must.Close(standardError, logger)
 		}()
 	}
 
@@ -72,6 +76,7 @@ func NewStream(process *exec.Cmd, standardErrorReceiver io.Writer) (*Stream, err
 		process:        process,
 		standardInput:  standardInput,
 		standardOutput: standardOutput,
+		logger:         logger,
 	}, nil
 }
 
@@ -192,7 +197,7 @@ func (s *Stream) Close() error {
 	// If this is a POSIX system, then send SIGTERM to the process and wait up
 	// to one second for it to terminate on its own.
 	if runtime.GOOS != "windows" {
-		s.process.Process.Signal(syscall.SIGTERM)
+		must.Signal(s.process.Process, syscall.SIGTERM, s.logger)
 		waitTimer.Reset(time.Second)
 		select {
 		case err := <-waitResults:
@@ -204,6 +209,6 @@ func (s *Stream) Close() error {
 
 	// Kill the process (via SIGKILL on POSIX and TerminateProcess on Windows)
 	// and wait for it to exit.
-	s.process.Process.Kill()
+	must.Kill(s.process.Process, s.logger)
 	return <-waitResults
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -21,7 +22,7 @@ const (
 )
 
 // Register performs automatic daemon startup registration.
-func Register() error {
+func Register(logger *logging.Logger) error {
 	// Attempt to open the relevant registry path and ensure it's cleaned up
 	// when we're done.
 	key, err := registry.OpenKey(rootKey, runPath, registry.SET_VALUE)
@@ -49,7 +50,7 @@ func Register() error {
 }
 
 // Unregister performs automatic daemon startup de-registration.
-func Unregister() error {
+func Unregister(logger *logging.Logger) error {
 	// Attempt to open the relevant registry path and ensure it's cleaned up
 	// when we're done.
 	key, err := registry.OpenKey(rootKey, runPath, registry.QUERY_VALUE|registry.SET_VALUE)

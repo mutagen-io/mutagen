@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"bytes"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 func TestCopy(t *testing.T) {
@@ -17,6 +19,7 @@ func TestCopy(t *testing.T) {
 	if os.Getenv("MUTAGEN_TEST_SSH") != "true" {
 		t.Skip()
 	}
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
 
 	// Compute source path.
 	source := filepath.Join(t.TempDir(), "source")
@@ -25,7 +28,7 @@ func TestCopy(t *testing.T) {
 	contents := []byte{0, 1, 2, 3, 4, 5, 6}
 
 	// Attempt to write to a temporary file.
-	if err := filesystem.WriteFileAtomic(source, contents, 0600); err != nil {
+	if err := filesystem.WriteFileAtomic(source, contents, 0600, logger); err != nil {
 		t.Fatal("atomic file write failed:", err)
 	}
 
@@ -96,12 +99,12 @@ func TestCommandOutput(t *testing.T) {
 	// TODO: Should we also verify that an extracted HOME/USERPROFILE value
 	// matches the expected home directory since we've already queried the user?
 	if command, err := transport.Command(command); err != nil {
-		t.Fatal("unable to create command:", err)
+		t.Fatal("unable to create command:", command, err)
 	} else if output, err := command.Output(); err != nil {
-		t.Fatal("unable to run command:", err)
+		t.Fatal("unable to run command:", output, err)
 	} else if !strings.Contains(string(output), content) {
-		t.Error("output does not contain expected content")
+		t.Error("output does not contain expected content, got:'", string(output), "', Expected: '", content, "'")
 	} else if !utf8.Valid(output) {
-		t.Error("output not in UTF-8 encoding")
+		t.Error("output not in UTF-8 encoding: ", string(output))
 	}
 }
