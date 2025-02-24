@@ -509,6 +509,20 @@ func (t *dockerTransport) ClassifyError(processState *os.ProcessState, errorOutp
 		return false, false, fmt.Errorf("unable to probe container: %w", err)
 	}
 
+	// Check if the error code indicates that an agent installation attempt is
+	// warranted. In Docker v28.0.0 and later, the exit codes for "invalid
+	// command" and "command not found" are properly delineated (into 126 and
+	// 127, respectively). Prior to that, they were both returned as 126. The
+	// remainder of this comment applies to pre-v28.0.0 Docker versions and is
+	// retained for posterity. It makes suggestions about how we might use these
+	// delineated values to better detect Windows containers, which might be an
+	// optimization worth pursuing at some point, but it would involve probing
+	// the Docker engine version and adjusting behavior accordingly. Also, this
+	// new delineated behavior might not apply on Windows, so we'd need to check
+	// that first.
+	//
+	// For Docker pre-v28.0.0:
+	//
 	// Docker alises cases of both "invalid command" (POSIX shell error 126) and
 	// "command not found" (POSIX shell error 127) to an exit code of 126. It
 	// even aliases the Windows container equivalents of these errors to 126.
@@ -533,7 +547,8 @@ func (t *dockerTransport) ClassifyError(processState *os.ProcessState, errorOutp
 	// Anyway, the exit code we need to look out for with both POSIX and Windows
 	// containers is 126, and since we know the remote platform already, we can
 	// return that information without needing to resort to the error string.
-	if !process.IsPOSIXShellInvalidCommand(processState) {
+	if !(process.IsPOSIXShellInvalidCommand(processState) ||
+		process.IsPOSIXShellCommandNotFound(processState)) {
 		return false, false, errors.New("unknown process exit error")
 	}
 
