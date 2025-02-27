@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -96,6 +98,11 @@ func CreateWithSpecification(
 
 // createMain is the entry point for the create command.
 func createMain(_ *cobra.Command, arguments []string) error {
+
+	// Set up a logger on the standard error stream.
+	// TODO: Make this configurable
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Validate, extract, and parse URLs.
 	if len(arguments) != 2 {
 		return errors.New("invalid number of endpoint URLs provided")
@@ -501,7 +508,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
-	defer daemonConnection.Close()
+	defer must.Close(daemonConnection, logger)
 
 	// Perform the create operation.
 	identifier, err := CreateWithSpecification(daemonConnection, specification)

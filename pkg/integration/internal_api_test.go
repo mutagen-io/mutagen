@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
@@ -422,6 +425,8 @@ func init() {
 }
 
 func TestForwardingToHTTPDemo(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// If Docker test support isn't available, then skip this test.
 	if os.Getenv("MUTAGEN_TEST_DOCKER") != "true" {
 		t.Skip()
@@ -480,7 +485,7 @@ func TestForwardingToHTTPDemo(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("unable to perform HTTP GET: %w", err)
 		}
-		defer response.Body.Close()
+		defer must.Close(response.Body, logger)
 
 		// Read the full body.
 		message, err := io.ReadAll(response.Body)

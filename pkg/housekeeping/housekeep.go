@@ -1,12 +1,15 @@
 package housekeeping
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/mutagen-io/extstat"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -25,25 +28,25 @@ const (
 )
 
 // Housekeep invokes housekeeping functions on the Mutagen data directory.
-func Housekeep() {
+func Housekeep(logger *logging.Logger) {
 	// Perform housekeeping on agent binaries, but only if we're not in a
 	// Mutagen sidecar container. Sidecar containers are particularly
 	// susceptible to stale agent access times due to the fact that the agent is
 	// baked into the sidecar image and the sidecar image is typically unpacked
 	// via OverlayFS on top of ext4 with either relatime or noatime.
 	if !sidecar.EnvironmentIsSidecar() {
-		housekeepAgents()
+		housekeepAgents(logger)
 	}
 
 	// Perform housekeeping on caches.
-	housekeepCaches()
+	housekeepCaches(logger)
 
 	// Perform housekeeping on staging roots.
-	housekeepStaging()
+	housekeepStaging(logger)
 }
 
 // housekeepAgents performs housekeeping of agent binaries.
-func housekeepAgents() {
+func housekeepAgents(logger *logging.Logger) {
 	// Compute the path to the agents directory. If we fail, just abort. We
 	// don't attempt to create the directory, because if it doesn't exist, then
 	// we don't need to do anything and we'll just bail when we fail to list the
@@ -75,13 +78,17 @@ func housekeepAgents() {
 		if stat, err := extstat.NewFromFileName(filepath.Join(agentsDirectoryPath, agentVersion, agentName)); err != nil {
 			continue
 		} else if now.Sub(stat.AccessTime) > maximumAgentIdlePeriod {
-			os.RemoveAll(filepath.Join(agentsDirectoryPath, agentVersion))
+			fullPath := filepath.Join(agentsDirectoryPath, agentVersion)
+			must.Succeed(os.RemoveAll(fullPath),
+				fmt.Sprintf("remove all files from %s", fullPath),
+				logger,
+			)
 		}
 	}
 }
 
 // housekeepCaches performs housekeeping of caches.
-func housekeepCaches() {
+func housekeepCaches(logger *logging.Logger) {
 	// Compute the path to the caches directory. If we fail, just abort. We
 	// don't attempt to create the directory, because if it doesn't exist, then
 	// we don't need to do anything and we'll just bail when we fail to list the
@@ -110,13 +117,13 @@ func housekeepCaches() {
 		if stat, err := os.Stat(fullPath); err != nil {
 			continue
 		} else if now.Sub(stat.ModTime()) > maximumCacheAge {
-			os.Remove(fullPath)
+			must.OSRemove(fullPath, logger)
 		}
 	}
 }
 
 // housekeepStaging performs housekeeping of staging roots.
-func housekeepStaging() {
+func housekeepStaging(logger *logging.Logger) {
 	// Compute the path to the staging directory (the top-level directory
 	// containing all staging roots). If we fail, just abort. We don't attempt
 	// to create the directory, because if it doesn't exist, then we don't need
@@ -156,7 +163,10 @@ func housekeepStaging() {
 		if stat, err := os.Stat(fullPath); err != nil {
 			continue
 		} else if now.Sub(stat.ModTime()) > maximumStagingRootAge {
-			os.RemoveAll(fullPath)
+			must.Succeed(os.RemoveAll(fullPath),
+				fmt.Sprintf("remove all files from %s", fullPath),
+				logger,
+			)
 		}
 	}
 }

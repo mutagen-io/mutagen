@@ -8,6 +8,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/agent"
 	"github.com/mutagen-io/mutagen/pkg/agent/transport/ssh"
 	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/synchronization"
 	"github.com/mutagen-io/mutagen/pkg/synchronization/endpoint/remote"
 	urlpkg "github.com/mutagen-io/mutagen/pkg/url"
@@ -64,7 +65,7 @@ func (h *protocolHandler) Connect(
 		case results <- dialResult{stream, err}:
 		case <-ctx.Done():
 			if stream != nil {
-				stream.Close()
+				must.Close(stream, logger)
 			}
 		}
 	}()

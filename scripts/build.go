@@ -20,6 +20,8 @@ import (
 	"github.com/mutagen-io/mutagen/cmd"
 
 	"github.com/mutagen-io/mutagen/pkg/agent"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
@@ -387,9 +389,10 @@ type ArchiveBuilder struct {
 	compressor *gzip.Writer
 	archiver   *tar.Writer
 	copyBuffer []byte
+	logger     *logging.Logger
 }
 
-func NewArchiveBuilder(bundlePath string) (*ArchiveBuilder, error) {
+func NewArchiveBuilder(bundlePath string, logger *logging.Logger) (*ArchiveBuilder, error) {
 	// Open the underlying file.
 	file, err := os.Create(bundlePath)
 	if err != nil {
@@ -399,7 +402,7 @@ func NewArchiveBuilder(bundlePath string) (*ArchiveBuilder, error) {
 	// Create the compressor.
 	compressor, err := gzip.NewWriterLevel(file, gzip.BestCompression)
 	if err != nil {
-		file.Close()
+		must.Close(file, logger)
 		return nil, fmt.Errorf("unable to create compressor: %w", err)
 	}
 
@@ -409,17 +412,18 @@ func NewArchiveBuilder(bundlePath string) (*ArchiveBuilder, error) {
 		compressor: compressor,
 		archiver:   tar.NewWriter(compressor),
 		copyBuffer: make([]byte, archiveBuilderCopyBufferSize),
+		logger:     logger,
 	}, nil
 }
 
 func (b *ArchiveBuilder) Close() error {
 	// Close in the necessary order to trigger flushes.
 	if err := b.archiver.Close(); err != nil {
-		b.compressor.Close()
-		b.file.Close()
+		must.Close(b.compressor, b.logger)
+		must.Close(b.file, b.logger)
 		return fmt.Errorf("unable to close archiver: %w", err)
 	} else if err := b.compressor.Close(); err != nil {
-		b.file.Close()
+		must.Close(b.file, b.logger)
 		return fmt.Errorf("unable to close compressor: %w", err)
 	} else if err := b.file.Close(); err != nil {
 		return fmt.Errorf("unable to close file: %w", err)
@@ -440,7 +444,7 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 	if err != nil {
 		return fmt.Errorf("unable to open file: %w", err)
 	}
-	defer file.Close()
+	defer must.Close(file, b.logger)
 
 	// Compute its size.
 	stat, err := file.Stat()
@@ -471,13 +475,13 @@ func (b *ArchiveBuilder) Add(name, path string, mode int64) error {
 
 // copyFile copies the contents at sourcePath to a newly created file at
 // destinationPath that inherits the permissions of sourcePath.
-func copyFile(sourcePath, destinationPath string) error {
+func copyFile(sourcePath, destinationPath string, logger *logging.Logger) error {
 	// Open the source file and defer its closure.
 	source, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("unable to open source file: %w", err)
 	}
-	defer source.Close()
+	defer must.Close(source, logger)
 
 	// Grab source file metadata.
 	metadata, err := source.Stat()
@@ -486,7 +490,7 @@ func copyFile(sourcePath, destinationPath string) error {
 	}
 
 	// Remove the destination.
-	os.Remove(destinationPath)
+	must.OSRemove(destinationPath, logger)
 
 	// Create the destination file and defer its closure. We open with exclusive
 	// creation flags to ensure that we're the ones creating the file so that
@@ -495,7 +499,7 @@ func copyFile(sourcePath, destinationPath string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create destination file: %w", err)
 	}
-	defer destination.Close()
+	defer must.Close(destination, logger)
 
 	// Copy contents.
 	if count, err := io.Copy(destination, source); err != nil {
@@ -531,6 +535,8 @@ this script is operated in a non-interactive mode.
 
 // build is the primary entry point.
 func build() error {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Parse command line arguments.
 	flagSet := pflag.NewFlagSet("build", pflag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
@@ -541,7 +547,7 @@ func build() error {
 	flagSet.BoolVar(&enableSSPLEnhancements, "sspl", false, "enable SSPL-licensed enhancements")
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		if err == pflag.ErrHelp {
-			fmt.Fprint(os.Stdout, usage)
+			must.Fprint(os.Stdout, logger, usage)
 			return nil
 		} else {
 			return fmt.Errorf("unable to parse command line: %w", err)
@@ -674,14 +680,14 @@ func build() error {
 	// Build the agent bundle.
 	log.Println("Building agent bundle...")
 	agentBundlePath := filepath.Join(buildPath, agent.BundleName)
-	agentBundleBuilder, err := NewArchiveBuilder(agentBundlePath)
+	agentBundleBuilder, err := NewArchiveBuilder(agentBundlePath, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create agent bundle archive builder: %w", err)
 	}
 	for _, target := range agentTargets {
 		agentBuildPath := filepath.Join(agentBuildSubdirectoryPath, target.Name())
 		if err := agentBundleBuilder.Add(target.Name(), agentBuildPath, 0755); err != nil {
-			agentBundleBuilder.Close()
+			must.Close(agentBundleBuilder, logger)
 			return fmt.Errorf("unable to add agent to bundle: %w", err)
 		}
 	}
@@ -704,13 +710,13 @@ func build() error {
 			)
 
 			// Build the release bundle.
-			if releaseBundle, err := NewArchiveBuilder(releaseBundlePath); err != nil {
+			if releaseBundle, err := NewArchiveBuilder(releaseBundlePath, logger); err != nil {
 				return fmt.Errorf("unable to create release bundle: %w", err)
 			} else if err = releaseBundle.Add(target.ExecutableName(cliBaseName), cliBuildPath, 0755); err != nil {
-				releaseBundle.Close()
+				must.Close(releaseBundle, logger)
 				return fmt.Errorf("unable to add CLI to release bundle: %w", err)
 			} else if err = releaseBundle.Add("", agentBundlePath, 0644); err != nil {
-				releaseBundle.Close()
+				must.Close(releaseBundle, logger)
 				return fmt.Errorf("unable to add agent bundle to release bundle: %w", err)
 			} else if err = releaseBundle.Close(); err != nil {
 				return fmt.Errorf("unable to finalize release bundle: %w", err)
@@ -722,7 +728,7 @@ func build() error {
 	log.Println("Copying binary for testing")
 	localCLIBuildPath := filepath.Join(cliBuildSubdirectoryPath, localTarget.Name())
 	localCLIRelocationPath := filepath.Join(buildPath, localTarget.ExecutableName(cliBaseName))
-	if err := copyFile(localCLIBuildPath, localCLIRelocationPath); err != nil {
+	if err := copyFile(localCLIBuildPath, localCLIRelocationPath, logger); err != nil {
 		return fmt.Errorf("unable to copy current platform CLI: %w", err)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -107,7 +108,7 @@ func newSession(
 	prompter string,
 ) (*controller, error) {
 	// Update status.
-	prompting.Message(prompter, "Creating session...")
+	prompting.MustMessage(prompter, "Creating session...", logger)
 
 	// Set the session version.
 	version := DefaultVersion
@@ -129,11 +130,11 @@ func newSession(
 	var err error
 	defer func() {
 		if alphaEndpoint != nil {
-			alphaEndpoint.Shutdown()
+			must.Shutdown(alphaEndpoint, logger)
 			alphaEndpoint = nil
 		}
 		if betaEndpoint != nil {
-			betaEndpoint.Shutdown()
+			must.Shutdown(betaEndpoint, logger)
 			betaEndpoint = nil
 		}
 	}()
@@ -200,11 +201,11 @@ func newSession(
 	}
 
 	// Save components to disk.
-	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session); err != nil {
+	if err := encoding.MarshalAndSaveProtobuf(sessionPath, session, logger); err != nil {
 		return nil, fmt.Errorf("unable to save session: %w", err)
 	}
-	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive); err != nil {
-		os.Remove(sessionPath)
+	if err := encoding.MarshalAndSaveProtobuf(archivePath, archive, logger); err != nil {
+		must.OSRemove(sessionPath, logger)
 		return nil, fmt.Errorf("unable to save archive: %w", err)
 	}
 
@@ -326,7 +327,7 @@ func (c *controller) currentState() *State {
 // this wait early.
 func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) error {
 	// Update status.
-	prompting.Message(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier))
+	prompting.MustMessage(prompter, fmt.Sprintf("Forcing synchronization cycle for session %s...", c.session.Identifier), c.logger)
 
 	// Lock the controller's lifecycle.
 	c.lifecycleLock.Lock()
@@ -417,7 +418,7 @@ func (c *controller) flush(ctx context.Context, prompter string, skipWait bool) 
 // acquire it.
 func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
-	prompting.Message(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier))
+	prompting.MustMessage(prompter, fmt.Sprintf("Resuming session %s...", c.session.Identifier), c.logger)
 
 	// If not already held, acquire the lifecycle lock and defer its release.
 	if !lifecycleLockHeld {
@@ -471,7 +472,7 @@ func (c *controller) resume(ctx context.Context, prompter string, lifecycleLockH
 	// Mark the session as unpaused and save it to disk.
 	c.stateLock.Lock()
 	c.session.Paused = false
-	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+	saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session, c.logger)
 	c.stateLock.Unlock()
 
 	// Attempt to connect to alpha.
@@ -567,7 +568,7 @@ func (m controllerHaltMode) description() string {
 // will not attempt to acquire it.
 func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter string, lifecycleLockHeld bool) error {
 	// Update status.
-	prompting.Message(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier))
+	prompting.MustMessage(prompter, fmt.Sprintf("%s session %s...", mode.description(), c.session.Identifier), c.logger)
 
 	// If not already held, acquire the lifecycle lock and defer its release.
 	if !lifecycleLockHeld {
@@ -602,7 +603,7 @@ func (c *controller) halt(_ context.Context, mode controllerHaltMode, prompter s
 		// Mark the session as paused and save it.
 		c.stateLock.Lock()
 		c.session.Paused = true
-		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session)
+		saveErr := encoding.MarshalAndSaveProtobuf(c.sessionPath, c.session, c.logger)
 		c.stateLock.Unlock()
 		if saveErr != nil {
 			return fmt.Errorf("unable to save session: %w", saveErr)
@@ -651,7 +652,7 @@ func (c *controller) reset(ctx context.Context, prompter string) error {
 	// Reset the session archive on disk.
 	c.logger.Infof("Resetting ancestor")
 	archive := &core.Archive{}
-	if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
+	if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive, c.logger); err != nil {
 		return fmt.Errorf("unable to clear session history: %w", err)
 	}
 
@@ -683,10 +684,10 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		// Shutdown any endpoints. These might be non-nil if the run loop was
 		// cancelled while partially connected rather than after sync failure.
 		if alpha != nil {
-			alpha.Shutdown()
+			must.Shutdown(alpha, c.logger)
 		}
 		if beta != nil {
-			beta.Shutdown()
+			must.Shutdown(beta, c.logger)
 		}
 
 		// Reset the state.
@@ -801,9 +802,9 @@ func (c *controller) run(ctx context.Context, alpha, beta Endpoint) {
 		c.stateLock.UnlockWithoutNotify()
 
 		// Shutdown the endpoints.
-		alpha.Shutdown()
+		must.Shutdown(alpha, c.logger)
 		alpha = nil
-		beta.Shutdown()
+		must.Shutdown(beta, c.logger)
 		beta = nil
 
 		// If synchronization failed due a halting error, then wait for the
@@ -1276,7 +1277,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 					c.stateLock.Unlock()
 					return nil
 				}
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor, c.logger)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = beta.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on alpha: %w", err)
@@ -1314,7 +1315,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 					c.stateLock.Unlock()
 					return nil
 				}
-				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor)
+				receiver = rsync.NewMonitoringReceiver(receiver, filteredPaths, signatures, monitor, c.logger)
 				receiver = rsync.NewPreemptableReceiver(ctx, receiver)
 				if err = alpha.Supply(filteredPaths, signatures, receiver); err != nil {
 					return fmt.Errorf("unable to stage files on beta: %w", err)
@@ -1402,7 +1403,7 @@ func (c *controller) synchronize(ctx context.Context, alpha, beta Endpoint) erro
 			// Save the ancestor.
 			c.logger.Debug("Saving ancestor")
 			archive.Content = ancestor
-			if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive); err != nil {
+			if err := encoding.MarshalAndSaveProtobuf(c.archivePath, archive, c.logger); err != nil {
 				return fmt.Errorf("unable to save ancestor: %w", err)
 			}
 		}

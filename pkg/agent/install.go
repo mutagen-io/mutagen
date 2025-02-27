@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/google/uuid"
+	"github.com/mutagen-io/mutagen/pkg/must"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/logging"
@@ -50,11 +51,11 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 	if err := prompting.Message(prompter, "Extracting agent..."); err != nil {
 		return fmt.Errorf("unable to message prompter: %w", err)
 	}
-	agentExecutable, err := ExecutableForPlatform(goos, goarch, "")
+	agentExecutable, err := ExecutableForPlatform(goos, goarch, "", logger)
 	if err != nil {
 		return fmt.Errorf("unable to get agent for platform: %w", err)
 	}
-	defer os.Remove(agentExecutable)
+	defer must.OSRemove(agentExecutable, logger)
 
 	// Copy the agent to the remote. We use a unique identifier for the
 	// temporary destination. For Windows remotes, we add a ".exe" suffix, which

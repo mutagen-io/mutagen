@@ -5,12 +5,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/url"
 )
 
 // TestProtocolBuffersCycle tests a Protocol Buffers marshal/save/load/unmarshal
 // cycle.
 func TestProtocolBuffersCycle(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create an empty temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -18,7 +22,7 @@ func TestProtocolBuffersCycle(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Create a Protocol Buffers message that we can test with.
 	message := &url.URL{
@@ -28,7 +32,7 @@ func TestProtocolBuffersCycle(t *testing.T) {
 		Port:     1776,
 		Path:     "/by/land/or/by/sea",
 	}
-	if err := MarshalAndSaveProtobuf(file.Name(), message); err != nil {
+	if err := MarshalAndSaveProtobuf(file.Name(), message, logger); err != nil {
 		t.Fatal("unable to marshal and save Protocol Buffers message:", err)
 	}
 

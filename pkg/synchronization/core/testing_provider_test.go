@@ -9,6 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // testingContentMap is an in-memory content map type used by testProvider.
@@ -25,6 +28,8 @@ type testingProvider struct {
 	hasherLock sync.Mutex
 	// hasher is the hasher to use when verifying content.
 	hasher hash.Hash
+
+	logger *logging.Logger
 }
 
 // Provide implements the Provider interface for testProvider.
@@ -56,9 +61,9 @@ func (p *testingProvider) Provide(path string, digest []byte) (string, error) {
 
 	// Write content.
 	_, err = file.Write(content)
-	file.Close()
+	must.Close(file, p.logger)
 	if err != nil {
-		os.Remove(file.Name())
+		must.OSRemove(file.Name(), p.logger)
 		return "", fmt.Errorf("unable to write file contents: %w", err)
 	}
 

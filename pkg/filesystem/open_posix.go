@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"golang.org/x/sys/unix"
 )
 
@@ -25,7 +26,7 @@ import (
 // link. In this case, the referenced object must still be a directory or
 // regular file, and the returned object will still be either a Directory or an
 // io.ReadSeekCloser.
-func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error) {
+func Open(path string, allowSymbolicLinkLeaf bool, logger *logging.Logger) (io.Closer, *Metadata, error) {
 	// Open the file. Unless explicitly allowed, we disable resolution of
 	// symbolic links at the leaf position of the path by specifying O_NOFOLLOW.
 	// Note that this flag only affects the leaf component of the path -
@@ -41,7 +42,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// too many symbolic links have been encountered, and thus there's no way to
 	// differentiate the two cases and figure out whether or not we should
 	// return ErrUnsupportedType. Even openat doesn't provide a solution to this
-	// problem since it doens't support AT_SYMLINK_NOFOLLOW. Essentially,
+	// problem since it doesn't support AT_SYMLINK_NOFOLLOW. Essentially,
 	// there's no way to "open" a symbolic link - it can only be read with
 	// readlink and its ilk. Since ELOOP still sort of makes sense (we've
 	// encountered too many symbolic links at the path leaf), we return it
@@ -58,7 +59,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	// Grab metadata for the file.
 	var rawMetadata unix.Stat_t
 	if err := fstatRetryingOnEINTR(descriptor, &rawMetadata); err != nil {
-		closeConsideringEINTR(descriptor)
+		mustCloseConsideringEINTR(descriptor, logger)
 		return nil, nil, fmt.Errorf("unable to query file metadata: %w", err)
 	}
 
@@ -82,7 +83,7 @@ func Open(path string, allowSymbolicLinkLeaf bool) (io.Closer, *Metadata, error)
 	case ModeTypeFile:
 		return file(descriptor), metadata, nil
 	default:
-		closeConsideringEINTR(descriptor)
+		mustCloseConsideringEINTR(descriptor, logger)
 		return nil, nil, ErrUnsupportedOpenType
 	}
 }

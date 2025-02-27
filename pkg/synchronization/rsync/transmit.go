@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // Transmit performs streaming transmission of files (in rsync deltified form)
@@ -12,17 +14,17 @@ import (
 // that the provided signatures are valid by invoking their EnsureValid method.
 // In order for this function to perform efficiently, paths should be passed in
 // depth-first traversal order.
-func Transmit(root string, paths []string, signatures []*Signature, receiver Receiver) error {
+func Transmit(root string, paths []string, signatures []*Signature, receiver Receiver, logger *logging.Logger) error {
 	// Ensure that the transmission request is sane.
 	if len(paths) != len(signatures) {
-		receiver.finalize()
+		must.Succeed(receiver.finalize(), "finalize receiver", logger)
 		return errors.New("number of paths does not match number of signatures")
 	}
 
 	// Create a file opener that we can use to safely open files, and defer its
 	// closure.
-	opener := filesystem.NewOpener(root)
-	defer opener.Close()
+	opener := filesystem.NewOpener(root, logger)
+	defer must.Close(opener, logger)
 
 	// Create an rsync engine.
 	engine := NewEngine()
@@ -42,7 +44,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 				Error: fmt.Errorf("unable to open file: %w", err).Error(),
 			}
 			if err = receiver.Receive(transmission); err != nil {
-				receiver.finalize()
+				must.Succeed(receiver.finalize(), "finalize receiver", logger)
 				return fmt.Errorf("unable to send error transmission: %w", err)
 			}
 			continue
@@ -65,11 +67,11 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 		err = engine.Deltify(file, signatures[i], 0, transmit)
 
 		// Close the file.
-		file.Close()
+		must.Close(file, logger)
 
 		// Handle any transmission errors. These are terminal.
 		if transmitError != nil {
-			receiver.finalize()
+			must.Succeed(receiver.finalize(), "finalize receiver", logger)
 			return fmt.Errorf("unable to transmit delta: %w", transmitError)
 		}
 
@@ -81,7 +83,7 @@ func Transmit(root string, paths []string, signatures []*Signature, receiver Rec
 			transmission.Error = fmt.Errorf("engine error: %w", err).Error()
 		}
 		if err = receiver.Receive(transmission); err != nil {
-			receiver.finalize()
+			must.Succeed(receiver.finalize(), "finalize receiver", logger)
 			return fmt.Errorf("unable to send done message: %w", err)
 		}
 	}

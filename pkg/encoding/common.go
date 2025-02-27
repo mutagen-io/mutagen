@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 )
 
 // LoadAndUnmarshal provides the underlying loading and unmarshaling
@@ -34,7 +35,7 @@ func LoadAndUnmarshal(path string, unmarshal func([]byte) error) error {
 // the encoding package. It invokes the specified marshaling callback (usually a
 // closure) and writes the result atomically to the specified path. The data is
 // saved with read/write permissions for the user only.
-func MarshalAndSave(path string, marshal func() ([]byte, error)) error {
+func MarshalAndSave(path string, logger *logging.Logger, marshal func() ([]byte, error)) error {
 	// Marshal the message.
 	data, err := marshal()
 	if err != nil {
@@ -42,7 +43,7 @@ func MarshalAndSave(path string, marshal func() ([]byte, error)) error {
 	}
 
 	// Write the file atomically with secure file permissions.
-	if err := filesystem.WriteFileAtomic(path, data, 0600); err != nil {
+	if err := filesystem.WriteFileAtomic(path, data, 0600, logger); err != nil {
 		return fmt.Errorf("unable to write message data: %w", err)
 	}
 

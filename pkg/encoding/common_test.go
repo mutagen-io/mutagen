@@ -1,17 +1,21 @@
 package encoding
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // testMessageJSON is a test structure to use for encoding tests using JSON.
 type testMessageJSON struct {
 	// Name represents a person's name.
 	Name string
-	// Age represent's a person's age.
+	// Age represents a person's age.
 	Age uint
 }
 
@@ -49,6 +53,8 @@ func TestLoadAndUnmarshalDirectory(t *testing.T) {
 // TestLoadAndUnmarshalUnmarshalFail tests that unmarshaling fails if the
 // unmarshaling callback fails.
 func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create an empty temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -56,7 +62,7 @@ func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Create a broken unmarshaling function.
 	unmarshal := func(_ []byte) error {
@@ -71,6 +77,8 @@ func TestLoadAndUnmarshalUnmarshalFail(t *testing.T) {
 
 // TestLoadAndUnmarshal tests that loading and unmarshaling succeed.
 func TestLoadAndUnmarshal(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Write the test JSON to a temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -80,7 +88,7 @@ func TestLoadAndUnmarshal(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Create an unmarshaling function.
 	value := &testMessageJSON{}
@@ -105,6 +113,8 @@ func TestLoadAndUnmarshal(t *testing.T) {
 // TestMarshalAndSaveMarshalFail tests that marshaling fails if the marshaling
 // callback fails.
 func TestMarshalAndSaveMarshalFail(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create an empty temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -112,7 +122,7 @@ func TestMarshalAndSaveMarshalFail(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Create a broken marshaling function.
 	marshal := func() ([]byte, error) {
@@ -120,26 +130,30 @@ func TestMarshalAndSaveMarshalFail(t *testing.T) {
 	}
 
 	// Attempt to marshal and save using a broken unmarshaling function.
-	if MarshalAndSave(file.Name(), marshal) == nil {
+	if MarshalAndSave(file.Name(), logger, marshal) == nil {
 		t.Error("expected MarshalAndSave to return an error")
 	}
 }
 
 // TestMarshalAndSaveOverDirectory tests that saving over a directory fails.
 func TestMarshalAndSaveOverDirectory(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a marshaling function.
 	marshal := func() ([]byte, error) {
 		return []byte{0}, nil
 	}
 
 	// Attempt to marshal and save over a directory.
-	if MarshalAndSave(t.TempDir(), marshal) == nil {
+	if MarshalAndSave(t.TempDir(), logger, marshal) == nil {
 		t.Error("expected MarshalAndSave to return an error")
 	}
 }
 
 // TestMarshalAndSave tests that marshaling and saving succeed.
 func TestMarshalAndSave(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create an empty temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_encoding")
 	if err != nil {
@@ -147,7 +161,7 @@ func TestMarshalAndSave(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Fatal("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Create a marshaling function.
 	value := &testMessageJSON{Name: testMessageJSONName, Age: testMessageJSONAge}
@@ -156,7 +170,7 @@ func TestMarshalAndSave(t *testing.T) {
 	}
 
 	// Attempt to marshal and save.
-	if err := MarshalAndSave(file.Name(), marshal); err != nil {
+	if err := MarshalAndSave(file.Name(), logger, marshal); err != nil {
 		t.Fatal("MarshalAndSave failed:", err)
 	}
 

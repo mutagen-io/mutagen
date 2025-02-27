@@ -11,7 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/multiplexing/ring"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 var (
@@ -39,6 +41,9 @@ type Multiplexer struct {
 	even bool
 	// configuration is the multiplexer configuration.
 	configuration *Configuration
+
+	// logger is the multiplexer configuration.
+	logger *logging.Logger
 
 	// closeOnce guards closure of closer and closed.
 	closeOnce sync.Once
@@ -109,7 +114,7 @@ type Multiplexer struct {
 // stream identifiers.
 //
 // If configuration is nil, the default configuration will be used.
-func Multiplex(carrier Carrier, even bool, configuration *Configuration) *Multiplexer {
+func Multiplex(carrier Carrier, even bool, configuration *Configuration, logger *logging.Logger) *Multiplexer {
 	// If no configuration was provided, then use default values, otherwise
 	// normalize any out-of-range values provided by the caller.
 	if configuration == nil {
@@ -122,6 +127,7 @@ func Multiplex(carrier Carrier, even bool, configuration *Configuration) *Multip
 	multiplexer := &Multiplexer{
 		even:                            even,
 		configuration:                   configuration,
+		logger:                          logger,
 		closer:                          carrier,
 		closed:                          make(chan struct{}),
 		streams:                         make(map[uint64]*Stream),
@@ -212,7 +218,7 @@ func (m *Multiplexer) read(reader Carrier, heartbeats chan<- struct{}) error {
 	// Track the range of stream identifiers used by the remote.
 	var largestOpenedInboundStreamIdentifier uint64
 
-	// Loop until failure or multiplexure closure.
+	// Loop until failure or multiplexer closure.
 	for {
 		// Read the next message type.
 		var kind messageKind
@@ -607,7 +613,10 @@ func (m *Multiplexer) OpenStream(ctx context.Context) (*Stream, error) {
 	var sentOpenMessage, established bool
 	defer func() {
 		if !established {
-			stream.close(sentOpenMessage)
+			err := stream.close(sentOpenMessage)
+			if err != nil {
+				m.logger.Warnf("Unable to close stream: %s", err)
+			}
 		}
 	}()
 
@@ -664,7 +673,7 @@ func (m *Multiplexer) acceptOneStream(ctx context.Context) (*Stream, error) {
 	// check this because we're responsible for closing it.
 	defer func() {
 		if !isClosed(stream.established) {
-			stream.Close()
+			must.Close(stream, m.logger)
 		}
 	}()
 
@@ -694,7 +703,7 @@ func (m *Multiplexer) acceptOneStream(ctx context.Context) (*Stream, error) {
 	return stream, nil
 }
 
-// AcceptContext accepts an incoming stream.
+// AcceptStream accepts an incoming stream.
 func (m *Multiplexer) AcceptStream(ctx context.Context) (*Stream, error) {
 	// Loop until we find a pending stream that's not stale or encounter some
 	// other error.
@@ -731,9 +740,9 @@ func (m *Multiplexer) InternalError() error {
 
 // closeWithError is the internal close method that allows for optional error
 // reporting when closing.
-func (m *Multiplexer) closeWithError(internalError error) (err error) {
+func (m *Multiplexer) closeWithError(internalError error) {
 	m.closeOnce.Do(func() {
-		err = m.closer.Close()
+		must.Close(m.closer, m.logger)
 		if internalError != nil {
 			m.internalErrorLock.Lock()
 			m.internalError = internalError
@@ -747,5 +756,6 @@ func (m *Multiplexer) closeWithError(internalError error) (err error) {
 // Close implements net.Listener.Close. Only the first call to Close will have
 // any effect. Subsequent calls will behave as no-ops and return nil errors.
 func (m *Multiplexer) Close() error {
-	return m.closeWithError(nil)
+	m.closeWithError(nil)
+	return nil
 }

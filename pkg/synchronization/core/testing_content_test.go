@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // testingContentManager generates and removes test content on disk using
@@ -39,6 +42,8 @@ type testingContentManager struct {
 	// generated content root and can attempt to remove content or at least make
 	// it suitable for removal by os.RemoveAll.
 	untweak func(string) error
+
+	logger *logging.Logger
 }
 
 // generate generates test content on disk. It returns the path to the generated
@@ -63,7 +68,10 @@ func (g *testingContentManager) generate() (string, error) {
 	// parent directory when we return.
 	defer func() {
 		if !successful {
-			os.RemoveAll(g.parent)
+			must.Succeed(os.RemoveAll(g.parent),
+				fmt.Sprintf("remove all files from '%s'", g.parent),
+				g.logger,
+			)
 			g.parent = ""
 		}
 	}()
@@ -86,6 +94,7 @@ func (g *testingContentManager) generate() (string, error) {
 		storage:    g.parent,
 		contentMap: g.baselineContentMap,
 		hasher:     newTestingHasher(),
+		logger:     g.logger,
 	}
 	results, problems, missingFiles := Transition(
 		context.Background(),
@@ -98,6 +107,7 @@ func (g *testingContentManager) generate() (string, error) {
 		nil,
 		false,
 		provider,
+		g.logger,
 	)
 	if missingFiles {
 		return "", errors.New("content map missing file definitions")
@@ -139,7 +149,10 @@ func (g *testingContentManager) remove() error {
 	// try a removal operation to attempt cleanup.
 	if g.untweak != nil {
 		if err := g.untweak(root); err != nil {
-			os.RemoveAll(parent)
+			must.Succeed(os.RemoveAll(parent),
+				fmt.Sprintf("remove all files from '%s'", parent),
+				g.logger,
+			)
 			return fmt.Errorf("unable to untweak content root: %w", err)
 		}
 	}

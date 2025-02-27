@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/spf13/cobra"
 
 	"github.com/mutagen-io/mutagen/cmd"
@@ -29,6 +31,8 @@ import (
 
 // startMain is the entry point for the start command.
 func startMain(_ *cobra.Command, _ []string) error {
+	logger := logging.NewLogger(logging.LevelError, os.Stderr)
+
 	// Compute the name of the configuration file and ensure that our working
 	// directory is that in which the file resides. This is required for
 	// relative paths (including relative synchronization paths and relative
@@ -58,9 +62,9 @@ func startMain(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("unable to create project locker: %w", err)
 	}
 	defer func() {
-		locker.Close()
+		must.Close(locker, logger)
 		if removeLockFileOnReturn && runtime.GOOS == "windows" {
-			os.Remove(lockPath)
+			must.OSRemove(lockPath, logger)
 		}
 	}()
 
@@ -77,12 +81,12 @@ func startMain(_ *cobra.Command, _ []string) error {
 	defer func() {
 		if removeLockFileOnReturn {
 			if runtime.GOOS == "windows" {
-				locker.Truncate(0)
+				must.Truncate(locker, 0, logger)
 			} else {
-				os.Remove(lockPath)
+				must.OSRemove(lockPath, logger)
 			}
 		}
-		locker.Unlock()
+		must.Unlock(locker, logger)
 	}()
 
 	// Read the full contents of the lock file and ensure that it's empty.
@@ -354,7 +358,7 @@ func startMain(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to connect to daemon: %w", err)
 	}
-	defer daemonConnection.Close()
+	defer must.Close(daemonConnection, logger)
 
 	// At this point, we're going to try to create resources, so we need to
 	// maintain the lock file in case even some of them are successful.

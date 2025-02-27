@@ -8,6 +8,8 @@ import (
 	"io"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // EnsureValid ensures that ReceiverState's invariants are respected.
@@ -97,13 +99,15 @@ type receiver struct {
 	// target is the destination for the current file. It should be non-nil if
 	// and only if base is non-nil. It should be nil if burning.
 	target io.WriteCloser
+
+	logger *logging.Logger
 }
 
 // NewReceiver creates a new receiver that stores files on disk. It is the
 // responsibility of the caller to ensure that the provided signatures are valid
 // by invoking their EnsureValid method. In order for the receiver to perform
 // efficiently, paths should be passed in depth-first traversal order.
-func NewReceiver(root string, paths []string, signatures []*Signature, sinker Sinker) (Receiver, error) {
+func NewReceiver(root string, paths []string, signatures []*Signature, sinker Sinker, logger *logging.Logger) (Receiver, error) {
 	// Ensure that the receiving request is sane.
 	if len(paths) != len(signatures) {
 		return nil, errors.New("number of paths does not match number of signatures")
@@ -114,10 +118,11 @@ func NewReceiver(root string, paths []string, signatures []*Signature, sinker Si
 		root:       root,
 		paths:      paths,
 		signatures: signatures,
-		opener:     filesystem.NewOpener(root),
+		opener:     filesystem.NewOpener(root, logger),
 		sinker:     sinker,
 		engine:     NewEngine(),
 		total:      uint64(len(paths)),
+		logger:     logger,
 	}, nil
 }
 
@@ -151,13 +156,13 @@ func (r *receiver) Receive(transmission *Transmission) error {
 		// Since we're already at the end of the stream for this file, there's
 		// no need to start burning operations if this fails.
 		if r.base != nil {
-			r.base.Close()
+			must.Close(r.base, r.logger)
 			r.base = nil
-			r.target.Close()
+			must.Close(r.target, r.logger)
 			r.target = nil
 		} else if !r.burning {
 			if target, _ := r.sinker.Sink(r.paths[r.received]); target != nil {
-				target.Close()
+				must.Close(target, r.logger)
 			}
 		}
 
@@ -202,7 +207,7 @@ func (r *receiver) Receive(transmission *Transmission) error {
 		// Create a sink. If that fails, then we need to close out the base and
 		// burn this file stream, but it's not a terminal error.
 		if target, err := r.sinker.Sink(path); err != nil {
-			r.base.Close()
+			must.Close(r.base, r.logger)
 			r.base = nil
 			r.burning = true
 			return nil
@@ -214,9 +219,9 @@ func (r *receiver) Receive(transmission *Transmission) error {
 	// Apply the operation. If that fails, then we need to close out the base,
 	// target, and burn this file stream, but it's not a terminal error.
 	if err := r.engine.Patch(r.target, r.base, signature, transmission.Operation); err != nil {
-		r.base.Close()
+		must.Close(r.base, r.logger)
 		r.base = nil
-		r.target.Close()
+		must.Close(r.target, r.logger)
 		r.target = nil
 		r.burning = true
 		return nil
@@ -236,14 +241,14 @@ func (r *receiver) finalize() error {
 
 	// Close any open internal resources.
 	if r.base != nil {
-		r.base.Close()
+		must.Close(r.base, r.logger)
 		r.base = nil
-		r.target.Close()
+		must.Close(r.target, r.logger)
 		r.target = nil
 	}
 
 	// Close the file opener.
-	r.opener.Close()
+	must.Close(r.opener, r.logger)
 
 	// Mark the receiver as finalized.
 	r.finalized = true
@@ -273,12 +278,13 @@ type monitoringReceiver struct {
 	// expected to coincide with the start of a new file.
 	startOfFile bool
 	// state is the current receiver state.
-	state *ReceiverState
+	state  *ReceiverState
+	logger *logging.Logger
 }
 
 // NewMonitoringReceiver wraps a receiver and provides monitoring information
 // via a callback.
-func NewMonitoringReceiver(receiver Receiver, paths []string, signatures []*Signature, monitor Monitor) Receiver {
+func NewMonitoringReceiver(receiver Receiver, paths []string, signatures []*Signature, monitor Monitor, logger *logging.Logger) Receiver {
 	// Verify that the path and signature counts match.
 	if len(paths) != len(signatures) {
 		panic("path count does not match signature count")
@@ -294,6 +300,7 @@ func NewMonitoringReceiver(receiver Receiver, paths []string, signatures []*Sign
 		state: &ReceiverState{
 			ExpectedFiles: uint64(len(paths)),
 		},
+		logger: logger,
 	}
 }
 
@@ -365,7 +372,7 @@ func (r *monitoringReceiver) Receive(transmission *Transmission) error {
 func (r *monitoringReceiver) finalize() error {
 	// Perform a final status update. We don't bother checking for an error
 	// because it's inconsequential at this point.
-	r.monitor(nil)
+	must.Succeed(r.monitor(nil), "monitor callback", r.logger)
 
 	// Invoke finalize on the underlying receiver.
 	return r.receiver.finalize()
@@ -430,14 +437,17 @@ type encodingReceiver struct {
 	encoder Encoder
 	// finalized indicates whether or not the receiver has been finalized.
 	finalized bool
+
+	logger *logging.Logger
 }
 
 // NewEncodingReceiver creates a new receiver that handles messages by encoding
 // them with the specified Encoder. It is designed to be used with
 // DecodeToReceiver.
-func NewEncodingReceiver(encoder Encoder) Receiver {
+func NewEncodingReceiver(encoder Encoder, logger *logging.Logger) Receiver {
 	return &encodingReceiver{
 		encoder: encoder,
+		logger:  logger,
 	}
 }
 
@@ -475,7 +485,7 @@ func (r *encodingReceiver) finalize() error {
 // Decoder is the interface used by DecodeToReceiver to receive transmissions,
 // usually across a network.
 type Decoder interface {
-	// Decoder decodes a transmission encoded by an encoder. The transmission
+	// Decode decodes a transmission encoded by an encoder. The transmission
 	// should be decoded into the specified Transmission object, which will be a
 	// non-nil zero-valued Transmission object. The decoder is *not* responsible
 	// for validating that the transmission is valid before returning it.
@@ -493,7 +503,7 @@ type Decoder interface {
 // received so that it knows when forwarding is complete. It is designed to be
 // used with an encoding receiver, such as that returned by NewEncodingReceiver.
 // It finalizes the provided receiver before returning.
-func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
+func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver, logger *logging.Logger) error {
 	// Allocate the transmission object that we'll use to receive into.
 	transmission := &Transmission{}
 
@@ -504,22 +514,22 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 			// Receive the next message.
 			transmission.resetToZeroMaintainingCapacity()
 			if err := decoder.Decode(transmission); err != nil {
-				decoder.Finalize()
-				receiver.finalize()
+				must.Finalize(decoder, logger)
+				must.Succeed(receiver.finalize(), "finalize receiver", logger)
 				return fmt.Errorf("unable to decode transmission: %w", err)
 			}
 
 			// Validate the transmission.
 			if err := transmission.EnsureValid(); err != nil {
-				decoder.Finalize()
-				receiver.finalize()
+				must.Finalize(decoder, logger)
+				must.Succeed(receiver.finalize(), "finalize receiver", logger)
 				return fmt.Errorf("invalid transmission received: %w", err)
 			}
 
 			// Forward the message.
 			if err := receiver.Receive(transmission); err != nil {
-				decoder.Finalize()
-				receiver.finalize()
+				must.Finalize(decoder, logger)
+				must.Succeed(receiver.finalize(), "finalize receiver", logger)
 				return fmt.Errorf("unable to forward message to receiver: %w", err)
 			}
 
@@ -536,7 +546,7 @@ func DecodeToReceiver(decoder Decoder, count uint64, receiver Receiver) error {
 
 	// Ensure that the decoder is finalized.
 	if err := decoder.Finalize(); err != nil {
-		receiver.finalize()
+		must.Succeed(receiver.finalize(), "finalize receiver", logger)
 		return fmt.Errorf("unable to finalize decoder: %w", err)
 	}
 
