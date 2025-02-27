@@ -28,7 +28,7 @@ func pauseMain(_ *cobra.Command, _ []string) error {
 	// relative paths (including relative synchronization paths and relative
 	// Unix Domain Socket paths) to be resolved relative to the project
 	// configuration file.
-	configurationFileName := project.DefaultConfigurationFileName
+	configurationFileName := project.ConfigurationFileName()
 	if pauseConfiguration.projectFile != "" {
 		var directory string
 		directory, configurationFileName = filepath.Split(pauseConfiguration.projectFile)
