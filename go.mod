@@ -1,6 +1,7 @@
 module github.com/mutagen-io/mutagen
 
 go 1.22.0
+toolchain go1.23.7
 
 require (
 	github.com/Microsoft/go-winio v0.6.2
@@ -19,7 +20,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/net v0.35.0
+	golang.org/x/net v0.36.0
 	golang.org/x/sys v0.30.0
 	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.67.1
