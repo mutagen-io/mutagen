@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"google.golang.org/protobuf/proto"
 
@@ -31,6 +33,31 @@ type endpointServer struct {
 	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
 	decoder *encoding.ProtobufDecoder
+}
+
+// ensureSynchronizationRootParentExists ensures that the parent directory chain
+// for a synchronization root exists if the root itself doesn't already exist.
+func ensureSynchronizationRootParentExists(root string) error {
+	// If the synchronization root already exists, then there's nothing to do.
+	if _, err := os.Lstat(root); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("unable to query synchronization root: %w", err)
+	}
+
+	// Compute the parent directory. If the root is a filesystem root, then
+	// there's no higher-level directory hierarchy to create.
+	parent := filepath.Dir(root)
+	if parent == root {
+		return nil
+	}
+
+	// Create any missing parent directories using standard mkdir -p semantics.
+	if err := os.MkdirAll(parent, 0777); err != nil {
+		return fmt.Errorf("unable to create synchronization root parent directory hierarchy: %w", err)
+	}
+
+	return nil
 }
 
 // ServeEndpoint creates and serves a endpoint server on the specified stream.
@@ -102,6 +129,18 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 		return err
 	} else {
 		request.Root = r
+	}
+
+	// For remote beta endpoints, ensure that the synchronization root's parent
+	// directory chain exists so that a missing directory root can be created by
+	// the normal transition logic.
+	if !request.Alpha {
+		if err := ensureSynchronizationRootParentExists(request.Root); err != nil {
+			err = fmt.Errorf("unable to prepare synchronization root parent directory hierarchy: %w", err)
+			encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
+			flusher.Flush()
+			return err
+		}
 	}
 
 	// Create the underlying endpoint. If it fails to create, then send a
