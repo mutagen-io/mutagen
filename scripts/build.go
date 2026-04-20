@@ -47,10 +47,11 @@ const (
 	// extension.
 	cliBaseName = "mutagen"
 
-	// minimumMacOSVersion is the minimum version of macOS that we'll support
-	// (currently pinned to the oldest version of macOS that Mutagen's minimum
-	// Go version supports).
-	minimumMacOSVersion = "10.15"
+	// minimumMacOSVersion is the minimum version of macOS that
+	// we'll support. This is pinned to the oldest version of
+	// macOS that Mutagen's minimum Go version supports. Go 1.25
+	// requires macOS 12 Monterey or later.
+	minimumMacOSVersion = "12"
 
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will
@@ -331,10 +332,10 @@ var targets = []Target{
 	// Define Solaris targets.
 	{"solaris", "amd64"},
 
-	// Define Windows targets.
+	// Define Windows targets. The windows/arm port was removed
+	// in Go 1.26.
 	{"windows", "386"},
 	{"windows", "amd64"},
-	{"windows", "arm"},
 	{"windows", "arm64"},
 }
 

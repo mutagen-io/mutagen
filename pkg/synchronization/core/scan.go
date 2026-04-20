@@ -455,11 +455,11 @@ func (s *scanner) directory(
 		// Determine whether or not this path is ignored and update the new
 		// ignore cache. If the path is ignored, then record an untracked entry.
 		contentIsDirectory := contentKind == EntryKind_Directory
-		ignoreCacheKey := ignore.IgnoreCacheKey{contentPath, contentIsDirectory}
+		ignoreCacheKey := ignore.IgnoreCacheKey{Path: contentPath, Directory: contentIsDirectory}
 		ignoreBehavior, ok := s.ignoreCache[ignoreCacheKey]
 		if !ok {
 			ignoreStatus, continueTraversal := s.ignorer.Ignore(contentPath, contentIsDirectory)
-			ignoreBehavior = ignore.IgnoreCacheValue{ignoreStatus, continueTraversal}
+			ignoreBehavior = ignore.IgnoreCacheValue{Status: ignoreStatus, ContinueTraversal: continueTraversal}
 		}
 		s.newIgnoreCache[ignoreCacheKey] = ignoreBehavior
 		contentIgnoreMask := ignoreMask
@@ -547,7 +547,7 @@ func (s *scanner) directory(
 
 					// Propagate any ignore cache entries that we can.
 					if entry.Kind != EntryKind_Untracked && entry.Kind != EntryKind_Problematic {
-						ignoreCacheKey := ignore.IgnoreCacheKey{path, entryIsDirectoryKind}
+						ignoreCacheKey := ignore.IgnoreCacheKey{Path: path, Directory: entryIsDirectoryKind}
 						if ignoreBehavior, ok := s.ignoreCache[ignoreCacheKey]; ok {
 							s.newIgnoreCache[ignoreCacheKey] = ignoreBehavior
 						}
