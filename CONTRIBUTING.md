@@ -36,7 +36,7 @@ proposed change on the
 If it *does* make sense to open a pull request, please adhere to the following
 guidelines. Pull requests that don't follow these guidelines will be closed.
 
-Pull requesets are not currently accepted for code residing under the `sspl`
+Pull requests are not currently accepted for code residing under the `sspl`
 directory.
 
 
@@ -77,13 +77,20 @@ all developers, we kindly request that:
 ### Commit guidelines
 
 To help keep source control logs readable and useful, we also ask that all
-commits have well-formatted commit messages that follow the
-[Go commit message guidelines](https://go.dev/doc/contribute#commit_messages),
-with no line exceeding 72 characters in length.
+commits have well-formatted commit messages that follow
+[Conventional Commits](https://www.conventionalcommits.org/), with no line
+exceeding 72 characters in length.
+
+The subject line format is:
+
+    <type>[optional scope][!]: <description>
+
+Common types include `feat`, `fix`, `build`, `ci`, `docs`, `deps`,
+`refactor`, `test`, `perf`, and `chore`. Use `!` to mark a breaking change.
 
 Here's an example of a good message:
 
-    sync: modified controller state locking
+    fix(sync): tighten controller state locking
 
     This commit modifies the synchronization controller's state locking to
     take into account changes that can occur during shutdown. It requires
