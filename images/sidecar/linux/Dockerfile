@@ -1,5 +1,5 @@
 # Use an Alpine-based Go builder.
-FROM golang:1.23.6-alpine3.21 AS builder
+FROM golang:1.26.2-alpine3.21 AS builder
 
 # Disable cgo in order to match the behavior of our release binaries (and to
 # avoid the need for gcc on certain architectures).

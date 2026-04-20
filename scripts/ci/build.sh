@@ -61,11 +61,6 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     zip "build/release/mutagen_windows_amd64_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
     rm mutagen.exe mutagen-agents.tar.gz
 
-    # Convert the windows/arm bundle to zip format.
-    tar xzf "build/release/mutagen_windows_arm_v${MUTAGEN_VERSION}.tar.gz"
-    zip "build/release/mutagen_windows_arm_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
-    rm mutagen.exe mutagen-agents.tar.gz
-
     # Convert the windows/arm64 bundle to zip format.
     tar xzf "build/release/mutagen_windows_arm64_v${MUTAGEN_VERSION}.tar.gz"
     zip "build/release/mutagen_windows_arm64_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
