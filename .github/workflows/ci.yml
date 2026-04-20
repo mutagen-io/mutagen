@@ -1,9 +1,8 @@
 # Set the workflow name.
 name: CI
 
-# Execute the workflow on pushes and pull requests to the primary
-# branch. Pull request builds are restricted to avoid duplicate
-# runs for PRs originating from the same repository.
+# Execute the workflow on pushes and pull requests. Version tag
+# pushes are included for release automation.
 on:
   push:
     branches:
