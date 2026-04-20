@@ -1,8 +1,27 @@
 # Set the workflow name.
 name: CI
 
-# Execute the workflow on pushes and pull requests.
-on: [push, pull_request]
+# Execute the workflow on pushes and pull requests to the primary
+# branch. Pull request builds are restricted to avoid duplicate
+# runs for PRs originating from the same repository.
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+  pull_request:
+
+# Restrict default token permissions. Jobs that need write access
+# (e.g., release) escalate explicitly.
+permissions:
+  contents: read
+
+# Cancel in-progress runs for the same ref, except for tag builds
+# (which should always run to completion for releases).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 # Define the workflow jobs.
 jobs:
@@ -62,6 +81,7 @@ jobs:
         env:
           SHA256_GPG_SIGNING_IDENTITY: ${{ steps.import_gpg.outputs.email }}
       - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag'
         with:
           name: bundles
           path: build/release/*
@@ -71,6 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         goversion: ['1.25.9', '1.26.2']
     steps:
@@ -169,6 +190,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     needs: [macos, linux, windows, sidecar]
+    permissions:
+      contents: write
     timeout-minutes: 10
     steps:
       - uses: actions/download-artifact@v4
