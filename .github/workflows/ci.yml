@@ -1,15 +1,17 @@
 # Set the workflow name.
 name: CI
 
-# Execute the workflow on pushes and pull requests. Version tag
-# pushes are included for release automation.
+# Execute the workflow on pushes to primary/release branches, version
+# tag pushes, pull requests, and manual dispatch.
 on:
   push:
     branches:
-      - '**'
+      - master
+      - 'release-branch-*'
     tags:
       - 'v*'
   pull_request:
+  workflow_dispatch:
 
 # Restrict default token permissions. Jobs that need write access
 # (e.g., release) escalate explicitly.

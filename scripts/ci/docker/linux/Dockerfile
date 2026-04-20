@@ -1,5 +1,5 @@
 # Set the base image.
-FROM alpine:3.21
+FROM alpine:3.23
 
 # Add the HTTP demo server.
 COPY ["httpdemo", "/httpdemo"]
