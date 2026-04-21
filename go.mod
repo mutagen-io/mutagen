@@ -18,13 +18,13 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/zeebo/xxh3 v1.1.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/net v0.53.0
 	golang.org/x/sys v0.43.0
 	golang.org/x/text v0.36.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.1
 	google.golang.org/protobuf v1.36.11
-	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apimachinery v0.21.3
 )
 

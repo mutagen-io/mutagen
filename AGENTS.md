@@ -103,6 +103,31 @@ follow the code and update this file.
 - The `k8s.io/apimachinery` replace directive in `go.mod` is
   intentional.
 
+## Dependency License Compliance
+
+When adding or updating dependencies, verify FOSS license
+compliance before committing:
+
+- Check the dependency's license and notice files at the target
+  version. These may appear as `LICENSE`, `NOTICE`, `COPYING`,
+  `PATENTS`, or variants with extensions like `.md`, `.txt`,
+  or `.rst`.
+- **Search for embedded third-party code.** Some dependencies
+  copy source files from other projects (not tracked as Go
+  module dependencies). Scan for files with different copyright
+  headers: `grep -ri "Copyright" --include="*.go"` across the
+  dependency's source tree. NOTICE files often list these. See
+  `github.com/klauspost/compress` as an example.
+- For dependency updates, diff the tag delta and look for new
+  files with new copyright headers, added or changed license
+  files, and new subdirectories containing ported code.
+- Update license notice files to reflect any changes to copyright
+  holders, license terms, or embedded code attribution.
+  Dependencies shared by both SSPL and non-SSPL builds go in
+  `pkg/mutagen/licenses.go`. Dependencies used only in SSPL
+  builds go in `licenses_sspl.go`, and those used only in
+  non-SSPL builds go in `licenses_nosspl.go`.
+
 ## Change Guidance
 
 - Follow `CONTRIBUTING.md` for code style.
