@@ -53,18 +53,6 @@ notice is preserved.
 
 --------------------------------------------------------------------------------
 
-groupcache
-
-https://github.com/golang/groupcache
-
-Copyright 2013 Google Inc.
-
-Used under the terms of the Apache License, Version 2.0. A copy of this license
-can be found later in this text or online at
-http://www.apache.org/licenses/LICENSE-2.0.
-
---------------------------------------------------------------------------------
-
 Cobra
 
 https://github.com/spf13/cobra
