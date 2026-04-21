@@ -8,12 +8,12 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/eknkc/basex v1.0.1
 	github.com/fatih/color v1.19.0
+	github.com/fsnotify/fsevents v0.2.0
 	github.com/google/uuid v1.6.0
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb
 	github.com/klauspost/compress v1.18.5
 	github.com/mattn/go-isatty v0.0.21
 	github.com/mutagen-io/extstat v0.0.0-20210224131814-32fa3f057fa8
-	github.com/mutagen-io/fsevents v0.0.0-20230629001834-f53e17b91ebc
 	github.com/mutagen-io/gopass v0.0.0-20230214181532-d4b7cdfe054c
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mutagen-io/fsevents"
+	"github.com/fsnotify/fsevents"
 )
 
 const (
@@ -111,7 +111,9 @@ func NewRecursiveWatcher(target string) (RecursiveWatcher, error) {
 		Latency: fseventsLatency,
 		Flags:   fseventsFlags,
 	}
-	watch.Start()
+	if err := watch.Start(); err != nil {
+		return nil, fmt.Errorf("unable to start FSEvents stream: %w", err)
+	}
 
 	// Create a context to regulate the watcher's run loop.
 	ctx, cancel := context.WithCancel(context.Background())
