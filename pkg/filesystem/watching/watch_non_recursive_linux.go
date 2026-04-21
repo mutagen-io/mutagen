@@ -7,8 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/golang/groupcache/lru"
-
+	"github.com/mutagen-io/mutagen/pkg/container/lru"
 	"github.com/mutagen-io/mutagen/pkg/filesystem/watching/internal/third_party/notify"
 )
 
@@ -31,7 +30,7 @@ type nonRecursiveWatcher struct {
 	// watch is the underlying inotify-based watcher.
 	watch notify.Watcher
 	// evictor performs LRU-based watch eviction.
-	evictor *lru.Cache
+	evictor *lru.Cache[string, int]
 	// events is the event delivery channel.
 	events chan string
 	// errors is the error delivery channel.
@@ -50,28 +49,26 @@ func NewNonRecursiveWatcher() (NonRecursiveWatcher, error) {
 	// Create a context to regulate the watcher's run loop.
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Create the watcher.
+	// Create the watcher. The LRU evictor ensures that we don't
+	// exceed the maximum number of inotify watches by unwatching the
+	// least recently used paths when the cache overflows.
 	watcher := &nonRecursiveWatcher{
-		watch:   notify.NewWatcher(rawEvents),
-		evictor: lru.New(inotifyDefaultMaximumWatches),
-		events:  make(chan string),
-		errors:  make(chan error, 1),
-		cancel:  cancel,
+		watch:  notify.NewWatcher(rawEvents),
+		events: make(chan string),
+		errors: make(chan error, 1),
+		cancel: cancel,
 	}
-
-	// Set the eviction handler.
-	watcher.evictor.OnEvicted = func(key lru.Key, _ any) {
-		if path, ok := key.(string); !ok {
-			panic("invalid key type in watch path cache")
-		} else {
+	watcher.evictor = lru.New[string, int](
+		inotifyDefaultMaximumWatches,
+		func(path string, _ int) {
 			if err := watcher.watch.Unwatch(path); err != nil {
 				select {
 				case watcher.errors <- fmt.Errorf("unwatch error: %w", err):
 				default:
 				}
 			}
-		}
-	}
+		},
+	)
 
 	// Track run loop termination.
 	watcher.done.Add(1)
