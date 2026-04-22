@@ -377,7 +377,9 @@ apimachinery
 
 https://github.com/kubernetes/apimachinery
 
-Forked and modified at https://github.com/mutagen-io/apimachinery.
+A subset of this library has been extracted, modified, and vendored inside
+Mutagen at https://github.com/mutagen-io/mutagen. Originally extracted from
+https://github.com/kubernetes/apimachinery/tree/f916759cb6b8547418dc7708876ecab5c1961448.
 
 Copyright 2014 The Kubernetes Authors.
 

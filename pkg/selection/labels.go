@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	k8slabels "k8s.io/apimachinery/pkg/labels"
-	k8svalidation "k8s.io/apimachinery/pkg/util/validation"
+	k8slabels "github.com/mutagen-io/mutagen/pkg/selection/internal/third_party/apimachinery/labels"
+	k8svalidation "github.com/mutagen-io/mutagen/pkg/selection/internal/third_party/apimachinery/util/validation"
 )
 
 // LabelSelector is a type that performs matching against a set of labels.
