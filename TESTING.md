@@ -134,12 +134,18 @@ These variables are set by the CI workflow to control test behavior:
 
 ### Change detection
 
-A lightweight "Detect Changes" preamble job determines which areas
-of the codebase changed in the PR:
+A lightweight "Detect Changes" preamble job runs
+`scripts/ci/detect_changes.sh` and emits final booleans for optional
+CI work:
 
-- **docker**: Files matching `docker` or `pkg/integration` changed.
-  Triggers Docker transport tests on Windows even in slim mode.
-- **sidecar**: Files matching `sidecar`, `images/`, or `Dockerfile`
-  changed. Triggers sidecar builds even in slim mode.
+- **`run_windows_docker`**: True in full CI, or when Docker
+  transport-related files change in slim CI. This currently includes
+  the workflow itself plus `pkg/docker`, `pkg/integration`,
+  `scripts/ci/docker`, `scripts/ci/setup_docker.sh`,
+  `scripts/ci/test.sh`, and `scripts/ci/test_parameters.sh`.
+- **`run_sidecar`**: True in full CI, or when sidecar image inputs
+  change in slim CI. This currently includes the workflow itself plus
+  `cmd/mutagen-sidecar`, `pkg/sidecar`, `images/sidecar`, and
+  `scripts/ci/sidecar_tag.go`.
 
 See `.github/workflows/ci.yml` for the full CI configuration.

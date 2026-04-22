@@ -51,44 +51,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      docker: ${{ steps.detect.outputs.docker }}
-      sidecar: ${{ steps.detect.outputs.sidecar }}
+      run_windows_docker: ${{ steps.detect.outputs.run_windows_docker }}
+      run_sidecar: ${{ steps.detect.outputs.run_sidecar }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - name: "Detect changed areas"
+      - name: "Plan optional CI work"
         id: detect
-        run: |
-          # Determine the base ref for comparison. For pull requests
-          # and merge queue, compare against the base branch. For
-          # pushes, compare against the previous commit.
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-          elif [[ "${{ github.event_name }}" == "merge_group" ]]; then
-            BASE="${{ github.event.merge_group.base_sha }}"
-          else
-            BASE="${{ github.event.before }}"
-          fi
-
-          # Get the list of changed files.
-          CHANGED=$(git diff --name-only "${BASE}..HEAD" 2>/dev/null || echo "")
-
-          # Detect Docker transport changes (pkg/docker, transport
-          # code, integration tests, CI Docker setup).
-          if echo "${CHANGED}" | grep -qiE 'docker|pkg/integration'; then
-            echo "docker=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "docker=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          # Detect sidecar-related changes (Dockerfile, sidecar
-          # package, CI build scripts).
-          if echo "${CHANGED}" | grep -qiE 'sidecar|images/|Dockerfile'; then
-            echo "sidecar=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "sidecar=false" >> "$GITHUB_OUTPUT"
-          fi
+        env:
+          MUTAGEN_CI_EVENT_NAME: ${{ github.event_name }}
+          MUTAGEN_CI_FULL: ${{ env.FULL_CI }}
+          MUTAGEN_CI_PULL_REQUEST_BASE_SHA: >-
+            ${{ github.event.pull_request.base.sha }}
+          MUTAGEN_CI_MERGE_GROUP_BASE_SHA: >-
+            ${{ github.event.merge_group.base_sha }}
+          MUTAGEN_CI_PUSH_BASE_SHA: ${{ github.event.before }}
+        run: scripts/ci/detect_changes.sh
   verification:
     name: Commit Verification
     runs-on: ubuntu-latest
@@ -187,7 +166,7 @@ jobs:
       - run: scripts/ci/setup_go.sh
         shell: bash
       - run: scripts/ci/setup_docker.sh
-        if: env.FULL_CI == 'true' || needs.changes.outputs.docker == 'true'
+        if: needs.changes.outputs.run_windows_docker == 'true'
         shell: bash
       - name: "Prepare Windows partition script"
         run: |
@@ -207,7 +186,10 @@ jobs:
         shell: bash
         env:
           MUTAGEN_CI_SKIP_RACE: ${{ env.FULL_CI != 'true' }}
-          MUTAGEN_CI_SKIP_DOCKER: ${{ env.FULL_CI != 'true' && needs.changes.outputs.docker != 'true' }}
+          MUTAGEN_CI_SKIP_DOCKER: >-
+            ${{
+              needs.changes.outputs.run_windows_docker != 'true'
+            }}
       - run: scripts/ci/test_386.sh
         shell: bash
       - run: scripts/ci/build.sh
@@ -215,15 +197,7 @@ jobs:
   sidecar:
     name: Sidecar
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'merge_group' ||
-      github.ref_type == 'tag' ||
-      github.event_name == 'workflow_dispatch' ||
-      needs.changes.outputs.sidecar == 'true' ||
-      (github.event_name == 'push' && (
-        github.ref == 'refs/heads/master' ||
-        startsWith(github.ref, 'refs/heads/release-branch-')
-      ))
+    if: needs.changes.outputs.run_sidecar == 'true'
     needs: [changes, macos, linux, windows]
     timeout-minutes: 30
     steps:
