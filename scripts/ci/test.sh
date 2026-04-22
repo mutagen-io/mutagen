@@ -6,6 +6,14 @@ set -e
 # Load test parameters.
 source scripts/ci/test_parameters.sh
 
+# Allow CI to skip Docker transport tests (e.g., in slim mode on
+# Windows when Docker-related files haven't changed).
+if [[ "${MUTAGEN_CI_SKIP_DOCKER}" == "true" ]]; then
+    export MUTAGEN_TEST_DOCKER="false"
+    unset MUTAGEN_TEST_DOCKER_CONTAINER_NAME
+    unset MUTAGEN_TEST_DOCKER_USERNAME
+fi
+
 # Perform a local build so that we have an agent bundle for integration tests.
 if [[ "${MUTAGEN_TEST_ENABLE_SSPL}" == "true" ]]; then
     go run scripts/build.go --mode=local --sspl
@@ -20,12 +28,17 @@ else
     go test -p 1 -v -coverpkg=./pkg/... -coverprofile=coverage.txt ./pkg/...
 fi
 
-# Run tests with the race detector enabled. We use a slim end-to-end test since
-# the race detector significantly increases the execution time.
-if [[ "${MUTAGEN_TEST_ENABLE_SSPL}" == "true" ]]; then
-    MUTAGEN_TEST_END_TO_END="slim" go test -tags mutagensspl -p 1 -race ./pkg/...
-else
-    MUTAGEN_TEST_END_TO_END="slim" go test -p 1 -race ./pkg/...
+# Run tests with the race detector enabled. We use a slim end-to-end
+# test since the race detector significantly increases the execution
+# time. This step can be skipped in slim CI on platforms where race
+# detection adds significant overhead (macOS, Windows), since Linux
+# CI already provides race detection coverage.
+if [[ "${MUTAGEN_CI_SKIP_RACE}" != "true" ]]; then
+    if [[ "${MUTAGEN_TEST_ENABLE_SSPL}" == "true" ]]; then
+        MUTAGEN_TEST_END_TO_END="slim" go test -tags mutagensspl -p 1 -race ./pkg/...
+    else
+        MUTAGEN_TEST_END_TO_END="slim" go test -p 1 -race ./pkg/...
+    fi
 fi
 
 # Run tests on SSPL code. We perform this test on all platforms, regardless of

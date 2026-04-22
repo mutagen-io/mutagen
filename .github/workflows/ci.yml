@@ -2,7 +2,7 @@
 name: CI
 
 # Execute the workflow on pushes to primary/release branches, version
-# tag pushes, pull requests, and manual dispatch.
+# tag pushes, pull requests, merge queue, and manual dispatch.
 on:
   push:
     branches:
@@ -11,6 +11,7 @@ on:
     tags:
       - 'v*'
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 # Restrict default token permissions. Jobs that need write access
@@ -24,8 +25,49 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
+# Determine whether this is a "full" CI run (release builds, code
+# signing, sidecar images, artifact upload) or a "slim" run (analysis,
+# tests, and slim builds only). Full CI runs on merge queue, tags,
+# master/release pushes, and manual dispatch. PR CI is slim.
+env:
+  FULL_CI: >-
+    ${{
+      github.event_name == 'merge_group' ||
+      github.ref_type == 'tag' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (
+        github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/heads/release-branch-')
+      ))
+    }}
+
 # Define the workflow jobs.
 jobs:
+  # Detect which areas of the codebase have changed. This is used to
+  # conditionally run expensive steps (Docker transport tests, sidecar
+  # builds) in slim CI when their relevant files change.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run_windows_docker: ${{ steps.detect.outputs.run_windows_docker }}
+      run_sidecar: ${{ steps.detect.outputs.run_sidecar }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: "Plan optional CI work"
+        id: detect
+        env:
+          MUTAGEN_CI_EVENT_NAME: ${{ github.event_name }}
+          MUTAGEN_CI_FULL: ${{ env.FULL_CI }}
+          MUTAGEN_CI_PULL_REQUEST_BASE_SHA: >-
+            ${{ github.event.pull_request.base.sha }}
+          MUTAGEN_CI_MERGE_GROUP_BASE_SHA: >-
+            ${{ github.event.merge_group.base_sha }}
+          MUTAGEN_CI_PUSH_BASE_SHA: ${{ github.event.before }}
+        run: scripts/ci/detect_changes.sh
   verification:
     name: Commit Verification
     runs-on: ubuntu-latest
@@ -59,8 +101,11 @@ jobs:
       - run: scripts/ci/setup_partitions_darwin.sh
       - run: scripts/ci/analyze.sh
       - run: scripts/ci/test.sh
+        env:
+          MUTAGEN_CI_SKIP_RACE: ${{ env.FULL_CI != 'true' }}
       - run: scripts/ci/build.sh
         env:
+          MUTAGEN_CI_FULL_BUILD: ${{ env.FULL_CI }}
           MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
           MACOS_CODESIGN_CERTIFICATE_AND_KEY: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY }}
           MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD: ${{ secrets.MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD }}
@@ -71,6 +116,7 @@ jobs:
           MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD: ${{ secrets.MACOS_NOTARIZE_APP_SPECIFIC_PASSWORD }}
           MACOS_NOTARIZE_TEAM_ID: ${{ secrets.MACOS_NOTARIZE_TEAM_ID }}
       - run: scripts/ci/sha256sum.sh
+        if: env.FULL_CI == 'true'
       - uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         id: import_gpg
         if: github.ref_type == 'tag'
@@ -110,6 +156,7 @@ jobs:
   windows:
     name: Windows
     runs-on: windows-latest
+    needs: [changes]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -119,6 +166,7 @@ jobs:
       - run: scripts/ci/setup_go.sh
         shell: bash
       - run: scripts/ci/setup_docker.sh
+        if: needs.changes.outputs.run_windows_docker == 'true'
         shell: bash
       - name: "Prepare Windows partition script"
         run: |
@@ -136,6 +184,12 @@ jobs:
         shell: bash
       - run: scripts/ci/test.sh
         shell: bash
+        env:
+          MUTAGEN_CI_SKIP_RACE: ${{ env.FULL_CI != 'true' }}
+          MUTAGEN_CI_SKIP_DOCKER: >-
+            ${{
+              needs.changes.outputs.run_windows_docker != 'true'
+            }}
       - run: scripts/ci/test_386.sh
         shell: bash
       - run: scripts/ci/build.sh
@@ -143,7 +197,8 @@ jobs:
   sidecar:
     name: Sidecar
     runs-on: ubuntu-latest
-    needs: [macos, linux, windows]
+    if: needs.changes.outputs.run_sidecar == 'true'
+    needs: [changes, macos, linux, windows]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
