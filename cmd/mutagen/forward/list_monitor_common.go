@@ -30,6 +30,15 @@ func printEndpoint(name string, url *url.URL, configuration *forwarding.Configur
 	// Print the URL.
 	fmt.Println("\tURL:", terminal.NeutralizeControlCharacters(url.Format("\n\t\t")))
 
+	// Print parameters, if any.
+	if len(url.Parameters) > 0 {
+		fmt.Println("\tParameters:")
+		keys := selection.ExtractAndSortLabelKeys(url.Parameters)
+		for _, key := range keys {
+			fmt.Printf("\t\t%s: %s\n", key, terminal.NeutralizeControlCharacters(url.Parameters[key]))
+		}
+	}
+
 	// Print configuration information if desired.
 	if mode == common.SessionDisplayModeListLong || mode == common.SessionDisplayModeMonitorLong {
 		// Print configuration header.

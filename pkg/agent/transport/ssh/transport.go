@@ -49,15 +49,18 @@ type sshTransport struct {
 	port uint16
 	// prompter is the prompter identifier to use for prompting.
 	prompter string
+	// configPath is the path to the SSH config file to use, if specified.
+	configPath string
 }
 
 // NewTransport creates a new SSH transport using the specified parameters.
-func NewTransport(user, host string, port uint16, prompter string) (agent.Transport, error) {
+func NewTransport(user, host string, port uint16, prompter, configPath string) (agent.Transport, error) {
 	return &sshTransport{
-		user:     user,
-		host:     host,
-		port:     port,
-		prompter: prompter,
+		user:       user,
+		host:       host,
+		port:       port,
+		prompter:   prompter,
+		configPath: configPath,
 	}, nil
 }
 
@@ -95,6 +98,7 @@ func (t *sshTransport) Copy(localPath, remoteName string) error {
 
 	// Set up arguments.
 	var scpArguments []string
+	scpArguments = append(scpArguments, ssh.ConfigFlags(t.configPath)...)
 	scpArguments = append(scpArguments, ssh.CompressionFlag())
 	scpArguments = append(scpArguments, ssh.ConnectTimeoutFlag(connectTimeoutSeconds))
 	scpArguments = append(scpArguments, ssh.ServerAliveFlags(serverAliveIntervalSeconds, serverAliveCountMax)...)
@@ -155,6 +159,7 @@ func (t *sshTransport) Command(command string) (*exec.Cmd, error) {
 	// more efficient to compress at that layer, even with the slower Go
 	// implementation.
 	var sshArguments []string
+	sshArguments = append(sshArguments, ssh.ConfigFlags(t.configPath)...)
 	sshArguments = append(sshArguments, ssh.ConnectTimeoutFlag(connectTimeoutSeconds))
 	sshArguments = append(sshArguments, ssh.ServerAliveFlags(serverAliveIntervalSeconds, serverAliveCountMax)...)
 	if t.port != 0 {

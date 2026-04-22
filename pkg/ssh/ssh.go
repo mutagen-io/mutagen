@@ -49,6 +49,15 @@ func ServerAliveFlags(interval, countMax int) []string {
 	}
 }
 
+// ConfigFlags returns flags that can be passed to scp or ssh to specify a
+// custom SSH config file. Returns an empty slice if configPath is empty.
+func ConfigFlags(configPath string) []string {
+	if configPath == "" {
+		return nil
+	}
+	return []string{"-F", configPath}
+}
+
 // sshCommandPath returns the full path to use for invoking ssh. It will use the
 // MUTAGEN_SSH_PATH environment variable if provided, otherwise falling back to
 // a platform-specific implementation.

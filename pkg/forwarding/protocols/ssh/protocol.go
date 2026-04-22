@@ -51,8 +51,14 @@ func (p *protocolHandler) Connect(
 		return nil, fmt.Errorf("unable to parse target specification: %w", err)
 	}
 
+	// Extract SSH config path from URL parameters if present.
+	var sshConfigPath string
+	if url.Parameters != nil {
+		sshConfigPath = url.Parameters["ssh-config-path"]
+	}
+
 	// Create an SSH agent transport.
-	transport, err := ssh.NewTransport(url.User, url.Host, uint16(url.Port), prompter)
+	transport, err := ssh.NewTransport(url.User, url.Host, uint16(url.Port), prompter, sshConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create SSH transport: %w", err)
 	}

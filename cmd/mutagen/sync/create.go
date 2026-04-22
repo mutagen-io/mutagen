@@ -109,6 +109,31 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		return fmt.Errorf("unable to parse beta URL: %w", err)
 	}
 
+	if alpha.Protocol == url.Protocol_SSH {
+		sshConfigPath := os.Getenv("MUTAGEN_SSH_CONFIG_ALPHA")
+		if sshConfigPath == "" {
+			sshConfigPath = os.Getenv("MUTAGEN_SSH_CONFIG")
+		}
+		if sshConfigPath != "" {
+			if alpha.Parameters == nil {
+				alpha.Parameters = make(map[string]string)
+			}
+			alpha.Parameters["ssh-config-path"] = sshConfigPath
+		}
+	}
+	if beta.Protocol == url.Protocol_SSH {
+		sshConfigPath := os.Getenv("MUTAGEN_SSH_CONFIG_BETA")
+		if sshConfigPath == "" {
+			sshConfigPath = os.Getenv("MUTAGEN_SSH_CONFIG")
+		}
+		if sshConfigPath != "" {
+			if beta.Parameters == nil {
+				beta.Parameters = make(map[string]string)
+			}
+			beta.Parameters["ssh-config-path"] = sshConfigPath
+		}
+	}
+
 	// Validate the name.
 	if err := selection.EnsureNameValid(createConfiguration.name); err != nil {
 		return fmt.Errorf("invalid session name: %w", err)
