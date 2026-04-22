@@ -6,29 +6,34 @@ set -e
 # Determine the operating system.
 MUTAGEN_OS_NAME="$(go env GOOS)"
 
-# Perform a build that's appropriate for the platform.
-if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
-    # Check if code signing is possible. If so, then set up the keychain and
-    # certificates that we'll need and perform a signed build. If not, then just
-    # perform a normal build.
+# Perform a build that's appropriate for the platform. On macOS, full
+# CI runs perform a complete release cross-compilation (with optional
+# code signing), while slim CI runs use the default slim build mode.
+# On other platforms, slim builds are always used.
+if [[ "${MUTAGEN_OS_NAME}" == "darwin" && "${MUTAGEN_CI_FULL_BUILD}" == "true" ]]; then
+    # Check if code signing is possible. If so, then set up the
+    # keychain and certificates that we'll need and perform a signed
+    # build. If not, then just perform a normal build.
     if [[ ! -z "${MACOS_CODESIGN_IDENTITY}" ]]; then
-        # Compute the path and password for a temporary keychain where we'll import
-        # the macOS code signing certificate and private key.
+        # Compute the path and password for a temporary keychain
+        # where we'll import the macOS code signing certificate and
+        # private key.
         MUTAGEN_KEYCHAIN_PATH="${RUNNER_TEMP}/mutagen.keychain-db"
         MUTAGEN_KEYCHAIN_PASSWORD="$(dd if=/dev/random bs=1024 count=1 2>/dev/null | openssl dgst -sha256)"
 
         # Store the previous default keychain.
         PREVIOUS_DEFAULT_KEYCHAIN="$(security default-keychain | xargs)"
 
-        # Create the temporary keychain, set it to be the default keychain, set it
-        # to automatically re-lock (just in case removal fails), and unlock it.
+        # Create the temporary keychain, set it to be the default
+        # keychain, set it to automatically re-lock (just in case
+        # removal fails), and unlock it.
         security create-keychain -p "${MUTAGEN_KEYCHAIN_PASSWORD}" "${MUTAGEN_KEYCHAIN_PATH}"
         security default-keychain -s "${MUTAGEN_KEYCHAIN_PATH}"
         security set-keychain-settings -lut 3600 "${MUTAGEN_KEYCHAIN_PATH}"
         security unlock-keychain -p "${MUTAGEN_KEYCHAIN_PASSWORD}" "${MUTAGEN_KEYCHAIN_PATH}"
 
-        # Import the macOS code signing certificate and private key and allow access
-        # from the codesign utility.
+        # Import the macOS code signing certificate and private key
+        # and allow access from the codesign utility.
         MUTAGEN_CERTIFICATE_AND_KEY_PATH="${RUNNER_TEMP}/certificate_and_key.p12"
         echo -n "${MACOS_CODESIGN_CERTIFICATE_AND_KEY}" | base64 --decode --output "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}"
         security import "${MUTAGEN_CERTIFICATE_AND_KEY_PATH}" -k "${MUTAGEN_KEYCHAIN_PATH}" -P "${MACOS_CODESIGN_CERTIFICATE_AND_KEY_PASSWORD}" -T "/usr/bin/codesign"
@@ -39,12 +44,13 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
         # SSPL-licensed extensions by default.
         go run scripts/build.go --mode=release --sspl --macos-codesign-identity="${MACOS_CODESIGN_IDENTITY}"
 
-        # Reset the default keychain and remove the temporary keychain.
+        # Reset the default keychain and remove the temporary
+        # keychain.
         security default-keychain -s "${PREVIOUS_DEFAULT_KEYCHAIN}"
         security delete-keychain "${MUTAGEN_KEYCHAIN_PATH}"
     else
-        # Perform a full release build without code signing. We enable
-        # SSPL-licensed extensions by default.
+        # Perform a full release build without code signing. We
+        # enable SSPL-licensed extensions by default.
         go run scripts/build.go --mode=release --sspl
     fi
 
@@ -66,7 +72,8 @@ if [[ "${MUTAGEN_OS_NAME}" == "darwin" ]]; then
     zip "build/release/mutagen_windows_arm64_v${MUTAGEN_VERSION}.zip" mutagen.exe mutagen-agents.tar.gz
     rm mutagen.exe mutagen-agents.tar.gz
 else
-    # Perform a slim build. We enable SSPL-licensed extensions by default.
+    # Perform a slim build. We enable SSPL-licensed extensions by
+    # default.
     go run scripts/build.go --mode=slim --sspl
 fi
 

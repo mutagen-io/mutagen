@@ -8,8 +8,10 @@ follow the code and update this file.
 
 - `README.md` provides the public project overview.
 - `BUILDING.md` describes the build flow and protobuf regeneration.
-- `CONTRIBUTING.md` defines coding style, testing expectations, DCO
-  requirements, and commit message guidelines.
+- `TESTING.md` describes the test infrastructure, environment
+  variables, platform-specific behavior, and CI pipeline modes.
+- `CONTRIBUTING.md` defines coding style, DCO requirements, and
+  commit message guidelines.
 - `SECURITY.md` defines the security reporting process.
 - `scripts/build.go` is the source of truth for build modes and the
   main platform matrix.
@@ -86,12 +88,8 @@ follow the code and update this file.
 - Sidecar binaries and images are built via `cmd/mutagen-sidecar`,
   `scripts/ci/build.sh`, and `images/sidecar/linux/Dockerfile`.
 - Run package tests sequentially with `go test -p 1 ./pkg/...`.
-- In sandboxes or other restricted environments, set
-  `MUTAGEN_DATA_DIRECTORY` to a writable absolute path before
-  running tests. Development builds default to `~/.mutagen-dev`;
-  release builds use `~/.mutagen`.
-- Run `go test -v -tags mutagensspl ./sspl/...` when touching
-  SSPL code.
+  See `TESTING.md` for full details on test environment variables,
+  platform-specific behavior, and CI modes.
 
 ## Generated Code And Dependencies
 
