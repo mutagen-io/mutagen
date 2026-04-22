@@ -100,8 +100,8 @@ follow the code and update this file.
   `.proto` files.
 - Keep `pkg/generate.go` intact. Its `//go:build generate`
   constraint and ghost imports are part of the generation workflow.
-- The `k8s.io/apimachinery` replace directive in `go.mod` is
-  intentional.
+- `pkg/selection/internal/third_party/apimachinery` contains the
+  vendored Kubernetes label-selection subset used by `pkg/selection`.
 
 ## Dependency License Compliance
 
