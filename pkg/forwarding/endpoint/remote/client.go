@@ -11,6 +11,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/multiplexing"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // client is a client for a remote forwarding.Endpoint and implements
@@ -52,7 +53,7 @@ func NewEndpoint(
 	var initializationSuccessful bool
 	defer func() {
 		if !initializationSuccessful {
-			carrier.Close()
+			must.Close(carrier, logger)
 		}
 	}()
 
@@ -83,7 +84,7 @@ func NewEndpoint(
 	initializationSuccessful = true
 
 	// Multiplex the carrier.
-	multiplexer := multiplexing.Multiplex(carrier, false, nil)
+	multiplexer := multiplexing.Multiplex(carrier, false, nil, logger)
 
 	// Create a channel to monitor for transport errors and a Goroutine to
 	// populate it.

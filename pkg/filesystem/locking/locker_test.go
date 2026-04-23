@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
 )
 
@@ -31,6 +33,8 @@ func TestLockerFailOnDirectory(t *testing.T) {
 
 // TestLockerCycle tests the lifecycle of a Locker.
 func TestLockerCycle(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a temporary file and defer its removal.
 	lockfile, err := os.CreateTemp("", "mutagen_filesystem_lock")
 	if err != nil {
@@ -38,7 +42,7 @@ func TestLockerCycle(t *testing.T) {
 	} else if err = lockfile.Close(); err != nil {
 		t.Error("unable to close temporary lock file:", err)
 	}
-	defer os.Remove(lockfile.Name())
+	defer must.OSRemove(lockfile.Name(), logger)
 
 	// Create a locker.
 	locker, err := NewLocker(lockfile.Name(), 0600)
@@ -70,6 +74,8 @@ func TestLockerCycle(t *testing.T) {
 // TestLockDuplicateFail tests that an additional attempt to acquire a lock by a
 // separate process will fail.
 func TestLockDuplicateFail(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Compute the path to the Mutagen source tree.
 	mutagenSourcePath, err := mutagen.SourceTreePath()
 	if err != nil {
@@ -83,7 +89,7 @@ func TestLockDuplicateFail(t *testing.T) {
 	} else if err = lockfile.Close(); err != nil {
 		t.Error("unable to close temporary lock file:", err)
 	}
-	defer os.Remove(lockfile.Name())
+	defer must.OSRemove(lockfile.Name(), logger)
 
 	// Create a locker for the file, acquire the lock, and defer the release of
 	// the lock and closure of the locker.
@@ -94,8 +100,8 @@ func TestLockDuplicateFail(t *testing.T) {
 		t.Fatal("unable to acquire lock:", err)
 	}
 	defer func() {
-		locker.Unlock()
-		locker.Close()
+		must.Unlock(locker, logger)
+		must.Close(locker, logger)
 	}()
 
 	// Attempt to run the test executable and ensure that it fails with the

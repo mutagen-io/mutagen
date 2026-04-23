@@ -41,6 +41,10 @@ func connect(
 	configuration *Configuration,
 	source bool,
 ) (Endpoint, error) {
+
+	// Added trace to bypass "unused parameter `session` warning
+	logger.Tracef("Connecting to %s for session %s", url.String(), session)
+
 	// Local the appropriate protocol handler.
 	handler, ok := ProtocolHandlers[url.Protocol]
 	if !ok {

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 // directory at the specified path resides decomposes Unicode filenames. The
 // second value returned by this function indicates whether or not probe files
 // were used in determining behavior.
-func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, error) {
+func DecomposesUnicodeByPath(path string, probeMode ProbeMode, logger *logging.Logger) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
 		return assumeUnicodeDecomposition, false, nil
@@ -41,9 +43,9 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 	// Create and close a temporary file using the composed filename.
 	file, err := os.CreateTemp(path, composedFileNamePrefix)
 	if err != nil {
-		return false, true, fmt.Errorf("unable to create test file: %w", err)
+		return false, true, fmt.Errorf("unable to create test file '%s/%s': %w", path, composedFileNamePrefix, err)
 	} else if err = file.Close(); err != nil {
-		return false, true, fmt.Errorf("unable to close test file: %w", err)
+		return false, true, fmt.Errorf("unable to close test file '%s/%s': %w", path, composedFileNamePrefix, err)
 	}
 
 	// Grab the file's name. This is calculated from the parameters passed to
@@ -61,7 +63,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 	// also normalization-insensitive, we try both compositions.
 	defer func() {
 		if os.Remove(filepath.Join(path, composedFilename)) != nil {
-			os.Remove(filepath.Join(path, decomposedFilename))
+			must.OSRemove(filepath.Join(path, decomposedFilename), logger)
 		}
 	}()
 
@@ -90,7 +92,7 @@ func DecomposesUnicodeByPath(path string, probeMode ProbeMode) (bool, bool, erro
 // underlying filesystem) decomposes Unicode filenames. The second value
 // returned by this function indicates whether or not probe files were used in
 // determining behavior.
-func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bool, bool, error) {
+func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode, logger *logging.Logger) (bool, bool, error) {
 	// Check the filesystem probing mode and see if we can return an assumption.
 	if probeMode == ProbeMode_ProbeModeAssume {
 		return assumeUnicodeDecomposition, false, nil
@@ -108,9 +110,9 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// Create and close a temporary file using the composed filename.
 	composedName, file, err := directory.CreateTemporaryFile(composedFileNamePrefix)
 	if err != nil {
-		return false, true, fmt.Errorf("unable to create test file: %w", err)
+		return false, true, fmt.Errorf("unable to create test file '%s': %w", composedName, err)
 	} else if err = file.Close(); err != nil {
-		return false, true, fmt.Errorf("unable to close test file: %w", err)
+		return false, true, fmt.Errorf("unable to close test file '%s': %w", composedName, err)
 	}
 
 	// The name returned from CreateTemporaryFile is calculated from the
@@ -127,7 +129,7 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// also normalization-insensitive, we try both compositions.
 	defer func() {
 		if directory.RemoveFile(composedName) != nil {
-			directory.RemoveFile(decomposedName)
+			must.RemoveFile(directory, decomposedName, logger)
 		}
 	}()
 
@@ -146,11 +148,11 @@ func DecomposesUnicode(directory *filesystem.Directory, probeMode ProbeMode) (bo
 	// hit a fast path above anyway.
 	directoryForContentRead := directory
 	if runtime.GOOS == "linux" {
-		directoryForContentRead, err = directory.OpenDirectory(".")
+		directoryForContentRead, err = directory.OpenDirectory(".", logger)
 		if err != nil {
 			return false, true, fmt.Errorf("unable to re-open directory: %w", err)
 		}
-		defer directoryForContentRead.Close()
+		defer must.Close(directoryForContentRead, logger)
 	}
 
 	// Grab the content names in the directory.

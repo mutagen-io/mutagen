@@ -8,8 +8,11 @@ import (
 	"os/user"
 
 	"github.com/google/uuid"
+	"github.com/mutagen-io/mutagen/pkg/logging"
 
 	"github.com/Microsoft/go-winio"
+
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // DialContext attempts to establish an IPC connection, timing out if the
@@ -33,13 +36,15 @@ type listener struct {
 	net.Listener
 	// path is the path to the file where the named pipe name is stored.
 	path string
+
+	logger *logging.Logger
 }
 
 // Close closes the listener and removes the pipe name record.
 func (l *listener) Close() error {
 	// Remove the pipe name record.
 	if err := os.Remove(l.path); err != nil {
-		l.Listener.Close()
+		must.Close(l.Listener, l.logger)
 		return fmt.Errorf("unable to remove pipe name record: %w", err)
 	}
 
@@ -48,7 +53,7 @@ func (l *listener) Close() error {
 }
 
 // NewListener creates a new IPC listener.
-func NewListener(path string) (net.Listener, error) {
+func NewListener(path string, logger *logging.Logger) (net.Listener, error) {
 	// Create a unique pipe name.
 	randomUUID, err := uuid.NewRandom()
 	if err != nil {
@@ -96,9 +101,9 @@ func NewListener(path string) (net.Listener, error) {
 	// the event of failure.
 	var successful bool
 	defer func() {
-		file.Close()
+		must.Close(file, logger)
 		if !successful {
-			os.Remove(path)
+			must.OSRemove(path, logger)
 		}
 	}()
 
@@ -119,5 +124,9 @@ func NewListener(path string) (net.Listener, error) {
 	successful = true
 
 	// Success.
-	return &listener{rawListener, path}, nil
+	return &listener{
+		Listener: rawListener,
+		path:     path,
+		logger:   logger,
+	}, nil
 }

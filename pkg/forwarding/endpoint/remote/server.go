@@ -12,6 +12,7 @@ import (
 	"github.com/mutagen-io/mutagen/pkg/forwarding/endpoint/local"
 	"github.com/mutagen-io/mutagen/pkg/logging"
 	"github.com/mutagen-io/mutagen/pkg/multiplexing"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // initializeEndpoint initializes the underlying endpoint based on the provided
@@ -64,7 +65,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	var initializationError error
 	defer func() {
 		if initializationError != nil {
-			carrier.Close()
+			must.Close(carrier, logger)
 		}
 	}()
 
@@ -96,8 +97,8 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	}
 
 	// Multiplex the carrier and defer closure of the multiplexer.
-	multiplexer := multiplexing.Multiplex(carrier, true, nil)
-	defer multiplexer.Close()
+	multiplexer := multiplexing.Multiplex(carrier, true, nil, logger)
+	defer must.Close(multiplexer, logger)
 
 	// Start a Goroutine couple the lifetime of the underlying endpoint to the
 	// lifetime of the multiplexer. This will cause the underlying endpoint to
@@ -106,7 +107,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	// important for preempting local accept operations.
 	go func() {
 		<-multiplexer.Closed()
-		underlying.Shutdown()
+		must.Shutdown(underlying, logger)
 	}()
 
 	// Receive and forward connections indefinitely.
@@ -134,17 +135,17 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 		if request.Listener {
 			outgoing, err = multiplexer.OpenStream(context.Background())
 			if err != nil {
-				incoming.Close()
+				must.Close(incoming, logger)
 				return fmt.Errorf("multiplexer failure: %w", err)
 			}
 		} else {
 			if outgoing, err = underlying.Open(); err != nil {
-				incoming.Close()
+				must.Close(incoming, logger)
 				continue
 			}
 		}
 
 		// Perform forwarding.
-		go forwarding.ForwardAndClose(context.Background(), incoming, outgoing, nil, nil)
+		go forwarding.ForwardAndClose(context.Background(), incoming, outgoing, nil, nil, logger)
 	}
 }

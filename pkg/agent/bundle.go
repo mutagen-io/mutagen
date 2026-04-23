@@ -10,6 +10,8 @@ import (
 	"runtime"
 
 	"github.com/klauspost/compress/gzip"
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 	"github.com/mutagen-io/mutagen/pkg/mutagen"
@@ -51,7 +53,7 @@ var ExpectedBundleLocation BundleLocation
 // and will have the executability bit set if it makes sense. The path to the
 // extracted file will be returned, and the caller is responsible for cleaning
 // up the file if this function returns a nil error.
-func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
+func ExecutableForPlatform(goos, goarch, outputPath string, logger *logging.Logger) (string, error) {
 	// Compute the path to the location in which we expect to find the agent
 	// bundle.
 	var bundleSearchPaths []string
@@ -89,26 +91,27 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 			}
 			return "", fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
 		} else if metadata, err := file.Stat(); err != nil {
-			file.Close()
+			must.Close(file, logger)
 			return "", fmt.Errorf("unable to access agent bundle (%s) file metadata: %w", bundlePath, err)
 		} else if metadata.Mode()&os.ModeType != 0 {
-			file.Close()
+			must.Close(file, logger)
 			return "", fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
 		} else {
 			bundle = file
-			defer bundle.Close()
+			break
 		}
 	}
 	if bundle == nil {
 		return "", fmt.Errorf("unable to locate agent bundle (search paths: %v)", bundleSearchPaths)
 	}
+	defer must.Close(bundle, logger)
 
 	// Create a decompressor and defer its closure.
 	bundleDecompressor, err := gzip.NewReader(bundle)
 	if err != nil {
 		return "", fmt.Errorf("unable to decompress agent bundle: %w", err)
 	}
-	defer bundleDecompressor.Close()
+	defer must.Close(bundleDecompressor, logger)
 
 	// Create an archive reader.
 	bundleArchive := tar.NewReader(bundleDecompressor)
@@ -146,8 +149,8 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 
 	// Copy data into the file.
 	if _, err := io.CopyN(file, bundleArchive, header.Size); err != nil {
-		file.Close()
-		os.Remove(file.Name())
+		must.Close(file, logger)
+		must.OSRemove(file.Name(), logger)
 		return "", fmt.Errorf("unable to copy agent data: %w", err)
 	}
 
@@ -159,15 +162,15 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	// to use on Windows in any scenario (where executability bits don't exist).
 	if runtime.GOOS != "windows" && goos != "windows" {
 		if err := file.Chmod(0700); err != nil {
-			file.Close()
-			os.Remove(file.Name())
+			must.Close(file, logger)
+			must.OSRemove(file.Name(), logger)
 			return "", fmt.Errorf("unable to make agent executable: %w", err)
 		}
 	}
 
 	// Close the file.
 	if err := file.Close(); err != nil {
-		os.Remove(file.Name())
+		must.OSRemove(file.Name(), logger)
 		return "", fmt.Errorf("unable to close temporary file: %w", err)
 	}
 

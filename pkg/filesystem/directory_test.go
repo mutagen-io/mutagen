@@ -1,11 +1,15 @@
 package filesystem
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // TestPathSeparatorSingleByte verifies that the platform path separator rune is
@@ -19,11 +23,13 @@ func TestPathSeparatorSingleByte(t *testing.T) {
 
 func TestDirectoryContentsNotExist(t *testing.T) {
 	if _, err := DirectoryContentsByPath("/does/not/exist"); err == nil {
-		t.Error("directory listing succeedeed for non-existent path")
+		t.Error("directory listing succeeded for non-existent path")
 	}
 }
 
 func TestDirectoryContentsFile(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create an empty temporary file and defer its cleanup.
 	file, err := os.CreateTemp("", "mutagen_filesystem")
 	if err != nil {
@@ -31,11 +37,11 @@ func TestDirectoryContentsFile(t *testing.T) {
 	} else if err = file.Close(); err != nil {
 		t.Error("unable to close temporary file:", err)
 	}
-	defer os.Remove(file.Name())
+	defer must.OSRemove(file.Name(), logger)
 
 	// Ensure that directory listing fails.
 	if _, err := DirectoryContentsByPath(file.Name()); err == nil {
-		t.Error("directory listing succeedeed for non-directory path")
+		t.Error("directory listing succeeded for non-directory path")
 	}
 }
 
@@ -50,13 +56,15 @@ func TestDirectoryContentsGOROOT(t *testing.T) {
 // TestNonEmptyDirectoryRemovalFailure tests that removal of a non-empty
 // directory results in failure.
 func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a handle for a temporary directory (that will be removed
 	// automatically) and defer its closure.
-	directory, _, err := OpenDirectory(t.TempDir(), false)
+	directory, _, err := OpenDirectory(t.TempDir(), false, logger)
 	if err != nil {
 		t.Fatal("unable to open directory handle:", err)
 	}
-	defer directory.Close()
+	defer must.Close(directory, logger)
 
 	// Create a directory that will serve as our target.
 	if err := directory.CreateDirectory("target"); err != nil {
@@ -64,10 +72,10 @@ func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
 	}
 
 	// Create content inside the directory.
-	if target, err := directory.OpenDirectory("target"); err != nil {
+	if target, err := directory.OpenDirectory("target", logger); err != nil {
 		t.Fatal("unable to open target directory:", err)
 	} else if err = target.CreateDirectory("content"); err != nil {
-		target.Close()
+		must.Close(target, logger)
 		t.Fatal("unable to create content in target directory:", err)
 	} else if err = target.Close(); err != nil {
 		t.Fatal("unable to close target directory:", err)
@@ -82,15 +90,17 @@ func TestNonEmptyDirectoryRemovalFailure(t *testing.T) {
 // TestDirectorySymbolicLinkRemoval tests that removal of symbolic links that
 // point to directories works as expected.
 func TestDirectorySymbolicLinkRemoval(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a temporary directory (that will be automatically removed).
 	temporaryDirectoryPath := t.TempDir()
 
 	// Create a handle for the temporary directory and defer its closure.
-	directory, _, err := OpenDirectory(temporaryDirectoryPath, false)
+	directory, _, err := OpenDirectory(temporaryDirectoryPath, false, logger)
 	if err != nil {
 		t.Fatal("unable to open directory handle:", err)
 	}
-	defer directory.Close()
+	defer must.Close(directory, logger)
 
 	// Create a directory that will serve as our target.
 	if err := directory.CreateDirectory("target"); err != nil {
@@ -98,11 +108,11 @@ func TestDirectorySymbolicLinkRemoval(t *testing.T) {
 	}
 
 	// Open the target directory and defer its closure.
-	target, err := directory.OpenDirectory("target")
+	target, err := directory.OpenDirectory("target", logger)
 	if err != nil {
 		t.Fatal("unable to open target directory:", err)
 	}
-	defer target.Close()
+	defer must.Close(target, logger)
 
 	// Create content within the target.
 	if err := target.CreateDirectory("content"); err != nil {

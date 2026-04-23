@@ -1,16 +1,22 @@
 package filesystem
 
 import (
+	"bytes"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/mutagen-io/mutagen/pkg/logging"
+	"github.com/mutagen-io/mutagen/pkg/must"
 )
 
 // TestDirectoryLongPaths tests a variety of Directory operations on directory
 // and file names that exceed the default Windows path length limit.
 func TestDirectoryLongPaths(t *testing.T) {
+	logger := logging.NewLogger(logging.LevelError, &bytes.Buffer{})
+
 	// Create a temporary directory (that will be automatically removed).
 	temporaryDirectoryPath := t.TempDir()
 
@@ -28,14 +34,14 @@ func TestDirectoryLongPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal("unable to create test file with long name:", err)
 	}
-	file.Close()
+	must.Close(file, logger)
 
 	// Open the temporary directory for access and defer its closure.
-	closer, _, err := Open(temporaryDirectoryPath, false)
+	closer, _, err := Open(temporaryDirectoryPath, false, logger)
 	if err != nil {
 		t.Fatal("unable to open directory:", err)
 	}
-	defer closer.Close()
+	defer must.Close(closer, logger)
 
 	// Extract the directory object.
 	var directory *Directory
@@ -46,17 +52,17 @@ func TestDirectoryLongPaths(t *testing.T) {
 	}
 
 	// Access the internal directory and ensure that doing so succeeds.
-	if d, err := directory.OpenDirectory(longDirectoryName); err != nil {
+	if d, err := directory.OpenDirectory(longDirectoryName, logger); err != nil {
 		t.Error("unable to open directory with long name:", err)
 	} else {
-		d.Close()
+		must.Close(d, logger)
 	}
 
 	// Access the internal file and ensure that doing so succeeds.
 	if f, _, err := directory.OpenFile(longFileName); err != nil {
 		t.Error("unable to open file with long name:", err)
 	} else {
-		f.Close()
+		must.Close(f, logger)
 	}
 
 	// Try to set permissions.

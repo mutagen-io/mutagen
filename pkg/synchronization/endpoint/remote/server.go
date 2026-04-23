@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mutagen-io/mutagen/pkg/must"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/mutagen-io/mutagen/pkg/encoding"
@@ -31,6 +32,8 @@ type endpointServer struct {
 	encoder *encoding.ProtobufEncoder
 	// decoder is the control stream decoder.
 	decoder *encoding.ProtobufDecoder
+
+	logger *logging.Logger
 }
 
 // ServeEndpoint creates and serves a endpoint server on the specified stream.
@@ -41,7 +44,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	// Perform the compression handshake.
 	compressionAlgorithm, err := compression.ServerHandshake(stream)
 	if err != nil {
-		stream.Close()
+		must.Close(stream, logger)
 		return fmt.Errorf("compression handshake failed: %w", err)
 	}
 
@@ -70,7 +73,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 		stream,
 		decompressor,
 	)
-	defer closer.Close()
+	defer must.Close(closer, logger)
 
 	// Create an encoder and a decoder for Protocol Buffers messages.
 	encoder := encoding.NewProtobufEncoder(outbound)
@@ -81,24 +84,24 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	request := &InitializeSynchronizationRequest{}
 	if err := decoder.Decode(request); err != nil {
 		err = fmt.Errorf("unable to receive initialize request: %w", err)
-		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-		flusher.Flush()
+		must.ProtoEncode(encoder, &InitializeSynchronizationResponse{Error: err.Error()}, logger)
+		must.Flush(flusher, logger)
 		return err
 	}
 
 	// Ensure that the initialization request is valid.
 	if err := request.ensureValid(); err != nil {
 		err = fmt.Errorf("invalid initialize request: %w", err)
-		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-		flusher.Flush()
+		must.ProtoEncode(encoder, &InitializeSynchronizationResponse{Error: err.Error()}, logger)
+		must.Flush(flusher, logger)
 		return err
 	}
 
 	// Expand and normalize the root path.
 	if r, err := filesystem.Normalize(request.Root); err != nil {
 		err = fmt.Errorf("unable to normalize synchronization root: %w", err)
-		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-		flusher.Flush()
+		must.ProtoEncode(encoder, &InitializeSynchronizationResponse{Error: err.Error()}, logger)
+		must.Flush(flusher, logger)
 		return err
 	} else {
 		request.Root = r
@@ -116,11 +119,11 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 	)
 	if err != nil {
 		err = fmt.Errorf("unable to create underlying endpoint: %w", err)
-		encoder.Encode(&InitializeSynchronizationResponse{Error: err.Error()})
-		flusher.Flush()
+		must.ProtoEncode(encoder, &InitializeSynchronizationResponse{Error: err.Error()}, logger)
+		must.Flush(flusher, logger)
 		return err
 	}
-	defer endpoint.Shutdown()
+	defer must.Shutdown(endpoint, logger)
 
 	// Send a successful initialize response.
 	if err = encoder.Encode(&InitializeSynchronizationResponse{}); err != nil {
@@ -135,6 +138,7 @@ func ServeEndpoint(logger *logging.Logger, stream io.ReadWriteCloser) error {
 		flusher:  flusher,
 		encoder:  encoder,
 		decoder:  decoder,
+		logger:   logger,
 	}
 
 	// Server until an error occurs.
@@ -369,7 +373,9 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	// Begin staging.
 	paths, signatures, receiver, err := s.endpoint.Stage(request.Paths, request.Digests)
 	if err != nil {
-		s.encodeAndFlush(&StageResponse{Error: err.Error()})
+		// TODO: Log the error if it occurs, but need
+		//       a logger and no easy way to get one.
+		_ = s.encodeAndFlush(&StageResponse{Error: err.Error()})
 		return fmt.Errorf("unable to begin staging: %w", err)
 	}
 
@@ -399,7 +405,7 @@ func (s *endpointServer) serveStage(request *StageRequest) error {
 	// we need to decode and forward them to the receiver. If this operation
 	// completes successfully, staging is complete and successful.
 	decoder := &protobufRsyncDecoder{decoder: s.decoder}
-	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver); err != nil {
+	if err = rsync.DecodeToReceiver(decoder, uint64(len(paths)), receiver, s.logger); err != nil {
 		return fmt.Errorf("unable to decode and forward rsync operations: %w", err)
 	}
 
@@ -416,7 +422,7 @@ func (s *endpointServer) serveSupply(request *SupplyRequest) error {
 
 	// Create an encoding receiver to transmit rsync operations to the remote.
 	encoder := &protobufRsyncEncoder{encoder: s.encoder, flusher: s.flusher}
-	receiver := rsync.NewEncodingReceiver(encoder)
+	receiver := rsync.NewEncodingReceiver(encoder, s.logger)
 
 	// Perform supplying.
 	if err := s.endpoint.Supply(request.Paths, request.Signatures, receiver); err != nil {
