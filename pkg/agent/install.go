@@ -3,7 +3,6 @@ package agent
 import (
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/google/uuid"
 
@@ -79,13 +78,16 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 		return fmt.Errorf("unable to copy agent binary: %w", err)
 	}
 
-	// For cases where we're copying from a Windows system to a POSIX remote,
-	// invoke "chmod +x" to add executability back to the copied binary. This is
-	// necessary under the specified circumstances because as soon as the agent
-	// binary is extracted from the bundle, it will lose its executability bit
-	// since Windows can't preserve this. This will also be applied to Windows
-	// POSIX remotes, but a "chmod +x" there will just be a no-op.
-	if runtime.GOOS == "windows" && posix {
+	// For POSIX remotes, invoke "chmod +x" to ensure the copied agent binary is
+	// executable. The executability bit can be lost in transit for several
+	// reasons: bundle extraction on Windows hosts strips it, and OpenSSH 9+
+	// scp uses SFTP by default, which on some implementations does not
+	// preserve mode bits. The remote umask can also strip the bit even when
+	// the transfer preserves it. Running chmod unconditionally on POSIX
+	// remotes makes installation robust against all of these cases. Skipped
+	// for Windows remotes, which don't have chmod and rely on the ".exe"
+	// suffix for executability.
+	if posix {
 		if err := prompting.Message(prompter, "Setting agent executability..."); err != nil {
 			return fmt.Errorf("unable to message prompter: %w", err)
 		}
