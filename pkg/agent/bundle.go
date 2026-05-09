@@ -19,6 +19,8 @@ import (
 const (
 	// BundleName is the base name of the agent bundle.
 	BundleName = "mutagen-agents.tar.gz"
+	// BundleLocationEnvVarName defines the env var storing the bundle location
+	BundleLocationEnvVarName = "MUTAGEN_BUNDLE_LOCATION"
 )
 
 // BundleLocation encodes an expected location for the agent bundle.
@@ -55,6 +57,15 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	// Compute the path to the location in which we expect to find the agent
 	// bundle.
 	var bundleSearchPaths []string
+
+	envBundleLocation := os.Getenv(BundleLocationEnvVarName)
+	if envBundleLocation != "" {
+		// Add a bundle path is defined via env, and exists, add it to the search paths
+		if _, err := os.Stat(envBundleLocation); err == nil {
+			bundleSearchPaths = append(bundleSearchPaths, envBundleLocation)
+		}
+	}
+
 	if ExpectedBundleLocation == BundleLocationDefault {
 		// Add the executable directory as a search path.
 		if executablePath, err := os.Executable(); err != nil {
