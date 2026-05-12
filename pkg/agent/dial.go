@@ -33,10 +33,12 @@ const (
 // remote environment is cmd.exe-based and returns hints as to whether or not
 // installation should be attempted and whether or not the remote environment is
 // cmd.exe-based.
-func connect(logger *logging.Logger, transport Transport, mode, prompter string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
-	// Compute the agent invocation command, relative to the user's home
-	// directory on the remote. Unless we have reason to assume that this is a
-	// cmd.exe environment, we construct a path using forward slashes. This will
+func connect(logger *logging.Logger, transport Transport, mode, prompter, agentDirectory string, cmdExe bool) (io.ReadWriteCloser, bool, bool, error) {
+	// Compute the agent invocation command. By default the path is relative to
+	// the user's home directory on the remote; if agentDirectory is specified
+	// it is used as an absolute base instead. Unless we have reason to assume
+	// that this is a cmd.exe environment, we construct a path using forward
+	// slashes. This will
 	// work for all POSIX systems and POSIX-like environments on Windows. If we
 	// know we're hitting a cmd.exe environment, then we use backslashes,
 	// otherwise the invocation won't work. Watching for cmd.exe to fail on
@@ -44,7 +46,8 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	// environments.
 	//
 	// HACK: We're assuming that none of these path components have spaces in
-	// them, but since we control all of them, this is probably okay.
+	// them. The version and binary name are controlled by Mutagen. The agent
+	// directory (when specified) is validated to contain no whitespace.
 	//
 	// HACK: When invoking on Windows systems (whether inside a POSIX
 	// environment or cmd.exe), we can leave the "exe" suffix off the target
@@ -54,9 +57,12 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 	if cmdExe {
 		pathSeparator = "\\"
 	}
-	dataDirectoryName := filesystem.MutagenDataDirectoryName
-	if mutagen.DevelopmentModeEnabled {
-		dataDirectoryName = filesystem.MutagenDataDirectoryDevelopmentName
+	dataDirectoryName := agentDirectory
+	if dataDirectoryName == "" {
+		dataDirectoryName = filesystem.MutagenDataDirectoryName
+		if mutagen.DevelopmentModeEnabled {
+			dataDirectoryName = filesystem.MutagenDataDirectoryDevelopmentName
+		}
 	}
 	agentInvocationPath := strings.Join([]string{
 		dataDirectoryName,
@@ -67,6 +73,13 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 	// Compute the command to invoke.
 	command := fmt.Sprintf("%s %s --%s=%s", agentInvocationPath, mode, FlagLogLevel, logger.Level())
+	if agentDirectory != "" {
+		if cmdExe {
+			command = fmt.Sprintf("set MUTAGEN_DATA_DIRECTORY=%s && %s", agentDirectory, command)
+		} else {
+			command = fmt.Sprintf("MUTAGEN_DATA_DIRECTORY=%s %s", agentDirectory, command)
+		}
+	}
 
 	// Set up (but do not start) an agent process.
 	message := "Connecting to agent (POSIX)..."
@@ -178,7 +191,7 @@ func connect(logger *logging.Logger, transport Transport, mode, prompter string,
 
 // Dial connects to an agent-based endpoint using the specified transport,
 // connection mode, and prompter.
-func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (io.ReadWriteCloser, error) {
+func Dial(logger *logging.Logger, transport Transport, mode, prompter, agentDirectory string) (io.ReadWriteCloser, error) {
 	// Validate that the mode is sane.
 	if !(mode == CommandSynchronizer || mode == CommandForwarder) {
 		return nil, errors.New("invalid agent dial mode")
@@ -187,11 +200,11 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (i
 	// Attempt a connection. If this fails but we detect a Windows cmd.exe
 	// environment in the process, then re-attempt a connection under the
 	// cmd.exe assumption.
-	stream, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, false)
+	stream, tryInstall, cmdExe, err := connect(logger, transport, mode, prompter, agentDirectory, false)
 	if err == nil {
 		return stream, nil
 	} else if cmdExe {
-		stream, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, true)
+		stream, tryInstall, cmdExe, err = connect(logger, transport, mode, prompter, agentDirectory, true)
 		if err == nil {
 			return stream, nil
 		}
@@ -204,12 +217,12 @@ func Dial(logger *logging.Logger, transport Transport, mode, prompter string) (i
 	}
 
 	// Attempt to install.
-	if err := install(logger, transport, prompter); err != nil {
+	if err := install(logger, transport, prompter, agentDirectory); err != nil {
 		return nil, fmt.Errorf("unable to install agent: %w", err)
 	}
 
 	// Re-attempt connectivity.
-	stream, _, _, err = connect(logger, transport, mode, prompter, cmdExe)
+	stream, _, _, err = connect(logger, transport, mode, prompter, agentDirectory, cmdExe)
 	if err != nil {
 		return nil, err
 	}

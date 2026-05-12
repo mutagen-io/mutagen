@@ -38,7 +38,7 @@ func Install() error {
 
 // install attempts to probe an endpoint and install the appropriate agent
 // binary over the specified transport.
-func install(logger *logging.Logger, transport Transport, prompter string) error {
+func install(logger *logging.Logger, transport Transport, prompter, agentDirectory string) error {
 	// Detect the target platform.
 	goos, goarch, posix, err := probe(transport, prompter)
 	if err != nil {
@@ -104,6 +104,13 @@ func install(logger *logging.Logger, transport Transport, prompter string) error
 		installCommand = fmt.Sprintf("./%s %s", destination, CommandInstall)
 	} else {
 		installCommand = fmt.Sprintf("%s %s", destination, CommandInstall)
+	}
+	if agentDirectory != "" {
+		if posix {
+			installCommand = fmt.Sprintf("MUTAGEN_DATA_DIRECTORY=%s %s", agentDirectory, installCommand)
+		} else {
+			installCommand = fmt.Sprintf("set MUTAGEN_DATA_DIRECTORY=%s && %s", agentDirectory, installCommand)
+		}
 	}
 	if err := run(transport, installCommand); err != nil {
 		return fmt.Errorf("unable to invoke agent installation: %w", err)

@@ -22,6 +22,12 @@ type Configuration struct {
 		// listener sockets.
 		PermissionMode filesystem.Mode `json:"permissionMode,omitempty" yaml:"permissionMode" mapstructure:"permissionMode"`
 	} `json:"socket" yaml:"socket" mapstructure:"socket"`
+	// Agent contains parameters related to agent deployment.
+	Agent struct {
+		// Directory specifies the directory to use for agent installation and
+		// invocation on the endpoint.
+		Directory string `json:"directory,omitempty" yaml:"directory" mapstructure:"directory"`
+	} `json:"agent" yaml:"agent" mapstructure:"agent"`
 }
 
 // loadFromInternal sets a configuration to match an internal Protocol Buffers
@@ -32,6 +38,9 @@ func (c *Configuration) loadFromInternal(configuration *forwarding.Configuration
 	c.Socket.Owner = configuration.SocketOwner
 	c.Socket.Group = configuration.SocketGroup
 	c.Socket.PermissionMode = filesystem.Mode(configuration.SocketPermissionMode)
+
+	// Propagate agent configuration.
+	c.Agent.Directory = configuration.AgentDirectory
 }
 
 // ToInternal converts a public configuration representation to an internal
@@ -43,5 +52,6 @@ func (c *Configuration) ToInternal() *forwarding.Configuration {
 		SocketOwner:          c.Socket.Owner,
 		SocketGroup:          c.Socket.Group,
 		SocketPermissionMode: uint32(c.Socket.PermissionMode),
+		AgentDirectory:       c.Agent.Directory,
 	}
 }

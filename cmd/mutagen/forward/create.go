@@ -249,6 +249,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		SocketOwner:          createConfiguration.socketOwner,
 		SocketGroup:          createConfiguration.socketGroup,
 		SocketPermissionMode: uint32(socketPermissionMode),
+		AgentDirectory:       createConfiguration.agentDirectory,
 	})
 
 	// Create the creation specification.
@@ -261,12 +262,14 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			SocketOwner:          createConfiguration.socketOwnerSource,
 			SocketGroup:          createConfiguration.socketGroupSource,
 			SocketPermissionMode: uint32(socketPermissionModeSource),
+			AgentDirectory:       createConfiguration.agentDirectorySource,
 		},
 		ConfigurationDestination: &forwarding.Configuration{
 			SocketOverwriteMode:  socketOverwriteModeDestination,
 			SocketOwner:          createConfiguration.socketOwnerDestination,
 			SocketGroup:          createConfiguration.socketGroupDestination,
 			SocketPermissionMode: uint32(socketPermissionModeDestination),
+			AgentDirectory:       createConfiguration.agentDirectoryDestination,
 		},
 		Name:   createConfiguration.name,
 		Labels: labels,
@@ -363,6 +366,17 @@ var createConfiguration struct {
 	// use for new Unix domain socket listeners on destination, taking priority
 	// over socketPermissionMode on destination if specified.
 	socketPermissionModeDestination string
+	// agentDirectory specifies the directory to use for agent installation and
+	// invocation on remote endpoints.
+	agentDirectory string
+	// agentDirectorySource specifies the directory to use for agent
+	// installation and invocation on a remote source endpoint, taking priority
+	// over agentDirectory on source if specified.
+	agentDirectorySource string
+	// agentDirectoryDestination specifies the directory to use for agent
+	// installation and invocation on a remote destination endpoint, taking
+	// priority over agentDirectory on destination if specified.
+	agentDirectoryDestination string
 }
 
 func init() {
@@ -400,4 +414,9 @@ func init() {
 	flags.StringVar(&createConfiguration.socketPermissionMode, "socket-permission-mode", "", "Specify socket permission mode")
 	flags.StringVar(&createConfiguration.socketPermissionModeSource, "socket-permission-mode-source", "", "Specify socket permission mode for source")
 	flags.StringVar(&createConfiguration.socketPermissionModeDestination, "socket-permission-mode-destination", "", "Specify socket permission mode for destination")
+
+	// Wire up agent flags.
+	flags.StringVar(&createConfiguration.agentDirectory, "agent-directory", "", "Specify agent directory")
+	flags.StringVar(&createConfiguration.agentDirectorySource, "agent-directory-source", "", "Specify agent directory for source")
+	flags.StringVar(&createConfiguration.agentDirectoryDestination, "agent-directory-destination", "", "Specify agent directory for destination")
 }

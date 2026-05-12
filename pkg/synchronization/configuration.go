@@ -3,6 +3,7 @@ package synchronization
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/comparison"
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
@@ -203,6 +204,13 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 		}
 	}
 
+	// Verify that the agent directory, if specified, contains no whitespace.
+	// Whitespace is disallowed because the path is interpolated directly into
+	// shell commands without quoting.
+	if strings.ContainsAny(c.AgentDirectory, " \t") {
+		return errors.New("agent directory must not contain whitespace")
+	}
+
 	// Success.
 	return nil
 }
@@ -235,7 +243,8 @@ func (c *Configuration) Equal(other *Configuration) bool {
 		c.DefaultDirectoryMode == other.DefaultDirectoryMode &&
 		c.DefaultOwner == other.DefaultOwner &&
 		c.DefaultGroup == other.DefaultGroup &&
-		c.CompressionAlgorithm == other.CompressionAlgorithm
+		c.CompressionAlgorithm == other.CompressionAlgorithm &&
+		c.AgentDirectory == other.AgentDirectory
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both
@@ -378,6 +387,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.CompressionAlgorithm = higher.CompressionAlgorithm
 	} else {
 		result.CompressionAlgorithm = lower.CompressionAlgorithm
+	}
+
+	// Merge the agent directory.
+	if higher.AgentDirectory != "" {
+		result.AgentDirectory = higher.AgentDirectory
+	} else {
+		result.AgentDirectory = lower.AgentDirectory
 	}
 
 	// Done.

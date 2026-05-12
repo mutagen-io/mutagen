@@ -77,30 +77,35 @@ func ExecutableForPlatform(goos, goarch, outputPath string) (string, error) {
 	} else {
 		panic("invalid bundle location specification")
 	}
-
 	// Loop until we find a bundle file. If we fail to locate a bundle, then
 	// abort. If we succeed, then defer its closure.
 	var bundle *os.File
+	var openErrors []string
 	for _, path := range bundleSearchPaths {
 		bundlePath := filepath.Join(path, BundleName)
 		if file, err := os.Open(bundlePath); err != nil {
 			if os.IsNotExist(err) {
+				openErrors = append(openErrors, fmt.Sprintf("%s: does not exist", bundlePath))
 				continue
 			}
-			return "", fmt.Errorf("unable to open agent bundle (%s): %w", bundlePath, err)
+			openErrors = append(openErrors, fmt.Sprintf("%s: %v", bundlePath, err))
+			continue
 		} else if metadata, err := file.Stat(); err != nil {
 			file.Close()
-			return "", fmt.Errorf("unable to access agent bundle (%s) file metadata: %w", bundlePath, err)
+			openErrors = append(openErrors, fmt.Sprintf("%s: unable to stat: %v", bundlePath, err))
+			continue
 		} else if metadata.Mode()&os.ModeType != 0 {
 			file.Close()
-			return "", fmt.Errorf("agent bundle (%s) is not a file", bundlePath)
+			openErrors = append(openErrors, fmt.Sprintf("%s: not a regular file", bundlePath))
+			continue
 		} else {
 			bundle = file
 			defer bundle.Close()
+			break
 		}
 	}
 	if bundle == nil {
-		return "", fmt.Errorf("unable to locate agent bundle (search paths: %v)", bundleSearchPaths)
+		return "", fmt.Errorf("unable to locate agent bundle (search paths: %v, errors: %v)", bundleSearchPaths, openErrors)
 	}
 
 	// Create a decompressor and defer its closure.
