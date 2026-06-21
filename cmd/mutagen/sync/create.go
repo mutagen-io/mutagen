@@ -460,6 +460,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 		DefaultOwner:           createConfiguration.defaultOwner,
 		DefaultGroup:           createConfiguration.defaultGroup,
 		CompressionAlgorithm:   compressionAlgorithm,
+		AgentDirectory:         createConfiguration.agentDirectory,
 	})
 
 	// Create the creation specification.
@@ -478,6 +479,7 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			DefaultOwner:         createConfiguration.defaultOwnerAlpha,
 			DefaultGroup:         createConfiguration.defaultGroupAlpha,
 			CompressionAlgorithm: compressionAlgorithmAlpha,
+			AgentDirectory:       createConfiguration.agentDirectoryAlpha,
 		},
 		ConfigurationBeta: &synchronization.Configuration{
 			ProbeMode:            probeModeBeta,
@@ -490,8 +492,8 @@ func createMain(_ *cobra.Command, arguments []string) error {
 			DefaultOwner:         createConfiguration.defaultOwnerBeta,
 			DefaultGroup:         createConfiguration.defaultGroupBeta,
 			CompressionAlgorithm: compressionAlgorithmBeta,
-		},
-		Name:   createConfiguration.name,
+			AgentDirectory:       createConfiguration.agentDirectoryBeta,
+		}, Name: createConfiguration.name,
 		Labels: labels,
 		Paused: createConfiguration.paused,
 	}
@@ -669,6 +671,17 @@ var createConfiguration struct {
 	// compressionBeta specifies the compression algorithm to use when
 	// communicating with a remote beta endpoint.
 	compressionBeta string
+	// agentDirectory specifies the directory to use for agent installation and
+	// invocation on remote endpoints.
+	agentDirectory string
+	// agentDirectoryAlpha specifies the directory to use for agent installation
+	// and invocation on a remote alpha endpoint, taking priority over
+	// agentDirectory on alpha if specified.
+	agentDirectoryAlpha string
+	// agentDirectoryBeta specifies the directory to use for agent installation
+	// and invocation on a remote beta endpoint, taking priority over
+	// agentDirectory on beta if specified.
+	agentDirectoryBeta string
 }
 
 func init() {
@@ -744,6 +757,11 @@ func init() {
 	flags.StringVarP(&createConfiguration.compression, "compression", "C", "", "Specify compression algorithm ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionAlpha, "compression-alpha", "", "Specify compression algorithm for alpha ("+compressionFlagOptions+")")
 	flags.StringVar(&createConfiguration.compressionBeta, "compression-beta", "", "Specify compression algorithm for beta ("+compressionFlagOptions+")")
+
+	// Wire up agent flags.
+	flags.StringVar(&createConfiguration.agentDirectory, "agent-directory", "", "Specify agent directory")
+	flags.StringVar(&createConfiguration.agentDirectoryAlpha, "agent-directory-alpha", "", "Specify agent directory for alpha")
+	flags.StringVar(&createConfiguration.agentDirectoryBeta, "agent-directory-beta", "", "Specify agent directory for beta")
 
 	// Set up flag normalization. This is only required to handle aliases.
 	flags.SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {

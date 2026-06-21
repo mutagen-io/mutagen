@@ -32,6 +32,15 @@ message Configuration {
     // listener sockets.
     uint32 socketPermissionMode = 44;
 
-    // Fields 45-60 are reserved for endpoint-specific Unix domain socket
-    // configuration parameters.
+    // Fields 45-60 are reserved for future socket configuration parameters.
+
+
+    // Agent configuration parameters (fields 61+).
+
+    // AgentDirectory specifies the directory to use for agent installation and
+    // invocation on the endpoint. Must be an absolute path with no whitespace.
+    // If empty, the default location (~/.mutagen or ~/.mutagen-dev) is used.
+    string agentDirectory = 61;
+
+    // Fields 62+ are reserved for future agent configuration parameters.
 }

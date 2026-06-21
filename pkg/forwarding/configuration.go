@@ -2,6 +2,7 @@ package forwarding
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/mutagen-io/mutagen/pkg/filesystem"
 )
@@ -37,6 +38,13 @@ func (c *Configuration) EnsureValid(endpointSpecific bool) error {
 	// We don't verify the socket permission mode because there's not really any
 	// way to know if it's a sane value.
 
+	// Verify that the agent directory, if specified, contains no whitespace.
+	// Whitespace is disallowed because the path is interpolated directly into
+	// shell commands without quoting.
+	if strings.ContainsAny(c.AgentDirectory, " \t") {
+		return errors.New("agent directory must not contain whitespace")
+	}
+
 	// Success.
 	return nil
 }
@@ -53,7 +61,8 @@ func (c *Configuration) Equal(other *Configuration) bool {
 	return c.SocketOverwriteMode == other.SocketOverwriteMode &&
 		c.SocketOwner == other.SocketOwner &&
 		c.SocketGroup == other.SocketGroup &&
-		c.SocketPermissionMode == other.SocketPermissionMode
+		c.SocketPermissionMode == other.SocketPermissionMode &&
+		c.AgentDirectory == other.AgentDirectory
 }
 
 // MergeConfigurations merges two configurations of differing priorities. Both
@@ -88,6 +97,13 @@ func MergeConfigurations(lower, higher *Configuration) *Configuration {
 		result.SocketPermissionMode = higher.SocketPermissionMode
 	} else {
 		result.SocketPermissionMode = lower.SocketPermissionMode
+	}
+
+	// Merge the agent directory.
+	if higher.AgentDirectory != "" {
+		result.AgentDirectory = higher.AgentDirectory
+	} else {
+		result.AgentDirectory = lower.AgentDirectory
 	}
 
 	// Done.

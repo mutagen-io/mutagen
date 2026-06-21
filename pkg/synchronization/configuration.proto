@@ -142,6 +142,15 @@ message Configuration {
     // communicating with the endpoint. This only applies to remote endpoints.
     compression.Algorithm compressionAlgorithm = 81;
 
-    // Fields 82-90 are reserved for future compression configuration
-    // parameters.
+    // Fields 82-90 are reserved for future compression configuration parameters.
+
+
+    // Agent configuration parameters (fields 91+).
+
+    // AgentDirectory specifies the directory to use for agent installation and
+    // invocation on the endpoint. Must be an absolute path with no whitespace.
+    // If empty, the default location (~/.mutagen or ~/.mutagen-dev) is used.
+    string agentDirectory = 91;
+
+    // Fields 92+ are reserved for future agent configuration parameters.
 }

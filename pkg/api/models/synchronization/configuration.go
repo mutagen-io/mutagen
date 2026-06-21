@@ -77,6 +77,12 @@ type Configuration struct {
 		// Algorithm specifies the compression algorithm.
 		Algorithm compression.Algorithm `json:"algorithm,omitempty" yaml:"algorithm" mapstructure:"algorithm"`
 	} `json:"compression" yaml:"compression" mapstructure:"compression"`
+	// Agent contains parameters related to agent deployment.
+	Agent struct {
+		// Directory specifies the directory to use for agent installation and
+		// invocation on the endpoint.
+		Directory string `json:"directory,omitempty" yaml:"directory" mapstructure:"directory"`
+	} `json:"agent" yaml:"agent" mapstructure:"agent"`
 }
 
 // loadFromInternal sets a configuration to match an internal
@@ -114,6 +120,9 @@ func (c *Configuration) loadFromInternal(configuration *synchronization.Configur
 
 	// Propagate compression configuration.
 	c.Compression.Algorithm = configuration.CompressionAlgorithm
+
+	// Propagate agent configuration.
+	c.Agent.Directory = configuration.AgentDirectory
 }
 
 // ToInternal converts a public configuration representation to an internal
@@ -140,5 +149,6 @@ func (c *Configuration) ToInternal() *synchronization.Configuration {
 		DefaultOwner:           c.Permissions.DefaultOwner,
 		DefaultGroup:           c.Permissions.DefaultGroup,
 		CompressionAlgorithm:   c.Compression.Algorithm,
+		AgentDirectory:         c.Agent.Directory,
 	}
 }
