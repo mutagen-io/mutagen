@@ -368,20 +368,37 @@ func startMain(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Create forwarding sessions.
+	// Create forwarding sessions. If --continue-on-error is set, failures
+	// are collected and reported at the end of the command rather than
+	// aborting the loop. The default behavior (return on the first error)
+	// is preserved.
+	var createErrors []error
 	for _, specification := range forwardingSpecifications {
 		if _, err := forward.CreateWithSpecification(daemonConnection, specification); err != nil {
-			return fmt.Errorf("unable to create forwarding session (%s): %v", specification.Name, err)
+			wrapped := fmt.Errorf("unable to create forwarding session (%s): %w", specification.Name, err)
+			if !startConfiguration.continueOnError {
+				return wrapped
+			}
+			createErrors = append(createErrors, wrapped)
+			fmt.Fprintln(os.Stderr, "WARN:", wrapped)
 		}
 	}
 
 	// Create synchronization sessions and track those that we should flush.
+	// Like the forwarding loop above, --continue-on-error turns the
+	// per-session `return` into a `continue` plus append to createErrors.
 	var sessionsToFlush []string
 	for s, specification := range synchronizationSpecifications {
 		// Perform session creation.
 		session, err := sync.CreateWithSpecification(daemonConnection, specification)
 		if err != nil {
-			return fmt.Errorf("unable to create synchronization session (%s): %v", specification.Name, err)
+			wrapped := fmt.Errorf("unable to create synchronization session (%s): %w", specification.Name, err)
+			if !startConfiguration.continueOnError {
+				return wrapped
+			}
+			createErrors = append(createErrors, wrapped)
+			fmt.Fprintln(os.Stderr, "WARN:", wrapped)
+			continue
 		}
 
 		// Determine whether or not to flush this session.
@@ -406,8 +423,24 @@ func startMain(_ *cobra.Command, _ []string) error {
 		}
 	}
 
+	if err := aggregateCreateErrors(createErrors); err != nil {
+		return err
+	}
+
 	// Success.
 	return nil
+}
+
+// aggregateCreateErrors returns nil if no errors were collected,
+// otherwise it returns a single combined error suitable for surfacing
+// to the user. The combined error wraps the individual session errors
+// via errors.Join, so callers can inspect them with errors.Is/As/Unwrap.
+func aggregateCreateErrors(createErrors []error) error {
+	if len(createErrors) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%d session(s) failed to create: %w",
+		len(createErrors), errors.Join(createErrors...))
 }
 
 // startCommand is the start command.
@@ -430,6 +463,10 @@ var startConfiguration struct {
 	// noGlobalConfiguration specifies whether or not the global configuration
 	// file should be ignored.
 	noGlobalConfiguration bool
+	// continueOnError indicates whether to attempt every session in the
+	// project file even if some fail to create. The default is to abort
+	// on the first failure (preserving backwards compatibility).
+	continueOnError bool
 }
 
 func init() {
@@ -451,4 +488,7 @@ func init() {
 
 	// Wire up general configuration flags.
 	flags.BoolVar(&startConfiguration.noGlobalConfiguration, "no-global-configuration", false, "Ignore the global configuration file")
+
+	// Wire up continue-on-error flag.
+	flags.BoolVar(&startConfiguration.continueOnError, "continue-on-error", false, "Continue creating remaining sessions even if some fail")
 }
