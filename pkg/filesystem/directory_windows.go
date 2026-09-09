@@ -472,8 +472,29 @@ func (d *Directory) RemoveFile(name string) error {
 		return fmt.Errorf("unable to convert path to UTF-16: %w", err)
 	}
 
-	// Remove the file.
-	return windows.DeleteFile(path16)
+	// Remove the file. DeleteFile refuses read-only files with
+	// ERROR_ACCESS_DENIED, so on that error clear FILE_ATTRIBUTE_READONLY and
+	// retry once. Git marks loose objects read-only, so without this retry any
+	// object pruned on another endpoint becomes a permanent transition problem
+	// on Windows. This mirrors what os.Remove does for read-only directories
+	// and what Git for Windows does before its own renames and unlinks.
+	err = windows.DeleteFile(path16)
+	if err != windows.ERROR_ACCESS_DENIED {
+		return err
+	}
+	attributes, attributesErr := windows.GetFileAttributes(path16)
+	if attributesErr != nil || attributes&windows.FILE_ATTRIBUTE_READONLY == 0 {
+		return err
+	}
+	if windows.SetFileAttributes(path16, attributes&^windows.FILE_ATTRIBUTE_READONLY) != nil {
+		return err
+	}
+	if retryErr := windows.DeleteFile(path16); retryErr != nil {
+		// Restore the attribute so a failed removal leaves the file as found.
+		windows.SetFileAttributes(path16, attributes)
+		return retryErr
+	}
+	return nil
 }
 
 // RemoveSymbolicLink deletes a symbolic link with the specified name inside the
