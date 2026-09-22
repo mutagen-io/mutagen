@@ -1,4 +1,4 @@
-//go:build go1.25
+//go:build go1.27
 
 package mutagen
 

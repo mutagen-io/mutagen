@@ -49,9 +49,9 @@ const (
 
 	// minimumMacOSVersion is the minimum version of macOS that
 	// we'll support. This is pinned to the oldest version of
-	// macOS that Mutagen's minimum Go version supports. Go 1.25
-	// requires macOS 12 Monterey or later.
-	minimumMacOSVersion = "12"
+	// macOS that Mutagen's minimum Go version supports. Go 1.27
+	// requires macOS 13 Ventura or later.
+	minimumMacOSVersion = "13"
 
 	// minimumARMSupport is the value to pass to the GOARM environment variable
 	// when building binaries. We currently specify support for ARMv5. This will
