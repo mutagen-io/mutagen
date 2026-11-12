@@ -36,11 +36,6 @@ func (s *Server) Host(stream Prompting_HostServer) error {
 		return fmt.Errorf("unable to generate prompter identifier: %w", err)
 	}
 
-	// Send the initial response.
-	if err := stream.Send(&HostResponse{Identifier: identifier}); err != nil {
-		return fmt.Errorf("unable to send initial response: %w", err)
-	}
-
 	// Extract the request context.
 	ctx := stream.Context()
 
@@ -50,16 +45,22 @@ func (s *Server) Host(stream Prompting_HostServer) error {
 		stream:       stream,
 	}
 
-	// Register the prompter.
+	// Register the prompter before sending its identifier to the client. The
+	// client may pass the identifier to another request (e.g. a session
+	// creation request) as soon as it receives it, and that request can be
+	// handled concurrently, so the prompter must already be registered.
 	if err := prompting.RegisterPrompterWithIdentifier(identifier, prompter); err != nil {
 		return fmt.Errorf("unable to register prompter: %w", err)
+	}
+	defer prompting.UnregisterPrompter(identifier)
+
+	// Send the initial response.
+	if err := stream.Send(&HostResponse{Identifier: identifier}); err != nil {
+		return fmt.Errorf("unable to send initial response: %w", err)
 	}
 
 	// Wait for the request or connection to be terminated.
 	<-ctx.Done()
-
-	// Unregister the promper.
-	prompting.UnregisterPrompter(identifier)
 
 	// Success.
 	return nil
